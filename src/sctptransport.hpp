@@ -1,0 +1,88 @@
+/**
+ * Copyright (c) 2019 Paul-Louis Ageneau
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
+
+#ifndef RTC_SCTP_TRANSPORT_H
+#define RTC_SCTP_TRANSPORT_H
+
+#include "include.hpp"
+#include "peerconnection.hpp"
+#include "transport.hpp"
+
+#include <functional>
+#include <thread>
+
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <usrsctp.h>
+
+namespace rtc {
+
+class SctpTransport : public Transport {
+public:
+	using ready_callback = std::function<void(void)>;
+
+	SctpTransport(std::shared_ptr<Transport> lower, ready_callback ready, message_callback recv);
+	~SctpTransport();
+
+        bool isReady() const;
+
+        bool send(message_ptr message);
+	void reset(unsigned int stream);
+
+private:
+	enum PayloadId : uint32_t {
+		PPID_CONTROL = 50,
+		PPID_STRING = 51,
+		PPID_BINARY = 53,
+		PPID_STRING_EMPTY = 56,
+		PPID_BINARY_EMPTY = 57
+	};
+
+	void incoming(message_ptr message);
+	void runConnect();
+
+	int handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df);
+
+	int process(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
+	            struct sctp_rcvinfo recv_info, int flags);
+
+	void processData(const byte *data, size_t len, uint16_t streamId, PayloadId ppid);
+	void processNotification(const union sctp_notification *notify, size_t len);
+
+	ready_callback mReadyCallback;
+
+	struct socket *mSock;
+	uint16_t mLocalPort;
+	uint16_t mRemotePort;
+
+        std::thread mConnectThread;
+	std::atomic<bool> mStopping = false;
+        std::atomic<bool> mIsReady = false;
+
+        std::mutex mConnectMutex;
+	std::condition_variable mConnectCondition;
+
+	static int WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos, uint8_t set_df);
+	static int ReadCallback(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
+	                        struct sctp_rcvinfo recv_info, int flags, void *user_data);
+};
+
+} // namespace rtc
+
+#endif
+
