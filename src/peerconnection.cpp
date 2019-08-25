@@ -35,8 +35,7 @@ using std::shared_ptr;
 PeerConnection::PeerConnection(const IceConfiguration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mMid("0") {}
 
-PeerConnection::~PeerConnection() {
-}
+PeerConnection::~PeerConnection() {}
 
 const IceConfiguration *PeerConnection::config() const { return &mConfig; }
 
@@ -110,9 +109,9 @@ void PeerConnection::initDtlsTransport() {
 }
 
 void PeerConnection::initSctpTransport() {
-  mSctpTransport = std::make_shared<SctpTransport>(
-      mDtlsTransport, std::bind(&PeerConnection::openDataChannels, this),
-      std::bind(&PeerConnection::forwardMessage, this, _1));
+	mSctpTransport = std::make_shared<SctpTransport>(
+	    mDtlsTransport, std::bind(&PeerConnection::openDataChannels, this),
+	    std::bind(&PeerConnection::forwardMessage, this, _1));
 }
 
 bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
@@ -133,9 +132,9 @@ void PeerConnection::forwardMessage(message_ptr message) {
 }
 
 void PeerConnection::openDataChannels(void) {
-  for (auto it = mDataChannels.begin(); it != mDataChannels.end(); ++it) {
-    it->second->open();
-  }
+	for (auto it = mDataChannels.begin(); it != mDataChannels.end(); ++it) {
+		it->second->open();
+	}
 }
 
 void PeerConnection::triggerLocalDescription() {
