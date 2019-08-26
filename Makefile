@@ -9,7 +9,8 @@ LDLIBS=$(shell pkg-config --libs glib-2.0 gobject-2.0 nice) -lgnutls
 INCLUDES=$(shell pkg-config --cflags glib-2.0 gobject-2.0 nice) -I$(USRSCTP_DIR)/usrsctplib
 
 USRSCTP_DIR:=usrsctp
-USRSCTP_FLAGS:=-DINET -DINET6
+USRSCTP_DEFINES:=-DINET -DINET6
+USRSCTP_CFLAGS:=-fPIC -Wno-address-of-packed-member
 
 SRCS=$(shell printf "%s " src/*.cpp)
 OBJS=$(subst .cpp,.o,$(SRCS))
@@ -17,7 +18,7 @@ OBJS=$(subst .cpp,.o,$(SRCS))
 all: $(NAME).a $(NAME).so
 
 %.o: %.cpp
-	$(CXX) $(INCLUDES) $(CPPFLAGS) $(USRSCTP_FLAGS) -I. -MMD -MP -o $@ -c $<
+	$(CXX) $(INCLUDES) $(CPPFLAGS) $(USRSCTP_DEFINES) -MMD -MP -o $@ -c $<
 
 -include $(subst .o,.d,$(OBJS))
 
@@ -37,5 +38,5 @@ dist-clean: clean
 	$(RM) src/*~
 
 libusrsctp.a:
-	cd $(USRSCTP_DIR) && ./bootstrap && CFLAGS="-fPIC -Wno-address-of-packed-member" ./configure --enable-static && make
+	cd $(USRSCTP_DIR) && ./bootstrap && CFLAGS="$(USRSCTP_CFLAGS)" ./configure --enable-static && make
 	cp $(USRSCTP_DIR)/usrsctplib/.libs/libusrsctp.a .
