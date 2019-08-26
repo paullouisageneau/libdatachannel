@@ -51,16 +51,13 @@ struct CloseMessage {
 	uint8_t type = MESSAGE_CLOSE;
 };
 
-DataChannel::DataChannel(shared_ptr<SctpTransport> sctpTransport, unsigned int streamId)
-    : mSctpTransport(sctpTransport), mStreamId(streamId) {}
+DataChannel::DataChannel(unsigned int stream, string label, string protocol,
+                         Reliability reliability)
+    : mStream(stream), mLabel(std::move(label)), mProtocol(std::move(protocol)),
+      mReliability(std::make_shared<Reliability>(std::move(reliability))) {}
 
-DataChannel::DataChannel(shared_ptr<SctpTransport> sctpTransport, unsigned int streamId,
-                         string label, string protocol, Reliability reliability)
-    : DataChannel(sctpTransport, streamId) {
-	mLabel = std::move(label);
-	mProtocol = std::move(protocol);
-	mReliability = std::make_shared<Reliability>(std::move(reliability));
-}
+DataChannel::DataChannel(unsigned int stream, shared_ptr<SctpTransport> sctpTransport)
+    : mStream(stream), mSctpTransport(sctpTransport) {}
 
 DataChannel::~DataChannel() { close(); }
 
@@ -68,24 +65,33 @@ void DataChannel::close() {
 	mIsOpen = false;
 	if (!mIsClosed) {
 		mIsClosed = true;
-		mSctpTransport->reset(mStreamId);
+		if (mSctpTransport)
+			mSctpTransport->reset(mStream);
 	}
 }
 
 void DataChannel::send(const std::variant<binary, string> &data) {
+	if (!mSctpTransport)
+		return;
+
 	std::visit(
 	    [this](const auto &d) {
 		    using T = std::decay_t<decltype(d)>;
 		    constexpr auto type = std::is_same_v<T, string> ? Message::String : Message::Binary;
 		    auto *b = reinterpret_cast<const byte *>(d.data());
-		    mSctpTransport->send(make_message(b, b + d.size(), type, mStreamId, mReliability));
+		    mSctpTransport->send(make_message(b, b + d.size(), type, mStream, mReliability));
 	    },
 	    data);
 }
 
 void DataChannel::send(const byte *data, size_t size) {
-	mSctpTransport->send(make_message(data, data + size, Message::Binary, mStreamId));
+	if (!mSctpTransport)
+		return;
+
+	mSctpTransport->send(make_message(data, data + size, Message::Binary, mStream));
 }
+
+unsigned int DataChannel::stream() const { return mStream; }
 
 string DataChannel::label() const { return mLabel; }
 
@@ -97,7 +103,9 @@ bool DataChannel::isOpen(void) const { return mIsOpen; }
 
 bool DataChannel::isClosed(void) const { return mIsClosed; }
 
-void DataChannel::open() {
+void DataChannel::open(shared_ptr<SctpTransport> sctpTransport) {
+	mSctpTransport = sctpTransport;
+
 	uint8_t channelType = static_cast<uint8_t>(mReliability->type);
 	if (mReliability->unordered)
 		channelType &= 0x80;
@@ -123,7 +131,7 @@ void DataChannel::open() {
 	std::copy(mLabel.begin(), mLabel.end(), end);
 	std::copy(mProtocol.begin(), mProtocol.end(), end + mLabel.size());
 
-	mSctpTransport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStreamId));
+	mSctpTransport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
 }
 
 void DataChannel::incoming(message_ptr message) {
@@ -203,7 +211,7 @@ void DataChannel::processOpenMessage(message_ptr message) {
 	auto &ack = *reinterpret_cast<AckMessage *>(buffer.data());
 	ack.type = MESSAGE_ACK;
 
-	mSctpTransport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStreamId));
+	mSctpTransport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
 
 	triggerOpen();
 }

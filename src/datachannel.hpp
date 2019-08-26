@@ -35,15 +35,15 @@ class PeerConnection;
 
 class DataChannel : public Channel {
 public:
-	DataChannel(std::shared_ptr<SctpTransport> sctpTransport, unsigned int streamId);
-	DataChannel(std::shared_ptr<SctpTransport> sctpTransport, unsigned int streamId, string label,
-	            string protocol, Reliability reliability);
+	DataChannel(unsigned int stream_, string label_, string protocol_, Reliability reliability_);
+	DataChannel(unsigned int stream, std::shared_ptr<SctpTransport> sctpTransport);
 	~DataChannel();
 
 	void close(void);
 	void send(const std::variant<binary, string> &data);
 	void send(const byte *data, size_t size);
 
+	unsigned int stream() const;
 	string label() const;
 	string protocol() const;
 	Reliability reliability() const;
@@ -52,13 +52,12 @@ public:
 	bool isClosed(void) const;
 
 private:
-	void open();
+	void open(std::shared_ptr<SctpTransport> sctpTransport);
 	void incoming(message_ptr message);
 	void processOpenMessage(message_ptr message);
 
-	const std::shared_ptr<SctpTransport> mSctpTransport;
-	const unsigned int mStreamId;
-
+	const unsigned int mStream;
+	std::shared_ptr<SctpTransport> mSctpTransport;
 	string mLabel;
 	string mProtocol;
 	std::shared_ptr<Reliability> mReliability;

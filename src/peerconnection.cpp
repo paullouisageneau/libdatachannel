@@ -66,18 +66,17 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 	auto seed = std::chrono::system_clock::now().time_since_epoch().count();
 	std::default_random_engine generator(seed);
 	std::uniform_int_distribution<uint16_t> uniform;
-	uint16_t streamId = uniform(generator);
+	uint16_t stream = uniform(generator);
 
-	auto channel =
-	    std::make_shared<DataChannel>(mSctpTransport, streamId, label, protocol, reliability);
-	mDataChannels[streamId] = channel;
+	auto channel = std::make_shared<DataChannel>(stream, label, protocol, reliability);
+	mDataChannels.insert(std::make_pair(stream, channel));
 
 	if (!mIceTransport) {
 		initIceTransport(Description::Role::Active);
 		triggerLocalDescription();
 		mIceTransport->gatherLocalCandidates();
 	} else if (mSctpTransport && mSctpTransport->isReady()) {
-		channel->open();
+		channel->open(mSctpTransport);
 	}
 	return channel;
 }
@@ -123,7 +122,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 	if (auto it = mDataChannels.find(message->stream); it != mDataChannels.end()) {
 		channel = it->second;
 	} else {
-		channel = std::make_shared<DataChannel>(mSctpTransport, message->stream);
+		channel = std::make_shared<DataChannel>(message->stream, mSctpTransport);
 		channel->onOpen(std::bind(&PeerConnection::triggerDataChannel, this, channel));
 		mDataChannels.insert(std::make_pair(message->stream, channel));
 	}
@@ -133,7 +132,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 
 void PeerConnection::openDataChannels(void) {
 	for (auto it = mDataChannels.begin(); it != mDataChannels.end(); ++it) {
-		it->second->open();
+		it->second->open(mSctpTransport);
 	}
 }
 
