@@ -40,7 +40,7 @@ IceTransport::IceTransport(const IceConfiguration &config, Description::Role rol
 
 	auto logLevelFlags = GLogLevelFlags(G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION);
 	g_log_set_handler(nullptr, logLevelFlags, LogCallback, this);
-	nice_debug_disable(true);
+	nice_debug_enable(false);
 
 	mMainLoop = decltype(mMainLoop)(g_main_loop_new(nullptr, FALSE), g_main_loop_unref);
 	if (!mMainLoop)
@@ -127,7 +127,7 @@ IceTransport::State IceTransport::state() const { return mState; }
 Description IceTransport::getLocalDescription() const {
 	std::unique_ptr<gchar[], void (*)(void *)> sdp(nice_agent_generate_local_sdp(mNiceAgent.get()),
 	                                               g_free);
-	return Description(string(sdp.get()));
+	return Description(mRole, string(sdp.get()));
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {
@@ -180,8 +180,9 @@ void IceTransport::processGatheringDone() { mCandidateCallback(nullopt); }
 
 void IceTransport::changeState(uint32_t state) {
 	mState = static_cast<State>(state);
-	if (mState == State::CONNECTED)
+	if (mState == State::READY) {
 		mReadyCallback();
+	}
 }
 
 string IceTransport::getStreamName() const {

@@ -92,8 +92,7 @@ bool DtlsTransport::send(message_ptr message) {
 void DtlsTransport::incoming(message_ptr message) { mIncomingQueue.push(message); }
 
 void DtlsTransport::runRecvLoop() {
-	while (!check_gnutls(gnutls_handshake(mSession), "TLS handshake failed")) {
-	}
+	while (!check_gnutls(gnutls_handshake(mSession), "TLS handshake failed")) {}
 
 	mReadyCallback();
 

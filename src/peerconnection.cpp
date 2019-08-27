@@ -23,7 +23,6 @@
 
 #include <chrono>
 #include <random>
-#include <sstream>
 
 namespace rtc {
 
@@ -42,7 +41,11 @@ const IceConfiguration *PeerConnection::config() const { return &mConfig; }
 const Certificate *PeerConnection::certificate() const { return &mCertificate; }
 
 void PeerConnection::setRemoteDescription(const string &description) {
-	Description desc(description);
+	Description desc(Description::Role::ActPass, description);
+
+	if(auto fingerprint = desc.fingerprint())
+		mRemoteFingerprint.emplace(*fingerprint);
+
 	if (!mIceTransport) {
 		initIceTransport(Description::Role::ActPass);
 		mIceTransport->setRemoteDescription(desc);

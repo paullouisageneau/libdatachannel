@@ -32,10 +32,10 @@ class Description {
 public:
 	enum class Role { Passive, Active, ActPass };
 
-	Description(Role role, const string &mid = "0");
-	Description(const string &sdp);
+	Description(Role role, const string &sdp);
 
 	Role role() const;
+	std::optional<string> fingerprint() const;
 
 	void setFingerprint(const string &fingerprint);
 	void addCandidate(Candidate candidate);
@@ -47,6 +47,7 @@ private:
 	Role mRole = Role::Passive;
 	string mSessionId;
 	string mMid;
+	string mIceUfrag, mIcePwd;
 	std::optional<string> mFingerprint;
 
 	std::vector<Candidate> mCandidates;

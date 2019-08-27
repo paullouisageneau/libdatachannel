@@ -44,14 +44,12 @@ inline void trim_end(string &str) {
 
 namespace rtc {
 
-Description::Description(Role role, const string &mid) : mRole(role), mMid(mid) {
+Description::Description(Role role, const string &sdp) : mRole(role), mMid("0"), mIceUfrag("0"), mIcePwd("0") {
 	auto seed = std::chrono::system_clock::now().time_since_epoch().count();
 	std::default_random_engine generator(seed);
 	std::uniform_int_distribution<uint32_t> uniform;
 	mSessionId = std::to_string(uniform(generator));
-}
 
-Description::Description(const string &sdp) {
 	std::istringstream ss(sdp);
 	string line;
 	while (std::getline(ss, line)) {
@@ -67,12 +65,20 @@ Description::Description(const string &sdp) {
 		} else if (hasprefix(line, "a=mid:")) {
 			mMid = line.substr(line.find(':') + 1);
 		} else if (hasprefix(line, "a=fingerprint:sha-256")) {
-			mFingerprint = line.substr(line.find(':') + 1);
+			mFingerprint = line.substr(line.find(' ') + 1);
+		} else if (hasprefix(line, "a=ice-ufrag")) {
+			mIceUfrag = line.substr(line.find(':') + 1);
+		} else if (hasprefix(line, "a=ice-pwd")) {
+			mIcePwd = line.substr(line.find(':') + 1);
 		}
 	}
 }
 
 Description::Role Description::role() const { return mRole; }
+
+std::optional<string> Description::fingerprint() const {
+	return mFingerprint;
+}
 
 void Description::setFingerprint(const string &fingerprint) { mFingerprint = fingerprint; }
 
@@ -89,19 +95,21 @@ Description::operator string() const {
 		throw std::runtime_error("Fingerprint must be set to generate a SDP");
 
     std::ostringstream sdp;
-	sdp << "v=0\r\n";
-	sdp << "o=- " << mSessionId << " 0 IN IP4 0.0.0.0\r\n";
-	sdp << "s=-\r\n";
-	sdp << "t=0 0\r\n";
-    sdp << "m=application 0 UDP/DTLS/SCTP webrtc-datachannel\r\n";
-    sdp << "c=IN IP4 0.0.0.0\r\n";
-	sdp << "a=ice-options:trickle\r\n";
-	sdp << "a=mid:" << mMid << "\r\n";
-	sdp << "a=setup:" << (mRole == Role::Active ? "active" : "passive") << "\r\n";
-	sdp << "a=dtls-id:1\r\n";
-	sdp << "a=fingerprint:sha-256 " << *mFingerprint << "\r\n";
-    sdp << "a=sctp-port:5000\r\n";
-    // sdp << "a=max-message-size:100000\r\n";
+	sdp << "v=0\n";
+	sdp << "o=- " << mSessionId << " 0 IN IP4 0.0.0.0\n";
+	sdp << "s=-\n";
+	sdp << "t=0 0\n";
+    sdp << "m=application 0 UDP/DTLS/SCTP webrtc-datachannel\n";
+    sdp << "c=IN IP4 0.0.0.0\n";
+	sdp << "a=ice-options:trickle\n";
+	sdp << "a=ice-ufrag:" << mIceUfrag << "\n";
+	sdp << "a=ice-pwd:" << mIcePwd << "\n";
+	sdp << "a=mid:" << mMid << "\n";
+	sdp << "a=setup:" << (mRole == Role::Active ? "active" : "passive") << "\n";
+	sdp << "a=dtls-id:1\n";
+	sdp << "a=fingerprint:sha-256 " << *mFingerprint << "\n";
+    sdp << "a=sctp-port:5000\n";
+    // sdp << "a=max-message-size:100000\n";
 
 	for (const auto &candidate : mCandidates) {
 		sdp << "a=candidate:" << string(candidate);

@@ -43,18 +43,17 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, ready_callback re
 	if (!mSock)
 		throw std::runtime_error("Could not create usrsctp socket, errno=" + std::to_string(errno));
 
-	struct linger linger_opt = {};
-	linger_opt.l_onoff = 1;
-	linger_opt.l_linger = 0;
-	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_LINGER, &linger_opt, sizeof(linger_opt)))
+	struct linger sol = {};
+	sol.l_onoff = 1;
+	sol.l_linger = 0;
+	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_LINGER, &sol, sizeof(sol)))
 		throw std::runtime_error("Could not set socket option SO_LINGER, errno=" +
 		                         std::to_string(errno));
 
-	struct sctp_paddrparams peer_param = {};
-	peer_param.spp_flags = SPP_PMTUD_DISABLE;
-	peer_param.spp_pathmtu = 1200; // TODO: MTU
-	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &peer_param,
-	                       sizeof(peer_param)))
+	struct sctp_paddrparams spp = {};
+	spp.spp_flags = SPP_PMTUD_DISABLE;
+	spp.spp_pathmtu = 1200; // TODO: MTU
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &spp, sizeof(spp)))
 		throw std::runtime_error("Could not set socket option SCTP_PEER_ADDR_PARAMS, errno=" +
 		                         std::to_string(errno));
 
@@ -70,35 +69,25 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, ready_callback re
 		throw std::runtime_error("Could not set socket option SCTP_NODELAY, errno=" +
 		                         std::to_string(errno));
 
-	const static uint16_t interested_events[] = {
-	    SCTP_ASSOC_CHANGE,          SCTP_PEER_ADDR_CHANGE,       SCTP_REMOTE_ERROR,
-	    SCTP_SEND_FAILED,           SCTP_SENDER_DRY_EVENT,       SCTP_SHUTDOWN_EVENT,
-	    SCTP_ADAPTATION_INDICATION, SCTP_PARTIAL_DELIVERY_EVENT, SCTP_AUTHENTICATION_EVENT,
-	    SCTP_STREAM_RESET_EVENT,    SCTP_ASSOC_RESET_EVENT,      SCTP_STREAM_CHANGE_EVENT,
-	    SCTP_SEND_FAILED_EVENT};
+	struct sctp_event se = {};
+	se.se_assoc_id = SCTP_ALL_ASSOC;
+	se.se_on = 1;
+	se.se_type = SCTP_STREAM_RESET_EVENT;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_EVENT, &se, sizeof(se)))
+		throw std::runtime_error("Could not set socket option SCTP_EVENT, errno=" +
+		                         std::to_string(errno));
 
-	struct sctp_event event = {};
-	event.se_assoc_id = SCTP_ALL_ASSOC;
-	event.se_on = 1;
-	int num_events = sizeof(interested_events) / sizeof(uint16_t);
-	for (int i = 0; i < num_events; ++i) {
-		event.se_type = interested_events[i];
-		if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(event)))
-			throw std::runtime_error("Could not set socket option SCTP_EVENT, errno=" +
-			                         std::to_string(errno));
-	}
-
-	struct sctp_initmsg init_msg = {};
-	init_msg.sinit_num_ostreams = 0xFF;
-	init_msg.sinit_max_instreams = 0xFF;
-	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_INITMSG, &init_msg, sizeof(init_msg)))
+	struct sctp_initmsg sinit = {};
+	sinit.sinit_num_ostreams = 0xFF;
+	sinit.sinit_max_instreams = 0xFF;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_INITMSG, &sinit, sizeof(sinit)))
 		throw std::runtime_error("Could not set socket option SCTP_INITMSG, errno=" +
 		                         std::to_string(errno));
 
 	struct sockaddr_conn sconn = {};
 	sconn.sconn_family = AF_CONN;
-	sconn.sconn_port = htons(mRemotePort);
-	sconn.sconn_addr = (void *)this;
+	sconn.sconn_port = htons(mLocalPort);
+	sconn.sconn_addr = this;
 #ifdef HAVE_SCONN_LEN
 	sconn.sconn_len = sizeof(sconn);
 #endif
@@ -268,14 +257,14 @@ bool SctpTransport::send(message_ptr message) {
 }
 
 void SctpTransport::reset(unsigned int stream) {
-	using reset_streams_t = struct sctp_reset_streams;
-	const size_t len = sizeof(reset_streams_t) + sizeof(uint16_t);
+	using srs_t = struct sctp_reset_streams;
+	const size_t len = sizeof(srs_t) + sizeof(uint16_t);
 	std::byte buffer[len] = {};
-	reset_streams_t &reset_streams = *reinterpret_cast<reset_streams_t *>(buffer);
-	reset_streams.srs_flags = SCTP_STREAM_RESET_OUTGOING;
-	reset_streams.srs_number_streams = 1;
-	reset_streams.srs_stream_list[0] = uint16_t(stream);
-	usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_RESET_STREAMS, &reset_streams, len);
+	srs_t &srs = *reinterpret_cast<srs_t *>(buffer);
+	srs.srs_flags = SCTP_STREAM_RESET_OUTGOING;
+	srs.srs_number_streams = 1;
+	srs.srs_stream_list[0] = uint16_t(stream);
+	usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_RESET_STREAMS, &srs, len);
 }
 
 void SctpTransport::incoming(message_ptr message) {
@@ -293,11 +282,13 @@ void SctpTransport::runConnect() {
 
 	// Blocks until connection succeeds/fails
 	if (usrsctp_connect(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)) != 0) {
+		std::cerr << "SCTP connection failed, errno=" << errno << std::endl;
 		mStopping = true;
 		return;
 	}
 
-        mIsReady = true;
-        mReadyCallback();
+    mIsReady = true;
+    mReadyCallback();
 }
+
 } // namespace rtc

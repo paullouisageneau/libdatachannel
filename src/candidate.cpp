@@ -69,7 +69,8 @@ Candidate::Candidate(string candidate, string mid) {
 					if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
 					                servbuffer, MAX_NUMERICSERV_LEN,
 					                NI_NUMERICHOST | NI_NUMERICHOST) == 0) {
-						const string left{ss.str()};
+						string left;
+						std::getline(ss, left);
 						const char sp{' '};
 						ss.clear();
 						ss << foundation << sp << component << sp << transport << sp << priority;
