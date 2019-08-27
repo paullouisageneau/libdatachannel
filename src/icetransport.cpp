@@ -54,8 +54,10 @@ IceTransport::IceTransport(const IceConfiguration &config, Description::Role rol
 		throw std::runtime_error("Failed to create the nice agent");
 
 	mMainLoopThread = std::thread(g_main_loop_run, mMainLoop.get());
-	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp", false, nullptr);
-	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode", 0, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp", FALSE, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode", FALSE, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-udp", TRUE, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-tcp", FALSE, nullptr);
 
 	std::vector<IceServer> servers = config.servers;
 	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
