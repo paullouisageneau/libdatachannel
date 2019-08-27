@@ -18,7 +18,10 @@
 
 #include <peerconnection.hpp>
 
+#include <chrono>
 #include <iostream>
+#include <memory>
+#include <thread>
 
 using namespace rtc;
 using namespace std;
@@ -26,12 +29,41 @@ using namespace std;
 int main(int argc, char **argv) {
 	IceConfiguration config;
 
-	auto pc = std::make_unique<PeerConnection>(config);
+	auto pc1 = std::make_shared<PeerConnection>(config);
+	auto pc2 = std::make_shared<PeerConnection>(config);
 
-	pc->onLocalDescription([](const string &sdp) {
-		cout << sdp << endl;
+	pc1->onLocalDescription([pc2](const string &sdp) {
+		cout << "Description 1: " << sdp << endl;
+		pc2->setRemoteDescription(sdp);
 	});
 
-	pc->createDataChannel("test");
+	pc1->onLocalCandidate([pc2](const optional<string> &candidate) {
+		if (candidate) {
+			cout << "Candidate 1: " << *candidate << endl;
+			pc2->setRemoteCandidate(*candidate);
+		}
+	});
+
+	pc2->onLocalDescription([pc1](const string &sdp) {
+		cout << "Description 2: " << sdp << endl;
+		pc1->setRemoteDescription(sdp);
+	});
+
+	pc2->onLocalCandidate([pc1](const optional<string> &candidate) {
+		if (candidate) {
+			cout << "Candidate 2: " << *candidate << endl;
+			pc1->setRemoteCandidate(*candidate);
+		}
+	});
+
+	shared_ptr<DataChannel> dc2;
+	pc2->onDataChannel([&dc2](shared_ptr<DataChannel> dc) {
+		cout << "Got a DataChannel with label: " << dc->label() << endl;
+		dc2 = dc;
+	});
+
+	auto dc1 = pc1->createDataChannel("test");
+
+	this_thread::sleep_for(120s);
 }
 

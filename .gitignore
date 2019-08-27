@@ -3,4 +3,5 @@
 *.a
 *.so
 compile_commands.json
+tests
 
