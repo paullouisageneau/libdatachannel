@@ -75,6 +75,7 @@ private:
 	Certificate mCertificate;
 	string mMid;
 	std::optional<string> mRemoteFingerprint;
+	uint16_t mSctpPort;
 
 	std::shared_ptr<IceTransport> mIceTransport;
 	std::shared_ptr<DtlsTransport> mDtlsTransport;
@@ -90,4 +91,3 @@ private:
 } // namespace rtc
 
 #endif
-

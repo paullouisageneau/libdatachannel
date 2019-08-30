@@ -18,26 +18,43 @@
 
 #include "sctptransport.hpp"
 
+#include <chrono>
 #include <exception>
 #include <iostream>
 #include <vector>
 
 #include <arpa/inet.h>
 
-namespace rtc {
-
 using std::shared_ptr;
 
-SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, ready_callback ready,
+namespace rtc {
+
+std::mutex SctpTransport::GlobalMutex;
+int SctpTransport::InstancesCount = 0;
+
+void SctpTransport::GlobalInit() {
+	std::unique_lock<std::mutex> lock(GlobalMutex);
+	if (InstancesCount++ == 0) {
+		usrsctp_init(0, &SctpTransport::WriteCallback, nullptr);
+		usrsctp_sysctl_set_sctp_ecn_enable(0);
+	}
+}
+
+void SctpTransport::GlobalCleanup() {
+	std::unique_lock<std::mutex> lock(GlobalMutex);
+	if (InstancesCount-- == 0) {
+		usrsctp_finish();
+	}
+}
+
+SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, ready_callback ready,
                              message_callback recv)
-    : Transport(lower), mReadyCallback(std::move(ready)), mLocalPort(5000), mRemotePort(5000) {
+    : Transport(lower), mReadyCallback(std::move(ready)), mPort(port) {
 
 	onRecv(recv);
 
-	usrsctp_init(0, &SctpTransport::WriteCallback, nullptr);
-	usrsctp_sysctl_set_sctp_ecn_enable(0);
+	GlobalInit();
 	usrsctp_register_address(this);
-
 	mSock = usrsctp_socket(AF_CONN, SOCK_STREAM, IPPROTO_SCTP, &SctpTransport::ReadCallback,
 	                       nullptr, 0, this);
 	if (!mSock)
@@ -52,7 +69,8 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, ready_callback re
 
 	struct sctp_paddrparams spp = {};
 	spp.spp_flags = SPP_PMTUD_DISABLE;
-	spp.spp_pathmtu = 1200; // TODO: MTU
+	spp.spp_pathmtu = 1200; // Max safe value recommended by RFC 8261
+	                        // See https://tools.ietf.org/html/rfc8261#section-5
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &spp, sizeof(spp)))
 		throw std::runtime_error("Could not set socket option SCTP_PEER_ADDR_PARAMS, errno=" +
 		                         std::to_string(errno));
@@ -86,7 +104,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, ready_callback re
 
 	struct sockaddr_conn sconn = {};
 	sconn.sconn_family = AF_CONN;
-	sconn.sconn_port = htons(mLocalPort);
+	sconn.sconn_port = htons(mPort);
 	sconn.sconn_addr = this;
 #ifdef HAVE_SCONN_LEN
 	sconn.sconn_len = sizeof(sconn);
@@ -109,7 +127,7 @@ SctpTransport::~SctpTransport() {
 	}
 
 	usrsctp_deregister_address(this);
-	usrsctp_finish();
+	GlobalCleanup();
 }
 
 bool SctpTransport::isReady() const { return mIsReady; }
@@ -153,8 +171,14 @@ int SctpTransport::WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t
 }
 
 int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df) {
-	const byte *b = reinterpret_cast<const byte *>(data);
+	byte *b = reinterpret_cast<byte *>(data);
 	outgoing(make_message(b, b + len));
+
+	if (!mConnectDataSent) {
+		std::unique_lock<std::mutex> lock(mConnectMutex);
+		mConnectDataSent = true;
+		mConnectCondition.notify_all();
+	}
 	return 0; // success
 }
 
@@ -201,22 +225,21 @@ void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, Payl
 }
 
 bool SctpTransport::send(message_ptr message) {
-  const Reliability reliability =
-      message->reliability ? *message->reliability : Reliability();
+	const Reliability reliability = message->reliability ? *message->reliability : Reliability();
 
-  struct sctp_sendv_spa spa = {};
+	struct sctp_sendv_spa spa = {};
 
-  uint32_t ppid;
-  switch (message->type) {
-  case Message::String:
-    ppid = message->empty() ? PPID_STRING : PPID_STRING_EMPTY;
-    break;
-  case Message::Binary:
-    ppid = message->empty() ? PPID_BINARY : PPID_BINARY_EMPTY;
-    break;
-  default:
-    ppid = PPID_CONTROL;
-    break;
+	uint32_t ppid;
+	switch (message->type) {
+	case Message::String:
+		ppid = message->empty() ? PPID_STRING : PPID_STRING_EMPTY;
+		break;
+	case Message::Binary:
+		ppid = message->empty() ? PPID_BINARY : PPID_BINARY_EMPTY;
+		break;
+	default:
+		ppid = PPID_CONTROL;
+		break;
 	}
 
 	// set sndinfo
@@ -259,7 +282,7 @@ bool SctpTransport::send(message_ptr message) {
 void SctpTransport::reset(unsigned int stream) {
 	using srs_t = struct sctp_reset_streams;
 	const size_t len = sizeof(srs_t) + sizeof(uint16_t);
-	std::byte buffer[len] = {};
+	byte buffer[len] = {};
 	srs_t &srs = *reinterpret_cast<srs_t *>(buffer);
 	srs.srs_flags = SCTP_STREAM_RESET_OUTGOING;
 	srs.srs_number_streams = 1;
@@ -268,27 +291,38 @@ void SctpTransport::reset(unsigned int stream) {
 }
 
 void SctpTransport::incoming(message_ptr message) {
+	// There could be a race condition here where we receive the remote INIT before the thread in
+	// usrsctp_connect sends the local one, which would result in the connection being aborted.
+	// Therefore, we need to wait for data to be sent on our side (i.e. the local INIT) before
+	// proceeding.
+	if (!mConnectDataSent) {
+		std::unique_lock<std::mutex> lock(mConnectMutex);
+		mConnectCondition.wait(lock, [this] { return mConnectDataSent == true; });
+	}
+
 	usrsctp_conninput(this, message->data(), message->size(), 0);
 }
 
 void SctpTransport::runConnect() {
 	struct sockaddr_conn sconn = {};
 	sconn.sconn_family = AF_CONN;
-	sconn.sconn_port = htons(mRemotePort);
+	sconn.sconn_port = htons(mPort);
 	sconn.sconn_addr = this;
 #ifdef HAVE_SCONN_LEN
 	sconn.sconn_len = sizeof(sconn);
 #endif
 
-	// Blocks until connection succeeds/fails
+	// According to the IETF draft, both endpoints must initiate the SCTP association, in a
+	// simultaneous-open manner, irrelevent of the SDP setup role.
+	// See https://tools.ietf.org/html/draft-ietf-mmusic-sctp-sdp-26#section-9.3
 	if (usrsctp_connect(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)) != 0) {
 		std::cerr << "SCTP connection failed, errno=" << errno << std::endl;
 		mStopping = true;
 		return;
 	}
 
-    mIsReady = true;
-    mReadyCallback();
+	mIsReady = true;
+	mReadyCallback();
 }
 
 } // namespace rtc

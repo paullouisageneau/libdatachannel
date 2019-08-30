@@ -32,7 +32,8 @@ using std::function;
 using std::shared_ptr;
 
 PeerConnection::PeerConnection(const IceConfiguration &config)
-    : mConfig(config), mCertificate(make_certificate("libdatachannel")), mMid("0") {}
+    : mConfig(config), mCertificate(make_certificate("libdatachannel")), mMid("0"),
+      mSctpPort(5000) {}
 
 PeerConnection::~PeerConnection() {}
 
@@ -43,8 +44,12 @@ const Certificate *PeerConnection::certificate() const { return &mCertificate; }
 void PeerConnection::setRemoteDescription(const string &description) {
 	Description desc(Description::Role::ActPass, description);
 
-	if(auto fingerprint = desc.fingerprint())
+	if (auto fingerprint = desc.fingerprint())
 		mRemoteFingerprint.emplace(*fingerprint);
+
+	if (auto sctpPort = desc.sctpPort()) {
+		mSctpPort = *sctpPort;
+	}
 
 	if (!mIceTransport) {
 		initIceTransport(Description::Role::ActPass);
@@ -69,7 +74,7 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 	auto seed = std::chrono::system_clock::now().time_since_epoch().count();
 	std::default_random_engine generator(seed);
 	std::uniform_int_distribution<uint16_t> uniform;
-	uint16_t stream = uniform(generator);
+	uint16_t stream = 0; // uniform(generator);
 
 	auto channel = std::make_shared<DataChannel>(stream, label, protocol, reliability);
 	mDataChannels.insert(std::make_pair(stream, channel));
@@ -112,7 +117,7 @@ void PeerConnection::initDtlsTransport() {
 
 void PeerConnection::initSctpTransport() {
 	mSctpTransport = std::make_shared<SctpTransport>(
-	    mDtlsTransport, std::bind(&PeerConnection::openDataChannels, this),
+	    mDtlsTransport, mSctpPort, std::bind(&PeerConnection::openDataChannels, this),
 	    std::bind(&PeerConnection::forwardMessage, this, _1));
 }
 
@@ -134,15 +139,15 @@ void PeerConnection::forwardMessage(message_ptr message) {
 }
 
 void PeerConnection::openDataChannels(void) {
-	for (auto it = mDataChannels.begin(); it != mDataChannels.end(); ++it) {
-		it->second->open(mSctpTransport);
-	}
+	for (const auto &[stream, dataChannel] : mDataChannels)
+		dataChannel->open(mSctpTransport);
 }
 
 void PeerConnection::triggerLocalDescription() {
 	if (mLocalDescriptionCallback && mIceTransport) {
 		Description desc{mIceTransport->getLocalDescription()};
 		desc.setFingerprint(mCertificate.fingerprint());
+		desc.setSctpPort(mSctpPort);
 		mLocalDescriptionCallback(string(desc));
 	}
 }
@@ -159,4 +164,3 @@ void PeerConnection::triggerDataChannel(std::shared_ptr<DataChannel> dataChannel
 }
 
 } // namespace rtc
-

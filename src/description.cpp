@@ -44,7 +44,8 @@ inline void trim_end(string &str) {
 
 namespace rtc {
 
-Description::Description(Role role, const string &sdp) : mRole(role), mMid("0"), mIceUfrag("0"), mIcePwd("0") {
+Description::Description(Role role, const string &sdp)
+    : mRole(role), mMid("0"), mIceUfrag("0"), mIcePwd("0") {
 	auto seed = std::chrono::system_clock::now().time_since_epoch().count();
 	std::default_random_engine generator(seed);
 	std::uniform_int_distribution<uint32_t> uniform;
@@ -56,60 +57,78 @@ Description::Description(Role role, const string &sdp) : mRole(role), mMid("0"),
 		trim_end(line);
 		if (hasprefix(line, "a=setup:")) {
 			const string setup = line.substr(line.find(':') + 1);
-			if (setup == "active" && mRole == Role::Active) {
-				mRole = Role::Passive;
-			} else if (setup == "passive" && mRole == Role::Passive) {
+			if (setup == "active")
 				mRole = Role::Active;
-			} else { // actpass, nothing to do
-			}
+			else if (setup == "passive")
+				mRole = Role::Active;
+			else
+				mRole = Role::ActPass;
 		} else if (hasprefix(line, "a=mid:")) {
 			mMid = line.substr(line.find(':') + 1);
 		} else if (hasprefix(line, "a=fingerprint:sha-256")) {
 			mFingerprint = line.substr(line.find(' ') + 1);
+			std::transform(mFingerprint->begin(), mFingerprint->end(), mFingerprint->begin(),
+						   [](char c) { return std::toupper(c); });
 		} else if (hasprefix(line, "a=ice-ufrag")) {
 			mIceUfrag = line.substr(line.find(':') + 1);
 		} else if (hasprefix(line, "a=ice-pwd")) {
 			mIcePwd = line.substr(line.find(':') + 1);
+		} else if (hasprefix(line, "a=sctp-port")) {
+			mSctpPort = uint16_t(std::stoul(line.substr(line.find(':') + 1)));
 		}
 	}
 }
 
 Description::Role Description::role() const { return mRole; }
 
-std::optional<string> Description::fingerprint() const {
-	return mFingerprint;
+std::optional<string> Description::fingerprint() const { return mFingerprint; }
+
+std::optional<uint16_t> Description::sctpPort() const { return mSctpPort; }
+
+void Description::setFingerprint(string fingerprint) {
+	mFingerprint.emplace(std::move(fingerprint));
 }
 
-void Description::setFingerprint(const string &fingerprint) { mFingerprint = fingerprint; }
+void Description::setSctpPort(uint16_t port) { mSctpPort.emplace(port); }
 
 void Description::addCandidate(Candidate candidate) {
 	mCandidates.emplace_back(std::move(candidate));
 }
 
-void Description::addCandidate(Candidate &&candidate) {
-	mCandidates.emplace_back(std::forward<Candidate>(candidate));
-}
-
 Description::operator string() const {
 	if (!mFingerprint)
-		throw std::runtime_error("Fingerprint must be set to generate a SDP");
+		throw std::logic_error("Fingerprint must be set to generate a SDP");
 
-    std::ostringstream sdp;
+	string roleStr;
+	switch (mRole) {
+	case Role::Active:
+		roleStr = "active";
+		break;
+	case Role::Passive:
+		roleStr = "passive";
+		break;
+	default:
+		roleStr = "actpass";
+		break;
+	}
+
+	std::ostringstream sdp;
 	sdp << "v=0\n";
 	sdp << "o=- " << mSessionId << " 0 IN IP4 0.0.0.0\n";
 	sdp << "s=-\n";
 	sdp << "t=0 0\n";
-    sdp << "m=application 0 UDP/DTLS/SCTP webrtc-datachannel\n";
-    sdp << "c=IN IP4 0.0.0.0\n";
+	sdp << "m=application 0 UDP/DTLS/SCTP webrtc-datachannel\n";
+	sdp << "c=IN IP4 0.0.0.0\n";
 	sdp << "a=ice-options:trickle\n";
 	sdp << "a=ice-ufrag:" << mIceUfrag << "\n";
 	sdp << "a=ice-pwd:" << mIcePwd << "\n";
 	sdp << "a=mid:" << mMid << "\n";
-	sdp << "a=setup:" << (mRole == Role::Active ? "active" : "passive") << "\n";
+	sdp << "a=setup:" << roleStr << "\n";
 	sdp << "a=dtls-id:1\n";
-	sdp << "a=fingerprint:sha-256 " << *mFingerprint << "\n";
-    sdp << "a=sctp-port:5000\n";
-    // sdp << "a=max-message-size:100000\n";
+	if (mFingerprint)
+		sdp << "a=fingerprint:sha-256 " << *mFingerprint << "\n";
+	if (mSctpPort)
+		sdp << "a=sctp-port:" << *mSctpPort << "\n";
 
 	for (const auto &candidate : mCandidates) {
 		sdp << "a=candidate:" << string(candidate);
@@ -119,4 +138,3 @@ Description::operator string() const {
 }
 
 } // namespace rtc
-

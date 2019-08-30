@@ -36,12 +36,13 @@ class SctpTransport : public Transport {
 public:
 	using ready_callback = std::function<void(void)>;
 
-	SctpTransport(std::shared_ptr<Transport> lower, ready_callback ready, message_callback recv);
+	SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, ready_callback ready,
+	              message_callback recv);
 	~SctpTransport();
 
-        bool isReady() const;
+	bool isReady() const;
 
-        bool send(message_ptr message);
+	bool send(message_ptr message);
 	void reset(unsigned int stream);
 
 private:
@@ -67,22 +68,27 @@ private:
 	ready_callback mReadyCallback;
 
 	struct socket *mSock;
-	uint16_t mLocalPort;
-	uint16_t mRemotePort;
+	uint16_t mPort;
 
-        std::thread mConnectThread;
+	std::thread mConnectThread;
 	std::atomic<bool> mStopping = false;
-        std::atomic<bool> mIsReady = false;
+	std::atomic<bool> mIsReady = false;
 
-        std::mutex mConnectMutex;
+	std::mutex mConnectMutex;
 	std::condition_variable mConnectCondition;
+	std::atomic<bool> mConnectDataSent = false;
 
 	static int WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos, uint8_t set_df);
 	static int ReadCallback(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
 	                        struct sctp_rcvinfo recv_info, int flags, void *user_data);
+
+	void GlobalInit();
+	void GlobalCleanup();
+
+	static std::mutex GlobalMutex;
+	static int InstancesCount;
 };
 
 } // namespace rtc
 
 #endif
-

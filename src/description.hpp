@@ -36,10 +36,11 @@ public:
 
 	Role role() const;
 	std::optional<string> fingerprint() const;
+	std::optional<uint16_t> sctpPort() const;
 
-	void setFingerprint(const string &fingerprint);
+	void setFingerprint(string fingerprint);
+	void setSctpPort(uint16_t port);
 	void addCandidate(Candidate candidate);
-	void addCandidate(Candidate &&candidate);
 
 	operator string() const;
 
@@ -49,6 +50,7 @@ private:
 	string mMid;
 	string mIceUfrag, mIcePwd;
 	std::optional<string> mFingerprint;
+	std::optional<uint16_t> mSctpPort;
 
 	std::vector<Candidate> mCandidates;
 };
@@ -56,4 +58,3 @@ private:
 } // namespace rtc
 
 #endif
-
