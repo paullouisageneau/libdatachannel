@@ -19,9 +19,11 @@
 #include "certificate.hpp"
 
 #include <cassert>
-#include <ctime>
+#include <chrono>
 #include <iomanip>
+#include <mutex>
 #include <sstream>
+#include <unordered_map>
 
 #include <gnutls/crypto.h>
 
@@ -74,10 +76,6 @@ gnutls_datum_t make_datum(char *data, size_t size) {
 	return datum;
 }
 
-gnutls_datum_t make_datum(const char *data, size_t size) {
-	return make_datum(const_cast<char *>(data), size);
-}
-
 } // namespace
 
 namespace rtc {
@@ -118,9 +116,9 @@ Certificate::Certificate(gnutls_x509_crt_t crt, gnutls_x509_privkey_t privkey)
 	             "Unable to set certificate and key pair in credentials");
 }
 
-string Certificate::fingerprint() const {
-	return mFingerprint;
-}
+string Certificate::fingerprint() const { return mFingerprint; }
+
+gnutls_certificate_credentials_t Certificate::credentials() const { return *mCredentials; }
 
 string make_fingerprint(gnutls_x509_crt_t crt) {
 	const size_t size = 32;
@@ -139,7 +137,14 @@ string make_fingerprint(gnutls_x509_crt_t crt) {
 	return oss.str();
 }
 
-Certificate make_certificate(const string &common_name) {
+Certificate make_certificate(const string &commonName) {
+	static std::unordered_map<string, Certificate> cache;
+	static std::mutex cacheMutex;
+
+	std::lock_guard<std::mutex> lock(cacheMutex);
+	if (auto it = cache.find(commonName); it != cache.end())
+		return it->second;
+
 	std::unique_ptr<gnutls_x509_crt_t, decltype(&delete_crt)> crt(create_crt(), delete_crt);
 	std::unique_ptr<gnutls_x509_privkey_t, decltype(&delete_privkey)> privkey(create_privkey(),
 	                                                                          delete_privkey);
@@ -148,12 +153,14 @@ Certificate make_certificate(const string &common_name) {
 	check_gnutls(gnutls_x509_privkey_generate(*privkey, GNUTLS_PK_RSA, bits, 0),
 	             "Unable to generate key pair");
 
-	gnutls_x509_crt_set_activation_time(*crt, std::time(NULL) - 3600);
-	gnutls_x509_crt_set_expiration_time(*crt, std::time(NULL) + 365 * 24 * 3600);
+	using namespace std::chrono;
+	auto now = time_point_cast<seconds>(system_clock::now());
+	gnutls_x509_crt_set_activation_time(*crt, (now - hours(1)).time_since_epoch().count());
+	gnutls_x509_crt_set_expiration_time(*crt, (now + hours(24 * 365)).time_since_epoch().count());
 	gnutls_x509_crt_set_version(*crt, 1);
 	gnutls_x509_crt_set_key(*crt, *privkey);
-	gnutls_x509_crt_set_dn_by_oid(*crt, GNUTLS_OID_X520_COMMON_NAME, 0, common_name.data(),
-	                              common_name.size());
+	gnutls_x509_crt_set_dn_by_oid(*crt, GNUTLS_OID_X520_COMMON_NAME, 0, commonName.data(),
+	                              commonName.size());
 
 	const size_t serialSize = 16;
 	char serial[serialSize];
@@ -163,8 +170,8 @@ Certificate make_certificate(const string &common_name) {
 	check_gnutls(gnutls_x509_crt_sign2(*crt, *crt, *privkey, GNUTLS_DIG_SHA256, 0),
 	             "Unable to auto-sign certificate");
 
-	return Certificate(*crt, *privkey);
+	auto it = cache.emplace(std::make_pair(commonName, Certificate(*crt, *privkey))).first;
+	return it->second;
 }
 
 } // namespace rtc
-

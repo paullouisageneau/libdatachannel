@@ -34,7 +34,7 @@ public:
 	Certificate(string crt_pem, string key_pem);
 
 	string fingerprint() const;
-	gnutls_certificate_credentials_t credentials() const { return *mCredentials; }
+	gnutls_certificate_credentials_t credentials() const;
 
 private:
 	std::shared_ptr<gnutls_certificate_credentials_t> mCredentials;
@@ -42,9 +42,8 @@ private:
 };
 
 string make_fingerprint(gnutls_x509_crt_t crt);
-Certificate make_certificate(const string &common_name);
+Certificate make_certificate(const string &commonName);
 
 } // namespace rtc
 
 #endif
-
