@@ -63,7 +63,10 @@ int main(int argc, char **argv) {
 	});
 
 	auto dc1 = pc1->createDataChannel("test");
+	dc1->onOpen([dc1]() {
+		cout << "DataChannel open: " << dc1->label() << endl;
+	});
 
-	this_thread::sleep_for(120s);
+	this_thread::sleep_for(10s);
 }
 
