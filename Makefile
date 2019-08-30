@@ -1,16 +1,17 @@
+# libdatachannel
 
 NAME=libdatachannel
 CXX=$(CROSS)g++
 AR=$(CROSS)ar
 RM=rm -f
-CPPFLAGS=-pthread -std=c++17 -fPIC -Wall -Wno-reorder -Wno-sign-compare -Wno-unused-function -Og -g
+CPPFLAGS=-O2 -pthread -fPIC -Wall -Wno-address-of-packed-member
+CXXFLAGS=-std=c++17
 LDFLAGS=-pthread
 LDLIBS=$(shell pkg-config --libs glib-2.0 gobject-2.0 nice) -lgnutls
 INCLUDES=$(shell pkg-config --cflags glib-2.0 gobject-2.0 nice) -I$(USRSCTP_DIR)/usrsctplib
 
 USRSCTP_DIR:=usrsctp
 USRSCTP_DEFINES:=-DINET -DINET6
-USRSCTP_CFLAGS:=-fPIC -Wno-address-of-packed-member
 
 SRCS=$(shell printf "%s " src/*.cpp)
 OBJS=$(subst .cpp,.o,$(SRCS))
@@ -18,10 +19,10 @@ OBJS=$(subst .cpp,.o,$(SRCS))
 all: $(NAME).a $(NAME).so tests
 
 src/%.o: src/%.cpp
-	$(CXX) $(CPPFLAGS) $(INCLUDES) $(USRSCTP_DEFINES) -MMD -MP -o $@ -c $<
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(INCLUDES) $(USRSCTP_DEFINES) -MMD -MP -o $@ -c $<
 
 test/%.o: test/%.cpp
-	$(CXX) $(CPPFLAGS) -Isrc -MMD -MP -o $@ -c $<
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Isrc -MMD -MP -o $@ -c $<
 
 -include $(subst .o,.d,$(OBJS))
 
@@ -35,15 +36,22 @@ tests: $(NAME).a test/main.o
 	$(CXX) $(LDFLAGS) -o $@ test/main.o $(LDLIBS) $(NAME).a libusrsctp.a
 
 clean:
-	$(RM) src/*.o src/*.d
+	-$(RM) src/*.o src/*.d
+	-$(RM) test/*.o test/*.d
 
 dist-clean: clean
-	$(RM) $(NAME).a
-	$(RM) $(NAME).so
-	$(RM) libusrsctp.a
-	$(RM) src/*~
+	-$(RM) $(NAME).a
+	-$(RM) $(NAME).so
+	-$(RM) libusrsctp.a
+	-$(RM) tests
+	-$(RM) src/*~
+	-$(RM) test/*~
+	-cd $(USRSCTP_DIR) && make clean
 
 libusrsctp.a:
-	cd $(USRSCTP_DIR) && ./bootstrap && CFLAGS="$(USRSCTP_CFLAGS)" ./configure --enable-static && make
+	cd $(USRSCTP_DIR) && \
+		./bootstrap && \
+		./configure --enable-static --disable-debug CFLAGS="$(CPPFLAGS)" && \
+		$(MAKE)
 	cp $(USRSCTP_DIR)/usrsctplib/.libs/libusrsctp.a .
 
