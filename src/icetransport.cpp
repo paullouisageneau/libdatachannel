@@ -35,8 +35,8 @@ using std::weak_ptr;
 
 IceTransport::IceTransport(const IceConfiguration &config, Description::Role role,
                            candidate_callback candidateCallback, ready_callback ready)
-    : mRole(role), mCandidateCallback(std::move(candidateCallback)), mReadyCallback(ready),
-      mNiceAgent(nullptr, nullptr), mMainLoop(nullptr, nullptr) {
+    : mRole(role), mNiceAgent(nullptr, nullptr), mMainLoop(nullptr, nullptr),
+      mCandidateCallback(std::move(candidateCallback)), mReadyCallback(ready) {
 
 	auto logLevelFlags = GLogLevelFlags(G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION);
 	g_log_set_handler(nullptr, logLevelFlags, LogCallback, this);
@@ -75,7 +75,7 @@ IceTransport::IceTransport(const IceConfiguration &config, Description::Role rol
 			continue;
 
 		for (auto p = result; p; p = p->ai_next) {
-			if(p->ai_family == AF_INET) {
+			if (p->ai_family == AF_INET) {
 				char nodebuffer[MAX_NUMERICNODE_LEN];
 				char servbuffer[MAX_NUMERICSERV_LEN];
 				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
@@ -91,8 +91,8 @@ IceTransport::IceTransport(const IceConfiguration &config, Description::Role rol
 		}
 
 		freeaddrinfo(result);
-	    if (success)
-		    break;
+		if (success)
+			break;
 	}
 
 	g_signal_connect(G_OBJECT(mNiceAgent.get()), "component-state-changed",
@@ -104,11 +104,11 @@ IceTransport::IceTransport(const IceConfiguration &config, Description::Role rol
 
 	mStreamId = nice_agent_add_stream(mNiceAgent.get(), 1);
 	if (mStreamId == 0)
-	    throw std::runtime_error("Failed to add a stream");
+		throw std::runtime_error("Failed to add a stream");
 
-    nice_agent_set_stream_name(mNiceAgent.get(), mStreamId, "application");
-    nice_agent_set_port_range(mNiceAgent.get(), mStreamId, 1,
-                              config.portRangeBegin, config.portRangeEnd);
+	nice_agent_set_stream_name(mNiceAgent.get(), mStreamId, "application");
+	nice_agent_set_port_range(mNiceAgent.get(), mStreamId, 1, config.portRangeBegin,
+	                          config.portRangeEnd);
 
 	nice_agent_attach_recv(mNiceAgent.get(), mStreamId, 1, g_main_loop_get_context(mMainLoop.get()),
 	                       RecvCallback, this);
@@ -212,13 +212,12 @@ void IceTransport::StateChangedCallback(NiceAgent *agent, guint streamId, guint 
 void IceTransport::RecvCallback(NiceAgent *agent, guint streamId, guint componentId, guint len,
                                 gchar *buf, gpointer userData) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(userData);
-	iceTransport->incoming(reinterpret_cast<std::byte *>(buf), len);
+	iceTransport->incoming(reinterpret_cast<byte *>(buf), len);
 }
 
-void IceTransport::LogCallback(const gchar *logDomain, GLogLevelFlags logLevel, const gchar *message,
-                 gpointer userData) {
+void IceTransport::LogCallback(const gchar *logDomain, GLogLevelFlags logLevel,
+                               const gchar *message, gpointer userData) {
 	std::cout << message << std::endl;
 }
 
 } // namespace rtc
-

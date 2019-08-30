@@ -38,7 +38,10 @@ public:
 	void onRecv(message_callback callback) { mRecvCallback = std::move(callback); }
 
 protected:
-	void recv(message_ptr message) { if(mRecvCallback) mRecvCallback(message); }
+	void recv(message_ptr message) {
+		if (mRecvCallback)
+			mRecvCallback(message);
+	}
 
 	virtual void incoming(message_ptr message) = 0;
 	virtual void outgoing(message_ptr message) { getLower()->send(message); }
@@ -63,4 +66,3 @@ private:
 } // namespace rtc
 
 #endif
-
