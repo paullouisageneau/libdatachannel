@@ -129,13 +129,25 @@ bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
 }
 
 void PeerConnection::forwardMessage(message_ptr message) {
+	if (!mIceTransport || !mSctpTransport)
+		throw std::logic_error("Got a DataChannel message without transport");
+
 	shared_ptr<DataChannel> channel;
 	if (auto it = mDataChannels.find(message->stream); it != mDataChannels.end()) {
 		channel = it->second;
 	} else {
-		channel = std::make_shared<DataChannel>(message->stream, mSctpTransport);
-		channel->onOpen(std::bind(&PeerConnection::triggerDataChannel, this, channel));
-		mDataChannels.insert(std::make_pair(message->stream, channel));
+		const byte dataChannelOpenMessage{0x03};
+		unsigned int remoteParity = (mIceTransport->role() == Description::Role::Active) ? 1 : 0;
+		if (message->type == Message::Control && *message->data() == dataChannelOpenMessage &&
+		    message->stream % 2 == remoteParity) {
+			channel = std::make_shared<DataChannel>(message->stream, mSctpTransport);
+			channel->onOpen(std::bind(&PeerConnection::triggerDataChannel, this, channel));
+			mDataChannels.insert(std::make_pair(message->stream, channel));
+		} else {
+			// Invalid, close the DataChannel by resetting the stream
+			mSctpTransport->reset(message->stream);
+			return;
+		}
 	}
 
 	channel->incoming(message);

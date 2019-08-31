@@ -24,6 +24,9 @@ namespace rtc {
 
 using std::shared_ptr;
 
+// Messages for the DataChannel establishment protocol
+// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09
+
 enum MessageType : uint8_t {
 	MESSAGE_OPEN_REQUEST = 0x00,
 	MESSAGE_OPEN_RESPONSE = 0x01,
@@ -75,7 +78,7 @@ void DataChannel::close() {
 }
 
 void DataChannel::send(const std::variant<binary, string> &data) {
-	if (!mSctpTransport)
+	if (mIsClosed || !mSctpTransport)
 		return;
 
 	std::visit(
@@ -83,16 +86,19 @@ void DataChannel::send(const std::variant<binary, string> &data) {
 		    using T = std::decay_t<decltype(d)>;
 		    constexpr auto type = std::is_same_v<T, string> ? Message::String : Message::Binary;
 		    auto *b = reinterpret_cast<const byte *>(d.data());
-		    mSctpTransport->send(make_message(b, b + d.size(), type, mStream, mReliability));
+		    // Before the ACK has been received on a DataChannel, all messages must be sent ordered
+		    auto reliability = mIsOpen ? mReliability : nullptr;
+		    mSctpTransport->send(make_message(b, b + d.size(), type, mStream, reliability));
 	    },
 	    data);
 }
 
 void DataChannel::send(const byte *data, size_t size) {
-	if (!mSctpTransport)
+	if (mIsClosed || !mSctpTransport)
 		return;
 
-	mSctpTransport->send(make_message(data, data + size, Message::Binary, mStream));
+	auto reliability = mIsOpen ? mReliability : nullptr;
+	mSctpTransport->send(make_message(data, data + size, Message::Binary, mStream, reliability));
 }
 
 unsigned int DataChannel::stream() const { return mStream; }
