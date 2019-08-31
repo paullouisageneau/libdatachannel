@@ -21,9 +21,6 @@
 #include "icetransport.hpp"
 #include "sctptransport.hpp"
 
-#include <chrono>
-#include <random>
-
 namespace rtc {
 
 using namespace std::placeholders;
@@ -71,10 +68,16 @@ void PeerConnection::setRemoteCandidate(const string &candidate) {
 shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
                                                           const string &protocol,
                                                           const Reliability &reliability) {
-	auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-	std::default_random_engine generator(seed);
-	std::uniform_int_distribution<uint16_t> uniform;
-	uint16_t stream = 0; // uniform(generator);
+	// The active side must use streams with even identifiers, whereas the passive side must use
+	// streams with odd identifiers.
+	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09#section-6
+	auto role = mIceTransport ? mIceTransport->role() : Description::Role::Active;
+	unsigned int stream = (role == Description::Role::Active) ? 0 : 1;
+	while (mDataChannels.find(stream) != mDataChannels.end()) {
+		stream += 2;
+		if (stream >= 65535)
+			throw std::runtime_error("Too many DataChannels");
+	}
 
 	auto channel = std::make_shared<DataChannel>(stream, label, protocol, reliability);
 	mDataChannels.insert(std::make_pair(stream, channel));

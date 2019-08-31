@@ -95,9 +95,11 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, re
 		throw std::runtime_error("Could not set socket option SCTP_EVENT, errno=" +
 		                         std::to_string(errno));
 
+	// The IETF draft recommends the number of streams negotiated during SCTP association to be
+	// 65535. See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.2
 	struct sctp_initmsg sinit = {};
-	sinit.sinit_num_ostreams = 0xFF;
-	sinit.sinit_max_instreams = 0xFF;
+	sinit.sinit_num_ostreams = 65535;
+	sinit.sinit_max_instreams = 65535;
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_INITMSG, &sinit, sizeof(sinit)))
 		throw std::runtime_error("Could not set socket option SCTP_INITMSG, errno=" +
 		                         std::to_string(errno));
