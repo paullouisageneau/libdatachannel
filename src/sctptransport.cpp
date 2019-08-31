@@ -151,7 +151,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 		}
 
 		if (reset_event->strreset_flags & SCTP_STREAM_RESET_OUTGOING_SSN) {
-			const byte dataChannelCloseMessage = byte(0x04);
+			const byte dataChannelCloseMessage{0x04};
 			for (int i = 0; i < count; ++i) {
 				uint16_t streamId = reset_event->strreset_stream_list[i];
 				recv(make_message(&dataChannelCloseMessage, &dataChannelCloseMessage + 1,
@@ -196,8 +196,7 @@ int SctpTransport::process(struct socket *sock, union sctp_sockstore addr, void 
 	if (flags & MSG_NOTIFICATION) {
 		processNotification((union sctp_notification *)data, len);
 	} else {
-		processData((const byte *)data, len, recv_info.rcv_sid,
-		            PayloadId(ntohl(recv_info.rcv_ppid)));
+		processData((const byte *)data, len, recv_info.rcv_sid, PayloadId(recv_info.rcv_ppid));
 	}
 	free(data);
 	return 0;
@@ -219,9 +218,14 @@ void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, Payl
 	case PPID_BINARY_EMPTY:
 		type = Message::Binary;
 		len = 0;
-	default:
+		break;
+	case PPID_CONTROL:
 		type = Message::Control;
 		break;
+	default:
+		// Unknown
+		std::cerr << "Unknown PPID: " << uint32_t(ppid) << std::endl;
+		return;
 	}
 	recv(make_message(data, data + len, type, sid));
 }
