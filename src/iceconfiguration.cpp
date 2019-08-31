@@ -16,32 +16,24 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_ICE_CONFIGURATION_H
-#define RTC_ICE_CONFIGURATION_H
-
-#include "include.hpp"
-#include "message.hpp"
-#include "queue.hpp"
-
-#include <vector>
+#include "iceconfiguration.hpp"
 
 namespace rtc {
 
-struct IceServer {
-	IceServer(const string &host_);
-	IceServer(const string &hostname_, uint16_t port_);
-	IceServer(const string &hostname_, const string &service_);
+using std::to_string;
 
-	string hostname;
-	string service;
-};
+IceServer::IceServer(const string &host) {
+	if(size_t pos = host.rfind(':'); pos != string::npos) {
+		hostname = host.substr(0, pos);
+		service = host.substr(pos + 1);
+	} else {
+		hostname = host;
+		service = "3478"; // STUN UDP port
+	}
+}
 
-struct IceConfiguration {
-	std::vector<IceServer> servers;
-	uint16_t portRangeBegin = 1024;
-	uint16_t portRangeEnd = 65535;
-};
+IceServer::IceServer(const string &hostname_, uint16_t port_) : IceServer(hostname_, to_string(port_)) {}
+
+IceServer::IceServer(const string &hostname_, const string &service_) : hostname(hostname_), service(service_) {}
 
 } // namespace rtc
-
-#endif

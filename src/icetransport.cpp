@@ -64,7 +64,12 @@ IceTransport::IceTransport(const IceConfiguration &config, Description::Role rol
 	std::shuffle(servers.begin(), servers.end(), std::default_random_engine(seed));
 
 	bool success = false;
-	for (const auto &server : servers) {
+	for (auto &server : servers) {
+		if (server.hostname.empty())
+			continue;
+		if (server.service.empty())
+			server.service = "3478"; // STUN UDP port
+
 		struct addrinfo hints = {};
 		hints.ai_family = AF_INET; // IPv4
 		hints.ai_socktype = SOCK_DGRAM;
@@ -83,7 +88,7 @@ IceTransport::IceTransport(const IceConfiguration &config, Description::Role rol
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server", nodebuffer, nullptr);
 					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server-port",
-					             std::atoi(servbuffer), nullptr);
+					             std::stoul(servbuffer), nullptr);
 					success = true;
 					break;
 				}
