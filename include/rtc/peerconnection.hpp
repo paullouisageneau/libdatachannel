@@ -40,6 +40,7 @@ class SctpTransport;
 
 class PeerConnection {
 public:
+	PeerConnection(void);
 	PeerConnection(const Configuration &config);
 	~PeerConnection();
 

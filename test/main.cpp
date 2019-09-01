@@ -27,10 +27,8 @@ using namespace rtc;
 using namespace std;
 
 int main(int argc, char **argv) {
-	Configuration config;
-
-	auto pc1 = std::make_shared<PeerConnection>(config);
-	auto pc2 = std::make_shared<PeerConnection>(config);
+	auto pc1 = std::make_shared<PeerConnection>();
+	auto pc2 = std::make_shared<PeerConnection>();
 
 	pc1->onLocalDescription([pc2](const Description &sdp) {
 		cout << "Description 1: " << sdp << endl;

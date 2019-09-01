@@ -31,6 +31,8 @@ using namespace std::placeholders;
 using std::function;
 using std::shared_ptr;
 
+PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
+
 PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")) {}
 
