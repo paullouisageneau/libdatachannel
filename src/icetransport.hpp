@@ -81,7 +81,7 @@ private:
 	std::unique_ptr<NiceAgent, void (*)(gpointer)> mNiceAgent;
 	std::unique_ptr<GMainLoop, void (*)(GMainLoop *)> mMainLoop;
 	std::thread mMainLoopThread;
-	std::mutex mSendMutex;
+
 	candidate_callback mCandidateCallback;
 	ready_callback mReadyCallback;
 

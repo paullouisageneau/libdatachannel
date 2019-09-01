@@ -27,6 +27,7 @@
 
 #include <gnutls/crypto.h>
 
+using std::shared_ptr;
 using std::string;
 
 namespace {
@@ -137,8 +138,8 @@ string make_fingerprint(gnutls_x509_crt_t crt) {
 	return oss.str();
 }
 
-Certificate make_certificate(const string &commonName) {
-	static std::unordered_map<string, Certificate> cache;
+shared_ptr<Certificate> make_certificate(const string &commonName) {
+	static std::unordered_map<string, shared_ptr<Certificate>> cache;
 	static std::mutex cacheMutex;
 
 	std::lock_guard<std::mutex> lock(cacheMutex);
@@ -170,8 +171,9 @@ Certificate make_certificate(const string &commonName) {
 	check_gnutls(gnutls_x509_crt_sign2(*crt, *crt, *privkey, GNUTLS_DIG_SHA256, 0),
 	             "Unable to auto-sign certificate");
 
-	auto it = cache.emplace(std::make_pair(commonName, Certificate(*crt, *privkey))).first;
-	return it->second;
+	auto certificate = std::make_shared<Certificate>(*crt, *privkey);
+	cache.emplace(std::make_pair(commonName, certificate));
+	return certificate;
 }
 
 } // namespace rtc

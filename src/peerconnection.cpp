@@ -17,6 +17,7 @@
  */
 
 #include "peerconnection.hpp"
+#include "certificate.hpp"
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
 #include "sctptransport.hpp"
@@ -36,8 +37,6 @@ PeerConnection::PeerConnection(const IceConfiguration &config)
 PeerConnection::~PeerConnection() {}
 
 const IceConfiguration *PeerConnection::config() const { return &mConfig; }
-
-const Certificate *PeerConnection::certificate() const { return &mCertificate; }
 
 std::optional<Description> PeerConnection::localDescription() const { return mLocalDescription; }
 
@@ -168,7 +167,7 @@ void PeerConnection::openDataChannels(void) {
 void PeerConnection::processLocalDescription(Description description) {
 	auto remoteSctpPort = mRemoteDescription ? mRemoteDescription->sctpPort() : nullopt;
 
-	description.setFingerprint(mCertificate.fingerprint());
+	description.setFingerprint(mCertificate->fingerprint());
 	description.setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
 	mLocalDescription.emplace(std::move(description));
 

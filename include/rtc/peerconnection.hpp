@@ -20,7 +20,6 @@
 #define RTC_PEER_CONNECTION_H
 
 #include "candidate.hpp"
-#include "certificate.hpp"
 #include "datachannel.hpp"
 #include "description.hpp"
 #include "iceconfiguration.hpp"
@@ -30,12 +29,11 @@
 
 #include <atomic>
 #include <functional>
-#include <memory>
-#include <optional>
 #include <unordered_map>
 
 namespace rtc {
 
+class Certificate;
 class IceTransport;
 class DtlsTransport;
 class SctpTransport;
@@ -46,7 +44,6 @@ public:
 	~PeerConnection();
 
 	const IceConfiguration *config() const;
-	const Certificate *certificate() const;
 
 	std::optional<Description> localDescription() const;
 	std::optional<Description> remoteDescription() const;
@@ -75,7 +72,7 @@ private:
 	void triggerDataChannel(std::shared_ptr<DataChannel> dataChannel);
 
 	const IceConfiguration mConfig;
-	const Certificate mCertificate;
+	const std::shared_ptr<Certificate> mCertificate;
 
 	std::optional<Description> mLocalDescription;
 	std::optional<Description> mRemoteDescription;

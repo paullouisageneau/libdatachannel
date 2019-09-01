@@ -16,31 +16,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_CERTIFICATE_H
-#define RTC_CERTIFICATE_H
+// C++ API
+#include "datachannel.hpp"
+#include "peerconnection.hpp"
 
-#include "include.hpp"
+// C API
+#include "rtc.h"
 
-#include <gnutls/x509.h>
-
-namespace rtc {
-
-class Certificate {
-public:
-	Certificate(gnutls_x509_crt_t crt, gnutls_x509_privkey_t privkey);
-	Certificate(string crt_pem, string key_pem);
-
-	string fingerprint() const;
-	gnutls_certificate_credentials_t credentials() const;
-
-private:
-	std::shared_ptr<gnutls_certificate_credentials_t> mCredentials;
-	string mFingerprint;
-};
-
-string make_fingerprint(gnutls_x509_crt_t crt);
-std::shared_ptr<Certificate> make_certificate(const string &commonName);
-
-} // namespace rtc
-
-#endif

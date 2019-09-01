@@ -25,6 +25,7 @@
 
 #include <gnutls/dtls.h>
 
+using std::shared_ptr;
 using std::string;
 
 namespace {
@@ -44,11 +45,11 @@ namespace rtc {
 
 using std::shared_ptr;
 
-DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, Certificate certificate,
+DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
                              verifier_callback verifier, ready_callback ready)
-    : Transport(lower), mCertificate(std::move(certificate)),
-      mVerifierCallback(std::move(verifier)), mReadyCallback(std::move(ready)) {
-	gnutls_certificate_set_verify_function(mCertificate.credentials(), CertificateCallback);
+    : Transport(lower), mCertificate(certificate), mVerifierCallback(std::move(verifier)),
+      mReadyCallback(std::move(ready)) {
+	gnutls_certificate_set_verify_function(mCertificate->credentials(), CertificateCallback);
 
 	bool active = lower->role() == Description::Role::Active;
 	unsigned int flags = GNUTLS_DATAGRAM | (active ? GNUTLS_CLIENT : GNUTLS_SERVER);
@@ -66,7 +67,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, Certificate certifi
 	gnutls_transport_set_pull_timeout_function(mSession, TimeoutCallback);
 
 	check_gnutls(
-	    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate.credentials()));
+	    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate->credentials()));
 
 	mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
 }

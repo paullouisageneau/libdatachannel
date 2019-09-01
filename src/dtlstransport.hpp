@@ -19,6 +19,7 @@
 #ifndef RTC_DTLS_TRANSPORT_H
 #define RTC_DTLS_TRANSPORT_H
 
+#include "certificate.hpp"
 #include "include.hpp"
 #include "peerconnection.hpp"
 #include "queue.hpp"
@@ -39,11 +40,9 @@ public:
 	using verifier_callback = std::function<bool(const std::string &fingerprint)>;
 	using ready_callback = std::function<void(void)>;
 
-	DtlsTransport(std::shared_ptr<IceTransport> lower, Certificate certificate,
+	DtlsTransport(std::shared_ptr<IceTransport> lower, std::shared_ptr<Certificate> certificate,
 	              verifier_callback verifier, ready_callback ready);
 	~DtlsTransport();
-
-	const Certificate *certificate();
 
 	bool send(message_ptr message);
 
@@ -51,7 +50,7 @@ private:
 	void incoming(message_ptr message);
 	void runRecvLoop();
 
-	const Certificate mCertificate;
+	const std::shared_ptr<Certificate> mCertificate;
 
 	gnutls_session_t mSession;
 	Queue<message_ptr> mIncomingQueue;

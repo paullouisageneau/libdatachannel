@@ -23,7 +23,9 @@
 #include "peerconnection.hpp"
 #include "transport.hpp"
 
+#include <condition_variable>
 #include <functional>
+#include <mutex>
 #include <thread>
 
 #include <sys/socket.h>

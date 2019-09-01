@@ -21,7 +21,6 @@
 
 #include "include.hpp"
 #include "message.hpp"
-#include "queue.hpp"
 
 #include <vector>
 

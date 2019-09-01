@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <peerconnection.hpp>
+#include "rtc/rtc.hpp"
 
 #include <chrono>
 #include <iostream>

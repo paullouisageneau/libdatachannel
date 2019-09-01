@@ -19,32 +19,13 @@
 #include "datachannel.hpp"
 #include "peerconnection.hpp"
 
+#include <rtc.h>
+
 #include <unordered_map>
 
 using namespace rtc;
 using std::shared_ptr;
 using std::string;
-
-// libdatachannel C API
-extern "C" {
-int rtcCreatePeerConnection(const char **iceServers, int iceServersCount);
-void rtcDeletePeerConnection(int pc);
-int rtcCreateDataChannel(int pc, const char *label);
-void rtcDeleteDataChannel(int dc);
-void rtcSetDataChannelCallback(int pc, void (*dataChannelCallback)(int, void *));
-void rtcSetLocalDescriptionCallback(int pc, void (*descriptionCallback)(const char *, const char *,
-                                                                        void *));
-void rtcSetLocalCandidateCallback(int pc,
-                                  void (*candidateCallback)(const char *, const char *, void *));
-void rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
-void rtcSetRemoteCandidate(int pc, const char *candidate, const char *sdpMid);
-int rtcGetDataChannelLabel(int dc, char *data, int size);
-void rtcSetOpenCallback(int dc, void (*openCallback)(void *));
-void rtcSetErrorCallback(int dc, void (*errorCallback)(const char *, void *));
-void rtcSetMessageCallback(int dc, void (*messageCallback)(const char *, int, void *));
-int rtcSendMessage(int dc, const char *buffer, int size);
-void rtcSetUserPointer(int i, void *ptr);
-}
 
 namespace {
 
