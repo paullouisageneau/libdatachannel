@@ -35,7 +35,7 @@ struct IceServer {
 	string service;
 };
 
-struct IceConfiguration {
+struct Configuration {
 	std::vector<IceServer> servers;
 	uint16_t portRangeBegin = 1024;
 	uint16_t portRangeEnd = 65535;

@@ -31,12 +31,12 @@ using namespace std::placeholders;
 using std::function;
 using std::shared_ptr;
 
-PeerConnection::PeerConnection(const IceConfiguration &config)
+PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")) {}
 
 PeerConnection::~PeerConnection() {}
 
-const IceConfiguration *PeerConnection::config() const { return &mConfig; }
+const Configuration *PeerConnection::config() const { return &mConfig; }
 
 std::optional<Description> PeerConnection::localDescription() const { return mLocalDescription; }
 

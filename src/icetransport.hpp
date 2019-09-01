@@ -21,7 +21,7 @@
 
 #include "candidate.hpp"
 #include "description.hpp"
-#include "iceconfiguration.hpp"
+#include "configuration.hpp"
 #include "include.hpp"
 #include "peerconnection.hpp"
 #include "transport.hpp"
@@ -50,7 +50,7 @@ public:
 	using candidate_callback = std::function<void(const std::optional<Candidate> &candidate)>;
 	using ready_callback = std::function<void(void)>;
 
-	IceTransport(const IceConfiguration &config, Description::Role role,
+	IceTransport(const Configuration &config, Description::Role role,
 	             candidate_callback candidateCallback, ready_callback ready);
 	~IceTransport();
 

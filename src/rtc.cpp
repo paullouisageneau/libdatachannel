@@ -37,7 +37,7 @@ int lastId = 0;
 } // namespace
 
 int rtcCreatePeerConnection(const char **iceServers, int iceServersCount) {
-	IceConfiguration config;
+	Configuration config;
 	for (int i = 0; i < iceServersCount; ++i) {
 		config.servers.emplace_back(IceServer(string(iceServers[i])));
 	}

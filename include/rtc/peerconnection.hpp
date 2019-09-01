@@ -22,7 +22,7 @@
 #include "candidate.hpp"
 #include "datachannel.hpp"
 #include "description.hpp"
-#include "iceconfiguration.hpp"
+#include "configuration.hpp"
 #include "include.hpp"
 #include "message.hpp"
 #include "reliability.hpp"
@@ -40,10 +40,10 @@ class SctpTransport;
 
 class PeerConnection {
 public:
-	PeerConnection(const IceConfiguration &config);
+	PeerConnection(const Configuration &config);
 	~PeerConnection();
 
-	const IceConfiguration *config() const;
+	const Configuration *config() const;
 
 	std::optional<Description> localDescription() const;
 	std::optional<Description> remoteDescription() const;
@@ -71,7 +71,7 @@ private:
 	void processLocalCandidate(std::optional<Candidate> candidate);
 	void triggerDataChannel(std::shared_ptr<DataChannel> dataChannel);
 
-	const IceConfiguration mConfig;
+	const Configuration mConfig;
 	const std::shared_ptr<Certificate> mCertificate;
 
 	std::optional<Description> mLocalDescription;

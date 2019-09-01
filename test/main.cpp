@@ -27,7 +27,7 @@ using namespace rtc;
 using namespace std;
 
 int main(int argc, char **argv) {
-	IceConfiguration config;
+	Configuration config;
 
 	auto pc1 = std::make_shared<PeerConnection>(config);
 	auto pc2 = std::make_shared<PeerConnection>(config);

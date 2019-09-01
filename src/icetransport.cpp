@@ -33,7 +33,7 @@ namespace rtc {
 using std::shared_ptr;
 using std::weak_ptr;
 
-IceTransport::IceTransport(const IceConfiguration &config, Description::Role role,
+IceTransport::IceTransport(const Configuration &config, Description::Role role,
                            candidate_callback candidateCallback, ready_callback ready)
     : mRole(role), mState(State::Disconnected), mNiceAgent(nullptr, nullptr),
       mMainLoop(nullptr, nullptr), mCandidateCallback(std::move(candidateCallback)),
