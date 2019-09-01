@@ -26,12 +26,11 @@ void rtcDeletePeerConnection(int pc);
 int rtcCreateDataChannel(int pc, const char *label);
 void rtcDeleteDataChannel(int dc);
 void rtcSetDataChannelCallback(int pc, void (*dataChannelCallback)(int, void *));
-void rtcSetLocalDescriptionCallback(int pc, void (*descriptionCallback)(const char *, const char *,
-                                                                        void *));
+void rtcSetLocalDescriptionCallback(int pc, void (*descriptionCallback)(const char *, void *));
 void rtcSetLocalCandidateCallback(int pc,
                                   void (*candidateCallback)(const char *, const char *, void *));
-void rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
-void rtcSetRemoteCandidate(int pc, const char *candidate, const char *sdpMid);
+void rtcSetRemoteDescription(int pc, const char *sdp);
+void rtcAddRemoteCandidate(int pc, const char *candidate, const char *mid);
 int rtcGetDataChannelLabel(int dc, char *data, int size);
 void rtcSetOpenCallback(int dc, void (*openCallback)(void *));
 void rtcSetErrorCallback(int dc, void (*errorCallback)(const char *, void *));
