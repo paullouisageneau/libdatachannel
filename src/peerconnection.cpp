@@ -21,6 +21,8 @@
 #include "icetransport.hpp"
 #include "sctptransport.hpp"
 
+#include <iostream>
+
 namespace rtc {
 
 using namespace std::placeholders;
@@ -43,7 +45,7 @@ std::optional<Description> PeerConnection::remoteDescription() const { return mR
 
 void PeerConnection::setRemoteDescription(Description description) {
 	if (!mIceTransport) {
-		initIceTransport();
+		initIceTransport(Description::Role::ActPass);
 		mIceTransport->setRemoteDescription(description);
 		processLocalDescription(mIceTransport->getLocalDescription());
 		mIceTransport->gatherLocalCandidates();
@@ -58,8 +60,10 @@ void PeerConnection::setRemoteCandidate(Candidate candidate) {
 	if (!mRemoteDescription || !mIceTransport)
 		throw std::logic_error("Remote candidate set without remote description");
 
-	mIceTransport->addRemoteCandidate(candidate);
-	mRemoteDescription->addCandidate(std::move(candidate));
+	if (mIceTransport->addRemoteCandidate(candidate))
+		mRemoteDescription->addCandidate(std::move(candidate));
+	else
+		std::cerr << "Failed to add remote ICE candidate" << std::endl;
 }
 
 shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
@@ -80,7 +84,7 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 	mDataChannels.insert(std::make_pair(stream, channel));
 
 	if (!mIceTransport) {
-		initIceTransport();
+		initIceTransport(Description::Role::Active);
 		processLocalDescription(mIceTransport->getLocalDescription());
 		mIceTransport->gatherLocalCandidates();
 	} else if (mSctpTransport && mSctpTransport->isReady()) {
@@ -104,9 +108,9 @@ void PeerConnection::onLocalCandidate(
 	mLocalCandidateCallback = callback;
 }
 
-void PeerConnection::initIceTransport() {
+void PeerConnection::initIceTransport(Description::Role role) {
 	mIceTransport = std::make_shared<IceTransport>(
-	    mConfig, std::bind(&PeerConnection::processLocalCandidate, this, _1),
+	    mConfig, role, std::bind(&PeerConnection::processLocalCandidate, this, _1),
 	    std::bind(&PeerConnection::initDtlsTransport, this));
 }
 

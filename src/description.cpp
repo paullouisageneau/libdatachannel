@@ -131,7 +131,7 @@ Description::operator string() const {
 		sdp << "a=sctp-port:" << *mSctpPort << "\n";
 
 	for (const auto &candidate : mCandidates) {
-		sdp << "a=candidate:" << string(candidate);
+		sdp << string(candidate) << "\n";
 	}
 
 	return sdp.str();

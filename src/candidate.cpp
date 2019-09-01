@@ -19,12 +19,14 @@
 #include "candidate.hpp"
 
 #include <algorithm>
+#include <array>
 #include <sstream>
 
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 
+using std::array;
 using std::string;
 
 namespace {
@@ -39,9 +41,12 @@ inline bool hasprefix(const string &str, const string &prefix) {
 namespace rtc {
 
 Candidate::Candidate(string candidate, std::optional<string> mid) {
-	const string prefix{"candidate:"};
-	mCandidate =
-	    hasprefix(candidate, prefix) ? candidate.substr(prefix.size()) : std::move(candidate);
+	const std::array prefixes{"a=", "candidate:"};
+	for (string prefix : prefixes)
+		if (hasprefix(candidate, prefix))
+			candidate.erase(0, prefix.size());
+
+	mCandidate = std::move(candidate);
 	mMid = std::move(mid);
 
 	// See RFC 5245 for format
@@ -68,14 +73,15 @@ Candidate::Candidate(string candidate, std::optional<string> mid) {
 					char servbuffer[MAX_NUMERICSERV_LEN];
 					if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
 					                servbuffer, MAX_NUMERICSERV_LEN,
-					                NI_NUMERICHOST | NI_NUMERICHOST) == 0) {
+					                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 						string left;
 						std::getline(ss, left);
 						const char sp{' '};
 						ss.clear();
 						ss << foundation << sp << component << sp << transport << sp << priority;
 						ss << sp << nodebuffer << sp << servbuffer << sp << "typ" << sp << type;
-						ss << sp << left;
+						if (!left.empty())
+							ss << sp << left;
 						mCandidate = ss.str();
 						break;
 					}
@@ -90,7 +96,11 @@ string Candidate::candidate() const { return mCandidate; }
 
 std::optional<string> Candidate::mid() const { return mMid; }
 
-Candidate::operator string() const { return mCandidate; }
+Candidate::operator string() const {
+	std::ostringstream line;
+	line << "a=candidate:" << mCandidate;
+	return line.str();
+}
 
 } // namespace rtc
 

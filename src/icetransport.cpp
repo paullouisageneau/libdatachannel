@@ -33,9 +33,9 @@ namespace rtc {
 using std::shared_ptr;
 using std::weak_ptr;
 
-IceTransport::IceTransport(const IceConfiguration &config, candidate_callback candidateCallback,
-                           ready_callback ready)
-    : mRole(Description::Role::ActPass), mState(State::Disconnected), mNiceAgent(nullptr, nullptr),
+IceTransport::IceTransport(const IceConfiguration &config, Description::Role role,
+                           candidate_callback candidateCallback, ready_callback ready)
+    : mRole(role), mState(State::Disconnected), mNiceAgent(nullptr, nullptr),
       mMainLoop(nullptr, nullptr), mCandidateCallback(std::move(candidateCallback)),
       mReadyCallback(ready) {
 
@@ -141,17 +141,20 @@ void IceTransport::setRemoteDescription(const Description &description) {
 	                                                        : Description::Role::Active;
 
 	if (nice_agent_parse_remote_sdp(mNiceAgent.get(), string(description).c_str()))
-		throw std::runtime_error("Unable to parse remote SDP");
+		throw std::runtime_error("Failed to parse remote SDP");
 }
 
 void IceTransport::gatherLocalCandidates() {
 	if (!nice_agent_gather_candidates(mNiceAgent.get(), mStreamId))
-		throw std::runtime_error("Unable to gather local ICE candidates");
+		throw std::runtime_error("Failed to gather local ICE candidates");
 }
 
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
-	NiceCandidate *cand = nice_agent_parse_remote_candidate_sdp(mNiceAgent.get(), mStreamId,
-	                                                            string(candidate).c_str());
+	// Warning: the candidate string must start with "a=candidate:" and it must not end with a
+	// newline, else libnice will reject it.
+	string sdp(candidate);
+	NiceCandidate *cand =
+	    nice_agent_parse_remote_candidate_sdp(mNiceAgent.get(), mStreamId, sdp.c_str());
 	if (!cand)
 		return false;
 

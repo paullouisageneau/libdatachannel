@@ -62,7 +62,7 @@ public:
 	void onLocalCandidate(std::function<void(const std::optional<Candidate> &candidate)> callback);
 
 private:
-	void initIceTransport();
+	void initIceTransport(Description::Role role);
 	void initDtlsTransport();
 	void initSctpTransport();
 

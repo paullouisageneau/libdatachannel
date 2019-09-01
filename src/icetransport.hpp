@@ -50,8 +50,8 @@ public:
 	using candidate_callback = std::function<void(const std::optional<Candidate> &candidate)>;
 	using ready_callback = std::function<void(void)>;
 
-	IceTransport(const IceConfiguration &config, candidate_callback candidateCallback,
-	             ready_callback ready);
+	IceTransport(const IceConfiguration &config, Description::Role role,
+	             candidate_callback candidateCallback, ready_callback ready);
 	~IceTransport();
 
 	Description::Role role() const;
