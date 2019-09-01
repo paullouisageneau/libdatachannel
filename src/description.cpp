@@ -44,7 +44,7 @@ inline void trim_end(string &str) {
 
 namespace rtc {
 
-Description::Description(Role role, const string &sdp)
+Description::Description(const string &sdp, Role role)
     : mRole(role), mMid("0"), mIceUfrag("0"), mIcePwd("0") {
 	auto seed = std::chrono::system_clock::now().time_since_epoch().count();
 	std::default_random_engine generator(seed);
@@ -138,3 +138,8 @@ Description::operator string() const {
 }
 
 } // namespace rtc
+
+std::ostream &operator<<(std::ostream &out, const rtc::Description &description) {
+	return out << std::string(description);
+}
+

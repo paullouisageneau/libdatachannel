@@ -32,24 +32,24 @@ int main(int argc, char **argv) {
 	auto pc1 = std::make_shared<PeerConnection>(config);
 	auto pc2 = std::make_shared<PeerConnection>(config);
 
-	pc1->onLocalDescription([pc2](const string &sdp) {
+	pc1->onLocalDescription([pc2](const Description &sdp) {
 		cout << "Description 1: " << sdp << endl;
 		pc2->setRemoteDescription(sdp);
 	});
 
-	pc1->onLocalCandidate([pc2](const optional<string> &candidate) {
+	pc1->onLocalCandidate([pc2](const optional<Candidate> &candidate) {
 		if (candidate) {
 			cout << "Candidate 1: " << *candidate << endl;
 			pc2->setRemoteCandidate(*candidate);
 		}
 	});
 
-	pc2->onLocalDescription([pc1](const string &sdp) {
+	pc2->onLocalDescription([pc1](const Description &sdp) {
 		cout << "Description 2: " << sdp << endl;
 		pc1->setRemoteDescription(sdp);
 	});
 
-	pc2->onLocalCandidate([pc1](const optional<string> &candidate) {
+	pc2->onLocalCandidate([pc1](const optional<Candidate> &candidate) {
 		if (candidate) {
 			cout << "Candidate 2: " << *candidate << endl;
 			pc1->setRemoteCandidate(*candidate);

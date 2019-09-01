@@ -22,6 +22,7 @@
 #include "candidate.hpp"
 #include "include.hpp"
 
+#include <iostream>
 #include <map>
 #include <optional>
 #include <vector>
@@ -32,7 +33,7 @@ class Description {
 public:
 	enum class Role { Passive, Active, ActPass };
 
-	Description(Role role, const string &sdp);
+	Description(const string &sdp, Role role = Role::ActPass);
 
 	Role role() const;
 	std::optional<string> fingerprint() const;
@@ -45,7 +46,7 @@ public:
 	operator string() const;
 
 private:
-	Role mRole = Role::Passive;
+	Role mRole;
 	string mSessionId;
 	string mMid;
 	string mIceUfrag, mIcePwd;
@@ -56,5 +57,7 @@ private:
 };
 
 } // namespace rtc
+
+std::ostream &operator<<(std::ostream &out, const rtc::Description &description);
 
 #endif

@@ -29,8 +29,7 @@ using std::function;
 using std::shared_ptr;
 
 PeerConnection::PeerConnection(const IceConfiguration &config)
-    : mConfig(config), mCertificate(make_certificate("libdatachannel")), mMid("0"),
-      mSctpPort(5000) {}
+    : mConfig(config), mCertificate(make_certificate("libdatachannel")) {}
 
 PeerConnection::~PeerConnection() {}
 
@@ -38,31 +37,29 @@ const IceConfiguration *PeerConnection::config() const { return &mConfig; }
 
 const Certificate *PeerConnection::certificate() const { return &mCertificate; }
 
-void PeerConnection::setRemoteDescription(const string &description) {
-	Description desc(Description::Role::ActPass, description);
+std::optional<Description> PeerConnection::localDescription() const { return mLocalDescription; }
 
-	if (auto fingerprint = desc.fingerprint())
-		mRemoteFingerprint.emplace(*fingerprint);
+std::optional<Description> PeerConnection::remoteDescription() const { return mRemoteDescription; }
 
-	if (auto sctpPort = desc.sctpPort()) {
-		mSctpPort = *sctpPort;
-	}
-
+void PeerConnection::setRemoteDescription(Description description) {
 	if (!mIceTransport) {
-		initIceTransport(Description::Role::ActPass);
-		mIceTransport->setRemoteDescription(desc);
-		triggerLocalDescription();
+		initIceTransport();
+		mIceTransport->setRemoteDescription(description);
+		processLocalDescription(mIceTransport->getLocalDescription());
 		mIceTransport->gatherLocalCandidates();
 	} else {
-		mIceTransport->setRemoteDescription(desc);
+		mIceTransport->setRemoteDescription(description);
 	}
+
+	mRemoteDescription.emplace(std::move(description));
 }
 
-void PeerConnection::setRemoteCandidate(const string &candidate) {
-	Candidate cand(candidate, mMid);
-	if (mIceTransport) {
-		mIceTransport->addRemoteCandidate(cand);
-	}
+void PeerConnection::setRemoteCandidate(Candidate candidate) {
+	if (!mRemoteDescription || !mIceTransport)
+		throw std::logic_error("Remote candidate set without remote description");
+
+	mIceTransport->addRemoteCandidate(candidate);
+	mRemoteDescription->addCandidate(std::move(candidate));
 }
 
 shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
@@ -83,8 +80,8 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 	mDataChannels.insert(std::make_pair(stream, channel));
 
 	if (!mIceTransport) {
-		initIceTransport(Description::Role::Active);
-		triggerLocalDescription();
+		initIceTransport();
+		processLocalDescription(mIceTransport->getLocalDescription());
 		mIceTransport->gatherLocalCandidates();
 	} else if (mSctpTransport && mSctpTransport->isReady()) {
 		channel->open(mSctpTransport);
@@ -97,18 +94,19 @@ void PeerConnection::onDataChannel(
 	mDataChannelCallback = callback;
 }
 
-void PeerConnection::onLocalDescription(std::function<void(const string &description)> callback) {
+void PeerConnection::onLocalDescription(
+    std::function<void(const Description &description)> callback) {
 	mLocalDescriptionCallback = callback;
 }
 
 void PeerConnection::onLocalCandidate(
-    std::function<void(const std::optional<string> &candidate)> callback) {
+    std::function<void(const std::optional<Candidate> &candidate)> callback) {
 	mLocalCandidateCallback = callback;
 }
 
-void PeerConnection::initIceTransport(Description::Role role) {
+void PeerConnection::initIceTransport() {
 	mIceTransport = std::make_shared<IceTransport>(
-	    mConfig, role, std::bind(&PeerConnection::triggerLocalCandidate, this, _1),
+	    mConfig, std::bind(&PeerConnection::processLocalCandidate, this, _1),
 	    std::bind(&PeerConnection::initDtlsTransport, this));
 }
 
@@ -119,13 +117,18 @@ void PeerConnection::initDtlsTransport() {
 }
 
 void PeerConnection::initSctpTransport() {
+	uint16_t sctpPort = mRemoteDescription->sctpPort().value_or(DEFAULT_SCTP_PORT);
 	mSctpTransport = std::make_shared<SctpTransport>(
-	    mDtlsTransport, mSctpPort, std::bind(&PeerConnection::openDataChannels, this),
+	    mDtlsTransport, sctpPort, std::bind(&PeerConnection::openDataChannels, this),
 	    std::bind(&PeerConnection::forwardMessage, this, _1));
 }
 
 bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
-	return mRemoteFingerprint && *mRemoteFingerprint == fingerprint;
+	if (auto expectedFingerprint =
+	        mRemoteDescription ? mRemoteDescription->fingerprint() : nullopt) {
+		return *expectedFingerprint == fingerprint;
+	}
+	return false;
 }
 
 void PeerConnection::forwardMessage(message_ptr message) {
@@ -158,19 +161,26 @@ void PeerConnection::openDataChannels(void) {
 		dataChannel->open(mSctpTransport);
 }
 
-void PeerConnection::triggerLocalDescription() {
-	if (mLocalDescriptionCallback && mIceTransport) {
-		Description desc{mIceTransport->getLocalDescription()};
-		desc.setFingerprint(mCertificate.fingerprint());
-		desc.setSctpPort(mSctpPort);
-		mLocalDescriptionCallback(string(desc));
-	}
+void PeerConnection::processLocalDescription(Description description) {
+	auto remoteSctpPort = mRemoteDescription ? mRemoteDescription->sctpPort() : nullopt;
+
+	description.setFingerprint(mCertificate.fingerprint());
+	description.setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
+	mLocalDescription.emplace(std::move(description));
+
+	if (mLocalDescriptionCallback)
+		mLocalDescriptionCallback(*mLocalDescription);
 }
 
-void PeerConnection::triggerLocalCandidate(const std::optional<Candidate> &candidate) {
-	if (mLocalCandidateCallback) {
-		mLocalCandidateCallback(candidate ? std::make_optional(string(*candidate)) : nullopt);
-	}
+void PeerConnection::processLocalCandidate(std::optional<Candidate> candidate) {
+	if (!mLocalDescription)
+		throw std::logic_error("Got a local candidate without local description");
+
+	if (candidate)
+		mLocalDescription->addCandidate(*candidate);
+
+	if (mLocalCandidateCallback)
+		mLocalCandidateCallback(candidate);
 }
 
 void PeerConnection::triggerDataChannel(std::shared_ptr<DataChannel> dataChannel) {

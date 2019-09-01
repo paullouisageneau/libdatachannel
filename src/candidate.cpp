@@ -38,20 +38,20 @@ inline bool hasprefix(const string &str, const string &prefix) {
 
 namespace rtc {
 
-Candidate::Candidate(string candidate, string mid) {
+Candidate::Candidate(string candidate, std::optional<string> mid) {
 	const string prefix{"candidate:"};
 	mCandidate =
 	    hasprefix(candidate, prefix) ? candidate.substr(prefix.size()) : std::move(candidate);
 	mMid = std::move(mid);
 
-	// See RFC 5245
+	// See RFC 5245 for format
 	std::stringstream ss(mCandidate);
 	int component{0}, priority{0};
 	string foundation, transport, node, service, typ_, type;
 	if (ss >> foundation >> component >> transport >> priority &&
 	    ss >> node >> service >> typ_ >> type && typ_ == "typ") {
 
-		// Try to resolv the node
+		// Try to resolve the node
 		struct addrinfo hints = {};
 		hints.ai_family = AF_UNSPEC;
 		hints.ai_flags = AI_ADDRCONFIG;
@@ -88,9 +88,13 @@ Candidate::Candidate(string candidate, string mid) {
 
 string Candidate::candidate() const { return mCandidate; }
 
-string Candidate::mid() const { return mMid; }
+std::optional<string> Candidate::mid() const { return mMid; }
 
 Candidate::operator string() const { return mCandidate; }
 
 } // namespace rtc
+
+std::ostream &operator<<(std::ostream &out, const rtc::Candidate &candidate) {
+	return out << std::string(candidate);
+}
 

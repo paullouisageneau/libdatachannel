@@ -39,19 +39,19 @@ namespace rtc {
 class IceTransport : public Transport {
 public:
 	enum class State : uint32_t {
-		DISCONNECTED = NICE_COMPONENT_STATE_DISCONNECTED,
-		GATHERING = NICE_COMPONENT_STATE_GATHERING,
-		CONNECTING = NICE_COMPONENT_STATE_CONNECTING,
-		CONNECTED = NICE_COMPONENT_STATE_CONNECTED,
-		READY = NICE_COMPONENT_STATE_READY,
-		FAILED = NICE_COMPONENT_STATE_FAILED
+		Disconnected = NICE_COMPONENT_STATE_DISCONNECTED,
+		Gathering = NICE_COMPONENT_STATE_GATHERING,
+		Connecting = NICE_COMPONENT_STATE_CONNECTING,
+		Connected = NICE_COMPONENT_STATE_CONNECTED,
+		Ready = NICE_COMPONENT_STATE_READY,
+		Failed = NICE_COMPONENT_STATE_FAILED
 	};
 
 	using candidate_callback = std::function<void(const std::optional<Candidate> &candidate)>;
 	using ready_callback = std::function<void(void)>;
 
-	IceTransport(const IceConfiguration &config, Description::Role role,
-	             candidate_callback candidateCallback, ready_callback ready);
+	IceTransport(const IceConfiguration &config, candidate_callback candidateCallback,
+	             ready_callback ready);
 	~IceTransport();
 
 	Description::Role role() const;
@@ -74,8 +74,8 @@ private:
 	void processCandidate(const string &candidate);
 	void processGatheringDone();
 
-	const Description::Role mRole;
-	State mState = State::DISCONNECTED;
+	Description::Role mRole;
+	State mState;
 
 	uint32_t mStreamId = 0;
 	std::unique_ptr<NiceAgent, void (*)(gpointer)> mNiceAgent;

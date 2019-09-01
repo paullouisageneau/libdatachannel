@@ -33,10 +33,11 @@ namespace rtc {
 using std::shared_ptr;
 using std::weak_ptr;
 
-IceTransport::IceTransport(const IceConfiguration &config, Description::Role role,
-                           candidate_callback candidateCallback, ready_callback ready)
-    : mRole(role), mNiceAgent(nullptr, nullptr), mMainLoop(nullptr, nullptr),
-      mCandidateCallback(std::move(candidateCallback)), mReadyCallback(ready) {
+IceTransport::IceTransport(const IceConfiguration &config, candidate_callback candidateCallback,
+                           ready_callback ready)
+    : mRole(Description::Role::ActPass), mState(State::Disconnected), mNiceAgent(nullptr, nullptr),
+      mMainLoop(nullptr, nullptr), mCandidateCallback(std::move(candidateCallback)),
+      mReadyCallback(ready) {
 
 	auto logLevelFlags = GLogLevelFlags(G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION);
 	g_log_set_handler(nullptr, logLevelFlags, LogCallback, this);
@@ -132,10 +133,13 @@ IceTransport::State IceTransport::state() const { return mState; }
 Description IceTransport::getLocalDescription() const {
 	std::unique_ptr<gchar[], void (*)(void *)> sdp(nice_agent_generate_local_sdp(mNiceAgent.get()),
 	                                               g_free);
-	return Description(mRole, string(sdp.get()));
+	return Description(string(sdp.get()), mRole);
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {
+	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
+	                                                        : Description::Role::Active;
+
 	if (nice_agent_parse_remote_sdp(mNiceAgent.get(), string(description).c_str()))
 		throw std::runtime_error("Unable to parse remote SDP");
 }
@@ -185,7 +189,7 @@ void IceTransport::processGatheringDone() { mCandidateCallback(nullopt); }
 
 void IceTransport::changeState(uint32_t state) {
 	mState = static_cast<State>(state);
-	if (mState == State::READY) {
+	if (mState == State::Ready) {
 		mReadyCallback();
 	}
 }

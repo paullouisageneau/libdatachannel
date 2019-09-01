@@ -48,18 +48,21 @@ public:
 	const IceConfiguration *config() const;
 	const Certificate *certificate() const;
 
-	void setRemoteDescription(const string &description);
-	void setRemoteCandidate(const string &candidate);
+	std::optional<Description> localDescription() const;
+	std::optional<Description> remoteDescription() const;
+
+	void setRemoteDescription(Description description);
+	void setRemoteCandidate(Candidate candidate);
 
 	std::shared_ptr<DataChannel> createDataChannel(const string &label, const string &protocol = "",
 	                                               const Reliability &reliability = {});
 
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
-	void onLocalDescription(std::function<void(const string &description)> callback);
-	void onLocalCandidate(std::function<void(const std::optional<string> &candidate)> callback);
+	void onLocalDescription(std::function<void(const Description &description)> callback);
+	void onLocalCandidate(std::function<void(const std::optional<Candidate> &candidate)> callback);
 
 private:
-	void initIceTransport(Description::Role role);
+	void initIceTransport();
 	void initDtlsTransport();
 	void initSctpTransport();
 
@@ -67,15 +70,15 @@ private:
 	void forwardMessage(message_ptr message);
 	void openDataChannels(void);
 
-	void triggerLocalDescription();
-	void triggerLocalCandidate(const std::optional<Candidate> &candidate);
+	void processLocalDescription(Description description);
+	void processLocalCandidate(std::optional<Candidate> candidate);
 	void triggerDataChannel(std::shared_ptr<DataChannel> dataChannel);
 
 	const IceConfiguration mConfig;
-	Certificate mCertificate;
-	string mMid;
-	std::optional<string> mRemoteFingerprint;
-	uint16_t mSctpPort;
+	const Certificate mCertificate;
+
+	std::optional<Description> mLocalDescription;
+	std::optional<Description> mRemoteDescription;
 
 	std::shared_ptr<IceTransport> mIceTransport;
 	std::shared_ptr<DtlsTransport> mDtlsTransport;
@@ -84,8 +87,8 @@ private:
 	std::unordered_map<unsigned int, std::shared_ptr<DataChannel>> mDataChannels;
 
 	std::function<void(std::shared_ptr<DataChannel> dataChannel)> mDataChannelCallback;
-	std::function<void(const string &description)> mLocalDescriptionCallback;
-	std::function<void(const std::optional<string> &candidate)> mLocalCandidateCallback;
+	std::function<void(const Description &description)> mLocalDescriptionCallback;
+	std::function<void(const std::optional<Candidate> &candidate)> mLocalCandidateCallback;
 };
 
 } // namespace rtc
