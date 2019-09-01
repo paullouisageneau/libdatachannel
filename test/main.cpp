@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
 	pc1->onLocalCandidate([pc2](const optional<Candidate> &candidate) {
 		if (candidate) {
 			cout << "Candidate 1: " << *candidate << endl;
-			pc2->setRemoteCandidate(*candidate);
+			pc2->addRemoteCandidate(*candidate);
 		}
 	});
 
@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
 	pc2->onLocalCandidate([pc1](const optional<Candidate> &candidate) {
 		if (candidate) {
 			cout << "Candidate 2: " << *candidate << endl;
-			pc1->setRemoteCandidate(*candidate);
+			pc1->addRemoteCandidate(*candidate);
 		}
 	});
 

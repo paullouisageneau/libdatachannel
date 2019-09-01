@@ -50,7 +50,7 @@ public:
 	std::optional<Description> remoteDescription() const;
 
 	void setRemoteDescription(Description description);
-	void setRemoteCandidate(Candidate candidate);
+	void addRemoteCandidate(Candidate candidate);
 
 	std::shared_ptr<DataChannel> createDataChannel(const string &label, const string &protocol = "",
 	                                               const Reliability &reliability = {});

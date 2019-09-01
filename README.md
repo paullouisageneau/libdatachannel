@@ -44,7 +44,7 @@ MY_ON_RECV_DESCRIPTION_FROM_REMOTE([pc](string sdp) {
 });
 
 MY_ON_RECV_CANDIDATE_FROM_REMOTE([pc](string candidate, string mid) {
-    pc->setRemoteCandidate(Candidate(candidate, mid));
+    pc->addRemoteCandidate(Candidate(candidate, mid));
 });
 ```
 

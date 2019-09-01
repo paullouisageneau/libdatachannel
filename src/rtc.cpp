@@ -123,7 +123,7 @@ void rtcSetRemoteCandidate(int pc, const char *candidate, const char *mid) {
 	if (it == peerConnectionMap.end())
 		return;
 
-	it->second->setRemoteCandidate(
+	it->second->addRemoteCandidate(
 	    Candidate(string(candidate), mid ? make_optional(string(mid)) : nullopt));
 }
 

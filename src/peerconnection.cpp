@@ -57,7 +57,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 	mRemoteDescription.emplace(std::move(description));
 }
 
-void PeerConnection::setRemoteCandidate(Candidate candidate) {
+void PeerConnection::addRemoteCandidate(Candidate candidate) {
 	if (!mRemoteDescription || !mIceTransport)
 		throw std::logic_error("Remote candidate set without remote description");
 
