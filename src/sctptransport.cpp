@@ -134,102 +134,6 @@ SctpTransport::~SctpTransport() {
 
 bool SctpTransport::isReady() const { return mIsReady; }
 
-void SctpTransport::processNotification(const union sctp_notification *notify, size_t len) {
-	if (len != size_t(notify->sn_header.sn_length))
-		return;
-
-	switch (notify->sn_header.sn_type) {
-	case SCTP_STREAM_RESET_EVENT: {
-		const struct sctp_stream_reset_event *reset_event = &notify->sn_strreset_event;
-		const int count = (reset_event->strreset_length - sizeof(*reset_event)) / sizeof(uint16_t);
-
-		if (reset_event->strreset_flags & SCTP_STREAM_RESET_INCOMING_SSN) {
-			for (int i = 0; i < count; ++i) {
-				uint16_t streamId = reset_event->strreset_stream_list[i];
-				reset(streamId);
-			}
-		}
-
-		if (reset_event->strreset_flags & SCTP_STREAM_RESET_OUTGOING_SSN) {
-			const byte dataChannelCloseMessage{0x04};
-			for (int i = 0; i < count; ++i) {
-				uint16_t streamId = reset_event->strreset_stream_list[i];
-				recv(make_message(&dataChannelCloseMessage, &dataChannelCloseMessage + 1,
-				                  Message::Control, streamId));
-			}
-		}
-		break;
-	}
-
-	default:
-		// Ignore
-		break;
-	}
-}
-
-int SctpTransport::WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos,
-                                 uint8_t set_df) {
-	return static_cast<SctpTransport *>(sctp_ptr)->handleWrite(data, len, tos, set_df);
-}
-
-int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df) {
-	byte *b = reinterpret_cast<byte *>(data);
-	outgoing(make_message(b, b + len));
-
-	if (!mConnectDataSent) {
-		std::unique_lock<std::mutex> lock(mConnectMutex);
-		mConnectDataSent = true;
-		mConnectCondition.notify_all();
-	}
-	return 0; // success
-}
-
-int SctpTransport::ReadCallback(struct socket *sock, union sctp_sockstore addr, void *data,
-                                size_t len, struct sctp_rcvinfo recv_info, int flags,
-                                void *user_data) {
-	return static_cast<SctpTransport *>(user_data)->process(sock, addr, data, len, recv_info,
-	                                                        flags);
-}
-
-int SctpTransport::process(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
-                           struct sctp_rcvinfo recv_info, int flags) {
-	if (flags & MSG_NOTIFICATION) {
-		processNotification((union sctp_notification *)data, len);
-	} else {
-		processData((const byte *)data, len, recv_info.rcv_sid, PayloadId(recv_info.rcv_ppid));
-	}
-	free(data);
-	return 0;
-}
-
-void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, PayloadId ppid) {
-	Message::Type type;
-	switch (ppid) {
-	case PPID_STRING:
-		type = Message::String;
-		break;
-	case PPID_STRING_EMPTY:
-		type = Message::String;
-		len = 0;
-		break;
-	case PPID_BINARY:
-		type = Message::Binary;
-		break;
-	case PPID_BINARY_EMPTY:
-		type = Message::Binary;
-		len = 0;
-		break;
-	case PPID_CONTROL:
-		type = Message::Control;
-		break;
-	default:
-		// Unknown
-		std::cerr << "Unknown PPID: " << uint32_t(ppid) << std::endl;
-		return;
-	}
-	recv(make_message(data, data + len, type, sid));
-}
-
 bool SctpTransport::send(message_ptr message) {
 	const Reliability reliability = message->reliability ? *message->reliability : Reliability();
 
@@ -238,10 +142,10 @@ bool SctpTransport::send(message_ptr message) {
 	uint32_t ppid;
 	switch (message->type) {
 	case Message::String:
-		ppid = message->empty() ? PPID_STRING : PPID_STRING_EMPTY;
+		ppid = !message->empty() ? PPID_STRING : PPID_STRING_EMPTY;
 		break;
 	case Message::Binary:
-		ppid = message->empty() ? PPID_BINARY : PPID_BINARY_EMPTY;
+		ppid = !message->empty() ? PPID_BINARY : PPID_BINARY_EMPTY;
 		break;
 	default:
 		ppid = PPID_CONTROL;
@@ -329,6 +233,101 @@ void SctpTransport::runConnect() {
 
 	mIsReady = true;
 	mReadyCallback();
+}
+
+int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df) {
+	byte *b = reinterpret_cast<byte *>(data);
+	outgoing(make_message(b, b + len));
+
+	if (!mConnectDataSent) {
+		std::unique_lock<std::mutex> lock(mConnectMutex);
+		mConnectDataSent = true;
+		mConnectCondition.notify_all();
+	}
+	return 0; // success
+}
+
+int SctpTransport::process(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
+                           struct sctp_rcvinfo recv_info, int flags) {
+	if (flags & MSG_NOTIFICATION) {
+		processNotification((union sctp_notification *)data, len);
+	} else {
+		processData((const byte *)data, len, recv_info.rcv_sid, PayloadId(recv_info.rcv_ppid));
+	}
+	free(data);
+	return 0;
+}
+
+void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, PayloadId ppid) {
+	Message::Type type;
+	switch (ppid) {
+	case PPID_STRING:
+		type = Message::String;
+		break;
+	case PPID_STRING_EMPTY:
+		type = Message::String;
+		len = 0;
+		break;
+	case PPID_BINARY:
+		type = Message::Binary;
+		break;
+	case PPID_BINARY_EMPTY:
+		type = Message::Binary;
+		len = 0;
+		break;
+	case PPID_CONTROL:
+		type = Message::Control;
+		break;
+	default:
+		// Unknown
+		std::cerr << "Unknown PPID: " << uint32_t(ppid) << std::endl;
+		return;
+	}
+	recv(make_message(data, data + len, type, sid));
+}
+
+void SctpTransport::processNotification(const union sctp_notification *notify, size_t len) {
+	if (len != size_t(notify->sn_header.sn_length))
+		return;
+
+	switch (notify->sn_header.sn_type) {
+	case SCTP_STREAM_RESET_EVENT: {
+		const struct sctp_stream_reset_event *reset_event = &notify->sn_strreset_event;
+		const int count = (reset_event->strreset_length - sizeof(*reset_event)) / sizeof(uint16_t);
+
+		if (reset_event->strreset_flags & SCTP_STREAM_RESET_INCOMING_SSN) {
+			for (int i = 0; i < count; ++i) {
+				uint16_t streamId = reset_event->strreset_stream_list[i];
+				reset(streamId);
+			}
+		}
+
+		if (reset_event->strreset_flags & SCTP_STREAM_RESET_OUTGOING_SSN) {
+			const byte dataChannelCloseMessage{0x04};
+			for (int i = 0; i < count; ++i) {
+				uint16_t streamId = reset_event->strreset_stream_list[i];
+				recv(make_message(&dataChannelCloseMessage, &dataChannelCloseMessage + 1,
+				                  Message::Control, streamId));
+			}
+		}
+		break;
+	}
+
+	default:
+		// Ignore
+		break;
+	}
+}
+int SctpTransport::WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos,
+                                 uint8_t set_df) {
+	return static_cast<SctpTransport *>(sctp_ptr)->handleWrite(data, len, tos, set_df);
+}
+
+int SctpTransport::ReadCallback(struct socket *sock, union sctp_sockstore addr, void *data,
+                                size_t len, struct sctp_rcvinfo recv_info, int flags,
+                                void *user_data) {
+	return static_cast<SctpTransport *>(user_data)->process(sock, addr, data, len, recv_info,
+	                                                        flags);
 }
 
 } // namespace rtc
