@@ -194,9 +194,9 @@ void DataChannel::processOpenMessage(message_ptr message) {
 	if (message->size() < sizeof(OpenMessage) + size_t(open.labelLength + open.protocolLength))
 		throw std::invalid_argument("DataChannel open message truncated");
 
-	auto next = message->data() + sizeof(OpenMessage);
-	mLabel.assign(reinterpret_cast<const char *>(next), open.labelLength);
-	mProtocol.assign(reinterpret_cast<const char *>(next + open.labelLength), open.protocolLength);
+	auto end = reinterpret_cast<const char *>(message->data() + sizeof(OpenMessage));
+	mLabel.assign(end, open.labelLength);
+	mProtocol.assign(end + open.labelLength, open.protocolLength);
 
 	using std::chrono::milliseconds;
 	mReliability->unordered = (open.reliabilityParameter & 0x80) != 0;
