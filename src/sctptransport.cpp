@@ -207,10 +207,11 @@ void SctpTransport::incoming(message_ptr message) {
 	// proceeding.
 	if (!mConnectDataSent) {
 		std::unique_lock<std::mutex> lock(mConnectMutex);
-		mConnectCondition.wait(lock, [this] { return mConnectDataSent == true; });
+		mConnectCondition.wait(lock, [this] { return mConnectDataSent || mStopping; });
 	}
 
-	usrsctp_conninput(this, message->data(), message->size(), 0);
+	if (!mStopping)
+		usrsctp_conninput(this, message->data(), message->size(), 0);
 }
 
 void SctpTransport::runConnect() {
@@ -223,7 +224,7 @@ void SctpTransport::runConnect() {
 #endif
 
 	// According to the IETF draft, both endpoints must initiate the SCTP association, in a
-	// simultaneous-open manner, irrelevent of the SDP setup role.
+	// simultaneous-open manner, irrelevent to the SDP setup role.
 	// See https://tools.ietf.org/html/draft-ietf-mmusic-sctp-sdp-26#section-9.3
 	if (usrsctp_connect(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)) != 0) {
 		std::cerr << "SCTP connection failed, errno=" << errno << std::endl;
@@ -231,8 +232,10 @@ void SctpTransport::runConnect() {
 		return;
 	}
 
-	mIsReady = true;
-	mReadyCallback();
+	if (!mStopping) {
+		mIsReady = true;
+		mReadyCallback();
+	}
 }
 
 int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df) {
