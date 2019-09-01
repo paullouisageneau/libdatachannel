@@ -1,6 +1,6 @@
 # libdatachannel - C/C++ WebRTC DataChannels
 
-libdatachannel is a simple implementation of WebRTC DataChannels in C++ with C bindings. Its API is modelled as a simplified version of the JavaScript WebRTC API, in order to ease the design of cross-environment applications.
+libdatachannel is a simple implementation of WebRTC DataChannels in C++17 with C bindings. Its API is modelled as a simplified version of the JavaScript WebRTC API, in order to ease the design of cross-environment applications.
 
 This projet is originally inspired by [librtcdcpp](https://github.com/chadnickbok/librtcdcpp), however it is a complete rewrite from scratch, because the messy architecture of librtcdcpp made solving its implementation issues difficult.
 
