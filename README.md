@@ -4,6 +4,8 @@ libdatachannel is a simple implementation of WebRTC DataChannels in C++ with C b
 
 This projet is originally inspired by [librtcdcpp](https://github.com/chadnickbok/librtcdcpp), however it is a complete rewrite from scratch, because the messy architecture of librtcdcpp made solving its implementation issues difficult.
 
+Licensed under LGPLv2, see [LICENSE](https://github.com/paullouisageneau/libdatachannel/blob/master/LICENSE).
+
 ## Dependencies
 
 - libnice: https://github.com/libnice/libnice
