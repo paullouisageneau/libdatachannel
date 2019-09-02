@@ -60,7 +60,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-udp", TRUE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-tcp", FALSE, nullptr);
 
-	std::vector<IceServer> servers = config.servers;
+	std::vector<IceServer> servers = config.iceServers;
 	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 	std::shuffle(servers.begin(), servers.end(), std::default_random_engine(seed));
 

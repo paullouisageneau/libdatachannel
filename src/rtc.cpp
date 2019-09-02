@@ -39,7 +39,7 @@ int lastId = 0;
 int rtcCreatePeerConnection(const char **iceServers, int iceServersCount) {
 	Configuration config;
 	for (int i = 0; i < iceServersCount; ++i) {
-		config.servers.emplace_back(IceServer(string(iceServers[i])));
+		config.iceServers.emplace_back(IceServer(string(iceServers[i])));
 	}
 	int pc = ++lastId;
 	peerConnectionMap.emplace(std::make_pair(pc, std::make_shared<PeerConnection>(config)));
