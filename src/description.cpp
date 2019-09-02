@@ -44,8 +44,11 @@ inline void trim_end(string &str) {
 
 namespace rtc {
 
-Description::Description(const string &sdp, Role role)
-    : mRole(role), mMid("0"), mIceUfrag("0"), mIcePwd("0"), mTrickle(true) {
+Description::Description(const string &sdp, Type type, Role role)
+    : mType(type), mRole(role), mMid("0"), mIceUfrag("0"), mIcePwd("0"), mTrickle(true) {
+	if (mType == Type::Answer && mRole == Role::ActPass)
+		mRole = Role::Passive; // ActPass is illegal for an answer, so default to passive
+
 	auto seed = std::chrono::system_clock::now().time_since_epoch().count();
 	std::default_random_engine generator(seed);
 	std::uniform_int_distribution<uint32_t> uniform;
@@ -60,7 +63,7 @@ Description::Description(const string &sdp, Role role)
 			if (setup == "active")
 				mRole = Role::Active;
 			else if (setup == "passive")
-				mRole = Role::Active;
+				mRole = Role::Passive;
 			else
 				mRole = Role::ActPass;
 		} else if (hasprefix(line, "a=mid:")) {
@@ -82,6 +85,8 @@ Description::Description(const string &sdp, Role role)
 		}
 	}
 }
+
+Description::Type Description::type() const { return mType; }
 
 Description::Role Description::role() const { return mRole; }
 

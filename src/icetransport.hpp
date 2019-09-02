@@ -56,7 +56,7 @@ public:
 
 	Description::Role role() const;
 	State state() const;
-	Description getLocalDescription() const;
+	Description getLocalDescription(Description::Type type) const;
 	void setRemoteDescription(const Description &description);
 	void gatherLocalCandidates();
 	bool addRemoteCandidate(const Candidate &candidate);

@@ -31,10 +31,12 @@ namespace rtc {
 
 class Description {
 public:
+	enum class Type { Offer, Answer };
 	enum class Role { Passive, Active, ActPass };
 
-	Description(const string &sdp, Role role = Role::ActPass);
+	Description(const string &sdp, Type type = Type::Offer, Role role = Role::ActPass);
 
+	Type type() const;
 	Role role() const;
 	std::optional<string> fingerprint() const;
 	std::optional<uint16_t> sctpPort() const;
@@ -46,6 +48,7 @@ public:
 	operator string() const;
 
 private:
+	Type mType;
 	Role mRole;
 	string mSessionId;
 	string mMid;

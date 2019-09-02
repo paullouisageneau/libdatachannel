@@ -130,10 +130,10 @@ Description::Role IceTransport::role() const { return mRole; }
 
 IceTransport::State IceTransport::state() const { return mState; }
 
-Description IceTransport::getLocalDescription() const {
+Description IceTransport::getLocalDescription(Description::Type type) const {
 	std::unique_ptr<gchar[], void (*)(void *)> sdp(nice_agent_generate_local_sdp(mNiceAgent.get()),
 	                                               g_free);
-	return Description(string(sdp.get()), mRole);
+	return Description(string(sdp.get()), type, mRole);
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {

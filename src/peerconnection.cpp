@@ -48,7 +48,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 	if (!mIceTransport) {
 		initIceTransport(Description::Role::ActPass);
 		mIceTransport->setRemoteDescription(description);
-		processLocalDescription(mIceTransport->getLocalDescription());
+		processLocalDescription(mIceTransport->getLocalDescription(Description::Type::Answer));
 		mIceTransport->gatherLocalCandidates();
 	} else {
 		mIceTransport->setRemoteDescription(description);
@@ -86,7 +86,7 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 
 	if (!mIceTransport) {
 		initIceTransport(Description::Role::Active);
-		processLocalDescription(mIceTransport->getLocalDescription());
+		processLocalDescription(mIceTransport->getLocalDescription(Description::Type::Offer));
 		mIceTransport->gatherLocalCandidates();
 	} else if (mSctpTransport && mSctpTransport->isReady()) {
 		channel->open(mSctpTransport);
