@@ -62,7 +62,7 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 		throw std::logic_error("Remote candidate set without remote description");
 
 	if (mIceTransport->addRemoteCandidate(candidate))
-		mRemoteDescription->addCandidate(std::move(candidate));
+		mRemoteDescription->addCandidate(std::make_optional(std::move(candidate)));
 	else
 		std::cerr << "Failed to add remote ICE candidate" << std::endl;
 }
@@ -181,8 +181,7 @@ void PeerConnection::processLocalCandidate(std::optional<Candidate> candidate) {
 	if (!mLocalDescription)
 		throw std::logic_error("Got a local candidate without local description");
 
-	if (candidate)
-		mLocalDescription->addCandidate(*candidate);
+	mLocalDescription->addCandidate(candidate);
 
 	if (mLocalCandidateCallback)
 		mLocalCandidateCallback(candidate);

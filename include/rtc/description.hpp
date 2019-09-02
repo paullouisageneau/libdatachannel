@@ -41,7 +41,7 @@ public:
 
 	void setFingerprint(string fingerprint);
 	void setSctpPort(uint16_t port);
-	void addCandidate(Candidate candidate);
+	void addCandidate(std::optional<Candidate> candidate);
 
 	operator string() const;
 
@@ -52,8 +52,8 @@ private:
 	string mIceUfrag, mIcePwd;
 	std::optional<string> mFingerprint;
 	std::optional<uint16_t> mSctpPort;
-
 	std::vector<Candidate> mCandidates;
+	bool mTrickle;
 };
 
 } // namespace rtc

@@ -45,7 +45,7 @@ inline void trim_end(string &str) {
 namespace rtc {
 
 Description::Description(const string &sdp, Role role)
-    : mRole(role), mMid("0"), mIceUfrag("0"), mIcePwd("0") {
+    : mRole(role), mMid("0"), mIceUfrag("0"), mIcePwd("0"), mTrickle(true) {
 	auto seed = std::chrono::system_clock::now().time_since_epoch().count();
 	std::default_random_engine generator(seed);
 	std::uniform_int_distribution<uint32_t> uniform;
@@ -75,6 +75,10 @@ Description::Description(const string &sdp, Role role)
 			mIcePwd = line.substr(line.find(':') + 1);
 		} else if (hasprefix(line, "a=sctp-port")) {
 			mSctpPort = uint16_t(std::stoul(line.substr(line.find(':') + 1)));
+		} else if (hasprefix(line, "a=candidate")) {
+			mCandidates.emplace_back(Candidate(line, mMid));
+		} else if (hasprefix(line, "a=end-of-candidates")) {
+			mTrickle = false;
 		}
 	}
 }
@@ -91,8 +95,11 @@ void Description::setFingerprint(string fingerprint) {
 
 void Description::setSctpPort(uint16_t port) { mSctpPort.emplace(port); }
 
-void Description::addCandidate(Candidate candidate) {
-	mCandidates.emplace_back(std::move(candidate));
+void Description::addCandidate(std::optional<Candidate> candidate) {
+	if (candidate)
+		mCandidates.emplace_back(std::move(*candidate));
+	else
+		mTrickle = false;
 }
 
 Description::operator string() const {
@@ -119,9 +126,10 @@ Description::operator string() const {
 	sdp << "t=0 0\n";
 	sdp << "m=application 0 UDP/DTLS/SCTP webrtc-datachannel\n";
 	sdp << "c=IN IP4 0.0.0.0\n";
-	sdp << "a=ice-options:trickle\n";
 	sdp << "a=ice-ufrag:" << mIceUfrag << "\n";
 	sdp << "a=ice-pwd:" << mIcePwd << "\n";
+	if (mTrickle)
+		sdp << "a=ice-options:trickle\n";
 	sdp << "a=mid:" << mMid << "\n";
 	sdp << "a=setup:" << roleStr << "\n";
 	sdp << "a=dtls-id:1\n";
@@ -133,6 +141,9 @@ Description::operator string() const {
 	for (const auto &candidate : mCandidates) {
 		sdp << string(candidate) << "\n";
 	}
+
+	if (!mTrickle)
+		sdp << "a=end-of-candidates\n";
 
 	return sdp.str();
 }
