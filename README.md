@@ -26,14 +26,17 @@ make
 ### Signal a PeerConnection
 
 ```cpp
-auto pc = std::make_shared<PeerConnection>();
+rtc::Configuration config;
+config.iceServers.emplace_back("stunserver.org:3478");
 
-pc->onLocalDescription([](const Description &sdp) {
+auto pc = make_shared<rtc::PeerConnection>(config);
+
+pc->onLocalDescription([](const rtc::Description &sdp) {
     // Send the SDP to the remote peer
     MY_SEND_DESCRIPTION_TO_REMOTE(string(sdp));
 });
 
-pc->onLocalCandidate([](const optional<Candidate> &candidate) {
+pc->onLocalCandidate([](const optional<rtc::Candidate> &candidate) {
     if (candidate) {
         MY_SEND_CANDIDATE_TO_REMOTE(candidate->candidate(), candidate->mid());
     } else {
@@ -42,11 +45,11 @@ pc->onLocalCandidate([](const optional<Candidate> &candidate) {
 });
 
 MY_ON_RECV_DESCRIPTION_FROM_REMOTE([pc](string sdp) {
-    pc->setRemoteDescription(Description(sdp));
+    pc->setRemoteDescription(rtc::Description(sdp));
 });
 
 MY_ON_RECV_CANDIDATE_FROM_REMOTE([pc](string candidate, string mid) {
-    pc->addRemoteCandidate(Candidate(candidate, mid));
+    pc->addRemoteCandidate(rtc::Candidate(candidate, mid));
 });
 ```
 
@@ -67,7 +70,9 @@ dc->onMessage([](variant<binary, string> message) {
 ### Receive a DataChannel
 
 ```cpp
-pc->onDataChannel([&dc](shared_ptr<DataChannel> dc) {
+shared_ptr<rtc::DataChannel> dc;
+pc->onDataChannel([&mydc](shared_ptr<rtc::DataChannel> incoming) {
+	dc = incoming;
     dc->send("Hello world!");
 });
 
