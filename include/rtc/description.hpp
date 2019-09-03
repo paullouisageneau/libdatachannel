@@ -31,10 +31,10 @@ namespace rtc {
 
 class Description {
 public:
-	enum class Type { Offer, Answer };
-	enum class Role { Passive, Active, ActPass };
+	enum class Type { Unspec = 0, Offer = 1, Answer = 2 };
+	enum class Role { ActPass = 0, Passive = 1, Active = 2 };
 
-	Description(const string &sdp, Type type = Type::Offer, Role role = Role::ActPass);
+	Description(const string &sdp, Type type = Type::Unspec, Role role = Role::ActPass);
 
 	Type type() const;
 	Role role() const;
