@@ -92,15 +92,13 @@ Candidate::Candidate(string candidate, std::optional<string> mid) {
 	}
 }
 
-string Candidate::candidate() const {
+std::optional<string> Candidate::mid() const { return mMid; }
+
+Candidate::operator string() const {
 	std::ostringstream line;
 	line << "a=candidate:" << mCandidate;
 	return line.str();
 }
-
-std::optional<string> Candidate::mid() const { return mMid; }
-
-Candidate::operator string() const { return candidate(); }
 
 } // namespace rtc
 

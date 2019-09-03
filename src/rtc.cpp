@@ -103,7 +103,7 @@ void rtcSetLocalCandidateCallback(int pc,
 			    userPointer = jt->second;
 		    if (candidate) {
 			    auto mid = candidate->mid() ? *candidate->mid() : string();
-			    candidateCallback(candidate->candidate().c_str(), mid.c_str(), userPointer);
+			    candidateCallback(string(*candidate).c_str(), mid.c_str(), userPointer);
 		    } else {
 			    candidateCallback(nullptr, nullptr, userPointer);
 		    }

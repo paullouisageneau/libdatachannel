@@ -38,7 +38,7 @@ pc->onLocalDescription([](const rtc::Description &sdp) {
 
 pc->onLocalCandidate([](const optional<rtc::Candidate> &candidate) {
     if (candidate) {
-        MY_SEND_CANDIDATE_TO_REMOTE(candidate->candidate(), candidate->mid());
+        MY_SEND_CANDIDATE_TO_REMOTE(string(*candidate), candidate->mid());
     } else {
         // Gathering finished
     }

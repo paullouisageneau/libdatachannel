@@ -29,9 +29,7 @@ class Candidate {
 public:
 	Candidate(string candidate, std::optional<string> mid = nullopt);
 
-	string candidate() const;
 	std::optional<string> mid() const;
-
 	operator string() const;
 
 private:
