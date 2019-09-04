@@ -34,10 +34,13 @@ public:
 	enum class Type { Unspec = 0, Offer = 1, Answer = 2 };
 	enum class Role { ActPass = 0, Passive = 1, Active = 2 };
 
-	Description(const string &sdp, Type type = Type::Unspec, Role role = Role::ActPass);
+	Description(const string &sdp, const string &typeString = "");
+	Description(const string &sdp, Type type, Role role);
 
 	Type type() const;
+	string typeString() const;
 	Role role() const;
+	string roleString() const;
 	std::optional<string> fingerprint() const;
 	std::optional<uint16_t> sctpPort() const;
 
@@ -57,6 +60,10 @@ private:
 	std::optional<uint16_t> mSctpPort;
 	std::vector<Candidate> mCandidates;
 	bool mTrickle;
+
+	static Type stringToType(const string &typeString);
+	static string typeToString(Type type);
+	static string roleToString(Role role);
 };
 
 } // namespace rtc

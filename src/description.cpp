@@ -44,6 +44,9 @@ inline void trim_end(string &str) {
 
 namespace rtc {
 
+Description::Description(const string &sdp, const string &typeString)
+    : Description(sdp, stringToType(typeString), Description::Role::ActPass) {}
+
 Description::Description(const string &sdp, Type type, Role role)
     : mType(type), mRole(role), mMid("0"), mIceUfrag("0"), mIcePwd("0"), mTrickle(true) {
 	if (mType == Type::Answer && mRole == Role::ActPass)
@@ -88,7 +91,11 @@ Description::Description(const string &sdp, Type type, Role role)
 
 Description::Type Description::type() const { return mType; }
 
+string Description::typeString() const { return typeToString(mType); }
+
 Description::Role Description::role() const { return mRole; }
+
+string Description::roleString() const { return roleToString(mRole); }
 
 std::optional<string> Description::fingerprint() const { return mFingerprint; }
 
@@ -111,19 +118,6 @@ Description::operator string() const {
 	if (!mFingerprint)
 		throw std::logic_error("Fingerprint must be set to generate a SDP");
 
-	string roleStr;
-	switch (mRole) {
-	case Role::Active:
-		roleStr = "active";
-		break;
-	case Role::Passive:
-		roleStr = "passive";
-		break;
-	default:
-		roleStr = "actpass";
-		break;
-	}
-
 	std::ostringstream sdp;
 	sdp << "v=0\n";
 	sdp << "o=- " << mSessionId << " 0 IN IP4 0.0.0.0\n";
@@ -136,7 +130,7 @@ Description::operator string() const {
 	if (mTrickle)
 		sdp << "a=ice-options:trickle\n";
 	sdp << "a=mid:" << mMid << "\n";
-	sdp << "a=setup:" << roleStr << "\n";
+	sdp << "a=setup:" << roleToString(mRole) << "\n";
 	sdp << "a=dtls-id:1\n";
 	if (mFingerprint)
 		sdp << "a=fingerprint:sha-256 " << *mFingerprint << "\n";
@@ -151,6 +145,37 @@ Description::operator string() const {
 		sdp << "a=end-of-candidates\n";
 
 	return sdp.str();
+}
+
+Description::Type Description::stringToType(const string &typeString) {
+	if (typeString == "offer")
+		return Type::Offer;
+	else if (typeString == "answer")
+		return Type::Answer;
+	else
+		return Type::Unspec;
+}
+
+string Description::typeToString(Type type) {
+	switch (type) {
+	case Type::Offer:
+		return "offer";
+	case Type::Answer:
+		return "answer";
+	default:
+		return "";
+	}
+}
+
+string Description::roleToString(Role role) {
+	switch (role) {
+	case Role::Active:
+		return "active";
+	case Role::Passive:
+		return "passive";
+	default:
+		return "actpass";
+	}
 }
 
 } // namespace rtc

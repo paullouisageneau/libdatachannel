@@ -85,8 +85,8 @@ void rtcSetLocalDescriptionCallback(int pc, void (*descriptionCallback)(const ch
 		void *userPointer = nullptr;
 		if (auto jt = userPointerMap.find(pc); jt != userPointerMap.end())
 			userPointer = jt->second;
-		string type = description.type() == Description::Type::Answer ? "answer" : "offer";
-		descriptionCallback(string(description).c_str(), type.c_str(), userPointer);
+		descriptionCallback(string(description).c_str(), description.typeString().c_str(),
+		                    userPointer);
 	});
 }
 
@@ -115,9 +115,7 @@ void rtcSetRemoteDescription(int pc, const char *sdp, const char *type) {
 	if (it == peerConnectionMap.end())
 		return;
 
-	auto t =
-	    type && string(type) == "answer" ? Description::Type::Answer : Description::Type::Offer;
-	it->second->setRemoteDescription(Description(string(sdp), t));
+	it->second->setRemoteDescription(Description(string(sdp), string(type)));
 }
 
 void rtcAddRemoteCandidate(int pc, const char *candidate, const char *mid) {
