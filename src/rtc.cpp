@@ -102,8 +102,8 @@ void rtcSetLocalCandidateCallback(int pc,
 		    if (auto jt = userPointerMap.find(pc); jt != userPointerMap.end())
 			    userPointer = jt->second;
 		    if (candidate) {
-			    auto mid = candidate->mid() ? *candidate->mid() : string();
-			    candidateCallback(string(*candidate).c_str(), mid.c_str(), userPointer);
+			    candidateCallback(string(*candidate).c_str(), candidate->mid().c_str(),
+			                      userPointer);
 		    } else {
 			    candidateCallback(nullptr, nullptr, userPointer);
 		    }
@@ -115,7 +115,7 @@ void rtcSetRemoteDescription(int pc, const char *sdp, const char *type) {
 	if (it == peerConnectionMap.end())
 		return;
 
-	it->second->setRemoteDescription(Description(string(sdp), string(type)));
+	it->second->setRemoteDescription(Description(string(sdp), type ? string(type) : ""));
 }
 
 void rtcAddRemoteCandidate(int pc, const char *candidate, const char *mid) {
@@ -123,8 +123,7 @@ void rtcAddRemoteCandidate(int pc, const char *candidate, const char *mid) {
 	if (it == peerConnectionMap.end())
 		return;
 
-	it->second->addRemoteCandidate(
-	    Candidate(string(candidate), mid ? make_optional(string(mid)) : nullopt));
+	it->second->addRemoteCandidate(Candidate(string(candidate), mid ? string(mid) : ""));
 }
 
 int rtcGetDataChannelLabel(int dc, char *buffer, int size) {

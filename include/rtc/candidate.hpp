@@ -27,14 +27,14 @@ namespace rtc {
 
 class Candidate {
 public:
-	Candidate(string candidate, std::optional<string> mid = nullopt);
+	Candidate(string candidate, string mid = "");
 
-	std::optional<string> mid() const;
+	string mid() const;
 	operator string() const;
 
 private:
 	string mCandidate;
-	std::optional<string> mMid;
+	string mMid;
 };
 
 } // namespace rtc
