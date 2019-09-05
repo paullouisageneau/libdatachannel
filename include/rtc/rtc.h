@@ -36,7 +36,7 @@ int rtcGetDataChannelLabel(int dc, char *data, int size);
 void rtcSetOpenCallback(int dc, void (*openCallback)(void *));
 void rtcSetErrorCallback(int dc, void (*errorCallback)(const char *, void *));
 void rtcSetMessageCallback(int dc, void (*messageCallback)(const char *, int, void *));
-int rtcSendMessage(int dc, const char *buffer, int size);
+int rtcSendMessage(int dc, const char *data, int size);
 void rtcSetUserPointer(int i, void *ptr);
 
 #ifdef __cplusplus

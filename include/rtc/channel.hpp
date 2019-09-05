@@ -38,6 +38,8 @@ public:
 	void onClosed(std::function<void()> callback);
 	void onError(std::function<void(const string &error)> callback);
 	void onMessage(std::function<void(const std::variant<binary, string> &data)> callback);
+	void onMessage(std::function<void(const binary &data)> binaryCallback,
+	               std::function<void(const string &data)> stringCallback);
 
 protected:
 	virtual void triggerOpen(void);

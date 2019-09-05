@@ -32,6 +32,13 @@ void Channel::onMessage(std::function<void(const std::variant<binary, string> &d
 	mMessageCallback = callback;
 }
 
+void Channel::onMessage(std::function<void(const binary &data)> binaryCallback,
+                        std::function<void(const string &data)> stringCallback) {
+	onMessage([binaryCallback, stringCallback](const std::variant<binary, string> &data) {
+		std::visit(overloaded{binaryCallback, stringCallback}, data);
+	});
+}
+
 void Channel::triggerOpen(void) {
 	if (mOpenCallback)
 		mOpenCallback();
