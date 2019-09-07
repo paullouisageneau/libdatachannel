@@ -71,7 +71,7 @@ dc->onMessage([](variant<binary, string> message) {
 
 ```cpp
 shared_ptr<rtc::DataChannel> dc;
-pc->onDataChannel([&mydc](shared_ptr<rtc::DataChannel> incoming) {
+pc->onDataChannel([&dc](shared_ptr<rtc::DataChannel> incoming) {
     dc = incoming;
     dc->send("Hello world!");
 });
