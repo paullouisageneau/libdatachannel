@@ -155,7 +155,7 @@ bool SctpTransport::send(message_ptr message) {
 	// set sndinfo
 	spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
 	spa.sendv_sndinfo.snd_sid = uint16_t(message->stream);
-	spa.sendv_sndinfo.snd_ppid = ppid;
+	spa.sendv_sndinfo.snd_ppid = htonl(ppid);
 	spa.sendv_sndinfo.snd_flags |= SCTP_EOR;
 
 	// set prinfo
@@ -255,7 +255,8 @@ int SctpTransport::process(struct socket *sock, union sctp_sockstore addr, void 
 	if (flags & MSG_NOTIFICATION) {
 		processNotification((union sctp_notification *)data, len);
 	} else {
-		processData((const byte *)data, len, recv_info.rcv_sid, PayloadId(recv_info.rcv_ppid));
+		processData((const byte *)data, len, recv_info.rcv_sid,
+		            PayloadId(htonl(recv_info.rcv_ppid)));
 	}
 	free(data);
 	return 0;
