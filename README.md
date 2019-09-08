@@ -27,9 +27,13 @@ make
 
 ## Example
 
-In the following examples, note the callbacks are called in another thread.
+In the following example, notes the callbacks are called in another thread.
 
 ### Signal a PeerConnection
+
+```cpp
+#include "rtc/rtc.hpp"
+```
 
 ```cpp
 rtc::Configuration config;
@@ -83,3 +87,6 @@ pc->onDataChannel([&dc](const shared_ptr<rtc::DataChannel> &incoming) {
 });
 
 ```
+
+See [test/main.cpp](https://github.com/paullouisageneau/libdatachannel/blob/master/test/main.cpp) for a complete local connection example.
+
