@@ -1,10 +1,14 @@
 # libdatachannel - C/C++ WebRTC DataChannels
 
-libdatachannel is a simple implementation of WebRTC DataChannels in C++17 with C bindings. Its API is modelled as a simplified version of the JavaScript WebRTC API, in order to ease the design of cross-environment applications.
+libdatachannel is a standalone implementation of WebRTC DataChannels in C++17 with C bindings. It enables direct connectivity between native applications and web browsers without the pain of importing the entire WebRTC stack. Its API is modelled as a simplified version of the JavaScript WebRTC API, in order to ease the design of cross-environment applications.
 
 This projet is originally inspired by [librtcdcpp](https://github.com/chadnickbok/librtcdcpp), however it is a complete rewrite from scratch, because the messy architecture of librtcdcpp made solving its implementation issues difficult.
 
 Licensed under LGPLv2, see [LICENSE](https://github.com/paullouisageneau/libdatachannel/blob/master/LICENSE).
+
+## Compatibility
+
+This implementation has been tested to be compatible with Firefox and Chromium. It supports Multicast DNS candidates resolution provided the operating system also supports it.
 
 ## Dependencies
 
@@ -22,6 +26,8 @@ make
 ```
 
 ## Example
+
+In the following examples, note the callbacks are called in another thread.
 
 ### Signal a PeerConnection
 
@@ -71,7 +77,7 @@ dc->onMessage([](const variant<binary, string> &message) {
 
 ```cpp
 shared_ptr<rtc::DataChannel> dc;
-pc->onDataChannel([&dc](shared_ptr<rtc::DataChannel> incoming) {
+pc->onDataChannel([&dc](const shared_ptr<rtc::DataChannel> &incoming) {
     dc = incoming;
     dc->send("Hello world!");
 });
