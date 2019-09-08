@@ -35,7 +35,7 @@ using std::weak_ptr;
 
 IceTransport::IceTransport(const Configuration &config, Description::Role role,
                            candidate_callback candidateCallback, ready_callback ready)
-    : mRole(role), mState(State::Disconnected), mNiceAgent(nullptr, nullptr),
+    : mRole(role), mMid("0"), mState(State::Disconnected), mNiceAgent(nullptr, nullptr),
       mMainLoop(nullptr, nullptr), mCandidateCallback(std::move(candidateCallback)),
       mReadyCallback(ready) {
 
@@ -109,7 +109,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	                 G_CALLBACK(GatheringDoneCallback), this);
 
 	mStreamId = nice_agent_add_stream(mNiceAgent.get(), 1);
-	if (mStreamId == 0)
+	if (!mStreamId)
 		throw std::runtime_error("Failed to add a stream");
 
 	nice_agent_set_stream_name(mNiceAgent.get(), mStreamId, "application");
@@ -139,6 +139,7 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 void IceTransport::setRemoteDescription(const Description &description) {
 	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 	                                                        : Description::Role::Active;
+	mMid = description.mid();
 
 	if (nice_agent_parse_remote_sdp(mNiceAgent.get(), string(description).c_str()))
 		throw std::runtime_error("Failed to parse remote SDP");
@@ -185,7 +186,7 @@ void IceTransport::outgoing(message_ptr message) {
 }
 
 void IceTransport::processCandidate(const string &candidate) {
-	mCandidateCallback(Candidate(candidate, getStreamName()));
+	mCandidateCallback(Candidate(candidate, mMid));
 }
 
 void IceTransport::processGatheringDone() { mCandidateCallback(nullopt); }
@@ -195,11 +196,6 @@ void IceTransport::changeState(uint32_t state) {
 	if (mState == State::Ready) {
 		mReadyCallback();
 	}
-}
-
-string IceTransport::getStreamName() const {
-	const gchar *stream = nice_agent_get_stream_name(mNiceAgent.get(), mStreamId);
-	return string(stream);
 }
 
 void IceTransport::CandidateCallback(NiceAgent *agent, NiceCandidate *candidate,

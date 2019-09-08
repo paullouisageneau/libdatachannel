@@ -68,13 +68,12 @@ private:
 	void incoming(const byte *data, int size);
 	void outgoing(message_ptr message);
 
-	string getStreamName() const;
-
 	void changeState(uint32_t state);
 	void processCandidate(const string &candidate);
 	void processGatheringDone();
 
 	Description::Role mRole;
+	string mMid;
 	State mState;
 
 	uint32_t mStreamId = 0;

@@ -41,6 +41,7 @@ public:
 	string typeString() const;
 	Role role() const;
 	string roleString() const;
+	string mid() const;
 	std::optional<string> fingerprint() const;
 	std::optional<uint16_t> sctpPort() const;
 

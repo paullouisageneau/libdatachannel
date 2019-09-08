@@ -97,6 +97,8 @@ Description::Role Description::role() const { return mRole; }
 
 string Description::roleString() const { return roleToString(mRole); }
 
+string Description::mid() const { return mMid; }
+
 std::optional<string> Description::fingerprint() const { return mFingerprint; }
 
 std::optional<uint16_t> Description::sctpPort() const { return mSctpPort; }
