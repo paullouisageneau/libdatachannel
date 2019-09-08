@@ -82,7 +82,7 @@ private:
 	std::shared_ptr<DtlsTransport> mDtlsTransport;
 	std::shared_ptr<SctpTransport> mSctpTransport;
 
-	std::unordered_map<unsigned int, std::shared_ptr<DataChannel>> mDataChannels;
+	std::unordered_map<unsigned int, std::weak_ptr<DataChannel>> mDataChannels;
 
 	std::function<void(std::shared_ptr<DataChannel> dataChannel)> mDataChannelCallback;
 	std::function<void(const Description &description)> mLocalDescriptionCallback;

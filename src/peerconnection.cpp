@@ -142,8 +142,14 @@ void PeerConnection::forwardMessage(message_ptr message) {
 
 	shared_ptr<DataChannel> channel;
 	if (auto it = mDataChannels.find(message->stream); it != mDataChannels.end()) {
-		channel = it->second;
-	} else {
+		channel = it->second.lock();
+		if (!channel || channel->isClosed()) {
+			mDataChannels.erase(it);
+			channel = nullptr;
+		}
+	}
+
+	if (!channel) {
 		const byte dataChannelOpenMessage{0x03};
 		unsigned int remoteParity = (mIceTransport->role() == Description::Role::Active) ? 1 : 0;
 		if (message->type == Message::Control && *message->data() == dataChannelOpenMessage &&
@@ -162,8 +168,16 @@ void PeerConnection::forwardMessage(message_ptr message) {
 }
 
 void PeerConnection::openDataChannels(void) {
-	for (const auto &[stream, dataChannel] : mDataChannels)
-		dataChannel->open(mSctpTransport);
+	auto it = mDataChannels.begin();
+	while (it != mDataChannels.end()) {
+		auto channel = it->second.lock();
+		if (!channel || channel->isClosed()) {
+			it = mDataChannels.erase(it);
+			continue;
+		}
+		channel->open(mSctpTransport);
+		++it;
+	}
 }
 
 void PeerConnection::processLocalDescription(Description description) {
