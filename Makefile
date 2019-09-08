@@ -24,7 +24,7 @@ src/%.o: src/%.cpp
 test/%.o: test/%.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Iinclude -MMD -MP -o $@ -c $<
 
--include $(subst .o,.d,$(OBJS))
+-include $(subst .cpp,.d,$(SRCS))
 
 $(NAME).a: $(OBJS)
 	$(AR) crf $@ $(OBJS)
