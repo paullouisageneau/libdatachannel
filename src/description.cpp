@@ -82,7 +82,7 @@ Description::Description(const string &sdp, Type type, Role role)
 		} else if (hasprefix(line, "a=sctp-port")) {
 			mSctpPort = uint16_t(std::stoul(line.substr(line.find(':') + 1)));
 		} else if (hasprefix(line, "a=candidate")) {
-			mCandidates.emplace_back(Candidate(line, mMid));
+			mCandidates.emplace_back(Candidate(line.substr(2), mMid));
 		} else if (hasprefix(line, "a=end-of-candidates")) {
 			mTrickle = false;
 		}
@@ -125,7 +125,7 @@ Description::operator string() const {
 	sdp << "o=- " << mSessionId << " 0 IN IP4 0.0.0.0\n";
 	sdp << "s=-\n";
 	sdp << "t=0 0\n";
-	sdp << "m=application 0 UDP/DTLS/SCTP webrtc-datachannel\n";
+	sdp << "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\n";
 	sdp << "c=IN IP4 0.0.0.0\n";
 	sdp << "a=ice-ufrag:" << mIceUfrag << "\n";
 	sdp << "a=ice-pwd:" << mIcePwd << "\n";
