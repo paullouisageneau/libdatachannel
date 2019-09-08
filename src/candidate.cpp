@@ -92,11 +92,13 @@ Candidate::Candidate(string candidate, string mid) {
 	}
 }
 
+string Candidate::candidate() const { return "candidate:" + mCandidate; }
+
 string Candidate::mid() const { return mMid; }
 
 Candidate::operator string() const {
 	std::ostringstream line;
-	line << "a=candidate:" << mCandidate;
+	line << "a=" << candidate();
 	return line.str();
 }
 

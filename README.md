@@ -38,7 +38,7 @@ pc->onLocalDescription([](const rtc::Description &sdp) {
 
 pc->onLocalCandidate([](const optional<rtc::Candidate> &candidate) {
     if (candidate) {
-        MY_SEND_CANDIDATE_TO_REMOTE(string(*candidate), candidate->mid());
+        MY_SEND_CANDIDATE_TO_REMOTE(candidate->candidate(), candidate->mid());
     } else {
         // Gathering finished
     }
@@ -60,7 +60,7 @@ auto dc = pc->createDataChannel("test");
 dc->onOpen([]() {
     cout << "Open" << endl;
 });
-dc->onMessage([](variant<binary, string> message) {
+dc->onMessage([](const variant<binary, string> &message) {
     if (holds_alternative<string>(message)) {
         cout << "Received: " << get<string>(message) << endl;
     }

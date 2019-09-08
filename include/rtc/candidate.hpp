@@ -29,6 +29,7 @@ class Candidate {
 public:
 	Candidate(string candidate, string mid = "");
 
+	string candidate() const;
 	string mid() const;
 	operator string() const;
 

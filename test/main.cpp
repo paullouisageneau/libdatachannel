@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 	dc1->onOpen([dc1]() {
 		cout << "DataChannel open: " << dc1->label() << endl;
 	});
-	dc1->onMessage([](variant<binary, string> message) {
+	dc1->onMessage([](const variant<binary, string> &message) {
 		if (holds_alternative<string>(message)) {
 			cout << "Received: " << get<string>(message) << endl;
 		}
