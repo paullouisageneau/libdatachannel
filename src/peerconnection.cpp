@@ -63,8 +63,6 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 
 	if (mIceTransport->addRemoteCandidate(candidate))
 		mRemoteDescription->addCandidate(std::make_optional(std::move(candidate)));
-	else
-		std::cerr << "Failed to add remote ICE candidate" << std::endl;
 }
 
 shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,

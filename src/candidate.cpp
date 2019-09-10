@@ -81,7 +81,7 @@ Candidate::Candidate(string candidate, string mid) {
 						ss << foundation << sp << component << sp << transport << sp << priority;
 						ss << sp << nodebuffer << sp << servbuffer << sp << "typ" << sp << type;
 						if (!left.empty())
-							ss << sp << left;
+							ss << left;
 						mCandidate = ss.str();
 						break;
 					}
