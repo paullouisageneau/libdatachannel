@@ -8,7 +8,7 @@ Licensed under LGPLv2, see [LICENSE](https://github.com/paullouisageneau/libdata
 
 ## Compatibility
 
-This implementation has been tested to be compatible with Firefox and Chromium. It supports Multicast DNS candidates resolution provided the operating system also supports it.
+This implementation has been tested to be compatible with Firefox and Chromium. It supports IPv6 and Multicast DNS candidates resolution provided the operating system also supports it.
 
 ## Dependencies
 
@@ -21,13 +21,13 @@ Submodules:
 ## Building
 
 ```bash
-git submodule update --init --recursive
-make
+$ git submodule update --init --recursive
+$ make
 ```
 
 ## Example
 
-In the following example, notes the callbacks are called in another thread.
+In the following example, note the callbacks are called in another thread.
 
 ### Signal a PeerConnection
 
@@ -37,7 +37,7 @@ In the following example, notes the callbacks are called in another thread.
 
 ```cpp
 rtc::Configuration config;
-config.iceServers.emplace_back("stunserver.org:3478");
+config.iceServers.emplace_back("mystunserver.org:3478");
 
 auto pc = make_shared<rtc::PeerConnection>(config);
 
@@ -81,7 +81,7 @@ dc->onMessage([](const variant<binary, string> &message) {
 
 ```cpp
 shared_ptr<rtc::DataChannel> dc;
-pc->onDataChannel([&dc](const shared_ptr<rtc::DataChannel> &incoming) {
+pc->onDataChannel([&dc](shared_ptr<rtc::DataChannel> incoming) {
     dc = incoming;
     dc->send("Hello world!");
 });
