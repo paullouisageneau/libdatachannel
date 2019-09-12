@@ -120,6 +120,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, re
 
 SctpTransport::~SctpTransport() {
 	mStopping = true;
+	mConnectCondition.notify_all();
 	if (mConnectThread.joinable())
 		mConnectThread.join();
 
@@ -135,6 +136,9 @@ SctpTransport::~SctpTransport() {
 bool SctpTransport::isReady() const { return mIsReady; }
 
 bool SctpTransport::send(message_ptr message) {
+	if (!message)
+		return false;
+
 	const Reliability reliability = message->reliability ? *message->reliability : Reliability();
 
 	struct sctp_sendv_spa spa = {};
@@ -201,6 +205,11 @@ void SctpTransport::reset(unsigned int stream) {
 }
 
 void SctpTransport::incoming(message_ptr message) {
+	if (!message) {
+		recv(nullptr);
+		return;
+	}
+
 	// There could be a race condition here where we receive the remote INIT before the thread in
 	// usrsctp_connect sends the local one, which would result in the connection being aborted.
 	// Therefore, we need to wait for data to be sent on our side (i.e. the local INIT) before
@@ -215,26 +224,31 @@ void SctpTransport::incoming(message_ptr message) {
 }
 
 void SctpTransport::runConnect() {
-	struct sockaddr_conn sconn = {};
-	sconn.sconn_family = AF_CONN;
-	sconn.sconn_port = htons(mPort);
-	sconn.sconn_addr = this;
+	try {
+		struct sockaddr_conn sconn = {};
+		sconn.sconn_family = AF_CONN;
+		sconn.sconn_port = htons(mPort);
+		sconn.sconn_addr = this;
 #ifdef HAVE_SCONN_LEN
-	sconn.sconn_len = sizeof(sconn);
+		sconn.sconn_len = sizeof(sconn);
 #endif
 
-	// According to the IETF draft, both endpoints must initiate the SCTP association, in a
-	// simultaneous-open manner, irrelevent to the SDP setup role.
-	// See https://tools.ietf.org/html/draft-ietf-mmusic-sctp-sdp-26#section-9.3
-	if (usrsctp_connect(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)) != 0) {
-		std::cerr << "SCTP connection failed, errno=" << errno << std::endl;
-		mStopping = true;
-		return;
-	}
+		// According to the IETF draft, both endpoints must initiate the SCTP association, in a
+		// simultaneous-open manner, irrelevent to the SDP setup role.
+		// See https://tools.ietf.org/html/draft-ietf-mmusic-sctp-sdp-26#section-9.3
+		if (usrsctp_connect(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)) !=
+		    0) {
+			std::cerr << "SCTP connection failed, errno=" << errno << std::endl;
+			mStopping = true;
+			return;
+		}
 
-	if (!mStopping) {
-		mIsReady = true;
-		mReadyCallback();
+		if (!mStopping) {
+			mIsReady = true;
+			mReadyCallback();
+		}
+	} catch (const std::exception &e) {
+		std::cerr << "SCTP connect: " << e.what() << std::endl;
 	}
 }
 
@@ -251,12 +265,11 @@ int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_
 }
 
 int SctpTransport::process(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
-                           struct sctp_rcvinfo recv_info, int flags) {
+                           struct sctp_rcvinfo info, int flags) {
 	if (flags & MSG_NOTIFICATION) {
 		processNotification((union sctp_notification *)data, len);
 	} else {
-		processData((const byte *)data, len, recv_info.rcv_sid,
-		            PayloadId(htonl(recv_info.rcv_ppid)));
+		processData((const byte *)data, len, info.rcv_sid, PayloadId(htonl(info.rcv_ppid)));
 	}
 	free(data);
 	return 0;

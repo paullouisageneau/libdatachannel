@@ -167,7 +167,7 @@ bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 }
 
 bool IceTransport::send(message_ptr message) {
-	if (!mStreamId)
+	if (!message || !mStreamId)
 		return false;
 
 	outgoing(message);

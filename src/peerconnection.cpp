@@ -138,6 +138,11 @@ void PeerConnection::forwardMessage(message_ptr message) {
 	if (!mIceTransport || !mSctpTransport)
 		throw std::logic_error("Got a DataChannel message without transport");
 
+	if (!message) {
+		closeDataChannels();
+		return;
+	}
+
 	shared_ptr<DataChannel> channel;
 	if (auto it = mDataChannels.find(message->stream); it != mDataChannels.end()) {
 		channel = it->second.lock();
@@ -165,7 +170,8 @@ void PeerConnection::forwardMessage(message_ptr message) {
 	channel->incoming(message);
 }
 
-void PeerConnection::openDataChannels(void) {
+void PeerConnection::iterateDataChannels(
+    std::function<void(shared_ptr<DataChannel> channel)> func) {
 	auto it = mDataChannels.begin();
 	while (it != mDataChannels.end()) {
 		auto channel = it->second.lock();
@@ -173,9 +179,17 @@ void PeerConnection::openDataChannels(void) {
 			it = mDataChannels.erase(it);
 			continue;
 		}
-		channel->open(mSctpTransport);
+		func(channel);
 		++it;
 	}
+}
+
+void PeerConnection::openDataChannels() {
+	iterateDataChannels([this](shared_ptr<DataChannel> channel) { channel->open(mSctpTransport); });
+}
+
+void PeerConnection::closeDataChannels() {
+	iterateDataChannels([](shared_ptr<DataChannel> channel) { channel->close(); });
 }
 
 void PeerConnection::processLocalDescription(Description description) {

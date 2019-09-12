@@ -22,6 +22,7 @@
 #include <cassert>
 #include <cstring>
 #include <exception>
+#include <iostream>
 
 #include <gnutls/dtls.h>
 
@@ -82,6 +83,9 @@ DtlsTransport::~DtlsTransport() {
 }
 
 bool DtlsTransport::send(message_ptr message) {
+	if (!message)
+		return false;
+
 	while (true) {
 		ssize_t ret = gnutls_record_send(mSession, message->data(), message->size());
 		if (check_gnutls(ret)) {
@@ -93,24 +97,31 @@ bool DtlsTransport::send(message_ptr message) {
 void DtlsTransport::incoming(message_ptr message) { mIncomingQueue.push(message); }
 
 void DtlsTransport::runRecvLoop() {
-	while (!check_gnutls(gnutls_handshake(mSession), "TLS handshake failed")) {}
-
-	mReadyCallback();
-
-	const size_t bufferSize = 2048;
-	char buffer[bufferSize];
-
-	while (true) {
-		ssize_t ret = gnutls_record_recv(mSession, buffer, bufferSize);
-		if (check_gnutls(ret)) {
-			if (ret == 0) {
-				// Closed
-				break;
-			}
-			auto *b = reinterpret_cast<byte *>(buffer);
-			recv(make_message(b, b + ret));
+	try {
+		while (!check_gnutls(gnutls_handshake(mSession), "TLS handshake failed")) {
 		}
+
+		mReadyCallback();
+
+		const size_t bufferSize = 2048;
+		char buffer[bufferSize];
+
+		while (true) {
+			ssize_t ret = gnutls_record_recv(mSession, buffer, bufferSize);
+			if (check_gnutls(ret)) {
+				if (ret == 0) {
+					// Closed
+					break;
+				}
+				auto *b = reinterpret_cast<byte *>(buffer);
+				recv(make_message(b, b + ret));
+			}
+		}
+	} catch (const std::exception &e) {
+		std::cerr << "DTLS recv: " << e.what() << std::endl;
 	}
+
+	recv(nullptr);
 }
 
 int DtlsTransport::CertificateCallback(gnutls_session_t session) {
@@ -120,7 +131,6 @@ int DtlsTransport::CertificateCallback(gnutls_session_t session) {
 		return GNUTLS_E_CERTIFICATE_ERROR;
 	}
 
-	// Get peer's certificate
 	unsigned int count = 0;
 	const gnutls_datum_t *array = gnutls_certificate_get_peers(session, &count);
 	if (!array || count == 0) {
@@ -155,13 +165,13 @@ ssize_t DtlsTransport::WriteCallback(gnutls_transport_ptr_t ptr, const void *dat
 ssize_t DtlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
 	auto next = t->mIncomingQueue.pop();
-	if (!next) {
+	auto message = next ? *next : nullptr;
+	if (!message) {
 		// Closed
 		gnutls_transport_set_errno(t->mSession, 0);
 		return 0;
 	}
 
-	auto message = *next;
 	ssize_t len = std::min(maxlen, message->size());
 	std::memcpy(data, message->data(), len);
 	gnutls_transport_set_errno(t->mSession, 0);

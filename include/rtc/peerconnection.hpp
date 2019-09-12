@@ -66,7 +66,9 @@ private:
 
 	bool checkFingerprint(const std::string &fingerprint) const;
 	void forwardMessage(message_ptr message);
-	void openDataChannels(void);
+	void iterateDataChannels(std::function<void(std::shared_ptr<DataChannel> channel)> func);
+	void openDataChannels();
+	void closeDataChannels();
 
 	void processLocalDescription(Description description);
 	void processLocalCandidate(std::optional<Candidate> candidate);
