@@ -202,25 +202,41 @@ void IceTransport::CandidateCallback(NiceAgent *agent, NiceCandidate *candidate,
                                      gpointer userData) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(userData);
 	gchar *cand = nice_agent_generate_local_candidate_sdp(agent, candidate);
-	iceTransport->processCandidate(cand);
+	try {
+		iceTransport->processCandidate(cand);
+	} catch (const std::exception &e) {
+		std::cerr << "ICE candidate: " << e.what() << std::endl;
+	}
 	g_free(cand);
 }
 
 void IceTransport::GatheringDoneCallback(NiceAgent *agent, guint streamId, gpointer userData) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(userData);
-	iceTransport->processGatheringDone();
+	try {
+		iceTransport->processGatheringDone();
+	} catch (const std::exception &e) {
+		std::cerr << "ICE gathering done: " << e.what() << std::endl;
+	}
 }
 
 void IceTransport::StateChangedCallback(NiceAgent *agent, guint streamId, guint componentId,
                                         guint state, gpointer userData) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(userData);
-	iceTransport->changeState(state);
+	try {
+		iceTransport->changeState(state);
+	} catch (const std::exception &e) {
+		std::cerr << "ICE change state: " << e.what() << std::endl;
+	}
 }
 
 void IceTransport::RecvCallback(NiceAgent *agent, guint streamId, guint componentId, guint len,
                                 gchar *buf, gpointer userData) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(userData);
-	iceTransport->incoming(reinterpret_cast<byte *>(buf), len);
+	try {
+		iceTransport->incoming(reinterpret_cast<byte *>(buf), len);
+	} catch (const std::exception &e) {
+		std::cerr << "ICE incoming: " << e.what() << std::endl;
+	}
 }
 
 void IceTransport::LogCallback(const gchar *logDomain, GLogLevelFlags logLevel,
