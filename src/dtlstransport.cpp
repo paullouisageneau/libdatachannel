@@ -47,9 +47,11 @@ namespace rtc {
 using std::shared_ptr;
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
-                             verifier_callback verifier, ready_callback ready)
-    : Transport(lower), mCertificate(certificate), mVerifierCallback(std::move(verifier)),
-      mReadyCallback(std::move(ready)) {
+                             verifier_callback verifierCallback,
+                             state_callback stateChangedCallback)
+    : Transport(lower), mCertificate(certificate), mState(State::Disconnected),
+      mVerifierCallback(std::move(verifierCallback)),
+      mStateChangedCallback(std::move(stateChangedCallback)) {
 	gnutls_certificate_set_verify_function(mCertificate->credentials(), CertificateCallback);
 
 	bool active = lower->role() == Description::Role::Active;
@@ -82,6 +84,8 @@ DtlsTransport::~DtlsTransport() {
 	gnutls_deinit(mSession);
 }
 
+DtlsTransport::State DtlsTransport::state() const { return mState; }
+
 bool DtlsTransport::send(message_ptr message) {
 	if (!message)
 		return false;
@@ -96,12 +100,25 @@ bool DtlsTransport::send(message_ptr message) {
 
 void DtlsTransport::incoming(message_ptr message) { mIncomingQueue.push(message); }
 
+void DtlsTransport::changeState(State state) {
+	mState = state;
+	mStateChangedCallback(state);
+}
+
 void DtlsTransport::runRecvLoop() {
 	try {
+		changeState(State::Connecting);
+
 		while (!check_gnutls(gnutls_handshake(mSession), "TLS handshake failed")) {
 		}
+	} catch (const std::exception &e) {
+		std::cerr << "DTLS handshake: " << e.what() << std::endl;
+		changeState(State::Failed);
+		return;
+	}
 
-		mReadyCallback();
+	try {
+		changeState(State::Connected);
 
 		const size_t bufferSize = 2048;
 		char buffer[bufferSize];
@@ -117,10 +134,12 @@ void DtlsTransport::runRecvLoop() {
 				recv(make_message(b, b + ret));
 			}
 		}
+
 	} catch (const std::exception &e) {
 		std::cerr << "DTLS recv: " << e.what() << std::endl;
 	}
 
+	changeState(State::Disconnected);
 	recv(nullptr);
 }
 

@@ -34,11 +34,13 @@ using std::shared_ptr;
 PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 
 PeerConnection::PeerConnection(const Configuration &config)
-    : mConfig(config), mCertificate(make_certificate("libdatachannel")) {}
+    : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New) {}
 
 PeerConnection::~PeerConnection() {}
 
 const Configuration *PeerConnection::config() const { return &mConfig; }
+
+PeerConnection::State PeerConnection::state() const { return mState; }
 
 std::optional<Description> PeerConnection::localDescription() const { return mLocalDescription; }
 
@@ -62,7 +64,7 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 		throw std::logic_error("Remote candidate set without remote description");
 
 	if (mIceTransport->addRemoteCandidate(candidate))
-		mRemoteDescription->addCandidate(std::make_optional(std::move(candidate)));
+		mRemoteDescription->addCandidate(std::move(candidate));
 }
 
 shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
@@ -86,7 +88,7 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 		initIceTransport(Description::Role::Active);
 		processLocalDescription(mIceTransport->getLocalDescription(Description::Type::Offer));
 		mIceTransport->gatherLocalCandidates();
-	} else if (mSctpTransport && mSctpTransport->isReady()) {
+	} else if (mSctpTransport && mSctpTransport->state() == SctpTransport::State::Connected) {
 		channel->open(mSctpTransport);
 	}
 	return channel;
@@ -102,28 +104,82 @@ void PeerConnection::onLocalDescription(
 	mLocalDescriptionCallback = callback;
 }
 
-void PeerConnection::onLocalCandidate(
-    std::function<void(const std::optional<Candidate> &candidate)> callback) {
+void PeerConnection::onLocalCandidate(std::function<void(const Candidate &candidate)> callback) {
 	mLocalCandidateCallback = callback;
+}
+
+void PeerConnection::onStateChanged(std::function<void(State state)> callback) {
+	mStateChangedCallback = callback;
 }
 
 void PeerConnection::initIceTransport(Description::Role role) {
 	mIceTransport = std::make_shared<IceTransport>(
 	    mConfig, role, std::bind(&PeerConnection::processLocalCandidate, this, _1),
-	    std::bind(&PeerConnection::initDtlsTransport, this));
+	    [this](IceTransport::State state) {
+		    switch (state) {
+		    case IceTransport::State::Gathering:
+			    changeState(State::Gathering);
+			    break;
+		    case IceTransport::State::Finished:
+			    if (mLocalDescription)
+				    mLocalDescription->endCandidates();
+			    changeState(State::Finished);
+			    break;
+		    case IceTransport::State::Connecting:
+			    changeState(State::Connecting);
+			    break;
+		    case IceTransport::State::Failed:
+			    changeState(State::Failed);
+			    break;
+		    case IceTransport::State::Ready:
+			    initDtlsTransport();
+			    break;
+		    default:
+			    // Ignore
+			    break;
+		    }
+	    });
 }
 
 void PeerConnection::initDtlsTransport() {
 	mDtlsTransport = std::make_shared<DtlsTransport>(
 	    mIceTransport, mCertificate, std::bind(&PeerConnection::checkFingerprint, this, _1),
-	    std::bind(&PeerConnection::initSctpTransport, this));
+	    [this](DtlsTransport::State state) {
+		    switch (state) {
+		    case DtlsTransport::State::Connected:
+			    initSctpTransport();
+			    break;
+		    case DtlsTransport::State::Failed:
+			    changeState(State::Failed);
+			    break;
+		    default:
+			    // Ignore
+			    break;
+		    }
+	    });
 }
 
 void PeerConnection::initSctpTransport() {
 	uint16_t sctpPort = mRemoteDescription->sctpPort().value_or(DEFAULT_SCTP_PORT);
 	mSctpTransport = std::make_shared<SctpTransport>(
-	    mDtlsTransport, sctpPort, std::bind(&PeerConnection::openDataChannels, this),
-	    std::bind(&PeerConnection::forwardMessage, this, _1));
+	    mDtlsTransport, sctpPort, std::bind(&PeerConnection::forwardMessage, this, _1),
+	    [this](SctpTransport::State state) {
+		    switch (state) {
+		    case SctpTransport::State::Connected:
+			    changeState(State::Connected);
+			    openDataChannels();
+			    break;
+		    case SctpTransport::State::Failed:
+			    changeState(State::Failed);
+			    break;
+		    case SctpTransport::State::Disconnected:
+			    changeState(State::Disconnected);
+			    break;
+		    default:
+			    // Ignore
+			    break;
+		    }
+	    });
 }
 
 bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
@@ -203,7 +259,7 @@ void PeerConnection::processLocalDescription(Description description) {
 		mLocalDescriptionCallback(*mLocalDescription);
 }
 
-void PeerConnection::processLocalCandidate(std::optional<Candidate> candidate) {
+void PeerConnection::processLocalCandidate(Candidate candidate) {
 	if (!mLocalDescription)
 		throw std::logic_error("Got a local candidate without local description");
 
@@ -218,4 +274,43 @@ void PeerConnection::triggerDataChannel(std::shared_ptr<DataChannel> dataChannel
 		mDataChannelCallback(dataChannel);
 }
 
+void PeerConnection::changeState(State state) {
+	mState = state;
+	if (mStateChangedCallback)
+		mStateChangedCallback(state);
+}
+
 } // namespace rtc
+
+std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &state) {
+	using namespace rtc;
+	string str;
+	switch (state) {
+	case PeerConnection::State::New:
+		str = "new";
+		break;
+	case PeerConnection::State::Gathering:
+		str = "gathering";
+		break;
+	case PeerConnection::State::Finished:
+		str = "finished";
+		break;
+	case PeerConnection::State::Connecting:
+		str = "connecting";
+		break;
+	case PeerConnection::State::Connected:
+		str = "connected";
+		break;
+	case PeerConnection::State::Disconnected:
+		str = "disconnected";
+		break;
+	case PeerConnection::State::Failed:
+		str = "failed";
+		break;
+	default:
+		str = "unknown";
+		break;
+	}
+	return out << str;
+}
+

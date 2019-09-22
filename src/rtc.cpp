@@ -95,15 +95,20 @@ void rtcSetLocalCandidateCallback(int pc,
 	if (it == peerConnectionMap.end())
 		return;
 
-	it->second->onLocalCandidate(
-	    [pc, candidateCallback](const std::optional<Candidate> &candidate) {
-		    if (candidate) {
-			    candidateCallback(string(*candidate).c_str(), candidate->mid().c_str(),
-			                      getUserPointer(pc));
-		    } else {
-			    candidateCallback(nullptr, nullptr, getUserPointer(pc));
-		    }
-	    });
+	it->second->onLocalCandidate([pc, candidateCallback](const Candidate &candidate) {
+		candidateCallback(candidate.candidate().c_str(), candidate.mid().c_str(),
+		                  getUserPointer(pc));
+	});
+}
+
+void rtcSetStateChangedCallback(int pc, void (*stateCallback)(rtc_state_t state, void *)) {
+	auto it = peerConnectionMap.find(pc);
+	if (it == peerConnectionMap.end())
+		return;
+
+	it->second->onStateChanged([pc, stateCallback](PeerConnection::State state) {
+		stateCallback(static_cast<rtc_state_t>(state), getUserPointer(pc));
+	});
 }
 
 void rtcSetRemoteDescription(int pc, const char *sdp, const char *type) {

@@ -16,11 +16,26 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef RTC_C_API
+#define RTC_C_API
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // libdatachannel rtc C API
+
+typedef enum {
+	RTC_NEW = 0,
+	RTC_GATHERING = 1,
+	RTC_FINISHED = 2,
+	RTC_CONNECTING = 3,
+	RTC_CONNECTED = 4,
+	RTC_DISCONNECTED = 5,
+	RTC_FAILED = 6,
+	RTC_CLOSED = 7
+} rtc_state_t;
+
 int rtcCreatePeerConnection(const char **iceServers, int iceServersCount);
 void rtcDeletePeerConnection(int pc);
 int rtcCreateDataChannel(int pc, const char *label);
@@ -30,6 +45,7 @@ void rtcSetLocalDescriptionCallback(int pc, void (*descriptionCallback)(const ch
                                                                         void *));
 void rtcSetLocalCandidateCallback(int pc,
                                   void (*candidateCallback)(const char *, const char *, void *));
+void rtcSetStateChangedCallback(int pc, void (*stateCallback)(rtc_state_t state, void *));
 void rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 void rtcAddRemoteCandidate(int pc, const char *candidate, const char *mid);
 int rtcGetDataChannelLabel(int dc, char *data, int size);
@@ -41,5 +57,7 @@ void rtcSetUserPointer(int i, void *ptr);
 
 #ifdef __cplusplus
 } // extern "C"
+#endif
+
 #endif
 

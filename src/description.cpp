@@ -109,12 +109,11 @@ void Description::setFingerprint(string fingerprint) {
 
 void Description::setSctpPort(uint16_t port) { mSctpPort.emplace(port); }
 
-void Description::addCandidate(std::optional<Candidate> candidate) {
-	if (candidate)
-		mCandidates.emplace_back(std::move(*candidate));
-	else
-		mTrickle = false;
+void Description::addCandidate(Candidate candidate) {
+	mCandidates.emplace_back(std::move(candidate));
 }
+
+void Description::endCandidates() { mTrickle = false; }
 
 Description::operator string() const {
 	if (!mFingerprint)

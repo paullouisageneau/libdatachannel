@@ -31,7 +31,6 @@ extern "C" {
 }
 
 #include <atomic>
-#include <optional>
 #include <thread>
 
 namespace rtc {
@@ -41,17 +40,18 @@ public:
 	enum class State : uint32_t {
 		Disconnected = NICE_COMPONENT_STATE_DISCONNECTED,
 		Gathering = NICE_COMPONENT_STATE_GATHERING,
+		Finished = static_cast<uint32_t>(NICE_COMPONENT_STATE_LAST) + 1,
 		Connecting = NICE_COMPONENT_STATE_CONNECTING,
 		Connected = NICE_COMPONENT_STATE_CONNECTED,
 		Ready = NICE_COMPONENT_STATE_READY,
 		Failed = NICE_COMPONENT_STATE_FAILED
 	};
 
-	using candidate_callback = std::function<void(const std::optional<Candidate> &candidate)>;
-	using ready_callback = std::function<void(void)>;
+	using candidate_callback = std::function<void(const Candidate &candidate)>;
+	using state_callback = std::function<void(State state)>;
 
 	IceTransport(const Configuration &config, Description::Role role,
-	             candidate_callback candidateCallback, ready_callback ready);
+	             candidate_callback candidateCallback, state_callback stateChangedCallback);
 	~IceTransport();
 
 	Description::Role role() const;
@@ -74,7 +74,7 @@ private:
 
 	Description::Role mRole;
 	string mMid;
-	State mState;
+	std::atomic<State> mState;
 
 	uint32_t mStreamId = 0;
 	std::unique_ptr<NiceAgent, void (*)(gpointer)> mNiceAgent;
@@ -82,7 +82,7 @@ private:
 	std::thread mMainLoopThread;
 
 	candidate_callback mCandidateCallback;
-	ready_callback mReadyCallback;
+	state_callback mStateChangedCallback;
 
 	static void CandidateCallback(NiceAgent *agent, NiceCandidate *candidate, gpointer userData);
 	static void GatheringDoneCallback(NiceAgent *agent, guint streamId, gpointer userData);

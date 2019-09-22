@@ -36,13 +36,15 @@ namespace rtc {
 
 class SctpTransport : public Transport {
 public:
-	using ready_callback = std::function<void(void)>;
+	enum class State { Disconnected, Connecting, Connected, Failed };
 
-	SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, ready_callback ready,
-	              message_callback recv);
+	using state_callback = std::function<void(State state)>;
+
+	SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, message_callback recv,
+	              state_callback stateChangedCallback);
 	~SctpTransport();
 
-	bool isReady() const;
+	State state() const;
 
 	bool send(message_ptr message);
 	void reset(unsigned int stream);
@@ -57,6 +59,7 @@ private:
 	};
 
 	void incoming(message_ptr message);
+	void changeState(State state);
 	void runConnect();
 
 	int handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df);
@@ -67,18 +70,18 @@ private:
 	void processData(const byte *data, size_t len, uint16_t streamId, PayloadId ppid);
 	void processNotification(const union sctp_notification *notify, size_t len);
 
-	ready_callback mReadyCallback;
-
 	struct socket *mSock;
 	uint16_t mPort;
 
 	std::thread mConnectThread;
-	std::atomic<bool> mStopping = false;
-	std::atomic<bool> mIsReady = false;
-
 	std::mutex mConnectMutex;
 	std::condition_variable mConnectCondition;
 	std::atomic<bool> mConnectDataSent = false;
+	std::atomic<bool> mStopping = false;
+
+	std::atomic<State> mState;
+
+	state_callback mStateChangedCallback;
 
 	static int WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos, uint8_t set_df);
 	static int ReadCallback(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,

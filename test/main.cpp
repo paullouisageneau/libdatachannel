@@ -38,24 +38,24 @@ int main(int argc, char **argv) {
 		pc2->setRemoteDescription(sdp);
 	});
 
-	pc1->onLocalCandidate([pc2](const optional<Candidate> &candidate) {
-		if (candidate) {
-			cout << "Candidate 1: " << *candidate << endl;
-			pc2->addRemoteCandidate(*candidate);
-		}
+	pc1->onLocalCandidate([pc2](const Candidate &candidate) {
+		cout << "Candidate 1: " << candidate << endl;
+		pc2->addRemoteCandidate(candidate);
 	});
+
+	pc1->onStateChanged([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
 
 	pc2->onLocalDescription([pc1](const Description &sdp) {
 		cout << "Description 2: " << sdp << endl;
 		pc1->setRemoteDescription(sdp);
 	});
 
-	pc2->onLocalCandidate([pc1](const optional<Candidate> &candidate) {
-		if (candidate) {
-			cout << "Candidate 2: " << *candidate << endl;
-			pc1->addRemoteCandidate(*candidate);
-		}
+	pc2->onLocalCandidate([pc1](const Candidate &candidate) {
+		cout << "Candidate 2: " << candidate << endl;
+		pc1->addRemoteCandidate(candidate);
 	});
+
+	pc2->onStateChanged([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
 
 	shared_ptr<DataChannel> dc2;
 	pc2->onDataChannel([&dc2](shared_ptr<DataChannel> dc) {

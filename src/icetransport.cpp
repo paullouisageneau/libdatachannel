@@ -34,10 +34,11 @@ using std::shared_ptr;
 using std::weak_ptr;
 
 IceTransport::IceTransport(const Configuration &config, Description::Role role,
-                           candidate_callback candidateCallback, ready_callback ready)
+                           candidate_callback candidateCallback,
+                           state_callback stateChangedCallback)
     : mRole(role), mMid("0"), mState(State::Disconnected), mNiceAgent(nullptr, nullptr),
       mMainLoop(nullptr, nullptr), mCandidateCallback(std::move(candidateCallback)),
-      mReadyCallback(ready) {
+      mStateChangedCallback(std::move(stateChangedCallback)) {
 
 	auto logLevelFlags = GLogLevelFlags(G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION);
 	g_log_set_handler(nullptr, logLevelFlags, LogCallback, this);
@@ -189,13 +190,15 @@ void IceTransport::processCandidate(const string &candidate) {
 	mCandidateCallback(Candidate(candidate, mMid));
 }
 
-void IceTransport::processGatheringDone() { mCandidateCallback(nullopt); }
+void IceTransport::processGatheringDone() {
+	if (mState == State::Gathering) {
+		mState = State::Finished;
+	}
+}
 
 void IceTransport::changeState(uint32_t state) {
 	mState = static_cast<State>(state);
-	if (mState == State::Ready) {
-		mReadyCallback();
-	}
+	mStateChangedCallback(mState);
 }
 
 void IceTransport::CandidateCallback(NiceAgent *agent, NiceCandidate *candidate,

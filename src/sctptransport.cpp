@@ -47,9 +47,10 @@ void SctpTransport::GlobalCleanup() {
 	}
 }
 
-SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, ready_callback ready,
-                             message_callback recv)
-    : Transport(lower), mReadyCallback(std::move(ready)), mPort(port) {
+SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, message_callback recv,
+                             state_callback stateChangedCallback)
+    : Transport(lower), mPort(port), mState(State::Disconnected),
+      mStateChangedCallback(std::move(stateChangedCallback)) {
 
 	onRecv(recv);
 
@@ -133,7 +134,7 @@ SctpTransport::~SctpTransport() {
 	GlobalCleanup();
 }
 
-bool SctpTransport::isReady() const { return mIsReady; }
+SctpTransport::State SctpTransport::state() const { return mState; }
 
 bool SctpTransport::send(message_ptr message) {
 	if (!message)
@@ -206,6 +207,7 @@ void SctpTransport::reset(unsigned int stream) {
 
 void SctpTransport::incoming(message_ptr message) {
 	if (!message) {
+		changeState(State::Disconnected);
 		recv(nullptr);
 		return;
 	}
@@ -223,8 +225,15 @@ void SctpTransport::incoming(message_ptr message) {
 		usrsctp_conninput(this, message->data(), message->size(), 0);
 }
 
+void SctpTransport::changeState(State state) {
+	mState = state;
+	mStateChangedCallback(state);
+}
+
 void SctpTransport::runConnect() {
 	try {
+		changeState(State::Connecting);
+
 		struct sockaddr_conn sconn = {};
 		sconn.sconn_family = AF_CONN;
 		sconn.sconn_port = htons(mPort);
@@ -239,14 +248,14 @@ void SctpTransport::runConnect() {
 		if (usrsctp_connect(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)) !=
 		    0) {
 			std::cerr << "SCTP connection failed, errno=" << errno << std::endl;
+			changeState(State::Failed);
 			mStopping = true;
 			return;
 		}
 
-		if (!mStopping) {
-			mIsReady = true;
-			mReadyCallback();
-		}
+		if (!mStopping)
+			changeState(State::Connected);
+
 	} catch (const std::exception &e) {
 		std::cerr << "SCTP connect: " << e.what() << std::endl;
 	}

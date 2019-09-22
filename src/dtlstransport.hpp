@@ -25,6 +25,7 @@
 #include "queue.hpp"
 #include "transport.hpp"
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <thread>
@@ -37,26 +38,33 @@ class IceTransport;
 
 class DtlsTransport : public Transport {
 public:
+	enum class State { Disconnected, Connecting, Connected, Failed };
+
 	using verifier_callback = std::function<bool(const std::string &fingerprint)>;
-	using ready_callback = std::function<void(void)>;
+	using state_callback = std::function<void(State state)>;
 
 	DtlsTransport(std::shared_ptr<IceTransport> lower, std::shared_ptr<Certificate> certificate,
-	              verifier_callback verifier, ready_callback ready);
+	              verifier_callback verifierCallback, state_callback stateChangedCallback);
 	~DtlsTransport();
+
+	State state() const;
 
 	bool send(message_ptr message);
 
 private:
 	void incoming(message_ptr message);
+	void changeState(State state);
 	void runRecvLoop();
 
 	const std::shared_ptr<Certificate> mCertificate;
 
 	gnutls_session_t mSession;
 	Queue<message_ptr> mIncomingQueue;
+	std::atomic<State> mState;
 	std::thread mRecvThread;
+
 	verifier_callback mVerifierCallback;
-	ready_callback mReadyCallback;
+	state_callback mStateChangedCallback;
 
 	static int CertificateCallback(gnutls_session_t session);
 	static ssize_t WriteCallback(gnutls_transport_ptr_t ptr, const void *data, size_t len);

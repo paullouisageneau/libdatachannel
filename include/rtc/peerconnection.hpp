@@ -20,12 +20,13 @@
 #define RTC_PEER_CONNECTION_H
 
 #include "candidate.hpp"
+#include "configuration.hpp"
 #include "datachannel.hpp"
 #include "description.hpp"
-#include "configuration.hpp"
 #include "include.hpp"
 #include "message.hpp"
 #include "reliability.hpp"
+#include "rtc.hpp"
 
 #include <atomic>
 #include <functional>
@@ -40,12 +41,23 @@ class SctpTransport;
 
 class PeerConnection {
 public:
+	enum class State : int {
+		New = RTC_NEW,
+		Gathering = RTC_GATHERING,
+		Finished = RTC_FINISHED,
+		Connecting = RTC_CONNECTING,
+		Connected = RTC_CONNECTED,
+		Disconnected = RTC_DISCONNECTED,
+		Failed = RTC_FAILED,
+		Closed = RTC_CLOSED
+	};
+
 	PeerConnection(void);
 	PeerConnection(const Configuration &config);
 	~PeerConnection();
 
 	const Configuration *config() const;
-
+	State state() const;
 	std::optional<Description> localDescription() const;
 	std::optional<Description> remoteDescription() const;
 
@@ -57,7 +69,8 @@ public:
 
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
 	void onLocalDescription(std::function<void(const Description &description)> callback);
-	void onLocalCandidate(std::function<void(const std::optional<Candidate> &candidate)> callback);
+	void onLocalCandidate(std::function<void(const Candidate &candidate)> callback);
+	void onStateChanged(std::function<void(State state)> callback);
 
 private:
 	void initIceTransport(Description::Role role);
@@ -71,8 +84,9 @@ private:
 	void closeDataChannels();
 
 	void processLocalDescription(Description description);
-	void processLocalCandidate(std::optional<Candidate> candidate);
+	void processLocalCandidate(Candidate candidate);
 	void triggerDataChannel(std::shared_ptr<DataChannel> dataChannel);
+	void changeState(State state);
 
 	const Configuration mConfig;
 	const std::shared_ptr<Certificate> mCertificate;
@@ -86,11 +100,16 @@ private:
 
 	std::unordered_map<unsigned int, std::weak_ptr<DataChannel>> mDataChannels;
 
+	std::atomic<State> mState;
+
 	std::function<void(std::shared_ptr<DataChannel> dataChannel)> mDataChannelCallback;
 	std::function<void(const Description &description)> mLocalDescriptionCallback;
-	std::function<void(const std::optional<Candidate> &candidate)> mLocalCandidateCallback;
+	std::function<void(const Candidate &candidate)> mLocalCandidateCallback;
+	std::function<void(State state)> mStateChangedCallback;
 };
 
 } // namespace rtc
+
+std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &state);
 
 #endif
