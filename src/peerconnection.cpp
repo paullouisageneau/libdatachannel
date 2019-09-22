@@ -283,28 +283,28 @@ void PeerConnection::changeState(State state) {
 } // namespace rtc
 
 std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &state) {
-	using namespace rtc;
-	string str;
+	using State = rtc::PeerConnection::State;
+	std::string str;
 	switch (state) {
-	case PeerConnection::State::New:
+	case State::New:
 		str = "new";
 		break;
-	case PeerConnection::State::Gathering:
+	case State::Gathering:
 		str = "gathering";
 		break;
-	case PeerConnection::State::Finished:
+	case State::Finished:
 		str = "finished";
 		break;
-	case PeerConnection::State::Connecting:
+	case State::Connecting:
 		str = "connecting";
 		break;
-	case PeerConnection::State::Connected:
+	case State::Connected:
 		str = "connected";
 		break;
-	case PeerConnection::State::Disconnected:
+	case State::Disconnected:
 		str = "disconnected";
 		break;
-	case PeerConnection::State::Failed:
+	case State::Failed:
 		str = "failed";
 		break;
 	default:
