@@ -46,12 +46,8 @@ pc->onLocalDescription([](const rtc::Description &sdp) {
     MY_SEND_DESCRIPTION_TO_REMOTE(string(sdp));
 });
 
-pc->onLocalCandidate([](const optional<rtc::Candidate> &candidate) {
-    if (candidate) {
-        MY_SEND_CANDIDATE_TO_REMOTE(candidate->candidate(), candidate->mid());
-    } else {
-        // Gathering finished
-    }
+pc->onLocalCandidate([](const rtc::Candidate &candidate) {
+    MY_SEND_CANDIDATE_TO_REMOTE(candidate.candidate(), candidate.mid());
 });
 
 MY_ON_RECV_DESCRIPTION_FROM_REMOTE([pc](string sdp) {
@@ -61,6 +57,11 @@ MY_ON_RECV_DESCRIPTION_FROM_REMOTE([pc](string sdp) {
 MY_ON_RECV_CANDIDATE_FROM_REMOTE([pc](string candidate, string mid) {
     pc->addRemoteCandidate(rtc::Candidate(candidate, mid));
 });
+
+pc->onStateChanged([](PeerConnection::State state) {
+	cout << "State: " << state << endl;
+});
+
 ```
 
 ### Create a DataChannel
