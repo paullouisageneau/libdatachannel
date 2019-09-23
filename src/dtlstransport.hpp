@@ -44,7 +44,7 @@ public:
 	using state_callback = std::function<void(State state)>;
 
 	DtlsTransport(std::shared_ptr<IceTransport> lower, std::shared_ptr<Certificate> certificate,
-	              verifier_callback verifierCallback, state_callback stateChangedCallback);
+	              verifier_callback verifierCallback, state_callback stateChangeCallback);
 	~DtlsTransport();
 
 	State state() const;
@@ -64,7 +64,7 @@ private:
 	std::thread mRecvThread;
 
 	verifier_callback mVerifierCallback;
-	state_callback mStateChangedCallback;
+	state_callback mStateChangeCallback;
 
 	static int CertificateCallback(gnutls_session_t session);
 	static ssize_t WriteCallback(gnutls_transport_ptr_t ptr, const void *data, size_t len);

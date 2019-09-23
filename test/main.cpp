@@ -28,7 +28,7 @@ using namespace std;
 
 int main(int argc, char **argv) {
 	rtc::Configuration config;
-	config.iceServers.emplace_back("stun.l.google.com:19302");
+	// config.iceServers.emplace_back("stun.l.google.com:19302");
 
 	auto pc1 = std::make_shared<PeerConnection>(config);
 	auto pc2 = std::make_shared<PeerConnection>(config);
@@ -43,7 +43,10 @@ int main(int argc, char **argv) {
 		pc2->addRemoteCandidate(candidate);
 	});
 
-	pc1->onStateChanged([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
+	pc1->onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
+	pc1->onGatheringStateChange([](PeerConnection::GatheringState state) {
+		cout << "Gathering state 1: " << state << endl;
+	});
 
 	pc2->onLocalDescription([pc1](const Description &sdp) {
 		cout << "Description 2: " << sdp << endl;
@@ -55,7 +58,10 @@ int main(int argc, char **argv) {
 		pc1->addRemoteCandidate(candidate);
 	});
 
-	pc2->onStateChanged([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
+	pc2->onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
+	pc2->onGatheringStateChange([](PeerConnection::GatheringState state) {
+		cout << "Gathering state 2: " << state << endl;
+	});
 
 	shared_ptr<DataChannel> dc2;
 	pc2->onDataChannel([&dc2](shared_ptr<DataChannel> dc) {

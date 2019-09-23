@@ -43,13 +43,17 @@ class PeerConnection {
 public:
 	enum class State : int {
 		New = RTC_NEW,
-		Gathering = RTC_GATHERING,
-		Finished = RTC_FINISHED,
 		Connecting = RTC_CONNECTING,
 		Connected = RTC_CONNECTED,
 		Disconnected = RTC_DISCONNECTED,
 		Failed = RTC_FAILED,
 		Closed = RTC_CLOSED
+	};
+
+	enum class GatheringState : int {
+		New = RTC_GATHERING_NEW,
+		InProgress = RTC_GATHERING_INPROGRESS,
+		Complete = RTC_GATHERING_COMPLETE,
 	};
 
 	PeerConnection(void);
@@ -58,6 +62,7 @@ public:
 
 	const Configuration *config() const;
 	State state() const;
+	GatheringState gatheringState() const;
 	std::optional<Description> localDescription() const;
 	std::optional<Description> remoteDescription() const;
 
@@ -70,7 +75,8 @@ public:
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
 	void onLocalDescription(std::function<void(const Description &description)> callback);
 	void onLocalCandidate(std::function<void(const Candidate &candidate)> callback);
-	void onStateChanged(std::function<void(State state)> callback);
+	void onStateChange(std::function<void(State state)> callback);
+	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
 
 private:
 	void initIceTransport(Description::Role role);
@@ -87,6 +93,7 @@ private:
 	void processLocalCandidate(Candidate candidate);
 	void triggerDataChannel(std::shared_ptr<DataChannel> dataChannel);
 	void changeState(State state);
+	void changeGatheringState(GatheringState state);
 
 	const Configuration mConfig;
 	const std::shared_ptr<Certificate> mCertificate;
@@ -101,15 +108,18 @@ private:
 	std::unordered_map<unsigned int, std::weak_ptr<DataChannel>> mDataChannels;
 
 	std::atomic<State> mState;
+	std::atomic<GatheringState> mGatheringState;
 
 	std::function<void(std::shared_ptr<DataChannel> dataChannel)> mDataChannelCallback;
 	std::function<void(const Description &description)> mLocalDescriptionCallback;
 	std::function<void(const Candidate &candidate)> mLocalCandidateCallback;
-	std::function<void(State state)> mStateChangedCallback;
+	std::function<void(State state)> mStateChangeCallback;
+	std::function<void(GatheringState state)> mGatheringStateChangeCallback;
 };
 
 } // namespace rtc
 
 std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &state);
+std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::GatheringState &state);
 
 #endif

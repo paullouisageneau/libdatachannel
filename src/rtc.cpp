@@ -101,14 +101,27 @@ void rtcSetLocalCandidateCallback(int pc,
 	});
 }
 
-void rtcSetStateChangedCallback(int pc, void (*stateCallback)(rtc_state_t state, void *)) {
+void rtcSetStateChangeCallback(int pc, void (*stateCallback)(rtc_state_t state, void *)) {
 	auto it = peerConnectionMap.find(pc);
 	if (it == peerConnectionMap.end())
 		return;
 
-	it->second->onStateChanged([pc, stateCallback](PeerConnection::State state) {
+	it->second->onStateChange([pc, stateCallback](PeerConnection::State state) {
 		stateCallback(static_cast<rtc_state_t>(state), getUserPointer(pc));
 	});
+}
+
+void rtcSetGatheringStateChangeCallback(int pc,
+                                         void (*gatheringStateCallback)(rtc_gathering_state_t state,
+                                                                        void *)) {
+	auto it = peerConnectionMap.find(pc);
+	if (it == peerConnectionMap.end())
+		return;
+
+	it->second->onGatheringStateChange(
+	    [pc, gatheringStateCallback](PeerConnection::GatheringState state) {
+		    gatheringStateCallback(static_cast<rtc_gathering_state_t>(state), getUserPointer(pc));
+	    });
 }
 
 void rtcSetRemoteDescription(int pc, const char *sdp, const char *type) {

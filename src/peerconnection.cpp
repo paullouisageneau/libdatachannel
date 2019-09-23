@@ -42,6 +42,8 @@ const Configuration *PeerConnection::config() const { return &mConfig; }
 
 PeerConnection::State PeerConnection::state() const { return mState; }
 
+PeerConnection::GatheringState PeerConnection::gatheringState() const { return mGatheringState; }
+
 std::optional<Description> PeerConnection::localDescription() const { return mLocalDescription; }
 
 std::optional<Description> PeerConnection::remoteDescription() const { return mRemoteDescription; }
@@ -108,8 +110,12 @@ void PeerConnection::onLocalCandidate(std::function<void(const Candidate &candid
 	mLocalCandidateCallback = callback;
 }
 
-void PeerConnection::onStateChanged(std::function<void(State state)> callback) {
-	mStateChangedCallback = callback;
+void PeerConnection::onStateChange(std::function<void(State state)> callback) {
+	mStateChangeCallback = callback;
+}
+
+void PeerConnection::onGatheringStateChange(std::function<void(GatheringState state)> callback) {
+	mGatheringStateChangeCallback = callback;
 }
 
 void PeerConnection::initIceTransport(Description::Role role) {
@@ -117,14 +123,6 @@ void PeerConnection::initIceTransport(Description::Role role) {
 	    mConfig, role, std::bind(&PeerConnection::processLocalCandidate, this, _1),
 	    [this](IceTransport::State state) {
 		    switch (state) {
-		    case IceTransport::State::Gathering:
-			    changeState(State::Gathering);
-			    break;
-		    case IceTransport::State::Finished:
-			    if (mLocalDescription)
-				    mLocalDescription->endCandidates();
-			    changeState(State::Finished);
-			    break;
 		    case IceTransport::State::Connecting:
 			    changeState(State::Connecting);
 			    break;
@@ -133,6 +131,21 @@ void PeerConnection::initIceTransport(Description::Role role) {
 			    break;
 		    case IceTransport::State::Ready:
 			    initDtlsTransport();
+			    break;
+		    default:
+			    // Ignore
+			    break;
+		    }
+	    },
+	    [this](IceTransport::GatheringState state) {
+		    switch (state) {
+		    case IceTransport::GatheringState::InProgress:
+			    changeGatheringState(GatheringState::InProgress);
+			    break;
+		    case IceTransport::GatheringState::Complete:
+			    if (mLocalDescription)
+				    mLocalDescription->endCandidates();
+			    changeGatheringState(GatheringState::Complete);
 			    break;
 		    default:
 			    // Ignore
@@ -276,8 +289,14 @@ void PeerConnection::triggerDataChannel(std::shared_ptr<DataChannel> dataChannel
 
 void PeerConnection::changeState(State state) {
 	mState = state;
-	if (mStateChangedCallback)
-		mStateChangedCallback(state);
+	if (mStateChangeCallback)
+		mStateChangeCallback(state);
+}
+
+void PeerConnection::changeGatheringState(GatheringState state) {
+	mGatheringState = state;
+	if (mGatheringStateChangeCallback)
+		mGatheringStateChangeCallback(state);
 }
 
 } // namespace rtc
@@ -288,12 +307,6 @@ std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &st
 	switch (state) {
 	case State::New:
 		str = "new";
-		break;
-	case State::Gathering:
-		str = "gathering";
-		break;
-	case State::Finished:
-		str = "finished";
 		break;
 	case State::Connecting:
 		str = "connecting";
@@ -306,6 +319,26 @@ std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &st
 		break;
 	case State::Failed:
 		str = "failed";
+		break;
+	default:
+		str = "unknown";
+		break;
+	}
+	return out << str;
+}
+
+std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::GatheringState &state) {
+	using GatheringState = rtc::PeerConnection::GatheringState;
+	std::string str;
+	switch (state) {
+	case GatheringState::New:
+		str = "new";
+		break;
+	case GatheringState::InProgress:
+		str = "in_progress";
+		break;
+	case GatheringState::Complete:
+		str = "complete";
 		break;
 	default:
 		str = "unknown";

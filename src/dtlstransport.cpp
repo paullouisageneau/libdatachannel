@@ -48,10 +48,10 @@ using std::shared_ptr;
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
                              verifier_callback verifierCallback,
-                             state_callback stateChangedCallback)
+                             state_callback stateChangeCallback)
     : Transport(lower), mCertificate(certificate), mState(State::Disconnected),
       mVerifierCallback(std::move(verifierCallback)),
-      mStateChangedCallback(std::move(stateChangedCallback)) {
+      mStateChangeCallback(std::move(stateChangeCallback)) {
 	gnutls_certificate_set_verify_function(mCertificate->credentials(), CertificateCallback);
 
 	bool active = lower->role() == Description::Role::Active;
@@ -102,7 +102,7 @@ void DtlsTransport::incoming(message_ptr message) { mIncomingQueue.push(message)
 
 void DtlsTransport::changeState(State state) {
 	mState = state;
-	mStateChangedCallback(state);
+	mStateChangeCallback(state);
 }
 
 void DtlsTransport::runRecvLoop() {

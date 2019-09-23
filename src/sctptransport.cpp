@@ -48,9 +48,9 @@ void SctpTransport::GlobalCleanup() {
 }
 
 SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, message_callback recv,
-                             state_callback stateChangedCallback)
+                             state_callback stateChangeCallback)
     : Transport(lower), mPort(port), mState(State::Disconnected),
-      mStateChangedCallback(std::move(stateChangedCallback)) {
+      mStateChangeCallback(std::move(stateChangeCallback)) {
 
 	onRecv(recv);
 
@@ -227,7 +227,7 @@ void SctpTransport::incoming(message_ptr message) {
 
 void SctpTransport::changeState(State state) {
 	mState = state;
-	mStateChangedCallback(state);
+	mStateChangeCallback(state);
 }
 
 void SctpTransport::runConnect() {

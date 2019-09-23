@@ -41,7 +41,7 @@ public:
 	using state_callback = std::function<void(State state)>;
 
 	SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, message_callback recv,
-	              state_callback stateChangedCallback);
+	              state_callback stateChangeCallback);
 	~SctpTransport();
 
 	State state() const;
@@ -81,7 +81,7 @@ private:
 
 	std::atomic<State> mState;
 
-	state_callback mStateChangedCallback;
+	state_callback mStateChangeCallback;
 
 	static int WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos, uint8_t set_df);
 	static int ReadCallback(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,

@@ -27,14 +27,18 @@ extern "C" {
 
 typedef enum {
 	RTC_NEW = 0,
-	RTC_GATHERING = 1,
-	RTC_FINISHED = 2,
-	RTC_CONNECTING = 3,
-	RTC_CONNECTED = 4,
-	RTC_DISCONNECTED = 5,
-	RTC_FAILED = 6,
-	RTC_CLOSED = 7
+	RTC_CONNECTING = 1,
+	RTC_CONNECTED = 2,
+	RTC_DISCONNECTED = 3,
+	RTC_FAILED = 4,
+	RTC_CLOSED = 5
 } rtc_state_t;
+
+typedef enum {
+	RTC_GATHERING_NEW = 0,
+	RTC_GATHERING_INPROGRESS = 1,
+	RTC_GATHERING_COMPLETE = 2
+} rtc_gathering_state_t;
 
 int rtcCreatePeerConnection(const char **iceServers, int iceServersCount);
 void rtcDeletePeerConnection(int pc);
@@ -45,7 +49,10 @@ void rtcSetLocalDescriptionCallback(int pc, void (*descriptionCallback)(const ch
                                                                         void *));
 void rtcSetLocalCandidateCallback(int pc,
                                   void (*candidateCallback)(const char *, const char *, void *));
-void rtcSetStateChangedCallback(int pc, void (*stateCallback)(rtc_state_t state, void *));
+void rtcSetStateChangeCallback(int pc, void (*stateCallback)(rtc_state_t state, void *));
+void rtcSetGatheringStateChangeCallback(int pc,
+                                         void (*gatheringStateCallback)(rtc_gathering_state_t state,
+                                                                        void *));
 void rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 void rtcAddRemoteCandidate(int pc, const char *candidate, const char *mid);
 int rtcGetDataChannelLabel(int dc, char *data, int size);

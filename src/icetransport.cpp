@@ -35,10 +35,13 @@ using std::weak_ptr;
 
 IceTransport::IceTransport(const Configuration &config, Description::Role role,
                            candidate_callback candidateCallback,
-                           state_callback stateChangedCallback)
-    : mRole(role), mMid("0"), mState(State::Disconnected), mNiceAgent(nullptr, nullptr),
-      mMainLoop(nullptr, nullptr), mCandidateCallback(std::move(candidateCallback)),
-      mStateChangedCallback(std::move(stateChangedCallback)) {
+                           state_callback stateChangeCallback,
+                           gathering_state_callback gatheringStateChangeCallback)
+    : mRole(role), mMid("0"), mState(State::Disconnected), mGatheringState(GatheringState::New),
+      mNiceAgent(nullptr, nullptr), mMainLoop(nullptr, nullptr),
+      mCandidateCallback(std::move(candidateCallback)),
+      mStateChangeCallback(std::move(stateChangeCallback)),
+      mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)) {
 
 	auto logLevelFlags = GLogLevelFlags(G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION);
 	g_log_set_handler(nullptr, logLevelFlags, LogCallback, this);
@@ -103,7 +106,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	}
 
 	g_signal_connect(G_OBJECT(mNiceAgent.get()), "component-state-changed",
-	                 G_CALLBACK(StateChangedCallback), this);
+	                 G_CALLBACK(StateChangeCallback), this);
 	g_signal_connect(G_OBJECT(mNiceAgent.get()), "new-candidate-full",
 	                 G_CALLBACK(CandidateCallback), this);
 	g_signal_connect(G_OBJECT(mNiceAgent.get()), "candidate-gathering-done",
@@ -147,8 +150,12 @@ void IceTransport::setRemoteDescription(const Description &description) {
 }
 
 void IceTransport::gatherLocalCandidates() {
-	if (!nice_agent_gather_candidates(mNiceAgent.get(), mStreamId))
+	// Change state now as candidates calls can be synchronous
+	changeGatheringState(GatheringState::InProgress);
+
+	if (!nice_agent_gather_candidates(mNiceAgent.get(), mStreamId)) {
 		throw std::runtime_error("Failed to gather local ICE candidates");
+	}
 }
 
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
@@ -186,19 +193,25 @@ void IceTransport::outgoing(message_ptr message) {
 	                reinterpret_cast<const char *>(message->data()));
 }
 
+void IceTransport::changeState(State state) {
+	mState = state;
+	mStateChangeCallback(mState);
+}
+
+void IceTransport::changeGatheringState(GatheringState state) {
+	mGatheringState = state;
+	mGatheringStateChangeCallback(mGatheringState);
+}
+
 void IceTransport::processCandidate(const string &candidate) {
 	mCandidateCallback(Candidate(candidate, mMid));
 }
 
-void IceTransport::processGatheringDone() {
-	if (mState == State::Gathering) {
-		mState = State::Finished;
-	}
-}
+void IceTransport::processGatheringDone() { changeGatheringState(GatheringState::Complete); }
 
-void IceTransport::changeState(uint32_t state) {
-	mState = static_cast<State>(state);
-	mStateChangedCallback(mState);
+void IceTransport::processStateChange(uint32_t state) {
+	if (state != NICE_COMPONENT_STATE_GATHERING)
+		changeState(static_cast<State>(state));
 }
 
 void IceTransport::CandidateCallback(NiceAgent *agent, NiceCandidate *candidate,
@@ -222,11 +235,11 @@ void IceTransport::GatheringDoneCallback(NiceAgent *agent, guint streamId, gpoin
 	}
 }
 
-void IceTransport::StateChangedCallback(NiceAgent *agent, guint streamId, guint componentId,
+void IceTransport::StateChangeCallback(NiceAgent *agent, guint streamId, guint componentId,
                                         guint state, gpointer userData) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(userData);
 	try {
-		iceTransport->changeState(state);
+		iceTransport->processStateChange(state);
 	} catch (const std::exception &e) {
 		std::cerr << "ICE change state: " << e.what() << std::endl;
 	}
