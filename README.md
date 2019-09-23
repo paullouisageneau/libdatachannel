@@ -57,9 +57,17 @@ MY_ON_RECV_DESCRIPTION_FROM_REMOTE([pc](string sdp) {
 MY_ON_RECV_CANDIDATE_FROM_REMOTE([pc](string candidate, string mid) {
     pc->addRemoteCandidate(rtc::Candidate(candidate, mid));
 });
+```
 
+### Observe the PeerConnection state
+
+```cpp
 pc->onStateChanged([](PeerConnection::State state) {
-	cout << "State: " << state << endl;
+    cout << "State: " << state << endl;
+});
+
+pc->onGatheringStateChanged([](PeerConnection::GatheringState state) {
+    cout << "Gathering state: " << state << endl;
 });
 
 ```
