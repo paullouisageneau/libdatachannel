@@ -67,16 +67,22 @@ int main(int argc, char **argv) {
 	pc2->onDataChannel([&dc2](shared_ptr<DataChannel> dc) {
 		cout << "Got a DataChannel with label: " << dc->label() << endl;
 		dc2 = dc;
-		dc2->send("Hello world!");
+		dc2->onMessage([](const variant<binary, string> &message) {
+			if (holds_alternative<string>(message)) {
+				cout << "Received 2: " << get<string>(message) << endl;
+			}
+		});
+		dc2->send("Hello from 2");
 	});
 
 	auto dc1 = pc1->createDataChannel("test");
 	dc1->onOpen([dc1]() {
 		cout << "DataChannel open: " << dc1->label() << endl;
+		dc1->send("Hello from 1");
 	});
 	dc1->onMessage([](const variant<binary, string> &message) {
 		if (holds_alternative<string>(message)) {
-			cout << "Received: " << get<string>(message) << endl;
+			cout << "Received 1: " << get<string>(message) << endl;
 		}
 	});
 
