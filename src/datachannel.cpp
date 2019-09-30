@@ -220,6 +220,7 @@ void DataChannel::processOpenMessage(message_ptr message) {
 
 	mSctpTransport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
 
+	mIsOpen = true;
 	triggerOpen();
 }
 
