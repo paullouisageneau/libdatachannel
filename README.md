@@ -22,6 +22,9 @@ Submodules:
 
 ```bash
 $ git submodule update --init --recursive
+$ mkdir build
+$ cd build
+$ cmake ..
 $ make
 ```
 
@@ -47,6 +50,7 @@ pc->onLocalDescription([](const rtc::Description &sdp) {
 });
 
 pc->onLocalCandidate([](const rtc::Candidate &candidate) {
+    // Send the candidate to the remote peer
     MY_SEND_CANDIDATE_TO_REMOTE(candidate.candidate(), candidate.mid());
 });
 
