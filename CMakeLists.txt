@@ -25,7 +25,7 @@ list(TRANSFORM LIBDATACHANNEL_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/src/)
 
 add_definitions(-DINET -DINET6)
 add_subdirectory(usrsctp EXCLUDE_FROM_ALL)
-target_compile_options(usrsctp-static PRIVATE -Wno-address-of-packed-member)
+target_compile_options(usrsctp-static PRIVATE -Wno-address-of-packed-member -Wno-error=format-truncation)
 
 find_package(GnuTLS REQUIRED)
 find_package(LibNice REQUIRED)
