@@ -42,7 +42,7 @@ void SctpTransport::GlobalInit() {
 
 void SctpTransport::GlobalCleanup() {
 	std::unique_lock<std::mutex> lock(GlobalMutex);
-	if (InstancesCount-- == 0) {
+	if (--InstancesCount == 0) {
 		usrsctp_finish();
 	}
 }
