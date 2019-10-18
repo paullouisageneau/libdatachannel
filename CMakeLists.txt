@@ -21,7 +21,12 @@ set(LIBDATACHANNEL_SOURCES
 	sctptransport.cpp
 )
 
+set(TESTS_SOURCES
+    main.cpp
+)
+
 list(TRANSFORM LIBDATACHANNEL_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/src/)
+list(TRANSFORM TESTS_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/test/)
 
 # Hack because usrsctp uses CMAKE_SOURCE_DIR instead of CMAKE_CURRENT_SOURCE_DIR
 set(CMAKE_REQUIRED_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/usrsctp/usrsctplib")
@@ -68,4 +73,11 @@ target_link_libraries(datachannel-static usrsctp-static GnuTLS::GnuTLS LibNice::
 
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
 add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
+
+add_executable(tests ${TESTS_SOURCES})
+set_target_properties(tests PROPERTIES
+	VERSION ${PROJECT_VERSION}
+	CXX_STANDARD 17)
+
+target_link_libraries(tests datachannel)
 
