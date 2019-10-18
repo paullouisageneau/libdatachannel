@@ -30,7 +30,8 @@
 
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <usrsctp.h>
+
+#include "usrsctp.h"
 
 namespace rtc {
 

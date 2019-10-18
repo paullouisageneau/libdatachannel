@@ -23,9 +23,16 @@ set(LIBDATACHANNEL_SOURCES
 
 list(TRANSFORM LIBDATACHANNEL_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/src/)
 
-add_definitions(-DINET -DINET6)
+# Hack because usrsctp uses CMAKE_SOURCE_DIR instead of CMAKE_CURRENT_SOURCE_DIR
+set(CMAKE_REQUIRED_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/usrsctp/usrsctplib")
+
 add_subdirectory(usrsctp EXCLUDE_FROM_ALL)
-target_compile_options(usrsctp-static PRIVATE -Wno-address-of-packed-member -Wno-error=format-truncation)
+set(sctp_inet ON)
+set(sctp_inet6 ON)
+
+# Set include directory and custom options to make usrsctp compile with recent g++
+target_include_directories(usrsctp-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/usrsctp/usrsctplib)
+target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member -Wno-error=format-truncation)
 
 find_package(GnuTLS REQUIRED)
 find_package(LibNice REQUIRED)
