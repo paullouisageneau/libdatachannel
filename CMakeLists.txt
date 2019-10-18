@@ -32,8 +32,6 @@ list(TRANSFORM TESTS_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/test/)
 set(CMAKE_REQUIRED_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/usrsctp/usrsctplib")
 
 add_subdirectory(usrsctp EXCLUDE_FROM_ALL)
-set(sctp_inet ON)
-set(sctp_inet6 ON)
 
 # Set include directory and custom options to make usrsctp compile with recent g++
 target_include_directories(usrsctp-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/usrsctp/usrsctplib)

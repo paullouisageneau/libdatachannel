@@ -11,7 +11,6 @@ LDLIBS= -lgnutls $(shell pkg-config --libs glib-2.0 gobject-2.0 nice)
 INCLUDES=-Iinclude/rtc -I$(USRSCTP_DIR)/usrsctplib $(shell pkg-config --cflags glib-2.0 gobject-2.0 nice)
 
 USRSCTP_DIR:=usrsctp
-USRSCTP_DEFINES:=-DINET -DINET6
 
 SRCS=$(shell printf "%s " src/*.cpp)
 OBJS=$(subst .cpp,.o,$(SRCS))
@@ -19,7 +18,7 @@ OBJS=$(subst .cpp,.o,$(SRCS))
 all: $(NAME).a $(NAME).so tests
 
 src/%.o: src/%.cpp
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(INCLUDES) $(USRSCTP_DEFINES) -MMD -MP -o $@ -c $<
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -o $@ -c $<
 
 test/%.o: test/%.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Iinclude -MMD -MP -o $@ -c $<
