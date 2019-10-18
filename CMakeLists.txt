@@ -59,7 +59,7 @@ target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inclu
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(datachannel usrsctp-static GnuTLS::GnuTLS LibNice::LibNice)
 
-add_library(datachannel-static STATIC ${LIBDATACHANNEL_SOURCES})
+add_library(datachannel-static STATIC EXCLUDE_FROM_ALL ${LIBDATACHANNEL_SOURCES})
 set_target_properties(datachannel-static PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
