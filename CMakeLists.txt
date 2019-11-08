@@ -35,7 +35,15 @@ add_subdirectory(usrsctp EXCLUDE_FROM_ALL)
 
 # Set include directory and custom options to make usrsctp compile with recent g++
 target_include_directories(usrsctp-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/usrsctp/usrsctplib)
-target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member -Wno-error=format-truncation)
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  # using regular Clang or AppleClang: Needed since they don't have -Wno-error=format-truncation
+  target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member)
+else()
+  # all other compilers
+  target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member -Wno-error=format-truncation)
+endif()
+
 
 find_package(GnuTLS REQUIRED)
 find_package(LibNice REQUIRED)
