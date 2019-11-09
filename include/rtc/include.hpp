@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace rtc {
