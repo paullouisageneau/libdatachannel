@@ -58,7 +58,7 @@ public:
 
 	Description::Role role() const;
 	State state() const;
-	GatheringState gyyatheringState() const;
+	GatheringState gatheringState() const;
 	Description getLocalDescription(Description::Type type) const;
 	void setRemoteDescription(const Description &description);
 	void gatherLocalCandidates();
