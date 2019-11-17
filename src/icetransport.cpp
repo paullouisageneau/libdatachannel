@@ -145,7 +145,7 @@ void IceTransport::setRemoteDescription(const Description &description) {
 	                                                        : Description::Role::Active;
 	mMid = description.mid();
 
-	if (nice_agent_parse_remote_sdp(mNiceAgent.get(), string(description).c_str()))
+	if (nice_agent_parse_remote_sdp(mNiceAgent.get(), string(description).c_str()) < 0)
 		throw std::runtime_error("Failed to parse remote SDP");
 }
 
