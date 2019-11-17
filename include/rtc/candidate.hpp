@@ -31,11 +31,13 @@ public:
 
 	string candidate() const;
 	string mid() const;
+	bool isResolved() const;
 	operator string() const;
 
 private:
 	string mCandidate;
 	string mMid;
+	bool mIsResolved;
 };
 
 } // namespace rtc

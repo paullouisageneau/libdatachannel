@@ -82,7 +82,7 @@ Description::Description(const string &sdp, Type type, Role role)
 		} else if (hasprefix(line, "a=sctp-port")) {
 			mSctpPort = uint16_t(std::stoul(line.substr(line.find(':') + 1)));
 		} else if (hasprefix(line, "a=candidate")) {
-			mCandidates.emplace_back(Candidate(line.substr(2), mMid));
+			addCandidate(Candidate(line.substr(2), mMid));
 		} else if (hasprefix(line, "a=end-of-candidates")) {
 			mTrickle = false;
 		}
@@ -110,7 +110,8 @@ void Description::setFingerprint(string fingerprint) {
 void Description::setSctpPort(uint16_t port) { mSctpPort.emplace(port); }
 
 void Description::addCandidate(Candidate candidate) {
-	mCandidates.emplace_back(std::move(candidate));
+	if (candidate.isResolved())
+		mCandidates.emplace_back(std::move(candidate));
 }
 
 void Description::endCandidates() { mTrickle = false; }

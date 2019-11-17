@@ -40,7 +40,7 @@ inline bool hasprefix(const string &str, const string &prefix) {
 
 namespace rtc {
 
-Candidate::Candidate(string candidate, string mid) {
+Candidate::Candidate(string candidate, string mid) : mIsResolved(false) {
 	const std::array prefixes{"a=", "candidate:"};
 	for (string prefix : prefixes)
 		if (hasprefix(candidate, prefix))
@@ -83,6 +83,7 @@ Candidate::Candidate(string candidate, string mid) {
 						if (!left.empty())
 							ss << left;
 						mCandidate = ss.str();
+						mIsResolved = true;
 						break;
 					}
 				}
@@ -95,6 +96,8 @@ Candidate::Candidate(string candidate, string mid) {
 string Candidate::candidate() const { return "candidate:" + mCandidate; }
 
 string Candidate::mid() const { return mMid; }
+
+bool Candidate::isResolved() const { return mIsResolved; }
 
 Candidate::operator string() const {
 	std::ostringstream line;

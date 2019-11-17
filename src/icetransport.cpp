@@ -159,6 +159,10 @@ void IceTransport::gatherLocalCandidates() {
 }
 
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
+	// Don't try to pass unresolved candidates to libnice for more safety
+	if (!candidate.isResolved())
+		return false;
+
 	// Warning: the candidate string must start with "a=candidate:" and it must not end with a
 	// newline, else libnice will reject it.
 	string sdp(candidate);
