@@ -29,9 +29,12 @@ class Candidate {
 public:
 	Candidate(string candidate, string mid = "");
 
+	enum class ResolveMode { Simple, Lookup };
+	bool resolve(ResolveMode mode = ResolveMode::Simple);
+	bool isResolved() const;
+
 	string candidate() const;
 	string mid() const;
-	bool isResolved() const;
 	operator string() const;
 
 private:

@@ -61,8 +61,8 @@ public:
 	GatheringState gatheringState() const;
 	Description getLocalDescription(Description::Type type) const;
 	void setRemoteDescription(const Description &description);
-	void gatherLocalCandidates();
 	bool addRemoteCandidate(const Candidate &candidate);
+	void gatherLocalCandidates();
 
 	bool send(message_ptr message);
 

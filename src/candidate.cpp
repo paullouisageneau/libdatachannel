@@ -48,6 +48,11 @@ Candidate::Candidate(string candidate, string mid) : mIsResolved(false) {
 
 	mCandidate = std::move(candidate);
 	mMid = std::move(mid);
+}
+
+bool Candidate::resolve(ResolveMode mode) {
+	if (mIsResolved)
+		return true;
 
 	// See RFC 5245 for format
 	std::stringstream ss(mCandidate);
@@ -64,6 +69,10 @@ Candidate::Candidate(string candidate, string mid) : mIsResolved(false) {
 			hints.ai_socktype = SOCK_DGRAM;
 			hints.ai_protocol = IPPROTO_UDP;
 		}
+
+		if (mode == ResolveMode::Simple)
+			hints.ai_flags |= AI_NUMERICHOST;
+
 		struct addrinfo *result = nullptr;
 		if (getaddrinfo(node.c_str(), service.c_str(), &hints, &result) == 0) {
 			for (auto p = result; p; p = p->ai_next)
@@ -83,21 +92,22 @@ Candidate::Candidate(string candidate, string mid) : mIsResolved(false) {
 						if (!left.empty())
 							ss << left;
 						mCandidate = ss.str();
-						mIsResolved = true;
-						break;
+						return mIsResolved = true;
 					}
 				}
 		}
 
 		freeaddrinfo(result);
 	}
+
+	return false;
 }
+
+bool Candidate::isResolved() const { return mIsResolved; }
 
 string Candidate::candidate() const { return "candidate:" + mCandidate; }
 
 string Candidate::mid() const { return mMid; }
-
-bool Candidate::isResolved() const { return mIsResolved; }
 
 Candidate::operator string() const {
 	std::ostringstream line;

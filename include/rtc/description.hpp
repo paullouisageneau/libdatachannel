@@ -47,8 +47,10 @@ public:
 
 	void setFingerprint(string fingerprint);
 	void setSctpPort(uint16_t port);
+
 	void addCandidate(Candidate candidate);
 	void endCandidates();
+	std::vector<Candidate> extractCandidates();
 
 	operator string() const;
 

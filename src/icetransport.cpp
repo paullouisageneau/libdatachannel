@@ -149,15 +149,6 @@ void IceTransport::setRemoteDescription(const Description &description) {
 		throw std::runtime_error("Failed to parse remote SDP");
 }
 
-void IceTransport::gatherLocalCandidates() {
-	// Change state now as candidates calls can be synchronous
-	changeGatheringState(GatheringState::InProgress);
-
-	if (!nice_agent_gather_candidates(mNiceAgent.get(), mStreamId)) {
-		throw std::runtime_error("Failed to gather local ICE candidates");
-	}
-}
-
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 	// Don't try to pass unresolved candidates to libnice for more safety
 	if (!candidate.isResolved())
@@ -176,6 +167,15 @@ bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 
 	g_slist_free_full(list, reinterpret_cast<GDestroyNotify>(nice_candidate_free));
 	return ret > 0;
+}
+
+void IceTransport::gatherLocalCandidates() {
+	// Change state now as candidates calls can be synchronous
+	changeGatheringState(GatheringState::InProgress);
+
+	if (!nice_agent_gather_candidates(mNiceAgent.get(), mStreamId)) {
+		throw std::runtime_error("Failed to gather local ICE candidates");
+	}
 }
 
 bool IceTransport::send(message_ptr message) {

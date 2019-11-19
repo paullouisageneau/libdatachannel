@@ -110,11 +110,16 @@ void Description::setFingerprint(string fingerprint) {
 void Description::setSctpPort(uint16_t port) { mSctpPort.emplace(port); }
 
 void Description::addCandidate(Candidate candidate) {
-	if (candidate.isResolved())
-		mCandidates.emplace_back(std::move(candidate));
+	mCandidates.emplace_back(std::move(candidate));
 }
 
 void Description::endCandidates() { mTrickle = false; }
+
+std::vector<Candidate> Description::extractCandidates() {
+	std::vector<Candidate> result;
+	std::swap(mCandidates, result);
+	return result;
+}
 
 Description::operator string() const {
 	if (!mFingerprint)
