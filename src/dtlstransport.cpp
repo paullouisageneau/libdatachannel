@@ -67,6 +67,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate->credentials()));
 
 	gnutls_dtls_set_timeouts(mSession, 400, 60000);
+	gnutls_handshake_set_timeout(mSession, 60000);
 
 	gnutls_session_set_ptr(mSession, this);
 	gnutls_transport_set_ptr(mSession, this);
@@ -200,7 +201,12 @@ ssize_t DtlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size
 }
 
 int DtlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) {
-	return 1; // So ReadCallback is called
+	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
+	if (ms != GNUTLS_INDEFINITE_TIMEOUT)
+		t->mIncomingQueue.wait(std::chrono::milliseconds(ms));
+	else
+		t->mIncomingQueue.wait();
+	return !t->mIncomingQueue.empty() ? 1 : 0;
 }
 
 } // namespace rtc

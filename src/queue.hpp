@@ -22,6 +22,7 @@
 #include "include.hpp"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <optional>
@@ -35,10 +36,11 @@ public:
 	~Queue();
 
 	void stop();
+	bool empty() const;
 	void push(const T &element);
 	std::optional<T> pop();
-
-	bool empty() const;
+	void wait();
+	void wait(const std::chrono::milliseconds &duration);
 
 private:
 	std::queue<T> mQueue;
@@ -56,6 +58,11 @@ template <typename T> void Queue<T>::stop() {
 	std::lock_guard<std::mutex> lock(mMutex);
 	mStopping = true;
 	mCondition.notify_all();
+}
+
+template <typename T> bool Queue<T>::empty() const {
+	std::lock_guard<std::mutex> lock(mMutex);
+	return mQueue.empty();
 }
 
 template <typename T> void Queue<T>::push(const T &element) {
@@ -79,9 +86,16 @@ template <typename T> std::optional<T> Queue<T>::pop() {
 	return element;
 }
 
-template <typename T> bool Queue<T>::empty() const {
-	std::lock_guard<std::mutex> lock(mMutex);
-	return mQueue.empty();
+template <typename T> void Queue<T>::wait() {
+	std::unique_lock<std::mutex> lock(mMutex);
+	if (mQueue.empty() && !mStopping)
+		mCondition.wait(lock);
+}
+
+template <typename T> void Queue<T>::wait(const std::chrono::milliseconds &duration) {
+	std::unique_lock<std::mutex> lock(mMutex);
+	if (mQueue.empty() && !mStopping)
+		mCondition.wait_for(lock, duration);
 }
 
 } // namespace rtc
