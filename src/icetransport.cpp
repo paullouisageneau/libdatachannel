@@ -59,10 +59,16 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 		throw std::runtime_error("Failed to create the nice agent");
 
 	mMainLoopThread = std::thread(g_main_loop_run, mMainLoop.get());
-	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp", FALSE, nullptr);
-	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode", FALSE, nullptr);
+
+	g_object_set(G_OBJECT(mNiceAgent.get()), "full-mode", TRUE, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode", TRUE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-udp", TRUE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-tcp", FALSE, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "stun-initial-timeout", 200, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "stun-max-retransmissions", 3, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "stun-pacing-timer", 20, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp", FALSE, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp-timeout", 200, nullptr);
 
 	std::vector<IceServer> servers = config.iceServers;
 	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -89,6 +95,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 				char nodebuffer[MAX_NUMERICNODE_LEN];
 				char servbuffer[MAX_NUMERICSERV_LEN];
 				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
+
 				                servbuffer, MAX_NUMERICNODE_LEN,
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server", nodebuffer, nullptr);
@@ -135,6 +142,11 @@ Description::Role IceTransport::role() const { return mRole; }
 IceTransport::State IceTransport::state() const { return mState; }
 
 Description IceTransport::getLocalDescription(Description::Type type) const {
+	// RFC 5245: The agent that generated the offer which started the ICE processing MUST take the
+	// controlling role, and the other MUST take the controlled role.
+	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode",
+	             type == Description::Type::Offer ? TRUE : FALSE, nullptr);
+
 	std::unique_ptr<gchar[], void (*)(void *)> sdp(nice_agent_generate_local_sdp(mNiceAgent.get()),
 	                                               g_free);
 	return Description(string(sdp.get()), type, mRole);
@@ -151,6 +163,7 @@ void IceTransport::setRemoteDescription(const Description &description) {
 
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 	// Don't try to pass unresolved candidates to libnice for more safety
+
 	if (!candidate.isResolved())
 		return false;
 
