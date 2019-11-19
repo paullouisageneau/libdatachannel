@@ -60,7 +60,6 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 
 	mMainLoopThread = std::thread(g_main_loop_run, mMainLoop.get());
 
-	g_object_set(G_OBJECT(mNiceAgent.get()), "full-mode", TRUE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode", TRUE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-udp", TRUE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-tcp", FALSE, nullptr);
