@@ -118,6 +118,7 @@ void Description::endCandidates() { mTrickle = false; }
 std::vector<Candidate> Description::extractCandidates() {
 	std::vector<Candidate> result;
 	std::swap(mCandidates, result);
+	mTrickle = true;
 	return result;
 }
 
