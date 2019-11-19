@@ -63,14 +63,16 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	check_gnutls(gnutls_priority_set_direct(mSession, priorities, &err_pos),
 	             "Unable to set TLS priorities");
 
+	check_gnutls(
+	    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate->credentials()));
+
+	gnutls_dtls_set_timeouts(mSession, 400, 60000);
+
 	gnutls_session_set_ptr(mSession, this);
 	gnutls_transport_set_ptr(mSession, this);
 	gnutls_transport_set_push_function(mSession, WriteCallback);
 	gnutls_transport_set_pull_function(mSession, ReadCallback);
 	gnutls_transport_set_pull_timeout_function(mSession, TimeoutCallback);
-
-	check_gnutls(
-	    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate->credentials()));
 
 	mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
 }
