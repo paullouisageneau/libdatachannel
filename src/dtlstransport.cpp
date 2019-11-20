@@ -76,12 +76,11 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 }
 
 DtlsTransport::~DtlsTransport() {
+  onRecv(nullptr);
 	mIncomingQueue.stop();
-	if (mRecvThread.joinable())
-		mRecvThread.join();
-
-	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
-	gnutls_deinit(mSession);
+  mRecvThread.join();
+  gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
+  gnutls_deinit(mSession);
 }
 
 DtlsTransport::State DtlsTransport::state() const { return mState; }

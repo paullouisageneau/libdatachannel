@@ -51,8 +51,8 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
                              state_callback stateChangeCallback)
     : Transport(lower), mPort(port), mState(State::Disconnected),
       mStateChangeCallback(std::move(stateChangeCallback)) {
-
-	onRecv(recv);
+  
+  onRecv(recv);
 
 	GlobalInit();
 	usrsctp_register_address(this);
@@ -120,6 +120,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
 }
 
 SctpTransport::~SctpTransport() {
+  onRecv(nullptr);
 	mStopping = true;
 	mConnectCondition.notify_all();
 	if (mConnectThread.joinable())
