@@ -41,7 +41,7 @@ class IceTransport;
 class DtlsTransport;
 class SctpTransport;
 
-class PeerConnection {
+class PeerConnection : public std::enable_shared_from_this<PeerConnection> {
 public:
 	enum class State : int {
 		New = RTC_NEW,
@@ -85,15 +85,15 @@ private:
 	void initDtlsTransport();
 	void initSctpTransport();
 
-	bool checkFingerprint(const std::string &fingerprint) const;
-	void forwardMessage(message_ptr message);
+	bool checkFingerprint(std::weak_ptr<PeerConnection> weak_this, const std::string &fingerprint) const;
+	void forwardMessage(std::weak_ptr<PeerConnection> weak_this, message_ptr message);
 	void iterateDataChannels(std::function<void(std::shared_ptr<DataChannel> channel)> func);
 	void openDataChannels();
 	void closeDataChannels();
 
 	void processLocalDescription(Description description);
-	void processLocalCandidate(Candidate candidate);
-	void triggerDataChannel(std::shared_ptr<DataChannel> dataChannel);
+	void processLocalCandidate(std::weak_ptr<PeerConnection> weak_this, Candidate candidate);
+	void triggerDataChannel(std::weak_ptr<PeerConnection> weak_this, std::weak_ptr<DataChannel> weakDataChannel);
 	void changeState(State state);
 	void changeGatheringState(GatheringState state);
 

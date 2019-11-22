@@ -26,6 +26,9 @@
 using namespace rtc;
 using namespace std;
 
+template <class T>
+weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
+
 int main(int argc, char **argv) {
 	rtc::Configuration config;
 	// config.iceServers.emplace_back("stun.l.google.com:19302");
@@ -33,12 +36,16 @@ int main(int argc, char **argv) {
 	auto pc1 = std::make_shared<PeerConnection>(config);
 	auto pc2 = std::make_shared<PeerConnection>(config);
 
-	pc1->onLocalDescription([pc2](const Description &sdp) {
+	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](const Description &sdp) {
+    auto pc2 = wpc2.lock();
+    if (!pc2) return;
 		cout << "Description 1: " << sdp << endl;
 		pc2->setRemoteDescription(sdp);
 	});
 
-	pc1->onLocalCandidate([pc2](const Candidate &candidate) {
+	pc1->onLocalCandidate([wpc2 = make_weak_ptr(pc2)](const Candidate &candidate) {
+    auto pc2 = wpc2.lock();
+    if (!pc2) return;
 		cout << "Candidate 1: " << candidate << endl;
 		pc2->addRemoteCandidate(candidate);
 	});
@@ -48,12 +55,16 @@ int main(int argc, char **argv) {
 		cout << "Gathering state 1: " << state << endl;
 	});
 
-	pc2->onLocalDescription([pc1](const Description &sdp) {
+	pc2->onLocalDescription([wpc1 = make_weak_ptr(pc1)](const Description &sdp) {
+    auto pc1 = wpc1.lock();
+    if (!pc1) return;
 		cout << "Description 2: " << sdp << endl;
 		pc1->setRemoteDescription(sdp);
 	});
 
-	pc2->onLocalCandidate([pc1](const Candidate &candidate) {
+	pc2->onLocalCandidate([wpc1 = make_weak_ptr(pc1)](const Candidate &candidate) {
+    auto pc1 = wpc1.lock();
+    if (!pc1) return;
 		cout << "Candidate 2: " << candidate << endl;
 		pc1->addRemoteCandidate(candidate);
 	});
@@ -76,7 +87,9 @@ int main(int argc, char **argv) {
 	});
 
 	auto dc1 = pc1->createDataChannel("test");
-	dc1->onOpen([dc1]() {
+	dc1->onOpen([wdc1 = make_weak_ptr(dc1)]() {
+    auto dc1 = wdc1.lock();
+    if (!dc1) return;
 		cout << "DataChannel open: " << dc1->label() << endl;
 		dc1->send("Hello from 1");
 	});
@@ -86,6 +99,6 @@ int main(int argc, char **argv) {
 		}
 	});
 
-	this_thread::sleep_for(10s);
+	this_thread::sleep_for(3s);
 }
 
