@@ -69,7 +69,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
 		                         std::to_string(errno));
 
 	struct sctp_paddrparams spp = {};
-	spp.spp_flags = SPP_PMTUD_DISABLE;
+	spp.spp_flags = SPP_PMTUD_ENABLE;
 	spp.spp_pathmtu = 1200; // Max safe value recommended by RFC 8261
 	                        // See https://tools.ietf.org/html/rfc8261#section-5
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &spp, sizeof(spp)))

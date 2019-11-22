@@ -58,7 +58,10 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	unsigned int flags = GNUTLS_DATAGRAM | (active ? GNUTLS_CLIENT : GNUTLS_SERVER);
 	check_gnutls(gnutls_init(&mSession, flags));
 
-	const char *priorities = "SECURE128:-VERS-SSL3.0:-VERS-TLS1.0:-ARCFOUR-128";
+	// RFC 8261: SCTP performs segmentation and reassembly based on the path MTU.
+	// Therefore, the DTLS layer MUST NOT use any compression algorithm.
+	// See https://tools.ietf.org/html/rfc8261#section-5
+	const char *priorities = "SECURE128:-VERS-SSL3.0:-VERS-TLS1.0:-ARCFOUR-128:-COMP-ALL";
 	const char *err_pos = NULL;
 	check_gnutls(gnutls_priority_set_direct(mSession, priorities, &err_pos),
 	             "Unable to set TLS priorities");
@@ -66,6 +69,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	check_gnutls(
 	    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate->credentials()));
 
+	gnutls_dtls_set_mtu(mSession, 1280 - 40 - 8); // min MTU over UDP/IPv6
 	gnutls_dtls_set_timeouts(mSession, 400, 60000);
 	gnutls_handshake_set_timeout(mSession, 60000);
 
@@ -92,20 +96,15 @@ bool DtlsTransport::send(message_ptr message) {
 	if (!message)
 		return false;
 
-	while (true) {
-		ssize_t ret = gnutls_record_send(mSession, message->data(), message->size());
-		if (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN)
-			continue;
-		if (check_gnutls(ret)) {
-			return ret > 0;
-		} else {
-			// Simply abort in case of non-fatal error
-			// For instance we could get ret == GNUTLS_E_LARGE_PACKET
-			break;
-		}
-	}
+	ssize_t ret;
+	do {
+		ret = gnutls_record_send(mSession, message->data(), message->size());
+	} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
 
-	return false;
+	if (ret == GNUTLS_E_LARGE_PACKET)
+		return false;
+
+	return check_gnutls(ret);
 }
 
 void DtlsTransport::incoming(message_ptr message) { mIncomingQueue.push(message); }
@@ -116,27 +115,45 @@ void DtlsTransport::changeState(State state) {
 }
 
 void DtlsTransport::runRecvLoop() {
+	const size_t maxMtu = 2048;
+
+	// Handshake loop
 	try {
 		changeState(State::Connecting);
 
-		while (!check_gnutls(gnutls_handshake(mSession), "TLS handshake failed")) {
-		}
+		int ret;
+		do {
+			ret = gnutls_handshake(mSession);
+
+			if (ret == GNUTLS_E_LARGE_PACKET)
+				throw std::runtime_error("MTU is too low");
+
+		} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN ||
+		         !check_gnutls(ret, "TLS handshake failed"));
+
+		// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
+		// See https://tools.ietf.org/html/rfc8261#section-5
+		gnutls_dtls_set_mtu(mSession, maxMtu + 1);
+
 	} catch (const std::exception &e) {
 		std::cerr << "DTLS handshake: " << e.what() << std::endl;
 		changeState(State::Failed);
 		return;
 	}
 
+	// Receive loop
 	try {
 		changeState(State::Connected);
 
-		const size_t bufferSize = 2048;
+		const size_t bufferSize = maxMtu;
 		char buffer[bufferSize];
 
 		while (true) {
-			ssize_t ret = gnutls_record_recv(mSession, buffer, bufferSize);
-			if (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN)
-				continue;
+			ssize_t ret;
+			do {
+				ret = gnutls_record_recv(mSession, buffer, bufferSize);
+			} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
+
 			if (check_gnutls(ret)) {
 				if (ret == 0) {
 					// Closed
