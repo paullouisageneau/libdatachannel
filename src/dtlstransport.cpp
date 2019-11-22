@@ -94,10 +94,18 @@ bool DtlsTransport::send(message_ptr message) {
 
 	while (true) {
 		ssize_t ret = gnutls_record_send(mSession, message->data(), message->size());
+		if (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN)
+			continue;
 		if (check_gnutls(ret)) {
 			return ret > 0;
+		} else {
+			// Simply abort in case of non-fatal error
+			// For instance we could get ret == GNUTLS_E_LARGE_PACKET
+			break;
 		}
 	}
+
+	return false;
 }
 
 void DtlsTransport::incoming(message_ptr message) { mIncomingQueue.push(message); }
@@ -127,6 +135,8 @@ void DtlsTransport::runRecvLoop() {
 
 		while (true) {
 			ssize_t ret = gnutls_record_recv(mSession, buffer, bufferSize);
+			if (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN)
+				continue;
 			if (check_gnutls(ret)) {
 				if (ret == 0) {
 					// Closed
