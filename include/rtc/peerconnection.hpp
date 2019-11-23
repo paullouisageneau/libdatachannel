@@ -67,6 +67,8 @@ public:
 	GatheringState gatheringState() const;
 	std::optional<Description> localDescription() const;
 	std::optional<Description> remoteDescription() const;
+	std::optional<string> localAddress() const;
+	std::optional<string> remoteAddress() const;
 
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);

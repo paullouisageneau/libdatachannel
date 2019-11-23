@@ -86,6 +86,14 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 	}
 }
 
+std::optional<string> PeerConnection::localAddress() const {
+	return mIceTransport ? mIceTransport->getLocalAddress() : nullopt;
+}
+
+std::optional<string> PeerConnection::remoteAddress() const {
+	return mIceTransport ? mIceTransport->getRemoteAddress() : nullopt;
+}
+
 shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
                                                           const string &protocol,
                                                           const Reliability &reliability) {

@@ -190,6 +190,23 @@ void IceTransport::gatherLocalCandidates() {
 	}
 }
 
+std::optional<string> IceTransport::getLocalAddress() const {
+	NiceCandidate *local = nullptr;
+	NiceCandidate *remote = nullptr;
+	if (nice_agent_get_selected_pair(mNiceAgent.get(), mStreamId, 1, &local, &remote)) {
+		return std::make_optional(AddressToString(local->addr));
+	}
+	return nullopt;
+}
+std::optional<string> IceTransport::getRemoteAddress() const {
+	NiceCandidate *local = nullptr;
+	NiceCandidate *remote = nullptr;
+	if (nice_agent_get_selected_pair(mNiceAgent.get(), mStreamId, 1, &local, &remote)) {
+		return std::make_optional(AddressToString(remote->addr));
+	}
+	return nullopt;
+}
+
 bool IceTransport::send(message_ptr message) {
 	if (!message || !mStreamId)
 		return false;
@@ -228,6 +245,15 @@ void IceTransport::processGatheringDone() { changeGatheringState(GatheringState:
 void IceTransport::processStateChange(uint32_t state) {
 	if (state != NICE_COMPONENT_STATE_GATHERING)
 		changeState(static_cast<State>(state));
+}
+
+string IceTransport::AddressToString(const NiceAddress &addr) {
+	char buffer[NICE_ADDRESS_STRING_LEN];
+	nice_address_to_string(&addr, buffer);
+	unsigned int port = nice_address_get_port(&addr);
+	std::ostringstream ss;
+	ss << buffer << ":" << port;
+	return ss.str();
 }
 
 void IceTransport::CandidateCallback(NiceAgent *agent, NiceCandidate *candidate,

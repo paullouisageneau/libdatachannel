@@ -64,6 +64,9 @@ public:
 	bool addRemoteCandidate(const Candidate &candidate);
 	void gatherLocalCandidates();
 
+	std::optional<string> getLocalAddress() const;
+	std::optional<string> getRemoteAddress() const;
+
 	bool send(message_ptr message);
 
 private:
@@ -91,6 +94,8 @@ private:
 	candidate_callback mCandidateCallback;
 	state_callback mStateChangeCallback;
 	gathering_state_callback mGatheringStateChangeCallback;
+
+	static string AddressToString(const NiceAddress &addr);
 
 	static void CandidateCallback(NiceAgent *agent, NiceCandidate *candidate, gpointer userData);
 	static void GatheringDoneCallback(NiceAgent *agent, guint streamId, gpointer userData);
