@@ -128,9 +128,10 @@ Description::operator string() const {
 
 	std::ostringstream sdp;
 	sdp << "v=0\n";
-	sdp << "o=- " << mSessionId << " 0 IN IP4 0.0.0.0\n";
+	sdp << "o=- " << mSessionId << " 0 IN IP4 127.0.0.1\n";
 	sdp << "s=-\n";
 	sdp << "t=0 0\n";
+	sdp << "a=group:BUNDLE 0\n";
 	sdp << "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\n";
 	sdp << "c=IN IP4 0.0.0.0\n";
 	sdp << "a=ice-ufrag:" << mIceUfrag << "\n";
