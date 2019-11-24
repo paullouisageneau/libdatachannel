@@ -56,7 +56,7 @@ private:
 	void incoming(message_ptr message);
 	void processOpenMessage(message_ptr message);
 
-	const unsigned int mStream;
+	unsigned int mStream;
 	std::shared_ptr<SctpTransport> mSctpTransport;
 	string mLabel;
 	string mProtocol;

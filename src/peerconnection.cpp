@@ -60,9 +60,24 @@ void PeerConnection::setRemoteDescription(Description description) {
 		initIceTransport(Description::Role::ActPass);
 
 	mIceTransport->setRemoteDescription(*mRemoteDescription);
+
 	if (mRemoteDescription->type() == Description::Type::Offer) {
+		// This is an offer and we are the answerer.
 		processLocalDescription(mIceTransport->getLocalDescription(Description::Type::Answer));
 		mIceTransport->gatherLocalCandidates();
+	} else {
+		// This is an answer and we are the offerer.
+		if (!mSctpTransport && mIceTransport->role() == Description::Role::Active) {
+			// Since we assumed passive role during DataChannel creation, we need to shift the
+			// stream numbers by one to shift them from odd to even.
+			decltype(mDataChannels) newDataChannels;
+			iterateDataChannels([&](shared_ptr<DataChannel> channel) {
+				if (channel->stream() % 2 == 1)
+					channel->mStream -= 1;
+				newDataChannels.emplace(channel->stream(), channel);
+			});
+			std::swap(mDataChannels, newDataChannels);
+		}
 	}
 
 	for (const auto &candidate : remoteCandidates)
@@ -97,10 +112,15 @@ std::optional<string> PeerConnection::remoteAddress() const {
 shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
                                                           const string &protocol,
                                                           const Reliability &reliability) {
+	// RFC 5763: The answerer MUST use either a setup attribute value of setup:active or
+	// setup:passive. [...] Thus, setup:active is RECOMMENDED.
+	// See https://tools.ietf.org/html/rfc5763#section-5
+	// Therefore, we assume passive role when we are the offerer.
+	auto role = mIceTransport ? mIceTransport->role() : Description::Role::Passive;
+
 	// The active side must use streams with even identifiers, whereas the passive side must use
 	// streams with odd identifiers.
 	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09#section-6
-	auto role = mIceTransport ? mIceTransport->role() : Description::Role::Active;
 	unsigned int stream = (role == Description::Role::Active) ? 0 : 1;
 	while (mDataChannels.find(stream) != mDataChannels.end()) {
 		stream += 2;
@@ -112,7 +132,10 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 	mDataChannels.insert(std::make_pair(stream, channel));
 
 	if (!mIceTransport) {
-		initIceTransport(Description::Role::Active);
+		// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
+		// setup:actpass.
+		// See https://tools.ietf.org/html/rfc5763#section-5
+		initIceTransport(Description::Role::ActPass);
 		processLocalDescription(mIceTransport->getLocalDescription(Description::Type::Offer));
 		mIceTransport->gatherLocalCandidates();
 	} else if (mSctpTransport && mSctpTransport->state() == SctpTransport::State::Connected) {
