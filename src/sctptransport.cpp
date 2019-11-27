@@ -51,7 +51,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
                              state_callback stateChangeCallback)
     : Transport(lower), mPort(port), mState(State::Disconnected),
       mStateChangeCallback(std::move(stateChangeCallback)) {
-  
+
   onRecv(recv);
 
 	GlobalInit();
@@ -120,9 +120,11 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
 }
 
 SctpTransport::~SctpTransport() {
-  onRecv(nullptr);
+	onRecv(nullptr);
 	mStopping = true;
 	mConnectCondition.notify_all();
+	mSendQueue.stop();
+
 	if (mConnectThread.joinable())
 		mConnectThread.join();
 
@@ -138,6 +140,91 @@ SctpTransport::~SctpTransport() {
 SctpTransport::State SctpTransport::state() const { return mState; }
 
 bool SctpTransport::send(message_ptr message) {
+	if (!message || mStopping)
+		return false;
+
+	mSendQueue.push(message);
+	return true;
+}
+
+void SctpTransport::reset(unsigned int stream) {
+	using srs_t = struct sctp_reset_streams;
+	const size_t len = sizeof(srs_t) + sizeof(uint16_t);
+	byte buffer[len] = {};
+	srs_t &srs = *reinterpret_cast<srs_t *>(buffer);
+	srs.srs_flags = SCTP_STREAM_RESET_OUTGOING;
+	srs.srs_number_streams = 1;
+	srs.srs_stream_list[0] = uint16_t(stream);
+	usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_RESET_STREAMS, &srs, len);
+}
+
+void SctpTransport::incoming(message_ptr message) {
+	if (!message) {
+		changeState(State::Disconnected);
+		recv(nullptr);
+		return;
+	}
+
+	// There could be a race condition here where we receive the remote INIT before the thread in
+	// usrsctp_connect sends the local one, which would result in the connection being aborted.
+	// Therefore, we need to wait for data to be sent on our side (i.e. the local INIT) before
+	// proceeding.
+	if (!mConnectDataSent) {
+		std::unique_lock<std::mutex> lock(mConnectMutex);
+		mConnectCondition.wait(lock, [this] { return mConnectDataSent || mStopping; });
+	}
+
+	if (!mStopping)
+		usrsctp_conninput(this, message->data(), message->size(), 0);
+}
+
+void SctpTransport::changeState(State state) {
+	mState = state;
+	mStateChangeCallback(state);
+}
+
+void SctpTransport::runConnect() {
+	try {
+		changeState(State::Connecting);
+
+		struct sockaddr_conn sconn = {};
+		sconn.sconn_family = AF_CONN;
+		sconn.sconn_port = htons(mPort);
+		sconn.sconn_addr = this;
+#ifdef HAVE_SCONN_LEN
+		sconn.sconn_len = sizeof(sconn);
+#endif
+
+		// According to the IETF draft, both endpoints must initiate the SCTP association, in a
+		// simultaneous-open manner, irrelevent to the SDP setup role.
+		// See https://tools.ietf.org/html/draft-ietf-mmusic-sctp-sdp-26#section-9.3
+		if (usrsctp_connect(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)) != 0)
+			throw std::runtime_error("Connection failed, errno=" + std::to_string(errno));
+
+		if (!mStopping)
+			changeState(State::Connected);
+
+	} catch (const std::exception &e) {
+		std::cerr << "SCTP connect: " << e.what() << std::endl;
+		changeState(State::Failed);
+		mStopping = true;
+		mConnectCondition.notify_all();
+		return;
+	}
+
+	try {
+		while (auto message = mSendQueue.pop()) {
+			if (!doSend(*message))
+				throw std::runtime_error("Sending failed, errno=" + std::to_string(errno));
+		}
+	} catch (const std::exception &e) {
+		std::cerr << "SCTP send: " << e.what() << std::endl;
+		mStopping = true;
+		return;
+	}
+}
+
+bool SctpTransport::doSend(message_ptr message) {
 	if (!message)
 		return false;
 
@@ -192,73 +279,6 @@ bool SctpTransport::send(message_ptr message) {
 	} else {
 		const char zero = 0;
 		return usrsctp_sendv(mSock, &zero, 1, nullptr, 0, &spa, sizeof(spa), SCTP_SENDV_SPA, 0) > 0;
-	}
-}
-
-void SctpTransport::reset(unsigned int stream) {
-	using srs_t = struct sctp_reset_streams;
-	const size_t len = sizeof(srs_t) + sizeof(uint16_t);
-	byte buffer[len] = {};
-	srs_t &srs = *reinterpret_cast<srs_t *>(buffer);
-	srs.srs_flags = SCTP_STREAM_RESET_OUTGOING;
-	srs.srs_number_streams = 1;
-	srs.srs_stream_list[0] = uint16_t(stream);
-	usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_RESET_STREAMS, &srs, len);
-}
-
-void SctpTransport::incoming(message_ptr message) {
-	if (!message) {
-		changeState(State::Disconnected);
-		recv(nullptr);
-		return;
-	}
-
-	// There could be a race condition here where we receive the remote INIT before the thread in
-	// usrsctp_connect sends the local one, which would result in the connection being aborted.
-	// Therefore, we need to wait for data to be sent on our side (i.e. the local INIT) before
-	// proceeding.
-	if (!mConnectDataSent) {
-		std::unique_lock<std::mutex> lock(mConnectMutex);
-		mConnectCondition.wait(lock, [this] { return mConnectDataSent || mStopping; });
-	}
-
-	if (!mStopping)
-		usrsctp_conninput(this, message->data(), message->size(), 0);
-}
-
-void SctpTransport::changeState(State state) {
-	mState = state;
-	mStateChangeCallback(state);
-}
-
-void SctpTransport::runConnect() {
-	try {
-		changeState(State::Connecting);
-
-		struct sockaddr_conn sconn = {};
-		sconn.sconn_family = AF_CONN;
-		sconn.sconn_port = htons(mPort);
-		sconn.sconn_addr = this;
-#ifdef HAVE_SCONN_LEN
-		sconn.sconn_len = sizeof(sconn);
-#endif
-
-		// According to the IETF draft, both endpoints must initiate the SCTP association, in a
-		// simultaneous-open manner, irrelevent to the SDP setup role.
-		// See https://tools.ietf.org/html/draft-ietf-mmusic-sctp-sdp-26#section-9.3
-		if (usrsctp_connect(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)) !=
-		    0) {
-			std::cerr << "SCTP connection failed, errno=" << errno << std::endl;
-			changeState(State::Failed);
-			mStopping = true;
-			return;
-		}
-
-		if (!mStopping)
-			changeState(State::Connected);
-
-	} catch (const std::exception &e) {
-		std::cerr << "SCTP connect: " << e.what() << std::endl;
 	}
 }
 
