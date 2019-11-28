@@ -37,10 +37,7 @@ PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New) {}
 
-PeerConnection::~PeerConnection() {
-	for (auto &t : mResolveThreads)
-		t.join();
-}
+PeerConnection::~PeerConnection() {}
 
 const Configuration *PeerConnection::config() const { return &mConfig; }
 
@@ -94,10 +91,13 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 		mIceTransport->addRemoteCandidate(candidate);
 	} else {
 		// OK, we might need a lookup, do it asynchronously
-		mResolveThreads.emplace_back(std::thread([this, candidate]() mutable {
+		weak_ptr<IceTransport> weakIceTransport{mIceTransport};
+		std::thread t([weakIceTransport, candidate]() mutable {
 			if (candidate.resolve(Candidate::ResolveMode::Lookup))
-				mIceTransport->addRemoteCandidate(candidate);
-		}));
+				if (auto iceTransport = weakIceTransport.lock())
+					iceTransport->addRemoteCandidate(candidate);
+		});
+		t.detach();
 	}
 }
 

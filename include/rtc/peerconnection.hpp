@@ -114,8 +114,6 @@ private:
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;
 
-	std::list<std::thread> mResolveThreads;
-
 	std::function<void(std::shared_ptr<DataChannel> dataChannel)> mDataChannelCallback;
 	std::function<void(const Description &description)> mLocalDescriptionCallback;
 	std::function<void(const Candidate &candidate)> mLocalCandidateCallback;
