@@ -154,6 +154,10 @@ void DtlsTransport::runRecvLoop() {
 				ret = gnutls_record_recv(mSession, buffer, bufferSize);
 			} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
 
+			// Consider premature termination as remote closing
+			if (ret == GNUTLS_E_PREMATURE_TERMINATION)
+				break;
+
 			if (check_gnutls(ret)) {
 				if (ret == 0) {
 					// Closed
