@@ -116,22 +116,21 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
 	if (usrsctp_bind(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)))
 		throw std::runtime_error("Could not bind usrsctp socket, errno=" + std::to_string(errno));
 
-	mConnectThread = std::thread(&SctpTransport::runConnectAndSendLoop, this);
+	mSendThread = std::thread(&SctpTransport::runConnectAndSendLoop, this);
 }
 
 SctpTransport::~SctpTransport() {
-	onRecv(nullptr);
+	onRecv(nullptr); // unset recv callback
 	mStopping = true;
 	mConnectCondition.notify_all();
 	mSendQueue.stop();
-
-	if (mConnectThread.joinable())
-		mConnectThread.join();
 
 	if (mSock) {
 		usrsctp_shutdown(mSock, SHUT_RDWR);
 		usrsctp_close(mSock);
 	}
+
+	mSendThread.join();
 
 	usrsctp_deregister_address(this);
 	GlobalCleanup();

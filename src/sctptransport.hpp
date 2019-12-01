@@ -77,14 +77,13 @@ private:
 	uint16_t mPort;
 
 	Queue<message_ptr> mSendQueue;
-	std::thread mConnectThread;
+	std::thread mSendThread;
 	std::mutex mConnectMutex;
 	std::condition_variable mConnectCondition;
 	std::atomic<bool> mConnectDataSent = false;
 	std::atomic<bool> mStopping = false;
 
 	std::atomic<State> mState;
-
 	state_callback mStateChangeCallback;
 
 	static int WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos, uint8_t set_df);
