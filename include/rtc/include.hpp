@@ -33,6 +33,7 @@ using binary = std::vector<byte>;
 
 using std::nullopt;
 
+using std::size_t;
 using std::uint16_t;
 using std::uint32_t;
 using std::uint64_t;
@@ -40,6 +41,9 @@ using std::uint8_t;
 
 const size_t MAX_NUMERICNODE_LEN = 48; // Max IPv6 string representation length
 const size_t MAX_NUMERICSERV_LEN = 6;  // Max port string representation length
+
+const size_t RECV_QUEUE_SIZE = 256; // DataChannel receive queue size in messages
+                                    // (0 means unlimited)
 
 const uint16_t DEFAULT_SCTP_PORT = 5000; // SCTP port to use by default
 

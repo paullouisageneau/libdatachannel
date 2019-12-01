@@ -20,16 +20,29 @@
 
 namespace rtc {
 
-void Channel::onOpen(std::function<void()> callback) { mOpenCallback = callback; }
+void Channel::onOpen(std::function<void()> callback) {
+	std::lock_guard<std::recursive_mutex> lock(mCallbackMutex);
+	mOpenCallback = callback;
+}
 
-void Channel::onClosed(std::function<void()> callback) { mClosedCallback = callback; }
+void Channel::onClosed(std::function<void()> callback) {
+	std::lock_guard<std::recursive_mutex> lock(mCallbackMutex);
+	mClosedCallback = callback;
+}
 
 void Channel::onError(std::function<void(const string &error)> callback) {
+	std::lock_guard<std::recursive_mutex> lock(mCallbackMutex);
 	mErrorCallback = callback;
 }
 
 void Channel::onMessage(std::function<void(const std::variant<binary, string> &data)> callback) {
+	std::lock_guard<std::recursive_mutex> lock(mCallbackMutex);
 	mMessageCallback = callback;
+
+	// Pass pending messages
+	while (auto message = receive()) {
+		mMessageCallback(*message);
+	}
 }
 
 void Channel::onMessage(std::function<void(const binary &data)> binaryCallback,
@@ -39,24 +52,41 @@ void Channel::onMessage(std::function<void(const binary &data)> binaryCallback,
 	});
 }
 
+void Channel::onAvailable(std::function<void()> callback) {
+	std::lock_guard<std::recursive_mutex> lock(mCallbackMutex);
+	mAvailableCallback = callback;
+}
+
 void Channel::triggerOpen(void) {
+	std::lock_guard<std::recursive_mutex> lock(mCallbackMutex);
 	if (mOpenCallback)
 		mOpenCallback();
 }
 
 void Channel::triggerClosed(void) {
+	std::lock_guard<std::recursive_mutex> lock(mCallbackMutex);
 	if (mClosedCallback)
 		mClosedCallback();
 }
 
 void Channel::triggerError(const string &error) {
+	std::lock_guard<std::recursive_mutex> lock(mCallbackMutex);
 	if (mErrorCallback)
 		mErrorCallback(error);
 }
 
-void Channel::triggerMessage(const std::variant<binary, string> &data) {
-	if (mMessageCallback)
-		mMessageCallback(data);
+void Channel::triggerAvailable(size_t available) {
+	std::lock_guard<std::recursive_mutex> lock(mCallbackMutex);
+	if (mAvailableCallback && available == 1) {
+		mAvailableCallback();
+	}
+	// The callback might be changed from itself
+	while (mMessageCallback && available--) {
+		auto message = receive();
+		if (!message)
+			break;
+		mMessageCallback(*message);
+	}
 }
 
 } // namespace rtc

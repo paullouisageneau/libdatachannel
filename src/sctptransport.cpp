@@ -52,7 +52,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
     : Transport(lower), mPort(port), mState(State::Disconnected),
       mStateChangeCallback(std::move(stateChangeCallback)) {
 
-  onRecv(recv);
+	onRecv(recv);
 
 	GlobalInit();
 	usrsctp_register_address(this);
@@ -273,13 +273,15 @@ bool SctpTransport::doSend(message_ptr message) {
 		break;
 	}
 
+	ssize_t ret;
 	if (!message->empty()) {
-		return usrsctp_sendv(mSock, message->data(), message->size(), nullptr, 0, &spa, sizeof(spa),
-		                     SCTP_SENDV_SPA, 0) > 0;
+		ret = usrsctp_sendv(mSock, message->data(), message->size(), nullptr, 0, &spa, sizeof(spa),
+		                    SCTP_SENDV_SPA, 0);
 	} else {
 		const char zero = 0;
-		return usrsctp_sendv(mSock, &zero, 1, nullptr, 0, &spa, sizeof(spa), SCTP_SENDV_SPA, 0) > 0;
+		ret = usrsctp_sendv(mSock, &zero, 1, nullptr, 0, &spa, sizeof(spa), SCTP_SENDV_SPA, 0);
 	}
+	return ret > 0;
 }
 
 int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df) {
@@ -296,6 +298,8 @@ int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_
 
 int SctpTransport::process(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
                            struct sctp_rcvinfo info, int flags) {
+	if (!data)
+		recv(nullptr);
 	if (flags & MSG_NOTIFICATION) {
 		processNotification((union sctp_notification *)data, len);
 	} else {

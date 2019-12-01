@@ -22,8 +22,10 @@
 #include "channel.hpp"
 #include "include.hpp"
 #include "message.hpp"
+#include "queue.hpp"
 #include "reliability.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <variant>
@@ -42,6 +44,7 @@ public:
 	void close(void);
 	void send(const std::variant<binary, string> &data);
 	void send(const byte *data, size_t size);
+	std::optional<std::variant<binary, string>> receive();
 
 	unsigned int stream() const;
 	string label() const;
@@ -62,8 +65,10 @@ private:
 	string mProtocol;
 	std::shared_ptr<Reliability> mReliability;
 
-	bool mIsOpen = false;
-	bool mIsClosed = false;
+	std::atomic<bool> mIsOpen = false;
+	std::atomic<bool> mIsClosed = false;
+
+	Queue<message_ptr> mRecvQueue;
 
 	friend class PeerConnection;
 };
