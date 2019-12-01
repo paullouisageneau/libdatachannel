@@ -62,7 +62,7 @@ private:
 
 	void incoming(message_ptr message);
 	void changeState(State state);
-	void runConnect();
+	void runConnectAndSendLoop();
 	bool doSend(message_ptr message);
 
 	int handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df);

@@ -116,7 +116,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
 	if (usrsctp_bind(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)))
 		throw std::runtime_error("Could not bind usrsctp socket, errno=" + std::to_string(errno));
 
-	mConnectThread = std::thread(&SctpTransport::runConnect, this);
+	mConnectThread = std::thread(&SctpTransport::runConnectAndSendLoop, this);
 }
 
 SctpTransport::~SctpTransport() {
@@ -183,7 +183,7 @@ void SctpTransport::changeState(State state) {
 	mStateChangeCallback(state);
 }
 
-void SctpTransport::runConnect() {
+void SctpTransport::runConnectAndSendLoop() {
 	try {
 		changeState(State::Connecting);
 
