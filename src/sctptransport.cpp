@@ -218,9 +218,11 @@ void SctpTransport::runConnectAndSendLoop() {
 		}
 	} catch (const std::exception &e) {
 		std::cerr << "SCTP send: " << e.what() << std::endl;
-		mStopping = true;
-		return;
 	}
+
+	changeState(State::Disconnected);
+	mStopping = true;
+	mConnectCondition.notify_all();
 }
 
 bool SctpTransport::doSend(message_ptr message) {

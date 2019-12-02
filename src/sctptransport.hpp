@@ -73,8 +73,8 @@ private:
 	void processData(const byte *data, size_t len, uint16_t streamId, PayloadId ppid);
 	void processNotification(const union sctp_notification *notify, size_t len);
 
+	const uint16_t mPort;
 	struct socket *mSock;
-	uint16_t mPort;
 
 	Queue<message_ptr> mSendQueue;
 	std::thread mSendThread;
