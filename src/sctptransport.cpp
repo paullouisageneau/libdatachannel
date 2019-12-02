@@ -178,8 +178,8 @@ void SctpTransport::incoming(message_ptr message) {
 }
 
 void SctpTransport::changeState(State state) {
-	mState = state;
-	mStateChangeCallback(state);
+	if (mState.exchange(state) != state)
+		mStateChangeCallback(state);
 }
 
 void SctpTransport::runConnectAndSendLoop() {

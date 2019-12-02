@@ -226,8 +226,8 @@ void IceTransport::outgoing(message_ptr message) {
 }
 
 void IceTransport::changeState(State state) {
-	mState = state;
-	mStateChangeCallback(mState);
+	if (mState.exchange(state) != state)
+		mStateChangeCallback(mState);
 }
 
 void IceTransport::changeGatheringState(GatheringState state) {

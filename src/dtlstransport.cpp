@@ -112,8 +112,8 @@ bool DtlsTransport::send(message_ptr message) {
 void DtlsTransport::incoming(message_ptr message) { mIncomingQueue.push(message); }
 
 void DtlsTransport::changeState(State state) {
-	mState = state;
-	mStateChangeCallback(state);
+	if (mState.exchange(state) != state)
+		mStateChangeCallback(state);
 }
 
 void DtlsTransport::runRecvLoop() {

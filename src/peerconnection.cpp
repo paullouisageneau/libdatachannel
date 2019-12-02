@@ -363,14 +363,12 @@ void PeerConnection::triggerDataChannel(weak_ptr<PeerConnection> weak_this, weak
 }
 
 void PeerConnection::changeState(State state) {
-	mState = state;
-	if (mStateChangeCallback)
+	if (mState.exchange(state) != state && mStateChangeCallback)
 		mStateChangeCallback(state);
 }
 
 void PeerConnection::changeGatheringState(GatheringState state) {
-	mGatheringState = state;
-	if (mGatheringStateChangeCallback)
+	if (mGatheringState.exchange(state) != state && mGatheringStateChangeCallback)
 		mGatheringStateChangeCallback(state);
 }
 
