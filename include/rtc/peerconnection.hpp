@@ -115,11 +115,11 @@ private:
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;
 
-	std::function<void(std::shared_ptr<DataChannel> dataChannel)> mDataChannelCallback;
-	std::function<void(const Description &description)> mLocalDescriptionCallback;
-	std::function<void(const Candidate &candidate)> mLocalCandidateCallback;
-	std::function<void(State state)> mStateChangeCallback;
-	std::function<void(GatheringState state)> mGatheringStateChangeCallback;
+	synchronized_callback<std::shared_ptr<DataChannel>> mDataChannelCallback;
+	synchronized_callback<const Description &> mLocalDescriptionCallback;
+	synchronized_callback<const Candidate &> mLocalCandidateCallback;
+	synchronized_callback<State> mStateChangeCallback;
+	synchronized_callback<GatheringState> mGatheringStateChangeCallback;
 };
 
 } // namespace rtc

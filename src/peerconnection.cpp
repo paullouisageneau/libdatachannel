@@ -28,7 +28,6 @@ namespace rtc {
 
 using namespace std::placeholders;
 
-using std::function;
 using std::shared_ptr;
 using std::weak_ptr;
 
@@ -358,41 +357,41 @@ void PeerConnection::processLocalDescription(Description description) {
 	mLocalDescription->setFingerprint(mCertificate->fingerprint());
 	mLocalDescription->setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
 
-	if (mLocalDescriptionCallback)
-		mLocalDescriptionCallback(*mLocalDescription);
+	mLocalDescriptionCallback(*mLocalDescription);
 }
 
 void PeerConnection::processLocalCandidate(weak_ptr<PeerConnection> weak_this, Candidate candidate) {
-  auto strong_this = weak_this.lock();
-  if (!strong_this) return;
+	auto strong_this = weak_this.lock();
+	if (!strong_this)
+		return;
 
 	if (!mLocalDescription)
 		throw std::logic_error("Got a local candidate without local description");
 
 	mLocalDescription->addCandidate(candidate);
 
-	if (mLocalCandidateCallback)
-		mLocalCandidateCallback(candidate);
+	mLocalCandidateCallback(candidate);
 }
 
 void PeerConnection::triggerDataChannel(weak_ptr<PeerConnection> weak_this, weak_ptr<DataChannel> weakDataChannel) {
-  auto strong_this = weak_this.lock();
-  if (!strong_this) return;
+	auto strong_this = weak_this.lock();
+	if (!strong_this)
+		return;
 
-  auto dataChannel = weakDataChannel.lock();
-  if (!dataChannel) return;
+	auto dataChannel = weakDataChannel.lock();
+	if (!dataChannel)
+		return;
 
-	if (mDataChannelCallback)
-		mDataChannelCallback(dataChannel);
+	mDataChannelCallback(dataChannel);
 }
 
 void PeerConnection::changeState(State state) {
-	if (mState.exchange(state) != state && mStateChangeCallback)
+	if (mState.exchange(state) != state)
 		mStateChangeCallback(state);
 }
 
 void PeerConnection::changeGatheringState(GatheringState state) {
-	if (mGatheringState.exchange(state) != state && mGatheringStateChangeCallback)
+	if (mGatheringState.exchange(state) != state)
 		mGatheringStateChangeCallback(state);
 }
 

@@ -20,7 +20,9 @@
 #define RTC_INCLUDE_H
 
 #include <cstddef>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
@@ -49,6 +51,25 @@ const uint16_t DEFAULT_SCTP_PORT = 5000; // SCTP port to use by default
 
 template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template <class... Ts> overloaded(Ts...)->overloaded<Ts...>;
+
+template <typename... P> class synchronized_callback {
+public:
+	synchronized_callback &operator=(std::function<void(P...)> func) {
+		std::lock_guard<std::recursive_mutex> lock(mutex);
+		callback = func;
+		return *this;
+	}
+
+	void operator()(P... args) {
+		std::lock_guard<std::recursive_mutex> lock(mutex);
+		if (callback)
+			callback(args...);
+	}
+
+private:
+	std::function<void(P...)> callback;
+	std::recursive_mutex mutex;
+};
 }
 
 #endif
