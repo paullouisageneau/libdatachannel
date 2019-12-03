@@ -44,12 +44,14 @@ public:
 	               std::function<void(const string &data)> stringCallback);
 
 	void onAvailable(std::function<void()> callback);
+	void onSent(std::function<void()> callback);
 
 protected:
 	virtual void triggerOpen(void);
 	virtual void triggerClosed(void);
 	virtual void triggerError(const string &error);
 	virtual void triggerAvailable(size_t available);
+	virtual void triggerSent();
 
 private:
 	std::function<void()> mOpenCallback;
@@ -57,7 +59,13 @@ private:
 	std::function<void(const string &)> mErrorCallback;
 	std::function<void(const std::variant<binary, string> &)> mMessageCallback;
 	std::function<void()> mAvailableCallback;
-	std::recursive_mutex mCallbackMutex;
+	std::function<void()> mSentCallback;
+	std::mutex mCallbackMutex;
+
+	template <typename T> T getCallback(const T &callback) {
+		std::lock_guard<std::mutex> lock(mCallbackMutex);
+		return callback;
+	}
 };
 
 } // namespace rtc

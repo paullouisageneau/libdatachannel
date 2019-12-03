@@ -48,9 +48,9 @@ void SctpTransport::GlobalCleanup() {
 }
 
 SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, message_callback recv,
-                             state_callback stateChangeCallback)
+                             sent_callback sentCallback, state_callback stateChangeCallback)
     : Transport(lower), mPort(port), mState(State::Disconnected),
-      mStateChangeCallback(std::move(stateChangeCallback)) {
+      mSentCallback(std::move(sentCallback)), mStateChangeCallback(std::move(stateChangeCallback)) {
 
 	onRecv(recv);
 
@@ -142,6 +142,7 @@ bool SctpTransport::send(message_ptr message) {
 	if (!message || mStopping)
 		return false;
 
+	updateSendCount(message->stream, 1);
 	mSendQueue.push(message);
 	return true;
 }
@@ -212,8 +213,10 @@ void SctpTransport::runConnectAndSendLoop() {
 	}
 
 	try {
-		while (auto message = mSendQueue.pop()) {
-			if (!doSend(*message))
+		while (auto next = mSendQueue.pop()) {
+			auto message = *next;
+			updateSendCount(message->stream, -1);
+			if (!doSend(message))
 				throw std::runtime_error("Sending failed, errno=" + std::to_string(errno));
 		}
 	} catch (const std::exception &e) {
@@ -283,6 +286,16 @@ bool SctpTransport::doSend(message_ptr message) {
 		ret = usrsctp_sendv(mSock, &zero, 1, nullptr, 0, &spa, sizeof(spa), SCTP_SENDV_SPA, 0);
 	}
 	return ret > 0;
+}
+
+void SctpTransport::updateSendCount(uint16_t streamId, int delta) {
+	std::lock_guard<std::mutex> lock(mSendCountMutex);
+	auto it = mSendCount.insert(std::make_pair(streamId, 0)).first;
+	it->second = std::max(it->second + delta, 0);
+	if (it->second == 0) {
+		mSendCount.erase(it);
+		mSentCallback(streamId);
+	}
 }
 
 int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df) {
