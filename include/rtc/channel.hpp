@@ -54,18 +54,31 @@ protected:
 	virtual void triggerSent();
 
 private:
-	std::function<void()> mOpenCallback;
-	std::function<void()> mClosedCallback;
-	std::function<void(const string &)> mErrorCallback;
-	std::function<void(const std::variant<binary, string> &)> mMessageCallback;
-	std::function<void()> mAvailableCallback;
-	std::function<void()> mSentCallback;
-	std::mutex mCallbackMutex;
+	template <typename... P> class synchronized_callback {
+	public:
+		synchronized_callback &operator=(std::function<void(P...)> func) {
+			std::lock_guard<std::recursive_mutex> lock(mutex);
+			callback = func;
+			return *this;
+		}
 
-	template <typename T> T getCallback(const T &callback) {
-		std::lock_guard<std::mutex> lock(mCallbackMutex);
-		return callback;
-	}
+		void operator()(P... args) {
+			std::lock_guard<std::recursive_mutex> lock(mutex);
+			if (callback)
+				callback(args...);
+		}
+
+	private:
+		std::function<void(P...)> callback;
+		std::recursive_mutex mutex;
+	};
+
+	synchronized_callback<> mOpenCallback;
+	synchronized_callback<> mClosedCallback;
+	synchronized_callback<const string &> mErrorCallback;
+	synchronized_callback<const std::variant<binary, string> &> mMessageCallback;
+	synchronized_callback<> mAvailableCallback;
+	synchronized_callback<> mSentCallback;
 };
 
 } // namespace rtc

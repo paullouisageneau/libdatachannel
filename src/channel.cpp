@@ -23,30 +23,23 @@ namespace {}
 namespace rtc {
 
 void Channel::onOpen(std::function<void()> callback) {
-	std::lock_guard<std::mutex> lock(mCallbackMutex);
 	mOpenCallback = callback;
 }
 
 void Channel::onClosed(std::function<void()> callback) {
-	std::lock_guard<std::mutex> lock(mCallbackMutex);
 	mClosedCallback = callback;
 }
 
 void Channel::onError(std::function<void(const string &error)> callback) {
-	std::lock_guard<std::mutex> lock(mCallbackMutex);
 	mErrorCallback = callback;
 }
 
 void Channel::onMessage(std::function<void(const std::variant<binary, string> &data)> callback) {
-	std::lock_guard<std::mutex> lock(mCallbackMutex);
 	mMessageCallback = callback;
 
 	// Pass pending messages
-	while (auto message = receive()) {
-		// The callback might be changed from itself
-		if (auto callback = getCallback(mMessageCallback))
-			callback(*message);
-	}
+	while (auto message = receive())
+		mMessageCallback(*message);
 }
 
 void Channel::onMessage(std::function<void(const binary &data)> binaryCallback,
@@ -57,49 +50,32 @@ void Channel::onMessage(std::function<void(const binary &data)> binaryCallback,
 }
 
 void Channel::onAvailable(std::function<void()> callback) {
-	std::lock_guard<std::mutex> lock(mCallbackMutex);
 	mAvailableCallback = callback;
 }
 
 void Channel::onSent(std::function<void()> callback) {
-	std::lock_guard<std::mutex> lock(mCallbackMutex);
 	mSentCallback = callback;
 }
 
-void Channel::triggerOpen() {
-	if (auto callback = getCallback(mOpenCallback))
-		callback();
-}
+void Channel::triggerOpen() { mOpenCallback(); }
 
-void Channel::triggerClosed() {
-	if (auto callback = getCallback(mClosedCallback))
-		callback();
-}
+void Channel::triggerClosed() { mClosedCallback(); }
 
-void Channel::triggerError(const string &error) {
-	if (auto callback = getCallback(mErrorCallback))
-		callback(error);
-}
+void Channel::triggerError(const string &error) { mErrorCallback(error); }
 
 void Channel::triggerAvailable(size_t available) {
-	if (available == 1) {
-		if (auto callback = getCallback(mAvailableCallback))
-			callback();
-	}
+	if (available == 1)
+		mAvailableCallback();
+
 	while (available--) {
 		auto message = receive();
 		if (!message)
 			break;
-		// The callback might be changed from itself
-		if (auto callback = getCallback(mMessageCallback))
-			callback(*message);
+		mMessageCallback(*message);
 	}
 }
 
-void Channel::triggerSent() {
-	if (auto callback = getCallback(mSentCallback))
-		callback();
-}
+void Channel::triggerSent() { mSentCallback(); }
 
 } // namespace rtc
 
