@@ -67,7 +67,7 @@ void Channel::triggerAvailable(size_t available) {
 	if (available == 1)
 		mAvailableCallback();
 
-	while (available--) {
+	while (mMessageCallback && available--) {
 		auto message = receive();
 		if (!message)
 			break;

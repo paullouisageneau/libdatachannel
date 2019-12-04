@@ -60,15 +60,17 @@ public:
 		return *this;
 	}
 
-	void operator()(P... args) {
+	void operator()(P... args) const {
 		std::lock_guard<std::recursive_mutex> lock(mutex);
 		if (callback)
 			callback(args...);
 	}
 
+	operator bool() const { return callback ? true : false; }
+
 private:
 	std::function<void(P...)> callback;
-	std::recursive_mutex mutex;
+	mutable std::recursive_mutex mutex;
 };
 }
 
