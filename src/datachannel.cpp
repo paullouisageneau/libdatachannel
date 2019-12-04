@@ -118,15 +118,21 @@ std::optional<std::variant<binary, string>> DataChannel::receive() {
 			break;
 		}
 		case Message::String:
+			mRecvSize -= message->size();
 			return std::make_optional(
 			    string(reinterpret_cast<const char *>(message->data()), message->size()));
 		case Message::Binary:
+			mRecvSize -= message->size();
 			return std::make_optional(std::move(*message));
 		}
 	}
 
 	return nullopt;
 }
+
+size_t DataChannel::available() const { return mRecvQueue.size(); }
+
+size_t DataChannel::availableSize() const { return mRecvSize; }
 
 unsigned int DataChannel::stream() const { return mStream; }
 
@@ -197,6 +203,7 @@ void DataChannel::incoming(message_ptr message) {
 	}
 	case Message::String:
 	case Message::Binary:
+		mRecvSize += message->size();
 		mRecvQueue.push(message);
 		triggerAvailable(mRecvQueue.size());
 		break;

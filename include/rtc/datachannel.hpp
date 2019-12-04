@@ -46,6 +46,9 @@ public:
 	void send(const byte *data, size_t size);
 	std::optional<std::variant<binary, string>> receive();
 
+	size_t available() const;
+	size_t availableSize() const;
+
 	unsigned int stream() const;
 	string label() const;
 	string protocol() const;
@@ -69,6 +72,7 @@ private:
 	std::atomic<bool> mIsClosed = false;
 
 	Queue<message_ptr> mRecvQueue;
+	std::atomic<size_t> mRecvSize = 0;
 
 	friend class PeerConnection;
 };
