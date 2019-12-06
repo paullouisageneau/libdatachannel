@@ -22,6 +22,7 @@
 #include "include.hpp"
 
 #include <functional>
+#include <mutex>
 #include <variant>
 
 namespace rtc {
@@ -30,30 +31,38 @@ class Channel {
 public:
 	virtual void close(void) = 0;
 	virtual void send(const std::variant<binary, string> &data) = 0;
-
+	virtual std::optional<std::variant<binary, string>> receive() = 0;
 	virtual bool isOpen(void) const = 0;
 	virtual bool isClosed(void) const = 0;
 
 	void onOpen(std::function<void()> callback);
 	void onClosed(std::function<void()> callback);
 	void onError(std::function<void(const string &error)> callback);
+
 	void onMessage(std::function<void(const std::variant<binary, string> &data)> callback);
 	void onMessage(std::function<void(const binary &data)> binaryCallback,
 	               std::function<void(const string &data)> stringCallback);
+
+	void onAvailable(std::function<void()> callback);
+	void onSent(std::function<void()> callback);
 
 protected:
 	virtual void triggerOpen(void);
 	virtual void triggerClosed(void);
 	virtual void triggerError(const string &error);
-	virtual void triggerMessage(const std::variant<binary, string> &data);
+	virtual void triggerAvailable(size_t available);
+	virtual void triggerSent();
 
 private:
-	std::function<void()> mOpenCallback;
-	std::function<void()> mClosedCallback;
-	std::function<void(const string &)> mErrorCallback;
-	std::function<void(const std::variant<binary, string> &)> mMessageCallback;
+	synchronized_callback<> mOpenCallback;
+	synchronized_callback<> mClosedCallback;
+	synchronized_callback<const string &> mErrorCallback;
+	synchronized_callback<const std::variant<binary, string> &> mMessageCallback;
+	synchronized_callback<> mAvailableCallback;
+	synchronized_callback<> mSentCallback;
 };
 
 } // namespace rtc
 
 #endif // RTC_CHANNEL_H
+

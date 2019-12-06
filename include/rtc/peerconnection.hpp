@@ -89,6 +89,7 @@ private:
 
 	bool checkFingerprint(std::weak_ptr<PeerConnection> weak_this, const std::string &fingerprint) const;
 	void forwardMessage(std::weak_ptr<PeerConnection> weak_this, message_ptr message);
+	void forwardSent(std::weak_ptr<PeerConnection> weak_this, uint16_t stream);
 	void iterateDataChannels(std::function<void(std::shared_ptr<DataChannel> channel)> func);
 	void openDataChannels();
 	void closeDataChannels();
@@ -114,13 +115,11 @@ private:
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;
 
-	std::list<std::thread> mResolveThreads;
-
-	std::function<void(std::shared_ptr<DataChannel> dataChannel)> mDataChannelCallback;
-	std::function<void(const Description &description)> mLocalDescriptionCallback;
-	std::function<void(const Candidate &candidate)> mLocalCandidateCallback;
-	std::function<void(State state)> mStateChangeCallback;
-	std::function<void(GatheringState state)> mGatheringStateChangeCallback;
+	synchronized_callback<std::shared_ptr<DataChannel>> mDataChannelCallback;
+	synchronized_callback<const Description &> mLocalDescriptionCallback;
+	synchronized_callback<const Candidate &> mLocalCandidateCallback;
+	synchronized_callback<State> mStateChangeCallback;
+	synchronized_callback<GatheringState> mGatheringStateChangeCallback;
 };
 
 } // namespace rtc

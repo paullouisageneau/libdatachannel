@@ -132,8 +132,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 
 IceTransport::~IceTransport() {
 	g_main_loop_quit(mMainLoop.get());
-	if (mMainLoopThread.joinable())
-		mMainLoopThread.join();
+	mMainLoopThread.join();
 }
 
 Description::Role IceTransport::role() const { return mRole; }
@@ -227,8 +226,8 @@ void IceTransport::outgoing(message_ptr message) {
 }
 
 void IceTransport::changeState(State state) {
-	mState = state;
-	mStateChangeCallback(mState);
+	if (mState.exchange(state) != state)
+		mStateChangeCallback(mState);
 }
 
 void IceTransport::changeGatheringState(GatheringState state) {

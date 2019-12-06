@@ -22,8 +22,10 @@
 #include "channel.hpp"
 #include "include.hpp"
 #include "message.hpp"
+#include "queue.hpp"
 #include "reliability.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <variant>
@@ -35,13 +37,19 @@ class PeerConnection;
 
 class DataChannel : public Channel {
 public:
-	DataChannel(unsigned int stream_, string label_, string protocol_, Reliability reliability_);
-	DataChannel(unsigned int stream, std::shared_ptr<SctpTransport> sctpTransport);
+	DataChannel(std::shared_ptr<PeerConnection> pc, unsigned int stream, string label,
+	            string protocol, Reliability reliability);
+	DataChannel(std::shared_ptr<PeerConnection> pc, std::shared_ptr<SctpTransport> transport,
+	            unsigned int stream);
 	~DataChannel();
 
 	void close(void);
 	void send(const std::variant<binary, string> &data);
 	void send(const byte *data, size_t size);
+	std::optional<std::variant<binary, string>> receive();
+
+	size_t available() const;
+	size_t availableSize() const;
 
 	unsigned int stream() const;
 	string label() const;
@@ -56,14 +64,19 @@ private:
 	void incoming(message_ptr message);
 	void processOpenMessage(message_ptr message);
 
-	unsigned int mStream;
+	const std::shared_ptr<PeerConnection> mPeerConnection; // keeps the PeerConnection alive
 	std::shared_ptr<SctpTransport> mSctpTransport;
+
+	unsigned int mStream;
 	string mLabel;
 	string mProtocol;
 	std::shared_ptr<Reliability> mReliability;
 
-	bool mIsOpen = false;
-	bool mIsClosed = false;
+	std::atomic<bool> mIsOpen = false;
+	std::atomic<bool> mIsClosed = false;
+
+	Queue<message_ptr> mRecvQueue;
+	std::atomic<size_t> mRecvSize = 0;
 
 	friend class PeerConnection;
 };

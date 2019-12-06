@@ -57,21 +57,23 @@ struct CloseMessage {
 };
 #pragma pack(pop)
 
-DataChannel::DataChannel(unsigned int stream, string label, string protocol,
-                         Reliability reliability)
-    : mStream(stream), mLabel(std::move(label)), mProtocol(std::move(protocol)),
-      mReliability(std::make_shared<Reliability>(std::move(reliability))) {}
+DataChannel::DataChannel(shared_ptr<PeerConnection> pc, unsigned int stream, string label,
+                         string protocol, Reliability reliability)
+    : mPeerConnection(std::move(pc)), mStream(stream), mLabel(std::move(label)),
+      mProtocol(std::move(protocol)),
+      mReliability(std::make_shared<Reliability>(std::move(reliability))),
+      mRecvQueue(RECV_QUEUE_SIZE) {}
 
-DataChannel::DataChannel(unsigned int stream, shared_ptr<SctpTransport> sctpTransport)
-    : mStream(stream), mSctpTransport(sctpTransport),
+DataChannel::DataChannel(shared_ptr<PeerConnection> pc, shared_ptr<SctpTransport> transport,
+                         unsigned int stream)
+    : mPeerConnection(std::move(pc)), mSctpTransport(transport), mStream(stream),
       mReliability(std::make_shared<Reliability>()) {}
 
 DataChannel::~DataChannel() { close(); }
 
 void DataChannel::close() {
 	mIsOpen = false;
-	if (!mIsClosed) {
-		mIsClosed = true;
+	if (!mIsClosed.exchange(true)) {
 		if (mSctpTransport)
 			mSctpTransport->reset(mStream);
 	}
@@ -88,7 +90,8 @@ void DataChannel::send(const std::variant<binary, string> &data) {
 		    auto *b = reinterpret_cast<const byte *>(d.data());
 		    // Before the ACK has been received on a DataChannel, all messages must be sent ordered
 		    auto reliability = mIsOpen ? mReliability : nullptr;
-		    mSctpTransport->send(make_message(b, b + d.size(), type, mStream, reliability));
+		    auto message = make_message(b, b + d.size(), type, mStream, reliability);
+		    mSctpTransport->send(message);
 	    },
 	    data);
 }
@@ -98,8 +101,40 @@ void DataChannel::send(const byte *data, size_t size) {
 		return;
 
 	auto reliability = mIsOpen ? mReliability : nullptr;
-	mSctpTransport->send(make_message(data, data + size, Message::Binary, mStream, reliability));
+	auto message = make_message(data, data + size, Message::Binary, mStream, reliability);
+	mSctpTransport->send(message);
 }
+
+std::optional<std::variant<binary, string>> DataChannel::receive() {
+	while (auto opt = mRecvQueue.tryPop()) {
+		auto message = *opt;
+		switch (message->type) {
+		case Message::Control: {
+			auto raw = reinterpret_cast<const uint8_t *>(message->data());
+			if (raw[0] == MESSAGE_CLOSE) {
+				if (mIsOpen) {
+					close();
+					triggerClosed();
+				}
+			}
+			break;
+		}
+		case Message::String:
+			mRecvSize -= message->size();
+			return std::make_optional(
+			    string(reinterpret_cast<const char *>(message->data()), message->size()));
+		case Message::Binary:
+			mRecvSize -= message->size();
+			return std::make_optional(std::move(*message));
+		}
+	}
+
+	return nullopt;
+}
+
+size_t DataChannel::available() const { return mRecvQueue.size(); }
+
+size_t DataChannel::availableSize() const { return mRecvSize; }
 
 unsigned int DataChannel::stream() const { return mStream; }
 
@@ -153,16 +188,14 @@ void DataChannel::incoming(message_ptr message) {
 			processOpenMessage(message);
 			break;
 		case MESSAGE_ACK:
-			if (!mIsOpen) {
-				mIsOpen = true;
+			if (!mIsOpen.exchange(true)) {
 				triggerOpen();
 			}
 			break;
 		case MESSAGE_CLOSE:
-			if (mIsOpen) {
-				close();
-				triggerClosed();
-			}
+			// The close message will be processed in-order in receive()
+			mRecvQueue.push(message);
+			triggerAvailable(mRecvQueue.size());
 			break;
 		default:
 			// Ignore
@@ -170,14 +203,15 @@ void DataChannel::incoming(message_ptr message) {
 		}
 		break;
 	}
-	case Message::String: {
-		triggerMessage(string(reinterpret_cast<const char *>(message->data()), message->size()));
+	case Message::String:
+	case Message::Binary:
+		mRecvSize += message->size();
+		mRecvQueue.push(message);
+		triggerAvailable(mRecvQueue.size());
 		break;
-	}
-	case Message::Binary: {
-		triggerMessage(*message);
+	default:
+		// Ignore
 		break;
-	}
 	}
 }
 

@@ -28,7 +28,6 @@ namespace rtc {
 
 using namespace std::placeholders;
 
-using std::function;
 using std::shared_ptr;
 using std::weak_ptr;
 
@@ -37,10 +36,7 @@ PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New) {}
 
-PeerConnection::~PeerConnection() {
-	for (auto &t : mResolveThreads)
-		t.join();
-}
+PeerConnection::~PeerConnection() {}
 
 const Configuration *PeerConnection::config() const { return &mConfig; }
 
@@ -94,10 +90,13 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 		mIceTransport->addRemoteCandidate(candidate);
 	} else {
 		// OK, we might need a lookup, do it asynchronously
-		mResolveThreads.emplace_back(std::thread([this, candidate]() mutable {
+		weak_ptr<IceTransport> weakIceTransport{mIceTransport};
+		std::thread t([weakIceTransport, candidate]() mutable {
 			if (candidate.resolve(Candidate::ResolveMode::Lookup))
-				mIceTransport->addRemoteCandidate(candidate);
-		}));
+				if (auto iceTransport = weakIceTransport.lock())
+					iceTransport->addRemoteCandidate(candidate);
+		});
+		t.detach();
 	}
 }
 
@@ -128,7 +127,8 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 			throw std::runtime_error("Too many DataChannels");
 	}
 
-	auto channel = std::make_shared<DataChannel>(stream, label, protocol, reliability);
+	auto channel =
+	    std::make_shared<DataChannel>(shared_from_this(), stream, label, protocol, reliability);
 	mDataChannels.insert(std::make_pair(stream, channel));
 
 	if (!mIceTransport) {
@@ -232,10 +232,16 @@ void PeerConnection::initDtlsTransport() {
 void PeerConnection::initSctpTransport() {
 	uint16_t sctpPort = mRemoteDescription->sctpPort().value_or(DEFAULT_SCTP_PORT);
 	mSctpTransport = std::make_shared<SctpTransport>(
-	    mDtlsTransport, sctpPort, std::bind(&PeerConnection::forwardMessage, this, weak_ptr<PeerConnection>{shared_from_this()}, _1),
-	    [this, weak_this = weak_ptr<PeerConnection>{shared_from_this()}](SctpTransport::State state) {
-        auto strong_this = weak_this.lock();
-        if (!strong_this) return;
+	    mDtlsTransport, sctpPort,
+	    std::bind(&PeerConnection::forwardMessage, this,
+	              weak_ptr<PeerConnection>{shared_from_this()}, _1),
+	    std::bind(&PeerConnection::forwardSent, this, weak_ptr<PeerConnection>{shared_from_this()},
+	              _1),
+	    [this,
+	     weak_this = weak_ptr<PeerConnection>{shared_from_this()}](SctpTransport::State state) {
+		    auto strong_this = weak_this.lock();
+		    if (!strong_this)
+			    return;
 
 		    switch (state) {
 		    case SctpTransport::State::Connected:
@@ -292,7 +298,8 @@ void PeerConnection::forwardMessage(weak_ptr<PeerConnection> weak_this, message_
 		unsigned int remoteParity = (mIceTransport->role() == Description::Role::Active) ? 1 : 0;
 		if (message->type == Message::Control && *message->data() == dataChannelOpenMessage &&
 		    message->stream % 2 == remoteParity) {
-			channel = std::make_shared<DataChannel>(message->stream, mSctpTransport);
+			channel =
+			    std::make_shared<DataChannel>(shared_from_this(), mSctpTransport, message->stream);
 			channel->onOpen(std::bind(&PeerConnection::triggerDataChannel, this, weak_this, weak_ptr<DataChannel>{channel}));
 			mDataChannels.insert(std::make_pair(message->stream, channel));
 		} else {
@@ -303,6 +310,24 @@ void PeerConnection::forwardMessage(weak_ptr<PeerConnection> weak_this, message_
 	}
 
 	channel->incoming(message);
+}
+
+void PeerConnection::forwardSent(weak_ptr<PeerConnection> weak_this, uint16_t stream) {
+	auto strong_this = weak_this.lock();
+	if (!strong_this)
+		return;
+
+	shared_ptr<DataChannel> channel;
+	if (auto it = mDataChannels.find(stream); it != mDataChannels.end()) {
+		channel = it->second.lock();
+		if (!channel || channel->isClosed()) {
+			mDataChannels.erase(it);
+			channel = nullptr;
+		}
+	}
+
+	if (channel)
+		channel->triggerSent();
 }
 
 void PeerConnection::iterateDataChannels(
@@ -334,43 +359,41 @@ void PeerConnection::processLocalDescription(Description description) {
 	mLocalDescription->setFingerprint(mCertificate->fingerprint());
 	mLocalDescription->setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
 
-	if (mLocalDescriptionCallback)
-		mLocalDescriptionCallback(*mLocalDescription);
+	mLocalDescriptionCallback(*mLocalDescription);
 }
 
 void PeerConnection::processLocalCandidate(weak_ptr<PeerConnection> weak_this, Candidate candidate) {
-  auto strong_this = weak_this.lock();
-  if (!strong_this) return;
+	auto strong_this = weak_this.lock();
+	if (!strong_this)
+		return;
 
 	if (!mLocalDescription)
 		throw std::logic_error("Got a local candidate without local description");
 
 	mLocalDescription->addCandidate(candidate);
 
-	if (mLocalCandidateCallback)
-		mLocalCandidateCallback(candidate);
+	mLocalCandidateCallback(candidate);
 }
 
 void PeerConnection::triggerDataChannel(weak_ptr<PeerConnection> weak_this, weak_ptr<DataChannel> weakDataChannel) {
-  auto strong_this = weak_this.lock();
-  if (!strong_this) return;
+	auto strong_this = weak_this.lock();
+	if (!strong_this)
+		return;
 
-  auto dataChannel = weakDataChannel.lock();
-  if (!dataChannel) return;
+	auto dataChannel = weakDataChannel.lock();
+	if (!dataChannel)
+		return;
 
-	if (mDataChannelCallback)
-		mDataChannelCallback(dataChannel);
+	mDataChannelCallback(dataChannel);
 }
 
 void PeerConnection::changeState(State state) {
-	mState = state;
-	if (mStateChangeCallback)
+	if (mState.exchange(state) != state)
 		mStateChangeCallback(state);
 }
 
 void PeerConnection::changeGatheringState(GatheringState state) {
-	mGatheringState = state;
-	if (mGatheringStateChangeCallback)
+	if (mGatheringState.exchange(state) != state)
 		mGatheringStateChangeCallback(state);
 }
 

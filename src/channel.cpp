@@ -18,11 +18,17 @@
 
 #include "channel.hpp"
 
+namespace {}
+
 namespace rtc {
 
-void Channel::onOpen(std::function<void()> callback) { mOpenCallback = callback; }
+void Channel::onOpen(std::function<void()> callback) {
+	mOpenCallback = callback;
+}
 
-void Channel::onClosed(std::function<void()> callback) { mClosedCallback = callback; }
+void Channel::onClosed(std::function<void()> callback) {
+	mClosedCallback = callback;
+}
 
 void Channel::onError(std::function<void(const string &error)> callback) {
 	mErrorCallback = callback;
@@ -30,6 +36,10 @@ void Channel::onError(std::function<void(const string &error)> callback) {
 
 void Channel::onMessage(std::function<void(const std::variant<binary, string> &data)> callback) {
 	mMessageCallback = callback;
+
+	// Pass pending messages
+	while (auto message = receive())
+		mMessageCallback(*message);
 }
 
 void Channel::onMessage(std::function<void(const binary &data)> binaryCallback,
@@ -39,25 +49,33 @@ void Channel::onMessage(std::function<void(const binary &data)> binaryCallback,
 	});
 }
 
-void Channel::triggerOpen(void) {
-	if (mOpenCallback)
-		mOpenCallback();
+void Channel::onAvailable(std::function<void()> callback) {
+	mAvailableCallback = callback;
 }
 
-void Channel::triggerClosed(void) {
-	if (mClosedCallback)
-		mClosedCallback();
+void Channel::onSent(std::function<void()> callback) {
+	mSentCallback = callback;
 }
 
-void Channel::triggerError(const string &error) {
-	if (mErrorCallback)
-		mErrorCallback(error);
+void Channel::triggerOpen() { mOpenCallback(); }
+
+void Channel::triggerClosed() { mClosedCallback(); }
+
+void Channel::triggerError(const string &error) { mErrorCallback(error); }
+
+void Channel::triggerAvailable(size_t available) {
+	if (available == 1)
+		mAvailableCallback();
+
+	while (mMessageCallback && available--) {
+		auto message = receive();
+		if (!message)
+			break;
+		mMessageCallback(*message);
+	}
 }
 
-void Channel::triggerMessage(const std::variant<binary, string> &data) {
-	if (mMessageCallback)
-		mMessageCallback(data);
-}
+void Channel::triggerSent() { mSentCallback(); }
 
 } // namespace rtc
 

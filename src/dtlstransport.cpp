@@ -83,11 +83,13 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 }
 
 DtlsTransport::~DtlsTransport() {
-  onRecv(nullptr);
+	onRecv(nullptr); // unset recv callback
+
 	mIncomingQueue.stop();
-  mRecvThread.join();
-  gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
-  gnutls_deinit(mSession);
+	mRecvThread.join();
+
+	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
+	gnutls_deinit(mSession);
 }
 
 DtlsTransport::State DtlsTransport::state() const { return mState; }
@@ -110,8 +112,8 @@ bool DtlsTransport::send(message_ptr message) {
 void DtlsTransport::incoming(message_ptr message) { mIncomingQueue.push(message); }
 
 void DtlsTransport::changeState(State state) {
-	mState = state;
-	mStateChangeCallback(state);
+	if (mState.exchange(state) != state)
+		mStateChangeCallback(state);
 }
 
 void DtlsTransport::runRecvLoop() {
@@ -153,6 +155,10 @@ void DtlsTransport::runRecvLoop() {
 			do {
 				ret = gnutls_record_recv(mSession, buffer, bufferSize);
 			} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
+
+			// Consider premature termination as remote closing
+			if (ret == GNUTLS_E_PREMATURE_TERMINATION)
+				break;
 
 			if (check_gnutls(ret)) {
 				if (ret == 0) {

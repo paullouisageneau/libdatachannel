@@ -26,6 +26,7 @@
 
 #include <condition_variable>
 #include <functional>
+#include <map>
 #include <mutex>
 #include <thread>
 
@@ -40,10 +41,11 @@ class SctpTransport : public Transport {
 public:
 	enum class State { Disconnected, Connecting, Connected, Failed };
 
+	using sent_callback = std::function<void(uint16_t streamId)>;
 	using state_callback = std::function<void(State state)>;
 
 	SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, message_callback recv,
-	              state_callback stateChangeCallback);
+	              sent_callback sent, state_callback stateChangeCallback);
 	~SctpTransport();
 
 	State state() const;
@@ -62,8 +64,9 @@ private:
 
 	void incoming(message_ptr message);
 	void changeState(State state);
-	void runConnect();
+	void runConnectAndSendLoop();
 	bool doSend(message_ptr message);
+	void updateSendCount(uint16_t streamId, int delta);
 
 	int handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df);
 
@@ -73,18 +76,21 @@ private:
 	void processData(const byte *data, size_t len, uint16_t streamId, PayloadId ppid);
 	void processNotification(const union sctp_notification *notify, size_t len);
 
+	const uint16_t mPort;
 	struct socket *mSock;
-	uint16_t mPort;
 
 	Queue<message_ptr> mSendQueue;
-	std::thread mConnectThread;
+	std::thread mSendThread;
+	std::map<uint16_t, int> mSendCount;
+	std::mutex mSendCountMutex;
+	sent_callback mSentCallback;
+
 	std::mutex mConnectMutex;
 	std::condition_variable mConnectCondition;
 	std::atomic<bool> mConnectDataSent = false;
 	std::atomic<bool> mStopping = false;
 
 	std::atomic<State> mState;
-
 	state_callback mStateChangeCallback;
 
 	static int WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos, uint8_t set_df);

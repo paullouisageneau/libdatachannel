@@ -48,11 +48,11 @@ void SctpTransport::GlobalCleanup() {
 }
 
 SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, message_callback recv,
-                             state_callback stateChangeCallback)
+                             sent_callback sentCallback, state_callback stateChangeCallback)
     : Transport(lower), mPort(port), mState(State::Disconnected),
-      mStateChangeCallback(std::move(stateChangeCallback)) {
+      mSentCallback(std::move(sentCallback)), mStateChangeCallback(std::move(stateChangeCallback)) {
 
-  onRecv(recv);
+	onRecv(recv);
 
 	GlobalInit();
 	usrsctp_register_address(this);
@@ -116,22 +116,21 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
 	if (usrsctp_bind(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)))
 		throw std::runtime_error("Could not bind usrsctp socket, errno=" + std::to_string(errno));
 
-	mConnectThread = std::thread(&SctpTransport::runConnect, this);
+	mSendThread = std::thread(&SctpTransport::runConnectAndSendLoop, this);
 }
 
 SctpTransport::~SctpTransport() {
-	onRecv(nullptr);
+	onRecv(nullptr); // unset recv callback
 	mStopping = true;
 	mConnectCondition.notify_all();
 	mSendQueue.stop();
-
-	if (mConnectThread.joinable())
-		mConnectThread.join();
 
 	if (mSock) {
 		usrsctp_shutdown(mSock, SHUT_RDWR);
 		usrsctp_close(mSock);
 	}
+
+	mSendThread.join();
 
 	usrsctp_deregister_address(this);
 	GlobalCleanup();
@@ -143,6 +142,7 @@ bool SctpTransport::send(message_ptr message) {
 	if (!message || mStopping)
 		return false;
 
+	updateSendCount(message->stream, 1);
 	mSendQueue.push(message);
 	return true;
 }
@@ -179,11 +179,11 @@ void SctpTransport::incoming(message_ptr message) {
 }
 
 void SctpTransport::changeState(State state) {
-	mState = state;
-	mStateChangeCallback(state);
+	if (mState.exchange(state) != state)
+		mStateChangeCallback(state);
 }
 
-void SctpTransport::runConnect() {
+void SctpTransport::runConnectAndSendLoop() {
 	try {
 		changeState(State::Connecting);
 
@@ -213,15 +213,19 @@ void SctpTransport::runConnect() {
 	}
 
 	try {
-		while (auto message = mSendQueue.pop()) {
-			if (!doSend(*message))
+		while (auto next = mSendQueue.pop()) {
+			auto message = *next;
+			updateSendCount(message->stream, -1);
+			if (!doSend(message))
 				throw std::runtime_error("Sending failed, errno=" + std::to_string(errno));
 		}
 	} catch (const std::exception &e) {
 		std::cerr << "SCTP send: " << e.what() << std::endl;
-		mStopping = true;
-		return;
 	}
+
+	changeState(State::Disconnected);
+	mStopping = true;
+	mConnectCondition.notify_all();
 }
 
 bool SctpTransport::doSend(message_ptr message) {
@@ -273,12 +277,24 @@ bool SctpTransport::doSend(message_ptr message) {
 		break;
 	}
 
+	ssize_t ret;
 	if (!message->empty()) {
-		return usrsctp_sendv(mSock, message->data(), message->size(), nullptr, 0, &spa, sizeof(spa),
-		                     SCTP_SENDV_SPA, 0) > 0;
+		ret = usrsctp_sendv(mSock, message->data(), message->size(), nullptr, 0, &spa, sizeof(spa),
+		                    SCTP_SENDV_SPA, 0);
 	} else {
 		const char zero = 0;
-		return usrsctp_sendv(mSock, &zero, 1, nullptr, 0, &spa, sizeof(spa), SCTP_SENDV_SPA, 0) > 0;
+		ret = usrsctp_sendv(mSock, &zero, 1, nullptr, 0, &spa, sizeof(spa), SCTP_SENDV_SPA, 0);
+	}
+	return ret > 0;
+}
+
+void SctpTransport::updateSendCount(uint16_t streamId, int delta) {
+	std::lock_guard<std::mutex> lock(mSendCountMutex);
+	auto it = mSendCount.insert(std::make_pair(streamId, 0)).first;
+	it->second = std::max(it->second + delta, 0);
+	if (it->second == 0) {
+		mSendCount.erase(it);
+		mSentCallback(streamId);
 	}
 }
 
@@ -296,6 +312,10 @@ int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_
 
 int SctpTransport::process(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
                            struct sctp_rcvinfo info, int flags) {
+	if (!data) {
+		recv(nullptr);
+		return 0;
+	}
 	if (flags & MSG_NOTIFICATION) {
 		processNotification((union sctp_notification *)data, len);
 	} else {

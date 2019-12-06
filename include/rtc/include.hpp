@@ -20,7 +20,9 @@
 #define RTC_INCLUDE_H
 
 #include <cstddef>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
@@ -33,6 +35,7 @@ using binary = std::vector<byte>;
 
 using std::nullopt;
 
+using std::size_t;
 using std::uint16_t;
 using std::uint32_t;
 using std::uint64_t;
@@ -41,10 +44,37 @@ using std::uint8_t;
 const size_t MAX_NUMERICNODE_LEN = 48; // Max IPv6 string representation length
 const size_t MAX_NUMERICSERV_LEN = 6;  // Max port string representation length
 
+const size_t RECV_QUEUE_SIZE = 256; // DataChannel receive queue size in messages
+                                    // (0 means unlimited)
+
 const uint16_t DEFAULT_SCTP_PORT = 5000; // SCTP port to use by default
 
 template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template <class... Ts> overloaded(Ts...)->overloaded<Ts...>;
+
+template <typename... P> class synchronized_callback {
+public:
+	synchronized_callback() = default;
+	~synchronized_callback() { *this = nullptr; }
+
+	synchronized_callback &operator=(std::function<void(P...)> func) {
+		std::lock_guard<std::recursive_mutex> lock(mutex);
+		callback = func;
+		return *this;
+	}
+
+	void operator()(P... args) const {
+		std::lock_guard<std::recursive_mutex> lock(mutex);
+		if (callback)
+			callback(args...);
+	}
+
+	operator bool() const { return callback ? true : false; }
+
+private:
+	std::function<void(P...)> callback;
+	mutable std::recursive_mutex mutex;
+};
 }
 
 #endif
