@@ -312,8 +312,10 @@ int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_
 
 int SctpTransport::process(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
                            struct sctp_rcvinfo info, int flags) {
-	if (!data)
+	if (!data) {
 		recv(nullptr);
+		return 0;
+	}
 	if (flags & MSG_NOTIFICATION) {
 		processNotification((union sctp_notification *)data, len);
 	} else {
