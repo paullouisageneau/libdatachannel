@@ -127,7 +127,8 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 			throw std::runtime_error("Too many DataChannels");
 	}
 
-	auto channel = std::make_shared<DataChannel>(stream, label, protocol, reliability);
+	auto channel =
+	    std::make_shared<DataChannel>(shared_from_this(), stream, label, protocol, reliability);
 	mDataChannels.insert(std::make_pair(stream, channel));
 
 	if (!mIceTransport) {
@@ -297,7 +298,8 @@ void PeerConnection::forwardMessage(weak_ptr<PeerConnection> weak_this, message_
 		unsigned int remoteParity = (mIceTransport->role() == Description::Role::Active) ? 1 : 0;
 		if (message->type == Message::Control && *message->data() == dataChannelOpenMessage &&
 		    message->stream % 2 == remoteParity) {
-			channel = std::make_shared<DataChannel>(message->stream, mSctpTransport);
+			channel =
+			    std::make_shared<DataChannel>(shared_from_this(), mSctpTransport, message->stream);
 			channel->onOpen(std::bind(&PeerConnection::triggerDataChannel, this, weak_this, weak_ptr<DataChannel>{channel}));
 			mDataChannels.insert(std::make_pair(message->stream, channel));
 		} else {
