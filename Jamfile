@@ -1,0 +1,36 @@
+project libdatachannel ;
+path-constant CWD : . ;
+
+lib libdatachannel
+	: # sources
+	[ glob ./src/*.cpp ]
+	: # requirements
+	<include>./include/rtc
+	<cxxflags>"`pkg-config --cflags gnutls glib-2.0 gobject-2.0 nice`"
+	<library>/libdatachannel//usrsctp
+	: # default build
+	<link>static
+	: # usage requirements
+	<include>./include
+	<linkflags>"`pkg-config --libs gnutls glib-2.0 gobject-2.0 nice`"
+	;
+
+alias usrsctp
+    : # no sources
+    : # no build requirements
+    : # no default build
+    : # usage requirements
+    <include>./usrsctp/usrsctplib
+	<library>libusrsctp.a
+    ;
+
+make libusrsctp.a : : @make_libusrsctp ;
+actions make_libusrsctp
+{
+	(cd $(CWD)/usrsctp && \
+		./bootstrap && \
+		./configure --enable-static --disable-debug CFLAGS="-fPIC -Wno-address-of-packed-member" && \
+		make)
+    cp $(CWD)/usrsctp/usrsctplib/.libs/libusrsctp.a $(<)
+}
+
