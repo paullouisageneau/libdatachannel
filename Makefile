@@ -7,8 +7,9 @@ RM=rm -f
 CPPFLAGS=-O2 -pthread -fPIC -Wall -Wno-address-of-packed-member
 CXXFLAGS=-std=c++17
 LDFLAGS=-pthread
-LDLIBS= -lgnutls $(shell pkg-config --libs glib-2.0 gobject-2.0 nice)
-INCLUDES=-Iinclude/rtc -I$(USRSCTP_DIR)/usrsctplib $(shell pkg-config --cflags glib-2.0 gobject-2.0 nice)
+LIBS=gnutls glib-2.0 gobject-2.0 nice
+LDLIBS= $(shell pkg-config --libs $(LIBS))
+INCLUDES=-Iinclude/rtc -I$(USRSCTP_DIR)/usrsctplib $(shell pkg-config --cflags $(LIBS))
 
 USRSCTP_DIR:=usrsctp
 
