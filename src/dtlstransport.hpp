@@ -28,9 +28,14 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <thread>
 
+#if USE_GNUTLS
 #include <gnutls/gnutls.h>
+#else
+#include <openssl/ssl.h>
+#endif
 
 namespace rtc {
 
@@ -58,7 +63,6 @@ private:
 
 	const std::shared_ptr<Certificate> mCertificate;
 
-	gnutls_session_t mSession;
 	Queue<message_ptr> mIncomingQueue;
 	std::atomic<State> mState;
 	std::thread mRecvThread;
@@ -66,10 +70,25 @@ private:
 	verifier_callback mVerifierCallback;
 	state_callback mStateChangeCallback;
 
+#if USE_GNUTLS
+	gnutls_session_t mSession;
+
 	static int CertificateCallback(gnutls_session_t session);
 	static ssize_t WriteCallback(gnutls_transport_ptr_t ptr, const void *data, size_t len);
 	static ssize_t ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen);
 	static int TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms);
+#else
+	SSL_CTX *mCtx;
+	SSL *mSsl;
+	BIO *mInBio, *mOutBio;
+
+	static int TransportExIndex;
+	static std::mutex GlobalMutex;
+
+	static void GlobalInit();
+	static int CertificateCallback(int preverify_ok, X509_STORE_CTX *ctx);
+	static void InfoCallback(const SSL *ssl, int where, int ret);
+#endif
 };
 
 } // namespace rtc

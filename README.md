@@ -13,7 +13,7 @@ The library aims at fully implementing SCTP DataChannels ([draft-ietf-rtcweb-dat
 ## Dependencies
 
 - libnice: https://github.com/libnice/libnice
-- GnuTLS: https://www.gnutls.org/
+- GnuTLS: https://www.gnutls.org/ or OpenSSL: https://www.openssl.org/
 
 Submodules:
 - usrsctp: https://github.com/sctplab/usrsctp
@@ -24,7 +24,7 @@ Submodules:
 $ git submodule update --init --recursive
 $ mkdir build
 $ cd build
-$ cmake ..
+$ cmake -DUSE_GNUTLS=1 ..
 $ make
 ```
 

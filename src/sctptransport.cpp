@@ -130,7 +130,8 @@ SctpTransport::~SctpTransport() {
 		usrsctp_close(mSock);
 	}
 
-	mSendThread.join();
+	if (mSendThread.joinable())
+		mSendThread.join();
 
 	usrsctp_deregister_address(this);
 	GlobalCleanup();

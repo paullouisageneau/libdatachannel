@@ -132,7 +132,8 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 
 IceTransport::~IceTransport() {
 	g_main_loop_quit(mMainLoop.get());
-	mMainLoopThread.join();
+	if (mMainLoopThread.joinable())
+		mMainLoopThread.join();
 }
 
 Description::Role IceTransport::role() const { return mRole; }
