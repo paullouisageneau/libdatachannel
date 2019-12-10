@@ -6,13 +6,15 @@ lib libdatachannel
 	[ glob ./src/*.cpp ]
 	: # requirements
 	<include>./include/rtc
-	<cxxflags>"`pkg-config --cflags gnutls glib-2.0 gobject-2.0 nice`"
+	<define>USE_GNUTLS=0
+	<cxxflags>"`pkg-config --cflags openssl glib-2.0 gobject-2.0 nice`"
 	<library>/libdatachannel//usrsctp
 	: # default build
 	<link>static
 	: # usage requirements
 	<include>./include
-	<linkflags>"`pkg-config --libs gnutls glib-2.0 gobject-2.0 nice`"
+	<cxxflags>-pthread
+	<linkflags>"`pkg-config --libs openssl glib-2.0 gobject-2.0 nice`"
 	;
 
 alias usrsctp

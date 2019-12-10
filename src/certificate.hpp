@@ -21,24 +21,47 @@
 
 #include "include.hpp"
 
+#include <tuple>
+
+#if USE_GNUTLS
 #include <gnutls/x509.h>
+#else
+#include <openssl/x509.h>
+#endif
 
 namespace rtc {
 
 class Certificate {
 public:
-	Certificate(gnutls_x509_crt_t crt, gnutls_x509_privkey_t privkey);
 	Certificate(string crt_pem, string key_pem);
 
-	string fingerprint() const;
+#if USE_GNUTLS
+	Certificate(gnutls_x509_crt_t crt, gnutls_x509_privkey_t privkey);
 	gnutls_certificate_credentials_t credentials() const;
+#else
+	Certificate(std::shared_ptr<X509> x509, std::shared_ptr<EVP_PKEY> pkey);
+	std::tuple<X509 *, EVP_PKEY *> credentials() const;
+#endif
+
+	string fingerprint() const;
 
 private:
+#if USE_GNUTLS
 	std::shared_ptr<gnutls_certificate_credentials_t> mCredentials;
+#else
+	std::shared_ptr<X509> mX509;
+	std::shared_ptr<EVP_PKEY> mPKey;
+#endif
+
 	string mFingerprint;
 };
 
+#if USE_GNUTLS
 string make_fingerprint(gnutls_x509_crt_t crt);
+#else
+string make_fingerprint(X509 *x509);
+#endif
+
 std::shared_ptr<Certificate> make_certificate(const string &commonName);
 
 } // namespace rtc

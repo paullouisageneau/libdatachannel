@@ -7,11 +7,20 @@ RM=rm -f
 CPPFLAGS=-O2 -pthread -fPIC -Wall -Wno-address-of-packed-member
 CXXFLAGS=-std=c++17
 LDFLAGS=-pthread
-LIBS=gnutls glib-2.0 gobject-2.0 nice
+LIBS=glib-2.0 gobject-2.0 nice
+USRSCTP_DIR=usrsctp
+
+USE_GNUTLS ?= 0
+ifeq ($(USE_GNUTLS), 1)
+        CPPFLAGS+= -DUSE_GNUTLS=1
+        LIBS+= gnutls
+else
+        CPPFLAGS+= -DUSE_GNUTLS=0
+        LIBS+= openssl
+endif
+
 LDLIBS= $(shell pkg-config --libs $(LIBS))
 INCLUDES=-Iinclude/rtc -I$(USRSCTP_DIR)/usrsctplib $(shell pkg-config --cflags $(LIBS))
-
-USRSCTP_DIR:=usrsctp
 
 SRCS=$(shell printf "%s " src/*.cpp)
 OBJS=$(subst .cpp,.o,$(SRCS))

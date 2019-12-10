@@ -44,18 +44,9 @@ else()
   target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member -Wno-error=format-truncation)
 endif()
 
+option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 
-find_package(GnuTLS REQUIRED)
 find_package(LibNice REQUIRED)
-
-if(NOT TARGET GnuTLS::GnuTLS)
-    add_library(GnuTLS::GnuTLS UNKNOWN IMPORTED)
-    set_target_properties(GnuTLS::GnuTLS PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${GNUTLS_INCLUDE_DIRS}"
-        INTERFACE_COMPILE_DEFINITIONS "${GNUTLS_DEFINITIONS}"
-        IMPORTED_LINK_INTERFACE_LANGUAGES "C"
-		IMPORTED_LOCATION "${GNUTLS_LIBRARIES}")
-endif()
 
 add_library(datachannel SHARED ${LIBDATACHANNEL_SOURCES})
 set_target_properties(datachannel PROPERTIES
@@ -65,7 +56,7 @@ set_target_properties(datachannel PROPERTIES
 target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(datachannel usrsctp-static GnuTLS::GnuTLS LibNice::LibNice)
+target_link_libraries(datachannel usrsctp-static LibNice::LibNice)
 
 add_library(datachannel-static STATIC EXCLUDE_FROM_ALL ${LIBDATACHANNEL_SOURCES})
 set_target_properties(datachannel-static PROPERTIES
@@ -75,7 +66,29 @@ set_target_properties(datachannel-static PROPERTIES
 target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(datachannel-static usrsctp-static GnuTLS::GnuTLS LibNice::LibNice)
+target_link_libraries(datachannel-static usrsctp-static LibNice::LibNice)
+
+if (USE_GNUTLS)
+	find_package(GnuTLS REQUIRED)
+	if(NOT TARGET GnuTLS::GnuTLS)
+		add_library(GnuTLS::GnuTLS UNKNOWN IMPORTED)
+		set_target_properties(GnuTLS::GnuTLS PROPERTIES
+			INTERFACE_INCLUDE_DIRECTORIES "${GNUTLS_INCLUDE_DIRS}"
+			INTERFACE_COMPILE_DEFINITIONS "${GNUTLS_DEFINITIONS}"
+			IMPORTED_LINK_INTERFACE_LANGUAGES "C"
+			IMPORTED_LOCATION "${GNUTLS_LIBRARIES}")
+	endif()
+	target_compile_definitions(datachannel PRIVATE USE_GNUTLS=1)
+	target_link_libraries(datachannel GnuTLS::GnuTLS)
+	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=1)
+	target_link_libraries(datachannel-static GnuTLS::GnuTLS)
+else()
+	find_package(OpenSSL REQUIRED)
+	target_compile_definitions(datachannel PRIVATE USE_GNUTLS=0)
+	target_link_libraries(datachannel OpenSSL::SSL)
+	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=0)
+	target_link_libraries(datachannel-static OpenSSL::SSL)
+endif()
 
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
 add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
