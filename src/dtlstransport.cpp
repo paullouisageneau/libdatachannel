@@ -323,9 +323,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	                   CertificateCallback);
 	SSL_CTX_set_verify_depth(mCtx, 1);
 
-	X509 *x509;
-	EVP_PKEY *pkey;
-	std::tie(x509, pkey) = mCertificate->credentials();
+	auto [x509, pkey] = mCertificate->credentials();
 	SSL_CTX_use_certificate(mCtx, x509);
 	SSL_CTX_use_PrivateKey(mCtx, pkey);
 
