@@ -39,6 +39,7 @@ public:
 	bool empty() const;
 	size_t size() const;
 	void push(const T &element);
+	void push(T &&element);
 	std::optional<T> pop();
 	std::optional<T> tryPop();
 	void wait();
@@ -74,11 +75,13 @@ template <typename T> size_t Queue<T>::size() const {
 	return mQueue.size();
 }
 
-template <typename T> void Queue<T>::push(const T &element) {
+template <typename T> void Queue<T>::push(const T &element) { push(T{element}); }
+
+template <typename T> void Queue<T>::push(T &&element) {
 	std::unique_lock<std::mutex> lock(mMutex);
 	mPushCondition.wait(lock, [this]() { return !mLimit || mQueue.size() < mLimit || mStopping; });
 	if (!mStopping) {
-		mQueue.push(element);
+		mQueue.emplace(std::move(element));
 		mPopCondition.notify_one();
 	}
 }
