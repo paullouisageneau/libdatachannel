@@ -55,12 +55,14 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
 	onRecv(recv);
 
 	GlobalInit();
+
 	usrsctp_register_address(this);
 	mSock = usrsctp_socket(AF_CONN, SOCK_STREAM, IPPROTO_SCTP, &SctpTransport::ReadCallback,
 	                       nullptr, 0, this);
 	if (!mSock)
-		throw std::runtime_error("Could not create usrsctp socket, errno=" + std::to_string(errno));
+		throw std::runtime_error("Could not create SCTP socket, errno=" + std::to_string(errno));
 
+	// SCTP must stop sending after the lower layer is shut down, so disable linger
 	struct linger sol = {};
 	sol.l_onoff = 1;
 	sol.l_linger = 0;
@@ -68,24 +70,11 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
 		throw std::runtime_error("Could not set socket option SO_LINGER, errno=" +
 		                         std::to_string(errno));
 
-	struct sctp_paddrparams spp = {};
-	spp.spp_flags = SPP_PMTUD_ENABLE;
-	spp.spp_pathmtu = 1200; // Max safe value recommended by RFC 8261
-	                        // See https://tools.ietf.org/html/rfc8261#section-5
-	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &spp, sizeof(spp)))
-		throw std::runtime_error("Could not set socket option SCTP_PEER_ADDR_PARAMS, errno=" +
-		                         std::to_string(errno));
-
 	struct sctp_assoc_value av = {};
 	av.assoc_id = SCTP_ALL_ASSOC;
 	av.assoc_value = 1;
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_ENABLE_STREAM_RESET, &av, sizeof(av)))
 		throw std::runtime_error("Could not set socket option SCTP_ENABLE_STREAM_RESET, errno=" +
-		                         std::to_string(errno));
-
-	uint32_t nodelay = 1;
-	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_NODELAY, &nodelay, sizeof(nodelay)))
-		throw std::runtime_error("Could not set socket option SCTP_NODELAY, errno=" +
 		                         std::to_string(errno));
 
 	struct sctp_event se = {};
@@ -96,6 +85,27 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
 		throw std::runtime_error("Could not set socket option SCTP_EVENT, errno=" +
 		                         std::to_string(errno));
 
+	// Disable Nagle-like algorithm to reduce delay
+	int nodelay = 1;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_NODELAY, &nodelay, sizeof(nodelay)))
+		throw std::runtime_error("Could not set socket option SCTP_NODELAY, errno=" +
+		                         std::to_string(errno));
+
+	struct sctp_paddrparams spp = {};
+#ifdef __linux__
+	// Linux UDP does path MTU discovery by default (setting DF and returning EMSGSIZE).
+	// It should be safe to enable discovery for SCTP.
+	spp.spp_flags = SPP_PMTUD_ENABLE;
+#else
+	// Otherwise, fall back to a safe MTU value.
+	spp.spp_flags = SPP_PMTUD_DISABLE;
+	spp.spp_pathmtu = 1200; // Max safe value recommended by RFC 8261
+	                        // See https://tools.ietf.org/html/rfc8261#section-5
+#endif
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &spp, sizeof(spp)))
+		throw std::runtime_error("Could not set socket option SCTP_PEER_ADDR_PARAMS, errno=" +
+		                         std::to_string(errno));
+
 	// The IETF draft recommends the number of streams negotiated during SCTP association to be
 	// 65535. See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.2
 	struct sctp_initmsg sinit = {};
@@ -103,6 +113,17 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
 	sinit.sinit_max_instreams = 65535;
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_INITMSG, &sinit, sizeof(sinit)))
 		throw std::runtime_error("Could not set socket option SCTP_INITMSG, errno=" +
+		                         std::to_string(errno));
+
+	// The default send and receive window size of usrsctp is 256KiB, which is too small for
+	// realistic RTTs, therefore we increase it to 1MiB for better performance.
+	// See https://bugzilla.mozilla.org/show_bug.cgi?id=1051685
+	int bufSize = 1024 * 1024;
+	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_RCVBUF, &bufSize, sizeof(bufSize)))
+		throw std::runtime_error("Could not set SCTP recv buffer size, errno=" +
+		                         std::to_string(errno));
+	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_SNDBUF, &bufSize, sizeof(bufSize)))
+		throw std::runtime_error("Could not set SCTP send buffer size, errno=" +
 		                         std::to_string(errno));
 
 	struct sockaddr_conn sconn = {};
@@ -117,7 +138,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
 		throw std::runtime_error("Could not bind usrsctp socket, errno=" + std::to_string(errno));
 
 	mSendThread = std::thread(&SctpTransport::runConnectAndSendLoop, this);
-}
+		}
 
 SctpTransport::~SctpTransport() {
 	onRecv(nullptr); // unset recv callback

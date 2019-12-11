@@ -71,7 +71,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	check_gnutls(
 	    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate->credentials()));
 
-	gnutls_dtls_set_mtu(mSession, 1280 - 40 - 8); // min MTU over UDP/IPv6
+	gnutls_dtls_set_mtu(mSession, 1280 - 40 - 8); // min MTU over UDP/IPv6 (only for handshake)
 	gnutls_dtls_set_timeouts(mSession, 400, 60000);
 	gnutls_handshake_set_timeout(mSession, 60000);
 
@@ -119,7 +119,7 @@ void DtlsTransport::changeState(State state) {
 }
 
 void DtlsTransport::runRecvLoop() {
-	const size_t maxMtu = 2048;
+	const size_t maxMtu = 4096;
 
 	// Handshake loop
 	try {
