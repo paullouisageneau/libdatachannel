@@ -57,18 +57,20 @@ struct CloseMessage {
 };
 #pragma pack(pop)
 
+const size_t RECV_QUEUE_LIMIT = 1024 * 1024; // 1 MiB
+
 DataChannel::DataChannel(shared_ptr<PeerConnection> pc, unsigned int stream, string label,
                          string protocol, Reliability reliability)
     : mPeerConnection(std::move(pc)), mStream(stream), mLabel(std::move(label)),
       mProtocol(std::move(protocol)),
       mReliability(std::make_shared<Reliability>(std::move(reliability))),
-      mRecvQueue(RECV_QUEUE_SIZE, message_size_func) {}
+      mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
 DataChannel::DataChannel(shared_ptr<PeerConnection> pc, shared_ptr<SctpTransport> transport,
                          unsigned int stream)
     : mPeerConnection(std::move(pc)), mSctpTransport(transport), mStream(stream),
       mReliability(std::make_shared<Reliability>()),
-      mRecvQueue(RECV_QUEUE_SIZE, message_size_func) {}
+      mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
 DataChannel::~DataChannel() { close(); }
 
