@@ -80,29 +80,18 @@ void DataChannel::close() {
 }
 
 void DataChannel::send(const std::variant<binary, string> &data) {
-	if (mIsClosed || !mSctpTransport)
-		return;
-
 	std::visit(
-	    [this](const auto &d) {
+	    [&](const auto &d) {
 		    using T = std::decay_t<decltype(d)>;
 		    constexpr auto type = std::is_same_v<T, string> ? Message::String : Message::Binary;
 		    auto *b = reinterpret_cast<const byte *>(d.data());
-		    // Before the ACK has been received on a DataChannel, all messages must be sent ordered
-		    auto reliability = mIsOpen ? mReliability : nullptr;
-		    auto message = make_message(b, b + d.size(), type, mStream, reliability);
-		    mSctpTransport->send(message);
+		    outgoing(std::make_shared<Message>(b, b + d.size(), type));
 	    },
 	    data);
 }
 
 void DataChannel::send(const byte *data, size_t size) {
-	if (mIsClosed || !mSctpTransport)
-		return;
-
-	auto reliability = mIsOpen ? mReliability : nullptr;
-	auto message = make_message(data, data + size, Message::Binary, mStream, reliability);
-	mSctpTransport->send(message);
+	outgoing(std::make_shared<Message>(data, data + size, Message::Binary));
 }
 
 std::optional<std::variant<binary, string>> DataChannel::receive() {
@@ -177,6 +166,15 @@ void DataChannel::open(shared_ptr<SctpTransport> sctpTransport) {
 	std::copy(mProtocol.begin(), mProtocol.end(), end + mLabel.size());
 
 	mSctpTransport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
+}
+
+void DataChannel::outgoing(mutable_message_ptr message) {
+	if (mIsClosed || !mSctpTransport)
+		return;
+	// Before the ACK has been received on a DataChannel, all messages must be sent ordered
+	message->reliability = mIsOpen ? mReliability : nullptr;
+	message->stream = mStream;
+	mSctpTransport->send(message);
 }
 
 void DataChannel::incoming(message_ptr message) {

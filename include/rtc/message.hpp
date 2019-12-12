@@ -30,24 +30,29 @@ namespace rtc {
 struct Message : binary {
 	enum Type { Binary, String, Control };
 
+	Message(size_t size) : binary(size), type(Binary) {}
+
 	template <typename Iterator>
-	Message(Iterator begin_, Iterator end_, Type type_ = Binary, unsigned int stream_ = 0,
-	        std::shared_ptr<Reliability> reliability_ = nullptr)
-	    : binary(begin_, end_), type(type_), stream(stream_), reliability(reliability_) {}
+	Message(Iterator begin_, Iterator end_, Type type_ = Binary)
+	    : binary(begin_, end_), type(type_) {}
 
 	Type type;
-	unsigned int stream;
+	unsigned int stream = 0;
 	std::shared_ptr<Reliability> reliability;
 };
 
 using message_ptr = std::shared_ptr<const Message>;
+using mutable_message_ptr = std::shared_ptr<Message>;
 using message_callback = std::function<void(message_ptr message)>;
 
 template <typename Iterator>
 message_ptr make_message(Iterator begin, Iterator end, Message::Type type = Message::Binary,
                          unsigned int stream = 0,
                          std::shared_ptr<Reliability> reliability = nullptr) {
-	return std::make_shared<Message>(begin, end, type, stream, reliability);
+	auto message = std::make_shared<Message>(begin, end, type);
+	message->stream = stream;
+	message->reliability = reliability;
+	return message;
 }
 
 } // namespace rtc
