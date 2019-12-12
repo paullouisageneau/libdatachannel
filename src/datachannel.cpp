@@ -62,12 +62,13 @@ DataChannel::DataChannel(shared_ptr<PeerConnection> pc, unsigned int stream, str
     : mPeerConnection(std::move(pc)), mStream(stream), mLabel(std::move(label)),
       mProtocol(std::move(protocol)),
       mReliability(std::make_shared<Reliability>(std::move(reliability))),
-      mRecvQueue(RECV_QUEUE_SIZE) {}
+      mRecvQueue(RECV_QUEUE_SIZE, message_size_func) {}
 
 DataChannel::DataChannel(shared_ptr<PeerConnection> pc, shared_ptr<SctpTransport> transport,
                          unsigned int stream)
     : mPeerConnection(std::move(pc)), mSctpTransport(transport), mStream(stream),
-      mReliability(std::make_shared<Reliability>()) {}
+      mReliability(std::make_shared<Reliability>()),
+      mRecvQueue(RECV_QUEUE_SIZE, message_size_func) {}
 
 DataChannel::~DataChannel() { close(); }
 
@@ -109,11 +110,9 @@ std::optional<std::variant<binary, string>> DataChannel::receive() {
 			break;
 		}
 		case Message::String:
-			mRecvSize -= message->size();
 			return std::make_optional(
 			    string(reinterpret_cast<const char *>(message->data()), message->size()));
 		case Message::Binary:
-			mRecvSize -= message->size();
 			return std::make_optional(std::move(*message));
 		}
 	}
@@ -121,9 +120,11 @@ std::optional<std::variant<binary, string>> DataChannel::receive() {
 	return nullopt;
 }
 
-size_t DataChannel::available() const { return mRecvQueue.size(); }
+bool DataChannel::isOpen(void) const { return mIsOpen; }
 
-size_t DataChannel::availableSize() const { return mRecvSize; }
+bool DataChannel::isClosed(void) const { return mIsClosed; }
+
+size_t DataChannel::availableAmount() const { return mRecvQueue.amount(); }
 
 unsigned int DataChannel::stream() const { return mStream; }
 
@@ -132,10 +133,6 @@ string DataChannel::label() const { return mLabel; }
 string DataChannel::protocol() const { return mProtocol; }
 
 Reliability DataChannel::reliability() const { return *mReliability; }
-
-bool DataChannel::isOpen(void) const { return mIsOpen; }
-
-bool DataChannel::isClosed(void) const { return mIsClosed; }
 
 void DataChannel::open(shared_ptr<SctpTransport> sctpTransport) {
 	mSctpTransport = sctpTransport;
@@ -203,7 +200,6 @@ void DataChannel::incoming(message_ptr message) {
 	}
 	case Message::String:
 	case Message::Binary:
-		mRecvSize += message->size();
 		mRecvQueue.push(message);
 		triggerAvailable(mRecvQueue.size());
 		break;

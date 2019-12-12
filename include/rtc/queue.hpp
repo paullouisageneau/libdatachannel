@@ -32,12 +32,16 @@ namespace rtc {
 
 template <typename T> class Queue {
 public:
-	Queue(std::size_t limit = 0);
+	using amount_function = std::function<size_t(const T &element)>;
+
+	Queue(
+	    size_t limit = 0, amount_function func = [](const T &element) -> size_t { return 1; });
 	~Queue();
 
 	void stop();
 	bool empty() const;
-	size_t size() const;
+	size_t size() const;   // elements
+	size_t amount() const; // amount
 	void push(const T &element);
 	void push(T &&element);
 	std::optional<T> pop();
@@ -47,14 +51,18 @@ public:
 
 private:
 	const size_t mLimit;
+	size_t mAmount;
 	std::queue<T> mQueue;
 	std::condition_variable mPopCondition, mPushCondition;
+	amount_function mAmountFunction;
 	bool mStopping = false;
 
 	mutable std::mutex mMutex;
 };
 
-template <typename T> Queue<T>::Queue(size_t limit) : mLimit(limit) {}
+template <typename T>
+Queue<T>::Queue(size_t limit, amount_function func)
+    : mLimit(limit), mAmount(0), mAmountFunction(func) {}
 
 template <typename T> Queue<T>::~Queue() { stop(); }
 
@@ -75,12 +83,18 @@ template <typename T> size_t Queue<T>::size() const {
 	return mQueue.size();
 }
 
+template <typename T> size_t Queue<T>::amount() const {
+	std::lock_guard<std::mutex> lock(mMutex);
+	return mAmount;
+}
+
 template <typename T> void Queue<T>::push(const T &element) { push(T{element}); }
 
 template <typename T> void Queue<T>::push(T &&element) {
 	std::unique_lock<std::mutex> lock(mMutex);
 	mPushCondition.wait(lock, [this]() { return !mLimit || mQueue.size() < mLimit || mStopping; });
 	if (!mStopping) {
+		mAmount += mAmountFunction(element);
 		mQueue.emplace(std::move(element));
 		mPopCondition.notify_one();
 	}
@@ -90,6 +104,7 @@ template <typename T> std::optional<T> Queue<T>::pop() {
 	std::unique_lock<std::mutex> lock(mMutex);
 	mPopCondition.wait(lock, [this]() { return !mQueue.empty() || mStopping; });
 	if (!mQueue.empty()) {
+		mAmount -= mAmountFunction(mQueue.front());
 		std::optional<T> element(std::move(mQueue.front()));
 		mQueue.pop();
 		return element;
@@ -101,6 +116,7 @@ template <typename T> std::optional<T> Queue<T>::pop() {
 template <typename T> std::optional<T> Queue<T>::tryPop() {
 	std::unique_lock<std::mutex> lock(mMutex);
 	if (!mQueue.empty()) {
+		mAmount -= mAmountFunction(mQueue.front());
 		std::optional<T> element(std::move(mQueue.front()));
 		mQueue.pop();
 		return element;

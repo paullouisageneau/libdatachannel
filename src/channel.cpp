@@ -53,9 +53,13 @@ void Channel::onAvailable(std::function<void()> callback) {
 	mAvailableCallback = callback;
 }
 
-void Channel::onSent(std::function<void()> callback) {
-	mSentCallback = callback;
+void Channel::onBufferedAmountLow(std::function<void()> callback) {
+	mBufferedAmountLowCallback = callback;
 }
+
+size_t Channel::bufferedAmount() const { return mBufferedAmount; }
+
+void Channel::setBufferedAmountLowThreshold(size_t amount) { mBufferedAmountLowThreshold = amount; }
 
 void Channel::triggerOpen() { mOpenCallback(); }
 
@@ -63,11 +67,11 @@ void Channel::triggerClosed() { mClosedCallback(); }
 
 void Channel::triggerError(const string &error) { mErrorCallback(error); }
 
-void Channel::triggerAvailable(size_t available) {
-	if (available == 1)
+void Channel::triggerAvailable(size_t count) {
+	if (count == 1)
 		mAvailableCallback();
 
-	while (mMessageCallback && available--) {
+	while (mMessageCallback && count--) {
 		auto message = receive();
 		if (!message)
 			break;
@@ -75,7 +79,13 @@ void Channel::triggerAvailable(size_t available) {
 	}
 }
 
-void Channel::triggerSent() { mSentCallback(); }
+void Channel::triggerBufferedAmount(size_t amount) {
+	bool lowThresholdCrossed =
+	    mBufferedAmount > mBufferedAmountLowThreshold && amount <= mBufferedAmountLowThreshold;
+	mBufferedAmount = amount;
+	if (lowThresholdCrossed)
+		mBufferedAmountLowCallback();
+}
 
 } // namespace rtc
 

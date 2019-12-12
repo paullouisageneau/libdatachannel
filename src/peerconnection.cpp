@@ -235,8 +235,8 @@ void PeerConnection::initSctpTransport() {
 	    mDtlsTransport, sctpPort,
 	    std::bind(&PeerConnection::forwardMessage, this,
 	              weak_ptr<PeerConnection>{shared_from_this()}, _1),
-	    std::bind(&PeerConnection::forwardSent, this, weak_ptr<PeerConnection>{shared_from_this()},
-	              _1),
+	    std::bind(&PeerConnection::forwardBufferedAmount, this,
+	              weak_ptr<PeerConnection>{shared_from_this()}, _1, _2),
 	    [this,
 	     weak_this = weak_ptr<PeerConnection>{shared_from_this()}](SctpTransport::State state) {
 		    auto strong_this = weak_this.lock();
@@ -312,7 +312,8 @@ void PeerConnection::forwardMessage(weak_ptr<PeerConnection> weak_this, message_
 	channel->incoming(message);
 }
 
-void PeerConnection::forwardSent(weak_ptr<PeerConnection> weak_this, uint16_t stream) {
+void PeerConnection::forwardBufferedAmount(weak_ptr<PeerConnection> weak_this, uint16_t stream,
+                                           size_t amount) {
 	auto strong_this = weak_this.lock();
 	if (!strong_this)
 		return;
@@ -327,7 +328,7 @@ void PeerConnection::forwardSent(weak_ptr<PeerConnection> weak_this, uint16_t st
 	}
 
 	if (channel)
-		channel->triggerSent();
+		channel->triggerBufferedAmount(amount);
 }
 
 void PeerConnection::iterateDataChannels(

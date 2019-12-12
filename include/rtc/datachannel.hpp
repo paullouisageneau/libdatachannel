@@ -49,19 +49,18 @@ public:
 	void send(const byte *data, size_t size);
 	std::optional<std::variant<binary, string>> receive();
 
+	// Directly send a buffer to avoid a copy
 	template <typename Buffer> void sendBuffer(const Buffer &buf);
 	template <typename Iterator> void sendBuffer(Iterator first, Iterator last);
 
-	size_t available() const;
-	size_t availableSize() const;
+	bool isOpen(void) const;
+	bool isClosed(void) const;
+	size_t availableAmount() const;
 
 	unsigned int stream() const;
 	string label() const;
 	string protocol() const;
 	Reliability reliability() const;
-
-	bool isOpen(void) const;
-	bool isClosed(void) const;
 
 private:
 	void open(std::shared_ptr<SctpTransport> sctpTransport);
@@ -81,7 +80,7 @@ private:
 	std::atomic<bool> mIsClosed = false;
 
 	Queue<message_ptr> mRecvQueue;
-	std::atomic<size_t> mRecvSize = 0;
+	std::atomic<size_t> mRecvAmount = 0;
 
 	friend class PeerConnection;
 };
