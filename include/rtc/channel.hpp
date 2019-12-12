@@ -29,11 +29,11 @@ namespace rtc {
 
 class Channel {
 public:
-	virtual void close(void) = 0;
+	virtual void close() = 0;
 	virtual void send(const std::variant<binary, string> &data) = 0;
 	virtual std::optional<std::variant<binary, string>> receive() = 0;
-	virtual bool isOpen(void) const = 0;
-	virtual bool isClosed(void) const = 0;
+	virtual bool isOpen() const = 0;
+	virtual bool isClosed() const = 0;
 	virtual size_t availableAmount() const { return 0; }
 
 	size_t bufferedAmount() const;
@@ -52,8 +52,8 @@ public:
 	void setBufferedAmountLowThreshold(size_t amount);
 
 protected:
-	virtual void triggerOpen(void);
-	virtual void triggerClosed(void);
+	virtual void triggerOpen();
+	virtual void triggerClosed();
 	virtual void triggerError(const string &error);
 	virtual void triggerAvailable(size_t count);
 	virtual void triggerBufferedAmount(size_t amount);
