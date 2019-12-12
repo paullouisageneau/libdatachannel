@@ -34,6 +34,9 @@ public:
 	virtual std::optional<std::variant<binary, string>> receive() = 0;
 	virtual bool isOpen(void) const = 0;
 	virtual bool isClosed(void) const = 0;
+	virtual size_t availableAmount() const { return 0; }
+
+	size_t bufferedAmount() const;
 
 	void onOpen(std::function<void()> callback);
 	void onClosed(std::function<void()> callback);
@@ -44,14 +47,16 @@ public:
 	               std::function<void(const string &data)> stringCallback);
 
 	void onAvailable(std::function<void()> callback);
-	void onSent(std::function<void()> callback);
+	void onBufferedAmountLow(std::function<void()> callback);
+
+	void setBufferedAmountLowThreshold(size_t amount);
 
 protected:
 	virtual void triggerOpen(void);
 	virtual void triggerClosed(void);
 	virtual void triggerError(const string &error);
-	virtual void triggerAvailable(size_t available);
-	virtual void triggerSent();
+	virtual void triggerAvailable(size_t count);
+	virtual void triggerBufferedAmount(size_t amount);
 
 private:
 	synchronized_callback<> mOpenCallback;
@@ -59,7 +64,10 @@ private:
 	synchronized_callback<const string &> mErrorCallback;
 	synchronized_callback<const std::variant<binary, string> &> mMessageCallback;
 	synchronized_callback<> mAvailableCallback;
-	synchronized_callback<> mSentCallback;
+	synchronized_callback<> mBufferedAmountLowCallback;
+
+	size_t mBufferedAmount = 0;
+	size_t mBufferedAmountLowThreshold = 0;
 };
 
 } // namespace rtc

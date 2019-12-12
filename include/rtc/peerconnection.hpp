@@ -89,7 +89,8 @@ private:
 
 	bool checkFingerprint(std::weak_ptr<PeerConnection> weak_this, const std::string &fingerprint) const;
 	void forwardMessage(std::weak_ptr<PeerConnection> weak_this, message_ptr message);
-	void forwardSent(std::weak_ptr<PeerConnection> weak_this, uint16_t stream);
+	void forwardBufferedAmount(std::weak_ptr<PeerConnection> weak_this, uint16_t stream,
+	                           size_t amount);
 	void iterateDataChannels(std::function<void(std::shared_ptr<DataChannel> channel)> func);
 	void openDataChannels();
 	void closeDataChannels();

@@ -28,6 +28,7 @@
 #include <atomic>
 #include <chrono>
 #include <functional>
+#include <type_traits>
 #include <variant>
 
 namespace rtc {
@@ -48,19 +49,22 @@ public:
 	void send(const byte *data, size_t size);
 	std::optional<std::variant<binary, string>> receive();
 
-	size_t available() const;
-	size_t availableSize() const;
+	// Directly send a buffer to avoid a copy
+	template <typename Buffer> void sendBuffer(const Buffer &buf);
+	template <typename Iterator> void sendBuffer(Iterator first, Iterator last);
+
+	bool isOpen(void) const;
+	bool isClosed(void) const;
+	size_t availableAmount() const;
 
 	unsigned int stream() const;
 	string label() const;
 	string protocol() const;
 	Reliability reliability() const;
 
-	bool isOpen(void) const;
-	bool isClosed(void) const;
-
 private:
 	void open(std::shared_ptr<SctpTransport> sctpTransport);
+	void outgoing(mutable_message_ptr message);
 	void incoming(message_ptr message);
 	void processOpenMessage(message_ptr message);
 
@@ -76,10 +80,38 @@ private:
 	std::atomic<bool> mIsClosed = false;
 
 	Queue<message_ptr> mRecvQueue;
-	std::atomic<size_t> mRecvSize = 0;
+	std::atomic<size_t> mRecvAmount = 0;
 
 	friend class PeerConnection;
 };
+
+template <typename Buffer> std::pair<const byte *, size_t> to_bytes(const Buffer &buf) {
+	using T = typename std::remove_pointer<decltype(buf.data())>::type;
+	using E = typename std::conditional<std::is_void<T>::value, byte, T>::type;
+	return std::make_pair(static_cast<const byte *>(static_cast<const void *>(buf.data())),
+	                      buf.size() * sizeof(E));
+}
+
+template <typename Buffer> void DataChannel::sendBuffer(const Buffer &buf) {
+	auto [bytes, size] = to_bytes(buf);
+	auto message = std::make_shared<Message>(size);
+	std::copy(bytes, bytes + size, message->data());
+	outgoing(message);
+}
+
+template <typename Iterator> void DataChannel::sendBuffer(Iterator first, Iterator last) {
+	size_t size = 0;
+	for (Iterator it = first; it != last; ++it)
+		size += it->size();
+
+	auto message = std::make_shared<Message>(size);
+	auto pos = message->begin();
+	for (Iterator it = first; it != last; ++it) {
+		auto [bytes, size] = to_bytes(*it);
+		pos = std::copy(bytes, bytes + size, pos);
+	}
+	outgoing(message);
+}
 
 } // namespace rtc
 

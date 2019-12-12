@@ -41,11 +41,11 @@ class SctpTransport : public Transport {
 public:
 	enum class State { Disconnected, Connecting, Connected, Failed };
 
-	using sent_callback = std::function<void(uint16_t streamId)>;
+	using amount_callback = std::function<void(uint16_t streamId, size_t amount)>;
 	using state_callback = std::function<void(State state)>;
 
-	SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, message_callback recv,
-	              sent_callback sent, state_callback stateChangeCallback);
+	SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, message_callback recvCallback,
+	              amount_callback bufferedAmountCallback, state_callback stateChangeCallback);
 	~SctpTransport();
 
 	State state() const;
@@ -66,7 +66,7 @@ private:
 	void changeState(State state);
 	void runConnectAndSendLoop();
 	bool doSend(message_ptr message);
-	void updateSendCount(uint16_t streamId, int delta);
+	void updateBufferedAmount(uint16_t streamId, long delta);
 
 	int handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df);
 
@@ -81,17 +81,17 @@ private:
 
 	Queue<message_ptr> mSendQueue;
 	std::thread mSendThread;
-	std::map<uint16_t, int> mSendCount;
-	std::mutex mSendCountMutex;
-	sent_callback mSentCallback;
+	std::map<uint16_t, size_t> mBufferedAmount;
+	std::mutex mBufferedAmountMutex;
+	amount_callback mBufferedAmountCallback;
 
 	std::mutex mConnectMutex;
 	std::condition_variable mConnectCondition;
 	std::atomic<bool> mConnectDataSent = false;
 	std::atomic<bool> mStopping = false;
 
-	std::atomic<State> mState;
 	state_callback mStateChangeCallback;
+	std::atomic<State> mState;
 
 	static int WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos, uint8_t set_df);
 	static int ReadCallback(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,

@@ -47,12 +47,13 @@ void SctpTransport::GlobalCleanup() {
 	}
 }
 
-SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, message_callback recv,
-                             sent_callback sentCallback, state_callback stateChangeCallback)
-    : Transport(lower), mPort(port), mSentCallback(std::move(sentCallback)),
-      mStateChangeCallback(std::move(stateChangeCallback)) {
-	mState = State::Disconnected;
-	onRecv(recv);
+SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
+                             message_callback recvCallback, amount_callback bufferedAmountCallback,
+                             state_callback stateChangeCallback)
+    : Transport(lower), mPort(port), mSendQueue(0, message_size_func),
+      mBufferedAmountCallback(std::move(bufferedAmountCallback)),
+      mStateChangeCallback(std::move(stateChangeCallback)), mState(State::Disconnected) {
+	onRecv(recvCallback);
 
 	GlobalInit();
 
@@ -138,7 +139,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, me
 		throw std::runtime_error("Could not bind usrsctp socket, errno=" + std::to_string(errno));
 
 	mSendThread = std::thread(&SctpTransport::runConnectAndSendLoop, this);
-		}
+}
 
 SctpTransport::~SctpTransport() {
 	onRecv(nullptr); // unset recv callback
@@ -164,7 +165,7 @@ bool SctpTransport::send(message_ptr message) {
 	if (!message || mStopping)
 		return false;
 
-	updateSendCount(message->stream, 1);
+	updateBufferedAmount(message->stream, message->size());
 	mSendQueue.push(message);
 	return true;
 }
@@ -237,8 +238,9 @@ void SctpTransport::runConnectAndSendLoop() {
 	try {
 		while (auto next = mSendQueue.pop()) {
 			auto message = *next;
-			updateSendCount(message->stream, -1);
-			if (!doSend(message))
+			bool success = doSend(message);
+			updateBufferedAmount(message->stream, -message->size());
+			if (!success)
 				throw std::runtime_error("Sending failed, errno=" + std::to_string(errno));
 		}
 	} catch (const std::exception &e) {
@@ -310,14 +312,20 @@ bool SctpTransport::doSend(message_ptr message) {
 	return ret > 0;
 }
 
-void SctpTransport::updateSendCount(uint16_t streamId, int delta) {
-	std::lock_guard<std::mutex> lock(mSendCountMutex);
-	auto it = mSendCount.insert(std::make_pair(streamId, 0)).first;
-	it->second = std::max(it->second + delta, 0);
-	if (it->second == 0) {
-		mSendCount.erase(it);
-		mSentCallback(streamId);
-	}
+void SctpTransport::updateBufferedAmount(uint16_t streamId, long delta) {
+	if (delta == 0)
+		return;
+	std::lock_guard<std::mutex> lock(mBufferedAmountMutex);
+	auto it = mBufferedAmount.insert(std::make_pair(streamId, 0)).first;
+	if (delta > 0)
+		it->second += size_t(delta);
+	else if (it->second > size_t(-delta))
+		it->second -= size_t(-delta);
+	else
+		it->second = 0;
+	mBufferedAmountCallback(streamId, it->second);
+	if (it->second == 0)
+		mBufferedAmount.erase(it);
 }
 
 int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df) {
