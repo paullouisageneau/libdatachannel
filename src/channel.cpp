@@ -57,6 +57,8 @@ void Channel::onBufferedAmountLow(std::function<void()> callback) {
 	mBufferedAmountLowCallback = callback;
 }
 
+size_t Channel::availableAmount() const { return 0; }
+
 size_t Channel::bufferedAmount() const { return mBufferedAmount; }
 
 void Channel::setBufferedAmountLowThreshold(size_t amount) { mBufferedAmountLowThreshold = amount; }

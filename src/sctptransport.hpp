@@ -50,7 +50,7 @@ public:
 
 	State state() const;
 
-	bool send(message_ptr message);
+	bool send(message_ptr message); // false if buffered
 	void reset(unsigned int stream);
 
 private:

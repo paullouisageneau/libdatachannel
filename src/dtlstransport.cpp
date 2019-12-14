@@ -356,8 +356,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 }
 
 DtlsTransport::~DtlsTransport() {
-	onRecv(nullptr); // unset recv callback
-
 	mIncomingQueue.stop();
 
 	if (mRecvThread.joinable())

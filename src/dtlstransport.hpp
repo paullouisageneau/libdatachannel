@@ -54,7 +54,7 @@ public:
 
 	State state() const;
 
-	bool send(message_ptr message);
+	bool send(message_ptr message); // false if dropped
 
 private:
 	void incoming(message_ptr message);

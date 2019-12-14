@@ -44,19 +44,21 @@ public:
 	            unsigned int stream);
 	~DataChannel();
 
-	void close(void);
-	bool send(const std::variant<binary, string> &data);
-	bool send(const byte *data, size_t size);
-	std::optional<std::variant<binary, string>> receive();
+	void close(void) override;
 
-	// Directly send a buffer to avoid a copy
+	bool send(const std::variant<binary, string> &data) override;
+	bool send(const byte *data, size_t size);
+
 	template <typename Buffer> bool sendBuffer(const Buffer &buf);
 	template <typename Iterator> bool sendBuffer(Iterator first, Iterator last);
 
-	bool isOpen(void) const;
-	bool isClosed(void) const;
-	size_t availableAmount() const;
-	size_t maxMessageSize() const;
+	std::optional<std::variant<binary, string>> receive() override;
+
+	bool isOpen(void) const override;
+	bool isClosed(void) const override;
+	size_t availableAmount() const override;
+
+	size_t maxMessageSize() const;  // maximum message size in a call to send or sendBuffer
 
 	unsigned int stream() const;
 	string label() const;
