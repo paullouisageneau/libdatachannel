@@ -44,9 +44,11 @@ public:
 	string mid() const;
 	std::optional<string> fingerprint() const;
 	std::optional<uint16_t> sctpPort() const;
+	std::optional<size_t> maxMessageSize() const;
 
 	void setFingerprint(string fingerprint);
 	void setSctpPort(uint16_t port);
+	void setMaxMessageSize(size_t size);
 
 	void addCandidate(Candidate candidate);
 	void endCandidates();
@@ -62,6 +64,7 @@ private:
 	string mIceUfrag, mIcePwd;
 	std::optional<string> mFingerprint;
 	std::optional<uint16_t> mSctpPort;
+	std::optional<size_t> mMaxMessageSize;
 	std::vector<Candidate> mCandidates;
 	bool mTrickle;
 

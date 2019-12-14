@@ -56,6 +56,7 @@ public:
 	bool isOpen(void) const;
 	bool isClosed(void) const;
 	size_t availableAmount() const;
+	size_t maxMessageSize() const;
 
 	unsigned int stream() const;
 	string label() const;
@@ -68,7 +69,7 @@ private:
 	void incoming(message_ptr message);
 	void processOpenMessage(message_ptr message);
 
-	const std::shared_ptr<PeerConnection> mPeerConnection; // keeps the PeerConnection alive
+	const std::shared_ptr<PeerConnection> mPeerConnection;
 	std::shared_ptr<SctpTransport> mSctpTransport;
 
 	unsigned int mStream;

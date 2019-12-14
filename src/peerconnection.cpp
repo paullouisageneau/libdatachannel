@@ -359,6 +359,7 @@ void PeerConnection::processLocalDescription(Description description) {
 	mLocalDescription.emplace(std::move(description));
 	mLocalDescription->setFingerprint(mCertificate->fingerprint());
 	mLocalDescription->setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
+	mLocalDescription->setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
 
 	mLocalDescriptionCallback(*mLocalDescription);
 }

@@ -17,6 +17,7 @@
  */
 
 #include "datachannel.hpp"
+#include "include.hpp"
 #include "peerconnection.hpp"
 #include "sctptransport.hpp"
 
@@ -128,6 +129,15 @@ bool DataChannel::isClosed(void) const { return mIsClosed; }
 
 size_t DataChannel::availableAmount() const { return mRecvQueue.amount(); }
 
+size_t DataChannel::maxMessageSize() const {
+	size_t max = DEFAULT_MAX_MESSAGE_SIZE;
+	if (auto description = mPeerConnection->remoteDescription())
+		if (auto maxMessageSize = description->maxMessageSize())
+			return *maxMessageSize > 0 ? *maxMessageSize : LOCAL_MAX_MESSAGE_SIZE;
+
+	return std::min(max, LOCAL_MAX_MESSAGE_SIZE);
+}
+
 unsigned int DataChannel::stream() const { return mStream; }
 
 string DataChannel::label() const { return mLabel; }
@@ -169,7 +179,11 @@ void DataChannel::open(shared_ptr<SctpTransport> sctpTransport) {
 
 void DataChannel::outgoing(mutable_message_ptr message) {
 	if (mIsClosed || !mSctpTransport)
-		return;
+		throw std::runtime_error("DataChannel is closed");
+
+	if (message->size() > maxMessageSize())
+		throw std::runtime_error("Message size exceeds limit");
+
 	// Before the ACK has been received on a DataChannel, all messages must be sent ordered
 	message->reliability = mIsOpen ? mReliability : nullptr;
 	message->stream = mStream;
