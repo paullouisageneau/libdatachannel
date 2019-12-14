@@ -188,13 +188,18 @@ void SctpTransport::connect() {
 SctpTransport::State SctpTransport::state() const { return mState; }
 
 bool SctpTransport::send(message_ptr message) {
-	if (!message)
-		return false;
+	std::lock_guard<std::mutex> lock(mSendMutex);
 
-	updateBufferedAmount(message->stream, message->size());
+	if (!message)
+		return mSendQueue.empty();
+
+	// If nothing is pending, try to send directly
+	if (mSendQueue.empty() && trySendMessage(message))
+		return true;
+
 	mSendQueue.push(message);
-	trySendAll();
-	return true;
+	updateBufferedAmount(message->stream, message_size_func(message));
+	return false;
 }
 
 void SctpTransport::reset(unsigned int stream) {
@@ -231,25 +236,21 @@ void SctpTransport::changeState(State state) {
 		mStateChangeCallback(state);
 }
 
-bool SctpTransport::trySendAll() {
-	std::unique_lock<std::mutex> lock(mSendMutex, std::try_to_lock);
-	if (!lock.owns_lock())
-		return false;
-
+bool SctpTransport::trySendQueue() {
+	// Requires mSendMutex to be locked
 	while (auto next = mSendQueue.peek()) {
 		auto message = *next;
-		if (!trySend(message))
+		if (!trySendMessage(message))
 			return false;
-		updateBufferedAmount(message->stream, -message->size());
 		mSendQueue.pop();
+		updateBufferedAmount(message->stream, -message_size_func(message));
 	}
 	return true;
 }
 
-bool SctpTransport::trySend(message_ptr message) {
-	if (!message)
-		return false;
-
+bool SctpTransport::trySendMessage(message_ptr message) {
+	// Requires mSendMutex to be locked
+	//
 	// TODO: Implement SCTP ndata specification draft when supported everywhere
 	// See https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata-08
 
@@ -316,19 +317,13 @@ bool SctpTransport::trySend(message_ptr message) {
 }
 
 void SctpTransport::updateBufferedAmount(uint16_t streamId, long delta) {
-	if (delta == 0)
-		return;
-	std::lock_guard<std::mutex> lock(mBufferedAmountMutex);
+	// Requires mSendMutex to be locked
 	auto it = mBufferedAmount.insert(std::make_pair(streamId, 0)).first;
-	if (delta > 0)
-		it->second += size_t(delta);
-	else if (it->second > size_t(-delta))
-		it->second -= size_t(-delta);
-	else
-		it->second = 0;
-	mBufferedAmountCallback(streamId, it->second);
-	if (it->second == 0)
+	size_t amount = it->second;
+	amount = size_t(std::max(long(amount) + delta, long(0)));
+	if (amount == 0)
 		mBufferedAmount.erase(it);
+	mBufferedAmountCallback(streamId, amount);
 }
 
 int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, const byte *data,
@@ -364,7 +359,8 @@ int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, co
 
 int SctpTransport::handleSend(size_t free) {
 	try {
-		trySendAll();
+		std::lock_guard<std::mutex> lock(mSendMutex);
+		trySendQueue();
 	} catch (const std::exception &e) {
 		std::cerr << "SCTP send: " << e.what() << std::endl;
 		return -1;
@@ -470,7 +466,8 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 	case SCTP_SENDER_DRY_EVENT: {
 		// It not should be necessary since the send callback should have been called already,
 		// but to be sure, let's try to send now.
-		trySendAll();
+		std::lock_guard<std::mutex> lock(mSendMutex);
+		trySendQueue();
 	}
 	case SCTP_STREAM_RESET_EVENT: {
 		const struct sctp_stream_reset_event &reset_event = notify->sn_strreset_event;

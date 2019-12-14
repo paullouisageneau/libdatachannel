@@ -21,8 +21,8 @@
 
 #include "include.hpp"
 
+#include <atomic>
 #include <functional>
-#include <mutex>
 #include <variant>
 
 namespace rtc {
@@ -30,7 +30,7 @@ namespace rtc {
 class Channel {
 public:
 	virtual void close() = 0;
-	virtual void send(const std::variant<binary, string> &data) = 0;
+	virtual bool send(const std::variant<binary, string> &data) = 0;
 	virtual std::optional<std::variant<binary, string>> receive() = 0;
 	virtual bool isOpen() const = 0;
 	virtual bool isClosed() const = 0;
@@ -66,8 +66,8 @@ private:
 	synchronized_callback<> mAvailableCallback;
 	synchronized_callback<> mBufferedAmountLowCallback;
 
-	size_t mBufferedAmount = 0;
-	size_t mBufferedAmountLowThreshold = 0;
+	std::atomic<size_t> mBufferedAmount = 0;
+	std::atomic<size_t> mBufferedAmountLowThreshold = 0;
 };
 
 } // namespace rtc

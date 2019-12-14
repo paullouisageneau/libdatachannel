@@ -45,13 +45,13 @@ public:
 	~DataChannel();
 
 	void close(void);
-	void send(const std::variant<binary, string> &data);
-	void send(const byte *data, size_t size);
+	bool send(const std::variant<binary, string> &data);
+	bool send(const byte *data, size_t size);
 	std::optional<std::variant<binary, string>> receive();
 
 	// Directly send a buffer to avoid a copy
-	template <typename Buffer> void sendBuffer(const Buffer &buf);
-	template <typename Iterator> void sendBuffer(Iterator first, Iterator last);
+	template <typename Buffer> bool sendBuffer(const Buffer &buf);
+	template <typename Iterator> bool sendBuffer(Iterator first, Iterator last);
 
 	bool isOpen(void) const;
 	bool isClosed(void) const;
@@ -65,7 +65,7 @@ public:
 
 private:
 	void open(std::shared_ptr<SctpTransport> sctpTransport);
-	void outgoing(mutable_message_ptr message);
+	bool outgoing(mutable_message_ptr message);
 	void incoming(message_ptr message);
 	void processOpenMessage(message_ptr message);
 
@@ -93,14 +93,14 @@ template <typename Buffer> std::pair<const byte *, size_t> to_bytes(const Buffer
 	                      buf.size() * sizeof(E));
 }
 
-template <typename Buffer> void DataChannel::sendBuffer(const Buffer &buf) {
+template <typename Buffer> bool DataChannel::sendBuffer(const Buffer &buf) {
 	auto [bytes, size] = to_bytes(buf);
 	auto message = std::make_shared<Message>(size);
 	std::copy(bytes, bytes + size, message->data());
-	outgoing(message);
+	return outgoing(message);
 }
 
-template <typename Iterator> void DataChannel::sendBuffer(Iterator first, Iterator last) {
+template <typename Iterator> bool DataChannel::sendBuffer(Iterator first, Iterator last) {
 	size_t size = 0;
 	for (Iterator it = first; it != last; ++it)
 		size += it->size();
@@ -111,7 +111,7 @@ template <typename Iterator> void DataChannel::sendBuffer(Iterator first, Iterat
 		auto [bytes, size] = to_bytes(*it);
 		pos = std::copy(bytes, bytes + size, pos);
 	}
-	outgoing(message);
+	return outgoing(message);
 }
 
 } // namespace rtc

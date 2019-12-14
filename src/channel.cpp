@@ -80,10 +80,9 @@ void Channel::triggerAvailable(size_t count) {
 }
 
 void Channel::triggerBufferedAmount(size_t amount) {
-	bool lowThresholdCrossed =
-	    mBufferedAmount > mBufferedAmountLowThreshold && amount <= mBufferedAmountLowThreshold;
-	mBufferedAmount = amount;
-	if (lowThresholdCrossed)
+	size_t previous = mBufferedAmount.exchange(amount);
+	size_t threshold = mBufferedAmountLowThreshold.load();
+	if (previous > threshold && amount <= threshold)
 		mBufferedAmountLowCallback();
 }
 

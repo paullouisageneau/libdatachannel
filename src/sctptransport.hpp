@@ -69,8 +69,9 @@ private:
 	void connect();
 	void incoming(message_ptr message);
 	void changeState(State state);
-	bool trySendAll();
-	bool trySend(message_ptr message);
+
+	bool trySendQueue();
+	bool trySendMessage(message_ptr message);
 	void updateBufferedAmount(uint16_t streamId, long delta);
 
 	int handleRecv(struct socket *sock, union sctp_sockstore addr, const byte *data, size_t len,
@@ -86,8 +87,6 @@ private:
 
 	std::mutex mSendMutex;
 	Queue<message_ptr> mSendQueue;
-
-	std::mutex mBufferedAmountMutex;
 	std::map<uint16_t, size_t> mBufferedAmount;
 	amount_callback mBufferedAmountCallback;
 

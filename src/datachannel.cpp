@@ -83,19 +83,19 @@ void DataChannel::close() {
 	}
 }
 
-void DataChannel::send(const std::variant<binary, string> &data) {
-	std::visit(
+bool DataChannel::send(const std::variant<binary, string> &data) {
+	return std::visit(
 	    [&](const auto &d) {
 		    using T = std::decay_t<decltype(d)>;
 		    constexpr auto type = std::is_same_v<T, string> ? Message::String : Message::Binary;
 		    auto *b = reinterpret_cast<const byte *>(d.data());
-		    outgoing(std::make_shared<Message>(b, b + d.size(), type));
+		    return outgoing(std::make_shared<Message>(b, b + d.size(), type));
 	    },
 	    data);
 }
 
-void DataChannel::send(const byte *data, size_t size) {
-	outgoing(std::make_shared<Message>(data, data + size, Message::Binary));
+bool DataChannel::send(const byte *data, size_t size) {
+	return outgoing(std::make_shared<Message>(data, data + size, Message::Binary));
 }
 
 std::optional<std::variant<binary, string>> DataChannel::receive() {
@@ -177,7 +177,7 @@ void DataChannel::open(shared_ptr<SctpTransport> sctpTransport) {
 	mSctpTransport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
 }
 
-void DataChannel::outgoing(mutable_message_ptr message) {
+bool DataChannel::outgoing(mutable_message_ptr message) {
 	if (mIsClosed || !mSctpTransport)
 		throw std::runtime_error("DataChannel is closed");
 
@@ -187,7 +187,7 @@ void DataChannel::outgoing(mutable_message_ptr message) {
 	// Before the ACK has been received on a DataChannel, all messages must be sent ordered
 	message->reliability = mIsOpen ? mReliability : nullptr;
 	message->stream = mStream;
-	mSctpTransport->send(message);
+	return mSctpTransport->send(message);
 }
 
 void DataChannel::incoming(message_ptr message) {
