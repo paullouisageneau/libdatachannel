@@ -98,8 +98,8 @@ void DataChannel::send(const byte *data, size_t size) {
 }
 
 std::optional<std::variant<binary, string>> DataChannel::receive() {
-	while (auto opt = mRecvQueue.tryPop()) {
-		auto message = *opt;
+	while (!mRecvQueue.empty()) {
+		auto message = *mRecvQueue.pop();
 		switch (message->type) {
 		case Message::Control: {
 			auto raw = reinterpret_cast<const uint8_t *>(message->data());
