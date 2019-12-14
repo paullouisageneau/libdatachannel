@@ -85,10 +85,10 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 }
 
 DtlsTransport::~DtlsTransport() {
-	onRecv(nullptr); // unset recv callback
-
 	mIncomingQueue.stop();
-	mRecvThread.join();
+
+	if (mRecvThread.joinable())
+		mRecvThread.join();
 
 	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
 	gnutls_deinit(mSession);

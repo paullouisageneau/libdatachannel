@@ -31,27 +31,25 @@ using namespace std::placeholders;
 
 class Transport {
 public:
-	Transport(std::shared_ptr<Transport> lower = nullptr) : mLower(lower) { init(); }
-	virtual ~Transport() {}
+	Transport(std::shared_ptr<Transport> lower = nullptr) : mLower(std::move(lower)) {
+		if (mLower)
+			mLower->onRecv(std::bind(&Transport::incoming, this, _1));
+	}
+	virtual ~Transport() {
+		if (mLower)
+			mLower->onRecv(nullptr);
+	}
 
 	virtual bool send(message_ptr message) = 0;
 	void onRecv(message_callback callback) { mRecvCallback = std::move(callback); }
 
 protected:
-	void recv(message_ptr message) {
-		if (mRecvCallback)
-			mRecvCallback(message);
-	}
+	void recv(message_ptr message) { mRecvCallback(message); }
 
 	virtual void incoming(message_ptr message) = 0;
 	virtual void outgoing(message_ptr message) { getLower()->send(message); }
 
 private:
-	void init() {
-		if (mLower)
-			mLower->onRecv(std::bind(&Transport::incoming, this, _1));
-	}
-
 	std::shared_ptr<Transport> getLower() {
 		if (mLower)
 			return mLower;
@@ -60,7 +58,7 @@ private:
 	}
 
 	std::shared_ptr<Transport> mLower;
-	message_callback mRecvCallback;
+	synchronized_callback<message_ptr> mRecvCallback;
 };
 
 } // namespace rtc

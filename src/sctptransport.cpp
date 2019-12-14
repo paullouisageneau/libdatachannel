@@ -97,7 +97,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 		throw std::runtime_error("Could not subscribe to event SCTP_STREAM_RESET_EVENT, errno=" +
 		                         std::to_string(errno));
 
-	// The sender SHOULD disable the Nagle algorithm (see [RFC1122]) to minimize the latency.
+	// The sender SHOULD disable the Nagle algorithm (see RFC1122) to minimize the latency.
 	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.6
 	int nodelay = 1;
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_NODELAY, &nodelay, sizeof(nodelay)))
@@ -144,9 +144,15 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 
 SctpTransport::~SctpTransport() {
 	onRecv(nullptr); // unset recv callback
-	mStopping = true;
-	mConnectCondition.notify_all();
+
 	mSendQueue.stop();
+
+	// Unblock incoming
+	if (!mConnectDataSent) {
+		std::unique_lock<std::mutex> lock(mConnectMutex);
+		mConnectDataSent = true;
+		mConnectCondition.notify_all();
+	}
 
 	if (mSock) {
 		usrsctp_shutdown(mSock, SHUT_RDWR);
@@ -182,7 +188,7 @@ void SctpTransport::connect() {
 SctpTransport::State SctpTransport::state() const { return mState; }
 
 bool SctpTransport::send(message_ptr message) {
-	if (!message || mStopping)
+	if (!message)
 		return false;
 
 	updateBufferedAmount(message->stream, message->size());
@@ -214,11 +220,10 @@ void SctpTransport::incoming(message_ptr message) {
 	// to be sent on our side (i.e. the local INIT) before proceeding.
 	if (!mConnectDataSent) {
 		std::unique_lock<std::mutex> lock(mConnectMutex);
-		mConnectCondition.wait(lock, [this] { return mConnectDataSent || mStopping; });
+		mConnectCondition.wait(lock, [this]() -> bool { return mConnectDataSent; });
 	}
 
-	if (!mStopping)
-		usrsctp_conninput(this, message->data(), message->size(), 0);
+	usrsctp_conninput(this, message->data(), message->size(), 0);
 }
 
 void SctpTransport::changeState(State state) {
@@ -430,9 +435,9 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 
 	switch (notify->sn_header.sn_type) {
 	case SCTP_ASSOC_CHANGE: {
-		const struct sctp_assoc_change *assoc_change = &notify->sn_assoc_change;
+		const struct sctp_assoc_change &assoc_change = notify->sn_assoc_change;
 		std::unique_lock<std::mutex> lock(mConnectMutex);
-		if (assoc_change->sac_state == SCTP_COMM_UP) {
+		if (assoc_change.sac_state == SCTP_COMM_UP) {
 			changeState(State::Connected);
 		} else {
 			if (mState == State::Connecting) {
@@ -449,20 +454,20 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 		trySendAll();
 	}
 	case SCTP_STREAM_RESET_EVENT: {
-		const struct sctp_stream_reset_event *reset_event = &notify->sn_strreset_event;
-		const int count = (reset_event->strreset_length - sizeof(*reset_event)) / sizeof(uint16_t);
+		const struct sctp_stream_reset_event &reset_event = notify->sn_strreset_event;
+		const int count = (reset_event.strreset_length - sizeof(reset_event)) / sizeof(uint16_t);
 
-		if (reset_event->strreset_flags & SCTP_STREAM_RESET_INCOMING_SSN) {
+		if (reset_event.strreset_flags & SCTP_STREAM_RESET_INCOMING_SSN) {
 			for (int i = 0; i < count; ++i) {
-				uint16_t streamId = reset_event->strreset_stream_list[i];
+				uint16_t streamId = reset_event.strreset_stream_list[i];
 				reset(streamId);
 			}
 		}
 
-		if (reset_event->strreset_flags & SCTP_STREAM_RESET_OUTGOING_SSN) {
+		if (reset_event.strreset_flags & SCTP_STREAM_RESET_OUTGOING_SSN) {
 			const byte dataChannelCloseMessage{0x04};
 			for (int i = 0; i < count; ++i) {
-				uint16_t streamId = reset_event->strreset_stream_list[i];
+				uint16_t streamId = reset_event.strreset_stream_list[i];
 				recv(make_message(&dataChannelCloseMessage, &dataChannelCloseMessage + 1,
 				                  Message::Control, streamId));
 			}
