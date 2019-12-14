@@ -97,7 +97,8 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 		throw std::runtime_error("Could not subscribe to event SCTP_STREAM_RESET_EVENT, errno=" +
 		                         std::to_string(errno));
 
-	// Disable Nagle-like algorithm to reduce delay
+	// The sender SHOULD disable the Nagle algorithm (see [RFC1122]) to minimize the latency.
+	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.6
 	int nodelay = 1;
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_NODELAY, &nodelay, sizeof(nodelay)))
 		throw std::runtime_error("Could not set socket option SCTP_NODELAY, errno=" +
@@ -361,31 +362,63 @@ int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_
 }
 
 void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, PayloadId ppid) {
-	Message::Type type;
+	// The usage of the PPIDs "WebRTC String Partial" and "WebRTC Binary Partial" is deprecated.
+	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.6
+	// We handle them at reception for compatibility reasons but should never send them.
 	switch (ppid) {
-	case PPID_STRING:
-		type = Message::String;
-		break;
-	case PPID_STRING_EMPTY:
-		type = Message::String;
-		len = 0;
-		break;
-	case PPID_BINARY:
-		type = Message::Binary;
-		break;
-	case PPID_BINARY_EMPTY:
-		type = Message::Binary;
-		len = 0;
-		break;
 	case PPID_CONTROL:
-		type = Message::Control;
+		recv(make_message(data, data + len, Message::Control, sid));
 		break;
+
+	case PPID_STRING_PARTIAL: // deprecated
+		mPartialStringData.insert(mPartialStringData.end(), data, data + len);
+		break;
+
+	case PPID_STRING:
+		if (mPartialStringData.empty()) {
+			recv(make_message(data, data + len, Message::String, sid));
+		} else {
+			mPartialStringData.insert(mPartialStringData.end(), data, data + len);
+			recv(make_message(mPartialStringData.begin(), mPartialStringData.end(), Message::String,
+			                  sid));
+			mPartialStringData.clear();
+		}
+		break;
+
+	case PPID_STRING_EMPTY:
+		// This only accounts for when the partial data is empty
+		recv(make_message(mPartialStringData.begin(), mPartialStringData.end(), Message::String,
+		                  sid));
+		mPartialStringData.clear();
+		break;
+
+	case PPID_BINARY_PARTIAL: // deprecated
+		mPartialBinaryData.insert(mPartialBinaryData.end(), data, data + len);
+		break;
+
+	case PPID_BINARY:
+		if (mPartialBinaryData.empty()) {
+			recv(make_message(data, data + len, Message::Binary, sid));
+		} else {
+			mPartialBinaryData.insert(mPartialBinaryData.end(), data, data + len);
+			recv(make_message(mPartialBinaryData.begin(), mPartialBinaryData.end(), Message::Binary,
+			                  sid));
+			mPartialBinaryData.clear();
+		}
+		break;
+
+	case PPID_BINARY_EMPTY:
+		// This only accounts for when the partial data is empty
+		recv(make_message(mPartialBinaryData.begin(), mPartialBinaryData.end(), Message::Binary,
+		                  sid));
+		mPartialBinaryData.clear();
+		break;
+
 	default:
 		// Unknown
 		std::cerr << "Unknown PPID: " << uint32_t(ppid) << std::endl;
 		return;
 	}
-	recv(make_message(data, data + len, type, sid));
 }
 
 void SctpTransport::processNotification(const union sctp_notification *notify, size_t len) {

@@ -54,10 +54,14 @@ public:
 	void reset(unsigned int stream);
 
 private:
+	// Order seems wrong but these are the actual values
+	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-8
 	enum PayloadId : uint32_t {
 		PPID_CONTROL = 50,
 		PPID_STRING = 51,
+		PPID_BINARY_PARTIAL = 52,
 		PPID_BINARY = 53,
+		PPID_STRING_PARTIAL = 54,
 		PPID_STRING_EMPTY = 56,
 		PPID_BINARY_EMPTY = 57
 	};
@@ -94,6 +98,8 @@ private:
 
 	state_callback mStateChangeCallback;
 	std::atomic<State> mState;
+
+	binary mPartialStringData, mPartialBinaryData;
 
 	static int RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
 	                        struct sctp_rcvinfo recv_info, int flags, void *user_data);
