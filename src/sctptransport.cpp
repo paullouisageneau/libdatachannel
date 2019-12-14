@@ -245,9 +245,10 @@ bool SctpTransport::trySend(message_ptr message) {
 	if (!message)
 		return false;
 
-	const Reliability reliability = message->reliability ? *message->reliability : Reliability();
+	// TODO: Implement SCTP ndata specification draft when supported everywhere
+	// See https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata-08
 
-	struct sctp_sendv_spa spa = {};
+	const Reliability reliability = message->reliability ? *message->reliability : Reliability();
 
 	uint32_t ppid;
 	switch (message->type) {
@@ -262,11 +263,13 @@ bool SctpTransport::trySend(message_ptr message) {
 		break;
 	}
 
+	struct sctp_sendv_spa spa = {};
+
 	// set sndinfo
 	spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
 	spa.sendv_sndinfo.snd_sid = uint16_t(message->stream);
 	spa.sendv_sndinfo.snd_ppid = htonl(ppid);
-	spa.sendv_sndinfo.snd_flags |= SCTP_EOR;
+	spa.sendv_sndinfo.snd_flags |= SCTP_EOR; // implicit here
 
 	// set prinfo
 	spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
@@ -432,8 +435,12 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 		if (assoc_change->sac_state == SCTP_COMM_UP) {
 			changeState(State::Connected);
 		} else {
-			std::cerr << "SCTP connection failed" << std::endl;
-			changeState(State::Failed);
+			if (mState == State::Connecting) {
+				std::cerr << "SCTP connection failed" << std::endl;
+				changeState(State::Failed);
+			} else {
+				changeState(State::Disconnected);
+			}
 		}
 	}
 	case SCTP_SENDER_DRY_EVENT: {
