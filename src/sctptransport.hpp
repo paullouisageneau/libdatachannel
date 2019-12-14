@@ -73,10 +73,10 @@ private:
 	bool trySend(message_ptr message);
 	void updateBufferedAmount(uint16_t streamId, long delta);
 
-	int handleRecv(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
+	int handleRecv(struct socket *sock, union sctp_sockstore addr, const byte *data, size_t len,
 	               struct sctp_rcvinfo recv_info, int flags);
 	int handleSend(size_t free);
-	int handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df);
+	int handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_df);
 
 	void processData(const byte *data, size_t len, uint16_t streamId, PayloadId ppid);
 	void processNotification(const union sctp_notification *notify, size_t len);
@@ -99,7 +99,7 @@ private:
 	state_callback mStateChangeCallback;
 	std::atomic<State> mState;
 
-	binary mPartialStringData, mPartialBinaryData;
+	binary mPartialRecv, mPartialStringData, mPartialBinaryData;
 
 	static int RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
 	                        struct sctp_rcvinfo recv_info, int flags, void *user_data);
