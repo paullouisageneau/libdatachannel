@@ -50,28 +50,34 @@ public:
 
 	State state() const;
 
-	bool send(message_ptr message);
+	bool send(message_ptr message); // false if buffered
 	void reset(unsigned int stream);
 
 private:
+	// Order seems wrong but these are the actual values
+	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-8
 	enum PayloadId : uint32_t {
 		PPID_CONTROL = 50,
 		PPID_STRING = 51,
+		PPID_BINARY_PARTIAL = 52,
 		PPID_BINARY = 53,
+		PPID_STRING_PARTIAL = 54,
 		PPID_STRING_EMPTY = 56,
 		PPID_BINARY_EMPTY = 57
 	};
 
+	void connect();
 	void incoming(message_ptr message);
 	void changeState(State state);
-	void runConnectAndSendLoop();
-	bool doSend(message_ptr message);
+
+	bool trySendQueue();
+	bool trySendMessage(message_ptr message);
 	void updateBufferedAmount(uint16_t streamId, long delta);
 
-	int handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df);
-
-	int process(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
-	            struct sctp_rcvinfo recv_info, int flags);
+	int handleRecv(struct socket *sock, union sctp_sockstore addr, const byte *data, size_t len,
+	               struct sctp_rcvinfo recv_info, int flags);
+	int handleSend(size_t free);
+	int handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_df);
 
 	void processData(const byte *data, size_t len, uint16_t streamId, PayloadId ppid);
 	void processNotification(const union sctp_notification *notify, size_t len);
@@ -79,10 +85,9 @@ private:
 	const uint16_t mPort;
 	struct socket *mSock;
 
+	std::mutex mSendMutex;
 	Queue<message_ptr> mSendQueue;
-	std::thread mSendThread;
 	std::map<uint16_t, size_t> mBufferedAmount;
-	std::mutex mBufferedAmountMutex;
 	amount_callback mBufferedAmountCallback;
 
 	std::mutex mConnectMutex;
@@ -93,9 +98,12 @@ private:
 	state_callback mStateChangeCallback;
 	std::atomic<State> mState;
 
-	static int WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos, uint8_t set_df);
-	static int ReadCallback(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
+	binary mPartialRecv, mPartialStringData, mPartialBinaryData;
+
+	static int RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
 	                        struct sctp_rcvinfo recv_info, int flags, void *user_data);
+	static int SendCallback(struct socket *sock, uint32_t sb_free);
+	static int WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos, uint8_t set_df);
 
 	void GlobalInit();
 	void GlobalCleanup();

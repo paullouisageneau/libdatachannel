@@ -34,8 +34,7 @@ template <typename T> class Queue {
 public:
 	using amount_function = std::function<size_t(const T &element)>;
 
-	Queue(
-	    size_t limit = 0, amount_function func = [](const T &element) -> size_t { return 1; });
+	Queue(size_t limit = 0, amount_function func = nullptr);
 	~Queue();
 
 	void stop();
@@ -45,7 +44,7 @@ public:
 	void push(const T &element);
 	void push(T &&element);
 	std::optional<T> pop();
-	std::optional<T> tryPop();
+	std::optional<T> peek();
 	void wait();
 	void wait(const std::chrono::milliseconds &duration);
 
@@ -61,8 +60,9 @@ private:
 };
 
 template <typename T>
-Queue<T>::Queue(size_t limit, amount_function func)
-    : mLimit(limit), mAmount(0), mAmountFunction(func) {}
+Queue<T>::Queue(size_t limit, amount_function func) : mLimit(limit), mAmount(0) {
+	mAmountFunction = func ? func : [](const T &element) -> size_t { return 1; };
+}
 
 template <typename T> Queue<T>::~Queue() { stop(); }
 
@@ -105,7 +105,7 @@ template <typename T> std::optional<T> Queue<T>::pop() {
 	mPopCondition.wait(lock, [this]() { return !mQueue.empty() || mStopping; });
 	if (!mQueue.empty()) {
 		mAmount -= mAmountFunction(mQueue.front());
-		std::optional<T> element(std::move(mQueue.front()));
+		std::optional<T> element{std::move(mQueue.front())};
 		mQueue.pop();
 		return element;
 	} else {
@@ -113,13 +113,10 @@ template <typename T> std::optional<T> Queue<T>::pop() {
 	}
 }
 
-template <typename T> std::optional<T> Queue<T>::tryPop() {
+template <typename T> std::optional<T> Queue<T>::peek() {
 	std::unique_lock<std::mutex> lock(mMutex);
 	if (!mQueue.empty()) {
-		mAmount -= mAmountFunction(mQueue.front());
-		std::optional<T> element(std::move(mQueue.front()));
-		mQueue.pop();
-		return element;
+		return std::optional<T>{mQueue.front()};
 	} else {
 		return nullopt;
 	}

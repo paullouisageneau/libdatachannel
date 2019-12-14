@@ -58,10 +58,13 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 	GlobalInit();
 
 	usrsctp_register_address(this);
-	mSock = usrsctp_socket(AF_CONN, SOCK_STREAM, IPPROTO_SCTP, &SctpTransport::ReadCallback,
-	                       nullptr, 0, this);
+	mSock = usrsctp_socket(AF_CONN, SOCK_STREAM, IPPROTO_SCTP, &SctpTransport::RecvCallback,
+	                       &SctpTransport::SendCallback, 0, this);
 	if (!mSock)
 		throw std::runtime_error("Could not create SCTP socket, errno=" + std::to_string(errno));
+
+	if (usrsctp_set_non_blocking(mSock, 1))
+		throw std::runtime_error("Unable to set non-blocking mode, errno=" + std::to_string(errno));
 
 	// SCTP must stop sending after the lower layer is shut down, so disable linger
 	struct linger sol = {};
@@ -81,12 +84,21 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 	struct sctp_event se = {};
 	se.se_assoc_id = SCTP_ALL_ASSOC;
 	se.se_on = 1;
+	se.se_type = SCTP_ASSOC_CHANGE;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_EVENT, &se, sizeof(se)))
+		throw std::runtime_error("Could not subscribe to event SCTP_ASSOC_CHANGE, errno=" +
+		                         std::to_string(errno));
+	se.se_type = SCTP_SENDER_DRY_EVENT;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_EVENT, &se, sizeof(se)))
+		throw std::runtime_error("Could not subscribe to event SCTP_SENDER_DRY_EVENT, errno=" +
+		                         std::to_string(errno));
 	se.se_type = SCTP_STREAM_RESET_EVENT;
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_EVENT, &se, sizeof(se)))
-		throw std::runtime_error("Could not set socket option SCTP_EVENT, errno=" +
+		throw std::runtime_error("Could not subscribe to event SCTP_STREAM_RESET_EVENT, errno=" +
 		                         std::to_string(errno));
 
-	// Disable Nagle-like algorithm to reduce delay
+	// The sender SHOULD disable the Nagle algorithm (see RFC1122) to minimize the latency.
+	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.6
 	int nodelay = 1;
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_NODELAY, &nodelay, sizeof(nodelay)))
 		throw std::runtime_error("Could not set socket option SCTP_NODELAY, errno=" +
@@ -127,6 +139,33 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 		throw std::runtime_error("Could not set SCTP send buffer size, errno=" +
 		                         std::to_string(errno));
 
+	connect();
+}
+
+SctpTransport::~SctpTransport() {
+	onRecv(nullptr); // unset recv callback
+
+	mSendQueue.stop();
+
+	// Unblock incoming
+	if (!mConnectDataSent) {
+		std::unique_lock<std::mutex> lock(mConnectMutex);
+		mConnectDataSent = true;
+		mConnectCondition.notify_all();
+	}
+
+	if (mSock) {
+		usrsctp_shutdown(mSock, SHUT_RDWR);
+		usrsctp_close(mSock);
+	}
+
+	usrsctp_deregister_address(this);
+	GlobalCleanup();
+}
+
+void SctpTransport::connect() {
+	changeState(State::Connecting);
+
 	struct sockaddr_conn sconn = {};
 	sconn.sconn_family = AF_CONN;
 	sconn.sconn_port = htons(mPort);
@@ -138,36 +177,29 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 	if (usrsctp_bind(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)))
 		throw std::runtime_error("Could not bind usrsctp socket, errno=" + std::to_string(errno));
 
-	mSendThread = std::thread(&SctpTransport::runConnectAndSendLoop, this);
-}
-
-SctpTransport::~SctpTransport() {
-	onRecv(nullptr); // unset recv callback
-	mStopping = true;
-	mConnectCondition.notify_all();
-	mSendQueue.stop();
-
-	if (mSock) {
-		usrsctp_shutdown(mSock, SHUT_RDWR);
-		usrsctp_close(mSock);
-	}
-
-	if (mSendThread.joinable())
-		mSendThread.join();
-
-	usrsctp_deregister_address(this);
-	GlobalCleanup();
+	// According to the IETF draft, both endpoints must initiate the SCTP association, in a
+	// simultaneous-open manner, irrelevent to the SDP setup role.
+	// See https://tools.ietf.org/html/draft-ietf-mmusic-sctp-sdp-26#section-9.3
+	int ret = usrsctp_connect(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn));
+	if (ret && errno != EINPROGRESS)
+		throw std::runtime_error("Connection attempt failed, errno=" + std::to_string(errno));
 }
 
 SctpTransport::State SctpTransport::state() const { return mState; }
 
 bool SctpTransport::send(message_ptr message) {
-	if (!message || mStopping)
-		return false;
+	std::lock_guard<std::mutex> lock(mSendMutex);
 
-	updateBufferedAmount(message->stream, message->size());
+	if (!message)
+		return mSendQueue.empty();
+
+	// If nothing is pending, try to send directly
+	if (mSendQueue.empty() && trySendMessage(message))
+		return true;
+
 	mSendQueue.push(message);
-	return true;
+	updateBufferedAmount(message->stream, message_size_func(message));
+	return false;
 }
 
 void SctpTransport::reset(unsigned int stream) {
@@ -188,17 +220,15 @@ void SctpTransport::incoming(message_ptr message) {
 		return;
 	}
 
-	// There could be a race condition here where we receive the remote INIT before the thread in
-	// usrsctp_connect sends the local one, which would result in the connection being aborted.
-	// Therefore, we need to wait for data to be sent on our side (i.e. the local INIT) before
-	// proceeding.
+	// There could be a race condition here where we receive the remote INIT before the local one is
+	// sent, which would result in the connection being aborted. Therefore, we need to wait for data
+	// to be sent on our side (i.e. the local INIT) before proceeding.
 	if (!mConnectDataSent) {
 		std::unique_lock<std::mutex> lock(mConnectMutex);
-		mConnectCondition.wait(lock, [this] { return mConnectDataSent || mStopping; });
+		mConnectCondition.wait(lock, [this]() -> bool { return mConnectDataSent; });
 	}
 
-	if (!mStopping)
-		usrsctp_conninput(this, message->data(), message->size(), 0);
+	usrsctp_conninput(this, message->data(), message->size(), 0);
 }
 
 void SctpTransport::changeState(State state) {
@@ -206,59 +236,25 @@ void SctpTransport::changeState(State state) {
 		mStateChangeCallback(state);
 }
 
-void SctpTransport::runConnectAndSendLoop() {
-	try {
-		changeState(State::Connecting);
-
-		struct sockaddr_conn sconn = {};
-		sconn.sconn_family = AF_CONN;
-		sconn.sconn_port = htons(mPort);
-		sconn.sconn_addr = this;
-#ifdef HAVE_SCONN_LEN
-		sconn.sconn_len = sizeof(sconn);
-#endif
-
-		// According to the IETF draft, both endpoints must initiate the SCTP association, in a
-		// simultaneous-open manner, irrelevent to the SDP setup role.
-		// See https://tools.ietf.org/html/draft-ietf-mmusic-sctp-sdp-26#section-9.3
-		if (usrsctp_connect(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)) != 0)
-			throw std::runtime_error("Connection failed, errno=" + std::to_string(errno));
-
-		if (!mStopping)
-			changeState(State::Connected);
-
-	} catch (const std::exception &e) {
-		std::cerr << "SCTP connect: " << e.what() << std::endl;
-		changeState(State::Failed);
-		mStopping = true;
-		mConnectCondition.notify_all();
-		return;
+bool SctpTransport::trySendQueue() {
+	// Requires mSendMutex to be locked
+	while (auto next = mSendQueue.peek()) {
+		auto message = *next;
+		if (!trySendMessage(message))
+			return false;
+		mSendQueue.pop();
+		updateBufferedAmount(message->stream, -message_size_func(message));
 	}
-
-	try {
-		while (auto next = mSendQueue.pop()) {
-			auto message = *next;
-			bool success = doSend(message);
-			updateBufferedAmount(message->stream, -message->size());
-			if (!success)
-				throw std::runtime_error("Sending failed, errno=" + std::to_string(errno));
-		}
-	} catch (const std::exception &e) {
-		std::cerr << "SCTP send: " << e.what() << std::endl;
-	}
-
-	changeState(State::Disconnected);
-	mStopping = true;
-	mConnectCondition.notify_all();
+	return true;
 }
 
-bool SctpTransport::doSend(message_ptr message) {
-	if (!message)
-		return false;
+bool SctpTransport::trySendMessage(message_ptr message) {
+	// Requires mSendMutex to be locked
+	//
+	// TODO: Implement SCTP ndata specification draft when supported everywhere
+	// See https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata-08
 
 	const Reliability reliability = message->reliability ? *message->reliability : Reliability();
-
-	struct sctp_sendv_spa spa = {};
 
 	uint32_t ppid;
 	switch (message->type) {
@@ -273,11 +269,13 @@ bool SctpTransport::doSend(message_ptr message) {
 		break;
 	}
 
+	struct sctp_sendv_spa spa = {};
+
 	// set sndinfo
 	spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
 	spa.sendv_sndinfo.snd_sid = uint16_t(message->stream);
 	spa.sendv_sndinfo.snd_ppid = htonl(ppid);
-	spa.sendv_sndinfo.snd_flags |= SCTP_EOR;
+	spa.sendv_sndinfo.snd_flags |= SCTP_EOR; // implicit here
 
 	// set prinfo
 	spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
@@ -309,78 +307,141 @@ bool SctpTransport::doSend(message_ptr message) {
 		const char zero = 0;
 		ret = usrsctp_sendv(mSock, &zero, 1, nullptr, 0, &spa, sizeof(spa), SCTP_SENDV_SPA, 0);
 	}
-	return ret > 0;
+
+	if (ret >= 0)
+		return true;
+	else if (errno == EWOULDBLOCK && errno == EAGAIN)
+		return false;
+	else
+		throw std::runtime_error("Sending failed, errno=" + std::to_string(errno));
 }
 
 void SctpTransport::updateBufferedAmount(uint16_t streamId, long delta) {
-	if (delta == 0)
-		return;
-	std::lock_guard<std::mutex> lock(mBufferedAmountMutex);
+	// Requires mSendMutex to be locked
 	auto it = mBufferedAmount.insert(std::make_pair(streamId, 0)).first;
-	if (delta > 0)
-		it->second += size_t(delta);
-	else if (it->second > size_t(-delta))
-		it->second -= size_t(-delta);
-	else
-		it->second = 0;
-	mBufferedAmountCallback(streamId, it->second);
-	if (it->second == 0)
+	size_t amount = it->second;
+	amount = size_t(std::max(long(amount) + delta, long(0)));
+	if (amount == 0)
 		mBufferedAmount.erase(it);
+	mBufferedAmountCallback(streamId, amount);
 }
 
-int SctpTransport::handleWrite(void *data, size_t len, uint8_t tos, uint8_t set_df) {
-	byte *b = reinterpret_cast<byte *>(data);
-	outgoing(make_message(b, b + len));
+int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, const byte *data,
+                              size_t len, struct sctp_rcvinfo info, int flags) {
+	try {
+		if (!data) {
+			recv(nullptr);
+			return 0;
+		}
+		if (flags & MSG_EOR) {
+			if (!mPartialRecv.empty()) {
+				mPartialRecv.insert(mPartialRecv.end(), data, data + len);
+				data = mPartialRecv.data();
+				len = mPartialRecv.size();
+			}
+			// Message is complete, process it
+			if (flags & MSG_NOTIFICATION)
+				processNotification(reinterpret_cast<const union sctp_notification *>(data), len);
+			else
+				processData(data, len, info.rcv_sid, PayloadId(htonl(info.rcv_ppid)));
 
-	if (!mConnectDataSent) {
-		std::unique_lock<std::mutex> lock(mConnectMutex);
-		mConnectDataSent = true;
-		mConnectCondition.notify_all();
+			mPartialRecv.clear();
+		} else {
+			// Message is not complete
+			mPartialRecv.insert(mPartialRecv.end(), data, data + len);
+		}
+	} catch (const std::exception &e) {
+		std::cerr << "SCTP recv: " << e.what() << std::endl;
+		return -1;
 	}
 	return 0; // success
 }
 
-int SctpTransport::process(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
-                           struct sctp_rcvinfo info, int flags) {
-	if (!data) {
-		recv(nullptr);
-		return 0;
+int SctpTransport::handleSend(size_t free) {
+	try {
+		std::lock_guard<std::mutex> lock(mSendMutex);
+		trySendQueue();
+	} catch (const std::exception &e) {
+		std::cerr << "SCTP send: " << e.what() << std::endl;
+		return -1;
 	}
-	if (flags & MSG_NOTIFICATION) {
-		processNotification((union sctp_notification *)data, len);
-	} else {
-		processData((const byte *)data, len, info.rcv_sid, PayloadId(htonl(info.rcv_ppid)));
+	return 0; // success
+}
+
+int SctpTransport::handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_df) {
+	try {
+		outgoing(make_message(data, data + len));
+
+		if (!mConnectDataSent) {
+			std::unique_lock<std::mutex> lock(mConnectMutex);
+			mConnectDataSent = true;
+			mConnectCondition.notify_all();
+		}
+	} catch (const std::exception &e) {
+		std::cerr << "SCTP write: " << e.what() << std::endl;
+		return -1;
 	}
-	free(data);
-	return 0;
+	return 0; // success
 }
 
 void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, PayloadId ppid) {
-	Message::Type type;
+	// The usage of the PPIDs "WebRTC String Partial" and "WebRTC Binary Partial" is deprecated.
+	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.6
+	// We handle them at reception for compatibility reasons but should never send them.
 	switch (ppid) {
-	case PPID_STRING:
-		type = Message::String;
-		break;
-	case PPID_STRING_EMPTY:
-		type = Message::String;
-		len = 0;
-		break;
-	case PPID_BINARY:
-		type = Message::Binary;
-		break;
-	case PPID_BINARY_EMPTY:
-		type = Message::Binary;
-		len = 0;
-		break;
 	case PPID_CONTROL:
-		type = Message::Control;
+		recv(make_message(data, data + len, Message::Control, sid));
 		break;
+
+	case PPID_STRING_PARTIAL: // deprecated
+		mPartialStringData.insert(mPartialStringData.end(), data, data + len);
+		break;
+
+	case PPID_STRING:
+		if (mPartialStringData.empty()) {
+			recv(make_message(data, data + len, Message::String, sid));
+		} else {
+			mPartialStringData.insert(mPartialStringData.end(), data, data + len);
+			recv(make_message(mPartialStringData.begin(), mPartialStringData.end(), Message::String,
+			                  sid));
+			mPartialStringData.clear();
+		}
+		break;
+
+	case PPID_STRING_EMPTY:
+		// This only accounts for when the partial data is empty
+		recv(make_message(mPartialStringData.begin(), mPartialStringData.end(), Message::String,
+		                  sid));
+		mPartialStringData.clear();
+		break;
+
+	case PPID_BINARY_PARTIAL: // deprecated
+		mPartialBinaryData.insert(mPartialBinaryData.end(), data, data + len);
+		break;
+
+	case PPID_BINARY:
+		if (mPartialBinaryData.empty()) {
+			recv(make_message(data, data + len, Message::Binary, sid));
+		} else {
+			mPartialBinaryData.insert(mPartialBinaryData.end(), data, data + len);
+			recv(make_message(mPartialBinaryData.begin(), mPartialBinaryData.end(), Message::Binary,
+			                  sid));
+			mPartialBinaryData.clear();
+		}
+		break;
+
+	case PPID_BINARY_EMPTY:
+		// This only accounts for when the partial data is empty
+		recv(make_message(mPartialBinaryData.begin(), mPartialBinaryData.end(), Message::Binary,
+		                  sid));
+		mPartialBinaryData.clear();
+		break;
+
 	default:
 		// Unknown
 		std::cerr << "Unknown PPID: " << uint32_t(ppid) << std::endl;
 		return;
 	}
-	recv(make_message(data, data + len, type, sid));
 }
 
 void SctpTransport::processNotification(const union sctp_notification *notify, size_t len) {
@@ -388,21 +449,41 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 		return;
 
 	switch (notify->sn_header.sn_type) {
+	case SCTP_ASSOC_CHANGE: {
+		const struct sctp_assoc_change &assoc_change = notify->sn_assoc_change;
+		std::unique_lock<std::mutex> lock(mConnectMutex);
+		if (assoc_change.sac_state == SCTP_COMM_UP) {
+			changeState(State::Connected);
+		} else {
+			if (mState == State::Connecting) {
+				std::cerr << "SCTP connection failed" << std::endl;
+				changeState(State::Failed);
+			} else {
+				changeState(State::Disconnected);
+			}
+		}
+	}
+	case SCTP_SENDER_DRY_EVENT: {
+		// It not should be necessary since the send callback should have been called already,
+		// but to be sure, let's try to send now.
+		std::lock_guard<std::mutex> lock(mSendMutex);
+		trySendQueue();
+	}
 	case SCTP_STREAM_RESET_EVENT: {
-		const struct sctp_stream_reset_event *reset_event = &notify->sn_strreset_event;
-		const int count = (reset_event->strreset_length - sizeof(*reset_event)) / sizeof(uint16_t);
+		const struct sctp_stream_reset_event &reset_event = notify->sn_strreset_event;
+		const int count = (reset_event.strreset_length - sizeof(reset_event)) / sizeof(uint16_t);
 
-		if (reset_event->strreset_flags & SCTP_STREAM_RESET_INCOMING_SSN) {
+		if (reset_event.strreset_flags & SCTP_STREAM_RESET_INCOMING_SSN) {
 			for (int i = 0; i < count; ++i) {
-				uint16_t streamId = reset_event->strreset_stream_list[i];
+				uint16_t streamId = reset_event.strreset_stream_list[i];
 				reset(streamId);
 			}
 		}
 
-		if (reset_event->strreset_flags & SCTP_STREAM_RESET_OUTGOING_SSN) {
+		if (reset_event.strreset_flags & SCTP_STREAM_RESET_OUTGOING_SSN) {
 			const byte dataChannelCloseMessage{0x04};
 			for (int i = 0; i < count; ++i) {
-				uint16_t streamId = reset_event->strreset_stream_list[i];
+				uint16_t streamId = reset_event.strreset_stream_list[i];
 				recv(make_message(&dataChannelCloseMessage, &dataChannelCloseMessage + 1,
 				                  Message::Control, streamId));
 			}
@@ -415,16 +496,29 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 		break;
 	}
 }
-int SctpTransport::WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos,
-                                 uint8_t set_df) {
-	return static_cast<SctpTransport *>(sctp_ptr)->handleWrite(data, len, tos, set_df);
+
+int SctpTransport::RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data,
+                                size_t len, struct sctp_rcvinfo recv_info, int flags, void *ptr) {
+	int ret = static_cast<SctpTransport *>(ptr)->handleRecv(
+	    sock, addr, static_cast<const byte *>(data), len, recv_info, flags);
+	free(data);
+	return ret;
 }
 
-int SctpTransport::ReadCallback(struct socket *sock, union sctp_sockstore addr, void *data,
-                                size_t len, struct sctp_rcvinfo recv_info, int flags,
-                                void *user_data) {
-	return static_cast<SctpTransport *>(user_data)->process(sock, addr, data, len, recv_info,
-	                                                        flags);
+int SctpTransport::SendCallback(struct socket *sock, uint32_t sb_free) {
+	struct sctp_paddrinfo paddrinfo = {};
+	socklen_t len = sizeof(paddrinfo);
+	if (usrsctp_getsockopt(sock, IPPROTO_SCTP, SCTP_GET_PEER_ADDR_INFO, &paddrinfo, &len))
+		return -1;
+
+	auto sconn = reinterpret_cast<struct sockaddr_conn *>(&paddrinfo.spinfo_address);
+	void *ptr = sconn->sconn_addr;
+	return static_cast<SctpTransport *>(ptr)->handleSend(size_t(sb_free));
+}
+
+int SctpTransport::WriteCallback(void *ptr, void *data, size_t len, uint8_t tos, uint8_t set_df) {
+	return static_cast<SctpTransport *>(ptr)->handleWrite(static_cast<byte *>(data), len, tos,
+	                                                      set_df);
 }
 
 } // namespace rtc

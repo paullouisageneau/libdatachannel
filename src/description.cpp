@@ -81,6 +81,8 @@ Description::Description(const string &sdp, Type type, Role role)
 			mIcePwd = line.substr(line.find(':') + 1);
 		} else if (hasprefix(line, "a=sctp-port")) {
 			mSctpPort = uint16_t(std::stoul(line.substr(line.find(':') + 1)));
+		} else if (hasprefix(line, "a=max-message-size")) {
+			mMaxMessageSize = size_t(std::stoul(line.substr(line.find(':') + 1)));
 		} else if (hasprefix(line, "a=candidate")) {
 			addCandidate(Candidate(line.substr(2), mMid));
 		} else if (hasprefix(line, "a=end-of-candidates")) {
@@ -103,11 +105,15 @@ std::optional<string> Description::fingerprint() const { return mFingerprint; }
 
 std::optional<uint16_t> Description::sctpPort() const { return mSctpPort; }
 
+std::optional<size_t> Description::maxMessageSize() const { return mMaxMessageSize; }
+
 void Description::setFingerprint(string fingerprint) {
 	mFingerprint.emplace(std::move(fingerprint));
 }
 
 void Description::setSctpPort(uint16_t port) { mSctpPort.emplace(port); }
+
+void Description::setMaxMessageSize(size_t size) { mMaxMessageSize.emplace(size); }
 
 void Description::addCandidate(Candidate candidate) {
 	mCandidates.emplace_back(std::move(candidate));
@@ -145,7 +151,8 @@ Description::operator string() const {
 		sdp << "a=fingerprint:sha-256 " << *mFingerprint << "\n";
 	if (mSctpPort)
 		sdp << "a=sctp-port:" << *mSctpPort << "\n";
-
+	if (mMaxMessageSize)
+		sdp << "a=max-message-size:" << *mMaxMessageSize << "\n";
 	for (const auto &candidate : mCandidates) {
 		sdp << string(candidate) << "\n";
 	}

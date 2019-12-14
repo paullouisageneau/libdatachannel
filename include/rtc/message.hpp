@@ -44,6 +44,7 @@ struct Message : binary {
 using message_ptr = std::shared_ptr<const Message>;
 using mutable_message_ptr = std::shared_ptr<Message>;
 using message_callback = std::function<void(message_ptr message)>;
+
 constexpr auto message_size_func = [](const message_ptr &m) -> size_t {
 	return m->type != Message::Control ? m->size() : 0;
 };

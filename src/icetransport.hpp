@@ -67,7 +67,7 @@ public:
 	std::optional<string> getLocalAddress() const;
 	std::optional<string> getRemoteAddress() const;
 
-	bool send(message_ptr message);
+	bool send(message_ptr message); // false if dropped
 
 private:
 	void incoming(message_ptr message);
