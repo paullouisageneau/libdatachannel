@@ -143,8 +143,19 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 }
 
 SctpTransport::~SctpTransport() {
-	resetLower();
-	onRecv(nullptr); // unset recv callback
+	if (mSock) {
+		usrsctp_shutdown(mSock, SHUT_RDWR);
+		usrsctp_close(mSock);
+	}
+
+	usrsctp_deregister_address(this);
+	GlobalCleanup();
+}
+
+SctpTransport::State SctpTransport::state() const { return mState; }
+
+void SctpTransport::stop() {
+	Transport::stop();
 
 	mSendQueue.stop();
 
@@ -154,14 +165,6 @@ SctpTransport::~SctpTransport() {
 		mConnectDataSent = true;
 		mConnectCondition.notify_all();
 	}
-
-	if (mSock) {
-		usrsctp_shutdown(mSock, SHUT_RDWR);
-		usrsctp_close(mSock);
-	}
-
-	usrsctp_deregister_address(this);
-	GlobalCleanup();
 }
 
 void SctpTransport::connect() {
@@ -185,8 +188,6 @@ void SctpTransport::connect() {
 	if (ret && errno != EINPROGRESS)
 		throw std::runtime_error("Connection attempt failed, errno=" + std::to_string(errno));
 }
-
-SctpTransport::State SctpTransport::state() const { return mState; }
 
 bool SctpTransport::send(message_ptr message) {
 	std::lock_guard<std::mutex> lock(mSendMutex);

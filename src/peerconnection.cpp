@@ -37,6 +37,13 @@ PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New) {}
 
 PeerConnection::~PeerConnection() {
+	if (mIceTransport)
+		mIceTransport->stop();
+	if (mDtlsTransport)
+		mDtlsTransport->stop();
+	if (mSctpTransport)
+		mSctpTransport->stop();
+
 	mSctpTransport.reset();
 	mDtlsTransport.reset();
 	mIceTransport.reset();

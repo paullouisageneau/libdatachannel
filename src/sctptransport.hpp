@@ -50,7 +50,8 @@ public:
 
 	State state() const;
 
-	bool send(message_ptr message); // false if buffered
+	void stop() override;
+	bool send(message_ptr message) override; // false if buffered
 	void reset(unsigned int stream);
 
 private:
