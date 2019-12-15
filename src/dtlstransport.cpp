@@ -85,16 +85,18 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 }
 
 DtlsTransport::~DtlsTransport() {
-	resetLower();
-
-	mIncomingQueue.stop();
-	mRecvThread.join();
-
 	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
 	gnutls_deinit(mSession);
 }
 
 DtlsTransport::State DtlsTransport::state() const { return mState; }
+
+void DtlsTransport::stop() {
+	Transport::stop();
+
+	mIncomingQueue.stop();
+	mRecvThread.join();
+}
 
 bool DtlsTransport::send(message_ptr message) {
 	if (!message || mState != State::Connected)
@@ -356,14 +358,16 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 }
 
 DtlsTransport::~DtlsTransport() {
-	resetLower();
-
-	mIncomingQueue.stop();
-	mRecvThread.join();
-
 	SSL_shutdown(mSsl);
 	SSL_free(mSsl);
 	SSL_CTX_free(mCtx);
+}
+
+void DtlsTransport::stop() {
+	Transport::stop();
+
+	mIncomingQueue.stop();
+	mRecvThread.join();
 }
 
 DtlsTransport::State DtlsTransport::state() const { return mState; }

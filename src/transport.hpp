@@ -36,13 +36,16 @@ public:
 		if (auto lower = std::atomic_load(&mLower))
 			lower->onRecv(std::bind(&Transport::incoming, this, _1));
 	}
-	virtual ~Transport() { resetLower(); }
+	virtual ~Transport() {}
 
+	virtual void stop() { resetLower(); }
 	virtual bool send(message_ptr message) = 0;
+
 	void onRecv(message_callback callback) { mRecvCallback = std::move(callback); }
 
 protected:
 	void recv(message_ptr message) { mRecvCallback(message); }
+
 	void resetLower() {
 		if (auto lower = std::atomic_exchange(&mLower, std::shared_ptr<Transport>(nullptr)))
 			lower->onRecv(nullptr);
