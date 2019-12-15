@@ -143,6 +143,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 }
 
 SctpTransport::~SctpTransport() {
+	resetLower();
 	onRecv(nullptr); // unset recv callback
 
 	mSendQueue.stop();

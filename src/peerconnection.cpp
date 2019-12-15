@@ -36,7 +36,11 @@ PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New) {}
 
-PeerConnection::~PeerConnection() {}
+PeerConnection::~PeerConnection() {
+	mSctpTransport.reset();
+	mDtlsTransport.reset();
+	mIceTransport.reset();
+}
 
 const Configuration *PeerConnection::config() const { return &mConfig; }
 
@@ -168,11 +172,8 @@ void PeerConnection::onGatheringStateChange(std::function<void(GatheringState st
 
 void PeerConnection::initIceTransport(Description::Role role) {
 	mIceTransport = std::make_shared<IceTransport>(
-	    mConfig, role, std::bind(&PeerConnection::processLocalCandidate, this, weak_ptr<PeerConnection>{shared_from_this()}, _1),
-	    [this, weak_this = weak_ptr<PeerConnection>{shared_from_this()}](IceTransport::State state) {
-        auto strong_this = weak_this.lock();
-        if (!strong_this) return;
-
+	    mConfig, role, std::bind(&PeerConnection::processLocalCandidate, this, _1),
+	    [this](IceTransport::State state) {
 		    switch (state) {
 		    case IceTransport::State::Connecting:
 			    changeState(State::Connecting);
@@ -188,10 +189,7 @@ void PeerConnection::initIceTransport(Description::Role role) {
 			    break;
 		    }
 	    },
-	    [this, weak_this = weak_ptr<PeerConnection>{shared_from_this()}](IceTransport::GatheringState state) {
-        auto strong_this = weak_this.lock();
-        if (!strong_this) return;
-
+	    [this](IceTransport::GatheringState state) {
 		    switch (state) {
 		    case IceTransport::GatheringState::InProgress:
 			    changeGatheringState(GatheringState::InProgress);
@@ -210,11 +208,8 @@ void PeerConnection::initIceTransport(Description::Role role) {
 
 void PeerConnection::initDtlsTransport() {
 	mDtlsTransport = std::make_shared<DtlsTransport>(
-	    mIceTransport, mCertificate, std::bind(&PeerConnection::checkFingerprint, this, weak_ptr<PeerConnection>{shared_from_this()}, _1),
-	    [this, weak_this = weak_ptr<PeerConnection>{shared_from_this()}](DtlsTransport::State state) {
-        auto strong_this = weak_this.lock();
-        if (!strong_this) return;
-
+	    mIceTransport, mCertificate, std::bind(&PeerConnection::checkFingerprint, this, _1),
+	    [this](DtlsTransport::State state) {
 		    switch (state) {
 		    case DtlsTransport::State::Connected:
 			    initSctpTransport();
@@ -232,17 +227,9 @@ void PeerConnection::initDtlsTransport() {
 void PeerConnection::initSctpTransport() {
 	uint16_t sctpPort = mRemoteDescription->sctpPort().value_or(DEFAULT_SCTP_PORT);
 	mSctpTransport = std::make_shared<SctpTransport>(
-	    mDtlsTransport, sctpPort,
-	    std::bind(&PeerConnection::forwardMessage, this,
-	              weak_ptr<PeerConnection>{shared_from_this()}, _1),
-	    std::bind(&PeerConnection::forwardBufferedAmount, this,
-	              weak_ptr<PeerConnection>{shared_from_this()}, _1, _2),
-	    [this,
-	     weak_this = weak_ptr<PeerConnection>{shared_from_this()}](SctpTransport::State state) {
-		    auto strong_this = weak_this.lock();
-		    if (!strong_this)
-			    return;
-
+	    mDtlsTransport, sctpPort, std::bind(&PeerConnection::forwardMessage, this, _1),
+	    std::bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
+	    [this](SctpTransport::State state) {
 		    switch (state) {
 		    case SctpTransport::State::Connected:
 			    changeState(State::Connected);
@@ -261,10 +248,7 @@ void PeerConnection::initSctpTransport() {
 	    });
 }
 
-bool PeerConnection::checkFingerprint(weak_ptr<PeerConnection> weak_this, const std::string &fingerprint) const {
-  auto strong_this = weak_this.lock();
-  if (!strong_this) return false;
-
+bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
 	if (auto expectedFingerprint =
 	        mRemoteDescription ? mRemoteDescription->fingerprint() : nullopt) {
 		return *expectedFingerprint == fingerprint;
@@ -272,10 +256,7 @@ bool PeerConnection::checkFingerprint(weak_ptr<PeerConnection> weak_this, const 
 	return false;
 }
 
-void PeerConnection::forwardMessage(weak_ptr<PeerConnection> weak_this, message_ptr message) {
-  auto strong_this = weak_this.lock();
-  if (!strong_this) return;
-
+void PeerConnection::forwardMessage(message_ptr message) {
 	if (!mIceTransport || !mSctpTransport)
 		throw std::logic_error("Got a DataChannel message without transport");
 
@@ -300,7 +281,8 @@ void PeerConnection::forwardMessage(weak_ptr<PeerConnection> weak_this, message_
 		    message->stream % 2 == remoteParity) {
 			channel =
 			    std::make_shared<DataChannel>(shared_from_this(), mSctpTransport, message->stream);
-			channel->onOpen(std::bind(&PeerConnection::triggerDataChannel, this, weak_this, weak_ptr<DataChannel>{channel}));
+			channel->onOpen(std::bind(&PeerConnection::triggerDataChannel, this,
+			                          weak_ptr<DataChannel>{channel}));
 			mDataChannels.insert(std::make_pair(message->stream, channel));
 		} else {
 			// Invalid, close the DataChannel by resetting the stream
@@ -312,12 +294,7 @@ void PeerConnection::forwardMessage(weak_ptr<PeerConnection> weak_this, message_
 	channel->incoming(message);
 }
 
-void PeerConnection::forwardBufferedAmount(weak_ptr<PeerConnection> weak_this, uint16_t stream,
-                                           size_t amount) {
-	auto strong_this = weak_this.lock();
-	if (!strong_this)
-		return;
-
+void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
 	shared_ptr<DataChannel> channel;
 	if (auto it = mDataChannels.find(stream); it != mDataChannels.end()) {
 		channel = it->second.lock();
@@ -364,11 +341,7 @@ void PeerConnection::processLocalDescription(Description description) {
 	mLocalDescriptionCallback(*mLocalDescription);
 }
 
-void PeerConnection::processLocalCandidate(weak_ptr<PeerConnection> weak_this, Candidate candidate) {
-	auto strong_this = weak_this.lock();
-	if (!strong_this)
-		return;
-
+void PeerConnection::processLocalCandidate(Candidate candidate) {
 	if (!mLocalDescription)
 		throw std::logic_error("Got a local candidate without local description");
 
@@ -377,11 +350,7 @@ void PeerConnection::processLocalCandidate(weak_ptr<PeerConnection> weak_this, C
 	mLocalCandidateCallback(candidate);
 }
 
-void PeerConnection::triggerDataChannel(weak_ptr<PeerConnection> weak_this, weak_ptr<DataChannel> weakDataChannel) {
-	auto strong_this = weak_this.lock();
-	if (!strong_this)
-		return;
-
+void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 	auto dataChannel = weakDataChannel.lock();
 	if (!dataChannel)
 		return;

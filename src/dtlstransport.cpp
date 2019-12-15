@@ -85,10 +85,10 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 }
 
 DtlsTransport::~DtlsTransport() {
-	mIncomingQueue.stop();
+	resetLower();
 
-	if (mRecvThread.joinable())
-		mRecvThread.join();
+	mIncomingQueue.stop();
+	mRecvThread.join();
 
 	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
 	gnutls_deinit(mSession);
@@ -356,10 +356,10 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 }
 
 DtlsTransport::~DtlsTransport() {
-	mIncomingQueue.stop();
+	resetLower();
 
-	if (mRecvThread.joinable())
-		mRecvThread.join();
+	mIncomingQueue.stop();
+	mRecvThread.join();
 
 	SSL_shutdown(mSsl);
 	SSL_free(mSsl);

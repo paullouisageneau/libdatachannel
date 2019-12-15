@@ -87,17 +87,16 @@ private:
 	void initDtlsTransport();
 	void initSctpTransport();
 
-	bool checkFingerprint(std::weak_ptr<PeerConnection> weak_this, const std::string &fingerprint) const;
-	void forwardMessage(std::weak_ptr<PeerConnection> weak_this, message_ptr message);
-	void forwardBufferedAmount(std::weak_ptr<PeerConnection> weak_this, uint16_t stream,
-	                           size_t amount);
+	bool checkFingerprint(const std::string &fingerprint) const;
+	void forwardMessage(message_ptr message);
+	void forwardBufferedAmount(uint16_t stream, size_t amount);
 	void iterateDataChannels(std::function<void(std::shared_ptr<DataChannel> channel)> func);
 	void openDataChannels();
 	void closeDataChannels();
 
 	void processLocalDescription(Description description);
-	void processLocalCandidate(std::weak_ptr<PeerConnection> weak_this, Candidate candidate);
-	void triggerDataChannel(std::weak_ptr<PeerConnection> weak_this, std::weak_ptr<DataChannel> weakDataChannel);
+	void processLocalCandidate(Candidate candidate);
+	void triggerDataChannel(std::weak_ptr<DataChannel> weakDataChannel);
 	void changeState(State state);
 	void changeGatheringState(GatheringState state);
 

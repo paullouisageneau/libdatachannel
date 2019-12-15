@@ -22,6 +22,7 @@
 #include "include.hpp"
 #include "message.hpp"
 
+#include <atomic>
 #include <functional>
 #include <memory>
 
@@ -32,31 +33,28 @@ using namespace std::placeholders;
 class Transport {
 public:
 	Transport(std::shared_ptr<Transport> lower = nullptr) : mLower(std::move(lower)) {
-		if (mLower)
-			mLower->onRecv(std::bind(&Transport::incoming, this, _1));
+		if (auto lower = std::atomic_load(&mLower))
+			lower->onRecv(std::bind(&Transport::incoming, this, _1));
 	}
-	virtual ~Transport() {
-		if (mLower)
-			mLower->onRecv(nullptr);
-	}
+	virtual ~Transport() { resetLower(); }
 
 	virtual bool send(message_ptr message) = 0;
 	void onRecv(message_callback callback) { mRecvCallback = std::move(callback); }
 
 protected:
 	void recv(message_ptr message) { mRecvCallback(message); }
-
-	virtual void incoming(message_ptr message) = 0;
-	virtual void outgoing(message_ptr message) { getLower()->send(message); }
-
-private:
-	std::shared_ptr<Transport> getLower() {
-		if (mLower)
-			return mLower;
-		else
-			throw std::logic_error("No lower transport to call");
+	void resetLower() {
+		if (auto lower = std::atomic_exchange(&mLower, std::shared_ptr<Transport>(nullptr)))
+			lower->onRecv(nullptr);
 	}
 
+	virtual void incoming(message_ptr message) = 0;
+	virtual void outgoing(message_ptr message) {
+		if (auto lower = std::atomic_load(&mLower))
+			lower->send(message);
+	}
+
+private:
 	std::shared_ptr<Transport> mLower;
 	synchronized_callback<message_ptr> mRecvCallback;
 };

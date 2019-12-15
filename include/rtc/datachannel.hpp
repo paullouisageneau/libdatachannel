@@ -71,7 +71,7 @@ private:
 	void incoming(message_ptr message);
 	void processOpenMessage(message_ptr message);
 
-	const std::shared_ptr<PeerConnection> mPeerConnection;
+	std::shared_ptr<PeerConnection> mPeerConnection;
 	std::shared_ptr<SctpTransport> mSctpTransport;
 
 	unsigned int mStream;

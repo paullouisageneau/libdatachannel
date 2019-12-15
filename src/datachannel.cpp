@@ -81,6 +81,10 @@ void DataChannel::close() {
 		if (mSctpTransport)
 			mSctpTransport->reset(mStream);
 	}
+
+	// Reset mSctpTransport first so SctpTransport is never alive without PeerConnection
+	mSctpTransport.reset();
+	mPeerConnection.reset();
 }
 
 bool DataChannel::send(const std::variant<binary, string> &data) {
