@@ -8,25 +8,22 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
 set(LIBDATACHANNEL_SOURCES
-	candidate.cpp
-	certificate.cpp
-	channel.cpp
-	configuration.cpp
-	datachannel.cpp
-	description.cpp
-	dtlstransport.cpp
-	icetransport.cpp
-	peerconnection.cpp
-	rtc.cpp
-	sctptransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/candidate.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/certificate.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/channel.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/configuration.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/datachannel.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/dtlstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/icetransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/peerconnection.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtc.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.cpp
 )
 
 set(TESTS_SOURCES
-    main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
 )
-
-list(TRANSFORM LIBDATACHANNEL_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/src/)
-list(TRANSFORM TESTS_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/test/)
 
 # Hack because usrsctp uses CMAKE_SOURCE_DIR instead of CMAKE_CURRENT_SOURCE_DIR
 set(CMAKE_REQUIRED_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/usrsctp/usrsctplib")
@@ -40,8 +37,17 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # using regular Clang or AppleClang: Needed since they don't have -Wno-error=format-truncation
   target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member)
 else()
-  # all other compilers
-  target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member -Wno-error=format-truncation)
+  if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.0")
+      # GCC version below 9.0 does not support option address-of-packed-member
+	  target_compile_options(usrsctp-static PRIVATE -Wno-error=format-truncation)
+	else()
+	  target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member -Wno-error=format-truncation)
+	endif()  
+  else()
+    # all other compilers
+    target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member -Wno-error=format-truncation)
+  endif()
 endif()
 
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
