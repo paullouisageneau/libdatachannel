@@ -22,7 +22,7 @@ namespace rtc {
 
 using std::to_string;
 
-IceServer::IceServer(const string &host) : type(Type::STUN) {
+IceServer::IceServer(const string &host) : type(Type::Stun) {
 	if (size_t pos = host.rfind(':'); pos != string::npos) {
 		hostname = host.substr(0, pos);
 		service = host.substr(pos + 1);
@@ -36,7 +36,7 @@ IceServer::IceServer(const string &hostname_, uint16_t port_)
     : IceServer(hostname_, to_string(port_)) {}
 
 IceServer::IceServer(const string &hostname_, const string &service_)
-    : hostname(hostname_), service(service_), type(Type::STUN) {}
+    : hostname(hostname_), service(service_), type(Type::Stun) {}
 
 IceServer::IceServer(const string &hostname_, const string &service_, Type type_, string username_,
                      string password_, RelayType relayType_)

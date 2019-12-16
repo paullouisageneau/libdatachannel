@@ -76,7 +76,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	for (auto &server : servers) {
 		if (server.hostname.empty())
 			continue;
-		if (server.type == IceServer::Type::TURN)
+		if (server.type == IceServer::Type::Turn)
 			continue;
 		if (server.service.empty())
 			server.service = "3478"; // STUN UDP port
@@ -134,15 +134,17 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	for (auto &server : servers) {
 		if (server.hostname.empty())
 			continue;
-		if (server.type == IceServer::Type::STUN)
+		if (server.type == IceServer::Type::Stun)
 			continue;
 		if (server.service.empty())
 			server.service = "3478"; // TURN UDP port
 
 		struct addrinfo hints = {};
 		hints.ai_family = AF_INET; // IPv4
-		hints.ai_socktype = SOCK_DGRAM;
-		hints.ai_protocol = IPPROTO_UDP;
+		hints.ai_socktype =
+		    server.relayType == IceServer::RelayType::TurnUdp ? SOCK_DGRAM : SOCK_STREAM;
+		hints.ai_protocol =
+		    server.relayType == IceServer::RelayType::TurnUdp ? IPPROTO_UDP : IPPROTO_TCP;
 		hints.ai_flags = AI_ADDRCONFIG;
 		struct addrinfo *result = nullptr;
 		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0)
@@ -159,7 +161,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 					nice_agent_set_relay_info(mNiceAgent.get(), mStreamId, 1, nodebuffer,
 					                          std::stoul(servbuffer), server.username.c_str(),
 					                          server.password.c_str(),
-					                          (NiceRelayType)server.relayType);
+					                          static_cast<NiceRelayType>(server.relayType));
 					break;
 				}
 			}
