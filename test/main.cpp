@@ -102,8 +102,8 @@ int main(int argc, char **argv) {
 	this_thread::sleep_for(3s);
 
 	if (dc1->isOpen() && dc2->isOpen()) {
-		dc1->close();
-		dc2->close();
+		pc1->close();
+		pc2->close();
 
 		cout << "Success" << endl;
 		return 0;

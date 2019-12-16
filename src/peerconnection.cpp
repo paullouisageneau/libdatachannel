@@ -50,6 +50,8 @@ void PeerConnection::close() {
 	closeDataChannels();
 	mDataChannels.clear();
 
+	changeState(State::Disconnected);
+
 	// Close Transports
 	if (auto transport = std::atomic_load(&mIceTransport))
 		transport->stop();
@@ -58,7 +60,6 @@ void PeerConnection::close() {
 	if (auto transport = std::atomic_load(&mSctpTransport))
 		transport->stop();
 
-	// Change state
 	changeState(State::Closed);
 }
 
