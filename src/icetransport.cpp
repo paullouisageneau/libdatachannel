@@ -34,8 +34,7 @@ using std::shared_ptr;
 using std::weak_ptr;
 
 IceTransport::IceTransport(const Configuration &config, Description::Role role,
-                           candidate_callback candidateCallback,
-                           state_callback stateChangeCallback,
+                           candidate_callback candidateCallback, state_callback stateChangeCallback,
                            gathering_state_callback gatheringStateChangeCallback)
     : mRole(role), mMid("0"), mState(State::Disconnected), mGatheringState(GatheringState::New),
       mNiceAgent(nullptr, nullptr), mMainLoop(nullptr, nullptr),
@@ -76,6 +75,8 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	bool success = false;
 	for (auto &server : servers) {
 		if (server.hostname.empty())
+			continue;
+		if (server.type == IceServer::Type::Turn)
 			continue;
 		if (server.service.empty())
 			server.service = "3478"; // STUN UDP port
@@ -128,6 +129,46 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 
 	nice_agent_attach_recv(mNiceAgent.get(), mStreamId, 1, g_main_loop_get_context(mMainLoop.get()),
 	                       RecvCallback, this);
+
+	// Add TURN Servers
+	for (auto &server : servers) {
+		if (server.hostname.empty())
+			continue;
+		if (server.type == IceServer::Type::Stun)
+			continue;
+		if (server.service.empty())
+			server.service = "3478"; // TURN UDP port
+
+		struct addrinfo hints = {};
+		hints.ai_family = AF_INET; // IPv4
+		hints.ai_socktype =
+		    server.relayType == IceServer::RelayType::TurnUdp ? SOCK_DGRAM : SOCK_STREAM;
+		hints.ai_protocol =
+		    server.relayType == IceServer::RelayType::TurnUdp ? IPPROTO_UDP : IPPROTO_TCP;
+		hints.ai_flags = AI_ADDRCONFIG;
+		struct addrinfo *result = nullptr;
+		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0)
+			continue;
+
+		for (auto p = result; p; p = p->ai_next) {
+			if (p->ai_family == AF_INET) {
+				char nodebuffer[MAX_NUMERICNODE_LEN];
+				char servbuffer[MAX_NUMERICSERV_LEN];
+				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
+
+				                servbuffer, MAX_NUMERICNODE_LEN,
+				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+					nice_agent_set_relay_info(mNiceAgent.get(), mStreamId, 1, nodebuffer,
+					                          std::stoul(servbuffer), server.username.c_str(),
+					                          server.password.c_str(),
+					                          static_cast<NiceRelayType>(server.relayType));
+					break;
+				}
+			}
+		}
+
+		freeaddrinfo(result);
+	}
 }
 
 IceTransport::~IceTransport() { stop(); }
@@ -281,7 +322,7 @@ void IceTransport::GatheringDoneCallback(NiceAgent *agent, guint streamId, gpoin
 }
 
 void IceTransport::StateChangeCallback(NiceAgent *agent, guint streamId, guint componentId,
-                                        guint state, gpointer userData) {
+                                       guint state, gpointer userData) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(userData);
 	try {
 		iceTransport->processStateChange(state);
