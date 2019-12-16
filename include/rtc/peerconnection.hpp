@@ -31,6 +31,7 @@
 #include <atomic>
 #include <functional>
 #include <list>
+#include <mutex>
 #include <thread>
 #include <unordered_map>
 
@@ -49,7 +50,8 @@ public:
 		Connected = RTC_CONNECTED,
 		Disconnected = RTC_DISCONNECTED,
 		Failed = RTC_FAILED,
-		Closed = RTC_CLOSED
+		Closed = RTC_CLOSED,
+		Destroying = RTC_DESTROYING
 	};
 
 	enum class GatheringState : int {
@@ -61,6 +63,8 @@ public:
 	PeerConnection(void);
 	PeerConnection(const Configuration &config);
 	~PeerConnection();
+
+	void close();
 
 	const Configuration *config() const;
 	State state() const;
@@ -83,9 +87,9 @@ public:
 	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
 
 private:
-	void initIceTransport(Description::Role role);
-	void initDtlsTransport();
-	void initSctpTransport();
+	std::shared_ptr<IceTransport> initIceTransport(Description::Role role);
+	std::shared_ptr<DtlsTransport> initDtlsTransport();
+	std::shared_ptr<SctpTransport> initSctpTransport();
 
 	bool checkFingerprint(const std::string &fingerprint) const;
 	void forwardMessage(message_ptr message);
@@ -93,6 +97,7 @@ private:
 	void iterateDataChannels(std::function<void(std::shared_ptr<DataChannel> channel)> func);
 	void openDataChannels();
 	void closeDataChannels();
+	void remoteCloseDataChannels();
 
 	void processLocalDescription(Description description);
 	void processLocalCandidate(Candidate candidate);
@@ -103,8 +108,8 @@ private:
 	const Configuration mConfig;
 	const std::shared_ptr<Certificate> mCertificate;
 
-	std::optional<Description> mLocalDescription;
-	std::optional<Description> mRemoteDescription;
+	std::optional<Description> mLocalDescription, mRemoteDescription;
+	mutable std::recursive_mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
 
 	std::shared_ptr<IceTransport> mIceTransport;
 	std::shared_ptr<DtlsTransport> mDtlsTransport;

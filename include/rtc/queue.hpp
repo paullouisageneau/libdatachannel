@@ -67,31 +67,31 @@ Queue<T>::Queue(size_t limit, amount_function func) : mLimit(limit), mAmount(0) 
 template <typename T> Queue<T>::~Queue() { stop(); }
 
 template <typename T> void Queue<T>::stop() {
-	std::lock_guard<std::mutex> lock(mMutex);
+	std::lock_guard lock(mMutex);
 	mStopping = true;
 	mPopCondition.notify_all();
 	mPushCondition.notify_all();
 }
 
 template <typename T> bool Queue<T>::empty() const {
-	std::lock_guard<std::mutex> lock(mMutex);
+	std::lock_guard lock(mMutex);
 	return mQueue.empty();
 }
 
 template <typename T> size_t Queue<T>::size() const {
-	std::lock_guard<std::mutex> lock(mMutex);
+	std::lock_guard lock(mMutex);
 	return mQueue.size();
 }
 
 template <typename T> size_t Queue<T>::amount() const {
-	std::lock_guard<std::mutex> lock(mMutex);
+	std::lock_guard lock(mMutex);
 	return mAmount;
 }
 
 template <typename T> void Queue<T>::push(const T &element) { push(T{element}); }
 
 template <typename T> void Queue<T>::push(T &&element) {
-	std::unique_lock<std::mutex> lock(mMutex);
+	std::unique_lock lock(mMutex);
 	mPushCondition.wait(lock, [this]() { return !mLimit || mQueue.size() < mLimit || mStopping; });
 	if (!mStopping) {
 		mAmount += mAmountFunction(element);
@@ -101,7 +101,7 @@ template <typename T> void Queue<T>::push(T &&element) {
 }
 
 template <typename T> std::optional<T> Queue<T>::pop() {
-	std::unique_lock<std::mutex> lock(mMutex);
+	std::unique_lock lock(mMutex);
 	mPopCondition.wait(lock, [this]() { return !mQueue.empty() || mStopping; });
 	if (!mQueue.empty()) {
 		mAmount -= mAmountFunction(mQueue.front());
@@ -114,7 +114,7 @@ template <typename T> std::optional<T> Queue<T>::pop() {
 }
 
 template <typename T> std::optional<T> Queue<T>::peek() {
-	std::unique_lock<std::mutex> lock(mMutex);
+	std::unique_lock lock(mMutex);
 	if (!mQueue.empty()) {
 		return std::optional<T>{mQueue.front()};
 	} else {
@@ -123,12 +123,12 @@ template <typename T> std::optional<T> Queue<T>::peek() {
 }
 
 template <typename T> void Queue<T>::wait() {
-	std::unique_lock<std::mutex> lock(mMutex);
+	std::unique_lock lock(mMutex);
 	mPopCondition.wait(lock, [this]() { return !mQueue.empty() || mStopping; });
 }
 
 template <typename T> void Queue<T>::wait(const std::chrono::milliseconds &duration) {
-	std::unique_lock<std::mutex> lock(mMutex);
+	std::unique_lock lock(mMutex);
 	mPopCondition.wait_for(lock, duration, [this]() { return !mQueue.empty() || mStopping; });
 }
 

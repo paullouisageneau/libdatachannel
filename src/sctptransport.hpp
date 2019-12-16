@@ -68,7 +68,7 @@ private:
 	};
 
 	void connect();
-	void incoming(message_ptr message);
+	void incoming(message_ptr message) override;
 	void changeState(State state);
 
 	bool trySendQueue();
@@ -93,8 +93,7 @@ private:
 
 	std::mutex mConnectMutex;
 	std::condition_variable mConnectCondition;
-	std::atomic<bool> mConnectDataSent = false;
-	std::atomic<bool> mStopping = false;
+	bool mConnectDataSent = false;
 
 	state_callback mStateChangeCallback;
 	std::atomic<State> mState;

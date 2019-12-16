@@ -55,10 +55,10 @@ public:
 	State state() const;
 
 	void stop() override;
-	bool send(message_ptr message); // false if dropped
+	bool send(message_ptr message) override; // false if dropped
 
 private:
-	void incoming(message_ptr message);
+	void incoming(message_ptr message) override;
 	void changeState(State state);
 	void runRecvLoop();
 

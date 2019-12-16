@@ -145,7 +145,7 @@ shared_ptr<Certificate> make_certificate(const string &commonName) {
 	static std::unordered_map<string, shared_ptr<Certificate>> cache;
 	static std::mutex cacheMutex;
 
-	std::lock_guard<std::mutex> lock(cacheMutex);
+	std::lock_guard lock(cacheMutex);
 	if (auto it = cache.find(commonName); it != cache.end())
 		return it->second;
 
@@ -241,7 +241,7 @@ shared_ptr<Certificate> make_certificate(const string &commonName) {
 	static std::unordered_map<string, shared_ptr<Certificate>> cache;
 	static std::mutex cacheMutex;
 
-	std::lock_guard<std::mutex> lock(cacheMutex);
+	std::lock_guard lock(cacheMutex);
 	if (auto it = cache.find(commonName); it != cache.end())
 		return it->second;
 

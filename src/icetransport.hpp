@@ -71,9 +71,9 @@ public:
 	bool send(message_ptr message) override; // false if dropped
 
 private:
-	void incoming(message_ptr message);
+	void incoming(message_ptr message) override;
 	void incoming(const byte *data, int size);
-	void outgoing(message_ptr message);
+	void outgoing(message_ptr message) override;
 
 	void changeState(State state);
 	void changeGatheringState(GatheringState state);

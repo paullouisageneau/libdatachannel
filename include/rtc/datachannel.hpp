@@ -66,12 +66,13 @@ public:
 	Reliability reliability() const;
 
 private:
+	void remoteClose();
 	void open(std::shared_ptr<SctpTransport> sctpTransport);
 	bool outgoing(mutable_message_ptr message);
 	void incoming(message_ptr message);
 	void processOpenMessage(message_ptr message);
 
-	std::shared_ptr<PeerConnection> mPeerConnection;
+	const std::shared_ptr<PeerConnection> mPeerConnection;
 	std::shared_ptr<SctpTransport> mSctpTransport;
 
 	unsigned int mStream;
