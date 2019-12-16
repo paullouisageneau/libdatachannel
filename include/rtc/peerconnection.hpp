@@ -31,6 +31,7 @@
 #include <atomic>
 #include <functional>
 #include <list>
+#include <mutex>
 #include <thread>
 #include <unordered_map>
 
@@ -83,9 +84,9 @@ public:
 	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
 
 private:
-	void initIceTransport(Description::Role role);
-	void initDtlsTransport();
-	void initSctpTransport();
+	std::shared_ptr<IceTransport> initIceTransport(Description::Role role);
+	std::shared_ptr<DtlsTransport> initDtlsTransport();
+	std::shared_ptr<SctpTransport> initSctpTransport();
 
 	bool checkFingerprint(const std::string &fingerprint) const;
 	void forwardMessage(message_ptr message);
@@ -103,8 +104,8 @@ private:
 	const Configuration mConfig;
 	const std::shared_ptr<Certificate> mCertificate;
 
-	std::optional<Description> mLocalDescription;
-	std::optional<Description> mRemoteDescription;
+	std::optional<Description> mLocalDescription, mRemoteDescription;
+	mutable std::recursive_mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
 
 	std::shared_ptr<IceTransport> mIceTransport;
 	std::shared_ptr<DtlsTransport> mDtlsTransport;

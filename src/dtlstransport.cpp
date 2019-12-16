@@ -85,6 +85,8 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 }
 
 DtlsTransport::~DtlsTransport() {
+	stop();
+
 	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
 	gnutls_deinit(mSession);
 }
@@ -94,8 +96,10 @@ DtlsTransport::State DtlsTransport::state() const { return mState; }
 void DtlsTransport::stop() {
 	Transport::stop();
 
-	mIncomingQueue.stop();
-	mRecvThread.join();
+	if (mRecvThread.joinable()) {
+		mIncomingQueue.stop();
+		mRecvThread.join();
+	}
 }
 
 bool DtlsTransport::send(message_ptr message) {
@@ -293,7 +297,7 @@ int DtlsTransport::TransportExIndex = -1;
 std::mutex DtlsTransport::GlobalMutex;
 
 void DtlsTransport::GlobalInit() {
-	std::lock_guard<std::mutex> lock(GlobalMutex);
+	std::lock_guard lock(GlobalMutex);
 	if (TransportExIndex < 0) {
 		TransportExIndex = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 	}
@@ -358,6 +362,8 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 }
 
 DtlsTransport::~DtlsTransport() {
+	stop();
+
 	SSL_shutdown(mSsl);
 	SSL_free(mSsl);
 	SSL_CTX_free(mCtx);
@@ -366,8 +372,10 @@ DtlsTransport::~DtlsTransport() {
 void DtlsTransport::stop() {
 	Transport::stop();
 
-	mIncomingQueue.stop();
-	mRecvThread.join();
+	if (mRecvThread.joinable()) {
+		mIncomingQueue.stop();
+		mRecvThread.join();
+	}
 }
 
 DtlsTransport::State DtlsTransport::state() const { return mState; }

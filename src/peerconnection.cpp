@@ -20,6 +20,7 @@
 #include "certificate.hpp"
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
+#include "include.hpp"
 #include "sctptransport.hpp"
 
 #include <iostream>
@@ -37,12 +38,12 @@ PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New) {}
 
 PeerConnection::~PeerConnection() {
-	if (mIceTransport)
-		mIceTransport->stop();
-	if (mDtlsTransport)
-		mDtlsTransport->stop();
-	if (mSctpTransport)
-		mSctpTransport->stop();
+	if (auto transport = std::atomic_load(&mIceTransport))
+		transport->stop();
+	if (auto transport = std::atomic_load(&mDtlsTransport))
+		transport->stop();
+	if (auto transport = std::atomic_load(&mSctpTransport))
+		transport->stop();
 
 	mSctpTransport.reset();
 	mDtlsTransport.reset();
@@ -55,26 +56,36 @@ PeerConnection::State PeerConnection::state() const { return mState; }
 
 PeerConnection::GatheringState PeerConnection::gatheringState() const { return mGatheringState; }
 
-std::optional<Description> PeerConnection::localDescription() const { return mLocalDescription; }
+std::optional<Description> PeerConnection::localDescription() const {
+	std::lock_guard lock(mLocalDescriptionMutex);
+	return mLocalDescription;
+}
 
-std::optional<Description> PeerConnection::remoteDescription() const { return mRemoteDescription; }
+std::optional<Description> PeerConnection::remoteDescription() const {
+	std::lock_guard lock(mRemoteDescriptionMutex);
+	return mRemoteDescription;
+}
 
 void PeerConnection::setRemoteDescription(Description description) {
+	std::lock_guard lock(mRemoteDescriptionMutex);
+
 	auto remoteCandidates = description.extractCandidates();
 	mRemoteDescription.emplace(std::move(description));
 
-	if (!mIceTransport)
-		initIceTransport(Description::Role::ActPass);
+	auto iceTransport = std::atomic_load(&mIceTransport);
+	if (!iceTransport)
+		iceTransport = initIceTransport(Description::Role::ActPass);
 
-	mIceTransport->setRemoteDescription(*mRemoteDescription);
+	iceTransport->setRemoteDescription(*mRemoteDescription);
 
 	if (mRemoteDescription->type() == Description::Type::Offer) {
 		// This is an offer and we are the answerer.
-		processLocalDescription(mIceTransport->getLocalDescription(Description::Type::Answer));
-		mIceTransport->gatherLocalCandidates();
+		processLocalDescription(iceTransport->getLocalDescription(Description::Type::Answer));
+		iceTransport->gatherLocalCandidates();
 	} else {
 		// This is an answer and we are the offerer.
-		if (!mSctpTransport && mIceTransport->role() == Description::Role::Active) {
+		auto sctpTransport = std::atomic_load(&mSctpTransport);
+		if (!sctpTransport && iceTransport->role() == Description::Role::Active) {
 			// Since we assumed passive role during DataChannel creation, we need to shift the
 			// stream numbers by one to shift them from odd to even.
 			decltype(mDataChannels) newDataChannels;
@@ -92,16 +103,19 @@ void PeerConnection::setRemoteDescription(Description description) {
 }
 
 void PeerConnection::addRemoteCandidate(Candidate candidate) {
-	if (!mRemoteDescription || !mIceTransport)
+	std::lock_guard lock(mRemoteDescriptionMutex);
+
+	auto iceTransport = std::atomic_load(&mIceTransport);
+	if (!mRemoteDescription || !iceTransport)
 		throw std::logic_error("Remote candidate set without remote description");
 
 	mRemoteDescription->addCandidate(candidate);
 
 	if (candidate.resolve(Candidate::ResolveMode::Simple)) {
-		mIceTransport->addRemoteCandidate(candidate);
+		iceTransport->addRemoteCandidate(candidate);
 	} else {
 		// OK, we might need a lookup, do it asynchronously
-		weak_ptr<IceTransport> weakIceTransport{mIceTransport};
+		weak_ptr<IceTransport> weakIceTransport{iceTransport};
 		std::thread t([weakIceTransport, candidate]() mutable {
 			if (candidate.resolve(Candidate::ResolveMode::Lookup))
 				if (auto iceTransport = weakIceTransport.lock())
@@ -112,11 +126,13 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 }
 
 std::optional<string> PeerConnection::localAddress() const {
-	return mIceTransport ? mIceTransport->getLocalAddress() : nullopt;
+	auto iceTransport = std::atomic_load(&mIceTransport);
+	return iceTransport ? iceTransport->getLocalAddress() : nullopt;
 }
 
 std::optional<string> PeerConnection::remoteAddress() const {
-	return mIceTransport ? mIceTransport->getRemoteAddress() : nullopt;
+	auto iceTransport = std::atomic_load(&mIceTransport);
+	return iceTransport ? iceTransport->getRemoteAddress() : nullopt;
 }
 
 shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
@@ -126,7 +142,8 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 	// setup:passive. [...] Thus, setup:active is RECOMMENDED.
 	// See https://tools.ietf.org/html/rfc5763#section-5
 	// Therefore, we assume passive role when we are the offerer.
-	auto role = mIceTransport ? mIceTransport->role() : Description::Role::Passive;
+	auto iceTransport = std::atomic_load(&mIceTransport);
+	auto role = iceTransport ? iceTransport->role() : Description::Role::Passive;
 
 	// The active side must use streams with even identifiers, whereas the passive side must use
 	// streams with odd identifiers.
@@ -142,15 +159,17 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 	    std::make_shared<DataChannel>(shared_from_this(), stream, label, protocol, reliability);
 	mDataChannels.insert(std::make_pair(stream, channel));
 
-	if (!mIceTransport) {
+	if (!iceTransport) {
 		// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
 		// setup:actpass.
 		// See https://tools.ietf.org/html/rfc5763#section-5
-		initIceTransport(Description::Role::ActPass);
-		processLocalDescription(mIceTransport->getLocalDescription(Description::Type::Offer));
-		mIceTransport->gatherLocalCandidates();
-	} else if (mSctpTransport && mSctpTransport->state() == SctpTransport::State::Connected) {
-		channel->open(mSctpTransport);
+		iceTransport = initIceTransport(Description::Role::ActPass);
+		processLocalDescription(iceTransport->getLocalDescription(Description::Type::Offer));
+		iceTransport->gatherLocalCandidates();
+	} else {
+		if (auto transport = std::atomic_load(&mSctpTransport))
+			if (transport->state() == SctpTransport::State::Connected)
+				channel->open(transport);
 	}
 	return channel;
 }
@@ -177,8 +196,8 @@ void PeerConnection::onGatheringStateChange(std::function<void(GatheringState st
 	mGatheringStateChangeCallback = callback;
 }
 
-void PeerConnection::initIceTransport(Description::Role role) {
-	mIceTransport = std::make_shared<IceTransport>(
+shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role) {
+	auto transport = std::make_shared<IceTransport>(
 	    mConfig, role, std::bind(&PeerConnection::processLocalCandidate, this, _1),
 	    [this](IceTransport::State state) {
 		    switch (state) {
@@ -211,11 +230,14 @@ void PeerConnection::initIceTransport(Description::Role role) {
 			    break;
 		    }
 	    });
+	std::atomic_store(&mIceTransport, transport);
+	return transport;
 }
 
-void PeerConnection::initDtlsTransport() {
-	mDtlsTransport = std::make_shared<DtlsTransport>(
-	    mIceTransport, mCertificate, std::bind(&PeerConnection::checkFingerprint, this, _1),
+shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
+	auto lower = std::atomic_load(&mIceTransport);
+	auto transport = std::make_shared<DtlsTransport>(
+	    lower, mCertificate, std::bind(&PeerConnection::checkFingerprint, this, _1),
 	    [this](DtlsTransport::State state) {
 		    switch (state) {
 		    case DtlsTransport::State::Connected:
@@ -229,12 +251,15 @@ void PeerConnection::initDtlsTransport() {
 			    break;
 		    }
 	    });
+	std::atomic_store(&mDtlsTransport, transport);
+	return transport;
 }
 
-void PeerConnection::initSctpTransport() {
-	uint16_t sctpPort = mRemoteDescription->sctpPort().value_or(DEFAULT_SCTP_PORT);
-	mSctpTransport = std::make_shared<SctpTransport>(
-	    mDtlsTransport, sctpPort, std::bind(&PeerConnection::forwardMessage, this, _1),
+shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
+	uint16_t sctpPort = remoteDescription()->sctpPort().value_or(DEFAULT_SCTP_PORT);
+	auto lower = std::atomic_load(&mDtlsTransport);
+	auto transport = std::make_shared<SctpTransport>(
+	    lower, sctpPort, std::bind(&PeerConnection::forwardMessage, this, _1),
 	    std::bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
 	    [this](SctpTransport::State state) {
 		    switch (state) {
@@ -253,9 +278,12 @@ void PeerConnection::initSctpTransport() {
 			    break;
 		    }
 	    });
+	std::atomic_store(&mSctpTransport, transport);
+	return transport;
 }
 
 bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
+	std::lock_guard lock(mRemoteDescriptionMutex);
 	if (auto expectedFingerprint =
 	        mRemoteDescription ? mRemoteDescription->fingerprint() : nullopt) {
 		return *expectedFingerprint == fingerprint;
@@ -264,9 +292,6 @@ bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
 }
 
 void PeerConnection::forwardMessage(message_ptr message) {
-	if (!mIceTransport || !mSctpTransport)
-		throw std::logic_error("Got a DataChannel message without transport");
-
 	if (!message) {
 		closeDataChannels();
 		return;
@@ -281,19 +306,24 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		}
 	}
 
+	auto iceTransport = std::atomic_load(&mIceTransport);
+	auto sctpTransport = std::atomic_load(&mSctpTransport);
+	if (!iceTransport || !sctpTransport)
+		return;
+
 	if (!channel) {
 		const byte dataChannelOpenMessage{0x03};
-		unsigned int remoteParity = (mIceTransport->role() == Description::Role::Active) ? 1 : 0;
+		unsigned int remoteParity = (iceTransport->role() == Description::Role::Active) ? 1 : 0;
 		if (message->type == Message::Control && *message->data() == dataChannelOpenMessage &&
 		    message->stream % 2 == remoteParity) {
 			channel =
-			    std::make_shared<DataChannel>(shared_from_this(), mSctpTransport, message->stream);
+			    std::make_shared<DataChannel>(shared_from_this(), sctpTransport, message->stream);
 			channel->onOpen(std::bind(&PeerConnection::triggerDataChannel, this,
 			                          weak_ptr<DataChannel>{channel}));
 			mDataChannels.insert(std::make_pair(message->stream, channel));
 		} else {
 			// Invalid, close the DataChannel by resetting the stream
-			mSctpTransport->reset(message->stream);
+			sctpTransport->reset(message->stream);
 			return;
 		}
 	}
@@ -330,16 +360,20 @@ void PeerConnection::iterateDataChannels(
 }
 
 void PeerConnection::openDataChannels() {
-	iterateDataChannels([this](shared_ptr<DataChannel> channel) { channel->open(mSctpTransport); });
+	if (auto transport = std::atomic_load(&mSctpTransport))
+		iterateDataChannels([&](shared_ptr<DataChannel> channel) { channel->open(transport); });
 }
 
 void PeerConnection::closeDataChannels() {
-	iterateDataChannels([](shared_ptr<DataChannel> channel) { channel->close(); });
+	iterateDataChannels([&](shared_ptr<DataChannel> channel) { channel->close(); });
 }
 
 void PeerConnection::processLocalDescription(Description description) {
-	auto remoteSctpPort = mRemoteDescription ? mRemoteDescription->sctpPort() : nullopt;
+	std::optional<uint16_t> remoteSctpPort;
+	if (auto remote = remoteDescription())
+		remoteSctpPort = remote->sctpPort();
 
+	std::lock_guard lock(mLocalDescriptionMutex);
 	mLocalDescription.emplace(std::move(description));
 	mLocalDescription->setFingerprint(mCertificate->fingerprint());
 	mLocalDescription->setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
@@ -349,6 +383,7 @@ void PeerConnection::processLocalDescription(Description description) {
 }
 
 void PeerConnection::processLocalCandidate(Candidate candidate) {
+	std::lock_guard lock(mLocalDescriptionMutex);
 	if (!mLocalDescription)
 		throw std::logic_error("Got a local candidate without local description");
 

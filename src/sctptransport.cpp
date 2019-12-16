@@ -33,7 +33,7 @@ std::mutex SctpTransport::GlobalMutex;
 int SctpTransport::InstancesCount = 0;
 
 void SctpTransport::GlobalInit() {
-	std::unique_lock<std::mutex> lock(GlobalMutex);
+	std::lock_guard lock(GlobalMutex);
 	if (InstancesCount++ == 0) {
 		usrsctp_init(0, &SctpTransport::WriteCallback, nullptr);
 		usrsctp_sysctl_set_sctp_ecn_enable(0);
@@ -41,7 +41,7 @@ void SctpTransport::GlobalInit() {
 }
 
 void SctpTransport::GlobalCleanup() {
-	std::unique_lock<std::mutex> lock(GlobalMutex);
+	std::lock_guard lock(GlobalMutex);
 	if (--InstancesCount == 0) {
 		usrsctp_finish();
 	}
@@ -143,6 +143,8 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 }
 
 SctpTransport::~SctpTransport() {
+	stop();
+
 	if (mSock) {
 		usrsctp_shutdown(mSock, SHUT_RDWR);
 		usrsctp_close(mSock);
@@ -156,15 +158,14 @@ SctpTransport::State SctpTransport::state() const { return mState; }
 
 void SctpTransport::stop() {
 	Transport::stop();
+	onRecv(nullptr);
 
 	mSendQueue.stop();
 
 	// Unblock incoming
-	if (!mConnectDataSent) {
-		std::unique_lock<std::mutex> lock(mConnectMutex);
-		mConnectDataSent = true;
-		mConnectCondition.notify_all();
-	}
+	std::unique_lock<std::mutex> lock(mConnectMutex);
+	mConnectDataSent = true;
+	mConnectCondition.notify_all();
 }
 
 void SctpTransport::connect() {
@@ -190,7 +191,7 @@ void SctpTransport::connect() {
 }
 
 bool SctpTransport::send(message_ptr message) {
-	std::lock_guard<std::mutex> lock(mSendMutex);
+	std::lock_guard lock(mSendMutex);
 
 	if (!message)
 		return mSendQueue.empty();
@@ -225,8 +226,8 @@ void SctpTransport::incoming(message_ptr message) {
 	// There could be a race condition here where we receive the remote INIT before the local one is
 	// sent, which would result in the connection being aborted. Therefore, we need to wait for data
 	// to be sent on our side (i.e. the local INIT) before proceeding.
-	if (!mConnectDataSent) {
-		std::unique_lock<std::mutex> lock(mConnectMutex);
+	{
+		std::unique_lock lock(mConnectMutex);
 		mConnectCondition.wait(lock, [this]() -> bool { return mConnectDataSent; });
 	}
 
@@ -361,7 +362,7 @@ int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, co
 
 int SctpTransport::handleSend(size_t free) {
 	try {
-		std::lock_guard<std::mutex> lock(mSendMutex);
+		std::lock_guard lock(mSendMutex);
 		trySendQueue();
 	} catch (const std::exception &e) {
 		std::cerr << "SCTP send: " << e.what() << std::endl;
@@ -374,11 +375,9 @@ int SctpTransport::handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_
 	try {
 		outgoing(make_message(data, data + len));
 
-		if (!mConnectDataSent) {
-			std::unique_lock<std::mutex> lock(mConnectMutex);
-			mConnectDataSent = true;
-			mConnectCondition.notify_all();
-		}
+		std::unique_lock lock(mConnectMutex);
+		mConnectDataSent = true;
+		mConnectCondition.notify_all();
 	} catch (const std::exception &e) {
 		std::cerr << "SCTP write: " << e.what() << std::endl;
 		return -1;
@@ -453,7 +452,6 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 	switch (notify->sn_header.sn_type) {
 	case SCTP_ASSOC_CHANGE: {
 		const struct sctp_assoc_change &assoc_change = notify->sn_assoc_change;
-		std::unique_lock<std::mutex> lock(mConnectMutex);
 		if (assoc_change.sac_state == SCTP_COMM_UP) {
 			changeState(State::Connected);
 		} else {
@@ -468,7 +466,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 	case SCTP_SENDER_DRY_EVENT: {
 		// It not should be necessary since the send callback should have been called already,
 		// but to be sure, let's try to send now.
-		std::lock_guard<std::mutex> lock(mSendMutex);
+		std::lock_guard lock(mSendMutex);
 		trySendQueue();
 	}
 	case SCTP_STREAM_RESET_EVENT: {

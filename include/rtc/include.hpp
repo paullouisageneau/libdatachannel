@@ -57,13 +57,13 @@ public:
 	~synchronized_callback() { *this = nullptr; }
 
 	synchronized_callback &operator=(std::function<void(P...)> func) {
-		std::lock_guard<std::recursive_mutex> lock(mutex);
+		std::lock_guard lock(mutex);
 		callback = func;
 		return *this;
 	}
 
 	void operator()(P... args) const {
-		std::lock_guard<std::recursive_mutex> lock(mutex);
+		std::lock_guard lock(mutex);
 		if (callback)
 			callback(args...);
 	}

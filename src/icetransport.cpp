@@ -130,11 +130,13 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	                       RecvCallback, this);
 }
 
-IceTransport::~IceTransport() {}
+IceTransport::~IceTransport() { stop(); }
 
 void IceTransport::stop() {
-	g_main_loop_quit(mMainLoop.get());
-	mMainLoopThread.join();
+	if (mMainLoopThread.joinable()) {
+		g_main_loop_quit(mMainLoop.get());
+		mMainLoopThread.join();
+	}
 }
 
 Description::Role IceTransport::role() const { return mRole; }
