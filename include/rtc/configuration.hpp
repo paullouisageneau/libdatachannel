@@ -27,12 +27,22 @@
 namespace rtc {
 
 struct IceServer {
+	enum class Type { STUN, TURN };
+
+	enum class RelayType { RELAY_TYPE_TURN_UDP, RELAY_TYPE_TURN_TCP, RELAY_TYPE_TURN_TLS };
+
 	IceServer(const string &host_);
 	IceServer(const string &hostname_, uint16_t port_);
 	IceServer(const string &hostname_, const string &service_);
+	IceServer(const string &hostname_, const string &service_, Type type_, string username_,
+	          string password_, RelayType relayType_);
 
 	string hostname;
 	string service;
+	Type type;
+	string username;
+	string password;
+	RelayType relayType;
 };
 
 struct Configuration {

@@ -26,26 +26,31 @@
 using namespace rtc;
 using namespace std;
 
-template <class T>
-weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
+template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 int main(int argc, char **argv) {
 	rtc::Configuration config;
 	// config.iceServers.emplace_back("stun.l.google.com:19302");
 
+	// IceServer turnServer("TURN_SERVER_URL", "PORT_NO", IceServer::Type::TURN, "USERNAME",
+	//                      "PASSWORD", IceServer::RelayType::RELAY_TYPE_TURN_TLS);
+	// config.iceServers.push_back(turnServer);
+
 	auto pc1 = std::make_shared<PeerConnection>(config);
 	auto pc2 = std::make_shared<PeerConnection>(config);
 
 	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](const Description &sdp) {
-    auto pc2 = wpc2.lock();
-    if (!pc2) return;
+		auto pc2 = wpc2.lock();
+		if (!pc2)
+			return;
 		cout << "Description 1: " << sdp << endl;
 		pc2->setRemoteDescription(sdp);
 	});
 
 	pc1->onLocalCandidate([wpc2 = make_weak_ptr(pc2)](const Candidate &candidate) {
-    auto pc2 = wpc2.lock();
-    if (!pc2) return;
+		auto pc2 = wpc2.lock();
+		if (!pc2)
+			return;
 		cout << "Candidate 1: " << candidate << endl;
 		pc2->addRemoteCandidate(candidate);
 	});
@@ -56,15 +61,17 @@ int main(int argc, char **argv) {
 	});
 
 	pc2->onLocalDescription([wpc1 = make_weak_ptr(pc1)](const Description &sdp) {
-    auto pc1 = wpc1.lock();
-    if (!pc1) return;
+		auto pc1 = wpc1.lock();
+		if (!pc1)
+			return;
 		cout << "Description 2: " << sdp << endl;
 		pc1->setRemoteDescription(sdp);
 	});
 
 	pc2->onLocalCandidate([wpc1 = make_weak_ptr(pc1)](const Candidate &candidate) {
-    auto pc1 = wpc1.lock();
-    if (!pc1) return;
+		auto pc1 = wpc1.lock();
+		if (!pc1)
+			return;
 		cout << "Candidate 2: " << candidate << endl;
 		pc1->addRemoteCandidate(candidate);
 	});
@@ -88,8 +95,9 @@ int main(int argc, char **argv) {
 
 	auto dc1 = pc1->createDataChannel("test");
 	dc1->onOpen([wdc1 = make_weak_ptr(dc1)]() {
-    auto dc1 = wdc1.lock();
-    if (!dc1) return;
+		auto dc1 = wdc1.lock();
+		if (!dc1)
+			return;
 		cout << "DataChannel open: " << dc1->label() << endl;
 		dc1->send("Hello from 1");
 	});
@@ -112,4 +120,3 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 }
-
