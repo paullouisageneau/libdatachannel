@@ -73,18 +73,23 @@ DataChannel::DataChannel(shared_ptr<PeerConnection> pc, shared_ptr<SctpTransport
       mReliability(std::make_shared<Reliability>()),
       mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
-DataChannel::~DataChannel() { close(); }
+DataChannel::~DataChannel() {
+	close();
+}
 
 void DataChannel::close() {
-	mIsOpen = false;
-	if (!mIsClosed.exchange(true)) {
+	mIsClosed = true;
+	if (mIsOpen.exchange(false))
 		if (mSctpTransport)
 			mSctpTransport->reset(mStream);
-	}
 
-	// Reset mSctpTransport first so SctpTransport is never alive without PeerConnection
 	mSctpTransport.reset();
-	mPeerConnection.reset();
+}
+
+void DataChannel::remoteClose() {
+	mIsOpen = false;
+	if (!mIsClosed.exchange(true))
+		triggerClosed();
 }
 
 bool DataChannel::send(const std::variant<binary, string> &data) {
@@ -108,12 +113,8 @@ std::optional<std::variant<binary, string>> DataChannel::receive() {
 		switch (message->type) {
 		case Message::Control: {
 			auto raw = reinterpret_cast<const uint8_t *>(message->data());
-			if (raw[0] == MESSAGE_CLOSE) {
-				if (mIsOpen) {
-					close();
-					triggerClosed();
-				}
-			}
+			if (raw[0] == MESSAGE_CLOSE)
+				remoteClose();
 			break;
 		}
 		case Message::String:

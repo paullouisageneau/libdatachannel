@@ -11,7 +11,7 @@ LIBS=glib-2.0 gobject-2.0 nice
 USRSCTP_DIR=usrsctp
 
 USE_GNUTLS ?= 0
-ifeq ($(USE_GNUTLS), 1)
+ifneq ($(USE_GNUTLS), 0)
         CPPFLAGS+= -DUSE_GNUTLS=1
         LIBS+= gnutls
 else

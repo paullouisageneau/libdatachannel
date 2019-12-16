@@ -38,6 +38,19 @@ PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New) {}
 
 PeerConnection::~PeerConnection() {
+	changeState(State::Destroying);
+	close();
+	mSctpTransport.reset();
+	mDtlsTransport.reset();
+	mIceTransport.reset();
+}
+
+void PeerConnection::close() {
+	// Close DataChannels
+	closeDataChannels();
+	mDataChannels.clear();
+
+	// Close Transports
 	if (auto transport = std::atomic_load(&mIceTransport))
 		transport->stop();
 	if (auto transport = std::atomic_load(&mDtlsTransport))
@@ -45,9 +58,8 @@ PeerConnection::~PeerConnection() {
 	if (auto transport = std::atomic_load(&mSctpTransport))
 		transport->stop();
 
-	mSctpTransport.reset();
-	mDtlsTransport.reset();
-	mIceTransport.reset();
+	// Change state
+	changeState(State::Closed);
 }
 
 const Configuration *PeerConnection::config() const { return &mConfig; }
@@ -210,6 +222,9 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role
 		    case IceTransport::State::Connected:
 			    initDtlsTransport();
 			    break;
+		    case IceTransport::State::Disconnected:
+			    changeState(State::Disconnected);
+			    break;
 		    default:
 			    // Ignore
 			    break;
@@ -245,6 +260,9 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 			    break;
 		    case DtlsTransport::State::Failed:
 			    changeState(State::Failed);
+			    break;
+		    case DtlsTransport::State::Disconnected:
+			    changeState(State::Disconnected);
 			    break;
 		    default:
 			    // Ignore
@@ -293,7 +311,7 @@ bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
 
 void PeerConnection::forwardMessage(message_ptr message) {
 	if (!message) {
-		closeDataChannels();
+		remoteCloseDataChannels();
 		return;
 	}
 
@@ -368,6 +386,10 @@ void PeerConnection::closeDataChannels() {
 	iterateDataChannels([&](shared_ptr<DataChannel> channel) { channel->close(); });
 }
 
+void PeerConnection::remoteCloseDataChannels() {
+	iterateDataChannels([&](shared_ptr<DataChannel> channel) { channel->remoteClose(); });
+}
+
 void PeerConnection::processLocalDescription(Description description) {
 	std::optional<uint16_t> remoteSctpPort;
 	if (auto remote = remoteDescription())
@@ -401,7 +423,14 @@ void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 }
 
 void PeerConnection::changeState(State state) {
-	if (mState.exchange(state) != state)
+	State current;
+	do {
+		current = mState.load();
+		if (current == state || current == State::Destroying)
+			return;
+	} while (!mState.compare_exchange_weak(current, state));
+
+	if (state != State::Destroying)
 		mStateChangeCallback(state);
 }
 
@@ -430,6 +459,12 @@ std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &st
 		break;
 	case State::Failed:
 		str = "failed";
+		break;
+	case State::Closed:
+		str = "closed";
+		break;
+	case State::Destroying:
+		str = "destroying";
 		break;
 	default:
 		str = "unknown";

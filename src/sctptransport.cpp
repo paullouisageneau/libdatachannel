@@ -145,12 +145,10 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 SctpTransport::~SctpTransport() {
 	stop();
 
-	if (mSock) {
-		usrsctp_shutdown(mSock, SHUT_RDWR);
-		usrsctp_close(mSock);
-	}
-
+	usrsctp_shutdown(mSock, SHUT_RDWR);
+	usrsctp_close(mSock);
 	usrsctp_deregister_address(this);
+
 	GlobalCleanup();
 }
 
