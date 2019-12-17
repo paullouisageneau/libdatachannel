@@ -33,8 +33,9 @@ int main(int argc, char **argv) {
 	// config.iceServers.emplace_back("stun.l.google.com:19302");
 	// config.enableIceTcp = true;
 
-	// IceServer turnServer("TURN_SERVER_URL", "PORT_NO", IceServer::Type::TURN, "USERNAME",
-	//                      "PASSWORD", IceServer::RelayType::RELAY_TYPE_TURN_TLS);
+	// Add TURN Server Example
+	// IceServer turnServer("TURN_SERVER_URL", "PORT_NO", "USERNAME", "PASSWORD", 
+	//							IceServer::RelayType::TurnTls);
 	// config.iceServers.push_back(turnServer);
 
 	auto pc1 = std::make_shared<PeerConnection>(config);
