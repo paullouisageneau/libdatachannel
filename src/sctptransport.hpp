@@ -95,6 +95,8 @@ private:
 	std::condition_variable mConnectCondition;
 	bool mConnectDataSent = false;
 
+	std::atomic<bool> mShutdown = false;
+
 	state_callback mStateChangeCallback;
 	std::atomic<State> mState;
 

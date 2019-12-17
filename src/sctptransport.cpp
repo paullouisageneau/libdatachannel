@@ -145,7 +145,6 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 SctpTransport::~SctpTransport() {
 	stop();
 
-	usrsctp_shutdown(mSock, SHUT_RDWR);
 	usrsctp_close(mSock);
 	usrsctp_deregister_address(this);
 
@@ -158,12 +157,15 @@ void SctpTransport::stop() {
 	Transport::stop();
 	onRecv(nullptr);
 
-	mSendQueue.stop();
+	if (!mShutdown.exchange(true)) {
+		mSendQueue.stop();
+		usrsctp_shutdown(mSock, SHUT_RDWR);
 
-	// Unblock incoming
-	std::unique_lock<std::mutex> lock(mConnectMutex);
-	mConnectDataSent = true;
-	mConnectCondition.notify_all();
+		// Unblock incoming
+		std::unique_lock<std::mutex> lock(mConnectMutex);
+		mConnectDataSent = true;
+		mConnectCondition.notify_all();
+	}
 }
 
 void SctpTransport::connect() {
