@@ -70,6 +70,11 @@ bool Candidate::resolve(ResolveMode mode) {
 			hints.ai_protocol = IPPROTO_UDP;
 		}
 
+		if (transport == "TCP" || transport == "tcp") {
+			hints.ai_socktype = SOCK_STREAM;
+			hints.ai_protocol = IPPROTO_TCP;
+		}
+
 		if (mode == ResolveMode::Simple)
 			hints.ai_flags |= AI_NUMERICHOST;
 
@@ -120,4 +125,3 @@ Candidate::operator string() const {
 std::ostream &operator<<(std::ostream &out, const rtc::Candidate &candidate) {
 	return out << std::string(candidate);
 }
-

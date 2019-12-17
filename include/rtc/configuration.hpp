@@ -48,6 +48,7 @@ struct IceServer {
 
 struct Configuration {
 	std::vector<IceServer> iceServers;
+	bool enableIceTcp = false;
 	uint16_t portRangeBegin = 1024;
 	uint16_t portRangeEnd = 65535;
 };
