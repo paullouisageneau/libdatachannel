@@ -26,12 +26,12 @@ set(TESTS_SOURCES
 )
 
 # Hack because usrsctp uses CMAKE_SOURCE_DIR instead of CMAKE_CURRENT_SOURCE_DIR
-set(CMAKE_REQUIRED_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/usrsctp/usrsctplib")
+set(CMAKE_REQUIRED_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/deps/usrsctp/usrsctplib")
 
-add_subdirectory(usrsctp EXCLUDE_FROM_ALL)
+add_subdirectory(deps/usrsctp EXCLUDE_FROM_ALL)
 
 # Set include directory and custom options to make usrsctp compile with recent g++
-target_include_directories(usrsctp-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/usrsctp/usrsctplib)
+target_include_directories(usrsctp-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/usrsctp/usrsctplib)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # using regular Clang or AppleClang: Needed since they don't have -Wno-error=format-truncation
@@ -43,7 +43,7 @@ else()
 	  target_compile_options(usrsctp-static PRIVATE -Wno-error=format-truncation)
 	else()
 	  target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member -Wno-error=format-truncation)
-	endif()  
+	endif()
   else()
     # all other compilers
     target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member -Wno-error=format-truncation)
