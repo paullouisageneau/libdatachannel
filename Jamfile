@@ -22,17 +22,17 @@ alias usrsctp
     : # no build requirements
     : # no default build
     : # usage requirements
-    <include>./usrsctp/usrsctplib
+    <include>./deps/usrsctp/usrsctplib
 	<library>libusrsctp.a
     ;
 
 make libusrsctp.a : : @make_libusrsctp ;
 actions make_libusrsctp
 {
-	(cd $(CWD)/usrsctp && \
+	(cd $(CWD)/deps/usrsctp && \
 		./bootstrap && \
 		./configure --enable-static --disable-debug CFLAGS="-fPIC -Wno-address-of-packed-member" && \
 		make)
-    cp $(CWD)/usrsctp/usrsctplib/.libs/libusrsctp.a $(<)
+    cp $(CWD)/deps/usrsctp/usrsctplib/.libs/libusrsctp.a $(<)
 }
 
