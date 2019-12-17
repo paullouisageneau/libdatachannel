@@ -31,6 +31,7 @@ template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 int main(int argc, char **argv) {
 	rtc::Configuration config;
 	// config.iceServers.emplace_back("stun.l.google.com:19302");
+	// config.enableIceTcp = true;
 
 	// IceServer turnServer("TURN_SERVER_URL", "PORT_NO", IceServer::Type::TURN, "USERNAME",
 	//                      "PASSWORD", IceServer::RelayType::RELAY_TYPE_TURN_TLS);
