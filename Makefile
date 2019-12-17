@@ -8,7 +8,7 @@ CPPFLAGS=-O2 -pthread -fPIC -Wall -Wno-address-of-packed-member
 CXXFLAGS=-std=c++17
 LDFLAGS=-pthread
 LIBS=glib-2.0 gobject-2.0 nice
-USRSCTP_DIR=usrsctp
+USRSCTP_DIR=deps/usrsctp
 
 USE_GNUTLS ?= 0
 ifneq ($(USE_GNUTLS), 0)
