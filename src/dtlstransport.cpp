@@ -87,7 +87,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 DtlsTransport::~DtlsTransport() {
 	stop();
 
-	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
 	gnutls_deinit(mSession);
 }
 
@@ -98,6 +97,7 @@ void DtlsTransport::stop() {
 
 	if (mRecvThread.joinable()) {
 		mIncomingQueue.stop();
+		gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
 		mRecvThread.join();
 	}
 }

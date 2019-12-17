@@ -210,6 +210,10 @@ void PeerConnection::onGatheringStateChange(std::function<void(GatheringState st
 }
 
 shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role) {
+	std::lock_guard lock(mInitMutex);
+	if (auto transport = std::atomic_load(&mIceTransport))
+		return transport;
+
 	auto transport = std::make_shared<IceTransport>(
 	    mConfig, role, std::bind(&PeerConnection::processLocalCandidate, this, _1),
 	    [this](IceTransport::State state) {
@@ -237,8 +241,7 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role
 			    changeGatheringState(GatheringState::InProgress);
 			    break;
 		    case IceTransport::GatheringState::Complete:
-			    if (mLocalDescription)
-				    mLocalDescription->endCandidates();
+			    endLocalCandidates();
 			    changeGatheringState(GatheringState::Complete);
 			    break;
 		    default:
@@ -251,6 +254,10 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role
 }
 
 shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
+	std::lock_guard lock(mInitMutex);
+	if (auto transport = std::atomic_load(&mDtlsTransport))
+		return transport;
+
 	auto lower = std::atomic_load(&mIceTransport);
 	auto transport = std::make_shared<DtlsTransport>(
 	    lower, mCertificate, std::bind(&PeerConnection::checkFingerprint, this, _1),
@@ -275,6 +282,10 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 }
 
 shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
+	std::lock_guard lock(mInitMutex);
+	if (auto transport = std::atomic_load(&mSctpTransport))
+		return transport;
+
 	uint16_t sctpPort = remoteDescription()->sctpPort().value_or(DEFAULT_SCTP_PORT);
 	auto lower = std::atomic_load(&mDtlsTransport);
 	auto transport = std::make_shared<SctpTransport>(
@@ -299,6 +310,12 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 	    });
 	std::atomic_store(&mSctpTransport, transport);
 	return transport;
+}
+
+void PeerConnection::endLocalCandidates() {
+	std::lock_guard lock(mLocalDescriptionMutex);
+	if (mLocalDescription)
+		mLocalDescription->endCandidates();
 }
 
 bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {

@@ -91,6 +91,7 @@ private:
 	std::shared_ptr<DtlsTransport> initDtlsTransport();
 	std::shared_ptr<SctpTransport> initSctpTransport();
 
+	void endLocalCandidates();
 	bool checkFingerprint(const std::string &fingerprint) const;
 	void forwardMessage(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
@@ -114,6 +115,7 @@ private:
 	std::shared_ptr<IceTransport> mIceTransport;
 	std::shared_ptr<DtlsTransport> mDtlsTransport;
 	std::shared_ptr<SctpTransport> mSctpTransport;
+	std::recursive_mutex mInitMutex;
 
 	std::unordered_map<unsigned int, std::weak_ptr<DataChannel>> mDataChannels;
 
