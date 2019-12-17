@@ -38,9 +38,9 @@ IceServer::IceServer(const string &hostname_, uint16_t port_)
 IceServer::IceServer(const string &hostname_, const string &service_)
     : hostname(hostname_), service(service_), type(Type::Stun) {}
 
-IceServer::IceServer(const string &hostname_, const string &service_, Type type_, string username_,
+IceServer::IceServer(const string &hostname_, const string &service_, string username_,
                      string password_, RelayType relayType_)
-    : hostname(hostname_), service(service_), type(type_), username(username_), password(password_),
-      relayType(relayType_) {}
+    : hostname(hostname_), service(service_), type(Type::Turn), username(username_),
+      password(password_), relayType(relayType_) {}
 
 } // namespace rtc

@@ -35,8 +35,8 @@ struct IceServer {
 	IceServer(const string &host_);
 	IceServer(const string &hostname_, uint16_t port_);
 	IceServer(const string &hostname_, const string &service_);
-	IceServer(const string &hostname_, const string &service_, Type type_, string username_,
-	          string password_, RelayType relayType_);
+	IceServer(const string &hostname_, const string &service_, string username_, string password_,
+	          RelayType relayType_);
 
 	string hostname;
 	string service;
