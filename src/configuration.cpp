@@ -20,27 +20,41 @@
 
 namespace rtc {
 
-using std::to_string;
-
 IceServer::IceServer(const string &host) : type(Type::Stun) {
-	if (size_t pos = host.rfind(':'); pos != string::npos) {
-		hostname = host.substr(0, pos);
-		service = host.substr(pos + 1);
+	if (size_t serviceSep = host.rfind(':'); serviceSep != string::npos) {
+		if (size_t protocolSep = host.rfind(':', serviceSep - 1); protocolSep != string::npos) {
+			string protocol = host.substr(0, protocolSep);
+			if (protocol == "stun" || protocol == "STUN")
+				type = Type::Stun;
+			else if (protocol == "turn" || protocol == "TURN")
+				type = Type::Turn;
+			else
+				throw std::invalid_argument("Unknown ICE server protocol: " + protocol);
+			hostname = host.substr(protocolSep + 1, serviceSep - (protocolSep + 1));
+		} else {
+			hostname = host.substr(0, serviceSep);
+		}
+		service = host.substr(serviceSep + 1);
 	} else {
 		hostname = host;
 		service = "3478"; // STUN UDP port
 	}
 }
 
-IceServer::IceServer(const string &hostname_, uint16_t port_)
-    : IceServer(hostname_, to_string(port_)) {}
+IceServer::IceServer(string hostname_, uint16_t port_)
+    : IceServer(std::move(hostname_), std::to_string(port_)) {}
 
-IceServer::IceServer(const string &hostname_, const string &service_)
-    : hostname(hostname_), service(service_), type(Type::Stun) {}
+IceServer::IceServer(string hostname_, string service_)
+    : hostname(std::move(hostname_)), service(std::move(service_)), type(Type::Stun) {}
 
-IceServer::IceServer(const string &hostname_, const string &service_, string username_,
-                     string password_, RelayType relayType_)
-    : hostname(hostname_), service(service_), type(Type::Turn), username(username_),
-      password(password_), relayType(relayType_) {}
+IceServer::IceServer(string hostname_, uint16_t port_, string username_, string password_,
+                     RelayType relayType_)
+    : IceServer(hostname_, std::to_string(port_), std::move(username_), std::move(password_),
+                relayType_) {}
+
+IceServer::IceServer(string hostname_, string service_, string username_, string password_,
+                     RelayType relayType_)
+    : hostname(std::move(hostname_)), service(std::move(service_)), type(Type::Turn),
+      username(std::move(username_)), password(std::move(password_)), relayType(relayType_) {}
 
 } // namespace rtc

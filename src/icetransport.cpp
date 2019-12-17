@@ -17,6 +17,7 @@
  */
 
 #include "icetransport.hpp"
+#include "configuration.hpp"
 
 #include <netdb.h>
 #include <netinet/in.h>
@@ -74,15 +75,17 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp", FALSE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp-timeout", 200, nullptr);
 
+	// Randomize order
 	std::vector<IceServer> servers = config.iceServers;
 	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 	std::shuffle(servers.begin(), servers.end(), std::default_random_engine(seed));
 
+	// Add one STUN server
 	bool success = false;
 	for (auto &server : servers) {
 		if (server.hostname.empty())
 			continue;
-		if (server.type == IceServer::Type::Turn)
+		if (server.type != IceServer::Type::Stun)
 			continue;
 		if (server.service.empty())
 			server.service = "3478"; // STUN UDP port
@@ -101,7 +104,6 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 				char nodebuffer[MAX_NUMERICNODE_LEN];
 				char servbuffer[MAX_NUMERICSERV_LEN];
 				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
-
 				                servbuffer, MAX_NUMERICNODE_LEN,
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server", nodebuffer, nullptr);
@@ -116,6 +118,56 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 		freeaddrinfo(result);
 		if (success)
 			break;
+	}
+
+	// Add TURN servers
+	for (auto &server : servers) {
+		if (server.hostname.empty())
+			continue;
+		if (server.type != IceServer::Type::Turn)
+			continue;
+		if (server.service.empty())
+			server.service = "3478"; // TURN port
+
+		struct addrinfo hints = {};
+		hints.ai_family = AF_UNSPEC;
+		hints.ai_socktype =
+		    server.relayType == IceServer::RelayType::TurnUdp ? SOCK_DGRAM : SOCK_STREAM;
+		hints.ai_protocol =
+		    server.relayType == IceServer::RelayType::TurnUdp ? IPPROTO_UDP : IPPROTO_TCP;
+		hints.ai_flags = AI_ADDRCONFIG;
+		struct addrinfo *result = nullptr;
+		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0)
+			continue;
+
+		for (auto p = result; p; p = p->ai_next) {
+			if (p->ai_family == AF_INET || p->ai_family == AF_INET6) {
+				char nodebuffer[MAX_NUMERICNODE_LEN];
+				char servbuffer[MAX_NUMERICSERV_LEN];
+				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
+				                servbuffer, MAX_NUMERICNODE_LEN,
+				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+
+					NiceRelayType niceRelayType;
+					switch (server.relayType) {
+					case IceServer::RelayType::TurnTcp:
+						niceRelayType = NICE_RELAY_TYPE_TURN_TCP;
+						break;
+					case IceServer::RelayType::TurnTls:
+						niceRelayType = NICE_RELAY_TYPE_TURN_TLS;
+						break;
+					default:
+						niceRelayType = NICE_RELAY_TYPE_TURN_UDP;
+						break;
+					}
+					nice_agent_set_relay_info(mNiceAgent.get(), mStreamId, 1, nodebuffer,
+					                          std::stoul(servbuffer), server.username.c_str(),
+					                          server.password.c_str(), niceRelayType);
+				}
+			}
+		}
+
+		freeaddrinfo(result);
 	}
 
 	g_signal_connect(G_OBJECT(mNiceAgent.get()), "component-state-changed",
@@ -135,46 +187,6 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 
 	nice_agent_attach_recv(mNiceAgent.get(), mStreamId, 1, g_main_loop_get_context(mMainLoop.get()),
 	                       RecvCallback, this);
-
-	// Add TURN Servers
-	for (auto &server : servers) {
-		if (server.hostname.empty())
-			continue;
-		if (server.type == IceServer::Type::Stun)
-			continue;
-		if (server.service.empty())
-			server.service = "3478"; // TURN UDP port
-
-		struct addrinfo hints = {};
-		hints.ai_family = AF_INET; // IPv4
-		hints.ai_socktype =
-		    server.relayType == IceServer::RelayType::TurnUdp ? SOCK_DGRAM : SOCK_STREAM;
-		hints.ai_protocol =
-		    server.relayType == IceServer::RelayType::TurnUdp ? IPPROTO_UDP : IPPROTO_TCP;
-		hints.ai_flags = AI_ADDRCONFIG;
-		struct addrinfo *result = nullptr;
-		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0)
-			continue;
-
-		for (auto p = result; p; p = p->ai_next) {
-			if (p->ai_family == AF_INET) {
-				char nodebuffer[MAX_NUMERICNODE_LEN];
-				char servbuffer[MAX_NUMERICSERV_LEN];
-				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
-
-				                servbuffer, MAX_NUMERICNODE_LEN,
-				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-					nice_agent_set_relay_info(mNiceAgent.get(), mStreamId, 1, nodebuffer,
-					                          std::stoul(servbuffer), server.username.c_str(),
-					                          server.password.c_str(),
-					                          static_cast<NiceRelayType>(server.relayType));
-					break;
-				}
-			}
-		}
-
-		freeaddrinfo(result);
-	}
 }
 
 IceTransport::~IceTransport() { stop(); }
