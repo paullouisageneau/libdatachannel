@@ -41,6 +41,9 @@ typedef enum {
 	RTC_GATHERING_COMPLETE = 2
 } rtc_gathering_state_t;
 
+typedef enum { none, fatal, error, warning, info, debug, verbose } LogLevel;
+
+void rtcInitLogger(LogLevel logLevel, plog::IAppender *appender = NULL);
 int rtcCreatePeerConnection(const char **iceServers, int iceServersCount);
 void rtcDeletePeerConnection(int pc);
 int rtcCreateDataChannel(int pc, const char *label);
@@ -52,8 +55,8 @@ void rtcSetLocalCandidateCallback(int pc,
                                   void (*candidateCallback)(const char *, const char *, void *));
 void rtcSetStateChangeCallback(int pc, void (*stateCallback)(rtc_state_t state, void *));
 void rtcSetGatheringStateChangeCallback(int pc,
-                                         void (*gatheringStateCallback)(rtc_gathering_state_t state,
-                                                                        void *));
+                                        void (*gatheringStateCallback)(rtc_gathering_state_t state,
+                                                                       void *));
 void rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 void rtcAddRemoteCandidate(int pc, const char *candidate, const char *mid);
 int rtcGetDataChannelLabel(int dc, char *data, int size);
@@ -68,4 +71,3 @@ void rtcSetUserPointer(int i, void *ptr);
 #endif
 
 #endif
-

@@ -29,8 +29,7 @@ using namespace std;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 int main(int argc, char **argv) {
-	// For debug messages
-	// rtc::Configuration config(Configuration::LogLevel::debug)
+	rtcInitLogger(LogLevel::debug);
 	rtc::Configuration config;
 
 	// config.iceServers.emplace_back("stun.l.google.com:19302");

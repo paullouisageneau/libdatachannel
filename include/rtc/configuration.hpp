@@ -47,10 +47,6 @@ struct IceServer {
 };
 
 struct Configuration {
-	enum class LogLevel { none, fatal, error, warning, info, debug, verbose };
-
-	Configuration(const LogLevel logLevel_ = LogLevel::error);
-
 	std::vector<IceServer> iceServers;
 	bool enableIceTcp = false;
 	uint16_t portRangeBegin = 1024;
