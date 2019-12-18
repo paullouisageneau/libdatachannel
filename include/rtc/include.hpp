@@ -26,6 +26,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <plog/Log.h>
 
 namespace rtc {
 

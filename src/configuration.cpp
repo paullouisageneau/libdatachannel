@@ -17,6 +17,7 @@
  */
 
 #include "configuration.hpp"
+#include <plog/Appenders/ColorConsoleAppender.h>
 
 namespace rtc {
 
@@ -42,5 +43,11 @@ IceServer::IceServer(const string &hostname_, const string &service_, string use
                      string password_, RelayType relayType_)
     : hostname(hostname_), service(service_), type(Type::Turn), username(username_),
       password(password_), relayType(relayType_) {}
+
+Configuration::Configuration(const LogLevel logLevel_) {
+	static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender;
+	plog::init(static_cast<plog::Severity>(logLevel_), &consoleAppender);
+	LOGD << "Logger Initialized";
+}
 
 } // namespace rtc

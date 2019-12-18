@@ -7,7 +7,7 @@ project (libdatachannel
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
-set(LIBDATACHANNEL_SOURCES
+set(LIBDATACHANNEL_SOURCES	
 	${CMAKE_CURRENT_SOURCE_DIR}/src/candidate.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/certificate.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/channel.cpp
@@ -62,6 +62,7 @@ set_target_properties(datachannel PROPERTIES
 target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
 target_link_libraries(datachannel usrsctp-static LibNice::LibNice)
 
 add_library(datachannel-static STATIC EXCLUDE_FROM_ALL ${LIBDATACHANNEL_SOURCES})
@@ -72,6 +73,7 @@ set_target_properties(datachannel-static PROPERTIES
 target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
 target_link_libraries(datachannel-static usrsctp-static LibNice::LibNice)
 
 if (USE_GNUTLS)
@@ -104,5 +106,6 @@ set_target_properties(tests PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
 
+target_include_directories(tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
 target_link_libraries(tests datachannel)
 

@@ -29,12 +29,15 @@ using namespace std;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 int main(int argc, char **argv) {
+	// For debug messages
+	// rtc::Configuration config(Configuration::LogLevel::debug)
 	rtc::Configuration config;
+
 	// config.iceServers.emplace_back("stun.l.google.com:19302");
 	// config.enableIceTcp = true;
 
 	// Add TURN Server Example
-	// IceServer turnServer("TURN_SERVER_URL", "PORT_NO", "USERNAME", "PASSWORD", 
+	// IceServer turnServer("TURN_SERVER_URL", "PORT_NO", "USERNAME", "PASSWORD",
 	//							IceServer::RelayType::TurnTls);
 	// config.iceServers.push_back(turnServer);
 
