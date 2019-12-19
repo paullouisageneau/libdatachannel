@@ -7,7 +7,7 @@ project (libdatachannel
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
-set(LIBDATACHANNEL_SOURCES	
+set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/candidate.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/certificate.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/channel.cpp

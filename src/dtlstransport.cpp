@@ -146,7 +146,7 @@ void DtlsTransport::runRecvLoop() {
 		gnutls_dtls_set_mtu(mSession, maxMtu + 1);
 
 	} catch (const std::exception &e) {
-		std::cerr << "DTLS handshake: " << e.what() << std::endl;
+		PLOG_ERROR << "DTLS handshake: " << e.what();
 		changeState(State::Failed);
 		return;
 	}
@@ -179,7 +179,7 @@ void DtlsTransport::runRecvLoop() {
 		}
 
 	} catch (const std::exception &e) {
-		std::cerr << "DTLS recv: " << e.what() << std::endl;
+		PLOG_ERROR << "DTLS recv: " << e.what();
 	}
 
 	changeState(State::Disconnected);
@@ -449,7 +449,7 @@ void DtlsTransport::runRecvLoop() {
 				recv(decrypted);
 		}
 	} catch (const std::exception &e) {
-		std::cerr << "DTLS recv: " << e.what() << std::endl;
+		PLOG_ERROR << "DTLS recv: " << e.what();
 	}
 
 	if (mState == State::Connected) {
@@ -478,7 +478,7 @@ void DtlsTransport::InfoCallback(const SSL *ssl, int where, int ret) {
 
 	if (where & SSL_CB_ALERT) {
 		if (ret != 256) // Close Notify
-			std::cerr << "DTLS alert: " << SSL_alert_desc_string_long(ret) << std::endl;
+			PLOG_ERROR << "DTLS alert: " << SSL_alert_desc_string_long(ret);
 		t->mIncomingQueue.stop(); // Close the connection
 	}
 }

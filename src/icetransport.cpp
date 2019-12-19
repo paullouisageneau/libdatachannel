@@ -42,9 +42,11 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
       mStateChangeCallback(std::move(stateChangeCallback)),
       mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)) {
 
-	auto logLevelFlags = GLogLevelFlags(G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION);
-	g_log_set_handler(nullptr, logLevelFlags, LogCallback, this);
-	nice_debug_enable(false);
+	g_log_set_handler("libnice", G_LOG_LEVEL_MASK, LogCallback, this);
+
+	IF_PLOG(plog::verbose) {
+		nice_debug_enable(false); // do not output STUN debug messages
+	}
 
 	mMainLoop = decltype(mMainLoop)(g_main_loop_new(nullptr, FALSE), g_main_loop_unref);
 	if (!mMainLoop)
@@ -308,7 +310,7 @@ void IceTransport::CandidateCallback(NiceAgent *agent, NiceCandidate *candidate,
 	try {
 		iceTransport->processCandidate(cand);
 	} catch (const std::exception &e) {
-		std::cerr << "ICE candidate: " << e.what() << std::endl;
+		PLOG_WARNING << e.what();
 	}
 	g_free(cand);
 }
@@ -318,7 +320,7 @@ void IceTransport::GatheringDoneCallback(NiceAgent *agent, guint streamId, gpoin
 	try {
 		iceTransport->processGatheringDone();
 	} catch (const std::exception &e) {
-		std::cerr << "ICE gathering done: " << e.what() << std::endl;
+		PLOG_WARNING << e.what();
 	}
 }
 
@@ -328,7 +330,7 @@ void IceTransport::StateChangeCallback(NiceAgent *agent, guint streamId, guint c
 	try {
 		iceTransport->processStateChange(state);
 	} catch (const std::exception &e) {
-		std::cerr << "ICE change state: " << e.what() << std::endl;
+		PLOG_WARNING << e.what();
 	}
 }
 
@@ -338,13 +340,29 @@ void IceTransport::RecvCallback(NiceAgent *agent, guint streamId, guint componen
 	try {
 		iceTransport->incoming(reinterpret_cast<byte *>(buf), len);
 	} catch (const std::exception &e) {
-		std::cerr << "ICE incoming: " << e.what() << std::endl;
+		PLOG_WARNING << e.what();
 	}
 }
 
 void IceTransport::LogCallback(const gchar *logDomain, GLogLevelFlags logLevel,
                                const gchar *message, gpointer userData) {
-	std::cout << message << std::endl;
+
+	plog::Severity severity;
+	unsigned int flags = logLevel & G_LOG_LEVEL_MASK;
+	if (flags & G_LOG_LEVEL_ERROR)
+		severity = plog::fatal;
+	else if (flags & G_LOG_LEVEL_CRITICAL)
+		severity = plog::error;
+	else if (flags & G_LOG_LEVEL_WARNING)
+		severity = plog::warning;
+	else if (flags & G_LOG_LEVEL_MESSAGE)
+		severity = plog::info;
+	else if (flags & G_LOG_LEVEL_INFO)
+		severity = plog::info;
+	else
+		severity = plog::verbose; // libnice debug as verbose
+
+	PLOG(severity) << message;
 }
 
 } // namespace rtc
