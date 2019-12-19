@@ -26,6 +26,8 @@
 #include <optional>
 #include <string>
 #include <vector>
+
+#include <plog/Appenders/ColorConsoleAppender.h>
 #include <plog/Log.h>
 
 namespace rtc {
@@ -48,6 +50,25 @@ const size_t MAX_NUMERICSERV_LEN = 6;  // Max port string representation length
 const uint16_t DEFAULT_SCTP_PORT = 5000; // SCTP port to use by default
 const size_t DEFAULT_MAX_MESSAGE_SIZE = 65536;    // Remote max message size if not specified in SDP
 const size_t LOCAL_MAX_MESSAGE_SIZE = 256 * 1024; // Local max message size
+
+// Don't change, it must match plog severity
+enum class LogLevel {
+	None = 0,
+	Fatal = 1,
+	Error = 2,
+	Warning = 3,
+	Info = 4,
+	Debug = 5,
+	Verbose = 6
+};
+
+inline void InitLogger(LogLevel level, plog::IAppender *appender = nullptr) {
+	static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender;
+	if (!appender)
+		appender = &consoleAppender;
+	plog::init(static_cast<plog::Severity>(level), appender);
+	LOGD << "Logger initialized";
+}
 
 template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template <class... Ts> overloaded(Ts...)->overloaded<Ts...>;

@@ -17,6 +17,7 @@
  */
 
 #include "datachannel.hpp"
+#include "include.hpp"
 #include "peerconnection.hpp"
 
 #include <rtc.h>
@@ -43,15 +44,7 @@ void *getUserPointer(int id) {
 
 } // namespace
 
-void rtcInitLogger(LogLevel logLevel, plog::IAppender *appender) {
-	static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender;
-
-	if (appender == NULL)
-		plog::init(static_cast<plog::Severity>(logLevel), &consoleAppender);
-	else
-		plog::init(static_cast<plog::Severity>(logLevel), appender);
-	LOGD << "Logger Initialized";
-}
+void rtcInitLogger(rtc_log_level_t level) { InitLogger(static_cast<LogLevel>(level)); }
 
 int rtcCreatePeerConnection(const char **iceServers, int iceServersCount) {
 	Configuration config;

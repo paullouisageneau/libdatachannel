@@ -23,7 +23,7 @@
 extern "C" {
 #endif
 
-// libdatachannel rtc C API
+// libdatachannel C API
 
 typedef enum {
 	RTC_NEW = 0,
@@ -41,9 +41,19 @@ typedef enum {
 	RTC_GATHERING_COMPLETE = 2
 } rtc_gathering_state_t;
 
-typedef enum { none, fatal, error, warning, info, debug, verbose } LogLevel;
+// Don't change, it must match plog severity
+typedef enum {
+	RTC_LOG_NONE = 0,
+	RTC_LOG_FATAL = 1,
+	RTC_LOG_ERROR = 2,
+	RTC_LOG_WARNING = 3,
+	RTC_LOG_INFO = 4,
+	RTC_LOG_DEBUG = 5,
+	RTC_LOG_VERBOSE = 6
+} rtc_log_level_t;
 
-void rtcInitLogger(LogLevel logLevel, plog::IAppender *appender = NULL);
+void rtcInitLogger(rtc_log_level_t level);
+
 int rtcCreatePeerConnection(const char **iceServers, int iceServersCount);
 void rtcDeletePeerConnection(int pc);
 int rtcCreateDataChannel(int pc, const char *label);
