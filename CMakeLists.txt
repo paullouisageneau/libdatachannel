@@ -25,6 +25,14 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
 )
 
+set(TESTS_PEER_1_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/peer-1.cpp
+)
+
+set(TESTS_PEER_2_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/peer-2.cpp
+)
+
 # Hack because usrsctp uses CMAKE_SOURCE_DIR instead of CMAKE_CURRENT_SOURCE_DIR
 set(CMAKE_REQUIRED_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/deps/usrsctp/usrsctplib")
 
@@ -99,6 +107,7 @@ endif()
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
 add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
 
+# Main Test
 add_executable(tests ${TESTS_SOURCES})
 set_target_properties(tests PROPERTIES
 	VERSION ${PROJECT_VERSION}
@@ -106,3 +115,18 @@ set_target_properties(tests PROPERTIES
 
 target_link_libraries(tests datachannel)
 
+# P2P Test: Peer-1
+add_executable(peer-1 ${TESTS_PEER_1_SOURCES})
+set_target_properties(peer-1 PROPERTIES
+	VERSION ${PROJECT_VERSION}
+	CXX_STANDARD 17)
+
+target_link_libraries(peer-1 datachannel)
+
+# P2P Test: Peer-2
+add_executable(peer-2 ${TESTS_PEER_2_SOURCES})
+set_target_properties(peer-2 PROPERTIES
+	VERSION ${PROJECT_VERSION}
+	CXX_STANDARD 17)
+
+target_link_libraries(peer-2 datachannel)
