@@ -354,7 +354,7 @@ int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, co
 			mPartialRecv.insert(mPartialRecv.end(), data, data + len);
 		}
 	} catch (const std::exception &e) {
-		std::cerr << "SCTP recv: " << e.what() << std::endl;
+		PLOG_ERROR << "SCTP recv: " << e.what();
 		return -1;
 	}
 	return 0; // success
@@ -365,7 +365,7 @@ int SctpTransport::handleSend(size_t free) {
 		std::lock_guard lock(mSendMutex);
 		trySendQueue();
 	} catch (const std::exception &e) {
-		std::cerr << "SCTP send: " << e.what() << std::endl;
+		PLOG_ERROR << "SCTP send: " << e.what();
 		return -1;
 	}
 	return 0; // success
@@ -379,7 +379,7 @@ int SctpTransport::handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_
 		mConnectDataSent = true;
 		mConnectCondition.notify_all();
 	} catch (const std::exception &e) {
-		std::cerr << "SCTP write: " << e.what() << std::endl;
+		PLOG_ERROR << "SCTP write: " << e.what();
 		return -1;
 	}
 	return 0; // success
@@ -440,7 +440,7 @@ void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, Payl
 
 	default:
 		// Unknown
-		std::cerr << "Unknown PPID: " << uint32_t(ppid) << std::endl;
+		PLOG_WARNING << "Unknown PPID: " << uint32_t(ppid);
 		return;
 	}
 }
@@ -456,7 +456,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 			changeState(State::Connected);
 		} else {
 			if (mState == State::Connecting) {
-				std::cerr << "SCTP connection failed" << std::endl;
+				PLOG_ERROR << "SCTP connection failed";
 				changeState(State::Failed);
 			} else {
 				changeState(State::Disconnected);

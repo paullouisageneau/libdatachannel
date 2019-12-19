@@ -17,11 +17,14 @@
  */
 
 #include "datachannel.hpp"
+#include "include.hpp"
 #include "peerconnection.hpp"
 
 #include <rtc.h>
 
 #include <unordered_map>
+
+#include <plog/Appenders/ColorConsoleAppender.h>
 
 using namespace rtc;
 using std::shared_ptr;
@@ -40,6 +43,8 @@ void *getUserPointer(int id) {
 }
 
 } // namespace
+
+void rtcInitLogger(rtc_log_level_t level) { InitLogger(static_cast<LogLevel>(level)); }
 
 int rtcCreatePeerConnection(const char **iceServers, int iceServersCount) {
 	Configuration config;
@@ -112,8 +117,8 @@ void rtcSetStateChangeCallback(int pc, void (*stateCallback)(rtc_state_t state, 
 }
 
 void rtcSetGatheringStateChangeCallback(int pc,
-                                         void (*gatheringStateCallback)(rtc_gathering_state_t state,
-                                                                        void *)) {
+                                        void (*gatheringStateCallback)(rtc_gathering_state_t state,
+                                                                       void *)) {
 	auto it = peerConnectionMap.find(pc);
 	if (it == peerConnectionMap.end())
 		return;
@@ -209,4 +214,3 @@ void rtcSetUserPointer(int i, void *ptr) {
 	else
 		userPointerMap.erase(i);
 }
-

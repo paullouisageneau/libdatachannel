@@ -23,7 +23,7 @@
 extern "C" {
 #endif
 
-// libdatachannel rtc C API
+// libdatachannel C API
 
 typedef enum {
 	RTC_NEW = 0,
@@ -41,6 +41,19 @@ typedef enum {
 	RTC_GATHERING_COMPLETE = 2
 } rtc_gathering_state_t;
 
+// Don't change, it must match plog severity
+typedef enum {
+	RTC_LOG_NONE = 0,
+	RTC_LOG_FATAL = 1,
+	RTC_LOG_ERROR = 2,
+	RTC_LOG_WARNING = 3,
+	RTC_LOG_INFO = 4,
+	RTC_LOG_DEBUG = 5,
+	RTC_LOG_VERBOSE = 6
+} rtc_log_level_t;
+
+void rtcInitLogger(rtc_log_level_t level);
+
 int rtcCreatePeerConnection(const char **iceServers, int iceServersCount);
 void rtcDeletePeerConnection(int pc);
 int rtcCreateDataChannel(int pc, const char *label);
@@ -52,8 +65,8 @@ void rtcSetLocalCandidateCallback(int pc,
                                   void (*candidateCallback)(const char *, const char *, void *));
 void rtcSetStateChangeCallback(int pc, void (*stateCallback)(rtc_state_t state, void *));
 void rtcSetGatheringStateChangeCallback(int pc,
-                                         void (*gatheringStateCallback)(rtc_gathering_state_t state,
-                                                                        void *));
+                                        void (*gatheringStateCallback)(rtc_gathering_state_t state,
+                                                                       void *));
 void rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 void rtcAddRemoteCandidate(int pc, const char *candidate, const char *mid);
 int rtcGetDataChannelLabel(int dc, char *data, int size);
@@ -68,4 +81,3 @@ void rtcSetUserPointer(int i, void *ptr);
 #endif
 
 #endif
-
