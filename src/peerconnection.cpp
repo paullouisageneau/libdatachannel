@@ -50,16 +50,15 @@ void PeerConnection::close() {
 	closeDataChannels();
 	mDataChannels.clear();
 
-	changeState(State::Disconnected);
-
 	// Close Transports
-	if (auto transport = std::atomic_load(&mIceTransport))
-		transport->stop();
-	if (auto transport = std::atomic_load(&mDtlsTransport))
-		transport->stop();
-	if (auto transport = std::atomic_load(&mSctpTransport))
-		transport->stop();
-
+	for (int i = 0; i < 2; ++i) { // Make sure a transport wasn't spawn behind our back
+		if (auto transport = std::atomic_load(&mSctpTransport))
+			transport->stop();
+		if (auto transport = std::atomic_load(&mDtlsTransport))
+			transport->stop();
+		if (auto transport = std::atomic_load(&mIceTransport))
+			transport->stop();
+	}
 	changeState(State::Closed);
 }
 

@@ -185,6 +185,7 @@ void IceTransport::stop() {
 		mTimeoutId = 0;
 	}
 	if (mMainLoopThread.joinable()) {
+		PLOG_DEBUG << "Stopping ICE thread";
 		g_main_loop_quit(mMainLoop.get());
 		mMainLoopThread.join();
 	}
@@ -217,7 +218,6 @@ void IceTransport::setRemoteDescription(const Description &description) {
 
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 	// Don't try to pass unresolved candidates to libnice for more safety
-
 	if (!candidate.isResolved())
 		return false;
 
@@ -263,11 +263,11 @@ std::optional<string> IceTransport::getRemoteAddress() const {
 }
 
 bool IceTransport::send(message_ptr message) {
-	if (!message || !mStreamId)
+	if (!message || (mState != State::Connected && mState != State::Completed))
 		return false;
 
-	outgoing(message);
-	return true;
+	PLOG_VERBOSE << "Send size=" << message->size();
+	return outgoing(message);
 }
 
 void IceTransport::incoming(message_ptr message) { recv(message); }
@@ -276,9 +276,9 @@ void IceTransport::incoming(const byte *data, int size) {
 	incoming(make_message(data, data + size));
 }
 
-void IceTransport::outgoing(message_ptr message) {
-	nice_agent_send(mNiceAgent.get(), mStreamId, 1, message->size(),
-	                reinterpret_cast<const char *>(message->data()));
+bool IceTransport::outgoing(message_ptr message) {
+	return nice_agent_send(mNiceAgent.get(), mStreamId, 1, message->size(),
+	                       reinterpret_cast<const char *>(message->data())) >= 0;
 }
 
 void IceTransport::changeState(State state) {
@@ -286,7 +286,10 @@ void IceTransport::changeState(State state) {
 		mStateChangeCallback(mState);
 }
 
-void IceTransport::processTimeout() { changeState(State::Failed); }
+void IceTransport::processTimeout() {
+	PLOG_WARNING << "ICE timeout";
+	changeState(State::Failed);
+}
 
 void IceTransport::changeGatheringState(GatheringState state) {
 	mGatheringState = state;

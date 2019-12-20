@@ -28,7 +28,8 @@ using namespace std;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 int main(int argc, char **argv) {
-	rtc::Configuration config;
+	// InitLogger(LogLevel::Debug);
+	Configuration config;
 	// config.iceServers.emplace_back("stun.l.google.com:19302");
 	// config.enableIceTcp = true;
 
@@ -56,9 +57,12 @@ int main(int argc, char **argv) {
 	});
 
 	shared_ptr<DataChannel> dc = nullptr;
-	pc->onDataChannel([&dc](shared_ptr<DataChannel> _dc) {
+	pc->onDataChannel([&](shared_ptr<DataChannel> _dc) {
 		cout << "[ Got a DataChannel with label: " << _dc->label() << " ]" << endl;
 		dc = _dc;
+
+		dc->onClosed([&]() { cout << "[ DataChannel closed: " << dc->label() << " ]" << endl; });
+
 		dc->onMessage([](const variant<binary, string> &message) {
 			if (holds_alternative<string>(message)) {
 				cout << "[ Received: " << get<string>(message) << " ]" << endl;

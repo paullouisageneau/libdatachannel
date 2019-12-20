@@ -33,12 +33,16 @@ using namespace std::placeholders;
 class Transport {
 public:
 	Transport(std::shared_ptr<Transport> lower = nullptr) : mLower(std::move(lower)) {
-		if (auto lower = std::atomic_load(&mLower))
-			lower->onRecv(std::bind(&Transport::incoming, this, _1));
+		if (mLower)
+			mLower->onRecv(std::bind(&Transport::incoming, this, _1));
 	}
-	virtual ~Transport() {}
+	virtual ~Transport() { stop(); }
 
-	virtual void stop() { resetLower(); }
+	virtual void stop() {
+		if (mLower)
+			mLower->onRecv(nullptr);
+	}
+
 	virtual bool send(message_ptr message) = 0;
 
 	void onRecv(message_callback callback) { mRecvCallback = std::move(callback); }
@@ -46,15 +50,12 @@ public:
 protected:
 	void recv(message_ptr message) { mRecvCallback(message); }
 
-	void resetLower() {
-		if (auto lower = std::atomic_exchange(&mLower, std::shared_ptr<Transport>(nullptr)))
-			lower->onRecv(nullptr);
-	}
-
 	virtual void incoming(message_ptr message) = 0;
-	virtual void outgoing(message_ptr message) {
-		if (auto lower = std::atomic_load(&mLower))
-			lower->send(message);
+	virtual bool outgoing(message_ptr message) {
+		if (mLower)
+			return mLower->send(message);
+		else
+			return false;
 	}
 
 private:

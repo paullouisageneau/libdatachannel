@@ -78,9 +78,9 @@ DataChannel::~DataChannel() {
 }
 
 void DataChannel::close() {
-	mIsClosed = true;
 	if (mIsOpen.exchange(false) && mSctpTransport)
 		mSctpTransport->reset(mStream);
+	mIsClosed = true;
 	mSctpTransport.reset();
 }
 
@@ -88,6 +88,7 @@ void DataChannel::remoteClose() {
 	mIsOpen = false;
 	if (!mIsClosed.exchange(true))
 		triggerClosed();
+	mSctpTransport.reset();
 }
 
 bool DataChannel::send(const std::variant<binary, string> &data) {
