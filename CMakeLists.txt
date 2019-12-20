@@ -54,6 +54,9 @@ option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 
 find_package(LibNice REQUIRED)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 add_library(datachannel SHARED ${LIBDATACHANNEL_SOURCES})
 set_target_properties(datachannel PROPERTIES
 	VERSION ${PROJECT_VERSION}
@@ -63,7 +66,11 @@ target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/includ
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
-target_link_libraries(datachannel usrsctp-static LibNice::LibNice)
+target_link_libraries(datachannel 
+						Threads::Threads
+						usrsctp-static 
+						LibNice::LibNice						
+						)
 
 add_library(datachannel-static STATIC EXCLUDE_FROM_ALL ${LIBDATACHANNEL_SOURCES})
 set_target_properties(datachannel-static PROPERTIES
@@ -74,7 +81,11 @@ target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
-target_link_libraries(datachannel-static usrsctp-static LibNice::LibNice)
+target_link_libraries(datachannel-static
+						Threads::Threads
+						usrsctp-static 
+						LibNice::LibNice						
+						)
 
 if (USE_GNUTLS)
 	find_package(GnuTLS REQUIRED)
