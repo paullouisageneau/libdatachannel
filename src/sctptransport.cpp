@@ -37,6 +37,14 @@ void SctpTransport::GlobalInit() {
 	if (InstancesCount++ == 0) {
 		usrsctp_init(0, &SctpTransport::WriteCallback, nullptr);
 		usrsctp_sysctl_set_sctp_ecn_enable(0);
+		usrsctp_sysctl_set_sctp_init_rtx_max_default(5);
+		usrsctp_sysctl_set_sctp_path_rtx_max_default(5);
+		usrsctp_sysctl_set_sctp_assoc_rtx_max_default(5);              // single path
+		usrsctp_sysctl_set_sctp_rto_min_default(1 * 1000);             // ms
+		usrsctp_sysctl_set_sctp_rto_max_default(10 * 1000);            // ms
+		usrsctp_sysctl_set_sctp_rto_initial_default(1 * 1000);         // ms
+		usrsctp_sysctl_set_sctp_init_rto_max_default(10 * 1000);       // ms
+		usrsctp_sysctl_set_sctp_heartbeat_interval_default(10 * 1000); // ms
 	}
 }
 
@@ -159,6 +167,7 @@ void SctpTransport::stop() {
 	onRecv(nullptr);
 
 	if (!mShutdown.exchange(true)) {
+		flush();
 		mSendQueue.stop();
 		usrsctp_shutdown(mSock, SHUT_RDWR);
 
@@ -204,6 +213,11 @@ bool SctpTransport::send(message_ptr message) {
 	mSendQueue.push(message);
 	updateBufferedAmount(message->stream, message_size_func(message));
 	return false;
+}
+
+void SctpTransport::flush() {
+	std::lock_guard lock(mSendMutex);
+	trySendQueue();
 }
 
 void SctpTransport::reset(unsigned int stream) {
@@ -334,6 +348,7 @@ int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, co
                               size_t len, struct sctp_rcvinfo info, int flags) {
 	try {
 		if (!data) {
+			PLOG_INFO << "SCTP connection closed";
 			recv(nullptr);
 			return 0;
 		}
@@ -454,12 +469,14 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 	case SCTP_ASSOC_CHANGE: {
 		const struct sctp_assoc_change &assoc_change = notify->sn_assoc_change;
 		if (assoc_change.sac_state == SCTP_COMM_UP) {
+			PLOG_INFO << "SCTP connected";
 			changeState(State::Connected);
 		} else {
 			if (mState == State::Connecting) {
 				PLOG_ERROR << "SCTP connection failed";
 				changeState(State::Failed);
 			} else {
+				PLOG_INFO << "SCTP disconnected";
 				changeState(State::Disconnected);
 			}
 		}

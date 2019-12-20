@@ -20,9 +20,12 @@
 #include "icetransport.hpp"
 
 #include <cassert>
+#include <chrono>
 #include <cstring>
 #include <exception>
 #include <iostream>
+
+using namespace std::chrono;
 
 using std::shared_ptr;
 using std::string;
@@ -123,7 +126,12 @@ bool DtlsTransport::send(message_ptr message) {
 	return check_gnutls(ret);
 }
 
-void DtlsTransport::incoming(message_ptr message) { mIncomingQueue.push(message); }
+void DtlsTransport::incoming(message_ptr message) {
+	if (message)
+		mIncomingQueue.push(message);
+	else
+		mIncomingQueue.stop();
+}
 
 void DtlsTransport::changeState(State state) {
 	if (mState.exchange(state) != state)
@@ -188,6 +196,7 @@ void DtlsTransport::runRecvLoop() {
 		PLOG_ERROR << "DTLS recv: " << e.what();
 	}
 
+	PLOG_INFO << "DTLS disconnected";
 	changeState(State::Disconnected);
 	recv(nullptr);
 }
@@ -232,24 +241,22 @@ ssize_t DtlsTransport::WriteCallback(gnutls_transport_ptr_t ptr, const void *dat
 
 ssize_t DtlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
-	auto next = t->mIncomingQueue.pop();
-	auto message = next ? *next : nullptr;
-	if (!message) {
-		// Closed
+	if (auto next = t->mIncomingQueue.pop()) {
+		auto message = *next;
+		ssize_t len = std::min(maxlen, message->size());
+		std::memcpy(data, message->data(), len);
 		gnutls_transport_set_errno(t->mSession, 0);
-		return 0;
+		return len;
 	}
-
-	ssize_t len = std::min(maxlen, message->size());
-	std::memcpy(data, message->data(), len);
+	// Closed
 	gnutls_transport_set_errno(t->mSession, 0);
-	return len;
+	return 0;
 }
 
 int DtlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
 	if (ms != GNUTLS_INDEFINITE_TIMEOUT)
-		t->mIncomingQueue.wait(std::chrono::milliseconds(ms));
+		t->mIncomingQueue.wait(milliseconds(ms));
 	else
 		t->mIncomingQueue.wait();
 	return !t->mIncomingQueue.empty() ? 1 : 0;
@@ -293,7 +300,7 @@ bool check_openssl_ret(SSL *ssl, int ret, const string &message = "OpenSSL error
 		return true;
 	}
 	if (err == SSL_ERROR_ZERO_RETURN) {
-		PLOG_INFO << "The TLS connection has been cleanly closed";
+		PLOG_DEBUG << "The TLS connection has been cleanly closed";
 		return false;
 	}
 	string str = openssl_error_string(err);
@@ -414,7 +421,12 @@ bool DtlsTransport::send(message_ptr message) {
 	return true;
 }
 
-void DtlsTransport::incoming(message_ptr message) { mIncomingQueue.push(message); }
+void DtlsTransport::incoming(message_ptr message) {
+	if (message)
+		mIncomingQueue.push(message);
+	else
+		mIncomingQueue.stop();
+}
 
 void DtlsTransport::changeState(State state) {
 	if (mState.exchange(state) != state)
@@ -466,9 +478,11 @@ void DtlsTransport::runRecvLoop() {
 	}
 
 	if (mState == State::Connected) {
+		PLOG_INFO << "DTLS disconnected";
 		changeState(State::Disconnected);
 		recv(nullptr);
 	} else {
+		PLOG_INFO << "DTLS handshake failed";
 		changeState(State::Failed);
 	}
 }

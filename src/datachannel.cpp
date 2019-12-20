@@ -79,10 +79,8 @@ DataChannel::~DataChannel() {
 
 void DataChannel::close() {
 	mIsClosed = true;
-	if (mIsOpen.exchange(false))
-		if (mSctpTransport)
-			mSctpTransport->reset(mStream);
-
+	if (mIsOpen.exchange(false) && mSctpTransport)
+		mSctpTransport->reset(mStream);
 	mSctpTransport.reset();
 }
 

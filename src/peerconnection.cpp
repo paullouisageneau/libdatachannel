@@ -298,9 +298,11 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 			    openDataChannels();
 			    break;
 		    case SctpTransport::State::Failed:
+			    remoteCloseDataChannels();
 			    changeState(State::Failed);
 			    break;
 		    case SctpTransport::State::Disconnected:
+			    remoteCloseDataChannels();
 			    changeState(State::Disconnected);
 			    break;
 		    default:

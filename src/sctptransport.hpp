@@ -52,6 +52,7 @@ public:
 
 	void stop() override;
 	bool send(message_ptr message) override; // false if buffered
+	void flush();
 	void reset(unsigned int stream);
 
 private:
