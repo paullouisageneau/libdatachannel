@@ -28,7 +28,6 @@
 #include <functional>
 #include <map>
 #include <mutex>
-#include <thread>
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -52,6 +51,7 @@ public:
 
 	void stop() override;
 	bool send(message_ptr message) override; // false if buffered
+	void flush();
 	void reset(unsigned int stream);
 
 private:
@@ -68,6 +68,7 @@ private:
 	};
 
 	void connect();
+	void shutdown();
 	void incoming(message_ptr message) override;
 	void changeState(State state);
 
@@ -91,9 +92,10 @@ private:
 	std::map<uint16_t, size_t> mBufferedAmount;
 	amount_callback mBufferedAmountCallback;
 
-	std::mutex mConnectMutex;
-	std::condition_variable mConnectCondition;
-	bool mConnectDataSent = false;
+	std::recursive_mutex mWriteMutex;
+	std::condition_variable_any mWrittenCondition;
+	bool mWritten = false;
+	bool mWrittenOnce = false;
 
 	std::atomic<bool> mShutdown = false;
 

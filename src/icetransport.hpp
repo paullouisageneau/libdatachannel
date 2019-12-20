@@ -74,7 +74,7 @@ public:
 private:
 	void incoming(message_ptr message) override;
 	void incoming(const byte *data, int size);
-	void outgoing(message_ptr message) override;
+	bool outgoing(message_ptr message) override;
 
 	void changeState(State state);
 	void changeGatheringState(GatheringState state);

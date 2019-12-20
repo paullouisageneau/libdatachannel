@@ -20,9 +20,12 @@
 #include "icetransport.hpp"
 
 #include <cassert>
+#include <chrono>
 #include <cstring>
 #include <exception>
 #include <iostream>
+
+using namespace std::chrono;
 
 using std::shared_ptr;
 using std::string;
@@ -41,7 +44,7 @@ static bool check_gnutls(int ret, const string &message = "GnuTLS error") {
 			PLOG_INFO << gnutls_strerror(ret);
 			return false;
 		}
-		PLOG_ERROR << gnutls_strerror(ret);
+		PLOG_ERROR << message << ": " << gnutls_strerror(ret);
 		throw std::runtime_error(message + ": " + gnutls_strerror(ret));
 	}
 	return true;
@@ -102,6 +105,7 @@ void DtlsTransport::stop() {
 	Transport::stop();
 
 	if (mRecvThread.joinable()) {
+		PLOG_DEBUG << "Stopping DTLS recv thread";
 		mIncomingQueue.stop();
 		gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
 		mRecvThread.join();
@@ -111,6 +115,8 @@ void DtlsTransport::stop() {
 bool DtlsTransport::send(message_ptr message) {
 	if (!message || mState != State::Connected)
 		return false;
+
+	PLOG_VERBOSE << "Send size=" << message->size();
 
 	ssize_t ret;
 	do {
@@ -123,7 +129,12 @@ bool DtlsTransport::send(message_ptr message) {
 	return check_gnutls(ret);
 }
 
-void DtlsTransport::incoming(message_ptr message) { mIncomingQueue.push(message); }
+void DtlsTransport::incoming(message_ptr message) {
+	if (message)
+		mIncomingQueue.push(message);
+	else
+		mIncomingQueue.stop();
+}
 
 void DtlsTransport::changeState(State state) {
 	if (mState.exchange(state) != state)
@@ -171,12 +182,15 @@ void DtlsTransport::runRecvLoop() {
 			} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
 
 			// Consider premature termination as remote closing
-			if (ret == GNUTLS_E_PREMATURE_TERMINATION)
+			if (ret == GNUTLS_E_PREMATURE_TERMINATION) {
+				PLOG_DEBUG << "DTLS connection terminated";
 				break;
+			}
 
 			if (check_gnutls(ret)) {
 				if (ret == 0) {
 					// Closed
+					PLOG_DEBUG << "DTLS connection cleanly closed";
 					break;
 				}
 				auto *b = reinterpret_cast<byte *>(buffer);
@@ -188,6 +202,7 @@ void DtlsTransport::runRecvLoop() {
 		PLOG_ERROR << "DTLS recv: " << e.what();
 	}
 
+	PLOG_INFO << "DTLS disconnected";
 	changeState(State::Disconnected);
 	recv(nullptr);
 }
@@ -232,24 +247,22 @@ ssize_t DtlsTransport::WriteCallback(gnutls_transport_ptr_t ptr, const void *dat
 
 ssize_t DtlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
-	auto next = t->mIncomingQueue.pop();
-	auto message = next ? *next : nullptr;
-	if (!message) {
-		// Closed
+	if (auto next = t->mIncomingQueue.pop()) {
+		auto message = *next;
+		ssize_t len = std::min(maxlen, message->size());
+		std::memcpy(data, message->data(), len);
 		gnutls_transport_set_errno(t->mSession, 0);
-		return 0;
+		return len;
 	}
-
-	ssize_t len = std::min(maxlen, message->size());
-	std::memcpy(data, message->data(), len);
+	// Closed
 	gnutls_transport_set_errno(t->mSession, 0);
-	return len;
+	return 0;
 }
 
 int DtlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
 	if (ms != GNUTLS_INDEFINITE_TIMEOUT)
-		t->mIncomingQueue.wait(std::chrono::milliseconds(ms));
+		t->mIncomingQueue.wait(milliseconds(ms));
 	else
 		t->mIncomingQueue.wait();
 	return !t->mIncomingQueue.empty() ? 1 : 0;
@@ -280,7 +293,7 @@ bool check_openssl(int success, const string &message = "OpenSSL error") {
 		return true;
 
 	string str = openssl_error_string(ERR_get_error());
-	PLOG_ERROR << str;
+	PLOG_ERROR << message << ": " << str;
 	throw std::runtime_error(message + ": " + str);
 }
 
@@ -293,7 +306,7 @@ bool check_openssl_ret(SSL *ssl, int ret, const string &message = "OpenSSL error
 		return true;
 	}
 	if (err == SSL_ERROR_ZERO_RETURN) {
-		PLOG_INFO << "The TLS connection has been cleanly closed";
+		PLOG_DEBUG << "DTLS connection cleanly closed";
 		return false;
 	}
 	string str = openssl_error_string(err);
@@ -377,7 +390,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 DtlsTransport::~DtlsTransport() {
 	stop();
 
-	SSL_shutdown(mSsl);
 	SSL_free(mSsl);
 	SSL_CTX_free(mCtx);
 }
@@ -386,35 +398,38 @@ void DtlsTransport::stop() {
 	Transport::stop();
 
 	if (mRecvThread.joinable()) {
+		PLOG_DEBUG << "Stopping DTLS recv thread";
 		mIncomingQueue.stop();
 		mRecvThread.join();
+
+		SSL_shutdown(mSsl);
+		writePending();
 	}
 }
 
 DtlsTransport::State DtlsTransport::state() const { return mState; }
 
 bool DtlsTransport::send(message_ptr message) {
-	const size_t bufferSize = 4096;
-	byte buffer[bufferSize];
-
 	if (!message || mState != State::Connected)
 		return false;
+
+	PLOG_VERBOSE << "Send size=" << message->size();
 
 	int ret = SSL_write(mSsl, message->data(), message->size());
 	if (!check_openssl_ret(mSsl, ret)) {
 		return false;
 	}
 
-	while (BIO_ctrl_pending(mOutBio) > 0) {
-		int ret = BIO_read(mOutBio, buffer, bufferSize);
-		if (check_openssl_ret(mSsl, ret) && ret > 0)
-			outgoing(make_message(buffer, buffer + ret));
-	}
-
+	writePending();
 	return true;
 }
 
-void DtlsTransport::incoming(message_ptr message) { mIncomingQueue.push(message); }
+void DtlsTransport::incoming(message_ptr message) {
+	if (message)
+		mIncomingQueue.push(message);
+	else
+		mIncomingQueue.stop();
+}
 
 void DtlsTransport::changeState(State state) {
 	if (mState.exchange(state) != state)
@@ -429,11 +444,7 @@ void DtlsTransport::runRecvLoop() {
 		changeState(State::Connecting);
 
 		SSL_do_handshake(mSsl);
-		while (BIO_ctrl_pending(mOutBio) > 0) {
-			int ret = BIO_read(mOutBio, buffer, bufferSize);
-			if (check_openssl_ret(mSsl, ret) && ret > 0)
-				outgoing(make_message(buffer, buffer + ret));
-		}
+		writePending();
 
 		while (auto next = mIncomingQueue.pop()) {
 			auto message = *next;
@@ -448,12 +459,7 @@ void DtlsTransport::runRecvLoop() {
 				if (unsigned long err = ERR_get_error())
 					throw std::runtime_error("handshake failed: " + openssl_error_string(err));
 
-				while (BIO_ctrl_pending(mOutBio) > 0) {
-					ret = BIO_read(mOutBio, buffer, bufferSize);
-					if (check_openssl_ret(mSsl, ret) && ret > 0)
-						outgoing(make_message(buffer, buffer + ret));
-				}
-
+				writePending();
 				if (SSL_is_init_finished(mSsl))
 					changeState(State::Connected);
 			}
@@ -466,10 +472,22 @@ void DtlsTransport::runRecvLoop() {
 	}
 
 	if (mState == State::Connected) {
+		PLOG_INFO << "DTLS disconnected";
 		changeState(State::Disconnected);
 		recv(nullptr);
 	} else {
+		PLOG_INFO << "DTLS handshake failed";
 		changeState(State::Failed);
+	}
+}
+
+void DtlsTransport::writePending() {
+	const size_t bufferSize = 4096;
+	byte buffer[bufferSize];
+	while (BIO_ctrl_pending(mOutBio) > 0) {
+		int ret = BIO_read(mOutBio, buffer, bufferSize);
+		if (check_openssl_ret(mSsl, ret) && ret > 0)
+			outgoing(make_message(buffer, buffer + ret));
 	}
 }
 
