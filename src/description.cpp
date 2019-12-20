@@ -107,6 +107,8 @@ std::optional<uint16_t> Description::sctpPort() const { return mSctpPort; }
 
 std::optional<size_t> Description::maxMessageSize() const { return mMaxMessageSize; }
 
+bool Description::trickleEnabled() const { return mTrickle; }
+
 void Description::setFingerprint(string fingerprint) {
 	mFingerprint.emplace(std::move(fingerprint));
 }

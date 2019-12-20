@@ -31,6 +31,7 @@ extern "C" {
 }
 
 #include <atomic>
+#include <chrono>
 #include <thread>
 
 namespace rtc {
@@ -81,9 +82,11 @@ private:
 	void processCandidate(const string &candidate);
 	void processGatheringDone();
 	void processStateChange(uint32_t state);
+	void processTimeout();
 
 	Description::Role mRole;
 	string mMid;
+	std::chrono::milliseconds mTrickleTimeout;
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;
 
@@ -91,6 +94,7 @@ private:
 	std::unique_ptr<NiceAgent, void (*)(gpointer)> mNiceAgent;
 	std::unique_ptr<GMainLoop, void (*)(GMainLoop *)> mMainLoop;
 	std::thread mMainLoopThread;
+	guint mTimeoutId = 0;
 
 	candidate_callback mCandidateCallback;
 	state_callback mStateChangeCallback;
@@ -104,6 +108,7 @@ private:
 	                                 guint state, gpointer userData);
 	static void RecvCallback(NiceAgent *agent, guint stream_id, guint component_id, guint len,
 	                         gchar *buf, gpointer userData);
+	static gboolean TimeoutCallback(gpointer userData);
 	static void LogCallback(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message,
 	                        gpointer user_data);
 };

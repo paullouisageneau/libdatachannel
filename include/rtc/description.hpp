@@ -45,6 +45,7 @@ public:
 	std::optional<string> fingerprint() const;
 	std::optional<uint16_t> sctpPort() const;
 	std::optional<size_t> maxMessageSize() const;
+	bool trickleEnabled() const;
 
 	void setFingerprint(string fingerprint);
 	void setSctpPort(uint16_t port);
