@@ -55,6 +55,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
       mStateChangeCallback(std::move(stateChangeCallback)), mState(State::Disconnected) {
 	onRecv(recvCallback);
 
+	PLOG_DEBUG << "Initializing SCTP transport";
 	GlobalInit();
 
 	usrsctp_register_address(this);

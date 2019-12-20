@@ -37,8 +37,11 @@ namespace {
 
 static bool check_gnutls(int ret, const string &message = "GnuTLS error") {
 	if (ret < 0) {
-		if (!gnutls_error_is_fatal(ret))
+		if (!gnutls_error_is_fatal(ret)) {
+			PLOG_INFO << gnutls_strerror(ret);
 			return false;
+		}
+		PLOG_ERROR << gnutls_strerror(ret);
 		throw std::runtime_error(message + ": " + gnutls_strerror(ret));
 	}
 	return true;
@@ -54,6 +57,9 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
     : Transport(lower), mCertificate(certificate), mState(State::Disconnected),
       mVerifierCallback(std::move(verifierCallback)),
       mStateChangeCallback(std::move(stateChangeCallback)) {
+
+	PLOG_DEBUG << "Initializing DTLS transport (GnuTLS)";
+
 	gnutls_certificate_set_verify_function(mCertificate->credentials(), CertificateCallback);
 
 	bool active = lower->role() == Description::Role::Active;
@@ -272,8 +278,10 @@ string openssl_error_string(unsigned long err) {
 bool check_openssl(int success, const string &message = "OpenSSL error") {
 	if (success)
 		return true;
-	else
-		throw std::runtime_error(message + ": " + openssl_error_string(ERR_get_error()));
+
+	string str = openssl_error_string(ERR_get_error());
+	PLOG_ERROR << str;
+	throw std::runtime_error(message + ": " + str);
 }
 
 bool check_openssl_ret(SSL *ssl, int ret, const string &message = "OpenSSL error") {
@@ -281,12 +289,16 @@ bool check_openssl_ret(SSL *ssl, int ret, const string &message = "OpenSSL error
 		return true;
 
 	unsigned long err = SSL_get_error(ssl, ret);
-	if (err == SSL_ERROR_NONE || err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE)
+	if (err == SSL_ERROR_NONE || err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
 		return true;
-	else if (err == SSL_ERROR_ZERO_RETURN)
+	}
+	if (err == SSL_ERROR_ZERO_RETURN) {
+		PLOG_INFO << "The TLS connection has been cleanly closed";
 		return false;
-	else
-		throw std::runtime_error(message + ": " + openssl_error_string(err));
+	}
+	string str = openssl_error_string(err);
+	PLOG_ERROR << str;
+	throw std::runtime_error(message + ": " + str);
 }
 
 } // namespace
@@ -309,6 +321,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
       mVerifierCallback(std::move(verifierCallback)),
       mStateChangeCallback(std::move(stateChangeCallback)) {
 
+	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
 	GlobalInit();
 
 	if (!(mCtx = SSL_CTX_new(DTLS_method())))

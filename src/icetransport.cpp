@@ -23,12 +23,13 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include <chrono>
 #include <iostream>
 #include <random>
 #include <sstream>
 
 namespace rtc {
+
+using namespace std::chrono_literals;
 
 using std::shared_ptr;
 using std::weak_ptr;
@@ -41,6 +42,8 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
       mCandidateCallback(std::move(candidateCallback)),
       mStateChangeCallback(std::move(stateChangeCallback)),
       mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)) {
+
+	PLOG_DEBUG << "Initializing ICE transport";
 
 	g_log_set_handler("libnice", G_LOG_LEVEL_MASK, LogCallback, this);
 
@@ -177,6 +180,10 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 IceTransport::~IceTransport() { stop(); }
 
 void IceTransport::stop() {
+	if (mTimeoutId) {
+		g_source_remove(mTimeoutId);
+		mTimeoutId = 0;
+	}
 	if (mMainLoopThread.joinable()) {
 		g_main_loop_quit(mMainLoop.get());
 		mMainLoopThread.join();
@@ -202,6 +209,7 @@ void IceTransport::setRemoteDescription(const Description &description) {
 	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 	                                                        : Description::Role::Active;
 	mMid = description.mid();
+	mTrickleTimeout = description.trickleEnabled() ? 30s : 0s;
 
 	if (nice_agent_parse_remote_sdp(mNiceAgent.get(), string(description).c_str()) < 0)
 		throw std::runtime_error("Failed to parse remote SDP");
@@ -278,6 +286,8 @@ void IceTransport::changeState(State state) {
 		mStateChangeCallback(mState);
 }
 
+void IceTransport::processTimeout() { changeState(State::Failed); }
+
 void IceTransport::changeGatheringState(GatheringState state) {
 	mGatheringState = state;
 	mGatheringStateChangeCallback(mGatheringState);
@@ -290,8 +300,19 @@ void IceTransport::processCandidate(const string &candidate) {
 void IceTransport::processGatheringDone() { changeGatheringState(GatheringState::Complete); }
 
 void IceTransport::processStateChange(uint32_t state) {
-	if (state != NICE_COMPONENT_STATE_GATHERING)
-		changeState(static_cast<State>(state));
+	if (state == NICE_COMPONENT_STATE_FAILED && mTrickleTimeout.count() > 0) {
+		if (mTimeoutId)
+			g_source_remove(mTimeoutId);
+		mTimeoutId = g_timeout_add(mTrickleTimeout.count() /* ms */, TimeoutCallback, this);
+		return;
+	}
+
+	if (state == NICE_COMPONENT_STATE_CONNECTED && mTimeoutId) {
+		g_source_remove(mTimeoutId);
+		mTimeoutId = 0;
+	}
+
+	changeState(static_cast<State>(state));
 }
 
 string IceTransport::AddressToString(const NiceAddress &addr) {
@@ -344,9 +365,18 @@ void IceTransport::RecvCallback(NiceAgent *agent, guint streamId, guint componen
 	}
 }
 
+gboolean IceTransport::TimeoutCallback(gpointer userData) {
+	auto iceTransport = static_cast<rtc::IceTransport *>(userData);
+	try {
+		iceTransport->processTimeout();
+	} catch (const std::exception &e) {
+		PLOG_WARNING << e.what();
+	}
+	return FALSE;
+}
+
 void IceTransport::LogCallback(const gchar *logDomain, GLogLevelFlags logLevel,
                                const gchar *message, gpointer userData) {
-
 	plog::Severity severity;
 	unsigned int flags = logLevel & G_LOG_LEVEL_MASK;
 	if (flags & G_LOG_LEVEL_ERROR)
