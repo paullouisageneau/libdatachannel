@@ -25,12 +25,12 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
 )
 
-set(TESTS_PEER_1_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/peer-1.cpp
+set(TESTS_OFFERER_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/offerer.cpp
 )
 
-set(TESTS_PEER_2_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/peer-2.cpp
+set(TESTS_ANSWERER_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/answerer.cpp
 )
 
 # Hack because usrsctp uses CMAKE_SOURCE_DIR instead of CMAKE_CURRENT_SOURCE_DIR
@@ -115,18 +115,18 @@ set_target_properties(tests PROPERTIES
 
 target_link_libraries(tests datachannel)
 
-# P2P Test: Peer-1
-add_executable(peer-1 ${TESTS_PEER_1_SOURCES})
-set_target_properties(peer-1 PROPERTIES
+# P2P Test: offerer
+add_executable(offerer ${TESTS_OFFERER_SOURCES})
+set_target_properties(offerer PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
 
-target_link_libraries(peer-1 datachannel)
+target_link_libraries(offerer datachannel)
 
-# P2P Test: Peer-2
-add_executable(peer-2 ${TESTS_PEER_2_SOURCES})
-set_target_properties(peer-2 PROPERTIES
+# P2P Test: answerer
+add_executable(answerer ${TESTS_ANSWERER_SOURCES})
+set_target_properties(answerer PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
 
-target_link_libraries(peer-2 datachannel)
+target_link_libraries(answerer datachannel)

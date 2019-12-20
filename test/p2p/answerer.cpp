@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2019 Paul-Louis Ageneau, Murat Dogan
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -51,22 +51,19 @@ int main(int argc, char **argv) {
 
 	pc->onStateChange(
 	    [](PeerConnection::State state) { cout << "[ State: " << state << " ]" << endl; });
-
 	pc->onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "[ Gathering State: " << state << " ]" << endl;
 	});
 
-	auto dc = pc->createDataChannel("test");
-	dc->onOpen([&]() {
-		if (!dc)
-			return;
-		cout << "[ DataChannel open: " << dc->label() << " ]" << endl;
-	});
-
-	dc->onMessage([](const variant<binary, string> &message) {
-		if (holds_alternative<string>(message)) {
-			cout << "[ Received: " << get<string>(message) << " ]" << endl;
-		}
+	shared_ptr<DataChannel> dc = nullptr;
+	pc->onDataChannel([&dc](shared_ptr<DataChannel> _dc) {
+		cout << "[ Got a DataChannel with label: " << _dc->label() << " ]" << endl;
+		dc = _dc;
+		dc->onMessage([](const variant<binary, string> &message) {
+			if (holds_alternative<string>(message)) {
+				cout << "[ Received: " << get<string>(message) << " ]" << endl;
+			}
+		});
 	});
 
 	bool exit = false;
@@ -100,7 +97,8 @@ int main(int argc, char **argv) {
 				getline(cin, sdp);
 
 			std::replace(sdp.begin(), sdp.end(), static_cast<char>(94), '\n');
-			descPtr = std::make_unique<Description>(sdp);
+			descPtr = std::make_unique<Description>(sdp, Description::Type::Offer,
+			                                        Description::Role::Passive);
 			pc->setRemoteDescription(*descPtr);
 			break;
 
@@ -117,7 +115,7 @@ int main(int argc, char **argv) {
 
 		case 3:
 			// Send Message
-			if (!dc->isOpen()) {
+			if (!dc || !dc->isOpen()) {
 				cout << "** Channel is not Open ** ";
 				break;
 			}
