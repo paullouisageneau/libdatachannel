@@ -356,7 +356,7 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 		PLOG_VERBOSE << "SCTP sent size=" << message->size();
 		return true;
 	} else if (errno == EWOULDBLOCK && errno == EAGAIN) {
-		PLOG_VERBOSE << "SCTP sending not possible ";
+		PLOG_VERBOSE << "SCTP sending not possible";
 		return false;
 	} else {
 		PLOG_ERROR << "SCTP sending failed, errno=" << errno;
