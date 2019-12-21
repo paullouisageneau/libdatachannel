@@ -202,7 +202,7 @@ void SctpTransport::connect() {
 void SctpTransport::shutdown() {
 	PLOG_DEBUG << "SCTP shutdown";
 
-	if (usrsctp_shutdown(mSock, SHUT_WR))
+	if (usrsctp_shutdown(mSock, SHUT_RDWR))
 		PLOG_WARNING << "SCTP shutdown failed, errno=" << errno;
 
 	PLOG_INFO << "SCTP disconnected";
@@ -263,9 +263,6 @@ void SctpTransport::incoming(message_ptr message) {
 	if (message) {
 		usrsctp_conninput(this, message->data(), message->size(), 0);
 	} else {
-		if (usrsctp_shutdown(mSock, SHUT_RD))
-			PLOG_WARNING << "SCTP shutdown reading failed, errno=" << errno;
-
 		PLOG_INFO << "SCTP disconnected";
 		changeState(State::Disconnected);
 		recv(nullptr);
