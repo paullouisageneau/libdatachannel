@@ -13,9 +13,18 @@ lib libdatachannel
 	<link>static
 	: # usage requirements
 	<include>./include
+	<library>/libdatachannel//plog
 	<cxxflags>-pthread
 	<linkflags>"`pkg-config --libs openssl glib-2.0 gobject-2.0 nice`"
 	;
+
+alias plog
+    : # no sources
+    : # no build requirements
+    : # no default build
+    : # usage requirements
+    <include>./deps/plog/include
+    ;
 
 alias usrsctp
     : # no sources

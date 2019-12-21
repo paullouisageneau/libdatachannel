@@ -508,8 +508,9 @@ void DtlsTransport::InfoCallback(const SSL *ssl, int where, int ret) {
 	    static_cast<DtlsTransport *>(SSL_get_ex_data(ssl, DtlsTransport::TransportExIndex));
 
 	if (where & SSL_CB_ALERT) {
-		if (ret != 256) // Close Notify
+		if (ret != 256) { // Close Notify
 			PLOG_ERROR << "DTLS alert: " << SSL_alert_desc_string_long(ret);
+		}
 		t->mIncomingQueue.stop(); // Close the connection
 	}
 }

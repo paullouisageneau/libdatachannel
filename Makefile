@@ -9,6 +9,7 @@ CXXFLAGS=-std=c++17
 LDFLAGS=-pthread
 LIBS=glib-2.0 gobject-2.0 nice
 USRSCTP_DIR=deps/usrsctp
+PLOG_DIR=deps/plog
 
 USE_GNUTLS ?= 0
 ifneq ($(USE_GNUTLS), 0)
@@ -20,7 +21,7 @@ else
 endif
 
 LDLIBS= $(shell pkg-config --libs $(LIBS))
-INCLUDES=-Iinclude/rtc -I$(USRSCTP_DIR)/usrsctplib $(shell pkg-config --cflags $(LIBS))
+INCLUDES=-Iinclude/rtc -I$(PLOG_DIR)/include -I$(USRSCTP_DIR)/usrsctplib $(shell pkg-config --cflags $(LIBS))
 
 SRCS=$(shell printf "%s " src/*.cpp)
 OBJS=$(subst .cpp,.o,$(SRCS))
@@ -31,7 +32,7 @@ src/%.o: src/%.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -o $@ -c $<
 
 test/%.o: test/%.cpp
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Iinclude -MMD -MP -o $@ -c $<
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Iinclude -I$(PLOG_DIR)/include -MMD -MP -o $@ -c $<
 
 -include $(subst .cpp,.d,$(SRCS))
 
