@@ -288,6 +288,7 @@ void IceTransport::changeState(State state) {
 
 void IceTransport::processTimeout() {
 	PLOG_WARNING << "ICE timeout";
+	mTimeoutId = 0;
 	changeState(State::Failed);
 }
 
