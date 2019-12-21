@@ -125,10 +125,6 @@ int main(int argc, char **argv) {
 			while (message.length() == 0)
 				getline(cin, message);
 			dc->send(message);
-			if (dc)
-				dc->close();
-			if (pc)
-				pc->close();
 			break;
 
 		default:
