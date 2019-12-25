@@ -18,7 +18,6 @@
 
 #include "configuration.hpp"
 
-#include <iostream>
 #include <regex>
 
 namespace rtc {
