@@ -30,7 +30,7 @@ struct IceServer {
 	enum class Type { Stun, Turn };
 	enum class RelayType { TurnUdp, TurnTcp, TurnTls };
 
-	IceServer(const string &host_);
+	IceServer(const string &url);
 
 	// STUN
 	IceServer(string hostname_, uint16_t port_);
@@ -38,9 +38,9 @@ struct IceServer {
 
 	// TURN
 	IceServer(string hostname_, uint16_t port, string username_, string password_,
-	          RelayType relayType_);
+	          RelayType relayType_ = RelayType::TurnUdp);
 	IceServer(string hostname_, string service_, string username_, string password_,
-	          RelayType relayType_);
+	          RelayType relayType_ = RelayType::TurnUdp);
 
 	string hostname;
 	string service;

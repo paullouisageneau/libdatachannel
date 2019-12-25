@@ -18,27 +18,55 @@
 
 #include "configuration.hpp"
 
+#include <iostream>
+#include <regex>
+
 namespace rtc {
 
-IceServer::IceServer(const string &host) : type(Type::Stun) {
-	if (size_t serviceSep = host.rfind(':'); serviceSep != string::npos) {
-		if (size_t protocolSep = host.rfind(':', serviceSep - 1); protocolSep != string::npos) {
-			string protocol = host.substr(0, protocolSep);
-			if (protocol == "stun" || protocol == "STUN")
-				type = Type::Stun;
-			else if (protocol == "turn" || protocol == "TURN")
-				type = Type::Turn;
-			else
-				throw std::invalid_argument("Unknown ICE server protocol: " + protocol);
-			hostname = host.substr(protocolSep + 1, serviceSep - (protocolSep + 1));
-		} else {
-			hostname = host.substr(0, serviceSep);
-		}
-		service = host.substr(serviceSep + 1);
-	} else {
-		hostname = host;
-		service = "3478"; // STUN UDP port
+IceServer::IceServer(const string &url) {
+	// Modified regex from RFC 3986, see https://tools.ietf.org/html/rfc3986#appendix-B
+	static const char *rs =
+	    R"(^(([^:.@/?#]+):)?(/{0,2}((([^:@]*)(:([^@]*))?)@)?(([^:/?#]*)(:([^/?#]*))?))?([^?#]*)(\?([^#]*))?(#(.*))?)";
+	static const std::regex r(rs, std::regex::extended);
+
+	std::smatch m;
+	if (!std::regex_match(url, m, r) || m[10].length() == 0)
+		throw std::invalid_argument("Invalid ICE server URL: " + url);
+
+	std::vector<std::optional<string>> opt(m.size());
+	std::transform(m.begin(), m.end(), opt.begin(), [](const auto &sm) {
+		return sm.length() > 0 ? std::make_optional(string(sm)) : nullopt;
+	});
+
+	string scheme = opt[2].value_or("stun");
+	if (scheme == "stun" || scheme == "STUN")
+		type = Type::Stun;
+	else if (scheme == "turn" || scheme == "TURN")
+		type = Type::Turn;
+	else if (scheme == "turns" || scheme == "TURNS")
+		type = Type::Turn;
+	else
+		throw std::invalid_argument("Unknown ICE server protocol: " + scheme);
+
+	relayType = RelayType::TurnUdp;
+	if (auto &query = opt[15]) {
+		if (query->find("transport=udp") != string::npos)
+			relayType = RelayType::TurnUdp;
+		if (query->find("transport=tcp") != string::npos)
+			relayType = RelayType::TurnTcp;
+		if (query->find("transport=tls") != string::npos)
+			relayType = RelayType::TurnTls;
 	}
+
+	username = opt[6].value_or("");
+	password = opt[8].value_or("");
+	hostname = opt[10].value();
+	service = opt[12].value_or(relayType == RelayType::TurnTls ? "5349" : "3478");
+
+	while (!hostname.empty() && hostname.front() == '[')
+		hostname.erase(hostname.begin());
+	while (!hostname.empty() && hostname.back() == ']')
+		hostname.pop_back();
 }
 
 IceServer::IceServer(string hostname_, uint16_t port_)
