@@ -30,6 +30,7 @@ struct IceServer {
 	enum class Type { Stun, Turn };
 	enum class RelayType { TurnUdp, TurnTcp, TurnTls };
 
+	// Any type
 	IceServer(const string &url);
 
 	// STUN
