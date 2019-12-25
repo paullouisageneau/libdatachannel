@@ -127,7 +127,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 		if (server.type != IceServer::Type::Turn)
 			continue;
 		if (server.service.empty())
-			server.service = "3478"; // TURN port
+			server.service = server.relayType == IceServer::RelayType::TurnTls ? "5349" : "3478";
 
 		struct addrinfo hints = {};
 		hints.ai_family = AF_UNSPEC;
