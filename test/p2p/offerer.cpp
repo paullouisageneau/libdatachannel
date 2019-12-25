@@ -29,13 +29,14 @@ template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 int main(int argc, char **argv) {
 	// InitLogger(LogLevel::Debug);
+
 	Configuration config;
 	// config.iceServers.emplace_back("stun.l.google.com:19302");
 	// config.enableIceTcp = true;
 
-	// Add TURN Server Example
+	// TURN server example
 	// IceServer turnServer("TURN_SERVER_URL", "PORT_NO", "USERNAME", "PASSWORD",
-	//							IceServer::RelayType::TurnTls);
+	//							IceServer::RelayType::TurnUdp);
 	// config.iceServers.push_back(turnServer);
 
 	auto pc = std::make_shared<PeerConnection>(config);

@@ -28,15 +28,20 @@ namespace rtc {
 
 struct IceServer {
 	enum class Type { Stun, Turn };
-
-	// Don' Change It! It should be same order as enum NiceRelayType
 	enum class RelayType { TurnUdp, TurnTcp, TurnTls };
 
-	IceServer(const string &host_);
-	IceServer(const string &hostname_, uint16_t port_);
-	IceServer(const string &hostname_, const string &service_);
-	IceServer(const string &hostname_, const string &service_, string username_, string password_,
-	          RelayType relayType_);
+	// Any type
+	IceServer(const string &url);
+
+	// STUN
+	IceServer(string hostname_, uint16_t port_);
+	IceServer(string hostname_, string service_);
+
+	// TURN
+	IceServer(string hostname_, uint16_t port, string username_, string password_,
+	          RelayType relayType_ = RelayType::TurnUdp);
+	IceServer(string hostname_, string service_, string username_, string password_,
+	          RelayType relayType_ = RelayType::TurnUdp);
 
 	string hostname;
 	string service;
