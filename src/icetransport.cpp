@@ -65,6 +65,10 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 
 	mMainLoopThread = std::thread(g_main_loop_run, mMainLoop.get());
 
+	mStreamId = nice_agent_add_stream(mNiceAgent.get(), 1);
+	if (!mStreamId)
+		throw std::runtime_error("Failed to add a stream");
+
 	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode", TRUE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-udp", TRUE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-tcp", config.enableIceTcp ? TRUE : FALSE,
@@ -176,10 +180,6 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	                 G_CALLBACK(CandidateCallback), this);
 	g_signal_connect(G_OBJECT(mNiceAgent.get()), "candidate-gathering-done",
 	                 G_CALLBACK(GatheringDoneCallback), this);
-
-	mStreamId = nice_agent_add_stream(mNiceAgent.get(), 1);
-	if (!mStreamId)
-		throw std::runtime_error("Failed to add a stream");
 
 	nice_agent_set_stream_name(mNiceAgent.get(), mStreamId, "application");
 	nice_agent_set_port_range(mNiceAgent.get(), mStreamId, 1, config.portRangeBegin,
