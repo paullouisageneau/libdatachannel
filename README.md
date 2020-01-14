@@ -8,7 +8,7 @@ Licensed under LGPLv2, see [LICENSE](https://github.com/paullouisageneau/libdata
 
 ## Compatibility
 
-The library aims at fully implementing SCTP DataChannels ([draft-ietf-rtcweb-data-channel-13](https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13)) over DTLS/UDP ([RFC7350](https://tools.ietf.org/html/rfc7350) and [RFC8261](https://tools.ietf.org/html/rfc8261)) and has been tested to be compatible with Firefox and Chromium. It supports IPv6 and Multicast DNS candidates resolution ([draft-ietf-rtcweb-mdns-ice-candidates-03](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-03)) provided the operating system also supports it.
+The library aims at fully implementing WebRTC SCTP DataChannels ([draft-ietf-rtcweb-data-channel-13](https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13)) over DTLS/UDP ([RFC7350](https://tools.ietf.org/html/rfc7350) and [RFC8261](https://tools.ietf.org/html/rfc8261)) with ICE ([RFC8445](https://tools.ietf.org/html/rfc8445)). It has been tested to be compatible with Firefox and Chromium. It supports IPv6 and Multicast DNS candidates resolution ([draft-ietf-rtcweb-mdns-ice-candidates-03](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-03)) provided the operating system also supports it.
 
 ## Dependencies
 

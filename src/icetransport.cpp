@@ -56,6 +56,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	if (!mMainLoop)
 		std::runtime_error("Failed to create the main loop");
 
+	// RFC 5245 was obsoleted by RFC 8445 but this should be OK.
 	mNiceAgent = decltype(mNiceAgent)(
 	    nice_agent_new(g_main_loop_get_context(mMainLoop.get()), NICE_COMPATIBILITY_RFC5245),
 	    g_object_unref);
@@ -69,13 +70,19 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	if (!mStreamId)
 		throw std::runtime_error("Failed to add a stream");
 
-	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode", TRUE, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode", TRUE, nullptr); // decided later
 	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-udp", TRUE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "ice-tcp", config.enableIceTcp ? TRUE : FALSE,
 	             nullptr);
-	g_object_set(G_OBJECT(mNiceAgent.get()), "stun-initial-timeout", 200, nullptr);
+
+	// RFC 8445: Agents MUST NOT use an RTO value smaller than 500 ms.
+	g_object_set(G_OBJECT(mNiceAgent.get()), "stun-initial-timeout", 500, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "stun-max-retransmissions", 3, nullptr);
-	g_object_set(G_OBJECT(mNiceAgent.get()), "stun-pacing-timer", 20, nullptr);
+
+	// RFC 8445: ICE agents SHOULD use a default Ta value, 50 ms, but MAY use another value based on
+	// the characteristics of the associated data.
+	g_object_set(G_OBJECT(mNiceAgent.get()), "stun-pacing-timer", 25, nullptr);
+
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp", FALSE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp-timeout", 200, nullptr);
 
@@ -208,8 +215,8 @@ Description::Role IceTransport::role() const { return mRole; }
 IceTransport::State IceTransport::state() const { return mState; }
 
 Description IceTransport::getLocalDescription(Description::Type type) const {
-	// RFC 5245: The agent that generated the offer which started the ICE processing MUST take the
-	// controlling role, and the other MUST take the controlled role.
+	// RFC 8445: The initiating agent that started the ICE processing MUST take the controlling
+	// role, and the other MUST take the controlled role.
 	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode",
 	             type == Description::Type::Offer ? TRUE : FALSE, nullptr);
 

@@ -54,7 +54,7 @@ bool Candidate::resolve(ResolveMode mode) {
 	if (mIsResolved)
 		return true;
 
-	// See RFC 5245 for format
+	// See RFC 8445 for format
 	std::stringstream ss(mCandidate);
 	int component{0}, priority{0};
 	string foundation, transport, node, service, typ_, type;
