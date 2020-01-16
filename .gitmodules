@@ -4,3 +4,6 @@
 [submodule "deps/plog"]
 	path = deps/plog
 	url = https://github.com/SergiusTheBest/plog
+[submodule "deps/libjuice"]
+	path = deps/libjuice
+	url = https://github.com/paullouisageneau/libjuice
