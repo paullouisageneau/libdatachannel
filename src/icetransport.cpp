@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2019-2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -28,23 +28,238 @@
 #include <random>
 #include <sstream>
 
-namespace rtc {
-
 using namespace std::chrono_literals;
 
 using std::shared_ptr;
 using std::weak_ptr;
 
+#if USE_JUICE
+
+namespace rtc {
+
 IceTransport::IceTransport(const Configuration &config, Description::Role role,
                            candidate_callback candidateCallback, state_callback stateChangeCallback,
                            gathering_state_callback gatheringStateChangeCallback)
     : mRole(role), mMid("0"), mState(State::Disconnected), mGatheringState(GatheringState::New),
-      mNiceAgent(nullptr, nullptr), mMainLoop(nullptr, nullptr),
       mCandidateCallback(std::move(candidateCallback)),
       mStateChangeCallback(std::move(stateChangeCallback)),
-      mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)) {
+      mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)),
+      mAgent(nullptr, nullptr) {
 
-	PLOG_DEBUG << "Initializing ICE transport";
+	PLOG_DEBUG << "Initializing ICE transport (libjuice)";
+	if (config.enableIceTcp) {
+		PLOG_WARNING << "ICE-TCP is not supported with libjuice";
+	}
+	juice_set_log_handler(IceTransport::LogCallback);
+
+	juice_config_t jconfig = {};
+	jconfig.cb_state_changed = IceTransport::StateChangeCallback;
+	jconfig.cb_candidate = IceTransport::CandidateCallback;
+	jconfig.cb_gathering_done = IceTransport::GatheringDoneCallback;
+	jconfig.cb_recv = IceTransport::RecvCallback;
+	jconfig.user_ptr = this;
+
+	// Randomize servers order
+	std::vector<IceServer> servers = config.iceServers;
+	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+	std::shuffle(servers.begin(), servers.end(), std::default_random_engine(seed));
+
+	// Pick a STUN server
+	for (auto &server : servers) {
+		if (!server.hostname.empty() && server.type == IceServer::Type::Stun) {
+			if (server.service.empty())
+				server.service = "3478"; // STUN UDP port
+			jconfig.stun_server_host = server.hostname.c_str();
+			jconfig.stun_server_port = std::stoul(server.service);
+		}
+	}
+
+	// TURN support is not implemented yet
+
+	// Create agent
+	mAgent = decltype(mAgent)(juice_create(&jconfig), juice_destroy);
+	if (!mAgent)
+		throw std::runtime_error("Failed to create the ICE agent");
+}
+
+IceTransport::~IceTransport() { stop(); }
+
+void IceTransport::stop() {
+	// Nothing to do
+}
+
+Description::Role IceTransport::role() const { return mRole; }
+
+IceTransport::State IceTransport::state() const { return mState; }
+
+Description IceTransport::getLocalDescription(Description::Type type) const {
+	char sdp[JUICE_MAX_SDP_STRING_LEN];
+	if (juice_get_local_description(mAgent.get(), sdp, JUICE_MAX_SDP_STRING_LEN) < 0)
+		throw std::runtime_error("Failed to generate local SDP");
+
+	return Description(string(sdp), type, mRole);
+}
+
+void IceTransport::setRemoteDescription(const Description &description) {
+	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
+	                                                        : Description::Role::Active;
+	mMid = description.mid();
+	// TODO
+	// mTrickleTimeout = description.trickleEnabled() ? 30s : 0s;
+
+	if (juice_set_remote_description(mAgent.get(), string(description).c_str()) < 0)
+		throw std::runtime_error("Failed to parse remote SDP");
+}
+
+bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
+	// Don't try to pass unresolved candidates for more safety
+	if (!candidate.isResolved())
+		return false;
+
+	return juice_add_remote_candidate(mAgent.get(), string(candidate).c_str()) >= 0;
+}
+
+void IceTransport::gatherLocalCandidates() {
+	// Change state now as candidates calls can be synchronous
+	changeGatheringState(GatheringState::InProgress);
+
+	if (juice_gather_candidates(mAgent.get()) < 0) {
+		throw std::runtime_error("Failed to gather local ICE candidates");
+	}
+}
+
+std::optional<string> IceTransport::getLocalAddress() const {
+	char str[JUICE_MAX_ADDRESS_STRING_LEN];
+	if (juice_get_selected_addresses(mAgent.get(), str, JUICE_MAX_ADDRESS_STRING_LEN, NULL, 0)) {
+		return std::make_optional(string(str));
+	}
+	return nullopt;
+}
+std::optional<string> IceTransport::getRemoteAddress() const {
+	char str[JUICE_MAX_ADDRESS_STRING_LEN];
+	if (juice_get_selected_addresses(mAgent.get(), NULL, 0, str, JUICE_MAX_ADDRESS_STRING_LEN)) {
+		return std::make_optional(string(str));
+	}
+	return nullopt;
+}
+
+bool IceTransport::send(message_ptr message) {
+	if (!message || (mState != State::Connected && mState != State::Completed))
+		return false;
+
+	PLOG_VERBOSE << "Send size=" << message->size();
+	return outgoing(message);
+}
+
+void IceTransport::incoming(message_ptr message) { recv(message); }
+
+void IceTransport::incoming(const byte *data, int size) {
+	incoming(make_message(data, data + size));
+}
+
+bool IceTransport::outgoing(message_ptr message) {
+	return juice_send(mAgent.get(), reinterpret_cast<const char *>(message->data()),
+	                  message->size()) >= 0;
+}
+
+void IceTransport::changeState(State state) {
+	if (mState.exchange(state) != state)
+		mStateChangeCallback(mState);
+}
+
+void IceTransport::changeGatheringState(GatheringState state) {
+	if (mGatheringState.exchange(state) != state)
+		mGatheringStateChangeCallback(mGatheringState);
+}
+
+void IceTransport::processStateChange(unsigned int state) {
+	changeState(static_cast<State>(state));
+}
+
+void IceTransport::processCandidate(const string &candidate) {
+	mCandidateCallback(Candidate(candidate, mMid));
+}
+
+void IceTransport::processGatheringDone() { changeGatheringState(GatheringState::Complete); }
+
+void IceTransport::StateChangeCallback(juice_agent_t *agent, juice_state_t state, void *user_ptr) {
+	auto iceTransport = static_cast<rtc::IceTransport *>(user_ptr);
+	try {
+		iceTransport->processStateChange(static_cast<unsigned int>(state));
+	} catch (const std::exception &e) {
+		PLOG_WARNING << e.what();
+	}
+}
+
+void IceTransport::CandidateCallback(juice_agent_t *agent, const char *sdp, void *user_ptr) {
+	auto iceTransport = static_cast<rtc::IceTransport *>(user_ptr);
+	try {
+		iceTransport->processCandidate(sdp);
+	} catch (const std::exception &e) {
+		PLOG_WARNING << e.what();
+	}
+}
+
+void IceTransport::GatheringDoneCallback(juice_agent_t *agent, void *user_ptr) {
+	auto iceTransport = static_cast<rtc::IceTransport *>(user_ptr);
+	try {
+		iceTransport->processGatheringDone();
+	} catch (const std::exception &e) {
+		PLOG_WARNING << e.what();
+	}
+}
+
+void IceTransport::RecvCallback(juice_agent_t *agent, const char *data, size_t size,
+                                void *user_ptr) {
+	auto iceTransport = static_cast<rtc::IceTransport *>(user_ptr);
+	try {
+		iceTransport->incoming(reinterpret_cast<const byte *>(data), size);
+	} catch (const std::exception &e) {
+		PLOG_WARNING << e.what();
+	}
+}
+
+void IceTransport::LogCallback(juice_log_level_t level, const char *message) {
+	plog::Severity severity;
+	switch (level) {
+	case JUICE_LOG_LEVEL_FATAL:
+		severity = plog::fatal;
+		break;
+	case JUICE_LOG_LEVEL_ERROR:
+		severity = plog::error;
+		break;
+	case JUICE_LOG_LEVEL_WARN:
+		severity = plog::warning;
+		break;
+	case JUICE_LOG_LEVEL_INFO:
+		severity = plog::info;
+		break;
+	case JUICE_LOG_LEVEL_DEBUG:
+		severity = plog::debug;
+		break;
+	default:
+		severity = plog::verbose;
+		break;
+	}
+	PLOG(severity) << "juice: " << message;
+}
+
+} // namespace rtc
+
+#else // USE_JUICE == 0
+
+namespace rtc {
+
+IceTransport::IceTransport(const Configuration &config, Description::Role role,
+                           candidate_callback candidateCallback, state_callback stateChangeCallback,
+                           gathering_state_callback gatheringStateChangeCallback)
+    : mRole(role), mMid("0"), mState(State::Disconnected), mGatheringState(GatheringState::New),
+      mCandidateCallback(std::move(candidateCallback)),
+      mStateChangeCallback(std::move(stateChangeCallback)),
+      mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)),
+      mNiceAgent(nullptr, nullptr), mMainLoop(nullptr, nullptr) {
+
+	PLOG_DEBUG << "Initializing ICE transport (libnice)";
 
 	g_log_set_handler("libnice", G_LOG_LEVEL_MASK, LogCallback, this);
 
@@ -305,15 +520,15 @@ void IceTransport::changeState(State state) {
 		mStateChangeCallback(mState);
 }
 
+void IceTransport::changeGatheringState(GatheringState state) {
+	if (mGatheringState.exchange(state) != state)
+		mGatheringStateChangeCallback(mGatheringState);
+}
+
 void IceTransport::processTimeout() {
 	PLOG_WARNING << "ICE timeout";
 	mTimeoutId = 0;
 	changeState(State::Failed);
-}
-
-void IceTransport::changeGatheringState(GatheringState state) {
-	mGatheringState = state;
-	mGatheringStateChangeCallback(mGatheringState);
 }
 
 void IceTransport::processCandidate(const string &candidate) {
@@ -322,7 +537,7 @@ void IceTransport::processCandidate(const string &candidate) {
 
 void IceTransport::processGatheringDone() { changeGatheringState(GatheringState::Complete); }
 
-void IceTransport::processStateChange(uint32_t state) {
+void IceTransport::processStateChange(unsigned int state) {
 	if (state == NICE_COMPONENT_STATE_FAILED && mTrickleTimeout.count() > 0) {
 		if (mTimeoutId)
 			g_source_remove(mTimeoutId);
@@ -415,7 +630,9 @@ void IceTransport::LogCallback(const gchar *logDomain, GLogLevelFlags logLevel,
 	else
 		severity = plog::verbose; // libnice debug as verbose
 
-	PLOG(severity) << message;
+	PLOG(severity) << "nice: " << message;
 }
 
 } // namespace rtc
+
+#endif

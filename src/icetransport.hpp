@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2019-2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -27,7 +27,11 @@
 #include "transport.hpp"
 
 extern "C" {
+#if USE_JUICE
+#include <juice/juice.h>
+#else
 #include <nice/agent.h>
+#endif
 }
 
 #include <atomic>
@@ -38,14 +42,23 @@ namespace rtc {
 
 class IceTransport : public Transport {
 public:
-	enum class State : uint32_t {
+#if USE_JUICE
+	enum class State : unsigned int{
+	    Disconnected = JUICE_STATE_DISCONNECTED,
+	    Connecting = JUICE_STATE_CONNECTING,
+	    Connected = JUICE_STATE_CONNECTED,
+	    Completed = JUICE_STATE_COMPLETED,
+	    Failed = JUICE_STATE_FAILED,
+	};
+#else
+	enum class State : unsigned int {
 		Disconnected = NICE_COMPONENT_STATE_DISCONNECTED,
 		Connecting = NICE_COMPONENT_STATE_CONNECTING,
 		Connected = NICE_COMPONENT_STATE_CONNECTED,
 		Completed = NICE_COMPONENT_STATE_READY,
-		Failed = NICE_COMPONENT_STATE_FAILED
+		Failed = NICE_COMPONENT_STATE_FAILED,
 	};
-
+#endif
 	enum class GatheringState { New = 0, InProgress = 1, Complete = 2 };
 
 	using candidate_callback = std::function<void(const Candidate &candidate)>;
@@ -79,9 +92,9 @@ private:
 	void changeState(State state);
 	void changeGatheringState(GatheringState state);
 
+	void processStateChange(unsigned int state);
 	void processCandidate(const string &candidate);
 	void processGatheringDone();
-	void processStateChange(uint32_t state);
 	void processTimeout();
 
 	Description::Role mRole;
@@ -90,27 +103,37 @@ private:
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;
 
+	candidate_callback mCandidateCallback;
+	state_callback mStateChangeCallback;
+	gathering_state_callback mGatheringStateChangeCallback;
+
+#if USE_JUICE
+	std::unique_ptr<juice_agent_t, void (*)(juice_agent_t *)> mAgent;
+
+	static void StateChangeCallback(juice_agent_t *agent, juice_state_t state, void *user_ptr);
+	static void CandidateCallback(juice_agent_t *agent, const char *sdp, void *user_ptr);
+	static void GatheringDoneCallback(juice_agent_t *agent, void *user_ptr);
+	static void RecvCallback(juice_agent_t *agent, const char *data, size_t size, void *user_ptr);
+	static void LogCallback(juice_log_level_t level, const char *message);
+#else
 	uint32_t mStreamId = 0;
 	std::unique_ptr<NiceAgent, void (*)(gpointer)> mNiceAgent;
 	std::unique_ptr<GMainLoop, void (*)(GMainLoop *)> mMainLoop;
 	std::thread mMainLoopThread;
 	guint mTimeoutId = 0;
 
-	candidate_callback mCandidateCallback;
-	state_callback mStateChangeCallback;
-	gathering_state_callback mGatheringStateChangeCallback;
-
 	static string AddressToString(const NiceAddress &addr);
 
 	static void CandidateCallback(NiceAgent *agent, NiceCandidate *candidate, gpointer userData);
 	static void GatheringDoneCallback(NiceAgent *agent, guint streamId, gpointer userData);
 	static void StateChangeCallback(NiceAgent *agent, guint streamId, guint componentId,
-	                                 guint state, gpointer userData);
+	                                guint state, gpointer userData);
 	static void RecvCallback(NiceAgent *agent, guint stream_id, guint component_id, guint len,
 	                         gchar *buf, gpointer userData);
 	static gboolean TimeoutCallback(gpointer userData);
 	static void LogCallback(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message,
 	                        gpointer user_data);
+#endif
 };
 
 } // namespace rtc

@@ -270,7 +270,7 @@ int DtlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) 
 
 } // namespace rtc
 
-#else
+#else // USE_GNUTLS==0
 
 #include <openssl/bio.h>
 #include <openssl/ec.h>
