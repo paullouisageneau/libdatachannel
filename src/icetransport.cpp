@@ -70,6 +70,8 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 		if (!server.hostname.empty() && server.type == IceServer::Type::Stun) {
 			if (server.service.empty())
 				server.service = "3478"; // STUN UDP port
+			PLOG_DEBUG << "Using STUN server \"" << server.hostname << ":" << server.service
+			           << "\"";
 			jconfig.stun_server_host = server.hostname.c_str();
 			jconfig.stun_server_port = std::stoul(server.service);
 		}
@@ -333,6 +335,8 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
 				                servbuffer, MAX_NUMERICNODE_LEN,
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+					PLOG_DEBUG << "Using STUN server \"" << server.hostname << ":" << server.service
+					           << "\"";
 					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server", nodebuffer, nullptr);
 					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server-port",
 					             std::stoul(servbuffer), nullptr);
