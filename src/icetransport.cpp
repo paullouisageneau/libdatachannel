@@ -51,6 +51,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 		PLOG_WARNING << "ICE-TCP is not supported with libjuice";
 	}
 	juice_set_log_handler(IceTransport::LogCallback);
+	juice_set_log_level(JUICE_LOG_LEVEL_VERBOSE);
 
 	juice_config_t jconfig = {};
 	jconfig.cb_state_changed = IceTransport::StateChangeCallback;
