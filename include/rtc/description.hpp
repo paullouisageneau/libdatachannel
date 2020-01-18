@@ -57,6 +57,8 @@ public:
 
 	operator string() const;
 
+	string generateSdp(const string &eol) const;
+
 private:
 	Type mType;
 	Role mRole;

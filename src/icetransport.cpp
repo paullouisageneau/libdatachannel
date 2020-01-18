@@ -446,7 +446,8 @@ void IceTransport::setRemoteDescription(const Description &description) {
 	mMid = description.mid();
 	mTrickleTimeout = description.trickleEnabled() ? 30s : 0s;
 
-	if (nice_agent_parse_remote_sdp(mNiceAgent.get(), string(description).c_str()) < 0)
+	// Warning: libnice expects "\n" as end of line
+	if (nice_agent_parse_remote_sdp(mNiceAgent.get(), description.generateSdp("\n").c_str()) < 0)
 		throw std::runtime_error("Failed to parse remote SDP");
 }
 
