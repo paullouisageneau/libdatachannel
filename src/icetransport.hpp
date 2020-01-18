@@ -26,13 +26,11 @@
 #include "peerconnection.hpp"
 #include "transport.hpp"
 
-extern "C" {
 #if USE_JUICE
 #include <juice/juice.h>
 #else
 #include <nice/agent.h>
 #endif
-}
 
 #include <atomic>
 #include <chrono>
