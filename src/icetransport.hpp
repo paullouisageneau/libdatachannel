@@ -107,6 +107,8 @@ private:
 
 #if USE_JUICE
 	std::unique_ptr<juice_agent_t, void (*)(juice_agent_t *)> mAgent;
+	string mStunHostname;
+	string mStunService;
 
 	static void StateChangeCallback(juice_agent_t *agent, juice_state_t state, void *user_ptr);
 	static void CandidateCallback(juice_agent_t *agent, const char *sdp, void *user_ptr);

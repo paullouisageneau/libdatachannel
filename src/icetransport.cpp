@@ -72,8 +72,10 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 				server.service = "3478"; // STUN UDP port
 			PLOG_DEBUG << "Using STUN server \"" << server.hostname << ":" << server.service
 			           << "\"";
-			jconfig.stun_server_host = server.hostname.c_str();
-			jconfig.stun_server_port = std::stoul(server.service);
+			mStunHostname = server.hostname;
+			mStunService = server.service;
+			jconfig.stun_server_host = mStunHostname.c_str();
+			jconfig.stun_server_port = std::stoul(mStunService);
 		}
 	}
 
