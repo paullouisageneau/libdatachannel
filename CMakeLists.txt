@@ -136,26 +136,27 @@ add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
 add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
 
 # Main Test
-add_executable(libdatachannel-tests ${TESTS_SOURCES})
-set_target_properties(libdatachannel-tests PROPERTIES
+add_executable(datachannel-tests ${TESTS_SOURCES})
+set_target_properties(datachannel-tests PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
-set_target_properties(libdatachannel-tests PROPERTIES OUTPUT_NAME tests)
-target_link_libraries(libdatachannel-tests datachannel)
+set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
+target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(datachannel-tests datachannel)
 
 # P2P Test: offerer
-add_executable(libdatachannel-offerer ${TESTS_OFFERER_SOURCES})
-set_target_properties(libdatachannel-offerer PROPERTIES
+add_executable(datachannel-offerer ${TESTS_OFFERER_SOURCES})
+set_target_properties(datachannel-offerer PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
-set_target_properties(libdatachannel-offerer PROPERTIES OUTPUT_NAME offerer)
-target_link_libraries(libdatachannel-offerer datachannel)
+set_target_properties(datachannel-offerer PROPERTIES OUTPUT_NAME offerer)
+target_link_libraries(datachannel-offerer datachannel)
 
 # P2P Test: answerer
-add_executable(libdatachannel-answerer ${TESTS_ANSWERER_SOURCES})
-set_target_properties(libdatachannel-answerer PROPERTIES
+add_executable(datachannel-answerer ${TESTS_ANSWERER_SOURCES})
+set_target_properties(datachannel-answerer PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
-set_target_properties(libdatachannel-answerer PROPERTIES OUTPUT_NAME datachannel)
-target_link_libraries(libdatachannel-answerer datachannel)
+set_target_properties(datachannel-answerer PROPERTIES OUTPUT_NAME datachannel)
+target_link_libraries(datachannel-answerer datachannel)
 

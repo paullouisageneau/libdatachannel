@@ -48,7 +48,7 @@ src/%.o: src/%.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -o $@ -c $<
 
 test/%.o: test/%.cpp
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Iinclude -I$(PLOG_DIR)/include -MMD -MP -o $@ -c $<
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -o $@ -c $<
 
 -include $(subst .cpp,.d,$(SRCS))
 
