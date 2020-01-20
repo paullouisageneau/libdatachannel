@@ -113,6 +113,15 @@ int main(int argc, char **argv) {
 
 	this_thread::sleep_for(3s);
 
+	if (auto addr = pc1->localAddress())
+		cout << "Local address 1:  " << *addr << endl;
+	if (auto addr = pc1->remoteAddress())
+		cout << "Remote address 1: " << *addr << endl;
+	if (auto addr = pc2->localAddress())
+		cout << "Local address 2:  " << *addr << endl;
+	if (auto addr = pc2->remoteAddress())
+		cout << "Remote address 2: " << *addr << endl;
+
 	if (dc1->isOpen() && dc2->isOpen()) {
 		pc1->close();
 		pc2->close();

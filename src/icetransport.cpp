@@ -135,14 +135,16 @@ void IceTransport::gatherLocalCandidates() {
 
 std::optional<string> IceTransport::getLocalAddress() const {
 	char str[JUICE_MAX_ADDRESS_STRING_LEN];
-	if (juice_get_selected_addresses(mAgent.get(), str, JUICE_MAX_ADDRESS_STRING_LEN, NULL, 0)) {
+	if (juice_get_selected_addresses(mAgent.get(), str, JUICE_MAX_ADDRESS_STRING_LEN, NULL, 0) ==
+	    0) {
 		return std::make_optional(string(str));
 	}
 	return nullopt;
 }
 std::optional<string> IceTransport::getRemoteAddress() const {
 	char str[JUICE_MAX_ADDRESS_STRING_LEN];
-	if (juice_get_selected_addresses(mAgent.get(), NULL, 0, str, JUICE_MAX_ADDRESS_STRING_LEN)) {
+	if (juice_get_selected_addresses(mAgent.get(), NULL, 0, str, JUICE_MAX_ADDRESS_STRING_LEN) ==
+	    0) {
 		return std::make_optional(string(str));
 	}
 	return nullopt;
@@ -495,6 +497,7 @@ std::optional<string> IceTransport::getLocalAddress() const {
 	}
 	return nullopt;
 }
+
 std::optional<string> IceTransport::getRemoteAddress() const {
 	NiceCandidate *local = nullptr;
 	NiceCandidate *remote = nullptr;
