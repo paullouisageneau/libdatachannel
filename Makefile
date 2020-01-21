@@ -7,21 +7,37 @@ RM=rm -f
 CPPFLAGS=-O2 -pthread -fPIC -Wall -Wno-address-of-packed-member
 CXXFLAGS=-std=c++17
 LDFLAGS=-pthread
-LIBS=glib-2.0 gobject-2.0 nice
+LIBS=
+LOCALLIBS=libusrsctp.a
 USRSCTP_DIR=deps/usrsctp
+JUICE_DIR=deps/libjuice
 PLOG_DIR=deps/plog
+
+INCLUDES=-Iinclude/rtc -I$(PLOG_DIR)/include -I$(USRSCTP_DIR)/usrsctplib
+LDLIBS=
 
 USE_GNUTLS ?= 0
 ifneq ($(USE_GNUTLS), 0)
-        CPPFLAGS+= -DUSE_GNUTLS=1
-        LIBS+= gnutls
+        CPPFLAGS+=-DUSE_GNUTLS=1
+        LIBS+=gnutls
 else
-        CPPFLAGS+= -DUSE_GNUTLS=0
-        LIBS+= openssl
+        CPPFLAGS+=-DUSE_GNUTLS=0
+        LIBS+=openssl
 endif
 
-LDLIBS= $(shell pkg-config --libs $(LIBS))
-INCLUDES=-Iinclude/rtc -I$(PLOG_DIR)/include -I$(USRSCTP_DIR)/usrsctplib $(shell pkg-config --cflags $(LIBS))
+USE_JUICE ?= 0
+ifneq ($(USE_JUICE), 0)
+        CPPFLAGS+=-DUSE_JUICE=1
+        INCLUDES+=-I$(JUICE_DIR)/include
+        LOCALLIBS+=libjuice.a
+        LIBS+=nettle
+else
+        CPPFLAGS+=-DUSE_JUICE=0
+        LIBS+=glib-2.0 gobject-2.0 nice
+endif
+
+INCLUDES+=$(shell pkg-config --cflags $(LIBS))
+LDLIBS+=$(LOCALLIBS) $(shell pkg-config --libs $(LIBS))
 
 SRCS=$(shell printf "%s " src/*.cpp)
 OBJS=$(subst .cpp,.o,$(SRCS))
@@ -32,18 +48,18 @@ src/%.o: src/%.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -o $@ -c $<
 
 test/%.o: test/%.cpp
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -Iinclude -I$(PLOG_DIR)/include -MMD -MP -o $@ -c $<
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -o $@ -c $<
 
 -include $(subst .cpp,.d,$(SRCS))
 
 $(NAME).a: $(OBJS)
 	$(AR) crf $@ $(OBJS)
 
-$(NAME).so: libusrsctp.a $(OBJS)
-	$(CXX) $(LDFLAGS) -shared -o $@ $(OBJS) $(LDLIBS) libusrsctp.a
+$(NAME).so: $(LOCALLIBS) $(OBJS)
+	$(CXX) $(LDFLAGS) -shared -o $@ $(OBJS) $(LDLIBS)
 
 tests: $(NAME).a test/main.o
-	$(CXX) $(LDFLAGS) -o $@ test/main.o $(LDLIBS) $(NAME).a libusrsctp.a
+	$(CXX) $(LDFLAGS) -o $@ test/main.o $(NAME).a $(LDLIBS)
 
 clean:
 	-$(RM) include/rtc/*.d *.d
@@ -66,4 +82,8 @@ libusrsctp.a:
 		./configure --enable-static --disable-debug CFLAGS="$(CPPFLAGS)" && \
 		make
 	cp $(USRSCTP_DIR)/usrsctplib/.libs/libusrsctp.a .
+
+libjuice.a:
+	cd $(JUICE_DIR) && make
+	cp $(JUICE_DIR)/libjuice.a .
 

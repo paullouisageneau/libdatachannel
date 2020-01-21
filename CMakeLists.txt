@@ -1,8 +1,11 @@
 cmake_minimum_required (VERSION 3.7)
 project (libdatachannel
 	DESCRIPTION "WebRTC Data Channels Library"
-	VERSION 0.2.1
+	VERSION 0.3.2
 	LANGUAGES CXX)
+
+option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
+option(USE_JUICE "Use libjuice instead of libnice" OFF)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
@@ -33,6 +36,7 @@ set(TESTS_ANSWERER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/answerer.cpp
 )
 
+
 # Hack because usrsctp uses CMAKE_SOURCE_DIR instead of CMAKE_CURRENT_SOURCE_DIR
 set(CMAKE_REQUIRED_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/deps/usrsctp/usrsctplib")
 
@@ -58,9 +62,8 @@ else()
   endif()
 endif()
 
-option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
-
-find_package(LibNice REQUIRED)
+add_library(Usrsctp::Usrsctp ALIAS usrsctp)
+add_library(Usrsctp::UsrsctpStatic ALIAS usrsctp-static)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -74,10 +77,9 @@ target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/includ
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
-target_link_libraries(datachannel 
+target_link_libraries(datachannel
 						Threads::Threads
-						usrsctp-static 
-						LibNice::LibNice						
+						Usrsctp::UsrsctpStatic
 						)
 
 add_library(datachannel-static STATIC EXCLUDE_FROM_ALL ${LIBDATACHANNEL_SOURCES})
@@ -91,8 +93,7 @@ target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR
 target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
 target_link_libraries(datachannel-static
 						Threads::Threads
-						usrsctp-static 
-						LibNice::LibNice						
+						Usrsctp::UsrsctpStatic
 						)
 
 if (USE_GNUTLS)
@@ -117,29 +118,45 @@ else()
 	target_link_libraries(datachannel-static OpenSSL::SSL)
 endif()
 
+if (USE_JUICE)
+	add_subdirectory(deps/libjuice EXCLUDE_FROM_ALL)
+	target_compile_definitions(datachannel PRIVATE USE_JUICE=1)
+	target_link_libraries(datachannel LibJuice::LibJuiceStatic)
+	target_compile_definitions(datachannel-static PRIVATE USE_JUICE=1)
+	target_link_libraries(datachannel-static LibJuice::LibJuiceStatic)
+else()
+	find_package(LibNice REQUIRED)
+	target_compile_definitions(datachannel PRIVATE USE_JUICE=0)
+	target_link_libraries(datachannel LibNice::LibNice)
+	target_compile_definitions(datachannel-static PRIVATE USE_JUICE=0)
+	target_link_libraries(datachannel-static LibNice::LibNice)
+endif()
+
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
 add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
 
 # Main Test
-add_executable(tests ${TESTS_SOURCES})
-set_target_properties(tests PROPERTIES
+add_executable(datachannel-tests ${TESTS_SOURCES})
+set_target_properties(datachannel-tests PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
-
-target_link_libraries(tests datachannel)
+set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
+target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(datachannel-tests datachannel)
 
 # P2P Test: offerer
-add_executable(offerer ${TESTS_OFFERER_SOURCES})
-set_target_properties(offerer PROPERTIES
+add_executable(datachannel-offerer ${TESTS_OFFERER_SOURCES})
+set_target_properties(datachannel-offerer PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
-
-target_link_libraries(offerer datachannel)
+set_target_properties(datachannel-offerer PROPERTIES OUTPUT_NAME offerer)
+target_link_libraries(datachannel-offerer datachannel)
 
 # P2P Test: answerer
-add_executable(answerer ${TESTS_ANSWERER_SOURCES})
-set_target_properties(answerer PROPERTIES
+add_executable(datachannel-answerer ${TESTS_ANSWERER_SOURCES})
+set_target_properties(datachannel-answerer PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
+set_target_properties(datachannel-answerer PROPERTIES OUTPUT_NAME datachannel)
+target_link_libraries(datachannel-answerer datachannel)
 
-target_link_libraries(answerer datachannel)

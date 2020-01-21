@@ -130,37 +130,39 @@ std::vector<Candidate> Description::extractCandidates() {
 	return result;
 }
 
-Description::operator string() const {
+Description::operator string() const { return generateSdp("\r\n"); }
+
+string Description::generateSdp(const string &eol) const {
 	if (!mFingerprint)
-		throw std::logic_error("Fingerprint must be set to generate a SDP");
+		throw std::logic_error("Fingerprint must be set to generate an SDP string");
 
 	std::ostringstream sdp;
-	sdp << "v=0\n";
-	sdp << "o=- " << mSessionId << " 0 IN IP4 127.0.0.1\n";
-	sdp << "s=-\n";
-	sdp << "t=0 0\n";
-	sdp << "a=group:BUNDLE 0\n";
-	sdp << "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\n";
-	sdp << "c=IN IP4 0.0.0.0\n";
-	sdp << "a=ice-ufrag:" << mIceUfrag << "\n";
-	sdp << "a=ice-pwd:" << mIcePwd << "\n";
+	sdp << "v=0" << eol;
+	sdp << "o=- " << mSessionId << " 0 IN IP4 127.0.0.1" << eol;
+	sdp << "s=-" << eol;
+	sdp << "t=0 0" << eol;
+	sdp << "a=group:BUNDLE 0" << eol;
+	sdp << "m=application 9 UDP/DTLS/SCTP webrtc-datachannel" << eol;
+	sdp << "c=IN IP4 0.0.0.0" << eol;
+	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
+	sdp << "a=ice-pwd:" << mIcePwd << eol;
 	if (mTrickle)
-		sdp << "a=ice-options:trickle\n";
-	sdp << "a=mid:" << mMid << "\n";
-	sdp << "a=setup:" << roleToString(mRole) << "\n";
-	sdp << "a=dtls-id:1\n";
+		sdp << "a=ice-options:trickle" << eol;
+	sdp << "a=mid:" << mMid << eol;
+	sdp << "a=setup:" << roleToString(mRole) << eol;
+	sdp << "a=dtls-id:1" << eol;
 	if (mFingerprint)
-		sdp << "a=fingerprint:sha-256 " << *mFingerprint << "\n";
+		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
 	if (mSctpPort)
-		sdp << "a=sctp-port:" << *mSctpPort << "\n";
+		sdp << "a=sctp-port:" << *mSctpPort << eol;
 	if (mMaxMessageSize)
-		sdp << "a=max-message-size:" << *mMaxMessageSize << "\n";
+		sdp << "a=max-message-size:" << *mMaxMessageSize << eol;
 	for (const auto &candidate : mCandidates) {
-		sdp << string(candidate) << "\n";
+		sdp << string(candidate) << eol;
 	}
 
 	if (!mTrickle)
-		sdp << "a=end-of-candidates\n";
+		sdp << "a=end-of-candidates" << eol;
 
 	return sdp.str();
 }

@@ -7,15 +7,17 @@ lib libdatachannel
 	: # requirements
 	<include>./include/rtc
 	<define>USE_GNUTLS=0
-	<cxxflags>"`pkg-config --cflags openssl glib-2.0 gobject-2.0 nice`"
+	<define>USE_JUICE=1
+	<cxxflags>"`pkg-config --cflags openssl`"
 	<library>/libdatachannel//usrsctp
+	<library>/libdatachannel//juice
 	: # default build
 	<link>static
 	: # usage requirements
 	<include>./include
 	<library>/libdatachannel//plog
 	<cxxflags>-pthread
-	<linkflags>"`pkg-config --libs openssl glib-2.0 gobject-2.0 nice`"
+	<linkflags>"`pkg-config --libs openssl`"
 	;
 
 alias plog
@@ -35,6 +37,15 @@ alias usrsctp
 	<library>libusrsctp.a
     ;
 
+alias juice
+    : # no sources
+    : # no build requirements
+    : # no default build
+    : # usage requirements
+    <include>./deps/libjuice/include
+	<library>libjuice.a
+    ;
+
 make libusrsctp.a : : @make_libusrsctp ;
 actions make_libusrsctp
 {
@@ -43,5 +54,12 @@ actions make_libusrsctp
 		./configure --enable-static --disable-debug CFLAGS="-fPIC -Wno-address-of-packed-member" && \
 		make)
     cp $(CWD)/deps/usrsctp/usrsctplib/.libs/libusrsctp.a $(<)
+}
+
+make libjuice.a : : @make_libjuice ;
+actions make_libjuice
+{
+	(cd $(CWD)/deps/libjuice && make)
+    cp $(CWD)/deps/libjuice/libjuice.a $(<)
 }
 

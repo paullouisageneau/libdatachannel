@@ -12,11 +12,14 @@ The library aims at fully implementing WebRTC SCTP DataChannels ([draft-ietf-rtc
 
 ## Dependencies
 
-- libnice: https://github.com/libnice/libnice
 - GnuTLS: https://www.gnutls.org/ or OpenSSL: https://www.openssl.org/
+
+Optional:
+- libnice: https://github.com/libnice/libnice (substituable with libjuice)
 
 Submodules:
 - usrsctp: https://github.com/sctplab/usrsctp
+- libjuice: https://github.com/paullouisageneau/libjuice
 
 ## Building
 
@@ -24,7 +27,7 @@ Submodules:
 $ git submodule update --init --recursive
 $ mkdir build
 $ cd build
-$ cmake -DUSE_GNUTLS=1 ..
+$ cmake -DUSE_JUICE=1 -DUSE_GNUTLS=1 ..
 $ make
 ```
 
