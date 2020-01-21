@@ -59,7 +59,7 @@ actions make_libusrsctp
 make libjuice.a : : @make_libjuice ;
 actions make_libjuice
 {
-	(cd $(CWD)/deps/libjuice && make)
+	(cd $(CWD)/deps/libjuice && make USE_NETTLE=0)
     cp $(CWD)/deps/libjuice/libjuice.a $(<)
 }
 

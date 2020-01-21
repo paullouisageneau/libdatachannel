@@ -30,7 +30,9 @@ ifneq ($(USE_JUICE), 0)
         CPPFLAGS+=-DUSE_JUICE=1
         INCLUDES+=-I$(JUICE_DIR)/include
         LOCALLIBS+=libjuice.a
+ifneq ($(USE_GNUTLS), 0)
         LIBS+=nettle
+endif
 else
         CPPFLAGS+=-DUSE_JUICE=0
         LIBS+=glib-2.0 gobject-2.0 nice
@@ -48,7 +50,7 @@ src/%.o: src/%.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -o $@ -c $<
 
 test/%.o: test/%.cpp
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -o $@ -c $<
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(INCLUDES) -Iinclude -Isrc -MMD -MP -o $@ -c $<
 
 -include $(subst .cpp,.d,$(SRCS))
 
@@ -70,11 +72,13 @@ dist-clean: clean
 	-$(RM) $(NAME).a
 	-$(RM) $(NAME).so
 	-$(RM) libusrsctp.a
+	-$(RM) libjuice.a
 	-$(RM) tests
 	-$(RM) include/*~
 	-$(RM) src/*~
 	-$(RM) test/*~
 	-cd $(USRSCTP_DIR) && make clean
+	-cd $(JUICE_DIR) && make clean
 
 libusrsctp.a:
 	cd $(USRSCTP_DIR) && \
@@ -84,6 +88,10 @@ libusrsctp.a:
 	cp $(USRSCTP_DIR)/usrsctplib/.libs/libusrsctp.a .
 
 libjuice.a:
-	cd $(JUICE_DIR) && make
+ifneq ($(USE_GNUTLS), 0)
+	cd $(JUICE_DIR) && make USE_NETTLE=1
+else
+	cd $(JUICE_DIR) && make USE_NETTLE=0
+endif
 	cp $(JUICE_DIR)/libjuice.a .
 

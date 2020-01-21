@@ -7,6 +7,12 @@ project (libdatachannel
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 option(USE_JUICE "Use libjuice instead of libnice" OFF)
 
+if(USE_GNUTLS)
+	option(USE_NETTLE "Use Nettle instead of OpenSSL in libjuice" ON)
+else()
+	option(USE_NETTLE "Use Nettle instead of OpenSSL in libjuice" OFF)
+endif()
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
