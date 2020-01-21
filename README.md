@@ -4,6 +4,8 @@ libdatachannel is a standalone implementation of WebRTC DataChannels in C++17 wi
 
 This projet is originally inspired by [librtcdcpp](https://github.com/chadnickbok/librtcdcpp), however it is a complete rewrite from scratch, because the messy architecture of librtcdcpp made solving its implementation issues difficult.
 
+The connectivity can be provided through my ad-hoc ICE library [libjuice](https://github.com/paullouisageneau/libjuice) as submodule or through [libnice](https://github.com/libnice/libnice). The security layer can be provided through [GnuTLS](https://www.gnutls.org/) or [OpenSSL](https://www.openssl.org/).
+
 Licensed under LGPLv2, see [LICENSE](https://github.com/paullouisageneau/libdatachannel/blob/master/LICENSE).
 
 ## Compatibility
