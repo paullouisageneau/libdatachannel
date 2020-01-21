@@ -79,18 +79,22 @@ private:
 	static ssize_t ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen);
 	static int TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms);
 #else
-	void writePending();
-
 	SSL_CTX *mCtx;
 	SSL *mSsl;
 	BIO *mInBio, *mOutBio;
 
+	static BIO_METHOD *BioMethods;
 	static int TransportExIndex;
 	static std::mutex GlobalMutex;
 
 	static void GlobalInit();
 	static int CertificateCallback(int preverify_ok, X509_STORE_CTX *ctx);
 	static void InfoCallback(const SSL *ssl, int where, int ret);
+
+	static int BioMethodNew(BIO *bio);
+	static int BioMethodFree(BIO *bio);
+	static int BioMethodWrite(BIO *bio, const char *in, int inl);
+	static long BioMethodCtrl(BIO *bio, int cmd, long num, void *ptr);
 #endif
 };
 

@@ -18,6 +18,7 @@
 
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
+#include "message.hpp"
 
 #include <cassert>
 #include <chrono>
@@ -318,11 +319,21 @@ bool check_openssl_ret(SSL *ssl, int ret, const string &message = "OpenSSL error
 
 namespace rtc {
 
+BIO_METHOD *DtlsTransport::BioMethods = NULL;
 int DtlsTransport::TransportExIndex = -1;
 std::mutex DtlsTransport::GlobalMutex;
 
 void DtlsTransport::GlobalInit() {
 	std::lock_guard lock(GlobalMutex);
+	if (!BioMethods) {
+		BioMethods = BIO_meth_new(BIO_TYPE_BIO, "DTLS writer");
+		if (!BioMethods)
+			throw std::runtime_error("Unable to BIO methods for DTLS writer");
+		BIO_meth_set_create(BioMethods, BioMethodNew);
+		BIO_meth_set_destroy(BioMethods, BioMethodFree);
+		BIO_meth_set_write(BioMethods, BioMethodWrite);
+		BIO_meth_set_ctrl(BioMethods, BioMethodCtrl);
+	}
 	if (TransportExIndex < 0) {
 		TransportExIndex = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 	}
@@ -346,7 +357,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	// RFC 8261: SCTP performs segmentation and reassembly based on the path MTU.
 	// Therefore, the DTLS layer MUST NOT use any compression algorithm.
 	// See https://tools.ietf.org/html/rfc8261#section-5
-	SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION);
+	SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_QUERY_MTU);
 	SSL_CTX_set_min_proto_version(mCtx, DTLS1_VERSION);
 	SSL_CTX_set_read_ahead(mCtx, 1);
 	SSL_CTX_set_quiet_shutdown(mCtx, 1);
@@ -362,7 +373,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	check_openssl(SSL_CTX_check_private_key(mCtx), "SSL local private key check failed");
 
 	if (!(mSsl = SSL_new(mCtx)))
-	    throw std::runtime_error("Unable to create SSL instance");
+		throw std::runtime_error("Unable to create SSL instance");
 
 	SSL_set_ex_data(mSsl, TransportExIndex, this);
 	SSL_set_mtu(mSsl, 1280 - 40 - 8); // min MTU over UDP/IPv6
@@ -372,11 +383,11 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	else
 		SSL_set_accept_state(mSsl);
 
-    if (!(mInBio = BIO_new(BIO_s_mem())) || !(mOutBio = BIO_new(BIO_s_mem())))
-	    throw std::runtime_error("Unable to create BIO");
+	if (!(mInBio = BIO_new(BIO_s_mem())) || !(mOutBio = BIO_new(BioMethods)))
+		throw std::runtime_error("Unable to create BIO");
 
 	BIO_set_mem_eof_return(mInBio, BIO_EOF);
-	BIO_set_mem_eof_return(mOutBio, BIO_EOF);
+	BIO_set_data(mOutBio, this);
 	SSL_set_bio(mSsl, mInBio, mOutBio);
 
 	auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
@@ -403,7 +414,6 @@ void DtlsTransport::stop() {
 		mRecvThread.join();
 
 		SSL_shutdown(mSsl);
-		writePending();
 	}
 }
 
@@ -416,11 +426,8 @@ bool DtlsTransport::send(message_ptr message) {
 	PLOG_VERBOSE << "Send size=" << message->size();
 
 	int ret = SSL_write(mSsl, message->data(), message->size());
-	if (!check_openssl_ret(mSsl, ret)) {
+	if (!check_openssl_ret(mSsl, ret))
 		return false;
-	}
-
-	writePending();
 	return true;
 }
 
@@ -437,15 +444,14 @@ void DtlsTransport::changeState(State state) {
 }
 
 void DtlsTransport::runRecvLoop() {
-	const size_t bufferSize = 4096;
-	byte buffer[bufferSize];
-
+	const size_t maxMtu = 4096;
 	try {
 		changeState(State::Connecting);
 
 		SSL_do_handshake(mSsl);
-		writePending();
 
+		const size_t bufferSize = maxMtu;
+		byte buffer[bufferSize];
 		while (auto next = mIncomingQueue.pop()) {
 			auto message = *next;
 			BIO_write(mInBio, message->data(), message->size());
@@ -459,9 +465,13 @@ void DtlsTransport::runRecvLoop() {
 				if (unsigned long err = ERR_get_error())
 					throw std::runtime_error("handshake failed: " + openssl_error_string(err));
 
-				writePending();
-				if (SSL_is_init_finished(mSsl))
+				if (SSL_is_init_finished(mSsl)) {
 					changeState(State::Connected);
+
+					// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
+					// See https://tools.ietf.org/html/rfc8261#section-5
+					SSL_set_mtu(mSsl, maxMtu + 1);
+				}
 			}
 
 			if (decrypted)
@@ -478,16 +488,6 @@ void DtlsTransport::runRecvLoop() {
 	} else {
 		PLOG_INFO << "DTLS handshake failed";
 		changeState(State::Failed);
-	}
-}
-
-void DtlsTransport::writePending() {
-	const size_t bufferSize = 4096;
-	byte buffer[bufferSize];
-	while (BIO_ctrl_pending(mOutBio) > 0) {
-		int ret = BIO_read(mOutBio, buffer, bufferSize);
-		if (check_openssl_ret(mSsl, ret) && ret > 0)
-			outgoing(make_message(buffer, buffer + ret));
 	}
 }
 
@@ -513,6 +513,45 @@ void DtlsTransport::InfoCallback(const SSL *ssl, int where, int ret) {
 		}
 		t->mIncomingQueue.stop(); // Close the connection
 	}
+}
+
+int DtlsTransport::BioMethodNew(BIO *bio) {
+	BIO_set_init(bio, 1);
+	BIO_set_data(bio, NULL);
+	BIO_set_shutdown(bio, 0);
+	return 1;
+}
+
+int DtlsTransport::BioMethodFree(BIO *bio) {
+	if (!bio)
+		return 0;
+	BIO_set_data(bio, NULL);
+	return 1;
+}
+
+int DtlsTransport::BioMethodWrite(BIO *bio, const char *in, int inl) {
+	if (inl <= 0)
+		return inl;
+	auto transport = reinterpret_cast<DtlsTransport *>(BIO_get_data(bio));
+	if (!transport)
+		return -1;
+	auto b = reinterpret_cast<const byte *>(in);
+	return transport->outgoing(make_message(b, b + inl)) ? inl : 0;
+}
+
+long DtlsTransport::BioMethodCtrl(BIO *bio, int cmd, long num, void *ptr) {
+	switch (cmd) {
+	case BIO_CTRL_FLUSH:
+		return 1;
+	case BIO_CTRL_DGRAM_QUERY_MTU:
+		return 0; // SSL_OP_NO_QUERY_MTU must be set
+	case BIO_CTRL_WPENDING:
+	case BIO_CTRL_PENDING:
+		return 0;
+	default:
+		break;
+	}
+	return 0;
 }
 
 } // namespace rtc
