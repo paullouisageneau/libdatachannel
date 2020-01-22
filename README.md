@@ -17,7 +17,7 @@ The library aims at fully implementing WebRTC SCTP DataChannels ([draft-ietf-rtc
 - GnuTLS: https://www.gnutls.org/ or OpenSSL: https://www.openssl.org/
 
 Optional:
-- libnice: https://github.com/libnice/libnice (substituable with libjuice)
+- libnice: https://nice.freedesktop.org/ (substituable with libjuice)
 
 Submodules:
 - usrsctp: https://github.com/sctplab/usrsctp
