@@ -24,6 +24,7 @@ Submodules:
 - libjuice: https://github.com/paullouisageneau/libjuice
 
 ## Building
+### Building with CMake (preferred)
 
 ```bash
 $ git submodule update --init --recursive
@@ -31,6 +32,13 @@ $ mkdir build
 $ cd build
 $ cmake -DUSE_JUICE=1 -DUSE_GNUTLS=1 ..
 $ make
+```
+
+### Building directly with Make
+
+```bash
+$ git submodule update --init --recursive
+$ make USE_JUICE=1 USE_GNUTLS=1
 ```
 
 ## Example
