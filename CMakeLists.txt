@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.7)
 project (libdatachannel
 	DESCRIPTION "WebRTC Data Channels Library"
-	VERSION 0.4.0
+	VERSION 0.4.1
 	LANGUAGES CXX)
 
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
@@ -42,37 +42,12 @@ set(TESTS_ANSWERER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/answerer.cpp
 )
 
-
-# Hack because usrsctp uses CMAKE_SOURCE_DIR instead of CMAKE_CURRENT_SOURCE_DIR
-set(CMAKE_REQUIRED_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/deps/usrsctp/usrsctplib")
-
-add_subdirectory(deps/usrsctp EXCLUDE_FROM_ALL)
-
-# Set include directory and custom options to make usrsctp compile with recent g++
-target_include_directories(usrsctp-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/usrsctp/usrsctplib)
-
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  # using regular Clang or AppleClang: Needed since they don't have -Wno-error=format-truncation
-  target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member)
-else()
-  if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.0")
-      # GCC version below 9.0 does not support option address-of-packed-member
-	  target_compile_options(usrsctp-static PRIVATE -Wno-error=format-truncation)
-	else()
-	  target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member -Wno-error=format-truncation)
-	endif()
-  else()
-    # all other compilers
-    target_compile_options(usrsctp-static PRIVATE -Wno-error=address-of-packed-member -Wno-error=format-truncation)
-  endif()
-endif()
-
-add_library(Usrsctp::Usrsctp ALIAS usrsctp)
-add_library(Usrsctp::UsrsctpStatic ALIAS usrsctp-static)
-
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+
+add_subdirectory(deps/usrsctp EXCLUDE_FROM_ALL)
+add_library(Usrsctp::Usrsctp ALIAS usrsctp)
+add_library(Usrsctp::UsrsctpStatic ALIAS usrsctp-static)
 
 add_library(datachannel SHARED ${LIBDATACHANNEL_SOURCES})
 set_target_properties(datachannel PROPERTIES
