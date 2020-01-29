@@ -3,7 +3,7 @@
 	url = https://github.com/SergiusTheBest/plog
 [submodule "usrsctp"]
 	path = deps/usrsctp
-	url = https://github.com/paullouisageneau/usrsctp.git
+	url = https://github.com/sctplab/usrsctp.git
 [submodule "deps/libjuice"]
 	path = deps/libjuice
 	url = https://github.com/paullouisageneau/libjuice
