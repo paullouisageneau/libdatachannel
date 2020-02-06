@@ -4,8 +4,8 @@ NAME=libdatachannel
 CXX=$(CROSS)g++
 AR=$(CROSS)ar
 RM=rm -f
-CPPFLAGS=-O2 -pthread -fPIC -Wall -Wno-address-of-packed-member
 CXXFLAGS=-std=c++17
+CPPFLAGS=-O2 -pthread -fPIC -Wall -Wno-address-of-packed-member
 LDFLAGS=-pthread
 LIBS=
 LOCALLIBS=libusrsctp.a
