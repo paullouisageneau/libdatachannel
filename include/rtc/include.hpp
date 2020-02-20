@@ -19,6 +19,12 @@
 #ifndef RTC_INCLUDE_H
 #define RTC_INCLUDE_H
 
+#ifdef _WIN32
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0602
+#endif
+#endif
+
 #include <cstddef>
 #include <functional>
 #include <memory>
