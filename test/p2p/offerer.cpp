@@ -22,6 +22,10 @@
 #include <iostream>
 #include <memory>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 using namespace rtc;
 using namespace std;
 
@@ -41,9 +45,24 @@ int main(int argc, char **argv) {
 
 	auto pc = std::make_shared<PeerConnection>(config);
 
+#ifdef _WIN32
+	WSADATA wsaData;
+	int iResult;
+
+	// Initialize Winsock
+	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (iResult != 0) {
+		std::string err("WSAStartup failed. Error:");
+		err.append(WSAGetLastError() + "");
+		std::cout << err;
+		return -1;
+	}
+#endif
+
 	pc->onLocalDescription([](const Description &sdp) {
 		std::string s(sdp);
 		std::replace(s.begin(), s.end(), '\n', static_cast<char>(94));
+		std::replace(s.begin(), s.end(), '\r', static_cast<char>(95));
 		cout << "Local Description (Paste this to other peer):" << endl << s << endl << endl;
 	});
 
@@ -100,6 +119,7 @@ int main(int argc, char **argv) {
 				getline(cin, sdp);
 
 			std::replace(sdp.begin(), sdp.end(), static_cast<char>(94), '\n');
+			std::replace(sdp.begin(), sdp.end(), static_cast<char>(95), '\r');
 			descPtr = std::make_unique<Description>(sdp);
 			pc->setRemoteDescription(*descPtr);
 			break;
@@ -138,4 +158,8 @@ int main(int argc, char **argv) {
 		dc->close();
 	if (pc)
 		pc->close();
+
+#ifdef _WIN32
+	WSACleanup();
+#endif
 }
