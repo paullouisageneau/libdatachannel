@@ -23,6 +23,10 @@
 #include <memory>
 #include <thread>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 using namespace rtc;
 using namespace std;
 
@@ -42,6 +46,20 @@ int main(int argc, char **argv) {
 
 	auto pc1 = std::make_shared<PeerConnection>(config);
 	auto pc2 = std::make_shared<PeerConnection>(config);
+
+#ifdef _WIN32
+	WSADATA wsaData;
+	int iResult;
+
+	// Initialize Winsock
+	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (iResult != 0) {
+		std::string err("WSAStartup failed. Error:");
+		err.append(WSAGetLastError() + "");
+		std::cout << err;
+		return -1;
+	}
+#endif
 
 	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](const Description &sdp) {
 		auto pc2 = wpc2.lock();
@@ -127,9 +145,15 @@ int main(int argc, char **argv) {
 		pc2->close();
 
 		cout << "Success" << endl;
+#ifdef _WIN32
+		WSACleanup();
+#endif
 		return 0;
 	} else {
 		cout << "Failure" << endl;
+#ifdef _WIN32
+		WSACleanup();
+#endif
 		return 1;
 	}
 }

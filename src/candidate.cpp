@@ -22,8 +22,14 @@
 #include <array>
 #include <sstream>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#elif __linux__
 #include <netdb.h>
 #include <sys/socket.h>
+#endif
+
 #include <sys/types.h>
 
 using std::array;

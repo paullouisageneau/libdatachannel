@@ -16,6 +16,12 @@ endif()
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
+if(WIN32)
+	if (MSYS OR MINGW)
+		add_definitions(-DSCTP_STDINT_INCLUDE=<stdint.h>)
+	endif()
+endif()
+
 set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/candidate.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/certificate.cpp
@@ -59,9 +65,15 @@ target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inclu
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
 target_link_libraries(datachannel
-						Threads::Threads
-						Usrsctp::UsrsctpStatic
+					Threads::Threads
+					Usrsctp::UsrsctpStatic
+					)
+if(WIN32)
+	target_link_libraries(datachannel
+						"wsock32"   #winsock2
+    					"ws2_32"    #winsock2
 						)
+endif()
 
 add_library(datachannel-static STATIC EXCLUDE_FROM_ALL ${LIBDATACHANNEL_SOURCES})
 set_target_properties(datachannel-static PROPERTIES
@@ -76,6 +88,12 @@ target_link_libraries(datachannel-static
 						Threads::Threads
 						Usrsctp::UsrsctpStatic
 						)
+if(WIN32)
+	target_link_libraries(datachannel-static
+						"wsock32"   #winsock2
+    					"ws2_32"    #winsock2
+						)
+endif()
 
 if (USE_GNUTLS)
 	find_package(GnuTLS REQUIRED)

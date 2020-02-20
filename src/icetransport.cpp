@@ -19,9 +19,14 @@
 #include "icetransport.hpp"
 #include "configuration.hpp"
 
+#ifdef _WIN32
+#include <winsock2.h>
+#elif __linux__
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#endif
+
 #include <sys/types.h>
 
 #include <iostream>
