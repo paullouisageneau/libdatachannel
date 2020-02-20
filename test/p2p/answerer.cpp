@@ -62,9 +62,7 @@ int main(int argc, char **argv) {
 	pc->onLocalDescription([](const Description &sdp) {
 		std::string s(sdp);
 		std::replace(s.begin(), s.end(), '\n', static_cast<char>(94));
-#ifdef _WIN32
 		std::replace(s.begin(), s.end(), '\r', static_cast<char>(95));
-#endif
 		cout << "Local Description (Paste this to other peer):" << endl << s << endl << endl;
 	});
 
@@ -123,9 +121,7 @@ int main(int argc, char **argv) {
 				getline(cin, sdp);
 
 			std::replace(sdp.begin(), sdp.end(), static_cast<char>(94), '\n');
-#ifdef _WIN32
 			std::replace(sdp.begin(), sdp.end(), static_cast<char>(95), '\r');
-#endif
 			descPtr = std::make_unique<Description>(sdp, Description::Type::Offer,
 			                                        Description::Role::Passive);
 			pc->setRemoteDescription(*descPtr);
