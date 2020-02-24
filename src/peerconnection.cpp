@@ -210,108 +210,126 @@ void PeerConnection::onGatheringStateChange(std::function<void(GatheringState st
 }
 
 shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role) {
-	std::lock_guard lock(mInitMutex);
-	if (auto transport = std::atomic_load(&mIceTransport))
-		return transport;
+	try {
+		std::lock_guard lock(mInitMutex);
+		if (auto transport = std::atomic_load(&mIceTransport))
+			return transport;
 
-	auto transport = std::make_shared<IceTransport>(
-	    mConfig, role, std::bind(&PeerConnection::processLocalCandidate, this, _1),
-	    [this](IceTransport::State state) {
-		    switch (state) {
-		    case IceTransport::State::Connecting:
-			    changeState(State::Connecting);
-			    break;
-		    case IceTransport::State::Failed:
-			    changeState(State::Failed);
-			    break;
-		    case IceTransport::State::Connected:
-			    initDtlsTransport();
-			    break;
-		    case IceTransport::State::Disconnected:
-			    changeState(State::Disconnected);
-			    break;
-		    default:
-			    // Ignore
-			    break;
-		    }
-	    },
-	    [this](IceTransport::GatheringState state) {
-		    switch (state) {
-		    case IceTransport::GatheringState::InProgress:
-			    changeGatheringState(GatheringState::InProgress);
-			    break;
-		    case IceTransport::GatheringState::Complete:
-			    endLocalCandidates();
-			    changeGatheringState(GatheringState::Complete);
-			    break;
-		    default:
-			    // Ignore
-			    break;
-		    }
-	    });
-	std::atomic_store(&mIceTransport, transport);
-	return transport;
+		auto transport = std::make_shared<IceTransport>(
+		    mConfig, role, std::bind(&PeerConnection::processLocalCandidate, this, _1),
+		    [this](IceTransport::State state) {
+			    switch (state) {
+			    case IceTransport::State::Connecting:
+				    changeState(State::Connecting);
+				    break;
+			    case IceTransport::State::Failed:
+				    changeState(State::Failed);
+				    break;
+			    case IceTransport::State::Connected:
+				    initDtlsTransport();
+				    break;
+			    case IceTransport::State::Disconnected:
+				    changeState(State::Disconnected);
+				    break;
+			    default:
+				    // Ignore
+				    break;
+			    }
+		    },
+		    [this](IceTransport::GatheringState state) {
+			    switch (state) {
+			    case IceTransport::GatheringState::InProgress:
+				    changeGatheringState(GatheringState::InProgress);
+				    break;
+			    case IceTransport::GatheringState::Complete:
+				    endLocalCandidates();
+				    changeGatheringState(GatheringState::Complete);
+				    break;
+			    default:
+				    // Ignore
+				    break;
+			    }
+		    });
+		std::atomic_store(&mIceTransport, transport);
+		return transport;
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+		changeState(State::Failed);
+		throw std::runtime_error("ICE transport initialization failed");
+	}
 }
 
 shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
-	std::lock_guard lock(mInitMutex);
-	if (auto transport = std::atomic_load(&mDtlsTransport))
-		return transport;
+	try {
+		std::lock_guard lock(mInitMutex);
+		if (auto transport = std::atomic_load(&mDtlsTransport))
+			return transport;
 
-	auto lower = std::atomic_load(&mIceTransport);
-	auto transport = std::make_shared<DtlsTransport>(
-	    lower, mCertificate, std::bind(&PeerConnection::checkFingerprint, this, _1),
-	    [this](DtlsTransport::State state) {
-		    switch (state) {
-		    case DtlsTransport::State::Connected:
-			    initSctpTransport();
-			    break;
-		    case DtlsTransport::State::Failed:
-			    changeState(State::Failed);
-			    break;
-		    case DtlsTransport::State::Disconnected:
-			    changeState(State::Disconnected);
-			    break;
-		    default:
-			    // Ignore
-			    break;
-		    }
-	    });
-	std::atomic_store(&mDtlsTransport, transport);
-	return transport;
+		auto lower = std::atomic_load(&mIceTransport);
+		auto transport = std::make_shared<DtlsTransport>(
+		    lower, mCertificate, std::bind(&PeerConnection::checkFingerprint, this, _1),
+		    [this](DtlsTransport::State state) {
+			    switch (state) {
+			    case DtlsTransport::State::Connected:
+				    initSctpTransport();
+				    break;
+			    case DtlsTransport::State::Failed:
+				    changeState(State::Failed);
+				    break;
+			    case DtlsTransport::State::Disconnected:
+				    changeState(State::Disconnected);
+				    break;
+			    default:
+				    // Ignore
+				    break;
+			    }
+		    });
+		std::atomic_store(&mDtlsTransport, transport);
+		return transport;
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+		changeState(State::Failed);
+		throw std::runtime_error("DTLS transport initialization failed");
+	}
 }
 
 shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
-	std::lock_guard lock(mInitMutex);
-	if (auto transport = std::atomic_load(&mSctpTransport))
-		return transport;
+	try {
+		std::lock_guard lock(mInitMutex);
+		if (auto transport = std::atomic_load(&mSctpTransport))
+			return transport;
 
-	uint16_t sctpPort = remoteDescription()->sctpPort().value_or(DEFAULT_SCTP_PORT);
-	auto lower = std::atomic_load(&mDtlsTransport);
-	auto transport = std::make_shared<SctpTransport>(
-	    lower, sctpPort, std::bind(&PeerConnection::forwardMessage, this, _1),
-	    std::bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
-	    [this](SctpTransport::State state) {
-		    switch (state) {
-		    case SctpTransport::State::Connected:
-			    changeState(State::Connected);
-			    openDataChannels();
-			    break;
-		    case SctpTransport::State::Failed:
-			    remoteCloseDataChannels();
-			    changeState(State::Failed);
-			    break;
-		    case SctpTransport::State::Disconnected:
-			    remoteCloseDataChannels();
-			    changeState(State::Disconnected);
-			    break;
-		    default:
-			    // Ignore
-			    break;
-		    }
-	    });
-	std::atomic_store(&mSctpTransport, transport);
-	return transport;
+		uint16_t sctpPort = remoteDescription()->sctpPort().value_or(DEFAULT_SCTP_PORT);
+		auto lower = std::atomic_load(&mDtlsTransport);
+		auto transport = std::make_shared<SctpTransport>(
+		    lower, sctpPort, std::bind(&PeerConnection::forwardMessage, this, _1),
+		    std::bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
+		    [this](SctpTransport::State state) {
+			    switch (state) {
+			    case SctpTransport::State::Connected:
+				    changeState(State::Connected);
+				    openDataChannels();
+				    break;
+			    case SctpTransport::State::Failed:
+				    remoteCloseDataChannels();
+				    changeState(State::Failed);
+				    break;
+			    case SctpTransport::State::Disconnected:
+				    remoteCloseDataChannels();
+				    changeState(State::Disconnected);
+				    break;
+			    default:
+				    // Ignore
+				    break;
+			    }
+		    });
+		std::atomic_store(&mSctpTransport, transport);
+		return transport;
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+		changeState(State::Failed);
+		throw std::runtime_error("SCTP transport initialization failed");
+	}
 }
 
 void PeerConnection::endLocalCandidates() {
