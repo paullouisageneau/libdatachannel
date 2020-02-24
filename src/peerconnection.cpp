@@ -79,9 +79,10 @@ std::optional<Description> PeerConnection::remoteDescription() const {
 }
 
 void PeerConnection::setRemoteDescription(Description description) {
-	std::lock_guard lock(mRemoteDescriptionMutex);
-
+	description.hintType(localDescription() ? Description::Type::Answer : Description::Type::Offer);
 	auto remoteCandidates = description.extractCandidates();
+
+	std::lock_guard lock(mRemoteDescriptionMutex);
 	mRemoteDescription.emplace(std::move(description));
 
 	auto iceTransport = std::atomic_load(&mIceTransport);

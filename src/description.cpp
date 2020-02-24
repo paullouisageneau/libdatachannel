@@ -45,12 +45,13 @@ inline void trim_end(string &str) {
 namespace rtc {
 
 Description::Description(const string &sdp, const string &typeString)
-    : Description(sdp, stringToType(typeString), Description::Role::ActPass) {}
+    : Description(sdp, stringToType(typeString)) {}
+
+Description::Description(const string &sdp, Type type) : Description(sdp, type, Role::ActPass) {}
 
 Description::Description(const string &sdp, Type type, Role role)
-    : mType(type), mRole(role), mMid("0"), mIceUfrag("0"), mIcePwd("0"), mTrickle(true) {
-	if (mType == Type::Answer && mRole == Role::ActPass)
-		mRole = Role::Passive; // ActPass is illegal for an answer, so default to passive
+    : mType(Type::Unspec), mRole(role), mMid("0"), mIceUfrag(""), mIcePwd(""), mTrickle(true) {
+	hintType(type);
 
 	auto seed = std::chrono::system_clock::now().time_since_epoch().count();
 	std::default_random_engine generator(seed);
@@ -108,6 +109,14 @@ std::optional<uint16_t> Description::sctpPort() const { return mSctpPort; }
 std::optional<size_t> Description::maxMessageSize() const { return mMaxMessageSize; }
 
 bool Description::trickleEnabled() const { return mTrickle; }
+
+void Description::hintType(Type type) {
+	if (mType == Type::Unspec) {
+		mType = type;
+		if (mType == Type::Answer && mRole == Role::ActPass)
+			mRole = Role::Passive; // ActPass is illegal for an answer, so default to passive
+	}
+}
 
 void Description::setFingerprint(string fingerprint) {
 	mFingerprint.emplace(std::move(fingerprint));
