@@ -73,7 +73,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	// RFC 8261: SCTP performs segmentation and reassembly based on the path MTU.
 	// Therefore, the DTLS layer MUST NOT use any compression algorithm.
 	// See https://tools.ietf.org/html/rfc8261#section-5
-	const char *priorities = "SECURE128:-VERS-SSL3.0:-ARCFOUR-128:-COMP-ALL";
+	const char *priorities = "SECURE128:-VERS-SSL3.0:-ARCFOUR-128:-COMP-ALL:+COMP-NULL";
 	const char *err_pos = NULL;
 	check_gnutls(gnutls_priority_set_direct(mSession, priorities, &err_pos),
 	             "Unable to set TLS priorities");
