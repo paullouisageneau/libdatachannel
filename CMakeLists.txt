@@ -156,6 +156,6 @@ add_executable(datachannel-answerer ${TESTS_ANSWERER_SOURCES})
 set_target_properties(datachannel-answerer PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
-set_target_properties(datachannel-answerer PROPERTIES OUTPUT_NAME datachannel)
+set_target_properties(datachannel-answerer PROPERTIES OUTPUT_NAME answerer)
 target_link_libraries(datachannel-answerer datachannel)
 

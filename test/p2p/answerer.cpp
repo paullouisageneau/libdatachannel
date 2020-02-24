@@ -21,6 +21,7 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <thread>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -32,60 +33,46 @@ using namespace std;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 int main(int argc, char **argv) {
-	InitLogger(LogLevel::Warning);
-
-	Configuration config;
-	// config.iceServers.emplace_back("stun.l.google.com:19302");
-	// config.enableIceTcp = true;
-
-	// TURN Server example
-	// IceServer turnServer("TURN_SERVER_URL", "PORT_NO", "USERNAME", "PASSWORD",
-	//							IceServer::RelayType::TurnUdp);
-	// config.iceServers.push_back(turnServer);
-
-	auto pc = std::make_shared<PeerConnection>(config);
+	InitLogger(LogLevel::Debug);
 
 #ifdef _WIN32
 	WSADATA wsaData;
-	int iResult;
-
-	// Initialize Winsock
-	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (iResult != 0) {
-		std::string err("WSAStartup failed. Error:");
-		err.append(WSAGetLastError() + "");
-		std::cout << err;
-		return -1;
-	}
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
+		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
 #endif
 
-	pc->onLocalDescription([](const Description &sdp) {
-		std::string s(sdp);
-		std::replace(s.begin(), s.end(), '\n', static_cast<char>(94));
-		std::replace(s.begin(), s.end(), '\r', static_cast<char>(95));
-		cout << "Local Description (Paste this to other peer):" << endl << s << endl << endl;
+	Configuration config;
+	// config.iceServers.emplace_back("stun.l.google.com:19302");
+
+	auto pc = std::make_shared<PeerConnection>(config);
+
+	pc->onLocalDescription([](const Description &description) {
+		cout << "Local Description (Paste this to the other peer):" << endl;
+		cout << string(description) << endl;
 	});
 
 	pc->onLocalCandidate([](const Candidate &candidate) {
-		cout << "Local Candidate (Paste this to other peer):" << endl << candidate << endl << endl;
+		cout << "Local Candidate (Paste this to the other peer after the local description):"
+		     << endl;
+		cout << string(candidate) << endl << endl;
 	});
 
 	pc->onStateChange(
-	    [](PeerConnection::State state) { cout << "[ State: " << state << " ]" << endl; });
+	    [](PeerConnection::State state) { cout << "[State: " << state << "]" << endl; });
 	pc->onGatheringStateChange([](PeerConnection::GatheringState state) {
-		cout << "[ Gathering State: " << state << " ]" << endl;
+		cout << "[Gathering State: " << state << "]" << endl;
 	});
 
 	shared_ptr<DataChannel> dc = nullptr;
 	pc->onDataChannel([&](shared_ptr<DataChannel> _dc) {
-		cout << "[ Got a DataChannel with label: " << _dc->label() << " ]" << endl;
+		cout << "[Got a DataChannel with label: " << _dc->label() << "]" << endl;
 		dc = _dc;
 
-		dc->onClosed([&]() { cout << "[ DataChannel closed: " << dc->label() << " ]" << endl; });
+		dc->onClosed([&]() { cout << "[DataChannel closed: " << dc->label() << "]" << endl; });
 
 		dc->onMessage([](const variant<binary, string> &message) {
 			if (holds_alternative<string>(message)) {
-				cout << "[ Received: " << get<string>(message) << " ]" << endl;
+				cout << "[Received message: " << get<string>(message) << "]" << endl;
 			}
 		});
 	});
@@ -93,67 +80,60 @@ int main(int argc, char **argv) {
 	bool exit = false;
 	while (!exit) {
 		cout << endl
+		     << "**********************************************************************************"
+		        "*****"
 		     << endl
-		     << "*************************************************************************" << endl
 		     << "* 0: Exit /"
-		     << " 1: Enter Description /"
-		     << " 2: Enter Candidate /"
-		     << " 3: Send Message *" << endl
-		     << " [Command]: ";
+		     << " 1: Enter remote description /"
+		     << " 2: Enter remote candidate /"
+		     << " 3: Send message *" << endl
+		     << "[Command]: ";
 
-		int command;
-		std::string sdp, candidate, message;
-		const char *a;
-		std::unique_ptr<Candidate> candidatePtr;
-		std::unique_ptr<Description> descPtr;
+		int command = -1;
 		cin >> command;
+		cin.ignore();
 
 		switch (command) {
-		case 0:
+		case 0: {
 			exit = true;
 			break;
-
-		case 1:
+		}
+		case 1: {
 			// Parse Description
-			cout << "[SDP]: ";
-			sdp = "";
-			while (sdp.length() == 0)
-				getline(cin, sdp);
-
-			std::replace(sdp.begin(), sdp.end(), static_cast<char>(94), '\n');
-			std::replace(sdp.begin(), sdp.end(), static_cast<char>(95), '\r');
-			descPtr = std::make_unique<Description>(sdp, Description::Type::Offer,
-			                                        Description::Role::Passive);
-			pc->setRemoteDescription(*descPtr);
+			cout << "[Description]: ";
+			string sdp, line;
+			while (getline(cin, line) && !line.empty()) {
+				sdp += line;
+				sdp += "\r\n";
+			}
+			std::cout << sdp;
+			pc->setRemoteDescription(sdp);
 			break;
-
-		case 2:
+		}
+		case 2: {
 			// Parse Candidate
 			cout << "[Candidate]: ";
-			candidate = "";
-			while (candidate.length() == 0)
-				getline(cin, candidate);
-
-			candidatePtr = std::make_unique<Candidate>(candidate);
-			pc->addRemoteCandidate(*candidatePtr);
+			string candidate;
+			getline(cin, candidate);
+			pc->addRemoteCandidate(candidate);
 			break;
-
-		case 3:
+		}
+		case 3: {
 			// Send Message
 			if (!dc || !dc->isOpen()) {
 				cout << "** Channel is not Open ** ";
 				break;
 			}
 			cout << "[Message]: ";
-			message = "";
-			while (message.length() == 0)
-				getline(cin, message);
+			string message;
+			getline(cin, message);
 			dc->send(message);
 			break;
-
-		default:
+		}
+		default: {
 			cout << "** Invalid Command ** ";
 			break;
+		}
 		}
 	}
 

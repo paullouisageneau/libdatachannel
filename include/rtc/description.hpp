@@ -35,6 +35,7 @@ public:
 	enum class Role { ActPass = 0, Passive = 1, Active = 2 };
 
 	Description(const string &sdp, const string &typeString = "");
+	Description(const string &sdp, Type type);
 	Description(const string &sdp, Type type, Role role);
 
 	Type type() const;
@@ -47,6 +48,7 @@ public:
 	std::optional<size_t> maxMessageSize() const;
 	bool trickleEnabled() const;
 
+	void hintType(Type type);
 	void setFingerprint(string fingerprint);
 	void setSctpPort(uint16_t port);
 	void setMaxMessageSize(size_t size);

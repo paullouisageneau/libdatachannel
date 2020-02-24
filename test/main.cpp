@@ -35,31 +35,20 @@ template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 int main(int argc, char **argv) {
 	InitLogger(LogLevel::Warning);
 
+#ifdef _WIN32
+	WSADATA wsaData;
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
+		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
+#endif
+
 	Configuration config;
 	// config.iceServers.emplace_back("stun:stun.l.google.com:19302");
-	// config.enableIceTcp = true;
-
-	// TURN server example
-	// IceServer turnServer("TURN_SERVER_URL", "PORT_NO", "USERNAME", "PASSWORD",
-	//							IceServer::RelayType::TurnUdp);
-	// config.iceServers.push_back(turnServer);
+	// config.iceServers.emplace_back(IceServer("TURN_SERVER_URL", "PORT", "USERNAME", "PASSWORD",
+	//                                         IceServer::RelayType::TurnUdp)); // libnice only
+	// config.enableIceTcp = true; // libnice only
 
 	auto pc1 = std::make_shared<PeerConnection>(config);
 	auto pc2 = std::make_shared<PeerConnection>(config);
-
-#ifdef _WIN32
-	WSADATA wsaData;
-	int iResult;
-
-	// Initialize Winsock
-	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (iResult != 0) {
-		std::string err("WSAStartup failed. Error:");
-		err.append(WSAGetLastError() + "");
-		std::cout << err;
-		return -1;
-	}
-#endif
 
 	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](const Description &sdp) {
 		auto pc2 = wpc2.lock();
@@ -140,20 +129,18 @@ int main(int argc, char **argv) {
 	if (auto addr = pc2->remoteAddress())
 		cout << "Remote address 2: " << *addr << endl;
 
-	if (dc1->isOpen() && dc2->isOpen()) {
+	bool success;
+	if ((success = dc1->isOpen() && dc2->isOpen())) {
 		pc1->close();
 		pc2->close();
-
 		cout << "Success" << endl;
-#ifdef _WIN32
-		WSACleanup();
-#endif
-		return 0;
 	} else {
 		cout << "Failure" << endl;
+	}
+
 #ifdef _WIN32
 		WSACleanup();
 #endif
-		return 1;
-	}
+
+	    return success ? 0 : 1;
 }
