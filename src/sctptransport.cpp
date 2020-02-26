@@ -27,6 +27,25 @@
 #include <arpa/inet.h>
 #endif
 
+#ifdef USE_JUICE
+#ifndef __APPLE__
+// libjuice enables Linux path MTU discovery or sets the DF flag
+#define USE_PMTUD 1
+#else
+// Setting the DF flag is not available on Mac OS
+#define USE_PMTUD 0
+#endif
+#else
+#ifdef __linux__
+// Linux UDP does path MTU discovery by default (setting DF and returning EMSGSIZE)
+// It should be safe to enable discovery for SCTP.
+#define USE_PMTUD 1
+#else
+// Otherwise assume fragmentation
+#define USE_PMTUD 0
+#endif
+#endif
+
 using namespace std::chrono_literals;
 using namespace std::chrono;
 
@@ -119,12 +138,11 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 		                         std::to_string(errno));
 
 	struct sctp_paddrparams spp = {};
-#ifdef __linux__
-	// Linux UDP does path MTU discovery by default (setting DF and returning EMSGSIZE).
-	// It should be safe to enable discovery for SCTP.
+#if USE_PMTUD
+	// Enabled SCTP path MTU discovery
 	spp.spp_flags = SPP_PMTUD_ENABLE;
 #else
-	// Otherwise, fall back to a safe MTU value.
+	// Fall back to a safe MTU value.
 	spp.spp_flags = SPP_PMTUD_DISABLE;
 	spp.spp_pathmtu = 1200; // Max safe value recommended by RFC 8261
 	                        // See https://tools.ietf.org/html/rfc8261#section-5
