@@ -13,7 +13,7 @@ jobs:
     - name: submodules
       run: git submodule update --init --recursive
     - name: cmake
-      run: cmake -B build -DUSE_LIBJUICE=1 -DUSE_GNUTLS=1
+      run: cmake -B build -DUSE_JUICE=1 -DUSE_GNUTLS=1
     - name: make
       run: (cd build; make)
     - name: tests
