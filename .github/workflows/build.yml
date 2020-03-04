@@ -1,0 +1,19 @@
+name: build
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    - name: install packages
+      run: libgnutls28-dev nettle-dev
+    - name: cmake
+      run: cmake -B build -DUSE_LIBJUICE=1 -DUSE_GNUTLS=1
+    - name: make
+      run: (cd build; make)
+    - name: tests
+      run: ./build/tests
+
