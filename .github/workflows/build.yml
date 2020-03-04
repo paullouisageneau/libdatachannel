@@ -9,7 +9,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: install packages
-      run: sudo apt install libgnutls28-dev nettle-dev
+      run: sudo apt update && sudo apt install libgnutls28-dev nettle-dev
     - name: cmake
       run: cmake -B build -DUSE_LIBJUICE=1 -DUSE_GNUTLS=1
     - name: make
