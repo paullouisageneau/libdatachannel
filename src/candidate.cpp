@@ -25,7 +25,7 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#elif __linux__
+#else
 #include <netdb.h>
 #include <sys/socket.h>
 #endif
