@@ -18,6 +18,7 @@
 
 // C++ API
 #include "datachannel.hpp"
+#include "log.hpp"
 #include "peerconnection.hpp"
 
 // C API

@@ -33,7 +33,7 @@ using namespace std;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 int main(int argc, char **argv) {
-	InitLogger(LogLevel::Debug);
+	InitLogger(LogLevel::Warning);
 
 #ifdef _WIN32
 	WSADATA wsaData;
