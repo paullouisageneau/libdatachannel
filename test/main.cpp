@@ -16,116 +16,19 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "rtc/rtc.hpp"
-
-#include <chrono>
 #include <iostream>
-#include <memory>
-#include <thread>
 
-using namespace rtc;
 using namespace std;
 
-template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
+void test_connectivity();
 
 int main(int argc, char **argv) {
-	InitLogger(LogLevel::Debug);
-
-	Configuration config;
-	// config.iceServers.emplace_back("stun:stun.l.google.com:19302");
-	// config.iceServers.emplace_back(IceServer("TURN_SERVER_URL", "PORT", "USERNAME", "PASSWORD",
-	//                                         IceServer::RelayType::TurnUdp)); // libnice only
-	// config.enableIceTcp = true; // libnice only
-
-	auto pc1 = std::make_shared<PeerConnection>(config);
-	auto pc2 = std::make_shared<PeerConnection>(config);
-
-	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](const Description &sdp) {
-		auto pc2 = wpc2.lock();
-		if (!pc2)
-			return;
-		cout << "Description 1: " << sdp << endl;
-		pc2->setRemoteDescription(sdp);
-	});
-
-	pc1->onLocalCandidate([wpc2 = make_weak_ptr(pc2)](const Candidate &candidate) {
-		auto pc2 = wpc2.lock();
-		if (!pc2)
-			return;
-		cout << "Candidate 1: " << candidate << endl;
-		pc2->addRemoteCandidate(candidate);
-	});
-
-	pc1->onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
-	pc1->onGatheringStateChange([](PeerConnection::GatheringState state) {
-		cout << "Gathering state 1: " << state << endl;
-	});
-
-	pc2->onLocalDescription([wpc1 = make_weak_ptr(pc1)](const Description &sdp) {
-		auto pc1 = wpc1.lock();
-		if (!pc1)
-			return;
-		cout << "Description 2: " << sdp << endl;
-		pc1->setRemoteDescription(sdp);
-	});
-
-	pc2->onLocalCandidate([wpc1 = make_weak_ptr(pc1)](const Candidate &candidate) {
-		auto pc1 = wpc1.lock();
-		if (!pc1)
-			return;
-		cout << "Candidate 2: " << candidate << endl;
-		pc1->addRemoteCandidate(candidate);
-	});
-
-	pc2->onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
-	pc2->onGatheringStateChange([](PeerConnection::GatheringState state) {
-		cout << "Gathering state 2: " << state << endl;
-	});
-
-	shared_ptr<DataChannel> dc2;
-	pc2->onDataChannel([&dc2](shared_ptr<DataChannel> dc) {
-		cout << "Got a DataChannel with label: " << dc->label() << endl;
-		dc2 = dc;
-		dc2->onMessage([](const variant<binary, string> &message) {
-			if (holds_alternative<string>(message)) {
-				cout << "Received 2: " << get<string>(message) << endl;
-			}
-		});
-		dc2->send("Hello from 2");
-	});
-
-	auto dc1 = pc1->createDataChannel("test");
-	dc1->onOpen([wdc1 = make_weak_ptr(dc1)]() {
-		auto dc1 = wdc1.lock();
-		if (!dc1)
-			return;
-		cout << "DataChannel open: " << dc1->label() << endl;
-		dc1->send("Hello from 1");
-	});
-	dc1->onMessage([](const variant<binary, string> &message) {
-		if (holds_alternative<string>(message)) {
-			cout << "Received 1: " << get<string>(message) << endl;
-		}
-	});
-
-	this_thread::sleep_for(3s);
-
-	if (auto addr = pc1->localAddress())
-		cout << "Local address 1:  " << *addr << endl;
-	if (auto addr = pc1->remoteAddress())
-		cout << "Remote address 1: " << *addr << endl;
-	if (auto addr = pc2->localAddress())
-		cout << "Local address 2:  " << *addr << endl;
-	if (auto addr = pc2->remoteAddress())
-		cout << "Remote address 2: " << *addr << endl;
-
-	bool success;
-	if ((success = dc1->isOpen() && dc2->isOpen())) {
-		pc1->close();
-		pc2->close();
-		cout << "Success" << endl;
-	} else {
-		cout << "Failure" << endl;
+	try {
+		test_connectivity();
+	} catch (const exception &e) {
+		std::cerr << "Connectivity check failed: " << e.what() << endl;
+		return -1;
 	}
-	return success ? 0 : 1;
+
+	return 0;
 }
