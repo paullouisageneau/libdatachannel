@@ -23,10 +23,6 @@
 #include <iostream>
 #include <vector>
 
-#ifdef __linux__
-#include <arpa/inet.h>
-#endif
-
 #ifdef USE_JUICE
 #ifndef __APPLE__
 // libjuice enables Linux path MTU discovery or sets the DF flag

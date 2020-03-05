@@ -21,6 +21,12 @@
 #include "peerconnection.hpp"
 #include "sctptransport.hpp"
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
+#include <arpa/inet.h>
+#endif
+
 namespace rtc {
 
 using std::shared_ptr;

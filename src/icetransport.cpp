@@ -19,19 +19,21 @@
 #include "icetransport.hpp"
 #include "configuration.hpp"
 
+#include <iostream>
+#include <random>
+#include <sstream>
+
 #ifdef _WIN32
 #include <winsock2.h>
-#elif __linux__
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #endif
 
 #include <sys/types.h>
-
-#include <iostream>
-#include <random>
-#include <sstream>
 
 using namespace std::chrono_literals;
 

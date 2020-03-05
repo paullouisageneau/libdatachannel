@@ -25,6 +25,10 @@
 
 #include <iostream>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 namespace rtc {
 
 using namespace std::placeholders;
@@ -32,7 +36,13 @@ using namespace std::placeholders;
 using std::shared_ptr;
 using std::weak_ptr;
 
-PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
+PeerConnection::PeerConnection() : PeerConnection(Configuration()) {
+#ifdef _WIN32
+	WSADATA wsaData;
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
+		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
+#endif
+}
 
 PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New) {}
@@ -43,6 +53,10 @@ PeerConnection::~PeerConnection() {
 	mSctpTransport.reset();
 	mDtlsTransport.reset();
 	mIceTransport.reset();
+
+#ifdef _WIN32
+	WSACleanup();
+#endif
 }
 
 void PeerConnection::close() {

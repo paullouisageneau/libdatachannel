@@ -23,10 +23,6 @@
 #include <memory>
 #include <thread>
 
-#ifdef _WIN32
-#include <winsock2.h>
-#endif
-
 using namespace rtc;
 using namespace std;
 
@@ -34,12 +30,6 @@ template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 int main(int argc, char **argv) {
 	InitLogger(LogLevel::Warning);
-
-#ifdef _WIN32
-	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
-		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
-#endif
 
 	Configuration config;
 	// config.iceServers.emplace_back("stun.l.google.com:19302");
@@ -141,8 +131,4 @@ int main(int argc, char **argv) {
 		dc->close();
 	if (pc)
 		pc->close();
-
-#ifdef _WIN32
-	WSACleanup();
-#endif
 }

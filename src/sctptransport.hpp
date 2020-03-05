@@ -29,14 +29,6 @@
 #include <map>
 #include <mutex>
 
-#ifdef _WIN32
-#include <winsock2.h>
-#elif __linux__
-#include <sys/socket.h>
-#endif
-
-#include <sys/types.h>
-
 #include "usrsctp.h"
 
 namespace rtc {
