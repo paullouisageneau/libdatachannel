@@ -33,13 +33,13 @@ typedef enum {
 	RTC_FAILED = 4,
 	RTC_CLOSED = 5,
 	RTC_DESTROYING = 6 // internal
-} rtc_state_t;
+} rtcState;
 
 typedef enum {
 	RTC_GATHERING_NEW = 0,
 	RTC_GATHERING_INPROGRESS = 1,
 	RTC_GATHERING_COMPLETE = 2
-} rtc_gathering_state_t;
+} rtcGatheringState;
 
 // Don't change, it must match plog severity
 typedef enum {
@@ -50,31 +50,56 @@ typedef enum {
 	RTC_LOG_INFO = 4,
 	RTC_LOG_DEBUG = 5,
 	RTC_LOG_VERBOSE = 6
-} rtc_log_level_t;
+} rtcLogLevel;
 
-void rtcInitLogger(rtc_log_level_t level);
+typedef void (*dataChannelCallbackFunc)(int dc, void *ptr);
+typedef void (*descriptionCallbackFunc)(const char *sdp, const char *type, void *ptr);
+typedef void (*candidateCallbackFunc)(const char *cand, const char *mid, void *ptr);
+typedef void (*stateChangeCallbackFunc)(rtcState state, void *ptr);
+typedef void (*gatheringStateCallbackFunc)(rtcGatheringState state, void *ptr);
+typedef void (*openCallbackFunc)(void *ptr);
+typedef void (*errorCallbackFunc)(const char *error, void *ptr);
+typedef void (*messageCallbackFunc)(const char *message, int size, void *ptr);
+typedef void (*bufferedAmountLowCallbackFunc)(void *ptr);
+typedef void (*availableCallbackFunc)(void *ptr);
 
-int rtcCreatePeerConnection(const char **iceServers, int iceServersCount);
-void rtcDeletePeerConnection(int pc);
-int rtcCreateDataChannel(int pc, const char *label);
-void rtcDeleteDataChannel(int dc);
-void rtcSetDataChannelCallback(int pc, void (*dataChannelCallback)(int, void *));
-void rtcSetLocalDescriptionCallback(int pc, void (*descriptionCallback)(const char *, const char *,
-                                                                        void *));
-void rtcSetLocalCandidateCallback(int pc,
-                                  void (*candidateCallback)(const char *, const char *, void *));
-void rtcSetStateChangeCallback(int pc, void (*stateCallback)(rtc_state_t state, void *));
-void rtcSetGatheringStateChangeCallback(int pc,
-                                        void (*gatheringStateCallback)(rtc_gathering_state_t state,
-                                                                       void *));
-void rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
-void rtcAddRemoteCandidate(int pc, const char *candidate, const char *mid);
-int rtcGetDataChannelLabel(int dc, char *data, int size);
-void rtcSetOpenCallback(int dc, void (*openCallback)(void *));
-void rtcSetErrorCallback(int dc, void (*errorCallback)(const char *, void *));
-void rtcSetMessageCallback(int dc, void (*messageCallback)(const char *, int, void *));
-int rtcSendMessage(int dc, const char *data, int size);
+// Log
+void rtcInitLogger(rtcLogLevel level);
+
+// User pointer
 void rtcSetUserPointer(int i, void *ptr);
+
+// PeerConnection
+int rtcCreatePeerConnection(const char **iceServers, int iceServersCount);
+int rtcDeletePeerConnection(int pc);
+
+int rtcSetDataChannelCallback(int pc, dataChannelCallbackFunc cb);
+int rtcSetLocalDescriptionCallback(int pc, descriptionCallbackFunc cb);
+int rtcSetLocalCandidateCallback(int pc, candidateCallbackFunc cb);
+int rtcSetStateChangeCallback(int pc, stateChangeCallbackFunc cb);
+int rtcSetGatheringStateChangeCallback(int pc, gatheringStateCallbackFunc cb);
+
+int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
+int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
+
+// DataChannel
+int rtcCreateDataChannel(int pc, const char *label);
+int rtcDeleteDataChannel(int dc);
+
+int rtcGetDataChannelLabel(int dc, char *buffer, int size);
+int rtcSetOpenCallback(int dc, openCallbackFunc cb);
+int rtcSetErrorCallback(int dc, errorCallbackFunc cb);
+int rtcSetMessageCallback(int dc, messageCallbackFunc cb);
+int rtcSendMessage(int dc, const char *data, int size);
+
+int rtcGetBufferedAmount(int dc); // total size buffered to send
+int rtcSetBufferedAmountLowThreshold(int dc, int amount);
+int rtcSetBufferedAmountLowCallback(int dc, bufferedAmountLowCallbackFunc cb);
+
+// DataChannel extended API
+int rtcGetAvailableAmount(int dc); // total size available to receive
+int rtcSetAvailableCallback(int dc, availableCallbackFunc cb);
+int rtcReceiveMessage(int dc, char *buffer, int *size);
 
 #ifdef __cplusplus
 } // extern "C"

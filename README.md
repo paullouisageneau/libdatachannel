@@ -79,11 +79,11 @@ MY_ON_RECV_CANDIDATE_FROM_REMOTE([pc](string candidate, string mid) {
 ### Observe the PeerConnection state
 
 ```cpp
-pc->onStateChanged([](PeerConnection::State state) {
+pc->onStateChange([](PeerConnection::State state) {
     cout << "State: " << state << endl;
 });
 
-pc->onGatheringStateChanged([](PeerConnection::GatheringState state) {
+pc->onGatheringStateChange([](PeerConnection::GatheringState state) {
     cout << "Gathering state: " << state << endl;
 });
 

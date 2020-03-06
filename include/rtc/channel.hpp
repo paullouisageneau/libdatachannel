@@ -31,12 +31,10 @@ class Channel {
 public:
 	virtual void close() = 0;
 	virtual bool send(const std::variant<binary, string> &data) = 0; // returns false if buffered
-	virtual std::optional<std::variant<binary, string>> receive() = 0; // only if onMessage unset
 
 	virtual bool isOpen() const = 0;
 	virtual bool isClosed() const = 0;
-
-	virtual size_t availableAmount() const; // total size available to receive
+	virtual size_t maxMessageSize() const; // max message size in a call to send
 	virtual size_t bufferedAmount() const; // total size buffered to send
 
 	void onOpen(std::function<void()> callback);
@@ -47,10 +45,13 @@ public:
 	void onMessage(std::function<void(const binary &data)> binaryCallback,
 	               std::function<void(const string &data)> stringCallback);
 
-	void onAvailable(std::function<void()> callback);
 	void onBufferedAmountLow(std::function<void()> callback);
-
 	void setBufferedAmountLowThreshold(size_t amount);
+
+	// Extended API
+	virtual std::optional<std::variant<binary, string>> receive() = 0; // only if onMessage unset
+	virtual size_t availableAmount() const; // total size available to receive
+	void onAvailable(std::function<void()> callback);
 
 protected:
 	virtual void triggerOpen();
