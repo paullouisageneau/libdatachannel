@@ -108,9 +108,9 @@ void rtcSetUserPointer(int i, void *ptr) {
 
 int rtcCreatePeerConnection(const char **iceServers, int iceServersCount) {
 	Configuration config;
-	for (int i = 0; i < iceServersCount; ++i) {
+	for (int i = 0; i < iceServersCount; ++i)
 		config.iceServers.emplace_back(IceServer(string(iceServers[i])));
-	}
+
 	return emplacePeerConnection(std::make_shared<PeerConnection>(config));
 }
 
@@ -121,7 +121,10 @@ int rtcCreateDataChannel(int pc, const char *label) {
 	if (!peerConnection)
 		return -1;
 
-	return emplaceDataChannel(peerConnection->createDataChannel(string(label)));
+	int dc = emplaceDataChannel(peerConnection->createDataChannel(string(label)));
+	void *ptr = getUserPointer(pc);
+	rtcSetUserPointer(dc, ptr);
+	return dc;
 }
 
 int rtcDeleteDataChannel(int dc) { return eraseDataChannel(dc) ? 0 : -1; }
@@ -133,7 +136,9 @@ int rtcSetDataChannelCallback(int pc, dataChannelCallbackFunc cb) {
 
 	peerConnection->onDataChannel([pc, cb](std::shared_ptr<DataChannel> dataChannel) {
 		int dc = emplaceDataChannel(dataChannel);
-		cb(dc, getUserPointer(pc));
+		void *ptr = getUserPointer(pc);
+		rtcSetUserPointer(dc, ptr);
+		cb(dc, ptr);
 	});
 	return 0;
 }
