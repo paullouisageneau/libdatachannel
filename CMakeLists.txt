@@ -39,6 +39,7 @@ set(LIBDATACHANNEL_SOURCES
 set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/capi.cpp
 )
 
 set(TESTS_OFFERER_SOURCES

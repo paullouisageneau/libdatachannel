@@ -52,12 +52,18 @@ typedef enum {
 	RTC_LOG_VERBOSE = 6
 } rtcLogLevel;
 
+typedef struct {
+	const char **iceServers;
+	int iceServersCount;
+} rtcConfiguration;
+
 typedef void (*dataChannelCallbackFunc)(int dc, void *ptr);
 typedef void (*descriptionCallbackFunc)(const char *sdp, const char *type, void *ptr);
 typedef void (*candidateCallbackFunc)(const char *cand, const char *mid, void *ptr);
 typedef void (*stateChangeCallbackFunc)(rtcState state, void *ptr);
 typedef void (*gatheringStateCallbackFunc)(rtcGatheringState state, void *ptr);
 typedef void (*openCallbackFunc)(void *ptr);
+typedef void (*closedCallbackFunc)(void *ptr);
 typedef void (*errorCallbackFunc)(const char *error, void *ptr);
 typedef void (*messageCallbackFunc)(const char *message, int size, void *ptr);
 typedef void (*bufferedAmountLowCallbackFunc)(void *ptr);
@@ -70,7 +76,7 @@ void rtcInitLogger(rtcLogLevel level);
 void rtcSetUserPointer(int i, void *ptr);
 
 // PeerConnection
-int rtcCreatePeerConnection(const char **iceServers, int iceServersCount);
+int rtcCreatePeerConnection(const rtcConfiguration *config);
 int rtcDeletePeerConnection(int pc);
 
 int rtcSetDataChannelCallback(int pc, dataChannelCallbackFunc cb);
@@ -88,6 +94,7 @@ int rtcDeleteDataChannel(int dc);
 
 int rtcGetDataChannelLabel(int dc, char *buffer, int size);
 int rtcSetOpenCallback(int dc, openCallbackFunc cb);
+int rtcSetClosedCallback(int dc, closedCallbackFunc cb);
 int rtcSetErrorCallback(int dc, errorCallbackFunc cb);
 int rtcSetMessageCallback(int dc, messageCallbackFunc cb);
 int rtcSendMessage(int dc, const char *data, int size);

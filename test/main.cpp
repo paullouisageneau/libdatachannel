@@ -21,14 +21,24 @@
 using namespace std;
 
 void test_connectivity();
+void test_capi();
 
 int main(int argc, char **argv) {
 	try {
+		std::cout << "*** Running connectivity test..." << std::endl;
 		test_connectivity();
+		std::cout << "*** Finished connectivity test" << std::endl;
 	} catch (const exception &e) {
-		std::cerr << "Connectivity check failed: " << e.what() << endl;
+		std::cerr << "Connectivity test failed: " << e.what() << endl;
 		return -1;
 	}
-
+	try {
+		std::cout << "*** Running C API test..." << std::endl;
+		test_capi();
+		std::cout << "*** Finished C API test" << std::endl;
+	} catch (const exception &e) {
+		std::cerr << "C API test failed: " << e.what() << endl;
+		return -1;
+	}
 	return 0;
 }

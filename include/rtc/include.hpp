@@ -64,6 +64,7 @@ template <class... Ts> overloaded(Ts...)->overloaded<Ts...>;
 template <typename... P> class synchronized_callback {
 public:
 	synchronized_callback() = default;
+	synchronized_callback(std::function<void(P...)> func) { *this = std::move(func); };
 	~synchronized_callback() { *this = nullptr; }
 
 	synchronized_callback &operator=(std::function<void(P...)> func) {

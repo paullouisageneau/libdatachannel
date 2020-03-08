@@ -18,8 +18,6 @@
 
 #include "channel.hpp"
 
-namespace {}
-
 namespace rtc {
 
 size_t Channel::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }

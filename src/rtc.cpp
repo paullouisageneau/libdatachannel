@@ -106,15 +106,28 @@ void rtcSetUserPointer(int i, void *ptr) {
 		userPointerMap.erase(i);
 }
 
-int rtcCreatePeerConnection(const char **iceServers, int iceServersCount) {
-	Configuration config;
-	for (int i = 0; i < iceServersCount; ++i)
-		config.iceServers.emplace_back(IceServer(string(iceServers[i])));
+int rtcCreatePeerConnection(const rtcConfiguration *config) {
+	Configuration c;
+	for (int i = 0; i < config->iceServersCount; ++i)
+		c.iceServers.emplace_back(string(config->iceServers[i]));
 
-	return emplacePeerConnection(std::make_shared<PeerConnection>(config));
+	return emplacePeerConnection(std::make_shared<PeerConnection>(c));
 }
 
-int rtcDeletePeerConnection(int pc) { return erasePeerConnection(pc) ? 0 : -1; }
+int rtcDeletePeerConnection(int pc) {
+	auto peerConnection = getPeerConnection(pc);
+	if (!peerConnection)
+		return -1;
+
+	peerConnection->onDataChannel(nullptr);
+	peerConnection->onLocalDescription(nullptr);
+	peerConnection->onLocalCandidate(nullptr);
+	peerConnection->onStateChange(nullptr);
+	peerConnection->onGatheringStateChange(nullptr);
+
+	erasePeerConnection(pc);
+	return 0;
+}
 
 int rtcCreateDataChannel(int pc, const char *label) {
 	auto peerConnection = getPeerConnection(pc);
@@ -127,19 +140,36 @@ int rtcCreateDataChannel(int pc, const char *label) {
 	return dc;
 }
 
-int rtcDeleteDataChannel(int dc) { return eraseDataChannel(dc) ? 0 : -1; }
+int rtcDeleteDataChannel(int dc) {
+	auto dataChannel = getDataChannel(dc);
+	if (!dataChannel)
+		return -1;
+
+	dataChannel->onOpen(nullptr);
+	dataChannel->onClosed(nullptr);
+	dataChannel->onError(nullptr);
+	dataChannel->onMessage(nullptr);
+	dataChannel->onBufferedAmountLow(nullptr);
+	dataChannel->onAvailable(nullptr);
+
+	eraseDataChannel(dc);
+	return 0;
+}
 
 int rtcSetDataChannelCallback(int pc, dataChannelCallbackFunc cb) {
 	auto peerConnection = getPeerConnection(pc);
 	if (!peerConnection)
 		return -1;
 
-	peerConnection->onDataChannel([pc, cb](std::shared_ptr<DataChannel> dataChannel) {
-		int dc = emplaceDataChannel(dataChannel);
-		void *ptr = getUserPointer(pc);
-		rtcSetUserPointer(dc, ptr);
-		cb(dc, ptr);
-	});
+	if (cb)
+		peerConnection->onDataChannel([pc, cb](std::shared_ptr<DataChannel> dataChannel) {
+			int dc = emplaceDataChannel(dataChannel);
+			void *ptr = getUserPointer(pc);
+			rtcSetUserPointer(dc, ptr);
+			cb(dc, ptr);
+		});
+	else
+		peerConnection->onDataChannel(nullptr);
 	return 0;
 }
 
@@ -148,9 +178,12 @@ int rtcSetLocalDescriptionCallback(int pc, descriptionCallbackFunc cb) {
 	if (!peerConnection)
 		return -1;
 
-	peerConnection->onLocalDescription([pc, cb](const Description &desc) {
-		cb(string(desc).c_str(), desc.typeString().c_str(), getUserPointer(pc));
-	});
+	if (cb)
+		peerConnection->onLocalDescription([pc, cb](const Description &desc) {
+			cb(string(desc).c_str(), desc.typeString().c_str(), getUserPointer(pc));
+		});
+	else
+		peerConnection->onLocalDescription(nullptr);
 	return 0;
 }
 
@@ -159,9 +192,12 @@ int rtcSetLocalCandidateCallback(int pc, candidateCallbackFunc cb) {
 	if (!peerConnection)
 		return -1;
 
-	peerConnection->onLocalCandidate([pc, cb](const Candidate &cand) {
-		cb(cand.candidate().c_str(), cand.mid().c_str(), getUserPointer(pc));
-	});
+	if (cb)
+		peerConnection->onLocalCandidate([pc, cb](const Candidate &cand) {
+			cb(cand.candidate().c_str(), cand.mid().c_str(), getUserPointer(pc));
+		});
+	else
+		peerConnection->onLocalCandidate(nullptr);
 	return 0;
 }
 
@@ -170,9 +206,12 @@ int rtcSetStateChangeCallback(int pc, stateChangeCallbackFunc cb) {
 	if (!peerConnection)
 		return -1;
 
-	peerConnection->onStateChange([pc, cb](PeerConnection::State state) {
-		cb(static_cast<rtcState>(state), getUserPointer(pc));
-	});
+	if (cb)
+		peerConnection->onStateChange([pc, cb](PeerConnection::State state) {
+			cb(static_cast<rtcState>(state), getUserPointer(pc));
+		});
+	else
+		peerConnection->onStateChange(nullptr);
 	return 0;
 }
 
@@ -181,9 +220,12 @@ int rtcSetGatheringStateChangeCallback(int pc, gatheringStateCallbackFunc cb) {
 	if (!peerConnection)
 		return -1;
 
-	peerConnection->onGatheringStateChange([pc, cb](PeerConnection::GatheringState state) {
-		cb(static_cast<rtcGatheringState>(state), getUserPointer(pc));
-	});
+	if (cb)
+		peerConnection->onGatheringStateChange([pc, cb](PeerConnection::GatheringState state) {
+			cb(static_cast<rtcGatheringState>(state), getUserPointer(pc));
+		});
+	else
+		peerConnection->onGatheringStateChange(nullptr);
 	return 0;
 }
 
@@ -225,7 +267,22 @@ int rtcSetOpenCallback(int dc, openCallbackFunc cb) {
 	if (!dataChannel)
 		return -1;
 
-	dataChannel->onOpen([dc, cb]() { cb(getUserPointer(dc)); });
+	if (cb)
+		dataChannel->onOpen([dc, cb]() { cb(getUserPointer(dc)); });
+	else
+		dataChannel->onOpen(nullptr);
+	return 0;
+}
+
+int rtcSetClosedCallback(int dc, closedCallbackFunc cb) {
+	auto dataChannel = getDataChannel(dc);
+	if (!dataChannel)
+		return -1;
+
+	if (cb)
+		dataChannel->onClosed([dc, cb]() { cb(getUserPointer(dc)); });
+	else
+		dataChannel->onClosed(nullptr);
 	return 0;
 }
 
@@ -234,7 +291,11 @@ int rtcSetErrorCallback(int dc, errorCallbackFunc cb) {
 	if (!dataChannel)
 		return -1;
 
-	dataChannel->onError([dc, cb](const string &error) { cb(error.c_str(), getUserPointer(dc)); });
+	if (cb)
+		dataChannel->onError(
+		    [dc, cb](const string &error) { cb(error.c_str(), getUserPointer(dc)); });
+	else
+		dataChannel->onError(nullptr);
 	return 0;
 }
 
@@ -243,11 +304,15 @@ int rtcSetMessageCallback(int dc, messageCallbackFunc cb) {
 	if (!dataChannel)
 		return -1;
 
-	dataChannel->onMessage(
-	    [dc, cb](const binary &b) {
-		    cb(reinterpret_cast<const char *>(b.data()), b.size(), getUserPointer(dc));
-	    },
-	    [dc, cb](const string &s) { cb(s.c_str(), -1, getUserPointer(dc)); });
+	if (cb)
+		dataChannel->onMessage(
+		    [dc, cb](const binary &b) {
+			    cb(reinterpret_cast<const char *>(b.data()), b.size(), getUserPointer(dc));
+		    },
+		    [dc, cb](const string &s) { cb(s.c_str(), -1, getUserPointer(dc)); });
+	else
+		dataChannel->onMessage(nullptr);
+
 	return 0;
 }
 
@@ -289,7 +354,10 @@ int rtcSetBufferedAmountLowCallback(int dc, bufferedAmountLowCallbackFunc cb) {
 	if (!dataChannel)
 		return -1;
 
-	dataChannel->onOpen([dc, cb]() { cb(getUserPointer(dc)); });
+	if (cb)
+		dataChannel->onBufferedAmountLow([dc, cb]() { cb(getUserPointer(dc)); });
+	else
+		dataChannel->onBufferedAmountLow(nullptr);
 	return 0;
 }
 
@@ -306,7 +374,10 @@ int rtcSetAvailableCallback(int dc, availableCallbackFunc cb) {
 	if (!dataChannel)
 		return -1;
 
-	dataChannel->onOpen([dc, cb]() { cb(getUserPointer(dc)); });
+	if (cb)
+		dataChannel->onOpen([dc, cb]() { cb(getUserPointer(dc)); });
+	else
+		dataChannel->onOpen(nullptr);
 	return 0;
 }
 
@@ -333,11 +404,11 @@ int rtcReceiveMessage(int dc, char *buffer, int *size) {
 		               },
 		               [&](const string &s) {
 			               int len = std::min(*size - 1, int(s.size()));
-			               *size = -1;
 			               if (len >= 0) {
 				               std::copy(s.data(), s.data() + len, buffer);
 				               buffer[len] = '\0';
 			               }
+			               *size = -(len + 1);
 			               return len + 1;
 		               }},
 		    *message);

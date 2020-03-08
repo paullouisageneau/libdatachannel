@@ -33,10 +33,9 @@ void test_connectivity() {
 
 	Configuration config;
 	// config.iceServers.emplace_back("stun:stun.l.google.com:19302");
-	// config.iceServers.emplace_back("turn:USER@PASSWORD:turn.example.net:3478?transport=udp"); //
-	// libnice only config.enableIceTcp = true; // libnice only
 
 	auto pc1 = std::make_shared<PeerConnection>(config);
+
 	auto pc2 = std::make_shared<PeerConnection>(config);
 
 	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](const Description &sdp) {
@@ -83,11 +82,11 @@ void test_connectivity() {
 
 	shared_ptr<DataChannel> dc2;
 	pc2->onDataChannel([&dc2](shared_ptr<DataChannel> dc) {
-		cout << "Got a DataChannel with label: " << dc->label() << endl;
+		cout << "DataChannel 2: Received with label \"" << dc->label() << "\"" << endl;
 		dc2 = dc;
 		dc2->onMessage([](const variant<binary, string> &message) {
 			if (holds_alternative<string>(message)) {
-				cout << "Received 2: " << get<string>(message) << endl;
+				cout << "Message 2: " << get<string>(message) << endl;
 			}
 		});
 		dc2->send("Hello from 2");
@@ -98,12 +97,12 @@ void test_connectivity() {
 		auto dc1 = wdc1.lock();
 		if (!dc1)
 			return;
-		cout << "DataChannel open: " << dc1->label() << endl;
+		cout << "DataChannel 1: Open" << endl;
 		dc1->send("Hello from 1");
 	});
 	dc1->onMessage([](const variant<binary, string> &message) {
 		if (holds_alternative<string>(message)) {
-			cout << "Received 1: " << get<string>(message) << endl;
+			cout << "Message 1: " << get<string>(message) << endl;
 		}
 	});
 
