@@ -88,6 +88,9 @@ int rtcSetGatheringStateChangeCallback(int pc, gatheringStateCallbackFunc cb);
 int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
 
+int rtcGetLocalAddress(int pc, char *buffer, int size);
+int rtcGetRemoteAddress(int pc, char *buffer, int size);
+
 // DataChannel
 int rtcCreateDataChannel(int pc, const char *label);
 int rtcDeleteDataChannel(int dc);

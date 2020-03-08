@@ -247,6 +247,34 @@ int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid) {
 	return 0;
 }
 
+int rtcGetLocalAddress(int pc, char *buffer, int size) {
+	auto peerConnection = getPeerConnection(pc);
+	if (!peerConnection)
+		return -1;
+
+	if (auto addr = peerConnection->localAddress()) {
+		size = std::min(size_t(size - 1), addr->size());
+		std::copy(addr->data(), addr->data() + size, buffer);
+		buffer[size] = '\0';
+		return size + 1;
+	}
+	return -1;
+}
+
+int rtcGetRemoteAddress(int pc, char *buffer, int size) {
+	auto peerConnection = getPeerConnection(pc);
+	if (!peerConnection)
+		return -1;
+
+	if (auto addr = peerConnection->remoteAddress()) {
+		size = std::min(size_t(size - 1), addr->size());
+		std::copy(addr->data(), addr->data() + size, buffer);
+		buffer[size] = '\0';
+		return size + 1;
+	}
+	return -1;
+}
+
 int rtcGetDataChannelLabel(int dc, char *buffer, int size) {
 	auto dataChannel = getDataChannel(dc);
 	if (!dataChannel)

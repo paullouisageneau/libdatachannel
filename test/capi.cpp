@@ -156,6 +156,16 @@ int test_capi_main() {
 
 	sleep(3);
 
+	char buffer[256];
+	if (rtcGetLocalAddress(peer1->pc, buffer, 256) >= 0)
+		printf("Local address 1:  %s\n", buffer);
+	if (rtcGetRemoteAddress(peer1->pc, buffer, 256) >= 0)
+		printf("Remote address 1: %s\n", buffer);
+	if (rtcGetLocalAddress(peer2->pc, buffer, 256) >= 0)
+		printf("Local address 2:  %s\n", buffer);
+	if (rtcGetRemoteAddress(peer2->pc, buffer, 256) >= 0)
+		printf("Remote address 2: %s\n", buffer);
+
 	if (peer1->connected && peer2->connected) {
 		deletePeer(peer1);
 		deletePeer(peer2);
@@ -174,5 +184,5 @@ error:
 
 void test_capi() {
 	if (test_capi_main())
-		throw std::runtime_error("C API test failed");
+		throw std::runtime_error("Connection failed");
 }
