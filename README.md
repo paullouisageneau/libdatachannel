@@ -79,11 +79,11 @@ MY_ON_RECV_CANDIDATE_FROM_REMOTE([pc](string candidate, string mid) {
 ### Observe the PeerConnection state
 
 ```cpp
-pc->onStateChanged([](PeerConnection::State state) {
+pc->onStateChange([](PeerConnection::State state) {
     cout << "State: " << state << endl;
 });
 
-pc->onGatheringStateChanged([](PeerConnection::GatheringState state) {
+pc->onGatheringStateChange([](PeerConnection::GatheringState state) {
     cout << "Gathering state: " << state << endl;
 });
 
@@ -114,5 +114,7 @@ pc->onDataChannel([&dc](shared_ptr<rtc::DataChannel> incoming) {
 
 ```
 
-See [test/main.cpp](https://github.com/paullouisageneau/libdatachannel/blob/master/test/main.cpp) for a complete local connection example.
+See [test/connectivity.cpp](https://github.com/paullouisageneau/libdatachannel/blob/master/test/connectivity.cpp) for a complete local connection example.
+
+See [test/cpai.cpp](https://github.com/paullouisageneau/libdatachannel/blob/master/test/capi.cpp) for a C API example.
 

@@ -20,10 +20,13 @@
 #define RTC_INCLUDE_H
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0602
 #endif
 #endif
+
+#include "log.hpp"
 
 #include <cstddef>
 #include <functional>
@@ -32,9 +35,6 @@
 #include <optional>
 #include <string>
 #include <vector>
-
-#include "plog/Appenders/ColorConsoleAppender.h"
-#include "plog/Log.h"
 
 namespace rtc {
 
@@ -50,8 +50,6 @@ using std::uint32_t;
 using std::uint64_t;
 using std::uint8_t;
 
-// Constants
-
 const size_t MAX_NUMERICNODE_LEN = 48; // Max IPv6 string representation length
 const size_t MAX_NUMERICSERV_LEN = 6;  // Max port string representation length
 
@@ -59,29 +57,6 @@ const uint16_t DEFAULT_SCTP_PORT = 5000; // SCTP port to use by default
 const size_t DEFAULT_MAX_MESSAGE_SIZE = 65536;    // Remote max message size if not specified in SDP
 const size_t LOCAL_MAX_MESSAGE_SIZE = 256 * 1024; // Local max message size
 
-// Log
-
-enum class LogLevel { // Don't change, it must match plog severity
-	None = 0,
-	Fatal = 1,
-	Error = 2,
-	Warning = 3,
-	Info = 4,
-	Debug = 5,
-	Verbose = 6
-};
-
-inline void InitLogger(plog::Severity severity, plog::IAppender *appender = nullptr) {
-	static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender;
-	if (!appender)
-		appender = &consoleAppender;
-	plog::init(severity, appender);
-	PLOG_DEBUG << "Logger initialized";
-}
-
-inline void InitLogger(LogLevel level) { InitLogger(static_cast<plog::Severity>(level)); }
-
-// Utils
 
 template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template <class... Ts> overloaded(Ts...)->overloaded<Ts...>;
@@ -89,6 +64,7 @@ template <class... Ts> overloaded(Ts...)->overloaded<Ts...>;
 template <typename... P> class synchronized_callback {
 public:
 	synchronized_callback() = default;
+	synchronized_callback(std::function<void(P...)> func) { *this = std::move(func); };
 	~synchronized_callback() { *this = nullptr; }
 
 	synchronized_callback &operator=(std::function<void(P...)> func) {

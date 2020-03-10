@@ -19,19 +19,21 @@
 #include "icetransport.hpp"
 #include "configuration.hpp"
 
+#include <iostream>
+#include <random>
+#include <sstream>
+
 #ifdef _WIN32
 #include <winsock2.h>
-#elif __linux__
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #endif
 
 #include <sys/types.h>
-
-#include <iostream>
-#include <random>
-#include <sstream>
 
 using namespace std::chrono_literals;
 
@@ -243,11 +245,8 @@ void IceTransport::LogCallback(juice_log_level_t level, const char *message) {
 	case JUICE_LOG_LEVEL_INFO:
 		severity = plog::info;
 		break;
-	case JUICE_LOG_LEVEL_DEBUG:
-		severity = plog::debug;
-		break;
 	default:
-		severity = plog::verbose;
+		severity = plog::verbose; // libjuice debug as verbose
 		break;
 	}
 	PLOG(severity) << "juice: " << message;

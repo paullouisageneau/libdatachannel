@@ -32,6 +32,7 @@
 #include <functional>
 #include <list>
 #include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <unordered_map>
 
@@ -95,6 +96,11 @@ private:
 	bool checkFingerprint(const std::string &fingerprint) const;
 	void forwardMessage(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
+
+	std::shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, const string &label,
+	                                                const string &protocol,
+	                                                const Reliability &reliability);
+	std::shared_ptr<DataChannel> findDataChannel(uint16_t stream);
 	void iterateDataChannels(std::function<void(std::shared_ptr<DataChannel> channel)> func);
 	void openDataChannels();
 	void closeDataChannels();
@@ -118,6 +124,7 @@ private:
 	std::recursive_mutex mInitMutex;
 
 	std::unordered_map<unsigned int, std::weak_ptr<DataChannel>> mDataChannels;
+	std::shared_mutex mDataChannelsMutex;
 
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;

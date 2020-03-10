@@ -44,6 +44,9 @@ LDLIBS+=$(LOCALLIBS) $(shell pkg-config --libs $(LIBS))
 SRCS=$(shell printf "%s " src/*.cpp)
 OBJS=$(subst .cpp,.o,$(SRCS))
 
+TEST_SRCS=$(shell printf "%s " test/*.cpp)
+TEST_OBJS=$(subst .cpp,.o,$(TEST_SRCS))
+
 all: $(NAME).a $(NAME).so tests
 
 src/%.o: src/%.cpp
@@ -60,8 +63,8 @@ $(NAME).a: $(OBJS)
 $(NAME).so: $(LOCALLIBS) $(OBJS)
 	$(CXX) $(LDFLAGS) -shared -o $@ $(OBJS) $(LDLIBS)
 
-tests: $(NAME).a test/main.o
-	$(CXX) $(LDFLAGS) -o $@ test/main.o $(NAME).a $(LDLIBS)
+tests: $(NAME).a $(TEST_OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $(TEST_OBJS) $(NAME).a $(LDLIBS)
 
 clean:
 	-$(RM) include/rtc/*.d *.d

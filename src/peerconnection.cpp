@@ -25,6 +25,10 @@
 
 #include <iostream>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 namespace rtc {
 
 using namespace std::placeholders;
@@ -32,7 +36,13 @@ using namespace std::placeholders;
 using std::shared_ptr;
 using std::weak_ptr;
 
-PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
+PeerConnection::PeerConnection() : PeerConnection(Configuration()) {
+#ifdef _WIN32
+	WSADATA wsaData;
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
+		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
+#endif
+}
 
 PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New) {}
@@ -43,12 +53,15 @@ PeerConnection::~PeerConnection() {
 	mSctpTransport.reset();
 	mDtlsTransport.reset();
 	mIceTransport.reset();
+
+#ifdef _WIN32
+	WSACleanup();
+#endif
 }
 
 void PeerConnection::close() {
 	// Close DataChannels
 	closeDataChannels();
-	mDataChannels.clear();
 
 	// Close Transports
 	for (int i = 0; i < 2; ++i) { // Make sure a transport wasn't spawn behind our back
@@ -101,12 +114,16 @@ void PeerConnection::setRemoteDescription(Description description) {
 		if (!sctpTransport && iceTransport->role() == Description::Role::Active) {
 			// Since we assumed passive role during DataChannel creation, we need to shift the
 			// stream numbers by one to shift them from odd to even.
+			std::unique_lock lock(mDataChannelsMutex);
 			decltype(mDataChannels) newDataChannels;
-			iterateDataChannels([&](shared_ptr<DataChannel> channel) {
+			auto it = mDataChannels.begin();
+			while (it != mDataChannels.end()) {
+				auto channel = it->second.lock();
 				if (channel->stream() % 2 == 1)
 					channel->mStream -= 1;
 				newDataChannels.emplace(channel->stream(), channel);
-			});
+				++it;
+			}
 			std::swap(mDataChannels, newDataChannels);
 		}
 	}
@@ -158,19 +175,7 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(const string &label,
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	auto role = iceTransport ? iceTransport->role() : Description::Role::Passive;
 
-	// The active side must use streams with even identifiers, whereas the passive side must use
-	// streams with odd identifiers.
-	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09#section-6
-	unsigned int stream = (role == Description::Role::Active) ? 0 : 1;
-	while (mDataChannels.find(stream) != mDataChannels.end()) {
-		stream += 2;
-		if (stream >= 65535)
-			throw std::runtime_error("Too many DataChannels");
-	}
-
-	auto channel =
-	    std::make_shared<DataChannel>(shared_from_this(), stream, label, protocol, reliability);
-	mDataChannels.insert(std::make_pair(stream, channel));
+	auto channel = emplaceDataChannel(role, label, protocol, reliability);
 
 	if (!iceTransport) {
 		// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
@@ -353,14 +358,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		return;
 	}
 
-	shared_ptr<DataChannel> channel;
-	if (auto it = mDataChannels.find(message->stream); it != mDataChannels.end()) {
-		channel = it->second.lock();
-		if (!channel || channel->isClosed()) {
-			mDataChannels.erase(it);
-			channel = nullptr;
-		}
-	}
+	auto channel = findDataChannel(message->stream);
 
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	auto sctpTransport = std::atomic_load(&mSctpTransport);
@@ -388,21 +386,46 @@ void PeerConnection::forwardMessage(message_ptr message) {
 }
 
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
+	if (auto channel = findDataChannel(stream))
+		channel->triggerBufferedAmount(amount);
+}
+
+shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role role,
+                                                           const string &label,
+                                                           const string &protocol,
+                                                           const Reliability &reliability) {
+	// The active side must use streams with even identifiers, whereas the passive side must use
+	// streams with odd identifiers.
+	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09#section-6
+	std::unique_lock lock(mDataChannelsMutex);
+	unsigned int stream = (role == Description::Role::Active) ? 0 : 1;
+	while (mDataChannels.find(stream) != mDataChannels.end()) {
+		stream += 2;
+		if (stream >= 65535)
+			throw std::runtime_error("Too many DataChannels");
+	}
+	auto channel =
+	    std::make_shared<DataChannel>(shared_from_this(), stream, label, protocol, reliability);
+	mDataChannels.emplace(std::make_pair(stream, channel));
+	return channel;
+}
+
+shared_ptr<DataChannel> PeerConnection::findDataChannel(uint16_t stream) {
+	std::shared_lock lock(mDataChannelsMutex);
 	shared_ptr<DataChannel> channel;
 	if (auto it = mDataChannels.find(stream); it != mDataChannels.end()) {
 		channel = it->second.lock();
 		if (!channel || channel->isClosed()) {
 			mDataChannels.erase(it);
-			channel = nullptr;
+			channel.reset();
 		}
 	}
-
-	if (channel)
-		channel->triggerBufferedAmount(amount);
+	return channel;
 }
 
 void PeerConnection::iterateDataChannels(
     std::function<void(shared_ptr<DataChannel> channel)> func) {
+	std::shared_lock lock(mDataChannelsMutex);
 	auto it = mDataChannels.begin();
 	while (it != mDataChannels.end()) {
 		auto channel = it->second.lock();

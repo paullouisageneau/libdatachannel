@@ -18,9 +18,13 @@
 
 #include "channel.hpp"
 
-namespace {}
-
 namespace rtc {
+
+size_t Channel::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
+
+size_t Channel::bufferedAmount() const { return mBufferedAmount; }
+
+size_t Channel::availableAmount() const { return 0; }
 
 void Channel::onOpen(std::function<void()> callback) {
 	mOpenCallback = callback;
@@ -49,19 +53,15 @@ void Channel::onMessage(std::function<void(const binary &data)> binaryCallback,
 	});
 }
 
-void Channel::onAvailable(std::function<void()> callback) {
-	mAvailableCallback = callback;
-}
-
 void Channel::onBufferedAmountLow(std::function<void()> callback) {
 	mBufferedAmountLowCallback = callback;
 }
 
-size_t Channel::availableAmount() const { return 0; }
-
-size_t Channel::bufferedAmount() const { return mBufferedAmount; }
-
 void Channel::setBufferedAmountLowThreshold(size_t amount) { mBufferedAmountLowThreshold = amount; }
+
+void Channel::onAvailable(std::function<void()> callback) {
+	mAvailableCallback = callback;
+}
 
 void Channel::triggerOpen() { mOpenCallback(); }
 

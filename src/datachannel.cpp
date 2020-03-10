@@ -21,6 +21,12 @@
 #include "peerconnection.hpp"
 #include "sctptransport.hpp"
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
+#include <arpa/inet.h>
+#endif
+
 namespace rtc {
 
 using std::shared_ptr;
@@ -77,6 +83,14 @@ DataChannel::~DataChannel() {
 	close();
 }
 
+unsigned int DataChannel::stream() const { return mStream; }
+
+string DataChannel::label() const { return mLabel; }
+
+string DataChannel::protocol() const { return mProtocol; }
+
+Reliability DataChannel::reliability() const { return *mReliability; }
+
 void DataChannel::close() {
 	if (mIsOpen.exchange(false) && mSctpTransport)
 		mSctpTransport->reset(mStream);
@@ -131,8 +145,6 @@ bool DataChannel::isOpen(void) const { return mIsOpen; }
 
 bool DataChannel::isClosed(void) const { return mIsClosed; }
 
-size_t DataChannel::availableAmount() const { return mRecvQueue.amount(); }
-
 size_t DataChannel::maxMessageSize() const {
 	size_t max = DEFAULT_MAX_MESSAGE_SIZE;
 	if (auto description = mPeerConnection->remoteDescription())
@@ -142,13 +154,7 @@ size_t DataChannel::maxMessageSize() const {
 	return std::min(max, LOCAL_MAX_MESSAGE_SIZE);
 }
 
-unsigned int DataChannel::stream() const { return mStream; }
-
-string DataChannel::label() const { return mLabel; }
-
-string DataChannel::protocol() const { return mProtocol; }
-
-Reliability DataChannel::reliability() const { return *mReliability; }
+size_t DataChannel::availableAmount() const { return mRecvQueue.amount(); }
 
 void DataChannel::open(shared_ptr<SctpTransport> sctpTransport) {
 	mSctpTransport = sctpTransport;
