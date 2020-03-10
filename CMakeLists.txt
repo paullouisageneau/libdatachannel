@@ -64,16 +64,7 @@ target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/includ
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
-target_link_libraries(datachannel
-					Threads::Threads
-					Usrsctp::UsrsctpStatic
-					)
-if(WIN32)
-	target_link_libraries(datachannel
-						"wsock32"   #winsock2
-    					"ws2_32"    #winsock2
-						)
-endif()
+target_link_libraries(datachannel Threads::Threads Usrsctp::UsrsctpStatic)
 
 add_library(datachannel-static STATIC EXCLUDE_FROM_ALL ${LIBDATACHANNEL_SOURCES})
 set_target_properties(datachannel-static PROPERTIES
@@ -84,15 +75,11 @@ target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
-target_link_libraries(datachannel-static
-						Threads::Threads
-						Usrsctp::UsrsctpStatic
-						)
+target_link_libraries(datachannel-static Threads::Threads Usrsctp::UsrsctpStatic)
+
 if(WIN32)
-	target_link_libraries(datachannel-static
-						"wsock32"   #winsock2
-    					"ws2_32"    #winsock2
-						)
+	target_link_libraries(datachannel "wsock32" "ws2_32") # winsock2
+	target_link_libraries(datachannel-static "wsock32" "ws2_32") # winsock2
 endif()
 
 if (USE_GNUTLS)
