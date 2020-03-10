@@ -6,7 +6,7 @@ AR=$(CROSS)ar
 RM=rm -f
 CXXFLAGS=-std=c++17
 CPPFLAGS=-O2 -pthread -fPIC -Wall -Wno-address-of-packed-member
-LDFLAGS=-pthread -g
+LDFLAGS=-pthread
 LIBS=
 LOCALLIBS=libusrsctp.a
 USRSCTP_DIR=deps/usrsctp
