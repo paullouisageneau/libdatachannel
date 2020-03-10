@@ -116,3 +116,5 @@ pc->onDataChannel([&dc](shared_ptr<rtc::DataChannel> incoming) {
 
 See [test/connectivity.cpp](https://github.com/paullouisageneau/libdatachannel/blob/master/test/connectivity.cpp) for a complete local connection example.
 
+See [test/cpai.cpp](https://github.com/paullouisageneau/libdatachannel/blob/master/test/capi.cpp) for a C API example.
+
