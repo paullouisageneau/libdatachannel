@@ -126,6 +126,7 @@ static void deletePeer(Peer *peer) {
 			rtcDeleteDataChannel(peer->dc);
 		if (peer->pc)
 			rtcDeletePeerConnection(peer->pc);
+		free(peer);
 	}
 }
 
