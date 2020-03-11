@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_TCP_TRANSPORT_H
-#define RTC_TCP_TRANSPORT_H
+#ifndef RTC_TLS_TRANSPORT_H
+#define RTC_TLS_TRANSPORT_H
 
 #if ENABLE_WEBSOCKET
 
@@ -25,17 +25,24 @@
 #include "queue.hpp"
 #include "transport.hpp"
 
+#include <memory>
+#include <mutex>
 #include <thread>
 
-// Use the socket defines from libjuice
-#include "../deps/libjuice/src/socket.h"
+#if USE_GNUTLS
+#include <gnutls/gnutls.h>
+#else
+#include <openssl/ssl.h>
+#endif
 
 namespace rtc {
 
-class TcpTransport : public Transport {
+class TcpTransport;
+
+class TlsTransport : public Transport {
 public:
-	TcpTransport(const string &hostname, const string &service);
-	virtual ~TcpTransport();
+	TlsTransport(std::shared_ptr<TcpTransport> lower, const string &host);
+	virtual ~TlsTransport();
 
 	bool stop() override;
 	bool send(message_ptr message) override;
@@ -43,20 +50,26 @@ public:
 	void incoming(message_ptr message) override;
 	bool outgoing(message_ptr message) override;
 
-private:
-	void connect(const string &hostname, const string &service);
-	void connect(const sockaddr *addr, socklen_t addrlen);
-	void close();
+protected:
+	void runRecvLoop();
 
-	bool trySendQueue();
-	bool trySendMessage(message_ptr &message);
+	Queue<message_ptr> mIncomingQueue;
+	std::thread mRecvThread;
 
-	void runLoop();
+#if USE_GNUTLS
+	gnutls_session_t mSession;
 
-	string mHostname, mService;
-	socket_t mSock;
-	std::thread mThread;
-	Queue<message_ptr> mSendQueue;
+	static ssize_t WriteCallback(gnutls_transport_ptr_t ptr, const void *data, size_t len);
+	static ssize_t ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen);
+	static int TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms);
+#else
+	SSL_CTX *mCtx;
+	SSL *mSsl;
+	BIO *mInBio, *mOutBio;
+
+	static int CertificateCallback(int preverify_ok, X509_STORE_CTX *ctx);
+	static void InfoCallback(const SSL *ssl, int where, int ret);
+#endif
 };
 
 } // namespace rtc
