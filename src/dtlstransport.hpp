@@ -82,8 +82,8 @@ private:
 	static ssize_t ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen);
 	static int TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms);
 #else
-	SSL_CTX *mCtx;
-	SSL *mSsl;
+	SSL_CTX *mCtx = NULL;
+	SSL *mSsl = NULL;
 	BIO *mInBio, *mOutBio;
 
 	static BIO_METHOD *BioMethods;

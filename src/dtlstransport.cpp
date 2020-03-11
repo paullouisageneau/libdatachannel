@@ -18,9 +18,7 @@
 
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
-#include "message.hpp"
 
-#include <cassert>
 #include <chrono>
 #include <cstring>
 #include <exception>
@@ -76,31 +74,37 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	unsigned int flags = GNUTLS_DATAGRAM | (active ? GNUTLS_CLIENT : GNUTLS_SERVER);
 	check_gnutls(gnutls_init(&mSession, flags));
 
-	// RFC 8261: SCTP performs segmentation and reassembly based on the path MTU.
-	// Therefore, the DTLS layer MUST NOT use any compression algorithm.
-	// See https://tools.ietf.org/html/rfc8261#section-5
-	const char *priorities = "SECURE128:-VERS-SSL3.0:-ARCFOUR-128:-COMP-ALL:+COMP-NULL";
-	const char *err_pos = NULL;
-	check_gnutls(gnutls_priority_set_direct(mSession, priorities, &err_pos),
-	             "Unable to set TLS priorities");
+	try {
+		// RFC 8261: SCTP performs segmentation and reassembly based on the path MTU.
+		// Therefore, the DTLS layer MUST NOT use any compression algorithm.
+		// See https://tools.ietf.org/html/rfc8261#section-5
+		const char *priorities = "SECURE128:-VERS-SSL3.0:-ARCFOUR-128:-COMP-ALL:+COMP-NULL";
+		const char *err_pos = NULL;
+		check_gnutls(gnutls_priority_set_direct(mSession, priorities, &err_pos),
+		             "Unable to set TLS priorities");
 
-	gnutls_certificate_set_verify_function(mCertificate->credentials(), CertificateCallback);
-	check_gnutls(
-	    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate->credentials()));
+		gnutls_certificate_set_verify_function(mCertificate->credentials(), CertificateCallback);
+		check_gnutls(
+		    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate->credentials()));
 
-	gnutls_dtls_set_timeouts(mSession,
-	                         1000,   // 1s retransmission timeout recommended by RFC 6347
-	                         30000); // 30s total timeout
-	gnutls_handshake_set_timeout(mSession, 30000);
+		gnutls_dtls_set_timeouts(mSession,
+		                         1000,   // 1s retransmission timeout recommended by RFC 6347
+		                         30000); // 30s total timeout
+		gnutls_handshake_set_timeout(mSession, 30000);
 
-	gnutls_session_set_ptr(mSession, this);
-	gnutls_transport_set_ptr(mSession, this);
-	gnutls_transport_set_push_function(mSession, WriteCallback);
-	gnutls_transport_set_pull_function(mSession, ReadCallback);
-	gnutls_transport_set_pull_timeout_function(mSession, TimeoutCallback);
+		gnutls_session_set_ptr(mSession, this);
+		gnutls_transport_set_ptr(mSession, this);
+		gnutls_transport_set_push_function(mSession, WriteCallback);
+		gnutls_transport_set_pull_function(mSession, ReadCallback);
+		gnutls_transport_set_pull_timeout_function(mSession, TimeoutCallback);
 
-	mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
-	registerIncoming();
+		mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
+		registerIncoming();
+
+	} catch (...) {
+		gnutls_deinit(mSession);
+		throw;
+	}
 }
 
 DtlsTransport::~DtlsTransport() {
@@ -169,7 +173,7 @@ void DtlsTransport::runRecvLoop() {
 				throw std::runtime_error("MTU is too low");
 
 		} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN ||
-		         !check_gnutls(ret, "TLS handshake failed"));
+		         !check_gnutls(ret, "DTLS handshake failed"));
 
 		// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
 		// See https://tools.ietf.org/html/rfc8261#section-5
@@ -364,54 +368,63 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 
 	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
 
-	if (!(mCtx = SSL_CTX_new(DTLS_method())))
-		throw std::runtime_error("Unable to create SSL context");
+	try {
+		if (!(mCtx = SSL_CTX_new(DTLS_method())))
+			throw std::runtime_error("Unable to create SSL context");
 
-	check_openssl(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
-	              "Unable to set SSL priorities");
+		check_openssl(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
+		              "Unable to set SSL priorities");
 
-	// RFC 8261: SCTP performs segmentation and reassembly based on the path MTU.
-	// Therefore, the DTLS layer MUST NOT use any compression algorithm.
-	// See https://tools.ietf.org/html/rfc8261#section-5
-	SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_QUERY_MTU);
-	SSL_CTX_set_min_proto_version(mCtx, DTLS1_VERSION);
-	SSL_CTX_set_read_ahead(mCtx, 1);
-	SSL_CTX_set_quiet_shutdown(mCtx, 1);
-	SSL_CTX_set_info_callback(mCtx, InfoCallback);
-	SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
-	                   CertificateCallback);
-	SSL_CTX_set_verify_depth(mCtx, 1);
+		// RFC 8261: SCTP performs segmentation and reassembly based on the path MTU.
+		// Therefore, the DTLS layer MUST NOT use any compression algorithm.
+		// See https://tools.ietf.org/html/rfc8261#section-5
+		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_QUERY_MTU);
+		SSL_CTX_set_min_proto_version(mCtx, DTLS1_VERSION);
+		SSL_CTX_set_read_ahead(mCtx, 1);
+		SSL_CTX_set_quiet_shutdown(mCtx, 1);
+		SSL_CTX_set_info_callback(mCtx, InfoCallback);
+		SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+		                   CertificateCallback);
+		SSL_CTX_set_verify_depth(mCtx, 1);
 
-	auto [x509, pkey] = mCertificate->credentials();
-	SSL_CTX_use_certificate(mCtx, x509);
-	SSL_CTX_use_PrivateKey(mCtx, pkey);
+		auto [x509, pkey] = mCertificate->credentials();
+		SSL_CTX_use_certificate(mCtx, x509);
+		SSL_CTX_use_PrivateKey(mCtx, pkey);
 
-	check_openssl(SSL_CTX_check_private_key(mCtx), "SSL local private key check failed");
+		check_openssl(SSL_CTX_check_private_key(mCtx), "SSL local private key check failed");
 
-	if (!(mSsl = SSL_new(mCtx)))
-		throw std::runtime_error("Unable to create SSL instance");
+		if (!(mSsl = SSL_new(mCtx)))
+			throw std::runtime_error("Unable to create SSL instance");
 
-	SSL_set_ex_data(mSsl, TransportExIndex, this);
+		SSL_set_ex_data(mSsl, TransportExIndex, this);
 
-	if (lower->role() == Description::Role::Active)
-		SSL_set_connect_state(mSsl);
-	else
-		SSL_set_accept_state(mSsl);
+		if (lower->role() == Description::Role::Active)
+			SSL_set_connect_state(mSsl);
+		else
+			SSL_set_accept_state(mSsl);
 
-	if (!(mInBio = BIO_new(BIO_s_mem())) || !(mOutBio = BIO_new(BioMethods)))
-		throw std::runtime_error("Unable to create BIO");
+		if (!(mInBio = BIO_new(BIO_s_mem())) || !(mOutBio = BIO_new(BioMethods)))
+			throw std::runtime_error("Unable to create BIO");
 
-	BIO_set_mem_eof_return(mInBio, BIO_EOF);
-	BIO_set_data(mOutBio, this);
-	SSL_set_bio(mSsl, mInBio, mOutBio);
+		BIO_set_mem_eof_return(mInBio, BIO_EOF);
+		BIO_set_data(mOutBio, this);
+		SSL_set_bio(mSsl, mInBio, mOutBio);
 
-	auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
-	    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
-	SSL_set_options(mSsl, SSL_OP_SINGLE_ECDH_USE);
-	SSL_set_tmp_ecdh(mSsl, ecdh.get());
+		auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
+		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
+		SSL_set_options(mSsl, SSL_OP_SINGLE_ECDH_USE);
+		SSL_set_tmp_ecdh(mSsl, ecdh.get());
 
-	mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
-	registerIncoming();
+		mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
+		registerIncoming();
+
+	} catch (...) {
+		if (mSsl)
+			SSL_free(mSsl);
+		if (mCtx)
+			SSL_CTX_free(mCtx);
+		throw;
+	}
 }
 
 DtlsTransport::~DtlsTransport() {
