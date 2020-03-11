@@ -6,6 +6,7 @@ project (libdatachannel
 
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 option(USE_JUICE "Use libjuice instead of libnice" OFF)
+option(ENABLE_WEBSOCKET "Build WebSocket support" OFF)
 
 if(USE_GNUTLS)
 	option(USE_NETTLE "Use Nettle instead of OpenSSL in libjuice" ON)
@@ -34,6 +35,10 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/peerconnection.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtc.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.cpp
+
+	${CMAKE_CURRENT_SOURCE_DIR}/src/tcptransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/tlstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/wstransport.cpp
 )
 
 set(LIBDATACHANNEL_HEADERS
@@ -144,6 +149,14 @@ else()
 	target_link_libraries(datachannel LibNice::LibNice)
 	target_compile_definitions(datachannel-static PRIVATE USE_JUICE=0)
 	target_link_libraries(datachannel-static LibNice::LibNice)
+endif()
+
+if (ENABLE_WEBSOCKET)
+	target_compile_definitions(datachannel PRIVATE ENABLE_WEBSOCKET=1)
+	target_compile_definitions(datachannel-static PRIVATE ENABLE_WEBSOCKET=1)
+else()
+	target_compile_definitions(datachannel PRIVATE ENABLE_WEBSOCKET=0)
+	target_compile_definitions(datachannel-static PRIVATE ENABLE_WEBSOCKET=0)
 endif()
 
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)

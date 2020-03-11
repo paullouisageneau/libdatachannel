@@ -44,6 +44,7 @@ public:
 	void push(T element);
 	std::optional<T> pop();
 	std::optional<T> peek();
+	std::optional<T> exchange(T element);
 	bool wait(const std::optional<std::chrono::milliseconds> &duration = nullopt);
 
 private:
@@ -113,6 +114,16 @@ template <typename T> std::optional<T> Queue<T>::peek() {
 	std::unique_lock lock(mMutex);
 	if (!mQueue.empty()) {
 		return std::optional<T>{mQueue.front()};
+	} else {
+		return nullopt;
+	}
+}
+
+template <typename T> std::optional<T> Queue<T>::exchange(T element) {
+	std::unique_lock lock(mMutex);
+	if (!mQueue.empty()) {
+		std::swap(mQueue.front(), element);
+		return std::optional<T>{element};
 	} else {
 		return nullopt;
 	}
