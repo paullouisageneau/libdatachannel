@@ -37,7 +37,19 @@ function createRemoteConnection(remoteDescJSON) {
         if (e.candidate) {
             const candidate = e.candidate.candidate;
             connectionInfo.candidate = candidate;
-            document.body.append(JSON.stringify(connectionInfo));
+            const body = JSON.stringify(connectionInfo)
+            fetch(
+                'http://localhost:8000/state/json',
+                {
+                    method: 'post',
+                    headers: {'Content-Type': 'application/json'},
+                    body
+                }
+            ).then(response => {
+                if (response.status !== 200) {
+                    throw new Error('bad status ' + response.status);
+                }
+            })
         }
     }
     remoteConnection.onicecandidateerror = err => {

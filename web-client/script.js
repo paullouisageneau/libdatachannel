@@ -21,12 +21,31 @@ function createConnection() {
         if (e.candidate) {
             const candidate = e.candidate.candidate;
             connectionInfo.candidate = candidate;
-            const answererUrl = 'http://localhost:8000/answerer.html?connection=' + btoa(JSON.stringify(connectionInfo));
+            const answererUrl = 'http://localhost:8080/answerer.html?connection=' + btoa(JSON.stringify(connectionInfo));
             const createLink = document.createElement('a');
             createLink.setAttribute('href', answererUrl);
             createLink.setAttribute('target', 'new');
             createLink.append('Open me ;)');
             document.body.append(createLink);
+            const pollForConnection = setInterval(() => {
+                fetch(
+                    'http://localhost:8000/state/json'
+                ).then(response => {
+                    if (response.status !== 200) {
+                        throw new Error('bad status ' + response.status);
+                    }
+                    return response.json();
+                }).then(data => {
+                    if (data.description) {
+                        console.log('yes');
+                        clearInterval(pollForConnection);
+                        createRemoteConnection(data.description);
+                    }
+                    else {
+                        console.log('no');
+                    }
+                })
+            }, 5000)
         }
     }
     localConnection.onicecandidateerror = err => {
@@ -38,23 +57,16 @@ function createConnection() {
             localConnection.setLocalDescription(desc);
         }
     )
-    const connectRemote = document.getElementById('connectRemote')
 
-    function createRemoteConnection() {
-        const remoteDescText = document.getElementById('remoteDesc').value
-        const remoteDescJSON = JSON.parse(remoteDescText);
+    function createRemoteConnection(desc) {
         const remoteDesc = {
             type: "answer",
-            sdp: remoteDescJSON.description 
+            sdp: desc
         }
-
-        console.dir(remoteDescJSON)
         localConnection.setRemoteDescription(remoteDesc).then((e) => {
             console.log(e)
         });
     }
-
-    connectRemote.addEventListener('click', createRemoteConnection, false)
 
     const sendButton = document.getElementById('sendDataBtn')
     sendButton.addEventListener('click', sendMessage, false)
