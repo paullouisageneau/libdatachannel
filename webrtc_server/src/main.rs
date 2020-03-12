@@ -46,7 +46,7 @@ fn make_cors() -> Cors {
     .expect("error while building CORS")
 }
 
-type Data = Mutex<ChannelData>;
+type Data = Mutex<String>;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct ChannelData {
@@ -63,17 +63,17 @@ impl Default for ChannelData {
     }
 }
 
-#[post("/json", format = "json", data = "<payload>")]
-fn new(payload: Json<ChannelData>, state: rocket::State<Data>) -> JsonValue {
+#[post("/json", data = "<payload>")]
+fn new(payload: String, state: rocket::State<Data>) -> JsonValue {
     let mut data = state.lock().expect("state locked");
-    *data = payload.into_inner();
+    *data = payload;
     json!({ "status": "ok" })
 }
 
-#[get("/json", format = "json")]
-fn get(state: rocket::State<Data>) -> Option<Json<ChannelData>> {
+#[get("/json")]
+fn get(state: rocket::State<Data>) -> Option<String> {
     let data = state.lock().expect("state locked");
-    Some(Json(data.clone()))
+    Some(data.clone())
 }
 
 #[catch(404)]
@@ -88,7 +88,7 @@ fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .mount("/state", routes![new, get])
         .register(catchers![not_found])
-        .manage(Mutex::new(ChannelData::default()))
+        .manage(Mutex::new(String::new()))
         .attach(make_cors())
 }
 

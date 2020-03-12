@@ -74,6 +74,9 @@ function createConnection() {
         const messageText = document.getElementById('sendData').value;
         sendChannel.send(messageText);   
     }
+    sendChannel.onmessage = (msg) => {
+        document.body.append(msg.data);
+    }
 }
 
 

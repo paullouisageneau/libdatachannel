@@ -1,7 +1,10 @@
 (function (){
     const urlParams = new URLSearchParams(window.location.search);
     const connectionParam = urlParams.get('connection')
-    const connection = JSON.parse(atob(connectionParam));
+    console.log(atob(connectionParam));
+    const decoded = atob(connectionParam);
+    const bits = decoded.split('xxxxx');
+    const connection = {description: bits[0], candidate: bits[1]}
     console.dir(connection);
     createRemoteConnection(connection);
 })();
@@ -17,7 +20,7 @@ function createRemoteConnection(remoteDescJSON) {
         sdpMLineIndex: 0 // Something to do with media
     }
     const remoteConnection = new RTCPeerConnection();
-    const connectionInfo = {};
+    let connectionDescription = '';
 
     remoteConnection.setRemoteDescription(remoteDesc).then((e) => {
         console.log(e)
@@ -29,20 +32,19 @@ function createRemoteConnection(remoteDescJSON) {
     remoteConnection.createAnswer().then((desc) => {
         remoteConnection.setLocalDescription(desc);
         console.dir(desc);
-        connectionInfo.description = desc.sdp;
+        connectionDescription = desc.sdp;
     })
 
 
     remoteConnection.onicecandidate = e => {
         if (e.candidate) {
             const candidate = e.candidate.candidate;
-            connectionInfo.candidate = candidate;
-            const body = JSON.stringify(connectionInfo)
+            const body = connectionDescription;
             fetch(
                 'http://localhost:8000/state/json',
                 {
                     method: 'post',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {'Content-Type': 'text/plain'},
                     body
                 }
             ).then(response => {
@@ -59,6 +61,10 @@ function createRemoteConnection(remoteDescJSON) {
         console.log('onDataChannel')
         const receiveChannel = e.channel;
         console.dir(receiveChannel);
+        receiveChannel.onopen = () => {
+            console.log('channel open')
+            receiveChannel.send('testing testing 123'); 
+        }
         receiveChannel.onmessage = (msg) => {
             document.body.append(msg.data);
         }
