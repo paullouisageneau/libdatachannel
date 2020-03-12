@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 		if (!res)
 			return;
 
-		while (res->status == -1) {
+		while (res->body.empty()) {
 			res = cli.Get("/state/json");
 		}
 
