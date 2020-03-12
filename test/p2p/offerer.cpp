@@ -59,6 +59,22 @@ std::string base64_encode(const std::string & in) {
   return out;
 }
 
+std::vector<string> split(const string& str, const string& delim)
+{
+    vector<string> tokens;
+    size_t prev = 0, pos = 0;
+    do
+    {
+        pos = str.find(delim, prev);
+        if (pos == string::npos) pos = str.length();
+        string token = str.substr(prev, pos-prev);
+        if (!token.empty()) tokens.push_back(token);
+        prev = pos + delim.length();
+    }
+    while (pos < str.length() && prev < str.length());
+    return tokens;
+}
+
 int main(int argc, char **argv) {
 	InitLogger(LogLevel::Warning);
 
@@ -74,9 +90,8 @@ int main(int argc, char **argv) {
 		if (!pc)
 			return;
 
-		pc->connectionInfo = "{\"description\":\"";
 		pc->connectionInfo += description;
-		pc->connectionInfo += "\",";
+		pc->connectionInfo += "xxxxx";
 	});
 
 	pc->onLocalCandidate([wpc = make_weak_ptr(pc)](const Candidate &candidate) {
@@ -84,21 +99,29 @@ int main(int argc, char **argv) {
 		if (!pc)
 			return;
 
-		pc->connectionInfo += "\"candidate\":\"";
 		pc->connectionInfo += candidate;
-		pc->connectionInfo += "\"}";
 
 		cout << pc->connectionInfo << endl << endl;
 
 		auto encoded = base64_encode(pc->connectionInfo);
-		cout << "http://localhost:8080/answerer.html?connection=" << encoded << endl;
+		cout << "http://localhost:8080/answerer.html?connection=" << encoded << endl << endl;
+
+		httplib::Client cli("localhost", 8000);
+
+		auto res = cli.Get("/state/json");
+		if (!res)
+			return;
+
+		while (res->status == -1) {
+			res = cli.Get("/state/json");
+		}
+
+		std::string description;
+		auto parts = split(res->body, "xxxxx");
+		pc->setRemoteDescription(parts[0]);
 	});
 
-	pc->onStateChange([](PeerConnection::State state){ 
-		if (state == PeerConnection::State::Connecting) {
-			// httplib::Client cli("localhost", 8000);
-			// cli.Post("/state/json", "json", payload);
-		}
+	pc->onStateChange([wpc = make_weak_ptr(pc)](PeerConnection::State state){ 
 		cout << "[State: " << state << "]" << endl;
 	});
 
