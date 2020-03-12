@@ -41,14 +41,13 @@ class TcpTransport;
 
 class TlsTransport : public Transport {
 public:
-	TlsTransport(std::shared_ptr<TcpTransport> lower, const string &host);
-	virtual ~TlsTransport();
+	TlsTransport(std::shared_ptr<TcpTransport> lower, string host);
+	~TlsTransport();
 
 	bool stop() override;
 	bool send(message_ptr message) override;
 
 	void incoming(message_ptr message) override;
-	bool outgoing(message_ptr message) override;
 
 protected:
 	void runRecvLoop();
@@ -66,6 +65,8 @@ protected:
 	SSL_CTX *mCtx;
 	SSL *mSsl;
 	BIO *mInBio, *mOutBio;
+
+	static int TransportExIndex;
 
 	static int CertificateCallback(int preverify_ok, X509_STORE_CTX *ctx);
 	static void InfoCallback(const SSL *ssl, int where, int ret);
