@@ -21,7 +21,12 @@ function createConnection() {
         if (e.candidate) {
             const candidate = e.candidate.candidate;
             connectionInfo.candidate = candidate;
-            document.body.append(JSON.stringify(connectionInfo));
+            const answererUrl = 'http://localhost:8000/answerer.html?connection=' + btoa(JSON.stringify(connectionInfo));
+            const createLink = document.createElement('a');
+            createLink.setAttribute('href', answererUrl);
+            createLink.setAttribute('target', 'new');
+            createLink.append('Open me ;)');
+            document.body.append(createLink);
         }
     }
     localConnection.onicecandidateerror = err => {
@@ -42,11 +47,7 @@ function createConnection() {
             type: "answer",
             sdp: remoteDescJSON.description 
         }
-        const remoteCandidate = {
-            candidate: remoteDescJSON.candidate,
-            sdpMid: "0", // Media stream ID for audio
-            sdpMLineIndex: 0 // Something to do with media
-        }
+
         console.dir(remoteDescJSON)
         localConnection.setRemoteDescription(remoteDesc).then((e) => {
             console.log(e)

@@ -1,12 +1,12 @@
 (function (){
-    console.log('Hello');
-    const connectRemote = document.getElementById('connectRemote')
-    connectRemote.addEventListener('click', createRemoteConnection, false)
+    const urlParams = new URLSearchParams(window.location.search);
+    const connectionParam = urlParams.get('connection')
+    const connection = JSON.parse(atob(connectionParam));
+    console.dir(connection);
+    createRemoteConnection(connection);
 })();
 
-function createRemoteConnection() {
-    const remoteDescText = document.getElementById('remoteDesc').value
-    const remoteDescJSON = JSON.parse(remoteDescText);
+function createRemoteConnection(remoteDescJSON) {
     const remoteDesc = {
         type: "offer",
         sdp: remoteDescJSON.description 
