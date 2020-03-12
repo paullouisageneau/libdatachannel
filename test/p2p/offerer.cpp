@@ -28,6 +28,7 @@
 
 using namespace rtc;
 using namespace std;
+using namespace std::chrono_literals;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
@@ -97,6 +98,7 @@ int main(int argc, char **argv) {
 			return;
 
 		while (res->body.empty()) {
+			std::this_thread::sleep_for(2s);
 			res = cli.Get("/state/json");
 		}
 

@@ -61,6 +61,12 @@ function createRemoteConnection(remoteDescJSON) {
         console.log('onDataChannel')
         const receiveChannel = e.channel;
         console.dir(receiveChannel);
+        const sendButton = document.getElementById('sendDataBtn')
+        sendButton.addEventListener('click', sendMessage, false)
+        function sendMessage() {
+            const messageText = document.getElementById('sendData').value;
+            receiveChannel.send(messageText);   
+        }
         receiveChannel.onopen = () => {
             console.log('channel open')
             receiveChannel.send('testing testing 123'); 

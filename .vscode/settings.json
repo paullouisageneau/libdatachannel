@@ -4,6 +4,7 @@
         "iosfwd": "cpp",
         "ostream": "cpp",
         "memory": "cpp",
-        "functional": "cpp"
+        "functional": "cpp",
+        "chrono": "cpp"
     }
 }
