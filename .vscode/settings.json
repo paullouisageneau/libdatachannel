@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "__functional_03": "cpp",
+        "iosfwd": "cpp",
+        "ostream": "cpp",
+        "memory": "cpp",
+        "functional": "cpp"
+    }
+}
