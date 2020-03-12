@@ -2,6 +2,7 @@
 
 #[macro_use]
 extern crate rocket;
+extern crate rocket_cors;
 #[macro_use]
 extern crate rocket_contrib;
 #[macro_use]
@@ -12,6 +13,38 @@ extern crate bincode;
 use std::sync::Mutex;
 
 use rocket_contrib::json::{Json, JsonValue};
+
+use rocket::http::Method; // 1.
+
+use rocket_cors::{
+    AllowedHeaders, AllowedOrigins, Error, // 2.
+    Cors, CorsOptions // 3.
+};
+
+fn make_cors() -> Cors {
+    let allowed_origins = AllowedOrigins::some_exact(&[ // 4.
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:8000",
+        "http://0.0.0.0:8000",
+    ]);
+
+    CorsOptions { // 5.
+        allowed_origins,
+        allowed_methods: vec![Method::Get, Method::Post].into_iter().map(From::from).collect(), // 1.
+        allowed_headers: AllowedHeaders::some(&[
+            "Authorization",
+            "Accept",
+            "Content-Type",
+            "User-Agent",
+            "Access-Control-Allow-Origin", // 6.
+        ]),
+        allow_credentials: true,
+        ..Default::default()
+    }
+    .to_cors()
+    .expect("error while building CORS")
+}
 
 type Data = Mutex<ChannelData>;
 
@@ -56,6 +89,7 @@ fn rocket() -> rocket::Rocket {
         .mount("/state", routes![new, get])
         .register(catchers![not_found])
         .manage(Mutex::new(ChannelData::default()))
+        .attach(make_cors())
 }
 
 fn main() {
