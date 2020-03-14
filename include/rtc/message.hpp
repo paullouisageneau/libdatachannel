@@ -30,6 +30,7 @@ namespace rtc {
 struct Message : binary {
 	enum Type { Binary, String, Control, Reset };
 
+	Message(const Message &message) = default;
 	Message(size_t size, Type type_ = Binary) : binary(size), type(type_) {}
 
 	template <typename Iterator>

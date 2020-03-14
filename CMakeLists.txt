@@ -39,6 +39,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/tcptransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/tlstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/wstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/base64.cpp
 )
 
 set(LIBDATACHANNEL_HEADERS

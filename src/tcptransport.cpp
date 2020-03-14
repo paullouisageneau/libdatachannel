@@ -22,6 +22,8 @@
 
 namespace rtc {
 
+using std::to_string;
+
 TcpTransport::TcpTransport(const string &hostname, const string &service)
     : mHostname(hostname), mService(service) {
 	mThread = std::thread(&TcpTransport::runLoop, this);
@@ -146,7 +148,7 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 			message = make_message(message->data() + len, message->data() + size);
 			return false;
 		} else {
-			throw std::runtime_error("Connection lost, errno=" + std::to_string(sockerrno));
+			throw std::runtime_error("Connection lost, errno=" + to_string(sockerrno));
 		}
 	}
 	message = nullptr;
@@ -172,6 +174,7 @@ void TcpTransport::runLoop() {
 			FD_ZERO(&readfds);
 			FD_ZERO(&writefds);
 			FD_SET(mSock, &readfds);
+			// TODO
 			if (!mSendQueue.empty())
 				FD_SET(mSock, &writefds);
 			int ret = ::select(SOCKET_TO_INT(mSock) + 1, &readfds, &writefds, NULL, NULL);
@@ -182,7 +185,7 @@ void TcpTransport::runLoop() {
 				char buffer[bufferSize];
 				int len = ::recv(mSock, buffer, bufferSize, 0);
 				if (len < 0)
-					throw std::runtime_error("Connection lost, errno=" + std::to_string(sockerrno));
+					throw std::runtime_error("Connection lost, errno=" + to_string(sockerrno));
 
 				if (len == 0)
 					break; // clean close
