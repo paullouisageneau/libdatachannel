@@ -62,11 +62,9 @@ void DtlsTransport::Cleanup() {
 }
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
-                             verifier_callback verifierCallback,
-                             state_callback stateChangeCallback)
-    : Transport(lower), mCertificate(certificate), mState(State::Disconnected),
-      mVerifierCallback(std::move(verifierCallback)),
-      mStateChangeCallback(std::move(stateChangeCallback)) {
+                             verifier_callback verifierCallback, state_callback stateChangeCallback)
+    : Transport(lower, std::move(stateChangeCallback)), mCertificate(certificate),
+      mVerifierCallback(std::move(verifierCallback)) {
 
 	PLOG_DEBUG << "Initializing DTLS transport (GnuTLS)";
 
@@ -113,8 +111,6 @@ DtlsTransport::~DtlsTransport() {
 	gnutls_deinit(mSession);
 }
 
-DtlsTransport::State DtlsTransport::state() const { return mState; }
-
 bool DtlsTransport::stop() {
 	if (!Transport::stop())
 		return false;
@@ -126,7 +122,7 @@ bool DtlsTransport::stop() {
 }
 
 bool DtlsTransport::send(message_ptr message) {
-	if (!message || mState != State::Connected)
+	if (!message || state() != State::Connected)
 		return false;
 
 	PLOG_VERBOSE << "Send size=" << message->size();
@@ -150,11 +146,6 @@ void DtlsTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	mIncomingQueue.push(message);
-}
-
-void DtlsTransport::changeState(State state) {
-	if (mState.exchange(state) != state)
-		mStateChangeCallback(state);
 }
 
 void DtlsTransport::runRecvLoop() {
@@ -362,9 +353,8 @@ void DtlsTransport::Cleanup() {
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
                              verifier_callback verifierCallback, state_callback stateChangeCallback)
-    : Transport(lower), mCertificate(certificate), mState(State::Disconnected),
-      mVerifierCallback(std::move(verifierCallback)),
-      mStateChangeCallback(std::move(stateChangeCallback)) {
+    : Transport(lower, std::move(stateChangeCallback)), mCertificate(certificate),
+      mVerifierCallback(std::move(verifierCallback)) {
 
 	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
 
@@ -445,10 +435,8 @@ bool DtlsTransport::stop() {
 	return true;
 }
 
-DtlsTransport::State DtlsTransport::state() const { return mState; }
-
 bool DtlsTransport::send(message_ptr message) {
-	if (!message || mState != State::Connected)
+	if (!message || state() != State::Connected)
 		return false;
 
 	PLOG_VERBOSE << "Send size=" << message->size();
@@ -465,11 +453,6 @@ void DtlsTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	mIncomingQueue.push(message);
-}
-
-void DtlsTransport::changeState(State state) {
-	if (mState.exchange(state) != state)
-		mStateChangeCallback(state);
 }
 
 void DtlsTransport::runRecvLoop() {
@@ -490,7 +473,7 @@ void DtlsTransport::runRecvLoop() {
 				auto message = *mIncomingQueue.pop();
 				BIO_write(mInBio, message->data(), message->size());
 
-				if (mState == State::Connecting) {
+				if (state() == State::Connecting) {
 					// Continue the handshake
 					int ret = SSL_do_handshake(mSsl);
 					if (!check_openssl_ret(mSsl, ret, "Handshake failed"))
@@ -515,7 +498,7 @@ void DtlsTransport::runRecvLoop() {
 
 			// No more messages pending, retransmit and rearm timeout if connecting
 			std::optional<milliseconds> duration;
-			if (mState == State::Connecting) {
+			if (state() == State::Connecting) {
 				// Warning: This function breaks the usual return value convention
 				int ret = DTLSv1_handle_timeout(mSsl);
 				if (ret < 0) {
@@ -525,7 +508,7 @@ void DtlsTransport::runRecvLoop() {
 				}
 
 				struct timeval timeout = {};
-				if (mState == State::Connecting && DTLSv1_get_timeout(mSsl, &timeout)) {
+				if (state() == State::Connecting && DTLSv1_get_timeout(mSsl, &timeout)) {
 					duration = milliseconds(timeout.tv_sec * 1000 + timeout.tv_usec / 1000);
 					// Also handle handshake timeout manually because OpenSSL actually doesn't...
 					// OpenSSL backs off exponentially in base 2 starting from the recommended 1s
@@ -546,7 +529,7 @@ void DtlsTransport::runRecvLoop() {
 		PLOG_ERROR << "DTLS recv: " << e.what();
 	}
 
-	if (mState == State::Connected) {
+	if (state() == State::Connected) {
 		PLOG_INFO << "DTLS disconnected";
 		changeState(State::Disconnected);
 		recv(nullptr);

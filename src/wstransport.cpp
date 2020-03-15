@@ -53,11 +53,12 @@ using std::to_string;
 using random_bytes_engine =
     std::independent_bits_engine<std::default_random_engine, CHAR_BIT, unsigned char>;
 
-WsTransport::WsTransport(std::shared_ptr<TcpTransport> lower, string host, string path)
-    : Transport(lower), mHost(std::move(host)), mPath(std::move(path)) {}
+WsTransport::WsTransport(std::shared_ptr<Transport> lower, string host, string path,
+                         state_callback callback)
+    : Transport(lower, std::move(callback)), mHost(std::move(host)), mPath(std::move(path)) {
 
-WsTransport::WsTransport(std::shared_ptr<TlsTransport> lower, string host, string path)
-    : Transport(lower), mHost(std::move(host)), mPath(std::move(path)) {}
+	registerIncoming();
+}
 
 WsTransport::~WsTransport() {}
 

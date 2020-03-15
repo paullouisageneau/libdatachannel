@@ -41,7 +41,7 @@ class TcpTransport;
 
 class TlsTransport : public Transport {
 public:
-	TlsTransport(std::shared_ptr<TcpTransport> lower, string host);
+	TlsTransport(std::shared_ptr<TcpTransport> lower, string host, state_callback callback);
 	~TlsTransport();
 
 	bool stop() override;

@@ -1,100 +1,238 @@
-/*************************************************************************
- *   Copyright (C) 2017-2018 by Paul-Louis Ageneau                       *
- *   paul-louis (at) ageneau (dot) org                                   *
- *                                                                       *
- *   This file is part of Plateform.                                     *
- *                                                                       *
- *   Plateform is free software: you can redistribute it and/or modify   *
- *   it under the terms of the GNU Affero General Public License as      *
- *   published by the Free Software Foundation, either version 3 of      *
- *   the License, or (at your option) any later version.                 *
- *                                                                       *
- *   Plateform is distributed in the hope that it will be useful, but    *
- *   WITHOUT ANY WARRANTY; without even the implied warranty of          *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the        *
- *   GNU Affero General Public License for more details.                 *
- *                                                                       *
- *   You should have received a copy of the GNU Affero General Public    *
- *   License along with Plateform.                                       *
- *   If not, see <http://www.gnu.org/licenses/>.                         *
- *************************************************************************/
+/**
+ * Copyright (c) 2020 Paul-Louis Ageneau
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
 
-#include "net/websocket.hpp"
+#if ENABLE_WEBSOCKET
 
-#include <exception>
-#include <iostream>
+#include "include.hpp"
+#include "websocket.hpp"
 
-const size_t DEFAULT_MAX_PAYLOAD_SIZE = 16384; // 16 KB
+#include "tcptransport.hpp"
+#include "tlstransport.hpp"
+#include "wstransport.hpp"
 
-namespace net {
+#include <regex>
 
-WebSocket::WebSocket(void) : mMaxPayloadSize(DEFAULT_MAX_PAYLOAD_SIZE) {}
+namespace rtc {
+
+WebSocket::WebSocket() {}
 
 WebSocket::WebSocket(const string &url) : WebSocket() { open(url); }
 
-WebSocket::~WebSocket(void) {}
+WebSocket::~WebSocket() { close(); }
 
 void WebSocket::open(const string &url) {
-	close();
+	static const char *rs = R"(^(([^:\/?#]+):)?(//([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?)";
+	static std::regex regex(rs, std::regex::extended);
 
-	mUrl = url;
-	mThread = std::thread(&WebSocket::run, this);
-}
+	std::smatch match;
+	if (!std::regex_match(url, match, regex))
+		throw std::invalid_argument("Malformed WebSocket URL: " + url);
 
-void WebSocket::close(void) {
-	mWebSocket.close();
-	if (mThread.joinable())
-		mThread.join();
-	mConnected = false;
-}
+	mScheme = match[2];
+	if (mScheme != "ws" && mScheme != "wss")
+		throw std::invalid_argument("Invalid WebSocket scheme: " + mScheme);
 
-bool WebSocket::isOpen(void) const { return mConnected; }
-
-bool WebSocket::isClosed(void) const { return !mThread.joinable(); }
-
-void WebSocket::setMaxPayloadSize(size_t size) { mMaxPayloadSize = size; }
-
-bool WebSocket::send(const std::variant<binary, string> &data) {
-	if (!std::holds_alternative<binary>(data))
-		throw std::runtime_error("WebSocket string messages are not supported");
-
-	mWebSocket.write(std::get<binary>(data));
-	return true;
-}
-
-std::optional<std::variant<binary, string>> WebSocket::receive() {
-	if (!mQueue.empty())
-		return mQueue.pop();
-	else
-		return std::nullopt;
-}
-
-void WebSocket::run(void) {
-	if (mUrl.empty())
-		return;
-
-	try {
-		mWebSocket.connect(mUrl);
-
-		mConnected = true;
-		triggerOpen();
-
-		while (true) {
-			binary payload;
-			if (!mWebSocket.read(payload, mMaxPayloadSize))
-				break;
-			mQueue.push(std::move(payload));
-			triggerAvailable(mQueue.size());
-		}
-	} catch (const std::exception &e) {
-		triggerError(e.what());
+	mHost = match[4];
+	if (auto pos = mHost.find(':'); pos != string::npos) {
+		mHostname = mHost.substr(0, pos);
+		mService = mHost.substr(pos + 1);
+	} else {
+		mHostname = mHost;
+		mService = mScheme == "ws" ? "80" : "443";
 	}
 
-	mWebSocket.close();
+	mPath = match[5];
+	if (string query = match[7]; !query.empty())
+		mPath += "?" + query;
 
-	if (mConnected)
-		triggerClosed();
-	mConnected = false;
+	initTcpTransport();
 }
 
-} // namespace net
+void WebSocket::close() {
+	resetCallbacks();
+	closeTransports();
+}
+
+void WebSocket::remoteClose() {
+	mIsOpen = false;
+	if (!mIsClosed.exchange(true))
+		triggerClosed();
+}
+
+bool WebSocket::send(const std::variant<binary, string> &data) {
+	return std::visit(
+	    [&](const auto &d) {
+		    using T = std::decay_t<decltype(d)>;
+		    constexpr auto type = std::is_same_v<T, string> ? Message::String : Message::Binary;
+		    auto *b = reinterpret_cast<const byte *>(d.data());
+		    return outgoing(std::make_shared<Message>(b, b + d.size(), type));
+	    },
+	    data);
+}
+
+bool WebSocket::isOpen() const { return mIsOpen; }
+
+bool WebSocket::isClosed() const { return mIsClosed; }
+
+size_t WebSocket::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
+
+std::optional<std::variant<binary, string>> WebSocket::receive() { return nullopt; }
+
+size_t WebSocket::availableAmount() const { return 0; }
+
+bool WebSocket::outgoing(mutable_message_ptr message) {
+	if (mIsClosed || !mWsTransport)
+		throw std::runtime_error("WebSocket is closed");
+
+	if (message->size() > maxMessageSize())
+		throw std::runtime_error("Message size exceeds limit");
+
+	return mWsTransport->send(message);
+}
+
+std::shared_ptr<TcpTransport> WebSocket::initTcpTransport() {
+	using State = TcpTransport::State;
+	try {
+		std::lock_guard lock(mInitMutex);
+		if (auto transport = std::atomic_load(&mTcpTransport))
+			return transport;
+
+		auto transport = std::make_shared<TcpTransport>(mHostname, mService, [this](State state) {
+			switch (state) {
+			case State::Connected:
+				if (mScheme == "ws")
+					initWsTransport();
+				else
+					initTlsTransport();
+				break;
+			case State::Failed:
+				// TODO
+				break;
+			case State::Disconnected:
+				// TODO
+				break;
+			default:
+				// Ignore
+				break;
+			}
+		});
+		std::atomic_store(&mTcpTransport, transport);
+		return transport;
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+		// TODO
+		throw std::runtime_error("TCP transport initialization failed");
+	}
+}
+
+std::shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
+	using State = TlsTransport::State;
+	try {
+		std::lock_guard lock(mInitMutex);
+		if (auto transport = std::atomic_load(&mTlsTransport))
+			return transport;
+
+		auto lower = std::atomic_load(&mTcpTransport);
+		auto transport = std::make_shared<TlsTransport>(lower, mHost, [this](State state) {
+			switch (state) {
+			case State::Connected:
+				initWsTransport();
+				break;
+			case State::Failed:
+				// TODO
+				break;
+			case State::Disconnected:
+				// TODO
+				break;
+			default:
+				// Ignore
+				break;
+			}
+		});
+		std::atomic_store(&mTlsTransport, transport);
+		return transport;
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+		// TODO
+		throw std::runtime_error("TLS transport initialization failed");
+	}
+}
+
+std::shared_ptr<WsTransport> WebSocket::initWsTransport() {
+	using State = WsTransport::State;
+	try {
+		std::lock_guard lock(mInitMutex);
+		if (auto transport = std::atomic_load(&mWsTransport))
+			return transport;
+
+		std::shared_ptr<Transport> lower = std::atomic_load(&mTlsTransport);
+		if (!lower)
+			lower = std::atomic_load(&mTcpTransport);
+		auto transport = std::make_shared<WsTransport>(lower, mHost, mPath, [this](State state) {
+			switch (state) {
+			case State::Connected:
+				triggerOpen();
+				break;
+			case State::Failed:
+				// TODO
+				break;
+			case State::Disconnected:
+				// TODO
+				break;
+			default:
+				// Ignore
+				break;
+			}
+		});
+		std::atomic_store(&mWsTransport, transport);
+		return transport;
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+		// TODO
+		throw std::runtime_error("WebSocket transport initialization failed");
+	}
+}
+
+void closeTransports() {
+	mIsOpen = false;
+	mIsClosed = true;
+
+	// Pass the references to a thread, allowing to terminate a transport from its own thread
+	auto ws = std::atomic_exchange(&mWsTransport, decltype(mWsTransport)(nullptr));
+	auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
+	auto tcp = std::atomic_exchange(&mTcpTransport, decltype(mTcpTransport)(nullptr));
+	if (ws || dtls || tcp) {
+		std::thread t([ws, dtls, tcp]() mutable {
+			if (ws)
+				ws->stop();
+			if (dtls)
+				dtls->stop();
+			if (tcp)
+				tcp->stop();
+
+			ws.reset();
+			dtls.reset();
+			tcp.reset();
+		});
+		t.detach();
+	}
+}
+
+} // namespace rtc
+
+#endif

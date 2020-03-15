@@ -34,7 +34,7 @@ namespace rtc {
 
 class TcpTransport : public Transport {
 public:
-	TcpTransport(const string &hostname, const string &service);
+	TcpTransport(const string &hostname, const string &service, state_callback callback);
 	~TcpTransport();
 
 	bool stop() override;

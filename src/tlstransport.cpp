@@ -61,7 +61,8 @@ void TlsTransport::Cleanup() {
 	// Nothing to do
 }
 
-TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host) : Transport(lower) {
+TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_callback callback)
+    : Transport(lower, std::move(callback)) {
 
 	PLOG_DEBUG << "Initializing TLS transport (GnuTLS)";
 
@@ -82,6 +83,7 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host) : Transp
 		gnutls_server_name_set(mSession, GNUTLS_NAME_DNS, host.data(), host.size());
 
 		mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
+		registerIncoming();
 
 	} catch (...) {
 
@@ -271,10 +273,10 @@ void TlsTransport::Cleanup() {
 	// Nothing to do
 }
 
-TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host) : Transport(lower) {
+TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_callback callback)
+    : Transport(lower, std::move(callback)) {
 
 	PLOG_DEBUG << "Initializing TLS transport (OpenSSL)";
-	GlobalInit();
 
 	if (!(mCtx = SSL_CTX_new(SSLv23_method()))) // version-flexible
 		throw std::runtime_error("Failed to create SSL context");

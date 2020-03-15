@@ -67,9 +67,8 @@ void SctpTransport::Cleanup() { usrsctp_finish(); }
 SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
                              message_callback recvCallback, amount_callback bufferedAmountCallback,
                              state_callback stateChangeCallback)
-    : Transport(lower), mPort(port), mSendQueue(0, message_size_func),
-      mBufferedAmountCallback(std::move(bufferedAmountCallback)),
-      mStateChangeCallback(std::move(stateChangeCallback)), mState(State::Disconnected) {
+    : Transport(lower, std::move(stateChangeCallback)), mPort(port),
+      mSendQueue(0, message_size_func), mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
 	onRecv(recvCallback);
 
 	PLOG_DEBUG << "Initializing SCTP transport";
@@ -176,8 +175,6 @@ SctpTransport::~SctpTransport() {
 	usrsctp_deregister_address(this);
 }
 
-SctpTransport::State SctpTransport::state() const { return mState; }
-
 bool SctpTransport::stop() {
 	if (!Transport::stop())
 		return false;
@@ -265,7 +262,7 @@ void SctpTransport::incoming(message_ptr message) {
 	// to be sent on our side (i.e. the local INIT) before proceeding.
 	{
 		std::unique_lock lock(mWriteMutex);
-		mWrittenCondition.wait(lock, [&]() { return mWrittenOnce || mState != State::Connected; });
+		mWrittenCondition.wait(lock, [&]() { return mWrittenOnce || state() != State::Connected; });
 	}
 
 	if (!message) {
@@ -277,11 +274,6 @@ void SctpTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	usrsctp_conninput(this, message->data(), message->size(), 0);
-}
-
-void SctpTransport::changeState(State state) {
-	if (mState.exchange(state) != state)
-		mStateChangeCallback(state);
 }
 
 bool SctpTransport::trySendQueue() {
@@ -298,7 +290,7 @@ bool SctpTransport::trySendQueue() {
 
 bool SctpTransport::trySendMessage(message_ptr message) {
 	// Requires mSendMutex to be locked
-	if (!mSock || mState != State::Connected)
+	if (!mSock || state() != State::Connected)
 		return false;
 
 	uint32_t ppid;
@@ -410,7 +402,7 @@ void SctpTransport::sendReset(uint16_t streamId) {
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_RESET_STREAMS, &srs, len) == 0) {
 		std::unique_lock lock(mWriteMutex); // locking before setsockopt might deadlock usrsctp...
 		mWrittenCondition.wait_for(lock, 1000ms,
-		                           [&]() { return mWritten || mState != State::Connected; });
+		                           [&]() { return mWritten || state() != State::Connected; });
 	} else if (errno == EINVAL) {
 		PLOG_VERBOSE << "SCTP stream " << streamId << " already reset";
 	} else {
@@ -567,7 +559,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 			PLOG_INFO << "SCTP connected";
 			changeState(State::Connected);
 		} else {
-			if (mState == State::Connecting) {
+			if (state() == State::Connecting) {
 				PLOG_ERROR << "SCTP connection failed";
 				changeState(State::Failed);
 			} else {

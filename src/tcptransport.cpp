@@ -24,8 +24,8 @@ namespace rtc {
 
 using std::to_string;
 
-TcpTransport::TcpTransport(const string &hostname, const string &service)
-    : mHostname(hostname), mService(service) {
+TcpTransport::TcpTransport(const string &hostname, const string &service, state_callback callback)
+    : Transport(nullptr, std::move(callback)), mHostname(hostname), mService(service) {
 	mThread = std::thread(&TcpTransport::runLoop, this);
 }
 

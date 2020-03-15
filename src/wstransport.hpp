@@ -31,8 +31,8 @@ class TlsTransport;
 
 class WsTransport : public Transport {
 public:
-	WsTransport(std::shared_ptr<TcpTransport> lower, string host, string path);
-	WsTransport(std::shared_ptr<TlsTransport> lower, string host, string path);
+	WsTransport(std::shared_ptr<Transport> lower, string host, string path,
+	            state_callback callback);
 	~WsTransport();
 
 	void stop() override;
