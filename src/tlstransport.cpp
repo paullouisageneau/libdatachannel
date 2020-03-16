@@ -302,7 +302,7 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 
 	SSL_set_connect_state(mSsl);
 
-	if (!(mInBio = BIO_new(BIO_s_mem())) || !(mOutBio = BIO_new(Bio_s_mem())))
+	if (!(mInBio = BIO_new(BIO_s_mem())) || !(mOutBio = BIO_new(BIO_s_mem())))
 		throw std::runtime_error("Failed to create BIO");
 
 	BIO_set_mem_eof_return(mInBio, BIO_EOF);
@@ -340,10 +340,12 @@ bool TlsTransport::send(message_ptr message) {
 		return false;
 
 	int ret = SSL_write(mSsl, message->data(), message->size());
-	if(!check_openssl_ret(mSsl, ret)
-			return false;
+	if (!check_openssl_ret(mSsl, ret))
+		return false;
 
-	while (int len = BIO_read(mOutBio, buffer, bufferSize); len > 0)
+	const size_t bufferSize = 4096;
+	byte buffer[bufferSize];
+	while (int len = BIO_read(mOutBio, buffer, bufferSize))
 		outgoing(make_message(buffer, buffer + len));
 
 	return true;
@@ -358,12 +360,11 @@ void TlsTransport::incoming(message_ptr message) {
 
 void TlsTransport::runRecvLoop() {
 	const size_t bufferSize = 4096;
-
 	byte buffer[bufferSize];
 	bool initFinished = false;
 	try {
 		SSL_do_handshake(mSsl);
-		while (int len = BIO_read(mOutBio, buffer, bufferSize); len > 0)
+		while (int len = BIO_read(mOutBio, buffer, bufferSize))
 			outgoing(make_message(buffer, buffer + len));
 
 		while (auto next = mIncomingQueue.pop()) {
@@ -375,7 +376,7 @@ void TlsTransport::runRecvLoop() {
 
 			auto received = ret > 0 ? make_message(buffer, buffer + ret) : nullptr;
 
-			while (int len = BIO_read(mOutBio, buffer, bufferSize); len > 0)
+			while (int len = BIO_read(mOutBio, buffer, bufferSize))
 				outgoing(make_message(buffer, buffer + len));
 
 			if (!initFinished && SSL_is_init_finished(mSsl))
@@ -401,9 +402,9 @@ void TlsTransport::InfoCallback(const SSL *ssl, int where, int ret) {
 	    static_cast<TlsTransport *>(SSL_get_ex_data(ssl, TlsTransport::TransportExIndex));
 
 	if (where & SSL_CB_ALERT) {
-		if (ret != 256) // Close Notify
+		if (ret != 256) { // Close Notify
 			PLOG_ERROR << "TLS alert: " << SSL_alert_desc_string_long(ret);
-
+		}
 		t->mIncomingQueue.stop(); // Close the connection
 	}
 }
