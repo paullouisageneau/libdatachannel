@@ -40,9 +40,18 @@ class WsTransport;
 
 class WebSocket final : public Channel, public std::enable_shared_from_this<WebSocket> {
 public:
+	enum class State : int {
+		Connecting = 0,
+		Open = 1,
+		Closing = 2,
+		Closed = 3,
+	};
+
 	WebSocket();
 	WebSocket(const string &url);
 	~WebSocket();
+
+	State readyState() const;
 
 	void open(const string &url);
 	void close() override;
@@ -57,8 +66,10 @@ public:
 	size_t availableAmount() const override; // total size available to receive
 
 private:
+	bool changeState(State state);
 	void remoteClose();
 	bool outgoing(mutable_message_ptr message);
+	void incoming(message_ptr message);
 
 	std::shared_ptr<TcpTransport> initTcpTransport();
 	std::shared_ptr<TlsTransport> initTlsTransport();
@@ -73,15 +84,12 @@ private:
 	std::recursive_mutex mInitMutex;
 
 	string mScheme, mHost, mHostname, mService, mPath;
-
-	std::atomic<bool> mIsOpen = false;
-	std::atomic<bool> mIsClosed = false;
+	std::atomic<State> mState = State::Closed;
 
 	Queue<message_ptr> mRecvQueue;
-	std::atomic<size_t> mRecvAmount = 0;
 };
 } // namespace rtc
 
 #endif
 
-#endif // NET_WEBSOCKET_H
+#endif // RTC_WEBSOCKET_H

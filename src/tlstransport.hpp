@@ -41,6 +41,9 @@ class TcpTransport;
 
 class TlsTransport : public Transport {
 public:
+	static void Init();
+	static void Cleanup();
+
 	TlsTransport(std::shared_ptr<TcpTransport> lower, string host, state_callback callback);
 	~TlsTransport();
 
@@ -68,7 +71,6 @@ protected:
 
 	static int TransportExIndex;
 
-	static void GlobalInit();
 	static int CertificateCallback(int preverify_ok, X509_STORE_CTX *ctx);
 	static void InfoCallback(const SSL *ssl, int where, int ret);
 #endif

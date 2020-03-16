@@ -27,15 +27,24 @@
 
 #include <regex>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 namespace rtc {
 
 WebSocket::WebSocket() {}
 
 WebSocket::WebSocket(const string &url) : WebSocket() { open(url); }
 
-WebSocket::~WebSocket() { close(); }
+WebSocket::~WebSocket() { remoteClose(); }
+
+WebSocket::State WebSocket::readyState() const { return mState; }
 
 void WebSocket::open(const string &url) {
+	if (mState != State::Closed)
+		throw std::runtime_error("WebSocket must be closed before opening");
+
 	static const char *rs = R"(^(([^:\/?#]+):)?(//([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?)";
 	static std::regex regex(rs, std::regex::extended);
 
@@ -60,18 +69,24 @@ void WebSocket::open(const string &url) {
 	if (string query = match[7]; !query.empty())
 		mPath += "?" + query;
 
+	changeState(State::Connecting);
 	initTcpTransport();
 }
 
 void WebSocket::close() {
-	resetCallbacks();
-	closeTransports();
+	auto state = mState.load();
+	if (state == State::Connecting || state == State::Open) {
+		changeState(State::Closing);
+		if (auto transport = std::atomic_load(&mWsTransport))
+			transport->close();
+		else
+			changeState(State::Closed);
+	}
 }
 
 void WebSocket::remoteClose() {
-	mIsOpen = false;
-	if (!mIsClosed.exchange(true))
-		triggerClosed();
+	close();
+	closeTransports();
 }
 
 bool WebSocket::send(const std::variant<binary, string> &data) {
@@ -85,24 +100,48 @@ bool WebSocket::send(const std::variant<binary, string> &data) {
 	    data);
 }
 
-bool WebSocket::isOpen() const { return mIsOpen; }
+bool WebSocket::isOpen() const { return mState == State::Open; }
 
-bool WebSocket::isClosed() const { return mIsClosed; }
+bool WebSocket::isClosed() const { return mState == State::Closed; }
 
 size_t WebSocket::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
 
-std::optional<std::variant<binary, string>> WebSocket::receive() { return nullopt; }
+std::optional<std::variant<binary, string>> WebSocket::receive() {
+	while (!mRecvQueue.empty()) {
+		auto message = *mRecvQueue.pop();
+		switch (message->type) {
+		case Message::String:
+			return std::make_optional(
+			    string(reinterpret_cast<const char *>(message->data()), message->size()));
+		case Message::Binary:
+			return std::make_optional(std::move(*message));
+		default:
+			// Ignore
+			break;
+		}
+	}
+	return nullopt;
+}
 
-size_t WebSocket::availableAmount() const { return 0; }
+size_t WebSocket::availableAmount() const { return mRecvQueue.amount(); }
+
+bool WebSocket::changeState(State state) { return mState.exchange(state) != state; }
 
 bool WebSocket::outgoing(mutable_message_ptr message) {
-	if (mIsClosed || !mWsTransport)
-		throw std::runtime_error("WebSocket is closed");
+	if (mState != State::Open || !mWsTransport)
+		throw std::runtime_error("WebSocket is not open");
 
 	if (message->size() > maxMessageSize())
 		throw std::runtime_error("Message size exceeds limit");
 
 	return mWsTransport->send(message);
+}
+
+void WebSocket::incoming(message_ptr message) {
+	if (message->type == Message::String || message->type == Message::Binary) {
+		mRecvQueue.push(message);
+		triggerAvailable(mRecvQueue.size());
+	}
 }
 
 std::shared_ptr<TcpTransport> WebSocket::initTcpTransport() {
@@ -121,10 +160,11 @@ std::shared_ptr<TcpTransport> WebSocket::initTcpTransport() {
 					initTlsTransport();
 				break;
 			case State::Failed:
-				// TODO
+				triggerError("TCP connection failed");
+				remoteClose();
 				break;
 			case State::Disconnected:
-				// TODO
+				remoteClose();
 				break;
 			default:
 				// Ignore
@@ -132,10 +172,15 @@ std::shared_ptr<TcpTransport> WebSocket::initTcpTransport() {
 			}
 		});
 		std::atomic_store(&mTcpTransport, transport);
+		if (mState == WebSocket::State::Closed) {
+			mTcpTransport.reset();
+			transport->stop();
+			throw std::runtime_error("Connection is closed");
+		}
 		return transport;
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
-		// TODO
+		remoteClose();
 		throw std::runtime_error("TCP transport initialization failed");
 	}
 }
@@ -154,10 +199,11 @@ std::shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 				initWsTransport();
 				break;
 			case State::Failed:
-				// TODO
+				triggerError("TCP connection failed");
+				remoteClose();
 				break;
 			case State::Disconnected:
-				// TODO
+				remoteClose();
 				break;
 			default:
 				// Ignore
@@ -165,10 +211,15 @@ std::shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 			}
 		});
 		std::atomic_store(&mTlsTransport, transport);
+		if (mState == WebSocket::State::Closed) {
+			mTlsTransport.reset();
+			transport->stop();
+			throw std::runtime_error("Connection is closed");
+		}
 		return transport;
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
-		// TODO
+		remoteClose();
 		throw std::runtime_error("TLS transport initialization failed");
 	}
 }
@@ -183,50 +234,60 @@ std::shared_ptr<WsTransport> WebSocket::initWsTransport() {
 		std::shared_ptr<Transport> lower = std::atomic_load(&mTlsTransport);
 		if (!lower)
 			lower = std::atomic_load(&mTcpTransport);
-		auto transport = std::make_shared<WsTransport>(lower, mHost, mPath, [this](State state) {
-			switch (state) {
-			case State::Connected:
-				triggerOpen();
-				break;
-			case State::Failed:
-				// TODO
-				break;
-			case State::Disconnected:
-				// TODO
-				break;
-			default:
-				// Ignore
-				break;
-			}
-		});
+		auto transport = std::make_shared<WsTransport>(
+		    lower, mHost, mPath, std::bind(&WebSocket::incoming, this, _1), [this](State state) {
+			    switch (state) {
+			    case State::Connected:
+				    if (mState == WebSocket::State::Connecting) {
+					    PLOG_DEBUG << "WebSocket open";
+					    changeState(WebSocket::State::Open);
+					    triggerOpen();
+				    }
+				    break;
+			    case State::Failed:
+				    triggerError("WebSocket connection failed");
+				    remoteClose();
+				    break;
+			    case State::Disconnected:
+				    remoteClose();
+				    break;
+			    default:
+				    // Ignore
+				    break;
+			    }
+		    });
 		std::atomic_store(&mWsTransport, transport);
+		if (mState == WebSocket::State::Closed) {
+			mWsTransport.reset();
+			transport->stop();
+			throw std::runtime_error("Connection is closed");
+		}
 		return transport;
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
-		// TODO
+		remoteClose();
 		throw std::runtime_error("WebSocket transport initialization failed");
 	}
 }
 
-void closeTransports() {
-	mIsOpen = false;
-	mIsClosed = true;
+void WebSocket::closeTransports() {
+	changeState(State::Closed);
 
 	// Pass the references to a thread, allowing to terminate a transport from its own thread
 	auto ws = std::atomic_exchange(&mWsTransport, decltype(mWsTransport)(nullptr));
-	auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
+	auto tls = std::atomic_exchange(&mTlsTransport, decltype(mTlsTransport)(nullptr));
 	auto tcp = std::atomic_exchange(&mTcpTransport, decltype(mTcpTransport)(nullptr));
-	if (ws || dtls || tcp) {
-		std::thread t([ws, dtls, tcp]() mutable {
+	if (ws || tls || tcp) {
+		std::thread t([ws, tls, tcp]() mutable {
 			if (ws)
 				ws->stop();
-			if (dtls)
-				dtls->stop();
+			if (tls)
+				tls->stop();
 			if (tcp)
 				tcp->stop();
 
 			ws.reset();
-			dtls.reset();
+			tls.reset();
 			tcp.reset();
 		});
 		t.detach();

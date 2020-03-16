@@ -32,14 +32,16 @@ class TlsTransport;
 class WsTransport : public Transport {
 public:
 	WsTransport(std::shared_ptr<Transport> lower, string host, string path,
-	            state_callback callback);
+	            message_callback recvCallback, state_callback stateCallback);
 	~WsTransport();
 
-	void stop() override;
+	bool stop() override;
 	bool send(message_ptr message) override;
 	bool send(mutable_message_ptr message);
 
 	void incoming(message_ptr message) override;
+
+	void close();
 
 private:
 	enum Opcode : uint8_t {
@@ -59,9 +61,6 @@ private:
 		bool mask = true;
 	};
 
-	void connect();
-	void close();
-
 	bool sendHttpRequest();
 	size_t readHttpResponse(const byte *buffer, size_t size);
 
@@ -72,11 +71,10 @@ private:
 	const string mHost;
 	const string mPath;
 
-	bool mHandshakeDone = false;
 	binary mBuffer;
 	binary mPartial;
 	Opcode mPartialOpcode;
-	};
+};
 
 } // namespace rtc
 

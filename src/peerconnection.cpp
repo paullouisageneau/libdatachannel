@@ -23,7 +23,6 @@
 #include "include.hpp"
 #include "sctptransport.hpp"
 
-#include <iostream>
 #include <thread>
 
 namespace rtc {

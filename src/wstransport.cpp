@@ -54,15 +54,25 @@ using random_bytes_engine =
     std::independent_bits_engine<std::default_random_engine, CHAR_BIT, unsigned char>;
 
 WsTransport::WsTransport(std::shared_ptr<Transport> lower, string host, string path,
-                         state_callback callback)
-    : Transport(lower, std::move(callback)), mHost(std::move(host)), mPath(std::move(path)) {
+                         message_callback recvCallback, state_callback stateCallback)
+    : Transport(lower, std::move(stateCallback)), mHost(std::move(host)), mPath(std::move(path)) {
+	onRecv(recvCallback);
+
+	PLOG_DEBUG << "Initializing WebSocket transport";
 
 	registerIncoming();
+	sendHttpRequest();
 }
 
-WsTransport::~WsTransport() {}
+WsTransport::~WsTransport() { stop(); }
 
-void WsTransport::stop() {}
+bool WsTransport::stop() {
+	if (!Transport::stop())
+		return false;
+
+	close();
+	return true;
+}
 
 bool WsTransport::send(message_ptr message) {
 	if (!message)
@@ -73,7 +83,7 @@ bool WsTransport::send(message_ptr message) {
 }
 
 bool WsTransport::send(mutable_message_ptr message) {
-	if (!message)
+	if (!message || state() != State::Connected)
 		return false;
 
 	return sendFrame({message->type == Message::String ? TEXT_FRAME : BINARY_FRAME, message->data(),
@@ -81,32 +91,39 @@ bool WsTransport::send(mutable_message_ptr message) {
 }
 
 void WsTransport::incoming(message_ptr message) {
-	mBuffer.insert(mBuffer.end(), message->begin(), message->end());
+	try {
+		mBuffer.insert(mBuffer.end(), message->begin(), message->end());
 
-	if (!mHandshakeDone) {
-		if (size_t len = readHttpResponse(mBuffer.data(), mBuffer.size())) {
-			mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
-			mHandshakeDone = true;
+		if (state() == State::Connecting) {
+			if (size_t len = readHttpResponse(mBuffer.data(), mBuffer.size())) {
+				mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
+				changeState(State::Connected);
+			}
 		}
-	}
 
-	if (mHandshakeDone) {
-		Frame frame = {};
-		while (size_t len = readFrame(mBuffer.data(), mBuffer.size(), frame)) {
-			mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
-			recvFrame(frame);
+		if (state() == State::Connected) {
+			Frame frame = {};
+			while (size_t len = readFrame(mBuffer.data(), mBuffer.size(), frame)) {
+				mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
+				recvFrame(frame);
+			}
 		}
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+		changeState(State::Failed);
 	}
 }
 
-void WsTransport::connect() { sendHttpRequest(); }
-
 void WsTransport::close() {
-	if (mHandshakeDone)
+	if (state() == State::Connected) {
 		sendFrame({CLOSE, NULL, 0, true, true});
+		changeState(State::Completed);
+	}
 }
 
 bool WsTransport::sendHttpRequest() {
+	changeState(State::Connecting);
+
 	auto seed = system_clock::now().time_since_epoch().count();
 	random_bytes_engine generator(seed);
 
@@ -133,18 +150,24 @@ bool WsTransport::sendHttpRequest() {
 }
 
 size_t WsTransport::readHttpResponse(const byte *buffer, size_t size) {
-
 	std::list<string> lines;
 	auto begin = reinterpret_cast<const char *>(buffer);
 	auto end = begin + size;
 	auto cur = begin;
-	while ((cur = std::find(cur, end, '\n')) != end) {
-		string line(begin, cur != begin && *std::prev(cur) == '\r' ? std::prev(cur++) : cur++);
+	while (true) {
+		auto last = cur;
+		cur = std::find(cur, end, '\n');
+		if (cur == end)
+			return 0;
+		string line(last, cur != begin && *std::prev(cur) == '\r' ? std::prev(cur++) : cur++);
 		if (line.empty())
 			break;
 		lines.emplace_back(std::move(line));
 	}
 	size_t length = cur - begin;
+
+	if (lines.empty())
+		throw std::runtime_error("Invalid HTTP response for WebSocket");
 
 	string status = std::move(lines.front());
 	lines.pop_front();
@@ -153,6 +176,7 @@ size_t WsTransport::readHttpResponse(const byte *buffer, size_t size) {
 	string protocol;
 	unsigned int code = 0;
 	ss >> protocol >> code;
+	PLOG_DEBUG << "WebSocket response code: " << code;
 	if (code != 101)
 		throw std::runtime_error("Unexpected response code for WebSocket: " + to_string(code));
 
@@ -174,7 +198,8 @@ size_t WsTransport::readHttpResponse(const byte *buffer, size_t size) {
 		throw std::runtime_error("WebSocket update header missing or mismatching");
 
 	h = headers.find("sec-websocket-accept");
-	throw std::runtime_error("WebSocket accept header missing");
+	if (h == headers.end())
+		throw std::runtime_error("WebSocket accept header missing");
 
 	// TODO: Verify Sec-WebSocket-Accept
 
@@ -284,6 +309,7 @@ void WsTransport::recvFrame(const Frame &frame) {
 	}
 	case CLOSE: {
 		close();
+		changeState(State::Disconnected);
 		break;
 	}
 	default: {

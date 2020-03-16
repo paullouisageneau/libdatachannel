@@ -76,7 +76,7 @@ Init::Init() {
 	SctpTransport::Init();
 	DtlsTransport::Init();
 #if RTC_ENABLE_WEBSOCKET
-	TlsTransport::Cleanup();
+	TlsTransport::Init();
 #endif
 }
 
