@@ -25,6 +25,7 @@
 #include "queue.hpp"
 #include "transport.hpp"
 
+#include <mutex>
 #include <thread>
 
 // Use the socket defines from libjuice
@@ -53,9 +54,16 @@ private:
 
 	void runLoop();
 
+	int prepareSelect(fd_set &readfds, fd_set &writefds);
+	void interruptSelect();
+
 	string mHostname, mService;
-	socket_t mSock;
+
+	socket_t mSock = INVALID_SOCKET;
+	socket_t mInterruptSock = INVALID_SOCKET;
+	std::mutex mInterruptMutex;
 	std::thread mThread;
+
 	Queue<message_ptr> mSendQueue;
 };
 

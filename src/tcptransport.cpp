@@ -52,10 +52,12 @@ bool TcpTransport::outgoing(message_ptr message) {
 		return mSendQueue.empty();
 
 	// If nothing is pending, try to send directly
+	// It's safe because if the queue is empty, the thread is not sending
 	if (mSendQueue.empty() && trySendMessage(message))
 		return true;
 
 	mSendQueue.push(message);
+	interruptSelect(); // so the thread waits for writability
 	return false;
 }
 
@@ -171,13 +173,8 @@ void TcpTransport::runLoop() {
 	try {
 		while (true) {
 			fd_set readfds, writefds;
-			FD_ZERO(&readfds);
-			FD_ZERO(&writefds);
-			FD_SET(mSock, &readfds);
-			// TODO
-			if (!mSendQueue.empty())
-				FD_SET(mSock, &writefds);
-			int ret = ::select(SOCKET_TO_INT(mSock) + 1, &readfds, &writefds, NULL, NULL);
+			int n = prepareSelect(readfds, writefds);
+			int ret = ::select(n, &readfds, &writefds, NULL, NULL);
 			if (ret < 0)
 				throw std::runtime_error("Failed to wait on socket");
 
@@ -203,6 +200,30 @@ void TcpTransport::runLoop() {
 
 	PLOG_INFO << "TCP disconnected";
 	recv(nullptr);
+}
+
+int TcpTransport::prepareSelect(fd_set &readfds, fd_set &writefds) {
+	std::lock_guard lock(mInterruptMutex);
+	FD_ZERO(&readfds);
+	FD_ZERO(&writefds);
+	FD_SET(mSock, &readfds);
+
+	if (!mSendQueue.empty())
+		FD_SET(mSock, &writefds);
+
+	if (mInterruptSock == INVALID_SOCKET)
+		mInterruptSock = ::socket(AF_INET, SOCK_DGRAM, 0);
+
+	FD_SET(mInterruptSock, &readfds);
+	return std::max(SOCKET_TO_INT(mSock), SOCKET_TO_INT(mInterruptSock)) + 1;
+}
+
+void TcpTransport::interruptSelect() {
+	std::lock_guard lock(mInterruptMutex);
+	if (mInterruptSock != INVALID_SOCKET) {
+		::closesocket(mInterruptSock);
+		mInterruptSock = INVALID_SOCKET;
+	}
 }
 
 } // namespace rtc
