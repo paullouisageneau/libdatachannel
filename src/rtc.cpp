@@ -16,9 +16,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "datachannel.hpp"
 #include "include.hpp"
+
+#include "datachannel.hpp"
 #include "peerconnection.hpp"
+
+#if ENABLE_WEBSOCKET
+#include "websocket.hpp"
+#endif
 
 #include <rtc.h>
 
@@ -43,6 +48,9 @@ namespace {
 
 std::unordered_map<int, shared_ptr<PeerConnection>> peerConnectionMap;
 std::unordered_map<int, shared_ptr<DataChannel>> dataChannelMap;
+#if ENABLE_WEBSOCKET
+std::unordered_map<int, shared_ptr<WebSocket>> webSocketMap;
+#endif
 std::unordered_map<int, void *> userPointerMap;
 std::mutex mutex;
 int lastId = 0;
@@ -101,6 +109,40 @@ bool eraseDataChannel(int dc) {
 		return false;
 	userPointerMap.erase(dc);
 	return true;
+}
+
+#if ENABLE_WEBSOCKET
+shared_ptr<WebSocket> getWebSocket(int id) {
+	std::lock_guard lock(mutex);
+	auto it = webSocketMap.find(id);
+	return it != webSocketMap.end() ? it->second : nullptr;
+}
+
+int emplaceWebSocket(shared_ptr<WebSocket> ptr) {
+	std::lock_guard lock(mutex);
+	int ws = ++lastId;
+	webSocketMap.emplace(std::make_pair(ws, ptr));
+	return ws;
+}
+
+bool eraseWebSocket(int ws) {
+	std::lock_guard lock(mutex);
+	if (webSocketMap.erase(ws) == 0)
+		return false;
+	userPointerMap.erase(ws);
+	return true;
+}
+#endif
+
+shared_ptr<Channel> getChannel(int id) {
+	std::lock_guard lock(mutex);
+	if (auto it = dataChannelMap.find(id); it != dataChannelMap.end())
+		return it->second;
+#if ENABLE_WEBSOCKET
+	if (auto it = webSocketMap.find(id); it != webSocketMap.end())
+		return it->second;
+#endif
+	return nullptr;
 }
 
 } // namespace
@@ -163,6 +205,29 @@ int rtcDeleteDataChannel(int dc) {
 	eraseDataChannel(dc);
 	return 0;
 }
+
+#if ENABLE_WEBSOCKET
+int rtcCreateWebSocket(const char *url) {
+	return emplaceWebSocket(std::make_shared<WebSocket>(url));
+}
+
+int rtcDeleteWebsocket(int ws) {
+	auto webSocket = getWebSocket(ws);
+	if (!webSocket)
+		return -1;
+
+	webSocket->onOpen(nullptr);
+	webSocket->onClosed(nullptr);
+	webSocket->onError(nullptr);
+	webSocket->onMessage(nullptr);
+	webSocket->onBufferedAmountLow(nullptr);
+	webSocket->onAvailable(nullptr);
+
+	eraseWebSocket(ws);
+	return 0;
+}
+
+#endif
 
 int rtcSetDataChannelCallback(int pc, dataChannelCallbackFunc cb) {
 	auto peerConnection = getPeerConnection(pc);
@@ -298,135 +363,135 @@ int rtcGetDataChannelLabel(int dc, char *buffer, int size) {
 	return size + 1;
 }
 
-int rtcSetOpenCallback(int dc, openCallbackFunc cb) {
-	auto dataChannel = getDataChannel(dc);
-	if (!dataChannel)
+int rtcSetOpenCallback(int id, openCallbackFunc cb) {
+	auto channel = getChannel(id);
+	if (!channel)
 		return -1;
 
 	if (cb)
-		dataChannel->onOpen([dc, cb]() { cb(getUserPointer(dc)); });
+		channel->onOpen([id, cb]() { cb(getUserPointer(id)); });
 	else
-		dataChannel->onOpen(nullptr);
+		channel->onOpen(nullptr);
 	return 0;
 }
 
-int rtcSetClosedCallback(int dc, closedCallbackFunc cb) {
-	auto dataChannel = getDataChannel(dc);
-	if (!dataChannel)
+int rtcSetClosedCallback(int id, closedCallbackFunc cb) {
+	auto channel = getChannel(id);
+	if (!channel)
 		return -1;
 
 	if (cb)
-		dataChannel->onClosed([dc, cb]() { cb(getUserPointer(dc)); });
+		channel->onClosed([id, cb]() { cb(getUserPointer(id)); });
 	else
-		dataChannel->onClosed(nullptr);
+		channel->onClosed(nullptr);
 	return 0;
 }
 
-int rtcSetErrorCallback(int dc, errorCallbackFunc cb) {
-	auto dataChannel = getDataChannel(dc);
-	if (!dataChannel)
+int rtcSetErrorCallback(int id, errorCallbackFunc cb) {
+	auto channel = getChannel(id);
+	if (!channel)
 		return -1;
 
 	if (cb)
-		dataChannel->onError(
-		    [dc, cb](const string &error) { cb(error.c_str(), getUserPointer(dc)); });
+		channel->onError([id, cb](const string &error) { cb(error.c_str(), getUserPointer(id)); });
 	else
-		dataChannel->onError(nullptr);
+		channel->onError(nullptr);
 	return 0;
 }
 
-int rtcSetMessageCallback(int dc, messageCallbackFunc cb) {
-	auto dataChannel = getDataChannel(dc);
-	if (!dataChannel)
+int rtcSetMessageCallback(int id, messageCallbackFunc cb) {
+	auto channel = getChannel(id);
+	if (!channel)
 		return -1;
 
 	if (cb)
-		dataChannel->onMessage(
-		    [dc, cb](const binary &b) {
-			    cb(reinterpret_cast<const char *>(b.data()), b.size(), getUserPointer(dc));
+		channel->onMessage(
+		    [id, cb](const binary &b) {
+			    cb(reinterpret_cast<const char *>(b.data()), b.size(), getUserPointer(id));
 		    },
-		    [dc, cb](const string &s) { cb(s.c_str(), -1, getUserPointer(dc)); });
+		    [id, cb](const string &s) { cb(s.c_str(), -1, getUserPointer(id)); });
 	else
-		dataChannel->onMessage(nullptr);
+		channel->onMessage(nullptr);
 
 	return 0;
 }
 
-int rtcSendMessage(int dc, const char *data, int size) {
-	auto dataChannel = getDataChannel(dc);
-	if (!dataChannel)
+int rtcSendMessage(int id, const char *data, int size) {
+	auto channel = getChannel(id);
+	if (!channel)
 		return -1;
 
 	if (size >= 0) {
 		auto b = reinterpret_cast<const byte *>(data);
-		CATCH(dataChannel->send(b, size));
+		CATCH(channel->send(binary(b, b + size)));
 		return size;
 	} else {
-		string s(data);
-		CATCH(dataChannel->send(s));
-		return s.size();
+		string str(data);
+		int len = str.size();
+		CATCH(channel->send(std::move(str)));
+		return len;
 	}
 }
 
-int rtcGetBufferedAmount(int dc) {
-	auto dataChannel = getDataChannel(dc);
-	if (!dataChannel)
+int rtcGetBufferedAmount(int id) {
+	auto channel = getChannel(id);
+	if (!channel)
 		return -1;
 
-	CATCH(return int(dataChannel->bufferedAmount()));
+	CATCH(return int(channel->bufferedAmount()));
 }
 
-int rtcSetBufferedAmountLowThreshold(int dc, int amount) {
-	auto dataChannel = getDataChannel(dc);
-	if (!dataChannel)
+int rtcSetBufferedAmountLowThreshold(int id, int amount) {
+	auto channel = getChannel(id);
+	if (!channel)
 		return -1;
 
-	CATCH(dataChannel->setBufferedAmountLowThreshold(size_t(amount)));
+	CATCH(channel->setBufferedAmountLowThreshold(size_t(amount)));
 	return 0;
 }
 
-int rtcSetBufferedAmountLowCallback(int dc, bufferedAmountLowCallbackFunc cb) {
-	auto dataChannel = getDataChannel(dc);
-	if (!dataChannel)
+int rtcSetBufferedAmountLowCallback(int id, bufferedAmountLowCallbackFunc cb) {
+	auto channel = getChannel(id);
+	if (!channel)
 		return -1;
 
 	if (cb)
-		dataChannel->onBufferedAmountLow([dc, cb]() { cb(getUserPointer(dc)); });
+		channel->onBufferedAmountLow([id, cb]() { cb(getUserPointer(id)); });
 	else
-		dataChannel->onBufferedAmountLow(nullptr);
+		channel->onBufferedAmountLow(nullptr);
 	return 0;
 }
 
-int rtcGetAvailableAmount(int dc) {
-	auto dataChannel = getDataChannel(dc);
-	if (!dataChannel)
+int rtcGetAvailableAmount(int id) {
+	auto channel = getChannel(id);
+	if (!channel)
 		return -1;
 
-	CATCH(return int(dataChannel->availableAmount()));
+	CATCH(return int(channel->availableAmount()));
 }
 
-int rtcSetAvailableCallback(int dc, availableCallbackFunc cb) {
-	auto dataChannel = getDataChannel(dc);
-	if (!dataChannel)
+int rtcSetAvailableCallback(int id, availableCallbackFunc cb) {
+	auto channel = getChannel(id);
+	if (!channel)
 		return -1;
 
 	if (cb)
-		dataChannel->onOpen([dc, cb]() { cb(getUserPointer(dc)); });
+		channel->onOpen([id, cb]() { cb(getUserPointer(id)); });
 	else
-		dataChannel->onOpen(nullptr);
+		channel->onOpen(nullptr);
 	return 0;
 }
 
-int rtcReceiveMessage(int dc, char *buffer, int *size) {
-	auto dataChannel = getDataChannel(dc);
-	if (!dataChannel)
+int rtcReceiveMessage(int id, char *buffer, int *size) {
+	auto channel = getChannel(id);
+	if (!channel)
 		return -1;
 
 	if (!size)
 		return -1;
 
 	CATCH({
-		auto message = dataChannel->receive();
+		auto message = channel->receive();
 		if (!message)
 			return 0;
 

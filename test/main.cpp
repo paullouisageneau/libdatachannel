@@ -25,19 +25,19 @@ void test_capi();
 
 int main(int argc, char **argv) {
 	try {
-		std::cout << "*** Running connectivity test..." << std::endl;
+		cout << endl << "*** Running connectivity test..." << endl;
 		test_connectivity();
-		std::cout << "*** Finished connectivity test" << std::endl;
+		cout << "*** Finished connectivity test" << endl;
 	} catch (const exception &e) {
-		std::cerr << "Connectivity test failed: " << e.what() << endl;
+		cerr << "Connectivity test failed: " << e.what() << endl;
 		return -1;
 	}
 	try {
-		std::cout << "*** Running C API test..." << std::endl;
+		cout << endl << "*** Running C API test..." << endl;
 		test_capi();
-		std::cout << "*** Finished C API test" << std::endl;
+		cout << "*** Finished C API test" << endl;
 	} catch (const exception &e) {
-		std::cerr << "C API test failed: " << e.what() << endl;
+		cerr << "C API test failed: " << e.what() << endl;
 		return -1;
 	}
 	return 0;

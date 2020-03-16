@@ -42,8 +42,7 @@ typedef enum {
 	RTC_GATHERING_COMPLETE = 2
 } rtcGatheringState;
 
-// Don't change, it must match plog severity
-typedef enum {
+typedef enum { // Don't change, it must match plog severity
 	RTC_LOG_NONE = 0,
 	RTC_LOG_FATAL = 1,
 	RTC_LOG_ERROR = 2,
@@ -76,10 +75,10 @@ typedef void (*availableCallbackFunc)(void *ptr);
 void rtcInitLogger(rtcLogLevel level);
 
 // User pointer
-void rtcSetUserPointer(int i, void *ptr);
+void rtcSetUserPointer(int id, void *ptr);
 
 // PeerConnection
-int rtcCreatePeerConnection(const rtcConfiguration *config);
+int rtcCreatePeerConnection(const rtcConfiguration *config); // returns pc id
 int rtcDeletePeerConnection(int pc);
 
 int rtcSetDataChannelCallback(int pc, dataChannelCallbackFunc cb);
@@ -95,24 +94,32 @@ int rtcGetLocalAddress(int pc, char *buffer, int size);
 int rtcGetRemoteAddress(int pc, char *buffer, int size);
 
 // DataChannel
-int rtcCreateDataChannel(int pc, const char *label);
+int rtcCreateDataChannel(int pc, const char *label); // returns dc id
 int rtcDeleteDataChannel(int dc);
 
 int rtcGetDataChannelLabel(int dc, char *buffer, int size);
-int rtcSetOpenCallback(int dc, openCallbackFunc cb);
-int rtcSetClosedCallback(int dc, closedCallbackFunc cb);
-int rtcSetErrorCallback(int dc, errorCallbackFunc cb);
-int rtcSetMessageCallback(int dc, messageCallbackFunc cb);
-int rtcSendMessage(int dc, const char *data, int size);
 
-int rtcGetBufferedAmount(int dc); // total size buffered to send
-int rtcSetBufferedAmountLowThreshold(int dc, int amount);
-int rtcSetBufferedAmountLowCallback(int dc, bufferedAmountLowCallbackFunc cb);
+// WebSocket
+#if ENABLE_WEBSOCKET
+int rtcCreateWebSocket(const char *url); // returns ws id
+int rtcDeleteWebsocket(int ws);
+#endif
 
-// DataChannel extended API
-int rtcGetAvailableAmount(int dc); // total size available to receive
-int rtcSetAvailableCallback(int dc, availableCallbackFunc cb);
-int rtcReceiveMessage(int dc, char *buffer, int *size);
+// DataChannel and WebSocket common API
+int rtcSetOpenCallback(int id, openCallbackFunc cb);
+int rtcSetClosedCallback(int id, closedCallbackFunc cb);
+int rtcSetErrorCallback(int id, errorCallbackFunc cb);
+int rtcSetMessageCallback(int id, messageCallbackFunc cb);
+int rtcSendMessage(int id, const char *data, int size);
+
+int rtcGetBufferedAmount(int id); // total size buffered to send
+int rtcSetBufferedAmountLowThreshold(int id, int amount);
+int rtcSetBufferedAmountLowCallback(int id, bufferedAmountLowCallbackFunc cb);
+
+// DataChannel and WebSocket common extended API
+int rtcGetAvailableAmount(int id); // total size available to receive
+int rtcSetAvailableCallback(int id, availableCallbackFunc cb);
+int rtcReceiveMessage(int id, char *buffer, int *size);
 
 #ifdef __cplusplus
 } // extern "C"
