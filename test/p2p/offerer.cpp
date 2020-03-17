@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
 			return;
 
 		pc->connectionInfo += description;
-		pc->connectionInfo += "xxxxx";
+		pc->connectionInfo += ",";
 	});
 
 	pc->onLocalCandidate([wpc = make_weak_ptr(pc)](const Candidate &candidate) {
@@ -134,9 +134,7 @@ int main(int argc, char **argv) {
 		        "*****"
 		     << endl
 		     << "* 0: Exit /"
-		     << " 1: Enter remote description /"
-		     << " 2: Enter remote candidate /"
-		     << " 3: Send message *" << endl
+		     << " 1: Send message *" << endl
 		     << "[Command]: ";
 
 		int command = -1;
@@ -149,25 +147,6 @@ int main(int argc, char **argv) {
 			break;
 		}
 		case 1: {
-			// Parse Description
-			cout << "[Description]: ";
-			string sdp, line;
-			while (getline(cin, line) && !line.empty()) {
-				sdp += line;
-				sdp += "\r\n";
-			}
-			pc->setRemoteDescription(sdp);
-			break;
-		}
-		case 2: {
-			// Parse Candidate
-			cout << "[Candidate]: ";
-			string candidate;
-			getline(cin, candidate);
-			pc->addRemoteCandidate(candidate);
-			break;
-		}
-		case 3: {
 			// Send Message
 			if (!dc->isOpen()) {
 				cout << "** Channel is not Open ** ";
