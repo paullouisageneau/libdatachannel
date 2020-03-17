@@ -38,6 +38,14 @@ else
         LIBS+=glib-2.0 gobject-2.0 nice
 endif
 
+ENABLE_WEBSOCKET ?= 0
+ifneq ($(ENABLE_WEBSOCKET), 0)
+        CPPFLAGS+=-DENABLE_WEBSOCKET=1
+else
+        CPPFLAGS+=-DENABLE_WEBSOCKET=0
+endif
+
+
 INCLUDES+=$(shell pkg-config --cflags $(LIBS))
 LDLIBS+=$(LOCALLIBS) $(shell pkg-config --libs $(LIBS))
 
