@@ -2,12 +2,20 @@
 <html>
     <head>
         <title>Web Rtc Answerer</title>
+        <link rel="stylesheet" href="/style.css" />
     </head>
     <body>
         <h1>Web Rtc</h1>
-        <textarea id="sendData" placeholder="Send a message" style="width: 500px; height: 50px"></textarea>
-        <br/>
-        <button id="sendDataBtn">Send Data</button>
+        <div>
+            <p id="connection-state">Pending</p>
+            <textarea id="sendData"
+                placeholder="Send a message"
+            ></textarea>
+            <br/>
+            <button id="sendDataBtn">Send Data</button>
+        </div>
+        <div id="messages">
+        <div>
         <script src="/answerScript.js"></script>
     </body>
 </html>
