@@ -86,6 +86,8 @@ bool WsTransport::send(mutable_message_ptr message) {
 	if (!message || state() != State::Connected)
 		return false;
 
+	PLOG_VERBOSE << "Send size=" << message->size();
+
 	return sendFrame({message->type == Message::String ? TEXT_FRAME : BINARY_FRAME, message->data(),
 	                  message->size(), true, true});
 }
@@ -97,6 +99,7 @@ void WsTransport::incoming(message_ptr message) {
 		if (state() == State::Connecting) {
 			if (size_t len = readHttpResponse(mBuffer.data(), mBuffer.size())) {
 				mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
+				PLOG_INFO << "WebSocket open";
 				changeState(State::Connected);
 			}
 		}
@@ -110,6 +113,14 @@ void WsTransport::incoming(message_ptr message) {
 		}
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
+	}
+
+	if (state() == State::Connected) {
+		PLOG_INFO << "WebSocket disconnected";
+		changeState(State::Disconnected);
+		recv(nullptr);
+	} else {
+		PLOG_ERROR << "WebSocket handshake failed";
 		changeState(State::Failed);
 	}
 }
@@ -117,6 +128,7 @@ void WsTransport::incoming(message_ptr message) {
 void WsTransport::close() {
 	if (state() == State::Connected) {
 		sendFrame({CLOSE, NULL, 0, true, true});
+		PLOG_INFO << "WebSocket closing";
 		changeState(State::Completed);
 	}
 }
@@ -309,6 +321,7 @@ void WsTransport::recvFrame(const Frame &frame) {
 	}
 	case CLOSE: {
 		close();
+		PLOG_INFO << "WebSocket closed";
 		changeState(State::Disconnected);
 		break;
 	}

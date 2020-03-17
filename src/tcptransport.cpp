@@ -31,28 +31,34 @@ TcpTransport::TcpTransport(const string &hostname, const string &service, state_
 	mThread = std::thread(&TcpTransport::runLoop, this);
 }
 
-TcpTransport::~TcpTransport() { stop(); }
+TcpTransport::~TcpTransport() {
+	stop();
+	if (mInterruptSock != INVALID_SOCKET)
+		::closesocket(mInterruptSock);
+}
 
 bool TcpTransport::stop() {
 	if (!Transport::stop())
 		return false;
 
+	PLOG_DEBUG << "Waiting TCP recv thread";
 	close();
 	mThread.join();
 	return true;
 }
 
-bool TcpTransport::send(message_ptr message) { return outgoing(message); }
+bool TcpTransport::send(message_ptr message) {
+	if (!message)
+		return mSendQueue.empty();
+
+	PLOG_VERBOSE << "Send size=" << (message ? message->size() : 0);
+
+	return outgoing(message);
+}
 
 void TcpTransport::incoming(message_ptr message) { recv(message); }
 
 bool TcpTransport::outgoing(message_ptr message) {
-	if (mSock == INVALID_SOCKET)
-		throw std::runtime_error("Not connected");
-
-	if (!message)
-		return mSendQueue.empty();
-
 	// If nothing is pending, try to send directly
 	// It's safe because if the queue is empty, the thread is not sending
 	if (mSendQueue.empty() && trySendMessage(message))
@@ -64,6 +70,8 @@ bool TcpTransport::outgoing(message_ptr message) {
 }
 
 void TcpTransport::connect(const string &hostname, const string &service) {
+	PLOG_DEBUG << "Connecting to " << hostname << ":" << service;
+
 	struct addrinfo hints = {};
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
@@ -89,6 +97,8 @@ void TcpTransport::connect(const string &hostname, const string &service) {
 
 void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 	try {
+		PLOG_DEBUG << "Creating TCP socket";
+
 		// Create socket
 		mSock = ::socket(addr->sa_family, SOCK_STREAM, IPPROTO_TCP);
 		if (mSock == INVALID_SOCKET)
@@ -97,6 +107,15 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 		ctl_t b = 1;
 		if (::ioctlsocket(mSock, FIONBIO, &b) < 0)
 			throw std::runtime_error("Failed to set socket non-blocking mode");
+
+		IF_PLOG(plog::debug) {
+			char node[MAX_NUMERICNODE_LEN];
+			char serv[MAX_NUMERICSERV_LEN];
+			if (getnameinfo(addr, addrlen, node, MAX_NUMERICNODE_LEN, serv, MAX_NUMERICSERV_LEN,
+			                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+				PLOG_DEBUG << "Trying address " << node << ":" << serv;
+			}
+		}
 
 		// Initiate connection
 		::connect(mSock, addr, addrlen);
@@ -126,6 +145,7 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 
 void TcpTransport::close() {
 	if (mSock != INVALID_SOCKET) {
+		PLOG_DEBUG << "Closing TCP socket";
 		::closesocket(mSock);
 		mSock = INVALID_SOCKET;
 	}
@@ -166,10 +186,9 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 void TcpTransport::runLoop() {
 	const size_t bufferSize = 4096;
 
-	changeState(State::Connecting);
-
 	// Connect
 	try {
+		changeState(State::Connecting);
 		connect(mHostname, mService);
 
 	} catch (const std::exception &e) {
@@ -178,10 +197,12 @@ void TcpTransport::runLoop() {
 		return;
 	}
 
-	changeState(State::Connected);
 
 	// Receive loop
 	try {
+		PLOG_INFO << "TCP connected";
+		changeState(State::Connected);
+
 		while (true) {
 			fd_set readfds, writefds;
 			int n = prepareSelect(readfds, writefds);

@@ -178,7 +178,7 @@ void DtlsTransport::runRecvLoop() {
 
 	// Receive loop
 	try {
-		PLOG_INFO << "DTLS handshake done";
+		PLOG_INFO << "DTLS handshake finished";
 		changeState(State::Connected);
 
 		const size_t bufferSize = maxMtu;
@@ -213,7 +213,7 @@ void DtlsTransport::runRecvLoop() {
 
 	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
 
-	PLOG_INFO << "DTLS disconnected";
+	PLOG_INFO << "DTLS closed";
 	changeState(State::Disconnected);
 	recv(nullptr);
 }
@@ -484,7 +484,7 @@ void DtlsTransport::runRecvLoop() {
 						// MTU See https://tools.ietf.org/html/rfc8261#section-5
 						SSL_set_mtu(mSsl, maxMtu + 1);
 
-						PLOG_INFO << "DTLS handshake done";
+						PLOG_INFO << "DTLS handshake finished";
 						changeState(State::Connected);
 					}
 				} else {
@@ -530,7 +530,7 @@ void DtlsTransport::runRecvLoop() {
 	}
 
 	if (state() == State::Connected) {
-		PLOG_INFO << "DTLS disconnected";
+		PLOG_INFO << "DTLS closed";
 		changeState(State::Disconnected);
 		recv(nullptr);
 	} else {
