@@ -19,7 +19,7 @@
 #ifndef RTC_WS_TRANSPORT_H
 #define RTC_WS_TRANSPORT_H
 
-#if ENABLE_WEBSOCKET
+#if RTC_ENABLE_WEBSOCKET
 
 #include "include.hpp"
 #include "transport.hpp"

@@ -19,7 +19,7 @@
 #ifndef RTC_BASE64_H
 #define RTC_BASE64_H
 
-#if ENABLE_WEBSOCKET
+#if RTC_ENABLE_WEBSOCKET
 
 #include "include.hpp"
 

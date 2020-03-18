@@ -19,6 +19,10 @@
 #ifndef RTC_INCLUDE_H
 #define RTC_INCLUDE_H
 
+#ifndef RTC_ENABLE_WEBSOCKET
+#define RTC_ENABLE_WEBSOCKET 1
+#endif
+
 #ifdef _WIN32
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0602

@@ -100,7 +100,7 @@ int rtcDeleteDataChannel(int dc);
 int rtcGetDataChannelLabel(int dc, char *buffer, int size);
 
 // WebSocket
-#if ENABLE_WEBSOCKET
+#if RTC_ENABLE_WEBSOCKET
 int rtcCreateWebSocket(const char *url); // returns ws id
 int rtcDeleteWebsocket(int ws);
 #endif

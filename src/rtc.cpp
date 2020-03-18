@@ -21,7 +21,7 @@
 #include "datachannel.hpp"
 #include "peerconnection.hpp"
 
-#if ENABLE_WEBSOCKET
+#if RTC_ENABLE_WEBSOCKET
 #include "websocket.hpp"
 #endif
 
@@ -48,7 +48,7 @@ namespace {
 
 std::unordered_map<int, shared_ptr<PeerConnection>> peerConnectionMap;
 std::unordered_map<int, shared_ptr<DataChannel>> dataChannelMap;
-#if ENABLE_WEBSOCKET
+#if RTC_ENABLE_WEBSOCKET
 std::unordered_map<int, shared_ptr<WebSocket>> webSocketMap;
 #endif
 std::unordered_map<int, void *> userPointerMap;
@@ -111,7 +111,7 @@ bool eraseDataChannel(int dc) {
 	return true;
 }
 
-#if ENABLE_WEBSOCKET
+#if RTC_ENABLE_WEBSOCKET
 shared_ptr<WebSocket> getWebSocket(int id) {
 	std::lock_guard lock(mutex);
 	auto it = webSocketMap.find(id);
@@ -138,7 +138,7 @@ shared_ptr<Channel> getChannel(int id) {
 	std::lock_guard lock(mutex);
 	if (auto it = dataChannelMap.find(id); it != dataChannelMap.end())
 		return it->second;
-#if ENABLE_WEBSOCKET
+#if RTC_ENABLE_WEBSOCKET
 	if (auto it = webSocketMap.find(id); it != webSocketMap.end())
 		return it->second;
 #endif
@@ -206,7 +206,7 @@ int rtcDeleteDataChannel(int dc) {
 	return 0;
 }
 
-#if ENABLE_WEBSOCKET
+#if RTC_ENABLE_WEBSOCKET
 int rtcCreateWebSocket(const char *url) {
 	return emplaceWebSocket(std::make_shared<WebSocket>(url));
 }
