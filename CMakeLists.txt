@@ -71,6 +71,10 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 add_subdirectory(deps/usrsctp EXCLUDE_FROM_ALL)
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_compile_options(usrsctp PRIVATE -Wno-error=format-truncation)
+	target_compile_options(usrsctp-static PRIVATE -Wno-error=format-truncation)
+endif()
 add_library(Usrsctp::Usrsctp ALIAS usrsctp)
 add_library(Usrsctp::UsrsctpStatic ALIAS usrsctp-static)
 

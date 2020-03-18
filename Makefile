@@ -5,7 +5,7 @@ CXX=$(CROSS)g++
 AR=$(CROSS)ar
 RM=rm -f
 CXXFLAGS=-std=c++17
-CPPFLAGS=-O2 -pthread -fPIC -Wall -Wno-address-of-packed-member
+CPPFLAGS=-O2 -pthread -fPIC -Wall
 LDFLAGS=-pthread
 LIBS=
 LOCALLIBS=libusrsctp.a
@@ -86,7 +86,7 @@ dist-clean: clean
 libusrsctp.a:
 	cd $(USRSCTP_DIR) && \
 		./bootstrap && \
-		./configure --enable-static --disable-debug CFLAGS="$(CPPFLAGS)" && \
+		./configure --enable-static --disable-debug CFLAGS="$(CPPFLAGS) -Wno-error=format-truncation" && \
 		make
 	cp $(USRSCTP_DIR)/usrsctplib/.libs/libusrsctp.a .
 
