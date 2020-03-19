@@ -23,6 +23,7 @@
 //
 #include "datachannel.hpp"
 #include "peerconnection.hpp"
+#include "websocket.hpp"
 
 // C API
 #include "rtc.h"

@@ -27,6 +27,10 @@ extern "C" {
 
 // libdatachannel C API
 
+#ifndef RTC_ENABLE_WEBSOCKET
+#define RTC_ENABLE_WEBSOCKET 1
+#endif
+
 typedef enum {
 	RTC_NEW = 0,
 	RTC_CONNECTING = 1,
