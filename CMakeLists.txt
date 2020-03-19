@@ -36,6 +36,23 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.cpp
 )
 
+set(LIBDATACHANNEL_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/candidate.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/channel.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/configuration.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/configuration.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/datachannel.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/description.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/include.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/log.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/message.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/peerconnection.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/queue.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/reliability.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.h
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.hpp
+)
+
 set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
@@ -122,6 +139,9 @@ endif()
 
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
 add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
+
+install(TARGETS datachannel LIBRARY DESTINATION lib)
+install(FILES ${LIBDATACHANNEL_HEADERS} DESTINATION include/rtc)
 
 # Main Test
 add_executable(datachannel-tests ${TESTS_SOURCES})
