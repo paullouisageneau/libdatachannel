@@ -1,3 +1,35 @@
+function el(type, style, content) {
+  const element = document.createElement(type);
+  element.setAttribute('class', style);
+  element.append(content);
+  return element;
+}
+
+const UI = {
+  createMessageElement: function(style, message) {
+    const conversation =  document.getElementById('messages');
+    const messageElement = el('p', style + ' message', message);
+    conversation.append(messageElement);
+
+    const d = new Date();
+    const time = el('span', 'time', [
+      d.getHours().toString().padStart(2, '0'),
+      d.getMinutes().toString().padStart(2, '0'),
+      d.getSeconds().toString().padStart(2, '0')
+    ].join(':'));
+    messageElement.append(time);
+  },
+  messageTextBoxValue: function() {
+    return document.getElementById('message-text-box').value;
+  },
+  sendMessageButton: function() {
+    return document.getElementById('send-message-button');
+  },
+  setConnectionState: function(state) {
+    const stateEl = document.getElementById('connection-state');
+    stateEl.innerHTML = state;
+  }
+};
 (function (){
   const connectionParam = getQueryParameter('connection');
   const parsedConnection = atob(connectionParam).split(',');
@@ -52,13 +84,13 @@ function createRemoteConnection(connectionMetadata) {
     }
   };
   connection.ondatachannel = (e) => {
-    UI.setConnectionState('received channel');
+    UI.setConnectionState('received channel: ' + JSON.stringify(e));
     const channel = e.channel;
-    console.dir(channel);
-    const sendButton = document.getElementById('sendDataBtn');
+    console.log(channel);
+    const sendButton = UI.sendMessageButton();
     sendButton.addEventListener('click', sendMessage.bind(null, channel), false);
     channel.onopen = () => {
-      console.log('channel open');
+      console.log('open');
       UI.setConnectionState('channel open');
     };
     channel.onmessage = (msg) => {
@@ -67,25 +99,8 @@ function createRemoteConnection(connectionMetadata) {
   };
 }
 
-const UI = {
-  createMessageElement: function(style, message) {
-    const conversation =  document.getElementById('messages');
-    const messageElement = document.createElement('p');
-    messageElement.setAttribute('class', style);
-    messageElement.append(message);
-    conversation.append(messageElement);
-  },
-  messageInputValue: function() {
-    return document.getElementById('sendData').value;
-  },
-  setConnectionState: function(state) {
-    const stateEl = document.getElementById('connection-state');
-    stateEl.innerHTML = state;
-  }
-};
-
 function sendMessage(channel) {
-  const message = UI.messageInputValue();
+  const message = UI.messageTextBoxValue();
   UI.createMessageElement('from-me', message);
   channel.send(message);
 }

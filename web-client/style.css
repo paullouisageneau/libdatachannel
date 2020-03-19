@@ -1,0 +1,41 @@
+body {
+  background-color: #fff5e3;
+  font-family: sans-serif;
+}
+
+#message-text-box {
+  width: 500px;
+  height: 50px;
+  border-radius: 8px;
+}
+
+#messages {
+  display: flex;
+  flex-direction:column;
+  width: 70%;
+  margin: auto;
+}
+
+.message {
+  width: 25%;
+  flex-basis: 100%;
+  border: 1px solid;
+  padding: 1%;
+  border-radius: 8px;
+  box-shadow: 2px 2px #a0a0a0f7;
+}
+
+.message .time {
+  font-size: x-small;
+  display: flex;
+  align-self:flex-end;
+}
+
+.from-me {
+  background-color: #dcf8c6;
+}
+
+.from-them {
+  background-color: #fff;
+  align-self:flex-end;
+}
