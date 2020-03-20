@@ -68,7 +68,7 @@ public:
 private:
 	bool changeState(State state);
 	void remoteClose();
-	bool outgoing(mutable_message_ptr message);
+	bool outgoing(message_ptr message);
 	void incoming(message_ptr message);
 
 	std::shared_ptr<TcpTransport> initTcpTransport();

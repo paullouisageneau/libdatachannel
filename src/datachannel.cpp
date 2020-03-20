@@ -196,7 +196,7 @@ void DataChannel::open(shared_ptr<SctpTransport> transport) {
 	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
 }
 
-bool DataChannel::outgoing(mutable_message_ptr message) {
+bool DataChannel::outgoing(message_ptr message) {
 	if (mIsClosed)
 		throw std::runtime_error("DataChannel is closed");
 

@@ -55,7 +55,7 @@ public:
 	virtual bool stop() override;
 	virtual bool send(message_ptr message) override; // false if dropped
 
-private:
+protected:
 	virtual void incoming(message_ptr message) override;
 
 	void runRecvLoop();
