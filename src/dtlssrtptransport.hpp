@@ -33,14 +33,16 @@ public:
 	                  state_callback stateChangeCallback);
 	~DtlsSrtpTransport();
 
-	void stop() override;
+	bool stop() override;
 	bool send(message_ptr message) override;
 
 private:
 	void incoming(message_ptr message) override;
+	void postHandshake() override;
+
+	message_callback mRecvCallback;
 
 	srtp_t mSrtp;
-	srtp_policy_t mPolicy;
 };
 
 } // namespace rtc

@@ -57,15 +57,15 @@ public:
 
 protected:
 	virtual void incoming(message_ptr message) override;
-
+	virtual void postHandshake();
 	void runRecvLoop();
 
 	const std::shared_ptr<Certificate> mCertificate;
+	const verifier_callback mVerifierCallback;
+	const bool mIsClient;
 
 	Queue<message_ptr> mIncomingQueue;
 	std::thread mRecvThread;
-
-	verifier_callback mVerifierCallback;
 
 #if USE_GNUTLS
 	gnutls_session_t mSession;
