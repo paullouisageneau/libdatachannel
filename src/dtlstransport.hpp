@@ -52,11 +52,12 @@ public:
 	              verifier_callback verifierCallback, state_callback stateChangeCallback);
 	~DtlsTransport();
 
-	bool stop() override;
-	bool send(message_ptr message) override; // false if dropped
+	virtual bool stop() override;
+	virtual bool send(message_ptr message) override; // false if dropped
 
 private:
-	void incoming(message_ptr message) override;
+	virtual void incoming(message_ptr message) override;
+
 	void runRecvLoop();
 
 	const std::shared_ptr<Certificate> mCertificate;
