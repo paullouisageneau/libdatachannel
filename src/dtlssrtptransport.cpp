@@ -18,7 +18,9 @@
 
 #include "dtlssrtptransport.hpp"
 
+#include <cstring>
 #include <exception>
+
 #include <srtp2/srtp.h>
 
 using std::shared_ptr;
@@ -44,7 +46,8 @@ DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
 	// TODO: check_gnutls
 	gnutls_srtp_set_profile(mSession, GNUTLS_SRTP_AES128_CM_HMAC_SHA1_80);
 #else
-	// TODO
+	// TODO: check_openssl
+	SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80");
 #endif
 }
 
@@ -53,6 +56,8 @@ DtlsSrtpTransport::~DtlsSrtpTransport() { stop(); }
 bool DtlsSrtpTransport::stop() {
 	if (!Transport::stop())
 		return false;
+
+	srtp_dealloc(mSrtp);
 
 	// TODO: global cleanup
 	srtp_shutdown();
@@ -111,20 +116,53 @@ void DtlsSrtpTransport::postHandshake() {
 	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&outbound.rtcp);
 	outbound.ssrc.type = ssrc_any_outbound;
 
+	const size_t materialLen = SRTP_AES_ICM_128_KEY_LEN_WSALT * 2;
+	unsigned char material[materialLen];
+	const unsigned char *clientKey, *clientSalt, *serverKey, *serverSalt;
+
 #if USE_GNUTLS
-	unsigned char material[SRTP_MAX_KEY_LEN * 2];
-	gnutls_datum_t clientKey, clientSalt, serverKey, serverSalt;
+	gnutls_datum_t clientKeyDatum, clientSaltDatum, serverKeyDatum, serverSaltDatum;
 	// TODO: check_gnutls
-	gnutls_srtp_get_keys(mSession, material, STRP_MAX_KEY_LEN * 2, &clientKey, &clientSalt,
-	                     &serverKey, &serverSalt);
+	gnutls_srtp_get_keys(mSession, material, materialLen, &clientKeyDatum, &clientSaltDatum,
+	                     &serverKeyDatum, &serverSaltDatum);
 
-	unsigned char clientSessionKey[SRTP_MAX_KEY_LEN];
-	std::memcpy(clientSessionKey, clientKey.data, clientKey.size);
-	std::memcpy(clientSessionKey + clientKey.size, clientSalt.data, clientSalt.size);
+	if (clientKeyDatum.size != SRTP_AES_128_KEY_LEN)
+		throw std::logic_error("Unexpected SRTP master key length: " +
+		                       to_string(clientKeyDatum.size));
+	if (clientSaltDatum.size != SRTP_SALT_LEN)
+		throw std::logic_error("Unexpected SRTP salt length: " + to_string(clientSaltDatum.size));
+	if (serverKeyDatum.size != SRTP_AES_128_KEY_LEN)
+		throw std::logic_error("Unexpected SRTP master key length: " +
+		                       to_string(serverKeyDatum.size));
+	if (serverSaltDatum.size != SRTP_SALT_LEN)
+		throw std::logic_error("Unexpected SRTP salt size: " + to_string(serverSaltDatum.size));
 
-	unsigned char serverSessionKey[SRTP_MAX_KEY_LEN];
-	std::memcpy(serverSessionKey, serverKey.data, serverKey.size);
-	std::memcpy(serverSessionKey + serverKey.size, serverSalt.data, serverSalt.size);
+	clientKey = reinterpret_cast<const unsigned char *>(clientKeyDatum.data);
+	clientSalt = reinterpret_cast<const unsigned char *>(clientSaltDatum.data);
+
+	serverKey = reinterpret_cast<const unsigned char *>(serverKeyDatum.data);
+	serverSalt = reinterpret_cast<const unsigned char *>(serverSaltDatum.data);
+#else
+	// This provides the client write master key, the server write master key, the client write
+	// master salt and the server write master salt in that order.
+	const string label = "EXTRACTOR-dtls_srtp";
+	// TODO: check OpenSSL
+	SSL_export_keying_material(mSsl, material, SRTP_MAX_KEY_LEN * 2, label.c_str(), label.size(),
+	                           nullptr, 0, 0);
+	clientKey = material;
+	clientSalt = clientKey + SRTP_AES_128_KEY_LEN;
+
+	serverKey = material + SRTP_AES_ICM_128_KEY_LEN_WSALT;
+	serverSalt = serverSalt + SRTP_AES_128_KEY_LEN;
+#endif
+
+	unsigned char clientSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
+	std::memcpy(clientSessionKey, clientKey, SRTP_AES_128_KEY_LEN);
+	std::memcpy(clientSessionKey + SRTP_AES_128_KEY_LEN, clientSalt, SRTP_SALT_LEN);
+
+	unsigned char serverSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
+	std::memcpy(serverSessionKey, serverKey, SRTP_AES_128_KEY_LEN);
+	std::memcpy(serverSessionKey + SRTP_AES_128_KEY_LEN, serverSalt, SRTP_SALT_LEN);
 
 	if (mIsClient) {
 		inbound.key = serverSessionKey;
@@ -133,9 +171,6 @@ void DtlsSrtpTransport::postHandshake() {
 		inbound.key = clientSessionKey;
 		outbound.key = serverSessionKey;
 	}
-#else
-	// TODO
-#endif
 
 	srtp_policy_t *policies = &inbound;
 	inbound.next = &outbound;
