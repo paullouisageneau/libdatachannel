@@ -25,6 +25,7 @@
 #include <exception>
 
 using std::shared_ptr;
+using std::to_integer;
 using std::to_string;
 
 namespace rtc {
@@ -85,22 +86,36 @@ bool DtlsSrtpTransport::send(message_ptr message) {
 }
 
 void DtlsSrtpTransport::incoming(message_ptr message) {
-	// TODO: demultiplexing
-	// detect dtls and pass to DtlsTransport::incoming
-
 	int size = message->size();
-	PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
-
-	if (srtp_err_status_t err = srtp_unprotect(mSrtp, message->data(), &size)) {
-		if (err == srtp_err_status_replay_fail)
-			PLOG_WARNING << "Incoming SRTP packet is a replay";
-		else
-			PLOG_WARNING << "SRTP unprotect error, status=" << err;
+	if (size == 0)
 		return;
+
+	// RFC 5764 5.1.2. Reception
+	// The process for demultiplexing a packet is as follows. The receiver looks at the first byte
+	// of the packet. [...] If the value is in between 128 and 191 (inclusive), then the packet is
+	// RTP (or RTCP [...]). If the value is between 20 and 63 (inclusive), the packet is DTLS.
+	uint8_t value = to_integer<uint8_t>(*message->begin());
+
+	if (value >= 128 && value <= 192) {
+		PLOG_VERBOSE << "Incoming DTLS packet, size=" << size;
+		DtlsTransport::incoming(message);
+	} else if (value >= 20 && value <= 64) {
+		PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
+
+		if (srtp_err_status_t err = srtp_unprotect(mSrtp, message->data(), &size)) {
+			if (err == srtp_err_status_replay_fail)
+				PLOG_WARNING << "Incoming SRTP packet is a replay";
+			else
+				PLOG_WARNING << "SRTP unprotect error, status=" << err;
+			return;
+		}
+		PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
+		message->resize(size);
+		mSrtpRecvCallback(message);
+
+	} else {
+		PLOG_WARNING << "Unknown packet type, value=" << value << ", size=" << size;
 	}
-	PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
-	message->resize(size);
-	mSrtpRecvCallback(message);
 }
 
 void DtlsSrtpTransport::postHandshake() {
