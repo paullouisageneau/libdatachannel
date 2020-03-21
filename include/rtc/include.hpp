@@ -19,6 +19,10 @@
 #ifndef RTC_INCLUDE_H
 #define RTC_INCLUDE_H
 
+#ifndef RTC_ENABLE_MEDIA
+#define RTC_ENABLE_MEDIA 1
+#endif
+
 #ifndef RTC_ENABLE_WEBSOCKET
 #define RTC_ENABLE_WEBSOCKET 1
 #endif

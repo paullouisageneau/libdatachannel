@@ -22,6 +22,8 @@
 #include "dtlstransport.hpp"
 #include "include.hpp"
 
+#if RTC_ENABLE_MEDIA
+
 #include <srtp2/srtp.h>
 
 namespace rtc {
@@ -48,5 +50,7 @@ private:
 };
 
 } // namespace rtc
+
+#endif
 
 #endif

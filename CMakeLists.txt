@@ -28,6 +28,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/configuration.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/datachannel.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/dtlssrtptransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/dtlstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/icetransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/init.cpp
@@ -81,6 +82,7 @@ set(TESTS_ANSWERER_SOURCES
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+find_package(SRTP)
 
 add_subdirectory(deps/usrsctp EXCLUDE_FROM_ALL)
 if (MSYS OR MINGW)
@@ -137,39 +139,56 @@ if(WIN32)
 	target_link_libraries(datachannel-static "wsock32" "ws2_32") # winsock2
 endif()
 
+if(SRTP_FOUND)
+	if(NOT TARGET SRTP::SRTP)
+		add_library(SRTP::SRTP UNKNOWN IMPORTED)
+		set_target_properties(SRTP::SRTP PROPERTIES
+			INTERFACE_INCLUDE_DIRECTORIES ${SRTP_INCLUDE_DIRS}
+			IMPORTED_LINK_INTERFACE_LANGUAGES C
+			IMPORTED_LOCATION ${SRTP_LIBRARIES})
+	endif()
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=1)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=1)
+	target_link_libraries(datachannel SRTP::SRTP)
+	target_link_libraries(datachannel-static SRTP::SRTP)
+else()
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=0)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=0)
+endif()
+
 if (USE_GNUTLS)
 	find_package(GnuTLS REQUIRED)
 	if(NOT TARGET GnuTLS::GnuTLS)
 		add_library(GnuTLS::GnuTLS UNKNOWN IMPORTED)
 		set_target_properties(GnuTLS::GnuTLS PROPERTIES
-			INTERFACE_INCLUDE_DIRECTORIES "${GNUTLS_INCLUDE_DIRS}"
-			INTERFACE_COMPILE_DEFINITIONS "${GNUTLS_DEFINITIONS}"
-			IMPORTED_LINK_INTERFACE_LANGUAGES "C"
-			IMPORTED_LOCATION "${GNUTLS_LIBRARIES}")
+			INTERFACE_INCLUDE_DIRECTORIES ${GNUTLS_INCLUDE_DIRS}
+			INTERFACE_COMPILE_DEFINITIONS ${GNUTLS_DEFINITIONS}
+			IMPORTED_LINK_INTERFACE_LANGUAGES C
+			IMPORTED_LOCATION ${GNUTLS_LIBRARIES})
 	endif()
 	target_compile_definitions(datachannel PRIVATE USE_GNUTLS=1)
-	target_link_libraries(datachannel GnuTLS::GnuTLS)
 	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=1)
+	target_link_libraries(datachannel GnuTLS::GnuTLS)
 	target_link_libraries(datachannel-static GnuTLS::GnuTLS)
 else()
 	find_package(OpenSSL REQUIRED)
 	target_compile_definitions(datachannel PRIVATE USE_GNUTLS=0)
-	target_link_libraries(datachannel OpenSSL::SSL)
 	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=0)
+	target_link_libraries(datachannel OpenSSL::SSL)
 	target_link_libraries(datachannel-static OpenSSL::SSL)
 endif()
 
 if (USE_JUICE)
 	add_subdirectory(deps/libjuice EXCLUDE_FROM_ALL)
 	target_compile_definitions(datachannel PRIVATE USE_JUICE=1)
-	target_link_libraries(datachannel LibJuice::LibJuiceStatic)
 	target_compile_definitions(datachannel-static PRIVATE USE_JUICE=1)
+	target_link_libraries(datachannel LibJuice::LibJuiceStatic)
 	target_link_libraries(datachannel-static LibJuice::LibJuiceStatic)
 else()
 	find_package(LibNice REQUIRED)
 	target_compile_definitions(datachannel PRIVATE USE_JUICE=0)
-	target_link_libraries(datachannel LibNice::LibNice)
 	target_compile_definitions(datachannel-static PRIVATE USE_JUICE=0)
+	target_link_libraries(datachannel LibNice::LibNice)
 	target_link_libraries(datachannel-static LibNice::LibNice)
 endif()
 

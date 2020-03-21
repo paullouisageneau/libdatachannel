@@ -19,10 +19,10 @@
 #ifndef RTC_WS_TRANSPORT_H
 #define RTC_WS_TRANSPORT_H
 
-#if RTC_ENABLE_WEBSOCKET
-
 #include "include.hpp"
 #include "transport.hpp"
+
+#if RTC_ENABLE_WEBSOCKET
 
 namespace rtc {
 

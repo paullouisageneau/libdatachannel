@@ -16,13 +16,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#if RTC_ENABLE_WEBSOCKET
-
 #include "wstransport.hpp"
 #include "tcptransport.hpp"
 #include "tlstransport.hpp"
-
 #include "base64.hpp"
+
+#if RTC_ENABLE_WEBSOCKET
 
 #include <chrono>
 #include <list>
