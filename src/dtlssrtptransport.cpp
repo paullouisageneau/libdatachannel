@@ -145,8 +145,8 @@ void DtlsSrtpTransport::postHandshake() {
 	// master salt and the server write master salt in that order.
 	const string label = "EXTRACTOR-dtls_srtp";
 	// TODO: check OpenSSL
-	SSL_export_keying_material(mSsl, material, SRTP_MAX_KEY_LEN * 2, label.c_str(), label.size(),
-	                           nullptr, 0, 0);
+	SSL_export_keying_material(mSsl, material, materialLen, label.c_str(), label.size(), nullptr, 0,
+	                           0);
 	clientKey = material;
 	clientSalt = clientKey + SRTP_AES_128_KEY_LEN;
 
