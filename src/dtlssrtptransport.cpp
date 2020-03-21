@@ -17,6 +17,7 @@
  */
 
 #include "dtlssrtptransport.hpp"
+#include "tls.hpp"
 
 #include <cstring>
 #include <exception>
@@ -44,22 +45,20 @@ DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
 	PLOG_DEBUG << "Initializing SRTP transport";
 
 #if USE_GNUTLS
-	// TODO: check_gnutls
-	gnutls_srtp_set_profile(mSession, GNUTLS_SRTP_AES128_CM_HMAC_SHA1_80);
+	PLOG_DEBUG << "Initializing DTLS-SRTP transport (GnuTLS)";
+	gnutls::check(gnutls_srtp_set_profile(mSession, GNUTLS_SRTP_AES128_CM_HMAC_SHA1_80),
+	              "Failed to set SRTP profile");
 #else
-	// TODO: check_openssl
-	SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80");
+	PLOG_DEBUG << "Initializing DTLS-SRTP transport (OpenSSL)";
+	openssl::check(SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"),
+	               "Failed to set SRTP profile");
 #endif
 }
 
-DtlsSrtpTransport::~DtlsSrtpTransport() { stop(); }
-
-bool DtlsSrtpTransport::stop() {
-	if (!Transport::stop())
-		return false;
+DtlsSrtpTransport::~DtlsSrtpTransport() {
+	stop();
 
 	srtp_dealloc(mSrtp);
-	return true;
 }
 
 bool DtlsSrtpTransport::send(message_ptr message) {
@@ -76,7 +75,8 @@ bool DtlsSrtpTransport::send(message_ptr message) {
 		if (err == srtp_err_status_replay_fail)
 			throw std::runtime_error("SRTP packet is a replay");
 		else
-			throw std::runtime_error("SRTP protect error");
+			throw std::runtime_error("SRTP protect error, status=" +
+			                         to_string(static_cast<int>(err)));
 	}
 	PLOG_VERBOSE << "Protected SRTP packet, size=" << size;
 	message->resize(size);
@@ -120,9 +120,9 @@ void DtlsSrtpTransport::postHandshake() {
 
 #if USE_GNUTLS
 	gnutls_datum_t clientKeyDatum, clientSaltDatum, serverKeyDatum, serverSaltDatum;
-	// TODO: check_gnutls
-	gnutls_srtp_get_keys(mSession, material, materialLen, &clientKeyDatum, &clientSaltDatum,
-	                     &serverKeyDatum, &serverSaltDatum);
+	gnutls::check(gnutls_srtp_get_keys(mSession, material, materialLen, &clientKeyDatum,
+	                                   &clientSaltDatum, &serverKeyDatum, &serverSaltDatum),
+	              "Failed to derive SRTP keys");
 
 	if (clientKeyDatum.size != SRTP_AES_128_KEY_LEN)
 		throw std::logic_error("Unexpected SRTP master key length: " +
@@ -144,9 +144,10 @@ void DtlsSrtpTransport::postHandshake() {
 	// This provides the client write master key, the server write master key, the client write
 	// master salt and the server write master salt in that order.
 	const string label = "EXTRACTOR-dtls_srtp";
-	// TODO: check OpenSSL
-	SSL_export_keying_material(mSsl, material, materialLen, label.c_str(), label.size(), nullptr, 0,
-	                           0);
+	openssl::check(SSL_export_keying_material(mSsl, material, materialLen, label.c_str(),
+	                                          label.size(), nullptr, 0, 0),
+	               "Failed to derive SRTP keys");
+
 	clientKey = material;
 	clientSalt = clientKey + SRTP_AES_128_KEY_LEN;
 

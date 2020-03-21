@@ -23,17 +23,12 @@
 
 #include "include.hpp"
 #include "queue.hpp"
+#include "tls.hpp"
 #include "transport.hpp"
 
 #include <memory>
 #include <mutex>
 #include <thread>
-
-#if USE_GNUTLS
-#include <gnutls/gnutls.h>
-#else
-#include <openssl/ssl.h>
-#endif
 
 namespace rtc {
 

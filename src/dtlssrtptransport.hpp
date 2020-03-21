@@ -36,7 +36,6 @@ public:
 	                  state_callback stateChangeCallback);
 	~DtlsSrtpTransport();
 
-	bool stop() override;
 	bool send(message_ptr message) override;
 
 private:

@@ -31,93 +31,43 @@ using std::unique_ptr;
 
 #if USE_GNUTLS
 
-#include <gnutls/crypto.h>
-
-namespace {
-
-void check_gnutls(int ret, const string &message = "GnuTLS error") {
-	if (ret != GNUTLS_E_SUCCESS)
-		throw std::runtime_error(message + ": " + gnutls_strerror(ret));
-}
-
-gnutls_certificate_credentials_t *create_credentials() {
-	auto creds = new gnutls_certificate_credentials_t;
-	check_gnutls(gnutls_certificate_allocate_credentials(creds));
-	return creds;
-}
-
-void delete_credentials(gnutls_certificate_credentials_t *creds) {
-	gnutls_certificate_free_credentials(*creds);
-	delete creds;
-}
-
-gnutls_x509_crt_t *create_crt() {
-	auto crt = new gnutls_x509_crt_t;
-	check_gnutls(gnutls_x509_crt_init(crt));
-	return crt;
-}
-
-void delete_crt(gnutls_x509_crt_t *crt) {
-	gnutls_x509_crt_deinit(*crt);
-	delete crt;
-}
-
-gnutls_x509_privkey_t *create_privkey() {
-	auto privkey = new gnutls_x509_privkey_t;
-	check_gnutls(gnutls_x509_privkey_init(privkey));
-	return privkey;
-}
-
-void delete_privkey(gnutls_x509_privkey_t *privkey) {
-	gnutls_x509_privkey_deinit(*privkey);
-	delete privkey;
-}
-
-gnutls_datum_t make_datum(char *data, size_t size) {
-	gnutls_datum_t datum;
-	datum.data = reinterpret_cast<unsigned char *>(data);
-	datum.size = size;
-	return datum;
-}
-
-} // namespace
-
 namespace rtc {
 
 Certificate::Certificate(string crt_pem, string key_pem)
-    : mCredentials(create_credentials(), delete_credentials) {
+    : mCredentials(gnutls::new_credentials(), gnutls::free_credentials) {
 
-	gnutls_datum_t crt_datum = make_datum(crt_pem.data(), crt_pem.size());
-	gnutls_datum_t key_datum = make_datum(key_pem.data(), key_pem.size());
+	gnutls_datum_t crt_datum = gnutls::make_datum(crt_pem.data(), crt_pem.size());
+	gnutls_datum_t key_datum = gnutls::make_datum(key_pem.data(), key_pem.size());
 
-	check_gnutls(gnutls_certificate_set_x509_key_mem(*mCredentials, &crt_datum, &key_datum,
-	                                                 GNUTLS_X509_FMT_PEM),
-	             "Unable to import PEM");
+	gnutls::check(gnutls_certificate_set_x509_key_mem(*mCredentials, &crt_datum, &key_datum,
+	                                                  GNUTLS_X509_FMT_PEM),
+	              "Unable to import PEM");
 
-	auto create_crt_list = [this]() -> gnutls_x509_crt_t * {
+	auto new_crt_list = [this]() -> gnutls_x509_crt_t * {
 		gnutls_x509_crt_t *crt_list = nullptr;
 		unsigned int crt_list_size = 0;
-		check_gnutls(gnutls_certificate_get_x509_crt(*mCredentials, 0, &crt_list, &crt_list_size));
+		gnutls::check(gnutls_certificate_get_x509_crt(*mCredentials, 0, &crt_list, &crt_list_size));
 		assert(crt_list_size == 1);
 		return crt_list;
 	};
 
-	auto delete_crt_list = [](gnutls_x509_crt_t *crt_list) {
+	auto free_crt_list = [](gnutls_x509_crt_t *crt_list) {
 		gnutls_x509_crt_deinit(crt_list[0]);
 		gnutls_free(crt_list);
 	};
 
-	std::unique_ptr<gnutls_x509_crt_t, decltype(delete_crt_list)> crt_list(create_crt_list(),
-	                                                                       delete_crt_list);
+	std::unique_ptr<gnutls_x509_crt_t, decltype(free_crt_list)> crt_list(new_crt_list(),
+	                                                                     free_crt_list);
 
 	mFingerprint = make_fingerprint(*crt_list);
 }
 
 Certificate::Certificate(gnutls_x509_crt_t crt, gnutls_x509_privkey_t privkey)
-    : mCredentials(create_credentials(), delete_credentials), mFingerprint(make_fingerprint(crt)) {
+    : mCredentials(gnutls::new_credentials(), gnutls::free_credentials),
+      mFingerprint(make_fingerprint(crt)) {
 
-	check_gnutls(gnutls_certificate_set_x509_key(*mCredentials, &crt, 1, privkey),
-	             "Unable to set certificate and key pair in credentials");
+	gnutls::check(gnutls_certificate_set_x509_key(*mCredentials, &crt, 1, privkey),
+	              "Unable to set certificate and key pair in credentials");
 }
 
 gnutls_certificate_credentials_t Certificate::credentials() const { return *mCredentials; }
@@ -128,8 +78,8 @@ string make_fingerprint(gnutls_x509_crt_t crt) {
 	const size_t size = 32;
 	unsigned char buffer[size];
 	size_t len = size;
-	check_gnutls(gnutls_x509_crt_get_fingerprint(crt, GNUTLS_DIG_SHA256, buffer, &len),
-	             "X509 fingerprint error");
+	gnutls::check(gnutls_x509_crt_get_fingerprint(crt, GNUTLS_DIG_SHA256, buffer, &len),
+	              "X509 fingerprint error");
 
 	std::ostringstream oss;
 	oss << std::hex << std::uppercase << std::setfill('0');
@@ -149,13 +99,13 @@ shared_ptr<Certificate> make_certificate(const string &commonName) {
 	if (auto it = cache.find(commonName); it != cache.end())
 		return it->second;
 
-	std::unique_ptr<gnutls_x509_crt_t, decltype(&delete_crt)> crt(create_crt(), delete_crt);
-	std::unique_ptr<gnutls_x509_privkey_t, decltype(&delete_privkey)> privkey(create_privkey(),
-	                                                                          delete_privkey);
+	using namespace gnutls;
+	unique_ptr<gnutls_x509_crt_t, decltype(&free_crt)> crt(new_crt(), free_crt);
+	unique_ptr<gnutls_x509_privkey_t, decltype(&free_privkey)> privkey(new_privkey(), free_privkey);
 
 	const unsigned int bits = gnutls_sec_param_to_pk_bits(GNUTLS_PK_RSA, GNUTLS_SEC_PARAM_HIGH);
-	check_gnutls(gnutls_x509_privkey_generate(*privkey, GNUTLS_PK_RSA, bits, 0),
-	             "Unable to generate key pair");
+	gnutls::check(gnutls_x509_privkey_generate(*privkey, GNUTLS_PK_RSA, bits, 0),
+	              "Unable to generate key pair");
 
 	using namespace std::chrono;
 	auto now = time_point_cast<seconds>(system_clock::now());
@@ -171,8 +121,8 @@ shared_ptr<Certificate> make_certificate(const string &commonName) {
 	gnutls_rnd(GNUTLS_RND_NONCE, serial, serialSize);
 	gnutls_x509_crt_set_serial(*crt, serial, serialSize);
 
-	check_gnutls(gnutls_x509_crt_sign2(*crt, *crt, *privkey, GNUTLS_DIG_SHA256, 0),
-	             "Unable to auto-sign certificate");
+	gnutls::check(gnutls_x509_crt_sign2(*crt, *crt, *privkey, GNUTLS_DIG_SHA256, 0),
+	              "Unable to auto-sign certificate");
 
 	auto certificate = std::make_shared<Certificate>(*crt, *privkey);
 	cache.emplace(std::make_pair(commonName, certificate));
@@ -181,30 +131,24 @@ shared_ptr<Certificate> make_certificate(const string &commonName) {
 
 } // namespace rtc
 
-#else
-
-#include <openssl/err.h>
-#include <openssl/pem.h>
-#include <openssl/ssl.h>
+#else // USE_GNUTLS==0
 
 namespace rtc {
 
 Certificate::Certificate(string crt_pem, string key_pem) {
-    BIO *bio;
+	BIO *bio = BIO_new(BIO_s_mem());
+	BIO_write(bio, crt_pem.data(), crt_pem.size());
+	mX509 = shared_ptr<X509>(PEM_read_bio_X509(bio, nullptr, 0, 0), X509_free);
+	BIO_free(bio);
+	if (!mX509)
+		throw std::invalid_argument("Unable to import certificate PEM");
 
-    bio = BIO_new(BIO_s_mem());
-    BIO_write(bio, crt_pem.data(), crt_pem.size());
-    mX509 = shared_ptr<X509>(PEM_read_bio_X509(bio, nullptr, 0, 0), X509_free);
-    BIO_free(bio);
-    if (!mX509)
-      throw std::invalid_argument("Unable to import certificate PEM");
-
-    bio = BIO_new(BIO_s_mem());
-    BIO_write(bio, key_pem.data(), key_pem.size());
+	bio = BIO_new(BIO_s_mem());
+	BIO_write(bio, key_pem.data(), key_pem.size());
 	mPKey = shared_ptr<EVP_PKEY>(PEM_read_bio_PrivateKey(bio, nullptr, 0, 0), EVP_PKEY_free);
-    BIO_free(bio);
-    if (!mPKey)
-      throw std::invalid_argument("Unable to import PEM key PEM");
+	BIO_free(bio);
+	if (!mPKey)
+		throw std::invalid_argument("Unable to import PEM key PEM");
 
 	mFingerprint = make_fingerprint(mX509.get());
 }
