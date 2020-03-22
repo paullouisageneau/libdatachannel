@@ -23,6 +23,10 @@
 #include "include.hpp"
 #include "sctptransport.hpp"
 
+#if RTC_ENABLE_MEDIA
+#include "dtlssrtptransport.hpp"
+#endif
+
 #include <thread>
 
 namespace rtc {
@@ -59,6 +63,21 @@ std::optional<Description> PeerConnection::localDescription() const {
 std::optional<Description> PeerConnection::remoteDescription() const {
 	std::lock_guard lock(mRemoteDescriptionMutex);
 	return mRemoteDescription;
+}
+
+void PeerConnection::setLocalDescription(Description description) {
+	if (auto iceTransport = std::atomic_load(&mIceTransport)) {
+		throw std::logic_error("Local description is already set");
+	} else {
+		// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
+		// setup:actpass.
+		// See https://tools.ietf.org/html/rfc5763#section-5
+		iceTransport = initIceTransport(Description::Role::ActPass);
+		Description localDescription = iceTransport->getLocalDescription(Description::Type::Offer);
+		localDescription.addMedia(description); // TODO
+		processLocalDescription(description);
+		iceTransport->gatherLocalCandidates();
+	}
 }
 
 void PeerConnection::setRemoteDescription(Description description) {
@@ -252,27 +271,37 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 			return transport;
 
 		auto lower = std::atomic_load(&mIceTransport);
-		auto transport = std::make_shared<DtlsTransport>(
-		    lower, mCertificate, weak_bind(&PeerConnection::checkFingerprint, this, _1),
-		    [this, weak_this = weak_from_this()](DtlsTransport::State state) {
-			    auto shared_this = weak_this.lock();
-			    if (!shared_this)
-				    return;
-			    switch (state) {
-			    case DtlsTransport::State::Connected:
-				    initSctpTransport();
-				    break;
-			    case DtlsTransport::State::Failed:
-				    changeState(State::Failed);
-				    break;
-			    case DtlsTransport::State::Disconnected:
-				    changeState(State::Disconnected);
-				    break;
-			    default:
-				    // Ignore
-				    break;
-			    }
-		    });
+		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1);
+		auto stateChangeCallback = [this,
+		                            weak_this = weak_from_this()](DtlsTransport::State state) {
+			switch (state) {
+			case DtlsTransport::State::Connected:
+				initSctpTransport();
+				break;
+			case DtlsTransport::State::Failed:
+				changeState(State::Failed);
+				break;
+			case DtlsTransport::State::Disconnected:
+				changeState(State::Disconnected);
+				break;
+			default:
+				// Ignore
+				break;
+			}
+		};
+
+		shared_ptr<DtlsTransport> transport;
+#if RTC_ENABLE_MEDIA
+		auto local = localDescription();
+		auto remote = remoteDescription();
+		if ((local && local->hasMedia()) || (remote && remote->hasMedia()))
+			transport = std::make_shared<DtlsSrtpTransport>(
+			    lower, mCertificate, verifierCallback,
+			    std::bind(&PeerConnection::forwardMedia, this, _1), stateChangeCallback);
+		else
+#endif
+			transport = std::make_shared<DtlsTransport>(lower, mCertificate, verifierCallback,
+			                                            stateChangeCallback);
 
 		std::atomic_store(&mDtlsTransport, transport);
 		if (mState == State::Closed) {
@@ -411,6 +440,10 @@ void PeerConnection::forwardMessage(message_ptr message) {
 	}
 
 	channel->incoming(message);
+}
+
+void PeerConnection::forwardMedia(message_ptr message) {
+	// TODO
 }
 
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {

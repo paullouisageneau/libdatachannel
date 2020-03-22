@@ -42,7 +42,7 @@ public:
 	string typeString() const;
 	Role role() const;
 	string roleString() const;
-	string mid() const;
+	string dataMid() const;
 	std::optional<string> fingerprint() const;
 	std::optional<uint16_t> sctpPort() const;
 	std::optional<size_t> maxMessageSize() const;
@@ -65,11 +65,28 @@ private:
 	Type mType;
 	Role mRole;
 	string mSessionId;
-	string mMid;
 	string mIceUfrag, mIcePwd;
 	std::optional<string> mFingerprint;
-	std::optional<uint16_t> mSctpPort;
-	std::optional<size_t> mMaxMessageSize;
+
+	// Data
+	struct Data {
+		string mid;
+		std::optional<uint16_t> sctpPort;
+		std::optional<size_t> maxMessageSize;
+	};
+	Data mData;
+
+	// Media (non-data)
+	struct Media {
+		string description;
+		string mid;
+		std::vector<string> attributes;
+
+		string type() const;
+	};
+	std::map<string, Media> mMedia; // by mid
+
+	// Candidates
 	std::vector<Candidate> mCandidates;
 	bool mTrickle;
 
