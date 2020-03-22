@@ -154,13 +154,13 @@ bool DataChannel::isOpen(void) const { return mIsOpen; }
 bool DataChannel::isClosed(void) const { return mIsClosed; }
 
 size_t DataChannel::maxMessageSize() const {
-	size_t max = DEFAULT_MAX_MESSAGE_SIZE;
+	size_t remoteMax = DEFAULT_MAX_MESSAGE_SIZE;
 	if (auto pc = mPeerConnection.lock())
 		if (auto description = pc->remoteDescription())
 			if (auto maxMessageSize = description->maxMessageSize())
-				return *maxMessageSize > 0 ? *maxMessageSize : LOCAL_MAX_MESSAGE_SIZE;
+				remoteMax = *maxMessageSize > 0 ? *maxMessageSize : LOCAL_MAX_MESSAGE_SIZE;
 
-	return std::min(max, LOCAL_MAX_MESSAGE_SIZE);
+	return std::min(remoteMax, LOCAL_MAX_MESSAGE_SIZE);
 }
 
 size_t DataChannel::availableAmount() const { return mRecvQueue.amount(); }
