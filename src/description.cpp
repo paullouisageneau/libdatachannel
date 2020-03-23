@@ -65,7 +65,7 @@ Description::Description(const string &sdp, Type type, Role role)
 	string line;
 	bool finished;
 	do {
-		bool finished = !std::getline(ss, line) && line.empty();
+		finished = !std::getline(ss, line) && line.empty();
 		trim_end(line);
 
 		// Media description line (aka m-line)
@@ -77,7 +77,7 @@ Description::Description(const string &sdp, Type type, Role role)
 					else
 						mMedia.emplace(currentMedia->mid, std::move(*currentMedia));
 				} else {
-					PLOG_WARNING << "SDP \"m=\" line has no mid, ignoring";
+					PLOG_WARNING << "SDP \"m=\" line has no corresponding mid, ignoring";
 				}
 			}
 			if (!finished)
