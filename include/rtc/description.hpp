@@ -57,8 +57,10 @@ public:
 	void endCandidates();
 	std::vector<Candidate> extractCandidates();
 
-	operator string() const;
+	bool hasMedia() const;
+	void addMedia(const Description &source);
 
+	operator string() const;
 	string generateSdp(const string &eol) const;
 
 private:

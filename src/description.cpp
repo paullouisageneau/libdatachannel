@@ -152,6 +152,7 @@ std::optional<size_t> Description::maxMessageSize() const { return mData.maxMess
 
 bool Description::trickleEnabled() const { return mTrickle; }
 
+
 void Description::hintType(Type type) {
 	if (mType == Type::Unspec) {
 		mType = type;
@@ -179,6 +180,13 @@ std::vector<Candidate> Description::extractCandidates() {
 	std::swap(mCandidates, result);
 	mTrickle = true;
 	return result;
+}
+
+bool Description::hasMedia() const { return !mMedia.empty(); }
+
+void Description::addMedia(const Description &source) {
+	for (auto [mid, media] : source.mMedia)
+		mMedia.emplace(mid, media);
 }
 
 Description::operator string() const { return generateSdp("\r\n"); }
