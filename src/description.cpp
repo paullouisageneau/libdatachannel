@@ -186,7 +186,10 @@ bool Description::hasMedia() const { return !mMedia.empty(); }
 
 void Description::addMedia(const Description &source) {
 	for (auto [mid, media] : source.mMedia)
-		mMedia.emplace(mid, media);
+		if (mid != mData.mid)
+			mMedia.emplace(mid, media);
+		else
+			PLOG_WARNING << "Media mid \"" << mid << "\" is the same as data mid, ignoring";
 }
 
 Description::operator string() const { return generateSdp("\r\n"); }
