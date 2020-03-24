@@ -41,12 +41,10 @@ public:
 	bool empty() const;
 	size_t size() const;   // elements
 	size_t amount() const; // amount
-	void push(const T &element);
-	void push(T &&element);
+	void push(T element);
 	std::optional<T> pop();
 	std::optional<T> peek();
-	void wait();
-	void wait(const std::chrono::milliseconds &duration);
+	bool wait(const std::optional<std::chrono::milliseconds> &duration = nullopt);
 
 private:
 	const size_t mLimit;
@@ -88,9 +86,7 @@ template <typename T> size_t Queue<T>::amount() const {
 	return mAmount;
 }
 
-template <typename T> void Queue<T>::push(const T &element) { push(T{element}); }
-
-template <typename T> void Queue<T>::push(T &&element) {
+template <typename T> void Queue<T>::push(T element) {
 	std::unique_lock lock(mMutex);
 	mPushCondition.wait(lock, [this]() { return !mLimit || mQueue.size() < mLimit || mStopping; });
 	if (!mStopping) {
@@ -122,14 +118,14 @@ template <typename T> std::optional<T> Queue<T>::peek() {
 	}
 }
 
-template <typename T> void Queue<T>::wait() {
+template <typename T>
+bool Queue<T>::wait(const std::optional<std::chrono::milliseconds> &duration) {
 	std::unique_lock lock(mMutex);
-	mPopCondition.wait(lock, [this]() { return !mQueue.empty() || mStopping; });
-}
-
-template <typename T> void Queue<T>::wait(const std::chrono::milliseconds &duration) {
-	std::unique_lock lock(mMutex);
-	mPopCondition.wait_for(lock, duration, [this]() { return !mQueue.empty() || mStopping; });
+	if (duration)
+		mPopCondition.wait_for(lock, *duration, [this]() { return !mQueue.empty() || mStopping; });
+	else
+		mPopCondition.wait(lock, [this]() { return !mQueue.empty() || mStopping; });
+	return !mStopping;
 }
 
 } // namespace rtc

@@ -262,10 +262,8 @@ ssize_t DtlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size
 
 int DtlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
-	if (ms != GNUTLS_INDEFINITE_TIMEOUT)
-		t->mIncomingQueue.wait(milliseconds(ms));
-	else
-		t->mIncomingQueue.wait();
+	t->mIncomingQueue.wait(ms != GNUTLS_INDEFINITE_TIMEOUT ? std::make_optional(milliseconds(ms))
+	                                                       : nullopt);
 	return !t->mIncomingQueue.empty() ? 1 : 0;
 }
 
@@ -448,29 +446,47 @@ void DtlsTransport::runRecvLoop() {
 	try {
 		changeState(State::Connecting);
 
-		SSL_do_handshake(mSsl);
+		int ret = SSL_do_handshake(mSsl);
+		check_openssl_ret(mSsl, ret, "Handshake failed");
 
 		const size_t bufferSize = maxMtu;
 		byte buffer[bufferSize];
-		while (auto next = mIncomingQueue.pop()) {
-			auto message = *next;
-			BIO_write(mInBio, message->data(), message->size());
-			int ret = SSL_read(mSsl, buffer, bufferSize);
-			if (!check_openssl_ret(mSsl, ret))
-				break;
+		while (true) {
+			std::optional<milliseconds> duration;
+			struct timeval timeout = {};
+			if (DTLSv1_get_timeout(mSsl, &timeout))
+				duration = milliseconds(timeout.tv_sec * 1000 + timeout.tv_usec / 1000);
 
-			auto decrypted = ret > 0 ? make_message(buffer, buffer + ret) : nullptr;
+			if (!mIncomingQueue.wait(duration))
+				break; // queue is stopped
+
+			message_ptr decrypted;
+			if (!mIncomingQueue.empty()) {
+				auto message = *mIncomingQueue.pop();
+				BIO_write(mInBio, message->data(), message->size());
+
+				int ret = SSL_read(mSsl, buffer, bufferSize);
+				if (!check_openssl_ret(mSsl, ret))
+					break;
+
+				if (ret > 0)
+					decrypted = make_message(buffer, buffer + ret);
+			}
 
 			if (mState == State::Connecting) {
-				if (unsigned long err = ERR_get_error())
-					throw std::runtime_error("handshake failed: " + openssl_error_string(err));
-
 				if (SSL_is_init_finished(mSsl)) {
 					changeState(State::Connected);
 
 					// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
 					// See https://tools.ietf.org/html/rfc8261#section-5
 					SSL_set_mtu(mSsl, maxMtu + 1);
+				} else {
+					// Continue the handshake
+					int ret = SSL_do_handshake(mSsl);
+					if (!check_openssl_ret(mSsl, ret, "Handshake failed"))
+						break;
+
+					DTLSv1_handle_timeout(mSsl);
 				}
 			}
 
@@ -486,7 +502,7 @@ void DtlsTransport::runRecvLoop() {
 		changeState(State::Disconnected);
 		recv(nullptr);
 	} else {
-		PLOG_INFO << "DTLS handshake failed";
+		PLOG_ERROR << "DTLS handshake failed";
 		changeState(State::Failed);
 	}
 }
