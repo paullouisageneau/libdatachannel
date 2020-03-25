@@ -381,10 +381,12 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 void SctpTransport::updateBufferedAmount(uint16_t streamId, long delta) {
 	// Requires mSendMutex to be locked
 	auto it = mBufferedAmount.insert(std::make_pair(streamId, 0)).first;
-	size_t amount = it->second;
-	amount = size_t(std::max(long(amount) + delta, long(0)));
+	size_t amount = size_t(std::max(long(it->second) + delta, long(0)));
 	if (amount == 0)
 		mBufferedAmount.erase(it);
+	else
+		it->second = amount;
+
 	mBufferedAmountCallback(streamId, amount);
 }
 
