@@ -162,7 +162,10 @@ bool IceTransport::send(message_ptr message) {
 	return outgoing(message);
 }
 
-void IceTransport::incoming(message_ptr message) { recv(message); }
+void IceTransport::incoming(message_ptr message) {
+	PLOG_VERBOSE << "Incoming size=" << message->size();
+	recv(message);
+}
 
 void IceTransport::incoming(const byte *data, int size) {
 	incoming(make_message(data, data + size));
@@ -516,7 +519,10 @@ bool IceTransport::send(message_ptr message) {
 	return outgoing(message);
 }
 
-void IceTransport::incoming(message_ptr message) { recv(message); }
+void IceTransport::incoming(message_ptr message) {
+	PLOG_VERBOSE << "Incoming size=" << message->size();
+	recv(message);
+}
 
 void IceTransport::incoming(const byte *data, int size) {
 	incoming(make_message(data, data + size));

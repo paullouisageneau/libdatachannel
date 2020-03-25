@@ -277,13 +277,15 @@ void SctpTransport::incoming(message_ptr message) {
 		mWrittenCondition.wait(lock, [&]() { return mWrittenOnce || mState != State::Connected; });
 	}
 
-	if (message) {
-		usrsctp_conninput(this, message->data(), message->size(), 0);
-	} else {
+	if (!message) {
 		PLOG_INFO << "SCTP disconnected";
 		changeState(State::Disconnected);
 		recv(nullptr);
+		return;
 	}
+
+	PLOG_VERBOSE << "Incoming size=" << message->size();
+	usrsctp_conninput(this, message->data(), message->size(), 0);
 }
 
 void SctpTransport::changeState(State state) {
@@ -404,6 +406,7 @@ bool SctpTransport::safeFlush() {
 int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, const byte *data,
                               size_t len, struct sctp_rcvinfo info, int flags) {
 	try {
+		PLOG_VERBOSE << "Handle recv, len=" << len;
 		if (!len)
 			return -1;
 
@@ -431,16 +434,22 @@ int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, co
 	return 0; // success
 }
 
-int SctpTransport::handleSend(size_t free) { return safeFlush() ? 0 : -1; }
+int SctpTransport::handleSend(size_t free) {
+	PLOG_VERBOSE << "Handle send, free=" << free;
+	return safeFlush() ? 0 : -1;
+}
 
 int SctpTransport::handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_df) {
 	try {
+		PLOG_VERBOSE << "Handle write, len=" << len;
+
 		std::unique_lock lock(mWriteMutex);
 		if (!outgoing(make_message(data, data + len)))
 			return -1;
 		mWritten = true;
 		mWrittenOnce = true;
 		mWrittenCondition.notify_all();
+
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "SCTP write: " << e.what();
 		return -1;
@@ -449,6 +458,8 @@ int SctpTransport::handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_
 }
 
 void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, PayloadId ppid) {
+	PLOG_VERBOSE << "Process data, len=" << len;
+
 	// The usage of the PPIDs "WebRTC String Partial" and "WebRTC Binary Partial" is deprecated.
 	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.6
 	// We handle them at reception for compatibility reasons but should never send them.
@@ -509,10 +520,15 @@ void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, Payl
 }
 
 void SctpTransport::processNotification(const union sctp_notification *notify, size_t len) {
-	if (len != size_t(notify->sn_header.sn_length))
+	if (len != size_t(notify->sn_header.sn_length)) {
+		PLOG_WARNING << "Invalid notification length";
 		return;
+	}
 
-	switch (notify->sn_header.sn_type) {
+	auto type = notify->sn_header.sn_type;
+	PLOG_VERBOSE << "Process notification, type=" << type;
+
+	switch (type) {
 	case SCTP_ASSOC_CHANGE: {
 		const struct sctp_assoc_change &assoc_change = notify->sn_assoc_change;
 		if (assoc_change.sac_state == SCTP_COMM_UP) {
@@ -528,13 +544,16 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 			}
 			mWrittenCondition.notify_all();
 		}
+		break;
 	}
+
 	case SCTP_SENDER_DRY_EVENT: {
 		// It not should be necessary since the send callback should have been called already,
 		// but to be sure, let's try to send now.
-		std::lock_guard lock(mSendMutex);
-		trySendQueue();
+		safeFlush();
+		break;
 	}
+
 	case SCTP_STREAM_RESET_EVENT: {
 		const struct sctp_stream_reset_event &reset_event = notify->sn_strreset_event;
 		const int count = (reset_event.strreset_length - sizeof(reset_event)) / sizeof(uint16_t);

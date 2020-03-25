@@ -131,10 +131,13 @@ bool DtlsTransport::send(message_ptr message) {
 }
 
 void DtlsTransport::incoming(message_ptr message) {
-	if (message)
-		mIncomingQueue.push(message);
-	else
+	if (!message) {
 		mIncomingQueue.stop();
+		return;
+	}
+
+	PLOG_VERBOSE << "Incoming size=" << message->size();
+	mIncomingQueue.push(message);
 }
 
 void DtlsTransport::changeState(State state) {
@@ -430,10 +433,13 @@ bool DtlsTransport::send(message_ptr message) {
 }
 
 void DtlsTransport::incoming(message_ptr message) {
-	if (message)
-		mIncomingQueue.push(message);
-	else
+	if (!message) {
 		mIncomingQueue.stop();
+		return;
+	}
+
+	PLOG_VERBOSE << "Incoming size=" << message->size();
+	mIncomingQueue.push(message);
 }
 
 void DtlsTransport::changeState(State state) {
