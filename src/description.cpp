@@ -68,7 +68,9 @@ Description::Description(const string &sdp, Type type, Role role)
 		finished = !std::getline(ss, line) && line.empty();
 		trim_end(line);
 
-		LOG_DEBUG << line;
+		if (!finished) {
+			LOG_VERBOSE << "SDP line: " << line;
+		}
 
 		// Media description line (aka m-line)
 		if (finished || match_prefix(line, "m=")) {
