@@ -187,7 +187,7 @@ void SctpTransport::stop() {
 
 	if (!mShutdown.exchange(true)) {
 		mSendQueue.stop();
-		flush();
+		safeFlush();
 		shutdown();
 	}
 }
@@ -390,11 +390,23 @@ void SctpTransport::updateBufferedAmount(uint16_t streamId, long delta) {
 	mBufferedAmountCallback(streamId, amount);
 }
 
+bool SctpTransport::safeFlush() {
+	try {
+		flush();
+		return true;
+
+	} catch (const std::exception &e) {
+		PLOG_ERROR << "SCTP flush: " << e.what();
+		return false;
+	}
+}
+
 int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, const byte *data,
                               size_t len, struct sctp_rcvinfo info, int flags) {
 	try {
 		if (!len)
 			return -1;
+
 		if (flags & MSG_EOR) {
 			if (!mPartialRecv.empty()) {
 				mPartialRecv.insert(mPartialRecv.end(), data, data + len);
@@ -419,16 +431,7 @@ int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, co
 	return 0; // success
 }
 
-int SctpTransport::handleSend(size_t free) {
-	try {
-		std::lock_guard lock(mSendMutex);
-		trySendQueue();
-	} catch (const std::exception &e) {
-		PLOG_ERROR << "SCTP send: " << e.what();
-		return -1;
-	}
-	return 0; // success
-}
+int SctpTransport::handleSend(size_t free) { return safeFlush() ? 0 : -1; }
 
 int SctpTransport::handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_df) {
 	try {

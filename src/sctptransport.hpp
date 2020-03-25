@@ -72,6 +72,7 @@ private:
 	bool trySendQueue();
 	bool trySendMessage(message_ptr message);
 	void updateBufferedAmount(uint16_t streamId, long delta);
+	bool safeFlush();
 
 	int handleRecv(struct socket *sock, union sctp_sockstore addr, const byte *data, size_t len,
 	               struct sctp_rcvinfo recv_info, int flags);
