@@ -415,10 +415,8 @@ shared_ptr<DataChannel> PeerConnection::findDataChannel(uint16_t stream) {
 	shared_ptr<DataChannel> channel;
 	if (auto it = mDataChannels.find(stream); it != mDataChannels.end()) {
 		channel = it->second.lock();
-		if (!channel || channel->isClosed()) {
+		if (!channel)
 			mDataChannels.erase(it);
-			channel.reset();
-		}
 	}
 	return channel;
 }
@@ -429,11 +427,13 @@ void PeerConnection::iterateDataChannels(
 	auto it = mDataChannels.begin();
 	while (it != mDataChannels.end()) {
 		auto channel = it->second.lock();
-		if (!channel || channel->isClosed()) {
+		if (!channel) {
 			it = mDataChannels.erase(it);
 			continue;
 		}
-		func(channel);
+		if (!channel->isClosed()) {
+			func(channel);
+		}
 		++it;
 	}
 }
