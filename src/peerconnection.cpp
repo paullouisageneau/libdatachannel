@@ -227,11 +227,15 @@ void PeerConnection::outgoingMedia(message_ptr message) {
 	if (!hasMedia())
 		throw std::runtime_error("PeerConnection has no media support");
 
+#if RTC_ENABLE_MEDIA
 	auto transport = std::atomic_load(&mDtlsTransport);
 	if (!transport)
 		throw std::runtime_error("PeerConnection is not open");
 
 	std::dynamic_pointer_cast<DtlsSrtpTransport>(transport)->send(message);
+#else
+	PLOG_WARNING << "Ignoring sent media (not compiled with SRTP support)";
+#endif
 }
 
 shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role) {
@@ -331,7 +335,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 			    lower, mCertificate, verifierCallback,
 			    std::bind(&PeerConnection::forwardMedia, this, _1), stateChangeCallback);
 #else
-			PLOG_WARN << "Ignoring media support (not compiled with SRTP support)";
+			PLOG_WARNING << "Ignoring media support (not compiled with SRTP support)";
 #endif
 		}
 
