@@ -23,9 +23,10 @@
 
 #if USE_GNUTLS
 
+#include <gnutls/gnutls.h>
+
 #include <gnutls/crypto.h>
 #include <gnutls/dtls.h>
-#include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 
 namespace rtc::gnutls {
@@ -47,11 +48,12 @@ gnutls_datum_t make_datum(char *data, size_t size);
 
 #else // USE_GNUTLS==0
 
+#include <openssl/ssl.h>
+
 #include <openssl/bio.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
-#include <openssl/ssl.h>
 #include <openssl/x509.h>
 
 #ifndef BIO_EOF
