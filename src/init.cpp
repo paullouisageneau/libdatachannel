@@ -26,6 +26,10 @@
 #include "tlstransport.hpp"
 #endif
 
+#if RTC_ENABLE_MEDIA
+#include "dtlssrtptransport.hpp"
+#endif
+
 #ifdef _WIN32
 #include <winsock2.h>
 #endif
@@ -70,6 +74,9 @@ Init::Init() {
 #if RTC_ENABLE_WEBSOCKET
 	TlsTransport::Init();
 #endif
+#if RTC_ENABLE_MEDIA
+	DtlsSrtpTransport::Init();
+#endif
 }
 
 Init::~Init() {
@@ -77,6 +84,9 @@ Init::~Init() {
 	DtlsTransport::Cleanup();
 #if RTC_ENABLE_WEBSOCKET
 	TlsTransport::Cleanup();
+#endif
+#if RTC_ENABLE_MEDIA
+	DtlsSrtpTransport::Cleanup();
 #endif
 
 #ifdef _WIN32
