@@ -38,9 +38,9 @@ class PeerConnection;
 
 class DataChannel : public std::enable_shared_from_this<DataChannel>, public Channel {
 public:
-	DataChannel(std::shared_ptr<PeerConnection> pc, unsigned int stream, string label,
+	DataChannel(std::weak_ptr<PeerConnection> pc, unsigned int stream, string label,
 	            string protocol, Reliability reliability);
-	DataChannel(std::shared_ptr<PeerConnection> pc, std::shared_ptr<SctpTransport> transport,
+	DataChannel(std::weak_ptr<PeerConnection> pc, std::shared_ptr<SctpTransport> transport,
 	            unsigned int stream);
 	~DataChannel();
 
@@ -70,7 +70,7 @@ private:
 	void incoming(message_ptr message);
 	void processOpenMessage(message_ptr message);
 
-	const std::shared_ptr<PeerConnection> mPeerConnection;
+	const std::weak_ptr<PeerConnection> mPeerConnection;
 	std::shared_ptr<SctpTransport> mSctpTransport;
 
 	unsigned int mStream;

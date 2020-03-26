@@ -30,6 +30,7 @@
 namespace rtc {
 
 using std::shared_ptr;
+using std::weak_ptr;
 
 // Messages for the DataChannel establishment protocol
 // See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09
@@ -66,16 +67,16 @@ struct CloseMessage {
 
 const size_t RECV_QUEUE_LIMIT = 1024 * 1024; // 1 MiB
 
-DataChannel::DataChannel(shared_ptr<PeerConnection> pc, unsigned int stream, string label,
+DataChannel::DataChannel(weak_ptr<PeerConnection> pc, unsigned int stream, string label,
                          string protocol, Reliability reliability)
-    : mPeerConnection(std::move(pc)), mStream(stream), mLabel(std::move(label)),
+    : mPeerConnection(pc), mStream(stream), mLabel(std::move(label)),
       mProtocol(std::move(protocol)),
       mReliability(std::make_shared<Reliability>(std::move(reliability))),
       mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
-DataChannel::DataChannel(shared_ptr<PeerConnection> pc, shared_ptr<SctpTransport> transport,
+DataChannel::DataChannel(weak_ptr<PeerConnection> pc, shared_ptr<SctpTransport> transport,
                          unsigned int stream)
-    : mPeerConnection(std::move(pc)), mSctpTransport(transport), mStream(stream),
+    : mPeerConnection(pc), mSctpTransport(transport), mStream(stream),
       mReliability(std::make_shared<Reliability>()),
       mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
@@ -147,9 +148,10 @@ bool DataChannel::isClosed(void) const { return mIsClosed; }
 
 size_t DataChannel::maxMessageSize() const {
 	size_t max = DEFAULT_MAX_MESSAGE_SIZE;
-	if (auto description = mPeerConnection->remoteDescription())
-		if (auto maxMessageSize = description->maxMessageSize())
-			return *maxMessageSize > 0 ? *maxMessageSize : LOCAL_MAX_MESSAGE_SIZE;
+	if (auto pc = mPeerConnection.lock())
+		if (auto description = pc->remoteDescription())
+			if (auto maxMessageSize = description->maxMessageSize())
+				return *maxMessageSize > 0 ? *maxMessageSize : LOCAL_MAX_MESSAGE_SIZE;
 
 	return std::min(max, LOCAL_MAX_MESSAGE_SIZE);
 }
