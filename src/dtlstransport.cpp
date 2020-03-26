@@ -55,6 +55,14 @@ static bool check_gnutls(int ret, const string &message = "GnuTLS error") {
 
 namespace rtc {
 
+void DtlsTransport::Init() {
+	// Nothing to do
+}
+
+void DtlsTransport::Cleanup() {
+	// Nothing to do
+}
+
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
                              verifier_callback verifierCallback,
                              state_callback stateChangeCallback)
@@ -324,7 +332,7 @@ BIO_METHOD *DtlsTransport::BioMethods = NULL;
 int DtlsTransport::TransportExIndex = -1;
 std::mutex DtlsTransport::GlobalMutex;
 
-void DtlsTransport::GlobalInit() {
+void DtlsTransport::Init() {
 	std::lock_guard lock(GlobalMutex);
 	if (!BioMethods) {
 		BioMethods = BIO_meth_new(BIO_TYPE_BIO, "DTLS writer");
@@ -340,6 +348,10 @@ void DtlsTransport::GlobalInit() {
 	}
 }
 
+void DtlsTransport::Cleanup() {
+	// Nothing to do
+}
+
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
                              verifier_callback verifierCallback, state_callback stateChangeCallback)
     : Transport(lower), mCertificate(certificate), mState(State::Disconnected),
@@ -347,7 +359,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
       mStateChangeCallback(std::move(stateChangeCallback)) {
 
 	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
-	GlobalInit();
 
 	if (!(mCtx = SSL_CTX_new(DTLS_method())))
 		throw std::runtime_error("Unable to create SSL context");

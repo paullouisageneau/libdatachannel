@@ -245,13 +245,6 @@ shared_ptr<Certificate> make_certificate(const string &commonName) {
 	if (auto it = cache.find(commonName); it != cache.end())
 		return it->second;
 
-	if (cache.empty()) {
-		// This is the first call to OpenSSL
-		OPENSSL_init_ssl(0, NULL);
-		SSL_load_error_strings();
-		ERR_load_crypto_strings();
-	}
-
 	shared_ptr<X509> x509(X509_new(), X509_free);
 	shared_ptr<EVP_PKEY> pkey(EVP_PKEY_new(), EVP_PKEY_free);
 

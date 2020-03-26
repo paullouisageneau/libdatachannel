@@ -43,6 +43,9 @@ class IceTransport;
 
 class DtlsTransport : public Transport {
 public:
+	static void Init();
+	static void Cleanup();
+
 	enum class State { Disconnected, Connecting, Connected, Failed };
 
 	using verifier_callback = std::function<bool(const std::string &fingerprint)>;
@@ -87,7 +90,6 @@ private:
 	static int TransportExIndex;
 	static std::mutex GlobalMutex;
 
-	static void GlobalInit();
 	static int CertificateCallback(int preverify_ok, X509_STORE_CTX *ctx);
 	static void InfoCallback(const SSL *ssl, int where, int ret);
 

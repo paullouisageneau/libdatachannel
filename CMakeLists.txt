@@ -31,6 +31,8 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/dtlstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/icetransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/init.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/log.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/peerconnection.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtc.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.cpp
@@ -44,6 +46,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/datachannel.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/description.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/include.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/init.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/log.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/message.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/peerconnection.hpp

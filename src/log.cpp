@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2019-2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,25 +16,27 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_LOG_H
-#define RTC_LOG_H
+#include "log.hpp"
 
+#include "plog/Appenders/ColorConsoleAppender.h"
 #include "plog/Log.h"
+#include "plog/Logger.h"
 
 namespace rtc {
 
-enum class LogLevel { // Don't change, it must match plog severity
-	None = 0,
-	Fatal = 1,
-	Error = 2,
-	Warning = 3,
-	Info = 4,
-	Debug = 5,
-	Verbose = 6
-};
+void InitLogger(LogLevel level) { InitLogger(static_cast<plog::Severity>(level)); }
 
-void InitLogger(LogLevel level);
-void InitLogger(plog::Severity severity, plog::IAppender *appender = nullptr);
+void InitLogger(plog::Severity severity, plog::IAppender *appender) {
+	static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender;
+	static plog::Logger<0> *logger = nullptr;
+	if (!logger) {
+		logger = &plog::init(severity, appender ? appender : &consoleAppender);
+		PLOG_DEBUG << "Logger initialized";
+	} else {
+		logger->setMaxSeverity(severity);
+		if (appender)
+			logger->addAppender(appender);
+	}
+}
 }
 
-#endif

@@ -18,6 +18,7 @@
 
 // C++ API
 #include "include.hpp"
+#include "init.hpp" // for rtc::Cleanup()
 #include "log.hpp"
 //
 #include "datachannel.hpp"

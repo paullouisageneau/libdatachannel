@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,25 +16,35 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_LOG_H
-#define RTC_LOG_H
+#ifndef RTC_INIT_H
+#define RTC_INIT_H
 
-#include "plog/Log.h"
+#include "include.hpp"
+
+#include <mutex>
 
 namespace rtc {
 
-enum class LogLevel { // Don't change, it must match plog severity
-	None = 0,
-	Fatal = 1,
-	Error = 2,
-	Warning = 3,
-	Info = 4,
-	Debug = 5,
-	Verbose = 6
+class Init;
+using init_token = std::shared_ptr<Init>;
+
+class Init {
+public:
+	static init_token Token();
+	static void Cleanup();
+
+	~Init();
+
+private:
+	Init();
+
+	static std::weak_ptr<Init> Weak;
+	static init_token Global;
+	static std::mutex Mutex;
 };
 
-void InitLogger(LogLevel level);
-void InitLogger(plog::Severity severity, plog::IAppender *appender = nullptr);
-}
+inline void Cleanup() { Init::Cleanup(); }
+
+} // namespace rtc
 
 #endif

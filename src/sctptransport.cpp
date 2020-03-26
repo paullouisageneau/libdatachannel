@@ -49,31 +49,20 @@ using std::shared_ptr;
 
 namespace rtc {
 
-std::mutex SctpTransport::GlobalMutex;
-int SctpTransport::InstancesCount = 0;
-
-void SctpTransport::GlobalInit() {
-	std::lock_guard lock(GlobalMutex);
-	if (InstancesCount++ == 0) {
-		usrsctp_init(0, &SctpTransport::WriteCallback, nullptr);
-		usrsctp_sysctl_set_sctp_ecn_enable(0);
-		usrsctp_sysctl_set_sctp_init_rtx_max_default(5);
-		usrsctp_sysctl_set_sctp_path_rtx_max_default(5);
-		usrsctp_sysctl_set_sctp_assoc_rtx_max_default(5);              // single path
-		usrsctp_sysctl_set_sctp_rto_min_default(1 * 1000);             // ms
-		usrsctp_sysctl_set_sctp_rto_max_default(10 * 1000);            // ms
-		usrsctp_sysctl_set_sctp_rto_initial_default(1 * 1000);         // ms
-		usrsctp_sysctl_set_sctp_init_rto_max_default(10 * 1000);       // ms
-		usrsctp_sysctl_set_sctp_heartbeat_interval_default(10 * 1000); // ms
-	}
+void SctpTransport::Init() {
+	usrsctp_init(0, &SctpTransport::WriteCallback, nullptr);
+	usrsctp_sysctl_set_sctp_ecn_enable(0);
+	usrsctp_sysctl_set_sctp_init_rtx_max_default(5);
+	usrsctp_sysctl_set_sctp_path_rtx_max_default(5);
+	usrsctp_sysctl_set_sctp_assoc_rtx_max_default(5);              // single path
+	usrsctp_sysctl_set_sctp_rto_min_default(1 * 1000);             // ms
+	usrsctp_sysctl_set_sctp_rto_max_default(10 * 1000);            // ms
+	usrsctp_sysctl_set_sctp_rto_initial_default(1 * 1000);         // ms
+	usrsctp_sysctl_set_sctp_init_rto_max_default(10 * 1000);       // ms
+	usrsctp_sysctl_set_sctp_heartbeat_interval_default(10 * 1000); // ms
 }
 
-void SctpTransport::GlobalCleanup() {
-	std::lock_guard lock(GlobalMutex);
-	if (--InstancesCount == 0) {
-		usrsctp_finish();
-	}
-}
+void SctpTransport::Cleanup() { usrsctp_finish(); }
 
 SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
                              message_callback recvCallback, amount_callback bufferedAmountCallback,
@@ -84,7 +73,6 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 	onRecv(recvCallback);
 
 	PLOG_DEBUG << "Initializing SCTP transport";
-	GlobalInit();
 
 	usrsctp_register_address(this);
 	mSock = usrsctp_socket(AF_CONN, SOCK_STREAM, IPPROTO_SCTP, &SctpTransport::RecvCallback,
@@ -175,8 +163,6 @@ SctpTransport::~SctpTransport() {
 
 	usrsctp_close(mSock);
 	usrsctp_deregister_address(this);
-
-	GlobalCleanup();
 }
 
 SctpTransport::State SctpTransport::state() const { return mState; }

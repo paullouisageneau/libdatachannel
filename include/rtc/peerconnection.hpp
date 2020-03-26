@@ -24,6 +24,7 @@
 #include "datachannel.hpp"
 #include "description.hpp"
 #include "include.hpp"
+#include "init.hpp"
 #include "message.hpp"
 #include "reliability.hpp"
 #include "rtc.hpp"
@@ -88,6 +89,8 @@ public:
 	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
 
 private:
+	init_token mInitToken = Init::Token();
+
 	std::shared_ptr<IceTransport> initIceTransport(Description::Role role);
 	std::shared_ptr<DtlsTransport> initDtlsTransport();
 	std::shared_ptr<SctpTransport> initSctpTransport();

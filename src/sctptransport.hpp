@@ -35,6 +35,9 @@ namespace rtc {
 
 class SctpTransport : public Transport {
 public:
+	static void Init();
+	static void Cleanup();
+
 	enum class State { Disconnected, Connecting, Connected, Failed };
 
 	using amount_callback = std::function<void(uint16_t streamId, size_t amount)>;
@@ -106,12 +109,6 @@ private:
 	                        struct sctp_rcvinfo recv_info, int flags, void *user_data);
 	static int SendCallback(struct socket *sock, uint32_t sb_free);
 	static int WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos, uint8_t set_df);
-
-	void GlobalInit();
-	void GlobalCleanup();
-
-	static std::mutex GlobalMutex;
-	static int InstancesCount;
 };
 
 } // namespace rtc
