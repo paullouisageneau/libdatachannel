@@ -144,6 +144,14 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 		throw std::runtime_error("Could not set socket option SCTP_INITMSG, errno=" +
 		                         std::to_string(errno));
 
+	// Prevent fragmented interleave of messages (i.e. level 0), see RFC 6458 8.1.20.
+	// Unless the user has set the fragmentation interleave level to 0, notifications
+	// may also be interleaved with partially delivered messages.
+	int level = 0;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, &level, sizeof(level)))
+		throw std::runtime_error("Could not disable SCTP fragmented interleave, errno=" +
+		                         std::to_string(errno));
+
 	// The default send and receive window size of usrsctp is 256KiB, which is too small for
 	// realistic RTTs, therefore we increase it to 1MiB for better performance.
 	// See https://bugzilla.mozilla.org/show_bug.cgi?id=1051685
@@ -396,13 +404,15 @@ int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, co
 		if (!len)
 			return -1;
 
+		// This is valid because SCTP_FRAGMENT_INTERLEAVE is set to level 0
+		// so partial messages and notifications may not be interleaved.
 		if (flags & MSG_EOR) {
 			if (!mPartialRecv.empty()) {
 				mPartialRecv.insert(mPartialRecv.end(), data, data + len);
 				data = mPartialRecv.data();
 				len = mPartialRecv.size();
 			}
-			// Message is complete, process it
+			// Message/Notification is complete, process it
 			if (flags & MSG_NOTIFICATION)
 				processNotification(reinterpret_cast<const union sctp_notification *>(data), len);
 			else
@@ -410,7 +420,7 @@ int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, co
 
 			mPartialRecv.clear();
 		} else {
-			// Message is not complete
+			// Message/Notification is not complete
 			mPartialRecv.insert(mPartialRecv.end(), data, data + len);
 		}
 	} catch (const std::exception &e) {
