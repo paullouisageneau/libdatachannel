@@ -203,7 +203,6 @@ void PeerConnection::onGatheringStateChange(std::function<void(GatheringState st
 
 shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role) {
 	try {
-		std::lock_guard lock(mInitMutex);
 		if (auto transport = std::atomic_load(&mIceTransport))
 			return transport;
 
@@ -253,7 +252,6 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role
 
 shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 	try {
-		std::lock_guard lock(mInitMutex);
 		if (auto transport = std::atomic_load(&mDtlsTransport))
 			return transport;
 
@@ -287,7 +285,6 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 	try {
-		std::lock_guard lock(mInitMutex);
 		if (auto transport = std::atomic_load(&mSctpTransport))
 			return transport;
 

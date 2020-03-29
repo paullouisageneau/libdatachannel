@@ -124,7 +124,6 @@ private:
 	std::shared_ptr<IceTransport> mIceTransport;
 	std::shared_ptr<DtlsTransport> mDtlsTransport;
 	std::shared_ptr<SctpTransport> mSctpTransport;
-	std::recursive_mutex mInitMutex;
 
 	std::unordered_map<unsigned int, std::weak_ptr<DataChannel>> mDataChannels;
 	std::shared_mutex mDataChannelsMutex;
