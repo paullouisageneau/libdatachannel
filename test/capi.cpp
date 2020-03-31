@@ -157,6 +157,16 @@ int test_capi_main() {
 
 	sleep(3);
 
+	if (peer1->state != RTC_CONNECTED || peer2->state != RTC_CONNECTED) {
+		fprintf(stderr, "PeerConnection is not connected\n");
+		goto error;
+	}
+
+	if (!peer1->connected || !peer2->connected) {
+		fprintf(stderr, "DataChannel is not connected\n");
+		goto error;
+	}
+
 	char buffer[256];
 	if (rtcGetLocalAddress(peer1->pc, buffer, 256) >= 0)
 		printf("Local address 1:  %s\n", buffer);
@@ -167,13 +177,12 @@ int test_capi_main() {
 	if (rtcGetRemoteAddress(peer2->pc, buffer, 256) >= 0)
 		printf("Remote address 2: %s\n", buffer);
 
-	if (peer1->connected && peer2->connected) {
-		deletePeer(peer1);
-		deletePeer(peer2);
-		sleep(1);
-		printf("Success\n");
-		return 0;
-	}
+	deletePeer(peer1);
+	sleep(1);
+	deletePeer(peer2);
+
+	printf("Success\n");
+	return 0;
 
 error:
 	deletePeer(peer1);

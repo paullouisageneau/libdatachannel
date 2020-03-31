@@ -24,6 +24,7 @@
 #include "sctptransport.hpp"
 
 #include <iostream>
+#include <thread>
 
 namespace rtc {
 
@@ -38,28 +39,11 @@ PeerConnection::PeerConnection() : PeerConnection(Configuration()) {
 PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New) {}
 
-PeerConnection::~PeerConnection() {
-	changeState(State::Destroying);
-	close();
-	mSctpTransport.reset();
-	mDtlsTransport.reset();
-	mIceTransport.reset();
-}
+PeerConnection::~PeerConnection() { close(); }
 
 void PeerConnection::close() {
-	// Close DataChannels
 	closeDataChannels();
-
-	// Close Transports
-	for (int i = 0; i < 2; ++i) { // Make sure a transport wasn't spawn behind our back
-		if (auto transport = std::atomic_load(&mSctpTransport))
-			transport->stop();
-		if (auto transport = std::atomic_load(&mDtlsTransport))
-			transport->stop();
-		if (auto transport = std::atomic_load(&mIceTransport))
-			transport->stop();
-	}
-	changeState(State::Closed);
+	closeTransports();
 }
 
 const Configuration *PeerConnection::config() const { return &mConfig; }
@@ -241,8 +225,15 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role
 				    break;
 			    }
 		    });
+
 		std::atomic_store(&mIceTransport, transport);
+		if (mState == State::Closed) {
+			mIceTransport.reset();
+			transport->stop();
+			throw std::runtime_error("Connection is closed");
+		}
 		return transport;
+
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
 		changeState(State::Failed);
@@ -274,8 +265,15 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 				    break;
 			    }
 		    });
+
 		std::atomic_store(&mDtlsTransport, transport);
+		if (mState == State::Closed) {
+			mDtlsTransport.reset();
+			transport->stop();
+			throw std::runtime_error("Connection is closed");
+		}
 		return transport;
+
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
 		changeState(State::Failed);
@@ -312,12 +310,47 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 				    break;
 			    }
 		    });
+
 		std::atomic_store(&mSctpTransport, transport);
+		if (mState == State::Closed) {
+			mSctpTransport.reset();
+			transport->stop();
+			throw std::runtime_error("Connection is closed");
+		}
 		return transport;
+
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
 		changeState(State::Failed);
 		throw std::runtime_error("SCTP transport initialization failed");
+	}
+}
+
+void PeerConnection::closeTransports() {
+	// Change state to sink state Closed to block init methods
+	changeState(State::Closed);
+
+	// Reset callbacks now that state is changed
+	resetCallbacks();
+
+	// Pass the references to a thread, allowing to terminate a transport from its own thread
+	auto sctp = std::atomic_exchange(&mSctpTransport, decltype(mSctpTransport)(nullptr));
+	auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
+	auto ice = std::atomic_exchange(&mIceTransport, decltype(mIceTransport)(nullptr));
+	if (sctp || dtls || ice) {
+		std::thread t([sctp, dtls, ice]() mutable {
+			if (sctp)
+				sctp->stop();
+			if (dtls)
+				dtls->stop();
+			if (ice)
+				ice->stop();
+
+			sctp.reset();
+			dtls.reset();
+			ice.reset();
+		});
+		t.detach();
 	}
 }
 
@@ -467,21 +500,34 @@ void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 	mDataChannelCallback(dataChannel);
 }
 
-void PeerConnection::changeState(State state) {
+bool PeerConnection::changeState(State state) {
 	State current;
 	do {
 		current = mState.load();
-		if (current == state || current == State::Destroying)
-			return;
+		if (current == state)
+			return true;
+		if (current == State::Closed)
+			return false;
+
 	} while (!mState.compare_exchange_weak(current, state));
 
-	if (state != State::Destroying)
-		mStateChangeCallback(state);
+	mStateChangeCallback(state);
+	return true;
 }
 
-void PeerConnection::changeGatheringState(GatheringState state) {
+bool PeerConnection::changeGatheringState(GatheringState state) {
 	if (mGatheringState.exchange(state) != state)
 		mGatheringStateChangeCallback(state);
+	return true;
+}
+
+void PeerConnection::resetCallbacks() {
+	// Unregister all callbacks
+	mDataChannelCallback = nullptr;
+	mLocalDescriptionCallback = nullptr;
+	mLocalCandidateCallback = nullptr;
+	mStateChangeCallback = nullptr;
+	mGatheringStateChangeCallback = nullptr;
 }
 
 } // namespace rtc
@@ -507,9 +553,6 @@ std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &st
 		break;
 	case State::Closed:
 		str = "closed";
-		break;
-	case State::Destroying:
-		str = "destroying";
 		break;
 	default:
 		str = "unknown";

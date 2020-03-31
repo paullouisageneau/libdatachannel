@@ -108,6 +108,13 @@ void test_connectivity() {
 
 	this_thread::sleep_for(3s);
 
+	if (pc1->state() != PeerConnection::State::Connected &&
+	    pc2->state() != PeerConnection::State::Connected)
+		throw runtime_error("PeerConnection is not connected");
+
+	if (!dc1->isOpen() || !dc2->isOpen())
+		throw runtime_error("DataChannel is not open");
+
 	if (auto addr = pc1->localAddress())
 		cout << "Local address 1:  " << *addr << endl;
 	if (auto addr = pc1->remoteAddress())
@@ -117,13 +124,10 @@ void test_connectivity() {
 	if (auto addr = pc2->remoteAddress())
 		cout << "Remote address 2: " << *addr << endl;
 
-	if (!dc1->isOpen() || !dc2->isOpen())
-		throw runtime_error("DataChannel is not open");
-
+	// Delay close of peer 2 to check closing works properly
 	pc1->close();
-	pc2->close();
-
 	this_thread::sleep_for(1s);
+	pc2->close();
 
 	cout << "Success" << endl;
 }

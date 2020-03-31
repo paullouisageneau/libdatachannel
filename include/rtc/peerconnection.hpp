@@ -52,14 +52,13 @@ public:
 		Connected = RTC_CONNECTED,
 		Disconnected = RTC_DISCONNECTED,
 		Failed = RTC_FAILED,
-		Closed = RTC_CLOSED,
-		Destroying = RTC_DESTROYING
+		Closed = RTC_CLOSED
 	};
 
 	enum class GatheringState : int {
 		New = RTC_GATHERING_NEW,
 		InProgress = RTC_GATHERING_INPROGRESS,
-		Complete = RTC_GATHERING_COMPLETE,
+		Complete = RTC_GATHERING_COMPLETE
 	};
 
 	PeerConnection(void);
@@ -94,6 +93,7 @@ private:
 	std::shared_ptr<IceTransport> initIceTransport(Description::Role role);
 	std::shared_ptr<DtlsTransport> initDtlsTransport();
 	std::shared_ptr<SctpTransport> initSctpTransport();
+	void closeTransports();
 
 	void endLocalCandidates();
 	bool checkFingerprint(const std::string &fingerprint) const;
@@ -112,8 +112,10 @@ private:
 	void processLocalDescription(Description description);
 	void processLocalCandidate(Candidate candidate);
 	void triggerDataChannel(std::weak_ptr<DataChannel> weakDataChannel);
-	void changeState(State state);
-	void changeGatheringState(GatheringState state);
+	bool changeState(State state);
+	bool changeGatheringState(GatheringState state);
+
+	void resetCallbacks();
 
 	const Configuration mConfig;
 	const std::shared_ptr<Certificate> mCertificate;

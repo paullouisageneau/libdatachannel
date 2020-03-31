@@ -31,8 +31,7 @@ typedef enum {
 	RTC_CONNECTED = 2,
 	RTC_DISCONNECTED = 3,
 	RTC_FAILED = 4,
-	RTC_CLOSED = 5,
-	RTC_DESTROYING = 6 // internal
+	RTC_CLOSED = 5
 } rtcState;
 
 typedef enum {

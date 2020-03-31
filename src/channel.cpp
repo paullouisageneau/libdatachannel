@@ -88,5 +88,14 @@ void Channel::triggerBufferedAmount(size_t amount) {
 		mBufferedAmountLowCallback();
 }
 
+void Channel::resetCallbacks() {
+	mOpenCallback = nullptr;
+	mClosedCallback = nullptr;
+	mErrorCallback = nullptr;
+	mMessageCallback = nullptr;
+	mAvailableCallback = nullptr;
+	mBufferedAmountLowCallback = nullptr;
+}
+
 } // namespace rtc
 

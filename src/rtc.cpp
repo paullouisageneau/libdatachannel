@@ -53,6 +53,14 @@ void *getUserPointer(int id) {
 	return it != userPointerMap.end() ? it->second : nullptr;
 }
 
+void setUserPointer(int i, void *ptr) {
+	std::lock_guard lock(mutex);
+	if (ptr)
+		userPointerMap.insert(std::make_pair(i, ptr));
+	else
+		userPointerMap.erase(i);
+}
+
 shared_ptr<PeerConnection> getPeerConnection(int id) {
 	std::lock_guard lock(mutex);
 	auto it = peerConnectionMap.find(id);
@@ -99,12 +107,7 @@ bool eraseDataChannel(int dc) {
 
 void rtcInitLogger(rtcLogLevel level) { InitLogger(static_cast<LogLevel>(level)); }
 
-void rtcSetUserPointer(int i, void *ptr) {
-	if (ptr)
-		userPointerMap.insert(std::make_pair(i, ptr));
-	else
-		userPointerMap.erase(i);
-}
+void rtcSetUserPointer(int i, void *ptr) { setUserPointer(i, ptr); }
 
 int rtcCreatePeerConnection(const rtcConfiguration *config) {
 	Configuration c;

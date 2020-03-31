@@ -74,7 +74,7 @@ DataChannel::DataChannel(weak_ptr<PeerConnection> pc, unsigned int stream, strin
       mReliability(std::make_shared<Reliability>(std::move(reliability))),
       mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
-DataChannel::DataChannel(weak_ptr<PeerConnection> pc, shared_ptr<SctpTransport> transport,
+DataChannel::DataChannel(weak_ptr<PeerConnection> pc, weak_ptr<SctpTransport> transport,
                          unsigned int stream)
     : mPeerConnection(pc), mSctpTransport(transport), mStream(stream),
       mReliability(std::make_shared<Reliability>()),
@@ -93,10 +93,13 @@ string DataChannel::protocol() const { return mProtocol; }
 Reliability DataChannel::reliability() const { return *mReliability; }
 
 void DataChannel::close() {
-	if (mIsOpen.exchange(false) && mSctpTransport)
-		mSctpTransport->reset(mStream);
+	if (mIsOpen.exchange(false))
+		if (auto transport = mSctpTransport.lock())
+			transport->reset(mStream);
 	mIsClosed = true;
 	mSctpTransport.reset();
+
+	resetCallbacks();
 }
 
 void DataChannel::remoteClose() {
@@ -158,8 +161,8 @@ size_t DataChannel::maxMessageSize() const {
 
 size_t DataChannel::availableAmount() const { return mRecvQueue.amount(); }
 
-void DataChannel::open(shared_ptr<SctpTransport> sctpTransport) {
-	mSctpTransport = sctpTransport;
+void DataChannel::open(shared_ptr<SctpTransport> transport) {
+	mSctpTransport = transport;
 
 	uint8_t channelType = static_cast<uint8_t>(mReliability->type);
 	if (mReliability->unordered)
@@ -186,20 +189,24 @@ void DataChannel::open(shared_ptr<SctpTransport> sctpTransport) {
 	std::copy(mLabel.begin(), mLabel.end(), end);
 	std::copy(mProtocol.begin(), mProtocol.end(), end + mLabel.size());
 
-	mSctpTransport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
+	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
 }
 
 bool DataChannel::outgoing(mutable_message_ptr message) {
-	if (mIsClosed || !mSctpTransport)
+	if (mIsClosed)
 		throw std::runtime_error("DataChannel is closed");
 
 	if (message->size() > maxMessageSize())
 		throw std::runtime_error("Message size exceeds limit");
 
+	auto transport = mSctpTransport.lock();
+	if (!transport)
+		throw std::runtime_error("DataChannel has no transport");
+
 	// Before the ACK has been received on a DataChannel, all messages must be sent ordered
 	message->reliability = mIsOpen ? mReliability : nullptr;
 	message->stream = mStream;
-	return mSctpTransport->send(message);
+	return transport->send(message);
 }
 
 void DataChannel::incoming(message_ptr message) {
@@ -238,6 +245,10 @@ void DataChannel::incoming(message_ptr message) {
 }
 
 void DataChannel::processOpenMessage(message_ptr message) {
+	auto transport = mSctpTransport.lock();
+	if (!transport)
+		throw std::runtime_error("DataChannel has no transport");
+
 	if (message->size() < sizeof(OpenMessage))
 		throw std::invalid_argument("DataChannel open message too small");
 
@@ -274,7 +285,7 @@ void DataChannel::processOpenMessage(message_ptr message) {
 	auto &ack = *reinterpret_cast<AckMessage *>(buffer.data());
 	ack.type = MESSAGE_ACK;
 
-	mSctpTransport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
+	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
 
 	mIsOpen = true;
 	triggerOpen();

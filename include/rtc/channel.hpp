@@ -60,6 +60,8 @@ protected:
 	virtual void triggerAvailable(size_t count);
 	virtual void triggerBufferedAmount(size_t amount);
 
+	void resetCallbacks();
+
 private:
 	synchronized_callback<> mOpenCallback;
 	synchronized_callback<> mClosedCallback;

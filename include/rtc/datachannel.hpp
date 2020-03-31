@@ -40,7 +40,7 @@ class DataChannel : public std::enable_shared_from_this<DataChannel>, public Cha
 public:
 	DataChannel(std::weak_ptr<PeerConnection> pc, unsigned int stream, string label,
 	            string protocol, Reliability reliability);
-	DataChannel(std::weak_ptr<PeerConnection> pc, std::shared_ptr<SctpTransport> transport,
+	DataChannel(std::weak_ptr<PeerConnection> pc, std::weak_ptr<SctpTransport> transport,
 	            unsigned int stream);
 	~DataChannel();
 
@@ -65,13 +65,13 @@ public:
 
 private:
 	void remoteClose();
-	void open(std::shared_ptr<SctpTransport> sctpTransport);
+	void open(std::shared_ptr<SctpTransport> transport);
 	bool outgoing(mutable_message_ptr message);
 	void incoming(message_ptr message);
 	void processOpenMessage(message_ptr message);
 
 	const std::weak_ptr<PeerConnection> mPeerConnection;
-	std::shared_ptr<SctpTransport> mSctpTransport;
+	std::weak_ptr<SctpTransport> mSctpTransport;
 
 	unsigned int mStream;
 	string mLabel;
