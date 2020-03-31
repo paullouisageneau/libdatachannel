@@ -18,6 +18,7 @@
 
 #include "icetransport.hpp"
 #include "configuration.hpp"
+#include "transport.hpp"
 
 #include <iostream>
 #include <random>
@@ -96,8 +97,9 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 
 IceTransport::~IceTransport() { stop(); }
 
-void IceTransport::stop() {
-	// Nothing to do
+bool IceTransport::stop() {
+	onRecv(nullptr);
+	return Transport::stop();
 }
 
 Description::Role IceTransport::role() const { return mRole; }
@@ -426,16 +428,19 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 
 IceTransport::~IceTransport() { stop(); }
 
-void IceTransport::stop() {
+bool IceTransport::stop() {
 	if (mTimeoutId) {
 		g_source_remove(mTimeoutId);
 		mTimeoutId = 0;
 	}
-	if (mMainLoopThread.joinable()) {
-		PLOG_DEBUG << "Stopping ICE thread";
-		g_main_loop_quit(mMainLoop.get());
-		mMainLoopThread.join();
-	}
+
+	if (!Transport::stop())
+		return false;
+
+	PLOG_DEBUG << "Stopping ICE thread";
+	g_main_loop_quit(mMainLoop.get());
+	mMainLoopThread.join();
+	return true;
 }
 
 Description::Role IceTransport::role() const { return mRole; }

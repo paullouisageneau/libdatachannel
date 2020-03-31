@@ -110,15 +110,16 @@ DtlsTransport::~DtlsTransport() {
 
 DtlsTransport::State DtlsTransport::state() const { return mState; }
 
-void DtlsTransport::stop() {
-	Transport::stop();
+bool DtlsTransport::stop() {
+	if (!Transport::stop())
+		return false;
 
-	if (mRecvThread.joinable()) {
-		PLOG_DEBUG << "Stopping DTLS recv thread";
-		mIncomingQueue.stop();
-		gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
-		mRecvThread.join();
-	}
+	PLOG_DEBUG << "Stopping DTLS recv thread";
+	mIncomingQueue.stop();
+	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
+	mRecvThread.join();
+	onRecv(nullptr);
+	return true;
 }
 
 bool DtlsTransport::send(message_ptr message) {
@@ -417,16 +418,16 @@ DtlsTransport::~DtlsTransport() {
 	SSL_CTX_free(mCtx);
 }
 
-void DtlsTransport::stop() {
-	Transport::stop();
+bool DtlsTransport::stop() {
+	if (!Transport::stop())
+		return false;
 
-	if (mRecvThread.joinable()) {
-		PLOG_DEBUG << "Stopping DTLS recv thread";
-		mIncomingQueue.stop();
-		mRecvThread.join();
-
-		SSL_shutdown(mSsl);
-	}
+	PLOG_DEBUG << "Stopping DTLS recv thread";
+	mIncomingQueue.stop();
+	mRecvThread.join();
+	SSL_shutdown(mSsl);
+	onRecv(nullptr);
+	return true;
 }
 
 DtlsTransport::State DtlsTransport::state() const { return mState; }

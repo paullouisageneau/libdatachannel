@@ -175,15 +175,15 @@ SctpTransport::~SctpTransport() {
 
 SctpTransport::State SctpTransport::state() const { return mState; }
 
-void SctpTransport::stop() {
-	Transport::stop();
-	onRecv(nullptr);
+bool SctpTransport::stop() {
+	if (!Transport::stop())
+		return false;
 
-	if (!mShutdown.exchange(true)) {
-		mSendQueue.stop();
-		safeFlush();
-		shutdown();
-	}
+	mSendQueue.stop();
+	safeFlush();
+	shutdown();
+	onRecv(nullptr);
+	return true;
 }
 
 void SctpTransport::connect() {

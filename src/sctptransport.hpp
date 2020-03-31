@@ -49,7 +49,7 @@ public:
 
 	State state() const;
 
-	void stop() override;
+	bool stop() override;
 	bool send(message_ptr message) override; // false if buffered
 	void flush();
 	void reset(unsigned int stream);
@@ -97,8 +97,6 @@ private:
 	std::condition_variable_any mWrittenCondition;
 	bool mWritten = false;
 	bool mWrittenOnce = false;
-
-	std::atomic<bool> mShutdown = false;
 
 	state_callback mStateChangeCallback;
 	std::atomic<State> mState;

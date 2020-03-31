@@ -57,7 +57,7 @@ public:
 
 	State state() const;
 
-	void stop() override;
+	bool stop() override;
 	bool send(message_ptr message) override; // false if dropped
 
 private:

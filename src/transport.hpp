@@ -38,9 +38,10 @@ public:
 	}
 	virtual ~Transport() { stop(); }
 
-	virtual void stop() {
+	virtual bool stop() {
 		if (mLower)
 			mLower->onRecv(nullptr);
+		return !mShutdown.exchange(true);
 	}
 
 	virtual bool send(message_ptr message) = 0;
@@ -61,6 +62,7 @@ protected:
 private:
 	std::shared_ptr<Transport> mLower;
 	synchronized_callback<message_ptr> mRecvCallback;
+	std::atomic<bool> mShutdown = false;
 };
 
 } // namespace rtc
