@@ -85,7 +85,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 		if (!sctpTransport && iceTransport->role() == Description::Role::Active) {
 			// Since we assumed passive role during DataChannel creation, we need to shift the
 			// stream numbers by one to shift them from odd to even.
-			std::unique_lock lock(mDataChannelsMutex);
+			std::unique_lock lock(mDataChannelsMutex); // we are going to swap the container
 			decltype(mDataChannels) newDataChannels;
 			auto it = mDataChannels.begin();
 			while (it != mDataChannels.end()) {
@@ -414,7 +414,7 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role rol
 	// The active side must use streams with even identifiers, whereas the passive side must use
 	// streams with odd identifiers.
 	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09#section-6
-	std::unique_lock lock(mDataChannelsMutex);
+	std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
 	unsigned int stream = (role == Description::Role::Active) ? 0 : 1;
 	while (mDataChannels.find(stream) != mDataChannels.end()) {
 		stream += 2;
@@ -428,30 +428,41 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role rol
 }
 
 shared_ptr<DataChannel> PeerConnection::findDataChannel(uint16_t stream) {
-	std::shared_lock lock(mDataChannelsMutex);
-	shared_ptr<DataChannel> channel;
-	if (auto it = mDataChannels.find(stream); it != mDataChannels.end()) {
-		channel = it->second.lock();
-		if (!channel)
-			mDataChannels.erase(it);
-	}
-	return channel;
+	std::shared_lock lock(mDataChannelsMutex); // read-only
+	if (auto it = mDataChannels.find(stream); it != mDataChannels.end())
+		if (auto channel = it->second.lock())
+			return channel;
+
+	return nullptr;
 }
 
 void PeerConnection::iterateDataChannels(
     std::function<void(shared_ptr<DataChannel> channel)> func) {
-	std::shared_lock lock(mDataChannelsMutex);
-	auto it = mDataChannels.begin();
-	while (it != mDataChannels.end()) {
-		auto channel = it->second.lock();
-		if (!channel) {
-			it = mDataChannels.erase(it);
-			continue;
+	// Iterate
+	{
+		std::shared_lock lock(mDataChannelsMutex); // read-only
+		auto it = mDataChannels.begin();
+		while (it != mDataChannels.end()) {
+			auto channel = it->second.lock();
+			if (channel && !channel->isClosed())
+				func(channel);
+
+			++it;
 		}
-		if (!channel->isClosed()) {
-			func(channel);
+	}
+
+	// Cleanup
+	{
+		std::unique_lock lock(mDataChannelsMutex); // we are going to erase
+		auto it = mDataChannels.begin();
+		while (it != mDataChannels.end()) {
+			if (!it->second.lock()) {
+				it = mDataChannels.erase(it);
+				continue;
+			}
+
+			++it;
 		}
-		++it;
 	}
 }
 
