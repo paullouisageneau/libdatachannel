@@ -33,8 +33,24 @@ using namespace std::placeholders;
 using std::shared_ptr;
 using std::weak_ptr;
 
-PeerConnection::PeerConnection() : PeerConnection(Configuration()) {
+template <typename F, typename T, typename... Args> auto weak_bind(F &&f, T *t, Args &&... _args) {
+	return [bound = std::bind(f, t, _args...), weak_this = t->weak_from_this()](auto &&... args) {
+		if (auto shared_this = weak_this.lock())
+			bound(args...);
+	};
 }
+
+template <typename F, typename T, typename... Args>
+auto weak_bind_verifier(F &&f, T *t, Args &&... _args) {
+	return [bound = std::bind(f, t, _args...), weak_this = t->weak_from_this()](auto &&... args) {
+		if (auto shared_this = weak_this.lock())
+			return bound(args...);
+		else
+			return false;
+	};
+}
+
+PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 
 PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New) {}
@@ -191,7 +207,7 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role
 			return transport;
 
 		auto transport = std::make_shared<IceTransport>(
-		    mConfig, role, std::bind(&PeerConnection::processLocalCandidate, this, _1),
+		    mConfig, role, weak_bind(&PeerConnection::processLocalCandidate, this, _1),
 		    [this](IceTransport::State state) {
 			    switch (state) {
 			    case IceTransport::State::Connecting:
@@ -248,7 +264,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 		auto lower = std::atomic_load(&mIceTransport);
 		auto transport = std::make_shared<DtlsTransport>(
-		    lower, mCertificate, std::bind(&PeerConnection::checkFingerprint, this, _1),
+		    lower, mCertificate, weak_bind_verifier(&PeerConnection::checkFingerprint, this, _1),
 		    [this](DtlsTransport::State state) {
 			    switch (state) {
 			    case DtlsTransport::State::Connected:
@@ -289,8 +305,8 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 		uint16_t sctpPort = remoteDescription()->sctpPort().value_or(DEFAULT_SCTP_PORT);
 		auto lower = std::atomic_load(&mDtlsTransport);
 		auto transport = std::make_shared<SctpTransport>(
-		    lower, sctpPort, std::bind(&PeerConnection::forwardMessage, this, _1),
-		    std::bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
+		    lower, sctpPort, weak_bind(&PeerConnection::forwardMessage, this, _1),
+		    weak_bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
 		    [this](SctpTransport::State state) {
 			    switch (state) {
 			    case SctpTransport::State::Connected:
@@ -389,7 +405,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		    message->stream % 2 == remoteParity) {
 			channel =
 			    std::make_shared<DataChannel>(shared_from_this(), sctpTransport, message->stream);
-			channel->onOpen(std::bind(&PeerConnection::triggerDataChannel, this,
+			channel->onOpen(weak_bind(&PeerConnection::triggerDataChannel, this,
 			                          weak_ptr<DataChannel>{channel}));
 			mDataChannels.insert(std::make_pair(message->stream, channel));
 		} else {
