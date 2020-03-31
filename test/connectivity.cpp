@@ -106,7 +106,9 @@ void test_connectivity() {
 		}
 	});
 
-	this_thread::sleep_for(3s);
+	int attempts = 10;
+	while ((!dc2 || !dc2->isOpen()) && attempts--)
+		this_thread::sleep_for(1s);
 
 	if (pc1->state() != PeerConnection::State::Connected &&
 	    pc2->state() != PeerConnection::State::Connected)

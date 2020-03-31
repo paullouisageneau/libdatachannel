@@ -131,6 +131,8 @@ static void deletePeer(Peer *peer) {
 }
 
 int test_capi_main() {
+	int attempts;
+
 	rtcInitLogger(RTC_LOG_DEBUG);
 
 	rtcConfiguration config;
@@ -155,7 +157,9 @@ int test_capi_main() {
 	rtcSetClosedCallback(peer1->dc, closedCallback);
 	rtcSetMessageCallback(peer1->dc, messageCallback);
 
-	sleep(3);
+	attempts = 10;
+	while (!peer2->connected && attempts--)
+		sleep(1);
 
 	if (peer1->state != RTC_CONNECTED || peer2->state != RTC_CONNECTED) {
 		fprintf(stderr, "PeerConnection is not connected\n");
