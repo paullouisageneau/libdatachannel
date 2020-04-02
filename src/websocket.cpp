@@ -151,26 +151,30 @@ std::shared_ptr<TcpTransport> WebSocket::initTcpTransport() {
 		if (auto transport = std::atomic_load(&mTcpTransport))
 			return transport;
 
-		auto transport = std::make_shared<TcpTransport>(mHostname, mService, [this](State state) {
-			switch (state) {
-			case State::Connected:
-				if (mScheme == "ws")
-					initWsTransport();
-				else
-					initTlsTransport();
-				break;
-			case State::Failed:
-				triggerError("TCP connection failed");
-				remoteClose();
-				break;
-			case State::Disconnected:
-				remoteClose();
-				break;
-			default:
-				// Ignore
-				break;
-			}
-		});
+		auto transport = std::make_shared<TcpTransport>(
+		    mHostname, mService, [this, weak_this = weak_from_this()](State state) {
+			    auto shared_this = weak_this.lock();
+			    if (!shared_this)
+				    return;
+			    switch (state) {
+			    case State::Connected:
+				    if (mScheme == "ws")
+					    initWsTransport();
+				    else
+					    initTlsTransport();
+				    break;
+			    case State::Failed:
+				    triggerError("TCP connection failed");
+				    remoteClose();
+				    break;
+			    case State::Disconnected:
+				    remoteClose();
+				    break;
+			    default:
+				    // Ignore
+				    break;
+			    }
+		    });
 		std::atomic_store(&mTcpTransport, transport);
 		if (mState == WebSocket::State::Closed) {
 			mTcpTransport.reset();
@@ -193,23 +197,27 @@ std::shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 			return transport;
 
 		auto lower = std::atomic_load(&mTcpTransport);
-		auto transport = std::make_shared<TlsTransport>(lower, mHost, [this](State state) {
-			switch (state) {
-			case State::Connected:
-				initWsTransport();
-				break;
-			case State::Failed:
-				triggerError("TCP connection failed");
-				remoteClose();
-				break;
-			case State::Disconnected:
-				remoteClose();
-				break;
-			default:
-				// Ignore
-				break;
-			}
-		});
+		auto transport = std::make_shared<TlsTransport>(
+		    lower, mHost, [this, weak_this = weak_from_this()](State state) {
+			    auto shared_this = weak_this.lock();
+			    if (!shared_this)
+				    return;
+			    switch (state) {
+			    case State::Connected:
+				    initWsTransport();
+				    break;
+			    case State::Failed:
+				    triggerError("TCP connection failed");
+				    remoteClose();
+				    break;
+			    case State::Disconnected:
+				    remoteClose();
+				    break;
+			    default:
+				    // Ignore
+				    break;
+			    }
+		    });
 		std::atomic_store(&mTlsTransport, transport);
 		if (mState == WebSocket::State::Closed) {
 			mTlsTransport.reset();
@@ -235,7 +243,11 @@ std::shared_ptr<WsTransport> WebSocket::initWsTransport() {
 		if (!lower)
 			lower = std::atomic_load(&mTcpTransport);
 		auto transport = std::make_shared<WsTransport>(
-		    lower, mHost, mPath, std::bind(&WebSocket::incoming, this, _1), [this](State state) {
+		    lower, mHost, mPath, weak_bind(&WebSocket::incoming, this, _1),
+		    [this, weak_this = weak_from_this()](State state) {
+			    auto shared_this = weak_this.lock();
+			    if (!shared_this)
+				    return;
 			    switch (state) {
 			    case State::Connected:
 				    if (mState == WebSocket::State::Connecting) {
