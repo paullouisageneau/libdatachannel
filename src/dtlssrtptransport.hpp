@@ -47,6 +47,7 @@ private:
 	message_callback mSrtpRecvCallback;
 
 	srtp_t mSrtp;
+	bool mCreated = false;
 };
 
 } // namespace rtc

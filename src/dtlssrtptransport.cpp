@@ -59,7 +59,8 @@ DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
 DtlsSrtpTransport::~DtlsSrtpTransport() {
 	stop();
 
-	srtp_dealloc(mSrtp);
+	if (mCreated)
+		srtp_dealloc(mSrtp);
 }
 
 bool DtlsSrtpTransport::send(message_ptr message) {
@@ -119,6 +120,9 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 }
 
 void DtlsSrtpTransport::postHandshake() {
+	if (mCreated)
+		return;
+
 	srtp_policy_t inbound = {};
 	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtp);
 	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtcp);
@@ -192,6 +196,8 @@ void DtlsSrtpTransport::postHandshake() {
 
 	if (srtp_err_status_t err = srtp_create(&mSrtp, policies))
 		throw std::runtime_error("SRTP create failed, status=" + to_string(static_cast<int>(err)));
+
+	mCreated = true;
 }
 
 } // namespace rtc
