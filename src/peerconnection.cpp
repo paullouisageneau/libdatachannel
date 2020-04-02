@@ -208,7 +208,10 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role
 
 		auto transport = std::make_shared<IceTransport>(
 		    mConfig, role, weak_bind(&PeerConnection::processLocalCandidate, this, _1),
-		    [this](IceTransport::State state) {
+		    [this, weak_this = weak_from_this()](IceTransport::State state) {
+			    auto shared_this = weak_this.lock();
+			    if (!shared_this)
+				    return;
 			    switch (state) {
 			    case IceTransport::State::Connecting:
 				    changeState(State::Connecting);
@@ -227,7 +230,10 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role
 				    break;
 			    }
 		    },
-		    [this](IceTransport::GatheringState state) {
+		    [this, weak_this = weak_from_this()](IceTransport::GatheringState state) {
+			    auto shared_this = weak_this.lock();
+			    if (!shared_this)
+				    return;
 			    switch (state) {
 			    case IceTransport::GatheringState::InProgress:
 				    changeGatheringState(GatheringState::InProgress);
@@ -265,7 +271,10 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		auto lower = std::atomic_load(&mIceTransport);
 		auto transport = std::make_shared<DtlsTransport>(
 		    lower, mCertificate, weak_bind_verifier(&PeerConnection::checkFingerprint, this, _1),
-		    [this](DtlsTransport::State state) {
+		    [this, weak_this = weak_from_this()](DtlsTransport::State state) {
+			    auto shared_this = weak_this.lock();
+			    if (!shared_this)
+				    return;
 			    switch (state) {
 			    case DtlsTransport::State::Connected:
 				    initSctpTransport();
@@ -307,7 +316,10 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 		auto transport = std::make_shared<SctpTransport>(
 		    lower, sctpPort, weak_bind(&PeerConnection::forwardMessage, this, _1),
 		    weak_bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
-		    [this](SctpTransport::State state) {
+		    [this, weak_this = weak_from_this()](SctpTransport::State state) {
+			    auto shared_this = weak_this.lock();
+			    if (!shared_this)
+				    return;
 			    switch (state) {
 			    case SctpTransport::State::Connected:
 				    changeState(State::Connected);
