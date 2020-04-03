@@ -46,7 +46,7 @@ public:
 	std::optional<string> fingerprint() const;
 	std::optional<uint16_t> sctpPort() const;
 	std::optional<size_t> maxMessageSize() const;
-	bool trickleEnabled() const;
+	bool ended() const;
 
 	void hintType(Type type);
 	void setFingerprint(string fingerprint);
@@ -80,17 +80,17 @@ private:
 
 	// Media (non-data)
 	struct Media {
+		Media(const string &mline);
+		string type;
 		string description;
 		string mid;
 		std::vector<string> attributes;
-
-		string type() const;
 	};
 	std::map<string, Media> mMedia; // by mid
 
 	// Candidates
 	std::vector<Candidate> mCandidates;
-	bool mTrickle;
+	bool mEnded = false;
 
 	static Type stringToType(const string &typeString);
 	static string typeToString(Type type);

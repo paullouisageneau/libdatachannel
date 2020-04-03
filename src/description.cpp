@@ -50,7 +50,7 @@ Description::Description(const string &sdp, const string &typeString)
 Description::Description(const string &sdp, Type type) : Description(sdp, type, Role::ActPass) {}
 
 Description::Description(const string &sdp, Type type, Role role)
-    : mType(Type::Unspec), mRole(role), mIceUfrag(""), mIcePwd(""), mTrickle(true) {
+    : mType(Type::Unspec), mRole(role) {
 	mData.mid = "data";
 	hintType(type);
 
@@ -68,15 +68,11 @@ Description::Description(const string &sdp, Type type, Role role)
 		finished = !std::getline(ss, line) && line.empty();
 		trim_end(line);
 
-		if (!finished) {
-			LOG_VERBOSE << "SDP line: " << line;
-		}
-
 		// Media description line (aka m-line)
 		if (finished || match_prefix(line, "m=")) {
 			if (currentMedia) {
 				if (!currentMedia->mid.empty()) {
-					if (currentMedia->type() == "application")
+					if (currentMedia->type == "application")
 						mData.mid = currentMedia->mid;
 					else
 						mMedia.emplace(currentMedia->mid, std::move(*currentMedia));
@@ -86,7 +82,7 @@ Description::Description(const string &sdp, Type type, Role role)
 				}
 			}
 			if (!finished)
-				currentMedia.emplace(Media{line.substr(2)});
+				currentMedia.emplace(Media(line.substr(2)));
 
 			// Attribute line
 		} else if (match_prefix(line, "a=")) {
@@ -131,7 +127,7 @@ Description::Description(const string &sdp, Type type, Role role)
 			} else if (key == "candidate") {
 				addCandidate(Candidate(attr, currentMedia ? currentMedia->mid : mData.mid));
 			} else if (key == "end-of-candidates") {
-				mTrickle = false;
+				mEnded = true;
 			} else if (currentMedia) {
 				currentMedia->attributes.emplace_back(line.substr(2));
 			}
@@ -155,8 +151,7 @@ std::optional<uint16_t> Description::sctpPort() const { return mData.sctpPort; }
 
 std::optional<size_t> Description::maxMessageSize() const { return mData.maxMessageSize; }
 
-bool Description::trickleEnabled() const { return mTrickle; }
-
+bool Description::ended() const { return mEnded; }
 
 void Description::hintType(Type type) {
 	if (mType == Type::Unspec) {
@@ -178,12 +173,12 @@ void Description::addCandidate(Candidate candidate) {
 	mCandidates.emplace_back(std::move(candidate));
 }
 
-void Description::endCandidates() { mTrickle = false; }
+void Description::endCandidates() { mEnded = true; }
 
 std::vector<Candidate> Description::extractCandidates() {
 	std::vector<Candidate> result;
 	std::swap(mCandidates, result);
-	mTrickle = true;
+	mEnded = false;
 	return result;
 }
 
@@ -212,10 +207,24 @@ string Description::generateSdp(const string &eol) const {
 	sdp << "t=0 0" << eol;
 
 	// Bundle
+	// see Negotiating Media Multiplexing Using the Session Description Protocol
+	// https://tools.ietf.org/html/draft-ietf-mmusic-sdp-bundle-negotiation-54
 	sdp << "a=group:BUNDLE";
 	for (const auto &[mid, _] : mMedia)
 		sdp << " " << mid;
 	sdp << " " << mData.mid << eol;
+
+	// Data
+	const string dataDescription = "UDP/DTLS/SCTP webrtc-datachannel";
+	sdp << "m=application" << ' ' << (!mMedia.empty() ? 0 : 9) << ' ' << dataDescription << eol;
+	sdp << "c=IN IP4 0.0.0.0" << eol;
+	if (!mMedia.empty())
+		sdp << "a=bundle-only" << eol;
+	sdp << "a=mid:" << mData.mid << eol;
+	if (mData.sctpPort)
+		sdp << "a=sctp-port:" << *mData.sctpPort << eol;
+	if (mData.maxMessageSize)
+		sdp << "a=max-message-size:" << *mData.maxMessageSize << eol;
 
 	// Non-data media
 	if (!mMedia.empty()) {
@@ -227,26 +236,17 @@ string Description::generateSdp(const string &eol) const {
 
 		// Descriptions and attributes
 		for (const auto &[_, media] : mMedia) {
-			sdp << "m=" << media.description << eol;
+			sdp << "m=" << media.type << ' ' << 0 << ' ' << media.description << eol;
 			sdp << "c=IN IP4 0.0.0.0" << eol;
+			sdp << "a=bundle-only" << eol;
 			sdp << "a=mid:" << media.mid << eol;
 			for (const auto &attr : media.attributes)
 				sdp << "a=" << attr << eol;
 		}
 	}
 
-	// Data
-	sdp << "m=application 9 UDP/DTLS/SCTP webrtc-datachannel" << eol;
-	sdp << "c=IN IP4 0.0.0.0" << eol;
-	sdp << "a=mid:" << mData.mid << eol;
-	if (mData.sctpPort)
-		sdp << "a=sctp-port:" << *mData.sctpPort << eol;
-	if (mData.maxMessageSize)
-		sdp << "a=max-message-size:" << *mData.maxMessageSize << eol;
-
 	// Common
-	if (mTrickle)
-		sdp << "a=ice-options:trickle" << eol;
+	sdp << "a=ice-options:trickle" << eol;
 	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
 	sdp << "a=ice-pwd:" << mIcePwd << eol;
 	sdp << "a=setup:" << roleToString(mRole) << eol;
@@ -257,13 +257,19 @@ string Description::generateSdp(const string &eol) const {
 	// Candidates
 	for (const auto &candidate : mCandidates)
 		sdp << string(candidate) << eol;
-	if (!mTrickle)
+	if (mEnded)
 		sdp << "a=end-of-candidates" << eol;
 
 	return sdp.str();
 }
 
-string Description::Media::type() const { return description.substr(0, description.find(' ')); }
+Description::Media::Media(const string &mline) {
+	size_t p = mline.find(' ');
+	this->type = mline.substr(0, p);
+	if (p != string::npos)
+		if (size_t q = mline.find(' ', p + 1); q != string::npos)
+			this->description = mline.substr(q + 1);
+}
 
 Description::Type Description::stringToType(const string &typeString) {
 	if (typeString == "offer")

@@ -481,7 +481,7 @@ void IceTransport::setRemoteDescription(const Description &description) {
 	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 	                                                        : Description::Role::Active;
 	mMid = description.dataMid();
-	mTrickleTimeout = description.trickleEnabled() ? 30s : 0s;
+	mTrickleTimeout = !description.ended() ? 30s : 0s;
 
 	// Warning: libnice expects "\n" as end of line
 	if (nice_agent_parse_remote_sdp(mNiceAgent.get(), description.generateSdp("\n").c_str()) < 0)
