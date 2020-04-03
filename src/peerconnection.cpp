@@ -380,8 +380,15 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 				    openDataChannels();
 				    break;
 			    case SctpTransport::State::Failed:
+				    LOG_WARNING << "SCTP transport failed";
 				    remoteCloseDataChannels();
+#if RTC_ENABLE_MEDIA
+				    // Ignore SCTP failure if media is present
+				    if (!hasMedia())
+					    changeState(State::Failed);
+#else
 				    changeState(State::Failed);
+#endif
 				    break;
 			    case SctpTransport::State::Disconnected:
 				    remoteCloseDataChannels();
