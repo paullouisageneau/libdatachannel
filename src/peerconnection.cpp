@@ -427,7 +427,7 @@ void PeerConnection::closeTransports() {
 	auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
 	auto ice = std::atomic_exchange(&mIceTransport, decltype(mIceTransport)(nullptr));
 	if (sctp || dtls || ice) {
-		std::thread t([sctp, dtls, ice]() mutable {
+		std::thread t([sctp, dtls, ice, token = mInitToken]() mutable {
 			if (sctp)
 				sctp->stop();
 			if (dtls)
