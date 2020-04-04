@@ -62,9 +62,9 @@ Description::Description(const string &sdp, Type type, Role role)
 	std::istringstream ss(sdp);
 	std::optional<Media> currentMedia;
 
-	string line;
 	bool finished;
 	do {
+		string line;
 		finished = !std::getline(ss, line) && line.empty();
 		trim_end(line);
 
