@@ -656,6 +656,61 @@ void IceTransport::LogCallback(const gchar *logDomain, GLogLevelFlags logLevel,
 	PLOG(severity) << "nice: " << message;
 }
 
+bool IceTransport::getSelectedCandidatePair(CandidateInfo *localInfo, CandidateInfo *remoteInfo) {
+	NiceCandidate *local, *remote;
+	gboolean result = nice_agent_get_selected_pair(mNiceAgent.get(), mStreamId, 1, &local, &remote);
+
+	if (!result)
+		return false;
+
+	char ipaddr[INET6_ADDRSTRLEN];
+	nice_address_to_string(&local->addr, ipaddr);
+	localInfo->address = std::string(ipaddr);
+	localInfo->port = nice_address_get_port(&local->addr);
+	localInfo->type = IceTransport::CandidateTypeToString(local->type);
+	localInfo->transportType = IceTransport::CandidateTransportTypeToString(local->transport);
+
+	nice_address_to_string(&remote->addr, ipaddr);
+	remoteInfo->address = std::string(ipaddr);
+	remoteInfo->port = nice_address_get_port(&remote->addr);
+	remoteInfo->type = IceTransport::CandidateTypeToString(remote->type);
+	remoteInfo->transportType = IceTransport::CandidateTransportTypeToString(remote->transport);
+
+	nice_candidate_free(local);
+	nice_candidate_free(remote);
+	return true;
+}
+
+const std::string IceTransport::CandidateTypeToString(NiceCandidateType type) {
+	switch (type) {
+	case NiceCandidateType::NICE_CANDIDATE_TYPE_HOST:
+		return "HOST";
+	case NiceCandidateType::NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
+		return "PEER_REFLEXIVE";
+	case NiceCandidateType::NICE_CANDIDATE_TYPE_RELAYED:
+		return "RELAYED";
+	case NiceCandidateType::NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
+		return "SERVER_REFLEXIVE";
+	default:
+		break;
+	}
+}
+
+const std::string IceTransport::CandidateTransportTypeToString(NiceCandidateTransport type) {
+	switch (type) {
+	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
+		return "TCP_ACTIVE";
+	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
+		return "TCP_PASSIVE";
+	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_SO:
+		return "TCP_SO";
+	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_UDP:
+		return "UDP";
+	default:
+		break;
+	}
+}
+
 } // namespace rtc
 
 #endif

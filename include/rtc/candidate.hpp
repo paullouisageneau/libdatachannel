@@ -25,6 +25,15 @@
 
 namespace rtc {
 
+#if not USE_JUICE
+struct CandidateInfo {
+	string address;
+	int port;
+	string type;
+	string transportType;
+};
+#endif
+
 class Candidate {
 public:
 	Candidate(string candidate, string mid = "");

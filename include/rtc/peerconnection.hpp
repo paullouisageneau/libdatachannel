@@ -87,6 +87,10 @@ public:
 	void onStateChange(std::function<void(State state)> callback);
 	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
 
+#if not USE_JUICE
+	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
+#endif
+
 private:
 	init_token mInitToken = Init::Token();
 
