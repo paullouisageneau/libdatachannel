@@ -131,3 +131,35 @@ Candidate::operator string() const {
 std::ostream &operator<<(std::ostream &out, const rtc::Candidate &candidate) {
 	return out << std::string(candidate);
 }
+
+#if not USE_JUICE
+std::ostream &operator<<(std::ostream &out, const rtc::CandidateType &type) {
+	switch (type) {
+	case rtc::CandidateType::HOST:
+		return out << "HOST";
+	case rtc::CandidateType::PEER_REFLEXIVE:
+		return out << "PEER_REFLEXIVE";
+	case rtc::CandidateType::RELAYED:
+		return out << "RELAYED";
+	case rtc::CandidateType::SERVER_REFLEXIVE:
+		return out << "SERVER_REFLEXIVE";
+	default:
+		return out << "UNKOWN";
+	}
+}
+
+std::ostream &operator<<(std::ostream &out, const rtc::CandidateTransportType &transportType) {
+	switch (transportType) {
+	case rtc::CandidateTransportType::TCP_ACTIVE:
+		return out << "TCP_ACTIVE";
+	case rtc::CandidateTransportType::TCP_PASSIVE:
+		return out << "TCP_PASSIVE";
+	case rtc::CandidateTransportType::TCP_SO:
+		return out << "TCP_SO";
+	case rtc::CandidateTransportType::UDP:
+		return out << "UDP";
+	default:
+		return out << "UNKOWN";
+	}
+}
+#endif

@@ -26,11 +26,13 @@
 namespace rtc {
 
 #if not USE_JUICE
+enum class CandidateType { HOST = 0, SERVER_REFLEXIVE, PEER_REFLEXIVE, RELAYED };
+enum class CandidateTransportType { UDP = 0, TCP_ACTIVE, TCP_PASSIVE, TCP_SO };
 struct CandidateInfo {
 	string address;
 	int port;
-	string type;
-	string transportType;
+	CandidateType type;
+	CandidateTransportType transportType;
 };
 #endif
 
@@ -55,6 +57,10 @@ private:
 } // namespace rtc
 
 std::ostream &operator<<(std::ostream &out, const rtc::Candidate &candidate);
+#if not USE_JUICE
+std::ostream &operator<<(std::ostream &out, const rtc::CandidateType &type);
+std::ostream &operator<<(std::ostream &out, const rtc::CandidateTransportType &transportType);
+#endif
 
 #endif
 

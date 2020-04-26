@@ -135,8 +135,8 @@ private:
 	static gboolean TimeoutCallback(gpointer userData);
 	static void LogCallback(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message,
 	                        gpointer user_data);
-	static const std::string CandidateTypeToString(NiceCandidateType type);
-	static const std::string CandidateTransportTypeToString(NiceCandidateTransport type);
+	static const CandidateType NiceTypeToCandidateType(NiceCandidateType type);
+	static const CandidateTransportType NiceTransportTypeToCandidateTransportType(NiceCandidateTransport type);
 #endif
 };
 

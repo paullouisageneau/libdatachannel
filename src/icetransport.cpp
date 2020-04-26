@@ -667,47 +667,43 @@ bool IceTransport::getSelectedCandidatePair(CandidateInfo *localInfo, CandidateI
 	nice_address_to_string(&local->addr, ipaddr);
 	localInfo->address = std::string(ipaddr);
 	localInfo->port = nice_address_get_port(&local->addr);
-	localInfo->type = IceTransport::CandidateTypeToString(local->type);
-	localInfo->transportType = IceTransport::CandidateTransportTypeToString(local->transport);
+	localInfo->type = IceTransport::NiceTypeToCandidateType(local->type);
+	localInfo->transportType = IceTransport::NiceTransportTypeToCandidateTransportType(local->transport);
 
 	nice_address_to_string(&remote->addr, ipaddr);
 	remoteInfo->address = std::string(ipaddr);
 	remoteInfo->port = nice_address_get_port(&remote->addr);
-	remoteInfo->type = IceTransport::CandidateTypeToString(remote->type);
-	remoteInfo->transportType = IceTransport::CandidateTransportTypeToString(remote->transport);
+	remoteInfo->type = IceTransport::NiceTypeToCandidateType(remote->type);
+	remoteInfo->transportType = IceTransport::NiceTransportTypeToCandidateTransportType(remote->transport);
 
 	nice_candidate_free(local);
 	nice_candidate_free(remote);
 	return true;
 }
 
-const std::string IceTransport::CandidateTypeToString(NiceCandidateType type) {
+const CandidateType IceTransport::NiceTypeToCandidateType(NiceCandidateType type) {
 	switch (type) {
 	case NiceCandidateType::NICE_CANDIDATE_TYPE_HOST:
-		return "HOST";
+		return CandidateType::HOST;
 	case NiceCandidateType::NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
-		return "PEER_REFLEXIVE";
+		return CandidateType::PEER_REFLEXIVE;
 	case NiceCandidateType::NICE_CANDIDATE_TYPE_RELAYED:
-		return "RELAYED";
+		return CandidateType::RELAYED;
 	case NiceCandidateType::NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
-		return "SERVER_REFLEXIVE";
-	default:
-		break;
+		return CandidateType::SERVER_REFLEXIVE;
 	}
 }
 
-const std::string IceTransport::CandidateTransportTypeToString(NiceCandidateTransport type) {
+const CandidateTransportType IceTransport::NiceTransportTypeToCandidateTransportType(NiceCandidateTransport type) {
 	switch (type) {
 	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
-		return "TCP_ACTIVE";
+		return CandidateTransportType::TCP_ACTIVE;
 	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
-		return "TCP_PASSIVE";
+		return CandidateTransportType::TCP_PASSIVE;
 	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_SO:
-		return "TCP_SO";
+		return CandidateTransportType::TCP_SO;
 	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_UDP:
-		return "UDP";
-	default:
-		break;
+		return CandidateTransportType::UDP;
 	}
 }
 
