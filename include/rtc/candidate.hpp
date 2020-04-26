@@ -26,8 +26,8 @@
 namespace rtc {
 
 #if not USE_JUICE
-enum class CandidateType { HOST = 0, SERVER_REFLEXIVE, PEER_REFLEXIVE, RELAYED };
-enum class CandidateTransportType { UDP = 0, TCP_ACTIVE, TCP_PASSIVE, TCP_SO };
+enum class CandidateType { Host = 0, ServerReflexive, PeerReflexive, Relayed };
+enum class CandidateTransportType { Udp = 0, TcpActive, TcpPassive, TcpSo };
 struct CandidateInfo {
 	string address;
 	int port;

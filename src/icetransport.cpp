@@ -684,26 +684,26 @@ bool IceTransport::getSelectedCandidatePair(CandidateInfo *localInfo, CandidateI
 const CandidateType IceTransport::NiceTypeToCandidateType(NiceCandidateType type) {
 	switch (type) {
 	case NiceCandidateType::NICE_CANDIDATE_TYPE_HOST:
-		return CandidateType::HOST;
+		return CandidateType::Host;
 	case NiceCandidateType::NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
-		return CandidateType::PEER_REFLEXIVE;
+		return CandidateType::PeerReflexive;
 	case NiceCandidateType::NICE_CANDIDATE_TYPE_RELAYED:
-		return CandidateType::RELAYED;
+		return CandidateType::Relayed;
 	case NiceCandidateType::NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
-		return CandidateType::SERVER_REFLEXIVE;
+		return CandidateType::ServerReflexive;
 	}
 }
 
 const CandidateTransportType IceTransport::NiceTransportTypeToCandidateTransportType(NiceCandidateTransport type) {
 	switch (type) {
 	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
-		return CandidateTransportType::TCP_ACTIVE;
+		return CandidateTransportType::TcpActive;
 	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
-		return CandidateTransportType::TCP_PASSIVE;
+		return CandidateTransportType::TcpPassive;
 	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_SO:
-		return CandidateTransportType::TCP_SO;
+		return CandidateTransportType::TcpSo;
 	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_UDP:
-		return CandidateTransportType::UDP;
+		return CandidateTransportType::Udp;
 	}
 }
 
