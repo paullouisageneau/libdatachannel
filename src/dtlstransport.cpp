@@ -72,8 +72,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 
 	PLOG_DEBUG << "Initializing DTLS transport (GnuTLS)";
 
-	gnutls_certificate_set_verify_function(mCertificate->credentials(), CertificateCallback);
-
 	bool active = lower->role() == Description::Role::Active;
 	unsigned int flags = GNUTLS_DATAGRAM | (active ? GNUTLS_CLIENT : GNUTLS_SERVER);
 	check_gnutls(gnutls_init(&mSession, flags));
@@ -86,6 +84,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	check_gnutls(gnutls_priority_set_direct(mSession, priorities, &err_pos),
 	             "Unable to set TLS priorities");
 
+	gnutls_certificate_set_verify_function(mCertificate->credentials(), CertificateCallback);
 	check_gnutls(
 	    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate->credentials()));
 
