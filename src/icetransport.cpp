@@ -681,8 +681,6 @@ bool IceTransport::getSelectedCandidatePair(CandidateInfo *localInfo, CandidateI
 	remoteInfo->type = IceTransport::NiceTypeToCandidateType(remote->type);
 	remoteInfo->transportType = IceTransport::NiceTransportTypeToCandidateTransportType(remote->transport);
 
-	nice_candidate_free(local);
-	nice_candidate_free(remote);
 	return true;
 }
 
