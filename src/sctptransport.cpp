@@ -594,6 +594,16 @@ const size_t SctpTransport::bytesReceived() { return mBytesReceived; }
 
 const std::chrono::milliseconds SctpTransport::rtt() {
 	sctp_paddrinfo info = {0};
+
+	struct sockaddr_storage ss;
+	struct sockaddr_in si;
+	si.sin_family = AF_INET;
+	si.sin_port = htons(mPort);
+	si.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	memcpy(&ss, &si, sizeof(struct sockaddr_in));
+	info.spinfo_address = ss;
+
 	socklen_t optlen = sizeof(info);
 	if (usrsctp_getsockopt(mSock, IPPROTO_SCTP, SCTP_GET_PEER_ADDR_INFO, &info, &optlen))
 		return std::chrono::milliseconds(0);
