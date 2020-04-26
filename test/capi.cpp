@@ -151,7 +151,6 @@ int test_capi_main() {
 	rtcConfiguration config2;
 	memset(&config2, 0, sizeof(config2));
 	// STUN server example
-	// const char *iceServers[1] = {"stun:stun.l.google.com:19302"};
 	// config2.iceServers = iceServers;
 	// config2.iceServersCount = 1;
 	// Port range example
