@@ -73,7 +73,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 	std::shuffle(servers.begin(), servers.end(), std::default_random_engine(seed));
 
-	// Pick a STUN server
+	// Pick a STUN server (TURN support is not implemented in libjuice yet)
 	for (auto &server : servers) {
 		if (!server.hostname.empty() && server.type == IceServer::Type::Stun) {
 			if (server.service.empty())
@@ -87,7 +87,12 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 		}
 	}
 
-	// TURN support is not implemented yet
+	// Port range
+	if (config.portRangeBegin > 1024 ||
+	    (config.portRangeEnd != 0 && config.portRangeEnd != 65535)) {
+		jconfig.local_port_range_begin = config.portRangeBegin;
+		jconfig.local_port_range_end = config.portRangeEnd;
+	}
 
 	// Create agent
 	mAgent = decltype(mAgent)(juice_create(&jconfig), juice_destroy);

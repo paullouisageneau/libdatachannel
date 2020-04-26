@@ -135,19 +135,29 @@ int test_capi_main() {
 
 	rtcInitLogger(RTC_LOG_DEBUG);
 
-	rtcConfiguration config;
-	memset(&config, 0, sizeof(config));
-	// const char *iceServers[1] = {"stun:stun.l.google.com:19302"};
-	// config.iceServers = iceServers;
-	// config.iceServersCount = 1;
-
 	// Create peer 1
-	peer1 = createPeer(&config);
+	rtcConfiguration config1;
+	memset(&config1, 0, sizeof(config1));
+	// STUN server example
+	// const char *iceServers[1] = {"stun:stun.l.google.com:19302"};
+	// config1.iceServers = iceServers;
+	// config1.iceServersCount = 1;
+
+	peer1 = createPeer(&config1);
 	if (!peer1)
 		goto error;
 
 	// Create peer 2
-	peer2 = createPeer(&config);
+	rtcConfiguration config2;
+	memset(&config2, 0, sizeof(config2));
+	// STUN server example
+	// config2.iceServers = iceServers;
+	// config2.iceServersCount = 1;
+	// Port range example
+	config2.portRangeBegin = 5000;
+	config2.portRangeEnd = 6000;
+
+	peer2 = createPeer(&config2);
 	if (!peer2)
 		goto error;
 
@@ -184,6 +194,7 @@ int test_capi_main() {
 	deletePeer(peer1);
 	sleep(1);
 	deletePeer(peer2);
+	sleep(1);
 
 	printf("Success\n");
 	return 0;

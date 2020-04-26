@@ -31,12 +31,20 @@ template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 void test_connectivity() {
 	InitLogger(LogLevel::Debug);
 
-	Configuration config;
-	// config.iceServers.emplace_back("stun:stun.l.google.com:19302");
+	Configuration config1;
+	// STUN server example
+	// config1.iceServers.emplace_back("stun:stun.l.google.com:19302");
 
-	auto pc1 = std::make_shared<PeerConnection>(config);
+	auto pc1 = std::make_shared<PeerConnection>(config1);
 
-	auto pc2 = std::make_shared<PeerConnection>(config);
+	Configuration config2;
+	// STUN server example
+	// config2.iceServers.emplace_back("stun:stun.l.google.com:19302");
+	// Port range example
+	config2.portRangeBegin = 5000;
+	config2.portRangeEnd = 6000;
+
+	auto pc2 = std::make_shared<PeerConnection>(config2);
 
 	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](const Description &sdp) {
 		auto pc2 = wpc2.lock();
@@ -130,6 +138,7 @@ void test_connectivity() {
 	pc1->close();
 	this_thread::sleep_for(1s);
 	pc2->close();
+	this_thread::sleep_for(1s);
 
 	cout << "Success" << endl;
 }
