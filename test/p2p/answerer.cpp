@@ -129,10 +129,12 @@ int main(int argc, char **argv) {
 			}
 			CandidateInfo local, remote;
 			if (pc->getSelectedCandidatePair(&local, &remote)) {
-				cout << "Local: " << local.address << ":" << local.port << " " << local.type << " "
-				     << local.transportType << endl;
-				cout << "Remote: " << remote.address << ":" << remote.port << " " << remote.type
-				     << " " << remote.transportType << endl;
+				cout << "Local Candidate: " << local.address << ":" << local.port << " "
+				     << local.type << " " << local.transportType << endl;
+				cout << "Remote Candidate: " << remote.address << ":" << remote.port << " "
+				     << remote.type << " " << remote.transportType << endl;
+				cout << "Bytes Sent:" << pc->bytesSent() << " Bytes Received:" << pc->bytesReceived()
+				     << " Round-Trip Time:" << pc->rtt().count() << " ms" << endl;
 			} else
 				cout << "Could not get Candidate Pair Info" << endl;
 			break;

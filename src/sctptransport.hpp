@@ -56,9 +56,9 @@ public:
 
 	// Stats
 	void clearStats();
-	const unsigned int bytesSent();
-	const unsigned int bytesReceived();
-	const unsigned int rttInMs();
+	const size_t bytesSent();
+	const size_t bytesReceived();
+	const std::chrono::milliseconds rtt();
 
 private:
 	// Order seems wrong but these are the actual values
@@ -108,7 +108,7 @@ private:
 	std::atomic<State> mState;
 
 	// Stats
-	unsigned int mBytesSent = 0, mBytesReceived = 0;
+	std::atomic<size_t> mBytesSent = 0, mBytesReceived = 0;
 
 	binary mPartialRecv, mPartialStringData, mPartialBinaryData;
 

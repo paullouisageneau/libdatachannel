@@ -90,9 +90,9 @@ public:
 	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
 
 	// Stats
-	const unsigned int bytesSent();
-	const unsigned int bytesReceived();
-	const unsigned int rttInMs();
+	const size_t bytesSent();
+	const size_t bytesReceived();
+	const std::chrono::milliseconds rtt();
 
 private:
 	init_token mInitToken = Init::Token();

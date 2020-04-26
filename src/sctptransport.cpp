@@ -471,10 +471,11 @@ void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, Payl
 
 	case PPID_STRING:
 		if (mPartialStringData.empty()) {
-			recv(make_message(data, data + len, Message::String, sid));
 			mBytesReceived += len;
+			recv(make_message(data, data + len, Message::String, sid));
 		} else {
 			mPartialStringData.insert(mPartialStringData.end(), data, data + len);
+			mBytesReceived += mPartialStringData.size();
 			recv(make_message(mPartialStringData.begin(), mPartialStringData.end(), Message::String,
 			                  sid));
 			mPartialStringData.clear();
@@ -494,10 +495,11 @@ void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, Payl
 
 	case PPID_BINARY:
 		if (mPartialBinaryData.empty()) {
-			recv(make_message(data, data + len, Message::Binary, sid));
 			mBytesReceived += len;
+			recv(make_message(data, data + len, Message::Binary, sid));
 		} else {
 			mPartialBinaryData.insert(mPartialBinaryData.end(), data, data + len);
+			mBytesReceived += mPartialStringData.size();
 			recv(make_message(mPartialBinaryData.begin(), mPartialBinaryData.end(), Message::Binary,
 			                  sid));
 			mPartialBinaryData.clear();
@@ -586,16 +588,16 @@ void SctpTransport::clearStats() {
 	mBytesSent = 0;
 }
 
-const unsigned int SctpTransport::bytesSent() { return mBytesSent; }
+const size_t SctpTransport::bytesSent() { return mBytesSent; }
 
-const unsigned int SctpTransport::bytesReceived() { return mBytesReceived; }
+const size_t SctpTransport::bytesReceived() { return mBytesReceived; }
 
-const unsigned int SctpTransport::rttInMs() {
-	sctp_paddrinfo info= {0};
+const std::chrono::milliseconds SctpTransport::rtt() {
+	sctp_paddrinfo info = {0};
 	socklen_t optlen = sizeof(info);
 	if (usrsctp_getsockopt(mSock, IPPROTO_SCTP, SCTP_GET_PEER_ADDR_INFO, &info, &optlen))
-		return 0;
-	return info.spinfo_srtt;
+		return std::chrono::milliseconds(0);
+	return std::chrono::milliseconds(info.spinfo_srtt);
 }
 
 int SctpTransport::RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data,
