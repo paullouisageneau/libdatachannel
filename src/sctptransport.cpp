@@ -445,6 +445,7 @@ int SctpTransport::handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_
 		mWritten = true;
 		mWrittenOnce = true;
 		mWrittenCondition.notify_all();
+		mBytesSent += len;
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "SCTP write: " << e.what();
@@ -471,6 +472,7 @@ void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, Payl
 	case PPID_STRING:
 		if (mPartialStringData.empty()) {
 			recv(make_message(data, data + len, Message::String, sid));
+			mBytesReceived += len;
 		} else {
 			mPartialStringData.insert(mPartialStringData.end(), data, data + len);
 			recv(make_message(mPartialStringData.begin(), mPartialStringData.end(), Message::String,
@@ -493,6 +495,7 @@ void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, Payl
 	case PPID_BINARY:
 		if (mPartialBinaryData.empty()) {
 			recv(make_message(data, data + len, Message::Binary, sid));
+			mBytesReceived += len;
 		} else {
 			mPartialBinaryData.insert(mPartialBinaryData.end(), data, data + len);
 			recv(make_message(mPartialBinaryData.begin(), mPartialBinaryData.end(), Message::Binary,
@@ -576,6 +579,23 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 		// Ignore
 		break;
 	}
+}
+
+void SctpTransport::clearStats() {
+	mBytesReceived = 0;
+	mBytesSent = 0;
+}
+
+const unsigned int SctpTransport::bytesSent() { return mBytesSent; }
+
+const unsigned int SctpTransport::bytesReceived() { return mBytesReceived; }
+
+const unsigned int SctpTransport::rttInMs() {
+	sctp_paddrinfo info= {0};
+	socklen_t optlen = sizeof(info);
+	if (usrsctp_getsockopt(mSock, IPPROTO_SCTP, SCTP_GET_PEER_ADDR_INFO, &info, &optlen))
+		return 0;
+	return info.spinfo_srtt;
 }
 
 int SctpTransport::RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data,

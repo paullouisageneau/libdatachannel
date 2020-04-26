@@ -91,6 +91,11 @@ public:
 	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
 #endif
 
+	// Stats
+	const unsigned int bytesSent();
+	const unsigned int bytesReceived();
+	const unsigned int rttInMs();
+
 private:
 	init_token mInitToken = Init::Token();
 

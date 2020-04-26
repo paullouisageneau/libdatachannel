@@ -54,6 +54,12 @@ public:
 	void flush();
 	void reset(unsigned int stream);
 
+	// Stats
+	void clearStats();
+	const unsigned int bytesSent();
+	const unsigned int bytesReceived();
+	const unsigned int rttInMs();
+
 private:
 	// Order seems wrong but these are the actual values
 	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-8
@@ -100,6 +106,9 @@ private:
 
 	state_callback mStateChangeCallback;
 	std::atomic<State> mState;
+
+	// Stats
+	unsigned int mBytesSent = 0, mBytesReceived = 0;
 
 	binary mPartialRecv, mPartialStringData, mPartialBinaryData;
 

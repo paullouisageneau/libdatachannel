@@ -576,6 +576,27 @@ bool PeerConnection::getSelectedCandidatePair(CandidateInfo *local, CandidateInf
 }
 #endif
 
+const unsigned int PeerConnection::bytesSent() {
+	auto sctpTransport = std::atomic_load(&mSctpTransport);
+	if (sctpTransport)
+		return sctpTransport->bytesSent();
+	return 0;
+}
+
+const unsigned int PeerConnection::bytesReceived() {
+	auto sctpTransport = std::atomic_load(&mSctpTransport);
+	if (sctpTransport)
+		return sctpTransport->bytesReceived();
+	return 0;
+}
+
+const unsigned int PeerConnection::rttInMs() {
+	auto sctpTransport = std::atomic_load(&mSctpTransport);
+	if (sctpTransport)
+		return sctpTransport->rttInMs();
+	return 0;
+}
+
 } // namespace rtc
 
 std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &state) {
