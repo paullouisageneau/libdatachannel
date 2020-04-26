@@ -364,6 +364,8 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 
 	if (ret >= 0) {
 		PLOG_VERBOSE << "SCTP sent size=" << message->size();
+		if (message->type == Message::Type::Binary || message->type == Message::Type::String)
+			mBytesSent += message->size();
 		return true;
 	} else if (errno == EWOULDBLOCK || errno == EAGAIN) {
 		PLOG_VERBOSE << "SCTP sending not possible";
@@ -445,7 +447,6 @@ int SctpTransport::handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_
 		mWritten = true;
 		mWrittenOnce = true;
 		mWrittenCondition.notify_all();
-		mBytesSent += len;
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "SCTP write: " << e.what();
@@ -593,21 +594,12 @@ const size_t SctpTransport::bytesSent() { return mBytesSent; }
 const size_t SctpTransport::bytesReceived() { return mBytesReceived; }
 
 const std::chrono::milliseconds SctpTransport::rtt() {
-	sctp_paddrinfo info = {0};
+	struct sctp_status status = {};
+	socklen_t len = sizeof(status);
 
-	struct sockaddr_storage ss;
-	struct sockaddr_in si;
-	si.sin_family = AF_INET;
-	si.sin_port = htons(mPort);
-	si.sin_addr.s_addr = htonl(INADDR_ANY);
-
-	memcpy(&ss, &si, sizeof(struct sockaddr_in));
-	info.spinfo_address = ss;
-
-	socklen_t optlen = sizeof(info);
-	if (usrsctp_getsockopt(mSock, IPPROTO_SCTP, SCTP_GET_PEER_ADDR_INFO, &info, &optlen))
+	if (usrsctp_getsockopt(this->mSock, IPPROTO_SCTP, SCTP_STATUS, &status, &len))
 		return std::chrono::milliseconds(0);
-	return std::chrono::milliseconds(info.spinfo_srtt);
+	return std::chrono::milliseconds(status.sstat_primary.spinfo_srtt);
 }
 
 int SctpTransport::RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data,

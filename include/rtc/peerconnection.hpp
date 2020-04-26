@@ -90,6 +90,7 @@ public:
 	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
 
 	// Stats
+	void clearStats();
 	const size_t bytesSent();
 	const size_t bytesReceived();
 	const std::chrono::milliseconds rtt();

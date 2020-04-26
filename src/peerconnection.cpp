@@ -579,6 +579,12 @@ bool PeerConnection::getSelectedCandidatePair(CandidateInfo *local, CandidateInf
 #endif
 }
 
+void PeerConnection::clearStats(){
+auto sctpTransport = std::atomic_load(&mSctpTransport);
+	if (sctpTransport)
+		return sctpTransport->clearStats();	
+}
+
 const size_t PeerConnection::bytesSent() {
 	auto sctpTransport = std::atomic_load(&mSctpTransport);
 	if (sctpTransport)
