@@ -23,6 +23,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 // libdatachannel C API
 
 typedef enum {
@@ -54,6 +56,8 @@ typedef enum {
 typedef struct {
 	const char **iceServers;
 	int iceServersCount;
+	uint16_t portRangeBegin;
+	uint16_t portRangeEnd;
 } rtcConfiguration;
 
 typedef void (*dataChannelCallbackFunc)(int dc, void *ptr);

@@ -114,6 +114,11 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 	for (int i = 0; i < config->iceServersCount; ++i)
 		c.iceServers.emplace_back(string(config->iceServers[i]));
 
+	if (config->portRangeBegin || config->portRangeEnd) {
+		c.portRangeBegin = config->portRangeBegin;
+		c.portRangeEnd = config->portRangeEnd;
+	}
+
 	return emplacePeerConnection(std::make_shared<PeerConnection>(c));
 }
 
