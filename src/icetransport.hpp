@@ -37,7 +37,7 @@
 #include <thread>
 
 namespace rtc {
-
+	
 class IceTransport : public Transport {
 public:
 #if USE_JUICE
@@ -56,6 +56,8 @@ public:
 		Completed = NICE_COMPONENT_STATE_READY,
 		Failed = NICE_COMPONENT_STATE_FAILED,
 	};
+
+	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
 #endif
 	enum class GatheringState { New = 0, InProgress = 1, Complete = 2 };
 
@@ -133,6 +135,8 @@ private:
 	static gboolean TimeoutCallback(gpointer userData);
 	static void LogCallback(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message,
 	                        gpointer user_data);
+	static const CandidateType NiceTypeToCandidateType(NiceCandidateType type);
+	static const CandidateTransportType NiceTransportTypeToCandidateTransportType(NiceCandidateTransport type);
 #endif
 };
 

@@ -76,7 +76,8 @@ int main(int argc, char **argv) {
 		     << "* 0: Exit /"
 		     << " 1: Enter remote description /"
 		     << " 2: Enter remote candidate /"
-		     << " 3: Send message *" << endl
+		     << " 3: Send message /"
+		     << " 4: Print Connection Info *" << endl
 		     << "[Command]: ";
 
 		int command = -1;
@@ -118,6 +119,22 @@ int main(int argc, char **argv) {
 			string message;
 			getline(cin, message);
 			dc->send(message);
+			break;
+		}
+		case 4: {
+			// Connection Info
+			if (!dc || !dc->isOpen()) {
+				cout << "** Channel is not Open ** ";
+				break;
+			}
+			CandidateInfo local, remote;
+			if (pc->getSelectedCandidatePair(&local, &remote)) {
+				cout << "Local: " << local.address << ":" << local.port << " " << local.type << " "
+				     << local.transportType << endl;
+				cout << "Remote: " << remote.address << ":" << remote.port << " " << remote.type
+				     << " " << remote.transportType << endl;
+			} else
+				cout << "Could not get Candidate Pair Info" << endl;
 			break;
 		}
 		default: {

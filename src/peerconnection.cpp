@@ -569,6 +569,13 @@ void PeerConnection::resetCallbacks() {
 	mGatheringStateChangeCallback = nullptr;
 }
 
+#if not USE_JUICE
+bool PeerConnection::getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote) {
+	auto iceTransport = std::atomic_load(&mIceTransport);
+	return iceTransport->getSelectedCandidatePair(local, remote);
+}
+#endif
+
 } // namespace rtc
 
 std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &state) {
