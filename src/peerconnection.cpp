@@ -569,12 +569,15 @@ void PeerConnection::resetCallbacks() {
 	mGatheringStateChangeCallback = nullptr;
 }
 
-#if not USE_JUICE
 bool PeerConnection::getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote) {
+#if not USE_JUICE
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	return iceTransport->getSelectedCandidatePair(local, remote);
-}
+#else
+	PLOG_WARNING << "getSelectedCandidatePair is not implemented for libjuice";
+	return false;
 #endif
+}
 
 } // namespace rtc
 

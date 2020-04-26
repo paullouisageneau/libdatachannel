@@ -25,7 +25,6 @@
 
 namespace rtc {
 
-#if not USE_JUICE
 enum class CandidateType { Host = 0, ServerReflexive, PeerReflexive, Relayed };
 enum class CandidateTransportType { Udp = 0, TcpActive, TcpPassive, TcpSo };
 struct CandidateInfo {
@@ -34,7 +33,6 @@ struct CandidateInfo {
 	CandidateType type;
 	CandidateTransportType transportType;
 };
-#endif
 
 class Candidate {
 public:
@@ -57,10 +55,8 @@ private:
 } // namespace rtc
 
 std::ostream &operator<<(std::ostream &out, const rtc::Candidate &candidate);
-#if not USE_JUICE
 std::ostream &operator<<(std::ostream &out, const rtc::CandidateType &type);
 std::ostream &operator<<(std::ostream &out, const rtc::CandidateTransportType &transportType);
-#endif
 
 #endif
 

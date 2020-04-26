@@ -132,7 +132,6 @@ std::ostream &operator<<(std::ostream &out, const rtc::Candidate &candidate) {
 	return out << std::string(candidate);
 }
 
-#if not USE_JUICE
 std::ostream &operator<<(std::ostream &out, const rtc::CandidateType &type) {
 	switch (type) {
 	case rtc::CandidateType::Host:
@@ -162,4 +161,3 @@ std::ostream &operator<<(std::ostream &out, const rtc::CandidateTransportType &t
 		return out << "Unknown";
 	}
 }
-#endif
