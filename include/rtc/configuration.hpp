@@ -51,8 +51,19 @@ struct IceServer {
 	RelayType relayType;
 };
 
+struct ProxyServer {
+	enum class Type { None = 0, Socks5, Http, Last = Http };
+
+	Type type = Type::None;
+	string ip;
+	uint16_t  port;
+	string username;
+	string password;
+};
+
 struct Configuration {
 	std::vector<IceServer> iceServers;
+	ProxyServer proxyServer;
 	bool enableIceTcp = false;
 	uint16_t portRangeBegin = 1024;
 	uint16_t portRangeEnd = 65535;
