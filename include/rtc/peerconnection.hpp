@@ -89,6 +89,12 @@ public:
 
 	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
 
+	// Stats
+	void clearStats();
+	size_t bytesSent();
+	size_t bytesReceived();
+	std::optional<std::chrono::milliseconds> rtt();
+
 private:
 	init_token mInitToken = Init::Token();
 

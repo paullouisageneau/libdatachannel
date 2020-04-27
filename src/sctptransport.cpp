@@ -364,6 +364,8 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 
 	if (ret >= 0) {
 		PLOG_VERBOSE << "SCTP sent size=" << message->size();
+		if (message->type == Message::Type::Binary || message->type == Message::Type::String)
+			mBytesSent += message->size();
 		return true;
 	} else if (errno == EWOULDBLOCK || errno == EAGAIN) {
 		PLOG_VERBOSE << "SCTP sending not possible";
@@ -470,9 +472,11 @@ void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, Payl
 
 	case PPID_STRING:
 		if (mPartialStringData.empty()) {
+			mBytesReceived += len;
 			recv(make_message(data, data + len, Message::String, sid));
 		} else {
 			mPartialStringData.insert(mPartialStringData.end(), data, data + len);
+			mBytesReceived += mPartialStringData.size();
 			recv(make_message(mPartialStringData.begin(), mPartialStringData.end(), Message::String,
 			                  sid));
 			mPartialStringData.clear();
@@ -492,9 +496,11 @@ void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, Payl
 
 	case PPID_BINARY:
 		if (mPartialBinaryData.empty()) {
+			mBytesReceived += len;
 			recv(make_message(data, data + len, Message::Binary, sid));
 		} else {
 			mPartialBinaryData.insert(mPartialBinaryData.end(), data, data + len);
+			mBytesReceived += mPartialStringData.size();
 			recv(make_message(mPartialBinaryData.begin(), mPartialBinaryData.end(), Message::Binary,
 			                  sid));
 			mPartialBinaryData.clear();
@@ -576,6 +582,26 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 		// Ignore
 		break;
 	}
+}
+
+void SctpTransport::clearStats() {
+	mBytesReceived = 0;
+	mBytesSent = 0;
+}
+
+size_t SctpTransport::bytesSent() { return mBytesSent; }
+
+size_t SctpTransport::bytesReceived() { return mBytesReceived; }
+
+std::optional<std::chrono::milliseconds> SctpTransport::rtt() {
+	struct sctp_status status = {};
+	socklen_t len = sizeof(status);
+
+	if (usrsctp_getsockopt(this->mSock, IPPROTO_SCTP, SCTP_STATUS, &status, &len)) {
+		PLOG_WARNING << "Could not read SCTP_STATUS";
+		return std::nullopt;
+	}
+	return std::chrono::milliseconds(status.sstat_primary.spinfo_srtt);
 }
 
 int SctpTransport::RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data,
