@@ -589,16 +589,18 @@ void SctpTransport::clearStats() {
 	mBytesSent = 0;
 }
 
-const size_t SctpTransport::bytesSent() { return mBytesSent; }
+size_t SctpTransport::bytesSent() { return mBytesSent; }
 
-const size_t SctpTransport::bytesReceived() { return mBytesReceived; }
+size_t SctpTransport::bytesReceived() { return mBytesReceived; }
 
-const std::chrono::milliseconds SctpTransport::rtt() {
+std::optional<std::chrono::milliseconds> SctpTransport::rtt() {
 	struct sctp_status status = {};
 	socklen_t len = sizeof(status);
 
-	if (usrsctp_getsockopt(this->mSock, IPPROTO_SCTP, SCTP_STATUS, &status, &len))
-		return std::chrono::milliseconds(0);
+	if (usrsctp_getsockopt(this->mSock, IPPROTO_SCTP, SCTP_STATUS, &status, &len)) {
+		PLOG_WARNING << "Could not read SCTP_STATUS";
+		return std::nullopt;
+	}
 	return std::chrono::milliseconds(status.sstat_primary.spinfo_srtt);
 }
 

@@ -128,13 +128,19 @@ int main(int argc, char **argv) {
 				break;
 			}
 			CandidateInfo local, remote;
+			std::optional<std::chrono::milliseconds> rtt = pc->rtt();
 			if (pc->getSelectedCandidatePair(&local, &remote)) {
-				cout << "Local Candidate: " << local.address << ":" << local.port << " "
-				     << local.type << " " << local.transportType << endl;
-				cout << "Remote Candidate: " << remote.address << ":" << remote.port << " "
-				     << remote.type << " " << remote.transportType << endl;
-				cout << "Bytes Sent:" << pc->bytesSent() << " / Bytes Received:" << pc->bytesReceived()
-				     << " / Round-Trip Time:" << pc->rtt().count() << " ms" << endl;
+				cout << "Local: " << local.address << ":" << local.port << " " << local.type << " "
+				     << local.transportType << endl;
+				cout << "Remote: " << remote.address << ":" << remote.port << " " << remote.type
+				     << " " << remote.transportType << endl;
+				cout << "Bytes Sent:" << pc->bytesSent()
+				     << " / Bytes Received:" << pc->bytesReceived() << " / Round-Trip Time:";
+				if (rtt.has_value())
+					cout << rtt.value().count();
+				else
+					cout << "null";
+				cout << " ms";
 			} else
 				cout << "Could not get Candidate Pair Info" << endl;
 			break;

@@ -56,9 +56,9 @@ public:
 
 	// Stats
 	void clearStats();
-	const size_t bytesSent();
-	const size_t bytesReceived();
-	const std::chrono::milliseconds rtt();
+	size_t bytesSent();
+	size_t bytesReceived();
+	std::optional<std::chrono::milliseconds> rtt();
 
 private:
 	// Order seems wrong but these are the actual values
