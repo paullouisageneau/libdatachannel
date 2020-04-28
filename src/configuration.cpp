@@ -38,16 +38,17 @@ IceServer::IceServer(const string &url) {
 	});
 
 	string scheme = opt[2].value_or("stun");
+	relayType = RelayType::TurnUdp;
 	if (scheme == "stun" || scheme == "STUN")
 		type = Type::Stun;
 	else if (scheme == "turn" || scheme == "TURN")
 		type = Type::Turn;
-	else if (scheme == "turns" || scheme == "TURNS")
+	else if (scheme == "turns" || scheme == "TURNS") {
 		type = Type::Turn;
-	else
+		relayType = RelayType::TurnTls;
+	} else
 		throw std::invalid_argument("Unknown ICE server protocol: " + scheme);
 
-	relayType = RelayType::TurnUdp;
 	if (auto &query = opt[15]) {
 		if (query->find("transport=udp") != string::npos)
 			relayType = RelayType::TurnUdp;
