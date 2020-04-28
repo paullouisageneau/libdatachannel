@@ -54,7 +54,7 @@ struct IceServer {
 struct ProxyServer {
 	enum class Type { None = 0, Socks5, Http, Last = Http };
 
-	Type type = Type::None;
+	Type type;
 	string ip;
 	uint16_t  port;
 	string username;
@@ -63,7 +63,7 @@ struct ProxyServer {
 
 struct Configuration {
 	std::vector<IceServer> iceServers;
-	ProxyServer proxyServer;
+	std::optional<ProxyServer> proxyServer;
 	bool enableIceTcp = false;
 	uint16_t portRangeBegin = 1024;
 	uint16_t portRangeEnd = 65535;

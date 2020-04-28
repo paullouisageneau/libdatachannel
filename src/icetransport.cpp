@@ -320,15 +320,15 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp-timeout", 200, nullptr);
 
 	// Proxy
-	if (config.proxyServer.type != ProxyServer::Type::None) {
-		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-type", config.proxyServer.type, nullptr);
-		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-ip", config.proxyServer.ip.c_str(),
+	if (config.proxyServer.has_value()) {
+		ProxyServer proxyServer = config.proxyServer.value();
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-type", proxyServer.type, nullptr);
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-ip", proxyServer.ip.c_str(), nullptr);
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-port", proxyServer.port, nullptr);
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-username", proxyServer.username.c_str(),
 		             nullptr);
-		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-port", config.proxyServer.port, nullptr);
-		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-username",
-		             config.proxyServer.username.c_str(), nullptr);
-		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-password",
-		             config.proxyServer.password.c_str(), nullptr);
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-password", proxyServer.password.c_str(),
+		             nullptr);
 	}
 
 	// Randomize order
