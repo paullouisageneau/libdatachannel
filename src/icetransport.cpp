@@ -319,6 +319,18 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp", FALSE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp-timeout", 200, nullptr);
 
+	// Proxy
+	if (config.proxyServer.has_value()) {
+		ProxyServer proxyServer = config.proxyServer.value();
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-type", proxyServer.type, nullptr);
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-ip", proxyServer.ip.c_str(), nullptr);
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-port", proxyServer.port, nullptr);
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-username", proxyServer.username.c_str(),
+		             nullptr);
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-password", proxyServer.password.c_str(),
+		             nullptr);
+	}
+
 	// Randomize order
 	std::vector<IceServer> servers = config.iceServers;
 	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -673,13 +685,15 @@ bool IceTransport::getSelectedCandidatePair(CandidateInfo *localInfo, CandidateI
 	localInfo->address = std::string(ipaddr);
 	localInfo->port = nice_address_get_port(&local->addr);
 	localInfo->type = IceTransport::NiceTypeToCandidateType(local->type);
-	localInfo->transportType = IceTransport::NiceTransportTypeToCandidateTransportType(local->transport);
+	localInfo->transportType =
+	    IceTransport::NiceTransportTypeToCandidateTransportType(local->transport);
 
 	nice_address_to_string(&remote->addr, ipaddr);
 	remoteInfo->address = std::string(ipaddr);
 	remoteInfo->port = nice_address_get_port(&remote->addr);
 	remoteInfo->type = IceTransport::NiceTypeToCandidateType(remote->type);
-	remoteInfo->transportType = IceTransport::NiceTransportTypeToCandidateTransportType(remote->transport);
+	remoteInfo->transportType =
+	    IceTransport::NiceTransportTypeToCandidateTransportType(remote->transport);
 
 	return true;
 }
@@ -697,7 +711,8 @@ const CandidateType IceTransport::NiceTypeToCandidateType(NiceCandidateType type
 	}
 }
 
-const CandidateTransportType IceTransport::NiceTransportTypeToCandidateTransportType(NiceCandidateTransport type) {
+const CandidateTransportType
+IceTransport::NiceTransportTypeToCandidateTransportType(NiceCandidateTransport type) {
 	switch (type) {
 	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
 		return CandidateTransportType::TcpActive;
