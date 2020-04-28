@@ -84,4 +84,7 @@ IceServer::IceServer(string hostname_, string service_, string username_, string
     : hostname(std::move(hostname_)), service(std::move(service_)), type(Type::Turn),
       username(std::move(username_)), password(std::move(password_)), relayType(relayType_) {}
 
+ProxyServer::ProxyServer(Type type_, string ip_, uint16_t port_, string username_, string password_)
+    : type(type_), ip(ip_), port(port_), username(username_), password(password_) {}
+
 } // namespace rtc
