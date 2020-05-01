@@ -17,6 +17,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
 if(WIN32)
+	add_definitions(-DWIN32_LEAN_AND_MEAN)
 	if (MSYS OR MINGW)
 		add_definitions(-DSCTP_STDINT_INCLUDE=<stdint.h>)
 	endif()
