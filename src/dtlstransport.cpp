@@ -569,7 +569,8 @@ int DtlsTransport::BioMethodWrite(BIO *bio, const char *in, int inl) {
 	if (!transport)
 		return -1;
 	auto b = reinterpret_cast<const byte *>(in);
-	return transport->outgoing(make_message(b, b + inl)) ? inl : 0;
+	transport->outgoing(make_message(b, b + inl));
+	return inl;
 }
 
 long DtlsTransport::BioMethodCtrl(BIO *bio, int cmd, long num, void *ptr) {
