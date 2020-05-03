@@ -503,7 +503,9 @@ void DtlsTransport::runRecvLoop() {
 					if (!check_openssl_ret(mSsl, ret, "Handshake failed"))
 						break;
 
-					DTLSv1_handle_timeout(mSsl);
+					// Warning: This function breaks the usual return value convention
+					if (DTLSv1_handle_timeout(mSsl) < 0)
+						throw std::runtime_error("Handshake timeout"); // write BIO can't fail
 				}
 			}
 
@@ -570,7 +572,7 @@ int DtlsTransport::BioMethodWrite(BIO *bio, const char *in, int inl) {
 		return -1;
 	auto b = reinterpret_cast<const byte *>(in);
 	transport->outgoing(make_message(b, b + inl));
-	return inl;
+	return inl; // can't fail
 }
 
 long DtlsTransport::BioMethodCtrl(BIO *bio, int cmd, long num, void *ptr) {
