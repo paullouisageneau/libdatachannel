@@ -89,8 +89,10 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate->credentials()));
 
 	gnutls_dtls_set_mtu(mSession, 1280 - 40 - 8); // min MTU over UDP/IPv6 (only for handshake)
-	gnutls_dtls_set_timeouts(mSession, 400, 60000);
-	gnutls_handshake_set_timeout(mSession, 60000);
+	gnutls_dtls_set_timeouts(mSession,
+	                         1000,   // 1s retransmission timeout recommended by RFC 6347
+	                         30000); // 30s total timeout
+	gnutls_handshake_set_timeout(mSession, 30000);
 
 	gnutls_session_set_ptr(mSession, this);
 	gnutls_transport_set_ptr(mSession, this);
