@@ -115,7 +115,7 @@ void test_connectivity() {
 	});
 
 	int attempts = 10;
-	while ((!dc2 || !dc2->isOpen()) && attempts--)
+	while ((!dc2 || !dc2->isOpen() || !dc1->isOpen()) && attempts--)
 		this_thread::sleep_for(1s);
 
 	if (pc1->state() != PeerConnection::State::Connected &&
