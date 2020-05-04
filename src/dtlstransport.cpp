@@ -88,7 +88,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	check_gnutls(
 	    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate->credentials()));
 
-	gnutls_dtls_set_mtu(mSession, 1280 - 40 - 8); // min MTU over UDP/IPv6 (only for handshake)
 	gnutls_dtls_set_timeouts(mSession,
 	                         1000,   // 1s retransmission timeout recommended by RFC 6347
 	                         30000); // 30s total timeout
@@ -161,6 +160,7 @@ void DtlsTransport::runRecvLoop() {
 	// Handshake loop
 	try {
 		changeState(State::Connecting);
+		gnutls_dtls_set_mtu(mSession, 1280 - 40 - 8); // min MTU over UDP/IPv6
 
 		int ret;
 		do {
@@ -184,7 +184,7 @@ void DtlsTransport::runRecvLoop() {
 
 	// Receive loop
 	try {
-		PLOG_DEBUG << "DTLS handshake done";
+		PLOG_INFO << "DTLS handshake done";
 		changeState(State::Connected);
 
 		const size_t bufferSize = maxMtu;
@@ -391,7 +391,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 		throw std::runtime_error("Unable to create SSL instance");
 
 	SSL_set_ex_data(mSsl, TransportExIndex, this);
-	SSL_set_mtu(mSsl, 1280 - 40 - 8); // min MTU over UDP/IPv6
 
 	if (lower->role() == Description::Role::Active)
 		SSL_set_connect_state(mSsl);
@@ -465,6 +464,7 @@ void DtlsTransport::runRecvLoop() {
 	const size_t maxMtu = 4096;
 	try {
 		changeState(State::Connecting);
+		SSL_set_mtu(mSsl, 1280 - 40 - 8); // min MTU over UDP/IPv6
 
 		// Initiate the handshake
 		int ret = SSL_do_handshake(mSsl);
@@ -485,12 +485,12 @@ void DtlsTransport::runRecvLoop() {
 						break;
 
 					if (SSL_is_init_finished(mSsl)) {
-						PLOG_DEBUG << "DTLS handshake done";
-						changeState(State::Connected);
-
 						// RFC 8261: DTLS MUST support sending messages larger than the current path
 						// MTU See https://tools.ietf.org/html/rfc8261#section-5
 						SSL_set_mtu(mSsl, maxMtu + 1);
+
+						PLOG_INFO << "DTLS handshake done";
+						changeState(State::Connected);
 					}
 				} else {
 					int ret = SSL_read(mSsl, buffer, bufferSize);
