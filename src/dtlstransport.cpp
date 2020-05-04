@@ -513,8 +513,15 @@ void DtlsTransport::runRecvLoop() {
 				struct timeval timeout = {};
 				if (mState == State::Connecting && DTLSv1_get_timeout(mSsl, &timeout)) {
 					duration = milliseconds(timeout.tv_sec * 1000 + timeout.tv_usec / 1000);
-					LOG_VERBOSE << "OpenSSL DTLS retransmit timeout is " << duration->count()
-					            << "ms";
+					// Also handle handshake timeout manually because OpenSSL actually doesn't...
+					// OpenSSL backs off exponentially in base 2 starting from the recommended 1s
+					// so this allows for 5 retransmissions and fails after roughly 30s.
+					if (duration > 30s) {
+						throw std::runtime_error("Handshake timeout");
+					} else {
+						LOG_VERBOSE << "OpenSSL DTLS retransmit timeout is " << duration->count()
+						            << "ms";
+					}
 				}
 			}
 
