@@ -168,7 +168,7 @@ int test_capi_main() {
 	rtcSetMessageCallback(peer1->dc, messageCallback);
 
 	attempts = 10;
-	while (!peer2->connected && attempts--)
+	while (!peer2->connected && !peer1->connected && attempts--)
 		sleep(1);
 
 	if (peer1->state != RTC_CONNECTED || peer2->state != RTC_CONNECTED) {

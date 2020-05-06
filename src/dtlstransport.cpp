@@ -88,9 +88,10 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	check_gnutls(
 	    gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCertificate->credentials()));
 
-	gnutls_dtls_set_mtu(mSession, 1280 - 40 - 8); // min MTU over UDP/IPv6 (only for handshake)
-	gnutls_dtls_set_timeouts(mSession, 400, 60000);
-	gnutls_handshake_set_timeout(mSession, 60000);
+	gnutls_dtls_set_timeouts(mSession,
+	                         1000,   // 1s retransmission timeout recommended by RFC 6347
+	                         30000); // 30s total timeout
+	gnutls_handshake_set_timeout(mSession, 30000);
 
 	gnutls_session_set_ptr(mSession, this);
 	gnutls_transport_set_ptr(mSession, this);
@@ -159,6 +160,7 @@ void DtlsTransport::runRecvLoop() {
 	// Handshake loop
 	try {
 		changeState(State::Connecting);
+		gnutls_dtls_set_mtu(mSession, 1280 - 40 - 8); // min MTU over UDP/IPv6
 
 		int ret;
 		do {
@@ -182,6 +184,7 @@ void DtlsTransport::runRecvLoop() {
 
 	// Receive loop
 	try {
+		PLOG_INFO << "DTLS handshake done";
 		changeState(State::Connected);
 
 		const size_t bufferSize = maxMtu;
@@ -388,7 +391,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 		throw std::runtime_error("Unable to create SSL instance");
 
 	SSL_set_ex_data(mSsl, TransportExIndex, this);
-	SSL_set_mtu(mSsl, 1280 - 40 - 8); // min MTU over UDP/IPv6
 
 	if (lower->role() == Description::Role::Active)
 		SSL_set_connect_state(mSsl);
@@ -462,55 +464,71 @@ void DtlsTransport::runRecvLoop() {
 	const size_t maxMtu = 4096;
 	try {
 		changeState(State::Connecting);
+		SSL_set_mtu(mSsl, 1280 - 40 - 8); // min MTU over UDP/IPv6
 
+		// Initiate the handshake
 		int ret = SSL_do_handshake(mSsl);
 		check_openssl_ret(mSsl, ret, "Handshake failed");
 
 		const size_t bufferSize = maxMtu;
 		byte buffer[bufferSize];
 		while (true) {
-			std::optional<milliseconds> duration;
-			struct timeval timeout = {};
-			if (DTLSv1_get_timeout(mSsl, &timeout))
-				duration = milliseconds(timeout.tv_sec * 1000 + timeout.tv_usec / 1000);
-
-			if (!mIncomingQueue.wait(duration))
-				break; // queue is stopped
-
-			message_ptr decrypted;
-			if (!mIncomingQueue.empty()) {
+			// Process pending messages
+			while (!mIncomingQueue.empty()) {
 				auto message = *mIncomingQueue.pop();
 				BIO_write(mInBio, message->data(), message->size());
 
-				int ret = SSL_read(mSsl, buffer, bufferSize);
-				if (!check_openssl_ret(mSsl, ret))
-					break;
-
-				if (ret > 0)
-					decrypted = make_message(buffer, buffer + ret);
-			}
-
-			if (mState == State::Connecting) {
-				if (SSL_is_init_finished(mSsl)) {
-					changeState(State::Connected);
-
-					// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
-					// See https://tools.ietf.org/html/rfc8261#section-5
-					SSL_set_mtu(mSsl, maxMtu + 1);
-				} else {
+				if (mState == State::Connecting) {
 					// Continue the handshake
 					int ret = SSL_do_handshake(mSsl);
 					if (!check_openssl_ret(mSsl, ret, "Handshake failed"))
 						break;
 
-					// Warning: This function breaks the usual return value convention
-					if (DTLSv1_handle_timeout(mSsl) < 0)
-						throw std::runtime_error("Handshake timeout"); // write BIO can't fail
+					if (SSL_is_init_finished(mSsl)) {
+						// RFC 8261: DTLS MUST support sending messages larger than the current path
+						// MTU See https://tools.ietf.org/html/rfc8261#section-5
+						SSL_set_mtu(mSsl, maxMtu + 1);
+
+						PLOG_INFO << "DTLS handshake done";
+						changeState(State::Connected);
+					}
+				} else {
+					int ret = SSL_read(mSsl, buffer, bufferSize);
+					if (!check_openssl_ret(mSsl, ret))
+						break;
+					if (ret > 0)
+						recv(make_message(buffer, buffer + ret));
 				}
 			}
 
-			if (decrypted)
-				recv(decrypted);
+			// No more messages pending, retransmit and rearm timeout if connecting
+			std::optional<milliseconds> duration;
+			if (mState == State::Connecting) {
+				// Warning: This function breaks the usual return value convention
+				int ret = DTLSv1_handle_timeout(mSsl);
+				if (ret < 0) {
+					throw std::runtime_error("Handshake timeout"); // write BIO can't fail
+				} else if (ret > 0) {
+					LOG_VERBOSE << "OpenSSL did DTLS retransmit";
+				}
+
+				struct timeval timeout = {};
+				if (mState == State::Connecting && DTLSv1_get_timeout(mSsl, &timeout)) {
+					duration = milliseconds(timeout.tv_sec * 1000 + timeout.tv_usec / 1000);
+					// Also handle handshake timeout manually because OpenSSL actually doesn't...
+					// OpenSSL backs off exponentially in base 2 starting from the recommended 1s
+					// so this allows for 5 retransmissions and fails after roughly 30s.
+					if (duration > 30s) {
+						throw std::runtime_error("Handshake timeout");
+					} else {
+						LOG_VERBOSE << "OpenSSL DTLS retransmit timeout is " << duration->count()
+						            << "ms";
+					}
+				}
+			}
+
+			if (!mIncomingQueue.wait(duration))
+				break; // queue is stopped
 		}
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "DTLS recv: " << e.what();
