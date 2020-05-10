@@ -5,16 +5,18 @@
         <link rel="stylesheet" href="/style.css" />
     </head>
     <body>
-        <h1>Web Rtc</h1>
-        <div>
+        <div id="message-container">
+            <h1>Web Rtc</h1>
+            <div id="messages"></div>
+        </div>
+        <div id="message-input">
             <p id="connection-state">Pending</p>
             <textarea id="message-text-box"
                 placeholder="Send a message"
             ></textarea>
             <br/>
-            <button id="send-message-button">Send Data</button>
+            <button id="send-message-button">Send</button>
         </div>
-        <div id="messages"></div>
         <script src="/answerScript.js"></script>
     </body>
 </html>
