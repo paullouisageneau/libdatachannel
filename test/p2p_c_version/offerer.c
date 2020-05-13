@@ -96,6 +96,8 @@ int main(int argc, char **argv){
 		}else {
 			break;
 		}
+		 while ((c = getchar()) != '\n' && c != EOF) { }
+
             fflush(stdin);
 		switch (command) {
 		case 0: {
@@ -131,7 +133,6 @@ int main(int argc, char **argv){
                   char* candidate = NULL;
 			size_t candidate_size = 0;
                   int c;
-                  while ((c = getchar()) != '\n' && c != EOF) { }
                   if(getline(&candidate, &candidate_size, stdin)){
                         rtcAddRemoteCandidate(peer->pc, candidate, "0");
                         free(candidate);
@@ -154,7 +155,6 @@ int main(int argc, char **argv){
                   char* message = NULL;
 			size_t message_size = 0;
                   int c;
-                  while ((c = getchar()) != '\n' && c != EOF) { }
                   if(getline(&message, &message_size, stdin)){
                         rtcSendMessage(peer->dc, message, -1);
                         free(message);
