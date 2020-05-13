@@ -235,11 +235,7 @@ static void closedCallback(void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->connected = false;
 
-      // char buffer[256];
 
-      // if (rtcGetDataChannelLabel(peer->dc, buffer, 256) >= 0)
-      //       printf("DataChannel %s: Received with label \"%s\"\n","offerer", buffer);
-      //
 
 }
 
