@@ -1,4 +1,5 @@
 
+ 
  #include <rtc/rtc.h>
 
  #include <stdbool.h>
@@ -91,14 +92,15 @@ int main(int argc, char **argv){
 	     		"[Command]: ");
 
 		int command = -1;
+            int c;
             if (scanf("%d", &command)){
 
 		}else {
 			break;
 		}
-		 while ((c = getchar()) != '\n' && c != EOF) { }
-
+            while ((c = getchar()) != '\n' && c != EOF) { }
             fflush(stdin);
+
 		switch (command) {
 		case 0: {
 			exit = true;
@@ -107,8 +109,7 @@ int main(int argc, char **argv){
 		case 1: {
 			// Parse Description
 			printf("[Description]: ");
-                  char c;
-                  while ((c = getchar()) != '\n' && c != EOF) { }
+
 
                    char *line = NULL;
                    size_t len = 0;
@@ -132,8 +133,7 @@ int main(int argc, char **argv){
 			printf("[Candidate]: ");
                   char* candidate = NULL;
 			size_t candidate_size = 0;
-                  int c;
-                  if(getline(&candidate, &candidate_size, stdin)){
+            if(getline(&candidate, &candidate_size, stdin)){
                         rtcAddRemoteCandidate(peer->pc, candidate, "0");
                         free(candidate);
 
@@ -154,7 +154,6 @@ int main(int argc, char **argv){
 			printf("[Message]: ");
                   char* message = NULL;
 			size_t message_size = 0;
-                  int c;
                   if(getline(&message, &message_size, stdin)){
                         rtcSendMessage(peer->dc, message, -1);
                         free(message);
@@ -235,7 +234,11 @@ static void closedCallback(void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->connected = false;
 
+      // char buffer[256];
 
+      // if (rtcGetDataChannelLabel(peer->dc, buffer, 256) >= 0)
+      //       printf("DataChannel %s: Received with label \"%s\"\n","offerer", buffer);
+      //
 
 }
 
@@ -315,3 +318,4 @@ char* rtcGatheringState_print(rtcState state) {
 		return str;
 
 }
+
