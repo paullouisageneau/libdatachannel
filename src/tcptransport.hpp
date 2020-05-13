@@ -33,6 +33,24 @@
 
 namespace rtc {
 
+// Utility class to interrupt select()
+class SelectInterrupter {
+public:
+	SelectInterrupter();
+	~SelectInterrupter();
+
+	int prepare(fd_set &readfds, fd_set &writefds);
+	void interrupt();
+
+private:
+	std::mutex mMutex;
+#ifdef _WIN32
+	socket_t mDummySock = INVALID_SOCKET;
+#else // assume POSIX
+	int mPipeIn, mPipeOut;
+#endif
+};
+
 class TcpTransport : public Transport {
 public:
 	TcpTransport(const string &hostname, const string &service, state_callback callback);
@@ -60,10 +78,8 @@ private:
 	string mHostname, mService;
 
 	socket_t mSock = INVALID_SOCKET;
-	socket_t mInterruptSock = INVALID_SOCKET;
-	std::mutex mInterruptMutex;
 	std::thread mThread;
-
+	SelectInterrupter mInterrupter;
 	Queue<message_ptr> mSendQueue;
 };
 
