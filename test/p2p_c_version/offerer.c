@@ -120,7 +120,7 @@ int main(int argc, char **argv){
 
                         }
                         printf("%s\n",sdp);
-                        rtcSetRemoteDescription(peer->pc, sdp, "offer");
+                        rtcSetRemoteDescription(peer->pc, sdp, "answer");
                         free(sdp);
                         free(line);
                         break;
