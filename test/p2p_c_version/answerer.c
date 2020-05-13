@@ -87,7 +87,8 @@ int main(int argc, char **argv) {
 			"[Command]: ");
 
 		int command = -1;
-		// int check_scan
+		int c;
+		// int check_can
 		if (scanf("%d", &command)){
 			
 
