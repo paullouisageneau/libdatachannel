@@ -169,15 +169,17 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 	auto size = message->size();
 	while (size) {
 		int len = ::send(mSock, data, size, MSG_NOSIGNAL);
-		if (len >= 0) {
-			data += len;
-			size -= len;
-		} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			message = make_message(message->data() + len, message->data() + size);
-			return false;
-		} else {
-			throw std::runtime_error("Connection lost, errno=" + to_string(sockerrno));
+		if (len < 0) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				message = make_message(message->end() - size, message->end());
+				return false;
+			} else {
+				throw std::runtime_error("Connection lost, errno=" + to_string(sockerrno));
+			}
 		}
+
+		data += len;
+		size -= len;
 	}
 	message = nullptr;
 	return true;
@@ -210,11 +212,19 @@ void TcpTransport::runLoop() {
 			if (ret < 0)
 				throw std::runtime_error("Failed to wait on socket");
 
+			if (FD_ISSET(mSock, &writefds))
+				trySendQueue();
+
 			if (FD_ISSET(mSock, &readfds)) {
 				char buffer[bufferSize];
 				int len = ::recv(mSock, buffer, bufferSize, 0);
-				if (len < 0)
-					throw std::runtime_error("Connection lost, errno=" + to_string(sockerrno));
+				if (len < 0) {
+					if (errno == EAGAIN || errno == EWOULDBLOCK) {
+						continue;
+					} else {
+						throw std::runtime_error("Connection lost, errno=" + to_string(sockerrno));
+					}
+				}
 
 				if (len == 0)
 					break; // clean close
@@ -222,9 +232,6 @@ void TcpTransport::runLoop() {
 				auto *b = reinterpret_cast<byte *>(buffer);
 				incoming(make_message(b, b + len));
 			}
-
-			if (FD_ISSET(mSock, &writefds))
-				trySendQueue();
 		}
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "TCP recv: " << e.what();
