@@ -103,7 +103,6 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 IceTransport::~IceTransport() { stop(); }
 
 bool IceTransport::stop() {
-	onRecv(nullptr);
 	return Transport::stop();
 }
 
@@ -455,6 +454,9 @@ bool IceTransport::stop() {
 		return false;
 
 	PLOG_DEBUG << "Stopping ICE thread";
+	nice_agent_attach_recv(mNiceAgent.get(), mStreamId, 1, g_main_loop_get_context(mMainLoop.get()),
+	                       NULL, NULL);
+	nice_agent_remove_stream(mNiceAgent.get(), mStreamId);
 	g_main_loop_quit(mMainLoop.get());
 	mMainLoopThread.join();
 	return true;
