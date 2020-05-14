@@ -100,6 +100,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	gnutls_transport_set_pull_timeout_function(mSession, TimeoutCallback);
 
 	mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
+	registerIncoming();
 }
 
 DtlsTransport::~DtlsTransport() {
@@ -410,6 +411,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	SSL_set_tmp_ecdh(mSsl, ecdh.get());
 
 	mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
+	registerIncoming();
 }
 
 DtlsTransport::~DtlsTransport() {
