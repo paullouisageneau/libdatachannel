@@ -171,7 +171,10 @@ bool IceTransport::send(message_ptr message) {
 
 void IceTransport::incoming(message_ptr message) {
 	PLOG_VERBOSE << "Incoming size=" << message->size();
-	recv(message);
+	if (mRecvCallback)
+		recv(message);
+	else
+		PLOG_WARNING << "Received data but mRecvCallback is not valid";
 }
 
 void IceTransport::incoming(const byte *data, int size) {
