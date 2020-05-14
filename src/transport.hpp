@@ -47,6 +47,7 @@ public:
 	virtual bool send(message_ptr message) = 0;
 
 	void onRecv(message_callback callback) { mRecvCallback = std::move(callback); }
+	bool recvCallbackValid() { return mRecvCallback; }
 
 protected:
 	void recv(message_ptr message) { mRecvCallback(message); }
