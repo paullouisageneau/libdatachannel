@@ -48,12 +48,12 @@ public:
 
 	void onRecv(message_callback callback) { mRecvCallback = std::move(callback); }
 
-	virtual bool send(message_ptr message) = 0;
+	virtual bool send(message_ptr message) { return outgoing(message); }
 
 protected:
 	void recv(message_ptr message) { mRecvCallback(message); }
 
-	virtual void incoming(message_ptr message) = 0;
+	virtual void incoming(message_ptr message) { recv(message); }
 	virtual bool outgoing(message_ptr message) {
 		if (mLower)
 			return mLower->send(message);
