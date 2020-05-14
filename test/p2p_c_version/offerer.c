@@ -1,14 +1,34 @@
+/**
+ * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2020 stevedanOgochu
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
 
- #include <rtc/rtc.h>
+#include <rtc/rtc.h>
 
- #include <stdbool.h>
- #include <stdio.h>
- #include <stdlib.h>
- #include <string.h>
- #include <unistd.h> // for sleep
- #include <ctype.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h> // for sleep
+#include <ctype.h>
+
 char* state_print(rtcState state);
 char* rtcGatheringState_print(rtcState state);
+
 typedef struct {
         rtcState state;
         rtcGatheringState gatheringState;
@@ -18,6 +38,7 @@ typedef struct {
 } Peer;
 
 Peer *peer = NULL;
+
 static void descriptionCallback(const char *sdp, const char *type, void *ptr);
 
 static void candidateCallback(const char *cand, const char *mid, void *ptr);
@@ -33,8 +54,8 @@ static void closedCallback(void *ptr);
 static void messageCallback(const char *message, int size, void *ptr);
 
 static void deletePeer(Peer *peer);
-int all_space(const char *str);
 
+int all_space(const char *str);
 
 int main(int argc, char **argv){
         rtcInitLogger(RTC_LOG_DEBUG);
