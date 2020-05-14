@@ -37,7 +37,7 @@
 #include <thread>
 
 namespace rtc {
-	
+
 class IceTransport : public Transport {
 public:
 #if USE_JUICE
@@ -85,8 +85,6 @@ public:
 	bool send(message_ptr message) override; // false if dropped
 
 private:
-	void incoming(message_ptr message) override;
-	void incoming(const byte *data, int size);
 	bool outgoing(message_ptr message) override;
 
 	void changeState(State state);

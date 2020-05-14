@@ -103,7 +103,6 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 IceTransport::~IceTransport() { stop(); }
 
 bool IceTransport::stop() {
-	onRecv(nullptr);
 	return Transport::stop();
 }
 
@@ -169,15 +168,6 @@ bool IceTransport::send(message_ptr message) {
 	return outgoing(message);
 }
 
-void IceTransport::incoming(message_ptr message) {
-	PLOG_VERBOSE << "Incoming size=" << message->size();
-	recv(message);
-}
-
-void IceTransport::incoming(const byte *data, int size) {
-	incoming(make_message(data, data + size));
-}
-
 bool IceTransport::outgoing(message_ptr message) {
 	return juice_send(mAgent.get(), reinterpret_cast<const char *>(message->data()),
 	                  message->size()) >= 0;
@@ -234,7 +224,9 @@ void IceTransport::RecvCallback(juice_agent_t *agent, const char *data, size_t s
                                 void *user_ptr) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(user_ptr);
 	try {
-		iceTransport->incoming(reinterpret_cast<const byte *>(data), size);
+		PLOG_VERBOSE << "Incoming size=" << size;
+		auto b = reinterpret_cast<const byte *>(data);
+		iceTransport->incoming(make_message(b, b + size));
 	} catch (const std::exception &e) {
 		PLOG_WARNING << e.what();
 	}
@@ -455,6 +447,9 @@ bool IceTransport::stop() {
 		return false;
 
 	PLOG_DEBUG << "Stopping ICE thread";
+	nice_agent_attach_recv(mNiceAgent.get(), mStreamId, 1, g_main_loop_get_context(mMainLoop.get()),
+	                       NULL, NULL);
+	nice_agent_remove_stream(mNiceAgent.get(), mStreamId);
 	g_main_loop_quit(mMainLoop.get());
 	mMainLoopThread.join();
 	return true;
@@ -539,15 +534,6 @@ bool IceTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 	return outgoing(message);
-}
-
-void IceTransport::incoming(message_ptr message) {
-	PLOG_VERBOSE << "Incoming size=" << message->size();
-	recv(message);
-}
-
-void IceTransport::incoming(const byte *data, int size) {
-	incoming(make_message(data, data + size));
 }
 
 bool IceTransport::outgoing(message_ptr message) {
@@ -637,7 +623,9 @@ void IceTransport::RecvCallback(NiceAgent *agent, guint streamId, guint componen
                                 gchar *buf, gpointer userData) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(userData);
 	try {
-		iceTransport->incoming(reinterpret_cast<byte *>(buf), len);
+		PLOG_VERBOSE << "Incoming size=" << len;
+		auto b = reinterpret_cast<byte *>(buf);
+		iceTransport->incoming(make_message(b, b + len));
 	} catch (const std::exception &e) {
 		PLOG_WARNING << e.what();
 	}

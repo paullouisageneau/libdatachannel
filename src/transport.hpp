@@ -32,10 +32,7 @@ using namespace std::placeholders;
 
 class Transport {
 public:
-	Transport(std::shared_ptr<Transport> lower = nullptr) : mLower(std::move(lower)) {
-		if (mLower)
-			mLower->onRecv(std::bind(&Transport::incoming, this, _1));
-	}
+	Transport(std::shared_ptr<Transport> lower = nullptr) : mLower(std::move(lower)) {}
 	virtual ~Transport() { stop(); }
 
 	virtual bool stop() {
@@ -44,14 +41,19 @@ public:
 		return !mShutdown.exchange(true);
 	}
 
-	virtual bool send(message_ptr message) = 0;
+	void registerIncoming() {
+		if (mLower)
+			mLower->onRecv(std::bind(&Transport::incoming, this, _1));
+	}
 
 	void onRecv(message_callback callback) { mRecvCallback = std::move(callback); }
+
+	virtual bool send(message_ptr message) { return outgoing(message); }
 
 protected:
 	void recv(message_ptr message) { mRecvCallback(message); }
 
-	virtual void incoming(message_ptr message) = 0;
+	virtual void incoming(message_ptr message) { recv(message); }
 	virtual bool outgoing(message_ptr message) {
 		if (mLower)
 			return mLower->send(message);
