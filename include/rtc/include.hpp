@@ -68,7 +68,7 @@ public:
 
 	synchronized_callback &operator=(std::function<void(P...)> func) {
 		std::lock_guard lock(mutex);
-		callback = func;
+		callback = std::move(func);
 		return *this;
 	}
 
@@ -78,7 +78,10 @@ public:
 			callback(args...);
 	}
 
-	operator bool() const { return callback ? true : false; }
+	operator bool() const {
+		std::lock_guard lock(mutex);
+		return callback ? true : false;
+	}
 
 private:
 	std::function<void(P...)> callback;
