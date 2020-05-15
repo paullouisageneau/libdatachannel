@@ -33,11 +33,13 @@ using namespace std::placeholders;
 class Transport {
 public:
 	Transport(std::shared_ptr<Transport> lower = nullptr) : mLower(std::move(lower)) {}
-	virtual ~Transport() { stop(); }
+	virtual ~Transport() {
+		stop();
+		if (mLower)
+			mLower->onRecv(nullptr); // doing it on stop could cause a deadlock
+	}
 
 	virtual bool stop() {
-		if (mLower)
-			mLower->onRecv(nullptr);
 		return !mShutdown.exchange(true);
 	}
 
