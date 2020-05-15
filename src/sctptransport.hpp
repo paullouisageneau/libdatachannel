@@ -99,9 +99,9 @@ private:
 	std::map<uint16_t, size_t> mBufferedAmount;
 	amount_callback mBufferedAmountCallback;
 
-	std::recursive_mutex mWriteMutex;
-	std::condition_variable_any mWrittenCondition;
-	bool mWritten = false;
+	std::mutex mWriteMutex;
+	std::condition_variable mWrittenCondition;
+	std::atomic<bool> mWritten = false; // written outside lock
 	bool mWrittenOnce = false;
 
 	state_callback mStateChangeCallback;

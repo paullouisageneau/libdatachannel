@@ -246,8 +246,6 @@ void SctpTransport::flush() {
 void SctpTransport::reset(unsigned int stream) {
 	PLOG_DEBUG << "SCTP resetting stream " << stream;
 
-	std::unique_lock lock(mWriteMutex);
-	mWritten = false;
 	using srs_t = struct sctp_reset_streams;
 	const size_t len = sizeof(srs_t) + sizeof(uint16_t);
 	byte buffer[len] = {};
@@ -255,7 +253,10 @@ void SctpTransport::reset(unsigned int stream) {
 	srs.srs_flags = SCTP_STREAM_RESET_OUTGOING;
 	srs.srs_number_streams = 1;
 	srs.srs_stream_list[0] = uint16_t(stream);
+
+	mWritten = false;
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_RESET_STREAMS, &srs, len) == 0) {
+		std::unique_lock lock(mWriteMutex); // locking before setsockopt might deadlock usrsctp...
 		mWrittenCondition.wait_for(lock, 1000ms,
 		                           [&]() { return mWritten || mState != State::Connected; });
 	} else {
