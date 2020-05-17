@@ -18,9 +18,6 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
 if(WIN32)
 	add_definitions(-DWIN32_LEAN_AND_MEAN)
-	if (MSYS OR MINGW)
-		add_definitions(-DSCTP_STDINT_INCLUDE=<stdint.h>)
-	endif()
 endif()
 
 set(LIBDATACHANNEL_SOURCES
@@ -75,6 +72,10 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 add_subdirectory(deps/usrsctp EXCLUDE_FROM_ALL)
+if (MSYS OR MINGW)
+	target_compile_definitions(usrsctp PUBLIC -DSCTP_STDINT_INCLUDE=<stdint.h>)
+	target_compile_definitions(usrsctp-static PUBLIC -DSCTP_STDINT_INCLUDE=<stdint.h>)
+endif()
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_compile_options(usrsctp PRIVATE -Wno-error=format-truncation)
 	target_compile_options(usrsctp-static PRIVATE -Wno-error=format-truncation)
