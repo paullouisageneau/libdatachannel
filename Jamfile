@@ -1,3 +1,5 @@
+import feature : feature ;
+
 project libdatachannel ;
 path-constant CWD : . ;
 
@@ -5,20 +7,25 @@ lib libdatachannel
 	: # sources
 	[ glob ./src/*.cpp ]
 	: # requirements
+	<cxxstd>17
 	<include>./include/rtc
-	<define>USE_GNUTLS=0
 	<define>USE_JUICE=1
-	<cxxflags>"`pkg-config --cflags openssl`"
 	<library>/libdatachannel//usrsctp
 	<library>/libdatachannel//juice
+	<library>/libdatachannel//plog
 	: # default build
 	<link>static
 	: # usage requirements
 	<include>./include
 	<library>/libdatachannel//plog
 	<cxxflags>-pthread
-	<linkflags>"`pkg-config --libs openssl`"
 	;
+
+feature crypto : openssl gnutls : composite propagated ;
+feature.compose <crypto>openssl
+    : <define>USE_GNUTLS=0 ;
+feature.compose <crypto>gnutls
+    : <define>USE_GNUTLS=1 ;
 
 alias plog
     : # no sources
@@ -57,9 +64,21 @@ actions make_libusrsctp
 }
 
 make libjuice.a : : @make_libjuice ;
+
+rule make_libjuice ( targets * : sources * : properties * )
+{
+	if <crypto>gnutls in $(properties)
+	{
+		MAKEOPTS on $(targets) = "USE_NETTLE=1" ;
+	}
+	else
+	{
+		MAKEOPTS on $(targets) = "USE_NETTLE=0" ;
+	}
+}
 actions make_libjuice
 {
-	(cd $(CWD)/deps/libjuice && make USE_NETTLE=0)
+	(cd $(CWD)/deps/libjuice && make $(MAKEOPTS))
     cp $(CWD)/deps/libjuice/libjuice.a $(<)
 }
 
