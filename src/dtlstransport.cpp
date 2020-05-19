@@ -117,9 +117,7 @@ bool DtlsTransport::stop() {
 
 	PLOG_DEBUG << "Stopping DTLS recv thread";
 	mIncomingQueue.stop();
-	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
 	mRecvThread.join();
-	onRecv(nullptr);
 	return true;
 }
 
@@ -217,6 +215,8 @@ void DtlsTransport::runRecvLoop() {
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "DTLS recv: " << e.what();
 	}
+
+	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
 
 	PLOG_INFO << "DTLS disconnected";
 	changeState(State::Disconnected);
@@ -429,7 +429,6 @@ bool DtlsTransport::stop() {
 	mIncomingQueue.stop();
 	mRecvThread.join();
 	SSL_shutdown(mSsl);
-	onRecv(nullptr);
 	return true;
 }
 
