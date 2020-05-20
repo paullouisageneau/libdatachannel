@@ -53,7 +53,8 @@ auto weak_bind_verifier(F &&f, T *t, Args &&... _args) {
 PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 
 PeerConnection::PeerConnection(const Configuration &config)
-    : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New) {}
+    : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New),
+      mGatheringState(GatheringState::New) {}
 
 PeerConnection::~PeerConnection() { close(); }
 
