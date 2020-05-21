@@ -93,19 +93,20 @@ string DataChannel::protocol() const { return mProtocol; }
 Reliability DataChannel::reliability() const { return *mReliability; }
 
 void DataChannel::close() {
+	mIsClosed = true;
 	if (mIsOpen.exchange(false))
 		if (auto transport = mSctpTransport.lock())
-			transport->reset(mStream);
-	mIsClosed = true;
-	mSctpTransport.reset();
+			transport->close(mStream);
 
+	mSctpTransport.reset();
 	resetCallbacks();
 }
 
 void DataChannel::remoteClose() {
-	mIsOpen = false;
 	if (!mIsClosed.exchange(true))
 		triggerClosed();
+
+	mIsOpen = false;
 	mSctpTransport.reset();
 }
 
@@ -139,6 +140,9 @@ std::optional<std::variant<binary, string>> DataChannel::receive() {
 			    string(reinterpret_cast<const char *>(message->data()), message->size()));
 		case Message::Binary:
 			return std::make_optional(std::move(*message));
+		default:
+			// Ignore
+			break;
 		}
 	}
 

@@ -51,8 +51,8 @@ public:
 
 	bool stop() override;
 	bool send(message_ptr message) override; // false if buffered
+	void close(unsigned int stream);
 	void flush();
-	void reset(unsigned int stream);
 
 	// Stats
 	void clearStats();
@@ -81,6 +81,7 @@ private:
 	bool trySendQueue();
 	bool trySendMessage(message_ptr message);
 	void updateBufferedAmount(uint16_t streamId, long delta);
+	void sendReset(uint16_t streamId);
 	bool safeFlush();
 
 	int handleRecv(struct socket *sock, union sctp_sockstore addr, const byte *data, size_t len,

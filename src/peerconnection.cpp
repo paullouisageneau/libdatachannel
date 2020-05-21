@@ -422,8 +422,8 @@ void PeerConnection::forwardMessage(message_ptr message) {
 			                          weak_ptr<DataChannel>{channel}));
 			mDataChannels.insert(std::make_pair(message->stream, channel));
 		} else {
-			// Invalid, close the DataChannel by resetting the stream
-			sctpTransport->reset(message->stream);
+			// Invalid, close the DataChannel
+			sctpTransport->close(message->stream);
 			return;
 		}
 	}

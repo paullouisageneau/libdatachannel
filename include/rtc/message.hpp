@@ -28,9 +28,9 @@
 namespace rtc {
 
 struct Message : binary {
-	enum Type { Binary, String, Control };
+	enum Type { Binary, String, Control, Reset };
 
-	Message(size_t size) : binary(size), type(Binary) {}
+	Message(size_t size, Type type_ = Binary) : binary(size), type(type_) {}
 
 	template <typename Iterator>
 	Message(Iterator begin_, Iterator end_, Type type_ = Binary)
@@ -46,7 +46,7 @@ using mutable_message_ptr = std::shared_ptr<Message>;
 using message_callback = std::function<void(message_ptr message)>;
 
 constexpr auto message_size_func = [](const message_ptr &m) -> size_t {
-	return m->type != Message::Control ? m->size() : 0;
+	return m->type == Message::Binary || m->type == Message::String ? m->size() : 0;
 };
 
 template <typename Iterator>
@@ -54,6 +54,15 @@ message_ptr make_message(Iterator begin, Iterator end, Message::Type type = Mess
                          unsigned int stream = 0,
                          std::shared_ptr<Reliability> reliability = nullptr) {
 	auto message = std::make_shared<Message>(begin, end, type);
+	message->stream = stream;
+	message->reliability = reliability;
+	return message;
+}
+
+inline message_ptr make_message(size_t size, Message::Type type = Message::Binary,
+                                unsigned int stream = 0,
+                                std::shared_ptr<Reliability> reliability = nullptr) {
+	auto message = std::make_shared<Message>(size, type);
 	message->stream = stream;
 	message->reliability = reliability;
 	return message;

@@ -170,7 +170,9 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 SctpTransport::~SctpTransport() {
 	stop();
 
-	usrsctp_close(mSock);
+	if (mSock)
+		usrsctp_close(mSock);
+
 	usrsctp_deregister_address(this);
 }
 
@@ -188,6 +190,9 @@ bool SctpTransport::stop() {
 }
 
 void SctpTransport::connect() {
+	if (!mSock)
+		return;
+
 	PLOG_DEBUG << "SCTP connect";
 	changeState(State::Connecting);
 
@@ -211,11 +216,18 @@ void SctpTransport::connect() {
 }
 
 void SctpTransport::shutdown() {
+	if (!mSock)
+		return;
+
 	PLOG_DEBUG << "SCTP shutdown";
 
-	if (usrsctp_shutdown(mSock, SHUT_RDWR)) {
+	if (usrsctp_shutdown(mSock, SHUT_RDWR) != 0 && errno != ENOTCONN) {
 		PLOG_WARNING << "SCTP shutdown failed, errno=" << errno;
 	}
+
+	// close() abort the connection when linger is disabled, call it now
+	usrsctp_close(mSock);
+	mSock = nullptr;
 
 	PLOG_INFO << "SCTP disconnected";
 	changeState(State::Disconnected);
@@ -238,30 +250,13 @@ bool SctpTransport::send(message_ptr message) {
 	return false;
 }
 
+void SctpTransport::close(unsigned int stream) {
+	send(make_message(0, Message::Reset, uint16_t(stream)));
+}
+
 void SctpTransport::flush() {
 	std::lock_guard lock(mSendMutex);
 	trySendQueue();
-}
-
-void SctpTransport::reset(unsigned int stream) {
-	PLOG_DEBUG << "SCTP resetting stream " << stream;
-
-	using srs_t = struct sctp_reset_streams;
-	const size_t len = sizeof(srs_t) + sizeof(uint16_t);
-	byte buffer[len] = {};
-	srs_t &srs = *reinterpret_cast<srs_t *>(buffer);
-	srs.srs_flags = SCTP_STREAM_RESET_OUTGOING;
-	srs.srs_number_streams = 1;
-	srs.srs_stream_list[0] = uint16_t(stream);
-
-	mWritten = false;
-	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_RESET_STREAMS, &srs, len) == 0) {
-		std::unique_lock lock(mWriteMutex); // locking before setsockopt might deadlock usrsctp...
-		mWrittenCondition.wait_for(lock, 1000ms,
-		                           [&]() { return mWritten || mState != State::Connected; });
-	} else {
-		PLOG_WARNING << "SCTP reset stream " << stream << " failed, errno=" << errno;
-	}
 }
 
 void SctpTransport::incoming(message_ptr message) {
@@ -303,15 +298,8 @@ bool SctpTransport::trySendQueue() {
 
 bool SctpTransport::trySendMessage(message_ptr message) {
 	// Requires mSendMutex to be locked
-	if (mState != State::Connected)
+	if (!mSock || mState != State::Connected)
 		return false;
-
-	PLOG_VERBOSE << "SCTP try send size=" << message->size();
-
-	// TODO: Implement SCTP ndata specification draft when supported everywhere
-	// See https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata-08
-
-	const Reliability reliability = message->reliability ? *message->reliability : Reliability();
 
 	uint32_t ppid;
 	switch (message->type) {
@@ -321,10 +309,23 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 	case Message::Binary:
 		ppid = !message->empty() ? PPID_BINARY : PPID_BINARY_EMPTY;
 		break;
-	default:
+	case Message::Control:
 		ppid = PPID_CONTROL;
 		break;
+	case Message::Reset:
+		sendReset(message->stream);
+		return true;
+	default:
+		// Ignore
+		return true;
 	}
+
+	PLOG_VERBOSE << "SCTP try send size=" << message->size();
+
+	// TODO: Implement SCTP ndata specification draft when supported everywhere
+	// See https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata-08
+
+	const Reliability reliability = message->reliability ? *message->reliability : Reliability();
 
 	struct sctp_sendv_spa spa = {};
 
@@ -388,6 +389,33 @@ void SctpTransport::updateBufferedAmount(uint16_t streamId, long delta) {
 		it->second = amount;
 
 	mBufferedAmountCallback(streamId, amount);
+}
+
+void SctpTransport::sendReset(uint16_t streamId) {
+	// Requires mSendMutex to be locked
+	if (!mSock || state() != State::Connected)
+		return;
+
+	PLOG_DEBUG << "SCTP resetting stream " << streamId;
+
+	using srs_t = struct sctp_reset_streams;
+	const size_t len = sizeof(srs_t) + sizeof(uint16_t);
+	byte buffer[len] = {};
+	srs_t &srs = *reinterpret_cast<srs_t *>(buffer);
+	srs.srs_flags = SCTP_STREAM_RESET_OUTGOING;
+	srs.srs_number_streams = 1;
+	srs.srs_stream_list[0] = streamId;
+
+	mWritten = false;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_RESET_STREAMS, &srs, len) == 0) {
+		std::unique_lock lock(mWriteMutex); // locking before setsockopt might deadlock usrsctp...
+		mWrittenCondition.wait_for(lock, 1000ms,
+		                           [&]() { return mWritten || mState != State::Connected; });
+	} else if (errno == EINVAL) {
+		PLOG_VERBOSE << "SCTP stream " << streamId << " already reset";
+	} else {
+		PLOG_WARNING << "SCTP reset stream " << streamId << " failed, errno=" << errno;
+	}
 }
 
 bool SctpTransport::safeFlush() {
@@ -566,7 +594,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 		if (flags & SCTP_STREAM_RESET_OUTGOING_SSN) {
 			for (int i = 0; i < count; ++i) {
 				uint16_t streamId = reset_event.strreset_stream_list[i];
-				reset(streamId);
+				close(streamId);
 			}
 		}
 		if (flags & SCTP_STREAM_RESET_INCOMING_SSN) {
@@ -595,15 +623,17 @@ size_t SctpTransport::bytesSent() { return mBytesSent; }
 
 size_t SctpTransport::bytesReceived() { return mBytesReceived; }
 
-std::optional<std::chrono::milliseconds> SctpTransport::rtt() {
+std::optional<milliseconds> SctpTransport::rtt() {
+	if (!mSock || state() != State::Connected)
+		return nullopt;
+
 	struct sctp_status status = {};
 	socklen_t len = sizeof(status);
-
-	if (usrsctp_getsockopt(this->mSock, IPPROTO_SCTP, SCTP_STATUS, &status, &len)) {
+	if (usrsctp_getsockopt(mSock, IPPROTO_SCTP, SCTP_STATUS, &status, &len)) {
 		PLOG_WARNING << "Could not read SCTP_STATUS";
-		return std::nullopt;
+		return nullopt;
 	}
-	return std::chrono::milliseconds(status.sstat_primary.spinfo_srtt);
+	return milliseconds(status.sstat_primary.spinfo_srtt);
 }
 
 int SctpTransport::RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data,
