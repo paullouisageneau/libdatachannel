@@ -18,7 +18,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
 if(WIN32)
 	add_definitions(-DWIN32_LEAN_AND_MEAN)
-	if (MSYS)
+	if (MSVC)
         	add_definitions(-DNOMINMAX)
     	endif()
 endif()
