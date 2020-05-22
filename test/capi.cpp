@@ -30,8 +30,6 @@ static void sleep(unsigned int secs) { Sleep(secs * 1000); }
 #include <unistd.h> // for sleep
 #endif
 
-using namespace std;
-
 typedef struct {
 	rtcState state;
 	rtcGatheringState gatheringState;
