@@ -450,3 +450,5 @@ int rtcReceiveMessage(int dc, char *buffer, int *size) {
 		    *message);
 	});
 }
+
+void rtcCleanup() { rtc::Cleanup(); }

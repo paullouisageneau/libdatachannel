@@ -23,7 +23,12 @@
 #include <cstdlib>
 #include <cstring>
 
+#ifdef _WIN32
+#include <windows.h>
+static void sleep(unsigned int secs) { Sleep(secs * 1000); }
+#else
 #include <unistd.h> // for sleep
+#endif
 
 using namespace std;
 
@@ -194,6 +199,10 @@ int test_capi_main() {
 	deletePeer(peer1);
 	sleep(1);
 	deletePeer(peer2);
+	sleep(1);
+
+	// You may call rtcCleanup() when finished to free static resources
+	rtcCleanup();
 	sleep(1);
 
 	printf("Success\n");
