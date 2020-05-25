@@ -184,7 +184,7 @@ add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
 install(TARGETS datachannel LIBRARY DESTINATION lib)
 install(FILES ${LIBDATACHANNEL_HEADERS} DESTINATION include/rtc)
 
-# Main Test
+# Tests
 add_executable(datachannel-tests ${TESTS_SOURCES})
 set_target_properties(datachannel-tests PROPERTIES
 	VERSION ${PROJECT_VERSION}
@@ -192,22 +192,4 @@ set_target_properties(datachannel-tests PROPERTIES
 set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
 target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(datachannel-tests datachannel nlohmann_json::nlohmann_json)
-
-# P2P Test: offerer
-add_executable(datachannel-offerer ${TESTS_OFFERER_SOURCES})
-set_target_properties(datachannel-offerer PROPERTIES
-	VERSION ${PROJECT_VERSION}
-	CXX_STANDARD 17)
-set_target_properties(datachannel-offerer PROPERTIES OUTPUT_NAME offerer)
-target_link_libraries(datachannel-offerer datachannel)
-target_include_directories(datachannel-offerer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/httplib)
-target_include_directories(datachannel-offerer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/json/include)
-
-# P2P Test: answerer
-add_executable(datachannel-answerer ${TESTS_ANSWERER_SOURCES})
-set_target_properties(datachannel-answerer PROPERTIES
-	VERSION ${PROJECT_VERSION}
-	CXX_STANDARD 17)
-set_target_properties(datachannel-answerer PROPERTIES OUTPUT_NAME answerer)
-target_link_libraries(datachannel-answerer datachannel)
 

@@ -29,7 +29,7 @@ using namespace std;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 int main(int argc, char **argv) {
-	InitLogger(LogLevel::Warning);
+	rtc::InitLogger(LogLevel::Warning);
 
 	Configuration config;
 	// config.iceServers.emplace_back("stun.l.google.com:19302");
