@@ -71,6 +71,9 @@ set(TESTS_ANSWERER_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/answerer.cpp
 )
 
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+add_subdirectory(deps/json)
+
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
@@ -162,7 +165,7 @@ set_target_properties(datachannel-tests PROPERTIES
 	CXX_STANDARD 17)
 set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
 target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(datachannel-tests datachannel)
+target_link_libraries(datachannel-tests datachannel nlohmann_json::nlohmann_json)
 
 # P2P Test: offerer
 add_executable(datachannel-offerer ${TESTS_OFFERER_SOURCES})
@@ -171,6 +174,8 @@ set_target_properties(datachannel-offerer PROPERTIES
 	CXX_STANDARD 17)
 set_target_properties(datachannel-offerer PROPERTIES OUTPUT_NAME offerer)
 target_link_libraries(datachannel-offerer datachannel)
+target_include_directories(datachannel-offerer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/httplib)
+target_include_directories(datachannel-offerer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/deps/json/include)
 
 # P2P Test: answerer
 add_executable(datachannel-answerer ${TESTS_ANSWERER_SOURCES})

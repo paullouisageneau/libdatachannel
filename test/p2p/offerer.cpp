@@ -18,6 +18,9 @@
 
 #include "rtc/rtc.hpp"
 
+#include <httplib.h>
+#include <nlohmann/json.hpp>
+
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -25,8 +28,37 @@
 
 using namespace rtc;
 using namespace std;
+using namespace std::chrono_literals;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
+
+const char base64_url_alphabet[] = {
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+    'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '_'
+};
+
+std::string base64_encode(const std::string & in) {
+  std::string out;
+  int val =0, valb=-6;
+  size_t len = in.length();
+  unsigned int i = 0;
+  for (i = 0; i < len; i++) {
+    unsigned char c = in[i];
+    val = (val<<8) + c;
+    valb += 8;
+    while (valb >= 0) {
+      out.push_back(base64_url_alphabet[(val>>valb)&0x3F]);
+      valb -= 6;
+    }
+  }
+  if (valb > -6) {
+    out.push_back(base64_url_alphabet[((val<<8)>>(valb+8))&0x3F]);
+  }
+  return out;
+}
 
 int main(int argc, char **argv) {
 	InitLogger(LogLevel::Warning);
@@ -34,21 +66,48 @@ int main(int argc, char **argv) {
 	Configuration config;
 	// config.iceServers.emplace_back("stun.l.google.com:19302");
 
+	std::string payload;
+
 	auto pc = std::make_shared<PeerConnection>(config);
 
-	pc->onLocalDescription([](const Description &description) {
-		cout << "Local Description (Paste this to the other peer):" << endl;
-		cout << string(description) << endl;
+	pc->onLocalDescription([wpc = make_weak_ptr(pc)](const Description &description){
+		auto pc = wpc.lock();
+		if (!pc)
+			return;
+
+		pc->connectionInfo += description;
+		pc->connectionInfo += ",";
 	});
 
-	pc->onLocalCandidate([](const Candidate &candidate) {
-		cout << "Local Candidate (Paste this to the other peer after the local description):"
-		     << endl;
-		cout << string(candidate) << endl << endl;
+	pc->onLocalCandidate([wpc = make_weak_ptr(pc)](const Candidate &candidate) {
+		auto pc = wpc.lock();
+		if (!pc)
+			return;
+
+		pc->connectionInfo += candidate;
+
+		cout << pc->connectionInfo << endl << endl;
+
+		auto encoded = base64_encode(pc->connectionInfo);
+		cout << "http://localhost:8080/answerer.html?connection=" << encoded << endl << endl;
+
+		httplib::Client cli("localhost", 8000);
+
+		auto res = cli.Get("/state/json");
+		if (!res)
+			return;
+
+		while (res->body.empty()) {
+			std::this_thread::sleep_for(2s);
+			res = cli.Get("/state/json");
+		}
+
+		pc->setRemoteDescription(res->body);
 	});
 
-	pc->onStateChange(
-	    [](PeerConnection::State state) { cout << "[State: " << state << "]" << endl; });
+	pc->onStateChange([wpc = make_weak_ptr(pc)](PeerConnection::State state) {
+		cout << "[State: " << state << "]" << endl;
+	});
 
 	pc->onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "[Gathering State: " << state << "]" << endl;
@@ -75,10 +134,7 @@ int main(int argc, char **argv) {
 		        "*****"
 		     << endl
 		     << "* 0: Exit /"
-		     << " 1: Enter remote description /"
-		     << " 2: Enter remote candidate /"
-		     << " 3: Send message /"
-		     << " 4: Print Connection Info *" << endl
+		     << " 1: Send message *" << endl
 		     << "[Command]: ";
 
 		int command = -1;
@@ -91,25 +147,6 @@ int main(int argc, char **argv) {
 			break;
 		}
 		case 1: {
-			// Parse Description
-			cout << "[Description]: ";
-			string sdp, line;
-			while (getline(cin, line) && !line.empty()) {
-				sdp += line;
-				sdp += "\r\n";
-			}
-			pc->setRemoteDescription(sdp);
-			break;
-		}
-		case 2: {
-			// Parse Candidate
-			cout << "[Candidate]: ";
-			string candidate;
-			getline(cin, candidate);
-			pc->addRemoteCandidate(candidate);
-			break;
-		}
-		case 3: {
 			// Send Message
 			if (!dc->isOpen()) {
 				cout << "** Channel is not Open ** ";
