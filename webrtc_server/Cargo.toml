@@ -1,0 +1,18 @@
+[package]
+name = "webrtc_server"
+version = "0.1.0"
+authors = ["Nico Chatzi <nico.chatzigianis@focusrite.com>"]
+edition = "2018"
+
+[dependencies]
+rocket = "0.4.4"
+rocket_cors = "0.5.0"
+serde = "1.0"
+serde_json = "1.0"
+serde_derive = "1.0"
+bincode = "1.2.1"
+
+[dependencies.rocket_contrib]
+version = "0.4.4"
+default-features = false
+features = ["json"]

@@ -7,3 +7,9 @@
 [submodule "deps/libjuice"]
 	path = deps/libjuice
 	url = https://github.com/paullouisageneau/libjuice
+[submodule "deps/httplib"]
+	path = deps/httplib
+	url = https://github.com/yhirose/cpp-httplib.git
+[submodule "deps/json"]
+	path = deps/json
+	url = https://github.com/nlohmann/json.git

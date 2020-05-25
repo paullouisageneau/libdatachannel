@@ -95,6 +95,8 @@ public:
 	size_t bytesReceived();
 	std::optional<std::chrono::milliseconds> rtt();
 
+	std::string connectionInfo;
+
 private:
 	init_token mInitToken = Init::Token();
 
