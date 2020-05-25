@@ -48,9 +48,8 @@ namespace rtc {
 IceTransport::IceTransport(const Configuration &config, Description::Role role,
                            candidate_callback candidateCallback, state_callback stateChangeCallback,
                            gathering_state_callback gatheringStateChangeCallback)
-    : mRole(role), mMid("0"), mState(State::Disconnected), mGatheringState(GatheringState::New),
-      mCandidateCallback(std::move(candidateCallback)),
-      mStateChangeCallback(std::move(stateChangeCallback)),
+    : Transport(nullptr, std::move(stateChangeCallback)), mRole(role), mMid("0"),
+      mGatheringState(GatheringState::New), mCandidateCallback(std::move(candidateCallback)),
       mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)),
       mAgent(nullptr, nullptr) {
 
@@ -84,6 +83,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 			mStunService = server.service;
 			jconfig.stun_server_host = mStunHostname.c_str();
 			jconfig.stun_server_port = std::stoul(mStunService);
+			break;
 		}
 	}
 
@@ -107,8 +107,6 @@ bool IceTransport::stop() {
 }
 
 Description::Role IceTransport::role() const { return mRole; }
-
-IceTransport::State IceTransport::state() const { return mState; }
 
 Description IceTransport::getLocalDescription(Description::Type type) const {
 	char sdp[JUICE_MAX_SDP_STRING_LEN];
@@ -161,7 +159,8 @@ std::optional<string> IceTransport::getRemoteAddress() const {
 }
 
 bool IceTransport::send(message_ptr message) {
-	if (!message || (mState != State::Connected && mState != State::Completed))
+	auto s = state();
+	if (!message || (s != State::Connected && s != State::Completed))
 		return false;
 
 	PLOG_VERBOSE << "Send size=" << message->size();
@@ -173,18 +172,29 @@ bool IceTransport::outgoing(message_ptr message) {
 	                  message->size()) >= 0;
 }
 
-void IceTransport::changeState(State state) {
-	if (mState.exchange(state) != state)
-		mStateChangeCallback(mState);
-}
-
 void IceTransport::changeGatheringState(GatheringState state) {
 	if (mGatheringState.exchange(state) != state)
 		mGatheringStateChangeCallback(mGatheringState);
 }
 
 void IceTransport::processStateChange(unsigned int state) {
-	changeState(static_cast<State>(state));
+	switch (state) {
+	case JUICE_STATE_DISCONNECTED:
+		changeState(State::Disconnected);
+		break;
+	case JUICE_STATE_CONNECTING:
+		changeState(State::Connecting);
+		break;
+	case JUICE_STATE_CONNECTED:
+		changeState(State::Connected);
+		break;
+	case JUICE_STATE_COMPLETED:
+		changeState(State::Completed);
+		break;
+	case JUICE_STATE_FAILED:
+		changeState(State::Failed);
+		break;
+	};
 }
 
 void IceTransport::processCandidate(const string &candidate) {
@@ -263,9 +273,8 @@ namespace rtc {
 IceTransport::IceTransport(const Configuration &config, Description::Role role,
                            candidate_callback candidateCallback, state_callback stateChangeCallback,
                            gathering_state_callback gatheringStateChangeCallback)
-    : mRole(role), mMid("0"), mState(State::Disconnected), mGatheringState(GatheringState::New),
-      mCandidateCallback(std::move(candidateCallback)),
-      mStateChangeCallback(std::move(stateChangeCallback)),
+    : Transport(nullptr, std::move(stateChangeCallback)), mRole(role), mMid("0"),
+      mGatheringState(GatheringState::New), mCandidateCallback(std::move(candidateCallback)),
       mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)),
       mNiceAgent(nullptr, nullptr), mMainLoop(nullptr, nullptr) {
 
@@ -457,8 +466,6 @@ bool IceTransport::stop() {
 
 Description::Role IceTransport::role() const { return mRole; }
 
-IceTransport::State IceTransport::state() const { return mState; }
-
 Description IceTransport::getLocalDescription(Description::Type type) const {
 	// RFC 8445: The initiating agent that started the ICE processing MUST take the controlling
 	// role, and the other MUST take the controlled role.
@@ -529,7 +536,8 @@ std::optional<string> IceTransport::getRemoteAddress() const {
 }
 
 bool IceTransport::send(message_ptr message) {
-	if (!message || (mState != State::Connected && mState != State::Completed))
+	auto s = state();
+	if (!message || (s != State::Connected && s != State::Completed))
 		return false;
 
 	PLOG_VERBOSE << "Send size=" << message->size();
@@ -539,11 +547,6 @@ bool IceTransport::send(message_ptr message) {
 bool IceTransport::outgoing(message_ptr message) {
 	return nice_agent_send(mNiceAgent.get(), mStreamId, 1, message->size(),
 	                       reinterpret_cast<const char *>(message->data())) >= 0;
-}
-
-void IceTransport::changeState(State state) {
-	if (mState.exchange(state) != state)
-		mStateChangeCallback(mState);
 }
 
 void IceTransport::changeGatheringState(GatheringState state) {
@@ -576,7 +579,23 @@ void IceTransport::processStateChange(unsigned int state) {
 		mTimeoutId = 0;
 	}
 
-	changeState(static_cast<State>(state));
+	switch (state) {
+	case NICE_COMPONENT_STATE_DISCONNECTED:
+		changeState(State::Disconnected);
+		break;
+	case NICE_COMPONENT_STATE_CONNECTING:
+		changeState(State::Connecting);
+		break;
+	case NICE_COMPONENT_STATE_CONNECTED:
+		changeState(State::Connected);
+		break;
+	case NICE_COMPONENT_STATE_READY:
+		changeState(State::Completed);
+		break;
+	case NICE_COMPONENT_STATE_FAILED:
+		changeState(State::Failed);
+		break;
+	};
 }
 
 string IceTransport::AddressToString(const NiceAddress &addr) {

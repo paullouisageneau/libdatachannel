@@ -10,6 +10,7 @@ lib libdatachannel
 	<cxxstd>17
 	<include>./include/rtc
 	<define>USE_JUICE=1
+	<define>RTC_ENABLE_WEBSOCKET=0
 	<library>/libdatachannel//usrsctp
 	<library>/libdatachannel//juice
 	<library>/libdatachannel//plog

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,15 +16,19 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-// C++ API
+#ifndef RTC_BASE64_H
+#define RTC_BASE64_H
+
+#if RTC_ENABLE_WEBSOCKET
+
 #include "include.hpp"
-#include "init.hpp" // for rtc::Cleanup()
-#include "log.hpp"
-//
-#include "datachannel.hpp"
-#include "peerconnection.hpp"
-#include "websocket.hpp"
 
-// C API
-#include "rtc.h"
+namespace rtc {
 
+string to_base64(const binary &data);
+
+}
+
+#endif
+
+#endif

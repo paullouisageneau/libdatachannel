@@ -40,29 +40,9 @@ namespace rtc {
 
 class IceTransport : public Transport {
 public:
-#if USE_JUICE
-	enum class State : unsigned int{
-	    Disconnected = JUICE_STATE_DISCONNECTED,
-	    Connecting = JUICE_STATE_CONNECTING,
-	    Connected = JUICE_STATE_CONNECTED,
-	    Completed = JUICE_STATE_COMPLETED,
-	    Failed = JUICE_STATE_FAILED,
-	};
-#else
-	enum class State : unsigned int {
-		Disconnected = NICE_COMPONENT_STATE_DISCONNECTED,
-		Connecting = NICE_COMPONENT_STATE_CONNECTING,
-		Connected = NICE_COMPONENT_STATE_CONNECTED,
-		Completed = NICE_COMPONENT_STATE_READY,
-		Failed = NICE_COMPONENT_STATE_FAILED,
-	};
-
-	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
-#endif
 	enum class GatheringState { New = 0, InProgress = 1, Complete = 2 };
 
 	using candidate_callback = std::function<void(const Candidate &candidate)>;
-	using state_callback = std::function<void(State state)>;
 	using gathering_state_callback = std::function<void(GatheringState state)>;
 
 	IceTransport(const Configuration &config, Description::Role role,
@@ -71,7 +51,6 @@ public:
 	~IceTransport();
 
 	Description::Role role() const;
-	State state() const;
 	GatheringState gatheringState() const;
 	Description getLocalDescription(Description::Type type) const;
 	void setRemoteDescription(const Description &description);
@@ -84,10 +63,13 @@ public:
 	bool stop() override;
 	bool send(message_ptr message) override; // false if dropped
 
+#if !USE_JUICE
+	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
+#endif
+
 private:
 	bool outgoing(message_ptr message) override;
 
-	void changeState(State state);
 	void changeGatheringState(GatheringState state);
 
 	void processStateChange(unsigned int state);
@@ -98,11 +80,9 @@ private:
 	Description::Role mRole;
 	string mMid;
 	std::chrono::milliseconds mTrickleTimeout;
-	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;
 
 	candidate_callback mCandidateCallback;
-	state_callback mStateChangeCallback;
 	gathering_state_callback mGatheringStateChangeCallback;
 
 #if USE_JUICE
