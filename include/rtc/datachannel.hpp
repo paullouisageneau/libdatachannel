@@ -82,7 +82,6 @@ private:
 	std::atomic<bool> mIsClosed = false;
 
 	Queue<message_ptr> mRecvQueue;
-	std::atomic<size_t> mRecvAmount = 0;
 
 	friend class PeerConnection;
 };

@@ -38,6 +38,14 @@ else
         LIBS+=glib-2.0 gobject-2.0 nice
 endif
 
+RTC_ENABLE_WEBSOCKET ?= 1
+ifneq ($(RTC_ENABLE_WEBSOCKET), 0)
+        CPPFLAGS+=-DRTC_ENABLE_WEBSOCKET=1
+else
+        CPPFLAGS+=-DRTC_ENABLE_WEBSOCKET=0
+endif
+
+
 INCLUDES+=$(shell pkg-config --cflags $(LIBS))
 LDLIBS+=$(LOCALLIBS) $(shell pkg-config --libs $(LIBS))
 

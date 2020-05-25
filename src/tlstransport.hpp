@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,17 +16,15 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_DTLS_TRANSPORT_H
-#define RTC_DTLS_TRANSPORT_H
+#ifndef RTC_TLS_TRANSPORT_H
+#define RTC_TLS_TRANSPORT_H
 
-#include "certificate.hpp"
+#if RTC_ENABLE_WEBSOCKET
+
 #include "include.hpp"
-#include "peerconnection.hpp"
 #include "queue.hpp"
 #include "transport.hpp"
 
-#include <atomic>
-#include <functional>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -39,56 +37,42 @@
 
 namespace rtc {
 
-class IceTransport;
+class TcpTransport;
 
-class DtlsTransport : public Transport {
+class TlsTransport : public Transport {
 public:
 	static void Init();
 	static void Cleanup();
 
-	using verifier_callback = std::function<bool(const std::string &fingerprint)>;
-
-	DtlsTransport(std::shared_ptr<IceTransport> lower, std::shared_ptr<Certificate> certificate,
-	              verifier_callback verifierCallback, state_callback stateChangeCallback);
-	~DtlsTransport();
+	TlsTransport(std::shared_ptr<TcpTransport> lower, string host, state_callback callback);
+	~TlsTransport();
 
 	bool stop() override;
-	bool send(message_ptr message) override; // false if dropped
+	bool send(message_ptr message) override;
 
-private:
 	void incoming(message_ptr message) override;
-	void runRecvLoop();
 
-	const std::shared_ptr<Certificate> mCertificate;
+protected:
+	void runRecvLoop();
 
 	Queue<message_ptr> mIncomingQueue;
 	std::thread mRecvThread;
 
-	verifier_callback mVerifierCallback;
-
 #if USE_GNUTLS
 	gnutls_session_t mSession;
 
-	static int CertificateCallback(gnutls_session_t session);
 	static ssize_t WriteCallback(gnutls_transport_ptr_t ptr, const void *data, size_t len);
 	static ssize_t ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen);
 	static int TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms);
 #else
-	SSL_CTX *mCtx = NULL;
-	SSL *mSsl = NULL;
+	SSL_CTX *mCtx;
+	SSL *mSsl;
 	BIO *mInBio, *mOutBio;
 
-	static BIO_METHOD *BioMethods;
 	static int TransportExIndex;
-	static std::mutex GlobalMutex;
 
 	static int CertificateCallback(int preverify_ok, X509_STORE_CTX *ctx);
 	static void InfoCallback(const SSL *ssl, int where, int ret);
-
-	static int BioMethodNew(BIO *bio);
-	static int BioMethodFree(BIO *bio);
-	static int BioMethodWrite(BIO *bio, const char *in, int inl);
-	static long BioMethodCtrl(BIO *bio, int cmd, long num, void *ptr);
 #endif
 };
 
@@ -96,3 +80,4 @@ private:
 
 #endif
 
+#endif
