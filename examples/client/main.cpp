@@ -51,9 +51,9 @@ int main(int argc, char **argv) {
 	ws->onMessage([wpc = make_weak_ptr(pc)](const std::variant<binary, string> &data) {
 		auto pc = wpc.lock();
 		if (pc && holds_alternative<string>(data)) {
-			json message = json::parse(data.get<string>());
-			if (auto it = message.find("type")) {
-				auto type = it->second.get<string>();
+			json message = json::parse(get<string>(data));
+			if (auto it = message.find("type"); it != message.end()) {
+				auto type = it->get<string>();
 				if (type == "offer" || type == "answer") {
 					auto str = message["description"].get<string>();
 					pc->setRemoteDescription(Description(str, type));

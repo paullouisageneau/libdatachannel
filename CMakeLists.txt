@@ -1,5 +1,5 @@
-cmake_minimum_required (VERSION 3.7)
-project (libdatachannel
+cmake_minimum_required(VERSION 3.7)
+project(libdatachannel
 	DESCRIPTION "WebRTC DataChannels Library"
 	VERSION 0.4.9
 	LANGUAGES CXX)
@@ -72,17 +72,6 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi.cpp
 )
-
-set(TESTS_OFFERER_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/offerer.cpp
-)
-
-set(TESTS_ANSWERER_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/answerer.cpp
-)
-
-set(JSON_BuildTests OFF CACHE INTERNAL "")
-add_subdirectory(deps/json)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -192,4 +181,9 @@ set_target_properties(datachannel-tests PROPERTIES
 set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
 target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(datachannel-tests datachannel nlohmann_json::nlohmann_json)
+
+# Examples
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+add_subdirectory(deps/json)
+add_subdirectory(examples/client)
 
