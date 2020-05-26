@@ -93,10 +93,11 @@ set_target_properties(datachannel PROPERTIES
 	CXX_STANDARD 17)
 
 target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
-target_link_libraries(datachannel Threads::Threads Usrsctp::UsrsctpStatic)
+target_link_libraries(datachannel PUBLIC Threads::Threads)
+target_link_libraries(datachannel PRIVATE Usrsctp::UsrsctpStatic)
 
 add_library(datachannel-static STATIC EXCLUDE_FROM_ALL ${LIBDATACHANNEL_SOURCES})
 set_target_properties(datachannel-static PROPERTIES
@@ -104,14 +105,15 @@ set_target_properties(datachannel-static PROPERTIES
 	CXX_STANDARD 17)
 
 target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
-target_link_libraries(datachannel-static Threads::Threads Usrsctp::UsrsctpStatic)
+target_link_libraries(datachannel-static PUBLIC Threads::Threads)
+target_link_libraries(datachannel-static PRIVATE Usrsctp::UsrsctpStatic)
 
 if(WIN32)
-	target_link_libraries(datachannel "wsock32" "ws2_32") # winsock2
-	target_link_libraries(datachannel-static "wsock32" "ws2_32") # winsock2
+	target_link_libraries(datachannel PRIVATE wsock32 ws2_32) # winsock2
+	target_link_libraries(datachannel-static PRIVATE wsock32 ws2_32) # winsock2
 endif()
 
 if (USE_GNUTLS)
@@ -125,29 +127,29 @@ if (USE_GNUTLS)
 			IMPORTED_LOCATION "${GNUTLS_LIBRARIES}")
 	endif()
 	target_compile_definitions(datachannel PRIVATE USE_GNUTLS=1)
-	target_link_libraries(datachannel GnuTLS::GnuTLS)
+	target_link_libraries(datachannel PRIVATE GnuTLS::GnuTLS)
 	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=1)
-	target_link_libraries(datachannel-static GnuTLS::GnuTLS)
+	target_link_libraries(datachannel-static PRIVATE GnuTLS::GnuTLS)
 else()
 	find_package(OpenSSL REQUIRED)
 	target_compile_definitions(datachannel PRIVATE USE_GNUTLS=0)
-	target_link_libraries(datachannel OpenSSL::SSL)
+	target_link_libraries(datachannel PRIVATE OpenSSL::SSL)
 	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=0)
-	target_link_libraries(datachannel-static OpenSSL::SSL)
+	target_link_libraries(datachannel-static PRIVATE OpenSSL::SSL)
 endif()
 
 if (USE_JUICE)
 	add_subdirectory(deps/libjuice EXCLUDE_FROM_ALL)
 	target_compile_definitions(datachannel PRIVATE USE_JUICE=1)
-	target_link_libraries(datachannel LibJuice::LibJuiceStatic)
+	target_link_libraries(datachannel PRIVATE LibJuice::LibJuiceStatic)
 	target_compile_definitions(datachannel-static PRIVATE USE_JUICE=1)
-	target_link_libraries(datachannel-static LibJuice::LibJuiceStatic)
+	target_link_libraries(datachannel-static PRIVATE LibJuice::LibJuiceStatic)
 else()
 	find_package(LibNice REQUIRED)
 	target_compile_definitions(datachannel PRIVATE USE_JUICE=0)
-	target_link_libraries(datachannel LibNice::LibNice)
+	target_link_libraries(datachannel PRIVATE LibNice::LibNice)
 	target_compile_definitions(datachannel-static PRIVATE USE_JUICE=0)
-	target_link_libraries(datachannel-static LibNice::LibNice)
+	target_link_libraries(datachannel-static PRIVATE LibNice::LibNice)
 endif()
 
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
