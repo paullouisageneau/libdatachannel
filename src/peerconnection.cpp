@@ -269,9 +269,10 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		if (auto transport = std::atomic_load(&mDtlsTransport))
 			return transport;
 
+		auto certificate = mCertificate.get();
 		auto lower = std::atomic_load(&mIceTransport);
 		auto transport = std::make_shared<DtlsTransport>(
-		    lower, mCertificate, weak_bind_verifier(&PeerConnection::checkFingerprint, this, _1),
+		    lower, certificate, weak_bind_verifier(&PeerConnection::checkFingerprint, this, _1),
 		    [this, weak_this = weak_from_this()](DtlsTransport::State state) {
 			    auto shared_this = weak_this.lock();
 			    if (!shared_this)
@@ -513,9 +514,11 @@ void PeerConnection::processLocalDescription(Description description) {
 	if (auto remote = remoteDescription())
 		remoteSctpPort = remote->sctpPort();
 
+	auto certificate = mCertificate.get(); // wait for certificate if not ready
+
 	std::lock_guard lock(mLocalDescriptionMutex);
 	mLocalDescription.emplace(std::move(description));
-	mLocalDescription->setFingerprint(mCertificate->fingerprint());
+	mLocalDescription->setFingerprint(certificate->fingerprint());
 	mLocalDescription->setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
 	mLocalDescription->setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
 

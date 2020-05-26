@@ -31,6 +31,7 @@
 
 #include <atomic>
 #include <functional>
+#include <future>
 #include <list>
 #include <mutex>
 #include <shared_mutex>
@@ -43,6 +44,9 @@ class Certificate;
 class IceTransport;
 class DtlsTransport;
 class SctpTransport;
+
+using certificate_ptr = std::shared_ptr<Certificate>;
+using future_certificate_ptr = std::shared_future<certificate_ptr>;
 
 class PeerConnection : public std::enable_shared_from_this<PeerConnection> {
 public:
@@ -126,7 +130,7 @@ private:
 	void resetCallbacks();
 
 	const Configuration mConfig;
-	const std::shared_ptr<Certificate> mCertificate;
+	const future_certificate_ptr mCertificate;
 
 	std::optional<Description> mLocalDescription, mRemoteDescription;
 	mutable std::recursive_mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
