@@ -18,6 +18,7 @@
 
 #include "init.hpp"
 
+#include "certificate.hpp"
 #include "dtlstransport.hpp"
 #include "sctptransport.hpp"
 
@@ -74,6 +75,7 @@ Init::Init() {
 }
 
 Init::~Init() {
+	CleanupCertificateCache();
 	DtlsTransport::Cleanup();
 	SctpTransport::Cleanup();
 

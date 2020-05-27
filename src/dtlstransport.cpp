@@ -63,9 +63,8 @@ void DtlsTransport::Cleanup() {
 	// Nothing to do
 }
 
-DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
-                             verifier_callback verifierCallback,
-                             state_callback stateChangeCallback)
+DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
+                             verifier_callback verifierCallback, state_callback stateChangeCallback)
     : Transport(lower), mCertificate(certificate), mState(State::Disconnected),
       mVerifierCallback(std::move(verifierCallback)),
       mStateChangeCallback(std::move(stateChangeCallback)) {
