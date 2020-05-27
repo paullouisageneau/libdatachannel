@@ -66,7 +66,9 @@ string make_fingerprint(X509 *x509);
 using certificate_ptr = std::shared_ptr<Certificate>;
 using future_certificate_ptr = std::shared_future<certificate_ptr>;
 
-future_certificate_ptr make_certificate(string commonName);
+future_certificate_ptr make_certificate(string commonName); // cached
+
+void CleanupCertificateCache();
 
 } // namespace rtc
 

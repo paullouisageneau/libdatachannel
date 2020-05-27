@@ -281,6 +281,8 @@ certificate_ptr make_certificate_impl(string commonName) {
 
 // Common for GnuTLS and OpenSSL
 
+namespace rtc {
+
 namespace {
 
 // Helper function roughly equivalent to std::async with policy std::launch::async
@@ -296,23 +298,26 @@ std::future<std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>> thread_cal
 	return future;
 }
 
+static std::unordered_map<string, future_certificate_ptr> CertificateCache;
+static std::mutex CertificateCacheMutex;
+
 } // namespace
 
-namespace rtc {
-
 future_certificate_ptr make_certificate(string commonName) {
-	static std::unordered_map<string, future_certificate_ptr> cache;
-	static std::mutex cacheMutex;
+	std::lock_guard lock(CertificateCacheMutex);
 
-	std::lock_guard lock(cacheMutex);
-
-	if (auto it = cache.find(commonName); it != cache.end())
+	if (auto it = CertificateCache.find(commonName); it != CertificateCache.end())
 		return it->second;
 
 	auto future = thread_call(make_certificate_impl, commonName);
 	auto shared = future.share();
-	cache.emplace(std::move(commonName), shared);
+	CertificateCache.emplace(std::move(commonName), shared);
 	return shared;
+}
+
+void CleanupCertificateCache() {
+	std::lock_guard lock(CertificateCacheMutex);
+	CertificateCache.clear();
 }
 
 } // namespace rtc
