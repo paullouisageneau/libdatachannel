@@ -1,0 +1,24 @@
+name: Build and test with GnuTLS
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: install packages
+      run: sudo apt update && sudo apt install libgnutls28-dev nettle-dev
+    - name: submodules
+      run: git submodule update --init --recursive
+    - name: cmake
+      run: cmake -B build -DUSE_JUICE=1 -DUSE_GNUTLS=1
+    - name: make
+      run: (cd build; make)
+    - name: test
+      run: ./build/tests
+
