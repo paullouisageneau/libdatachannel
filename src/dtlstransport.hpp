@@ -48,7 +48,7 @@ public:
 
 	using verifier_callback = std::function<bool(const std::string &fingerprint)>;
 
-	DtlsTransport(std::shared_ptr<IceTransport> lower, std::shared_ptr<Certificate> certificate,
+	DtlsTransport(std::shared_ptr<IceTransport> lower, certificate_ptr certificate,
 	              verifier_callback verifierCallback, state_callback stateChangeCallback);
 	~DtlsTransport();
 
@@ -59,7 +59,7 @@ private:
 	void incoming(message_ptr message) override;
 	void runRecvLoop();
 
-	const std::shared_ptr<Certificate> mCertificate;
+	const certificate_ptr mCertificate;
 
 	Queue<message_ptr> mIncomingQueue;
 	std::thread mRecvThread;

@@ -18,6 +18,7 @@
 
 #include "init.hpp"
 
+#include "certificate.hpp"
 #include "dtlstransport.hpp"
 #include "sctptransport.hpp"
 
@@ -81,6 +82,7 @@ Init::Init() {
 }
 
 Init::~Init() {
+	CleanupCertificateCache();
 	SctpTransport::Cleanup();
 	DtlsTransport::Cleanup();
 #if RTC_ENABLE_WEBSOCKET

@@ -141,14 +141,9 @@ string make_fingerprint(gnutls_x509_crt_t crt) {
 	return oss.str();
 }
 
-shared_ptr<Certificate> make_certificate(const string &commonName) {
-	static std::unordered_map<string, shared_ptr<Certificate>> cache;
-	static std::mutex cacheMutex;
+namespace {
 
-	std::lock_guard lock(cacheMutex);
-	if (auto it = cache.find(commonName); it != cache.end())
-		return it->second;
-
+certificate_ptr make_certificate_impl(string commonName) {
 	std::unique_ptr<gnutls_x509_crt_t, decltype(&delete_crt)> crt(create_crt(), delete_crt);
 	std::unique_ptr<gnutls_x509_privkey_t, decltype(&delete_privkey)> privkey(create_privkey(),
 	                                                                          delete_privkey);
@@ -174,10 +169,10 @@ shared_ptr<Certificate> make_certificate(const string &commonName) {
 	check_gnutls(gnutls_x509_crt_sign2(*crt, *crt, *privkey, GNUTLS_DIG_SHA256, 0),
 	             "Unable to auto-sign certificate");
 
-	auto certificate = std::make_shared<Certificate>(*crt, *privkey);
-	cache.emplace(std::make_pair(commonName, certificate));
-	return certificate;
+	return std::make_shared<Certificate>(*crt, *privkey);
 }
+
+} // namespace
 
 } // namespace rtc
 
@@ -236,15 +231,9 @@ string make_fingerprint(X509 *x509) {
 	return oss.str();
 }
 
+namespace {
 
-shared_ptr<Certificate> make_certificate(const string &commonName) {
-	static std::unordered_map<string, shared_ptr<Certificate>> cache;
-	static std::mutex cacheMutex;
-
-	std::lock_guard lock(cacheMutex);
-	if (auto it = cache.find(commonName); it != cache.end())
-		return it->second;
-
+certificate_ptr make_certificate_impl(string commonName) {
 	shared_ptr<X509> x509(X509_new(), X509_free);
 	shared_ptr<EVP_PKEY> pkey(EVP_PKEY_new(), EVP_PKEY_free);
 
@@ -281,12 +270,54 @@ shared_ptr<Certificate> make_certificate(const string &commonName) {
 	if (!X509_sign(x509.get(), pkey.get(), EVP_sha256()))
 		throw std::runtime_error("Unable to auto-sign certificate");
 
-	auto certificate = std::make_shared<Certificate>(x509, pkey);
-	cache.emplace(std::make_pair(commonName, certificate));
-	return certificate;
+	return std::make_shared<Certificate>(x509, pkey);
 }
+
+} // namespace
 
 } // namespace rtc
 
 #endif
 
+// Common for GnuTLS and OpenSSL
+
+namespace rtc {
+
+namespace {
+
+// Helper function roughly equivalent to std::async with policy std::launch::async
+// since std::async might be unreliable on some platforms (e.g. Mingw32 on Windows)
+template <class F, class... Args>
+std::future<std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>> thread_call(F &&f,
+                                                                                  Args &&... args) {
+	using R = std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>;
+	std::packaged_task<R()> task(std::bind(f, std::forward<Args>(args)...));
+	std::future<R> future = task.get_future();
+	std::thread t(std::move(task));
+	t.detach();
+	return future;
+}
+
+static std::unordered_map<string, future_certificate_ptr> CertificateCache;
+static std::mutex CertificateCacheMutex;
+
+} // namespace
+
+future_certificate_ptr make_certificate(string commonName) {
+	std::lock_guard lock(CertificateCacheMutex);
+
+	if (auto it = CertificateCache.find(commonName); it != CertificateCache.end())
+		return it->second;
+
+	auto future = thread_call(make_certificate_impl, commonName);
+	auto shared = future.share();
+	CertificateCache.emplace(std::move(commonName), shared);
+	return shared;
+}
+
+void CleanupCertificateCache() {
+	std::lock_guard lock(CertificateCacheMutex);
+	CertificateCache.clear();
+}
+
+} // namespace rtc

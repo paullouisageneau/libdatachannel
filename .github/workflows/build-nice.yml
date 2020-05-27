@@ -1,19 +1,22 @@
-name: Build and test
-on: [push, pull_request]
-
+name: Build and test with libnice
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - name: install packages
-      run: sudo apt update && sudo apt install libgnutls28-dev nettle-dev
+      run: sudo apt update && sudo apt install libgnutls28-dev libnice-dev
     - name: submodules
       run: git submodule update --init --recursive
     - name: cmake
-      run: cmake -B build -DUSE_JUICE=1 -DUSE_GNUTLS=1
+      run: cmake -B build -DUSE_JUICE=0 -DUSE_GNUTLS=1
     - name: make
       run: (cd build; make)
     - name: test
