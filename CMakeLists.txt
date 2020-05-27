@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.7)
 project (libdatachannel
 	DESCRIPTION "WebRTC DataChannels Library"
-	VERSION 0.4.9
+	VERSION 0.5.0
 	LANGUAGES CXX)
 
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
@@ -19,8 +19,8 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 if(WIN32)
 	add_definitions(-DWIN32_LEAN_AND_MEAN)
 	if (MSVC)
-        	add_definitions(-DNOMINMAX)
-    	endif()
+		add_definitions(-DNOMINMAX)
+	endif()
 endif()
 
 set(LIBDATACHANNEL_SOURCES
