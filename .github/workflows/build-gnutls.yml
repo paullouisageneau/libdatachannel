@@ -7,7 +7,7 @@ on:
     branches:
     - master
 jobs:
-  build:
+  build-ubuntu:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -21,4 +21,20 @@ jobs:
       run: (cd build; make)
     - name: test
       run: ./build/tests
-
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: install packages
+      run: brew install gnutls nettle
+    - name: submodules
+      run: git submodule update --init --recursive
+    - name: cmake
+      run: cmake -B build -DUSE_JUICE=1 -DUSE_GNUTLS=1
+      env:
+# hack to bypass EPERM issue on sendto()
+        CFLAGS: -DJUICE_ENABLE_ADDRS_LOCALHOST
+    - name: make
+      run: (cd build; make)
+    - name: test
+      run: ./build/tests
