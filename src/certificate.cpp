@@ -254,7 +254,8 @@ certificate_ptr make_certificate_impl(string commonName) {
 		throw std::runtime_error("Unable to generate key pair");
 
 	const size_t serialSize = 16;
-	const auto *commonNameBytes = reinterpret_cast<const unsigned char *>(commonName.c_str());
+	auto *commonNameBytes =
+	    reinterpret_cast<unsigned char *>(const_cast<char *>(commonName.c_str()));
 
 	if (!X509_gmtime_adj(X509_get_notBefore(x509.get()), 3600 * -1) ||
 	    !X509_gmtime_adj(X509_get_notAfter(x509.get()), 3600 * 24 * 365) ||
