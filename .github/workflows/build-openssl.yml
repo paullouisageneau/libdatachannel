@@ -32,6 +32,8 @@ jobs:
     - name: cmake
       run: cmake -B build -DUSE_JUICE=1 -DUSE_GNUTLS=0
       env:
+        OPENSSL_ROOT_DIR: /usr/local/opt/openssl
+        OPENSSL_LIBRARIES: /usr/local/opt/openssl/lib
 # hack to bypass EPERM issue on sendto()
         CFLAGS: -DJUICE_ENABLE_ADDRS_LOCALHOST
     - name: make
