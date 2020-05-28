@@ -18,7 +18,7 @@ jobs:
     - name: cmake
       run: cmake -B build -DUSE_JUICE=0 -DUSE_GNUTLS=1
     - name: make
-      run: (cd build; make)
+      run: (cd build; make -j2)
     - name: test
       run: ./build/tests
 
