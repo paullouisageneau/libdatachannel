@@ -208,7 +208,9 @@ int rtcDeleteDataChannel(int dc) {
 
 #if RTC_ENABLE_WEBSOCKET
 int rtcCreateWebSocket(const char *url) {
-	return emplaceWebSocket(std::make_shared<WebSocket>(url));
+	auto ws = std::make_shared<WebSocket>();
+	ws->open(url);
+	return emplaceWebSocket(ws);
 }
 
 int rtcDeleteWebsocket(int ws) {

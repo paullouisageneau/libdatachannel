@@ -36,11 +36,17 @@ PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 
 PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New),
-      mGatheringState(GatheringState::New) {}
+      mGatheringState(GatheringState::New) {
+	PLOG_VERBOSE << "Creating PeerConnection";
+}
 
-PeerConnection::~PeerConnection() { close(); }
+PeerConnection::~PeerConnection() {
+	close();
+	PLOG_VERBOSE << "Destroying PeerConnection";
+}
 
 void PeerConnection::close() {
+	PLOG_VERBOSE << "Closing PeerConnection";
 	closeDataChannels();
 	closeTransports();
 }
@@ -339,6 +345,8 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 }
 
 void PeerConnection::closeTransports() {
+	PLOG_VERBOSE << "Closing transports";
+
 	// Change state to sink state Closed to block init methods
 	changeState(State::Closed);
 

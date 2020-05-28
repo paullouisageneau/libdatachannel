@@ -491,6 +491,7 @@ void DtlsTransport::runRecvLoop() {
 					int ret = SSL_read(mSsl, buffer, bufferSize);
 					if (!check_openssl_ret(mSsl, ret))
 						break;
+
 					if (ret > 0)
 						recv(make_message(buffer, buffer + ret));
 				}

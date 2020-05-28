@@ -33,11 +33,12 @@
 
 namespace rtc {
 
-WebSocket::WebSocket() {}
+WebSocket::WebSocket() { PLOG_VERBOSE << "Creating WebSocket"; }
 
-WebSocket::WebSocket(const string &url) : WebSocket() { open(url); }
-
-WebSocket::~WebSocket() { remoteClose(); }
+WebSocket::~WebSocket() {
+	PLOG_VERBOSE << "Destroying WebSocket";
+	remoteClose();
+}
 
 WebSocket::State WebSocket::readyState() const { return mState; }
 
@@ -74,6 +75,7 @@ void WebSocket::open(const string &url) {
 }
 
 void WebSocket::close() {
+	PLOG_VERBOSE << "Closing WebSocket";
 	auto state = mState.load();
 	if (state == State::Connecting || state == State::Open) {
 		changeState(State::Closing);
@@ -283,6 +285,8 @@ std::shared_ptr<WsTransport> WebSocket::initWsTransport() {
 }
 
 void WebSocket::closeTransports() {
+	PLOG_VERBOSE << "Closing transports";
+
 	changeState(State::Closed);
 
 	// Pass the references to a thread, allowing to terminate a transport from its own thread

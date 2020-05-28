@@ -86,7 +86,6 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 		registerIncoming();
 
 	} catch (...) {
-
 		gnutls_deinit(mSession);
 		throw;
 	}
@@ -112,7 +111,6 @@ bool TlsTransport::send(message_ptr message) {
 		return false;
 
 	PLOG_VERBOSE << "Send size=" << message->size();
-
 	ssize_t ret;
 	do {
 		ret = gnutls_record_send(mSession, message->data(), message->size());
@@ -198,12 +196,16 @@ ssize_t TlsTransport::WriteCallback(gnutls_transport_ptr_t ptr, const void *data
 
 ssize_t TlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen) {
 	TlsTransport *t = static_cast<TlsTransport *>(ptr);
-	if (auto next = t->mIncomingQueue.pop()) {
+	while (auto next = t->mIncomingQueue.pop()) {
 		auto message = *next;
-		ssize_t len = std::min(maxlen, message->size());
-		std::memcpy(data, message->data(), len);
-		gnutls_transport_set_errno(t->mSession, 0);
-		return len;
+		if (message->size() > 0) {
+			ssize_t len = std::min(maxlen, message->size());
+			std::memcpy(data, message->data(), len);
+			gnutls_transport_set_errno(t->mSession, 0);
+			return len;
+		}
+
+		recv(message); // Pass zero-sized messages through
 	}
 	// Closed
 	gnutls_transport_set_errno(t->mSession, 0);
@@ -373,33 +375,47 @@ void TlsTransport::runRecvLoop() {
 	try {
 		changeState(State::Connecting);
 
-		SSL_do_handshake(mSsl);
-		while (int len = BIO_read(mOutBio, buffer, bufferSize))
-			outgoing(make_message(buffer, buffer + len));
+		// Initiate the handshake
+		int ret = SSL_do_handshake(mSsl);
+		check_openssl_ret(mSsl, ret, "Handshake failed");
 
-		while (auto next = mIncomingQueue.pop()) {
-			message_ptr message = *next;
-			message_ptr decrypted;
-
-			BIO_write(mInBio, message->data(), message->size());
-
-			int ret = SSL_read(mSsl, buffer, bufferSize);
-			if (!check_openssl_ret(mSsl, ret))
-				break;
-
-			if (ret > 0)
-				decrypted = make_message(buffer, buffer + ret);
-
+		while (true) {
+			// Output
 			while (int len = BIO_read(mOutBio, buffer, bufferSize))
 				outgoing(make_message(buffer, buffer + len));
 
-			if (state() == State::Connecting && SSL_is_init_finished(mSsl)) {
-				PLOG_INFO << "TLS handshake finished";
-				changeState(State::Connected);
+			auto next = mIncomingQueue.pop();
+			if (!next)
+				break;
+			message_ptr message = *next;
+
+			if (message->size() == 0) {
+				// Pass zero-sized messages through
+				recv(message);
+				continue;
 			}
 
-			if (decrypted)
-				recv(decrypted);
+			// Input
+			BIO_write(mInBio, message->data(), message->size());
+
+			if (state() == State::Connecting) {
+				// Continue the handshake
+				int ret = SSL_do_handshake(mSsl);
+				if (!check_openssl_ret(mSsl, ret, "Handshake failed"))
+					break;
+
+				if (SSL_is_init_finished(mSsl)) {
+					PLOG_INFO << "TLS handshake finished";
+					changeState(State::Connected);
+				}
+			} else {
+				int ret = SSL_read(mSsl, buffer, bufferSize);
+				if (!check_openssl_ret(mSsl, ret))
+					break;
+
+				if (ret > 0)
+					recv(make_message(buffer, buffer + ret));
+			}
 		}
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "TLS recv: " << e.what();

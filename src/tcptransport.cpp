@@ -99,22 +99,30 @@ bool TcpTransport::stop() {
 	if (!Transport::stop())
 		return false;
 
-	PLOG_DEBUG << "Waiting TCP recv thread";
+	PLOG_DEBUG << "Waiting for TCP recv thread";
 	close();
 	mThread.join();
 	return true;
 }
 
 bool TcpTransport::send(message_ptr message) {
+	if (state() != State::Connected)
+		return false;
+
 	if (!message)
 		return mSendQueue.empty();
 
 	PLOG_VERBOSE << "Send size=" << (message ? message->size() : 0);
-
 	return outgoing(message);
 }
 
-void TcpTransport::incoming(message_ptr message) { recv(message); }
+void TcpTransport::incoming(message_ptr message) {
+	if (!message)
+		return;
+
+	PLOG_VERBOSE << "Incoming size=" << message->size();
+	recv(message);
+}
 
 bool TcpTransport::outgoing(message_ptr message) {
 	// If nothing is pending, try to send directly
@@ -140,22 +148,40 @@ void TcpTransport::connect(const string &hostname, const string &service) {
 	if (getaddrinfo(hostname.c_str(), service.c_str(), &hints, &result))
 		throw std::runtime_error("Resolution failed for \"" + hostname + ":" + service + "\"");
 
-	for (auto p = result; p; p = p->ai_next)
+	for (auto p = result; p; p = p->ai_next) {
 		try {
 			connect(p->ai_addr, p->ai_addrlen);
+
+			PLOG_INFO << "Connected to " << hostname << ":" << service;
 			freeaddrinfo(result);
 			return;
+
 		} catch (const std::runtime_error &e) {
-			PLOG_WARNING << e.what();
+			if (p->ai_next) {
+				PLOG_DEBUG << e.what();
+			} else {
+				PLOG_WARNING << e.what();
+			}
 		}
+	}
 
 	freeaddrinfo(result);
-	throw std::runtime_error("Connection failed to \"" + hostname + ":" + service + "\"");
+
+	std::ostringstream msg;
+	msg << "Connection to " << hostname << ":" << service << " failed";
+	throw std::runtime_error(msg.str());
 }
 
 void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 	try {
-		PLOG_DEBUG << "Creating TCP socket";
+		char node[MAX_NUMERICNODE_LEN];
+		char serv[MAX_NUMERICSERV_LEN];
+		if (getnameinfo(addr, addrlen, node, MAX_NUMERICNODE_LEN, serv, MAX_NUMERICSERV_LEN,
+		                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+			PLOG_DEBUG << "Trying address " << node << ":" << serv;
+		}
+
+		PLOG_VERBOSE << "Creating TCP socket";
 
 		// Create socket
 		mSock = ::socket(addr->sa_family, SOCK_STREAM, IPPROTO_TCP);
@@ -166,17 +192,13 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 		if (::ioctlsocket(mSock, FIONBIO, &b) < 0)
 			throw std::runtime_error("Failed to set socket non-blocking mode");
 
-		IF_PLOG(plog::debug) {
-			char node[MAX_NUMERICNODE_LEN];
-			char serv[MAX_NUMERICSERV_LEN];
-			if (getnameinfo(addr, addrlen, node, MAX_NUMERICNODE_LEN, serv, MAX_NUMERICSERV_LEN,
-			                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-				PLOG_DEBUG << "Trying address " << node << ":" << serv;
-			}
-		}
-
 		// Initiate connection
-		::connect(mSock, addr, addrlen);
+		int ret = ::connect(mSock, addr, addrlen);
+		if (ret < 0 && errno != EINPROGRESS) {
+			std::ostringstream msg;
+			msg << "TCP connection to " << node << ":" << serv << " failed, errno=" << sockerrno;
+			throw std::runtime_error(msg.str());
+		}
 
 		fd_set writefds;
 		FD_ZERO(&writefds);
@@ -184,13 +206,29 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 		struct timeval tv;
 		tv.tv_sec = 10; // TODO
 		tv.tv_usec = 0;
-		int ret = ::select(SOCKET_TO_INT(mSock) + 1, NULL, &writefds, NULL, &tv);
+		ret = ::select(SOCKET_TO_INT(mSock) + 1, NULL, &writefds, NULL, &tv);
 
 		if (ret < 0)
 			throw std::runtime_error("Failed to wait for socket connection");
 
-		if (ret == 0 || ::send(mSock, NULL, 0, MSG_NOSIGNAL) != 0)
-			throw std::runtime_error("Connection failed");
+		if (ret == 0) {
+			std::ostringstream msg;
+			msg << "TCP connection to " << node << ":" << serv << " timed out";
+			throw std::runtime_error(msg.str());
+		}
+
+		int error = 0;
+		socklen_t errorlen = sizeof(error);
+		if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, &error, &errorlen) != 0)
+			throw std::runtime_error("Failed to get socket error code");
+
+		if (error != 0) {
+			std::ostringstream msg;
+			msg << "TCP connection to " << node << ":" << serv << " failed, errno=" << error;
+			throw std::runtime_error(msg.str());
+		}
+
+		PLOG_DEBUG << "TCP connection to " << node << ":" << serv << " succeeded";
 
 	} catch (...) {
 		if (mSock != INVALID_SOCKET) {
@@ -257,7 +295,6 @@ void TcpTransport::runLoop() {
 		return;
 	}
 
-
 	// Receive loop
 	try {
 		PLOG_INFO << "TCP connected";
@@ -266,9 +303,18 @@ void TcpTransport::runLoop() {
 		while (true) {
 			fd_set readfds, writefds;
 			int n = prepareSelect(readfds, writefds);
-			int ret = ::select(n, &readfds, &writefds, NULL, NULL);
-			if (ret < 0)
+
+			struct timeval tv;
+			tv.tv_sec = 10;
+			tv.tv_usec = 0;
+			int ret = ::select(n, &readfds, &writefds, NULL, &tv);
+			if (ret < 0) {
 				throw std::runtime_error("Failed to wait on socket");
+			} else if (ret == 0) {
+				PLOG_VERBOSE << "TCP is idle";
+				incoming(make_message(0));
+				continue;
+			}
 
 			if (FD_ISSET(mSock, &writefds))
 				trySendQueue();
@@ -280,7 +326,7 @@ void TcpTransport::runLoop() {
 					if (errno == EAGAIN || errno == EWOULDBLOCK) {
 						continue;
 					} else {
-						throw std::runtime_error("Connection lost, errno=" + to_string(sockerrno));
+						throw std::runtime_error("Connection lost");
 					}
 				}
 
