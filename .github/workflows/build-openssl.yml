@@ -7,7 +7,7 @@ on:
     branches:
     - master
 jobs:
-  build:
+  build-ubuntu:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -18,7 +18,25 @@ jobs:
     - name: cmake
       run: cmake -B build -DUSE_JUICE=1 -DUSE_GNUTLS=0
     - name: make
-      run: (cd build; make)
+      run: (cd build; make -j2)
     - name: test
       run: ./build/tests
-
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: install packages
+      run: brew reinstall openssl@1.1
+    - name: submodules
+      run: git submodule update --init --recursive
+    - name: cmake
+      run: cmake -B build -DUSE_JUICE=1 -DUSE_GNUTLS=0
+      env:
+        OPENSSL_ROOT_DIR: /usr/local/opt/openssl
+        OPENSSL_LIBRARIES: /usr/local/opt/openssl/lib
+# hack to bypass EPERM issue on sendto()
+        CFLAGS: -DJUICE_ENABLE_ADDRS_LOCALHOST
+    - name: make
+      run: (cd build; make -j2)
+    - name: test
+      run: ./build/tests
