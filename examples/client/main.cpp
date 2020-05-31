@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 	Configuration config;
 	config.iceServers.emplace_back("stun:stun.l.google.com:19302"); // change to your STUN server
 
-	localId = randomId(8);
+	localId = randomId(4);
 	cout << "The local ID is: " << localId << endl;
 
 	auto ws = make_shared<WebSocket>();

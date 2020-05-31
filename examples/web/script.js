@@ -25,7 +25,7 @@ const config = {
   }],
 };
 
-const localId = randomId(8);
+const localId = randomId(4);
 
 const url = `ws://localhost:8000/${localId}`;
 
