@@ -71,6 +71,7 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/websocket.cpp
 )
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
