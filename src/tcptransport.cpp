@@ -192,6 +192,13 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 		if (::ioctlsocket(mSock, FIONBIO, &b) < 0)
 			throw std::runtime_error("Failed to set socket non-blocking mode");
 
+#ifdef __APPLE__
+		// MacOS lacks MSG_NOSIGNAL and requires SO_NOSIGPIPE instead
+		int opt = 1;
+		if (::setsockopt(mSock, SOL_SOCKET, SO_NOSIGPIPE, &opt, sizeof(opt)) < 0)
+			throw std::runtime_error("Failed to disable SIGPIPE for socket");
+#endif
+
 		// Initiate connection
 		int ret = ::connect(mSock, addr, addrlen);
 		if (ret < 0 && errno != EINPROGRESS) {
@@ -264,7 +271,12 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 	auto data = reinterpret_cast<const char *>(message->data());
 	auto size = message->size();
 	while (size) {
-		int len = ::send(mSock, data, size, MSG_NOSIGNAL);
+#ifdef __APPLE__
+		int flags = 0;
+#else
+		int flags = MSG_NOSIGNAL;
+#endif
+		int len = ::send(mSock, data, size, flags);
 		if (len < 0) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				message = make_message(message->end() - size, message->end());
