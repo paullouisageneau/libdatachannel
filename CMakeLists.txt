@@ -188,4 +188,6 @@ target_link_libraries(datachannel-tests datachannel nlohmann_json::nlohmann_json
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(deps/json)
 add_subdirectory(examples/client)
+add_subdirectory(examples/copy-paste)
+add_subdirectory(examples/copy-paste-capi)
 
