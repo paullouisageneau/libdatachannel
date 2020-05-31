@@ -1,15 +1,23 @@
 <!doctype html>
 <html>
     <head>
-        <title>Web Rtc Example</title>
+		<meta charset="UTF-8">
+        <title>WebRTC Example</title>
+		<link rel="stylesheet" href="style.css">
+        <script src="script.js"></script>
     </head>
     <body>
-        <h1>Web Rtc</h1>
-        <button id="createConnectionBtn">Create Connection</button>
-        <br/>
-        <textarea id="sendData" placeholder="Send a message" style="width: 500px; height: 50px"></textarea>
-        <br/>
-        <button id="sendDataBtn">Send Data</button>
-        <script src="/script.js"></script>
+        <h1>WebRTC Example</h1>
+        <h2>Local ID</h2>
+        <p id="localId"></p>
+        <h2>Send an offer through signaling</h2>
+		<input type="text" id="offerId" placeholder="remote ID" disabled>
+		<input type="button" id="offerBtn" value="Offer" disabled>
+		<br>
+        <h2>Send a message through DataChannel</h2>
+        <input type="text" id="sendMsg" placeholder="message" disabled>
+        <input type="button" id="sendBtn" value="Send" disabled>
+        <br>
     </body>
 </html>
+

@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 	rtc::InitLogger(LogLevel::Warning);
 
 	Configuration config;
-	config.iceServers.emplace_back("stun.l.google.com:19302"); // change to your STUN server
+	config.iceServers.emplace_back("stun:stun.l.google.com:19302"); // change to your STUN server
 
 	localId = randomId(8);
 	cout << "The local ID is: " << localId << endl;
@@ -92,12 +92,12 @@ int main(int argc, char **argv) {
 		}
 
 		if (type == "offer" || type == "answer") {
-			auto str = message["description"].get<string>();
-			pc->setRemoteDescription(Description(str, type));
+			auto sdp = message["description"].get<string>();
+			pc->setRemoteDescription(Description(sdp, type));
 		} else if (type == "candidate") {
-			auto str = message["candidate"].get<string>();
+			auto sdp = message["candidate"].get<string>();
 			auto mid = message["mid"].get<string>();
-			pc->addRemoteCandidate(Candidate(str, mid));
+			pc->addRemoteCandidate(Candidate(sdp, mid));
 		}
 	});
 
@@ -188,8 +188,6 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 		cout << "DataChannel from " << id << " received with label \"" << dc->label() << "\""
 		     << endl;
 
-		dc->send("Hello from " + localId);
-
 		dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
 		dc->onMessage([id](const variant<binary, string> &message) {
@@ -198,6 +196,8 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 
 			cout << "Message from " << id << " received: " << get<string>(message) << endl;
 		});
+
+		dc->send("Hello from " + localId);
 
 		dataChannelMap.emplace(id, dc);
 	});

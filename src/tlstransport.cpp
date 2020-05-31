@@ -205,7 +205,7 @@ ssize_t TlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_
 			return len;
 		}
 
-		recv(message); // Pass zero-sized messages through
+		t->recv(message); // Pass zero-sized messages through
 	}
 	// Closed
 	gnutls_transport_set_errno(t->mSession, 0);

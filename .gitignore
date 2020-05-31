@@ -1,4 +1,5 @@
 build/
+node_modules/
 *.d
 *.o
 *.a
@@ -6,3 +7,4 @@ build/
 compile_commands.json
 tests
 .DS_Store
+

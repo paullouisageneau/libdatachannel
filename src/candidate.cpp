@@ -60,12 +60,19 @@ bool Candidate::resolve(ResolveMode mode) {
 	if (mIsResolved)
 		return true;
 
+	PLOG_VERBOSE << "Resolving candidate (mode="
+				 << (mode == ResolveMode::Simple ? "simple" : "lookup")
+				 << "): " << mCandidate;
+
 	// See RFC 8445 for format
-	std::stringstream ss(mCandidate);
+	std::istringstream iss(mCandidate);
 	int component{0}, priority{0};
 	string foundation, transport, node, service, typ_, type;
-	if (ss >> foundation >> component >> transport >> priority &&
-	    ss >> node >> service >> typ_ >> type && typ_ == "typ") {
+	if (iss >> foundation >> component >> transport >> priority &&
+	    iss >> node >> service >> typ_ >> type && typ_ == "typ") {
+
+		string left;
+		std::getline(iss, left);
 
 		// Try to resolve the node
 		struct addrinfo hints = {};
@@ -94,15 +101,13 @@ bool Candidate::resolve(ResolveMode mode) {
 					if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
 					                servbuffer, MAX_NUMERICSERV_LEN,
 					                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-						string left;
-						std::getline(ss, left);
 						const char sp{' '};
-						ss.clear();
-						ss << foundation << sp << component << sp << transport << sp << priority;
-						ss << sp << nodebuffer << sp << servbuffer << sp << "typ" << sp << type;
-						if (!left.empty())
-							ss << left;
-						mCandidate = ss.str();
+						std::ostringstream oss;
+						oss << foundation << sp << component << sp << transport << sp << priority;
+						oss << sp << nodebuffer << sp << servbuffer << sp << "typ" << sp << type;
+						oss << left;
+						mCandidate = oss.str();
+						PLOG_VERBOSE << "Resolved candidate: " << mCandidate;
 						return mIsResolved = true;
 					}
 				}

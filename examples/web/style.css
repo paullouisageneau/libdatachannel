@@ -1,79 +1,20 @@
 body {
-  background-color: #fff5e3;
-  font-family: sans-serif;
-  display: flex;
-  flex-wrap: wrap;
-  margin: 0;
+	font-family: arial, verdana, sans-serif;
+	font-size: 12pt;
+	background-color: #FFFFFF;
+	color: #000000;
+	margin: 0;
+	padding: 0.5em;
 }
 
-#message-container {
-  padding: 0 5%;
-  width: 100%;
+input {
+	font-size: 100%;
+	vertical-align: middle;
 }
 
-h1 {
-  width: 100%;
+input[type="text"] {
+	width: 8em;
+	max-width: 75%;
+	padding: 0.4em;
 }
 
-#message-input {
-  width: 100%;
-  position: fixed;
-  top: 90%;
-  height: 10%;
-  display: flex;
-  background-color: #a0a0a0f7;
-}
-
-#message-text-box {
-  width: 90%;
-  border: none;
-  border-radius: 20px 0 0 20px;
-  padding: 5px;
-  vertical-align: middle;
-  font-size: medium;
-  resize: none;
-  vertical-align: middle;
-}
-
-#message-text-box:focus {
-  outline: none;
-}
-
-#messages {
-  display: flex;
-  flex-direction:column;
-  width: 100%;
-  margin: auto;
-}
-
-#send-message-button {
-  width: 10%;
-  font-size: medium;
-}
-#send-message-button:hover {
-  opacity: 10%;
-}
-
-.message {
-  width: 40%;
-  flex-basis: 100%;
-  border: 1px solid;
-  padding: 1%;
-  border-radius: 8px;
-  box-shadow: 2px 2px #a0a0a0f7;
-}
-
-.message .time {
-  font-size: x-small;
-  display: flex;
-  align-self:flex-end;
-}
-
-.from-me {
-  background-color: #dcf8c6;
-}
-
-.from-them {
-  background-color: #fff;
-  align-self:flex-end;
-}

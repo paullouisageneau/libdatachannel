@@ -10,5 +10,12 @@ AccessModifierOffset: -4
 ColumnLimit: 100
 ---
 Language: JavaScript
-ColumnLimit: 80
+IndentWidth: 2
+UseTab: Never
+ColumnLimit: 100
+---
+Language: Python
+IndentWidth: 4
+UseTab: Never
+ColumnLimit: 79
 ...
