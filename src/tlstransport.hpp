@@ -56,10 +56,14 @@ protected:
 	void runRecvLoop();
 
 	Queue<message_ptr> mIncomingQueue;
+	message_ptr mIncomingMessage;
+	size_t mIncomingMessagePosition = 0;
 	std::thread mRecvThread;
 
 #if USE_GNUTLS
 	gnutls_session_t mSession;
+	gnutls_certificate_credentials_t mCreds;
+	string mHost;
 
 	static ssize_t WriteCallback(gnutls_transport_ptr_t ptr, const void *data, size_t len);
 	static ssize_t ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen);
