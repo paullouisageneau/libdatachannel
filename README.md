@@ -21,13 +21,13 @@ The WebRTC stack has been tested to be compatible with Firefox and Chromium.
 Protocol stack:
 - SCTP-based Data Channels ([draft-ietf-rtcweb-data-channel-13](https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13))
 - DTLS/UDP ([RFC7350](https://tools.ietf.org/html/rfc7350) and [RFC8261](https://tools.ietf.org/html/rfc8261))
-- ICE ([RFC8445](https://tools.ietf.org/html/rfc8445)) with STUN [RFC5389](https://tools.ietf.org/html/rfc5389)
+- ICE ([RFC8445](https://tools.ietf.org/html/rfc8445)) with STUN ([RFC5389](https://tools.ietf.org/html/rfc5389))
 
 Features:
 - Full IPv6 support
-- Trickle ICE [draft-ietf-ice-trickle-21](https://tools.ietf.org/html/draft-ietf-ice-trickle-21)
+- Trickle ICE ([draft-ietf-ice-trickle-21](https://tools.ietf.org/html/draft-ietf-ice-trickle-21))
 - Multicast DNS candidates ([draft-ietf-rtcweb-mdns-ice-candidates-04](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-04))
-- TURN relaying [RFC5766](https://tools.ietf.org/html/rfc5766) with [libnice](https://github.com/libnice/libnice) as ICE backend.
+- TURN relaying ([RFC5766](https://tools.ietf.org/html/rfc5766)) with [libnice](https://github.com/libnice/libnice) as ICE backend
 
 ### WebSocket
 
