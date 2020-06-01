@@ -214,6 +214,9 @@ bool DataChannel::outgoing(mutable_message_ptr message) {
 }
 
 void DataChannel::incoming(message_ptr message) {
+	if (!message)
+		return;
+
 	switch (message->type) {
 	case Message::Control: {
 		auto raw = reinterpret_cast<const uint8_t *>(message->data());

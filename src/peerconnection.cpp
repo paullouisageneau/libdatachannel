@@ -23,7 +23,6 @@
 #include "include.hpp"
 #include "sctptransport.hpp"
 
-#include <iostream>
 #include <thread>
 
 namespace rtc {
@@ -33,32 +32,21 @@ using namespace std::placeholders;
 using std::shared_ptr;
 using std::weak_ptr;
 
-template <typename F, typename T, typename... Args> auto weak_bind(F &&f, T *t, Args &&... _args) {
-	return [bound = std::bind(f, t, _args...), weak_this = t->weak_from_this()](auto &&... args) {
-		if (auto shared_this = weak_this.lock())
-			bound(args...);
-	};
-}
-
-template <typename F, typename T, typename... Args>
-auto weak_bind_verifier(F &&f, T *t, Args &&... _args) {
-	return [bound = std::bind(f, t, _args...), weak_this = t->weak_from_this()](auto &&... args) {
-		if (auto shared_this = weak_this.lock())
-			return bound(args...);
-		else
-			return false;
-	};
-}
-
 PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 
 PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New),
-      mGatheringState(GatheringState::New) {}
+      mGatheringState(GatheringState::New) {
+	PLOG_VERBOSE << "Creating PeerConnection";
+}
 
-PeerConnection::~PeerConnection() { close(); }
+PeerConnection::~PeerConnection() {
+	close();
+	PLOG_VERBOSE << "Destroying PeerConnection";
+}
 
 void PeerConnection::close() {
+	PLOG_VERBOSE << "Closing PeerConnection";
 	closeDataChannels();
 	closeTransports();
 }
@@ -272,7 +260,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		auto certificate = mCertificate.get();
 		auto lower = std::atomic_load(&mIceTransport);
 		auto transport = std::make_shared<DtlsTransport>(
-		    lower, certificate, weak_bind_verifier(&PeerConnection::checkFingerprint, this, _1),
+		    lower, certificate, weak_bind(&PeerConnection::checkFingerprint, this, _1),
 		    [this, weak_this = weak_from_this()](DtlsTransport::State state) {
 			    auto shared_this = weak_this.lock();
 			    if (!shared_this)
@@ -357,6 +345,8 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 }
 
 void PeerConnection::closeTransports() {
+	PLOG_VERBOSE << "Closing transports";
+
 	// Change state to sink state Closed to block init methods
 	changeState(State::Closed);
 

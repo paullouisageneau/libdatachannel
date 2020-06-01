@@ -29,7 +29,7 @@ using namespace std;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 int main(int argc, char **argv) {
-	InitLogger(LogLevel::Warning);
+	rtc::InitLogger(LogLevel::Warning);
 
 	Configuration config;
 	// config.iceServers.emplace_back("stun.l.google.com:19302");
@@ -49,24 +49,23 @@ int main(int argc, char **argv) {
 
 	pc->onStateChange(
 	    [](PeerConnection::State state) { cout << "[State: " << state << "]" << endl; });
-
 	pc->onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "[Gathering State: " << state << "]" << endl;
 	});
 
-	auto dc = pc->createDataChannel("test"); // this is the offerer, so create a data channel
+	shared_ptr<DataChannel> dc = nullptr;
+	pc->onDataChannel([&](shared_ptr<DataChannel> _dc) {
+		cout << "[Got a DataChannel with label: " << _dc->label() << "]" << endl;
+		dc = _dc;
 
-	dc->onOpen([&]() { cout << "[DataChannel open: " << dc->label() << "]" << endl; });
+		dc->onClosed([&]() { cout << "[DataChannel closed: " << dc->label() << "]" << endl; });
 
-	dc->onClosed([&]() { cout << "[DataChannel closed: " << dc->label() << "]" << endl; });
-
-	dc->onMessage([](const variant<binary, string> &message) {
-		if (holds_alternative<string>(message)) {
-			cout << "[Received: " << get<string>(message) << "]" << endl;
-		}
+		dc->onMessage([](const variant<binary, string> &message) {
+			if (holds_alternative<string>(message)) {
+				cout << "[Received message: " << get<string>(message) << "]" << endl;
+			}
+		});
 	});
-
-	this_thread::sleep_for(1s);
 
 	bool exit = false;
 	while (!exit) {
@@ -98,6 +97,7 @@ int main(int argc, char **argv) {
 				sdp += line;
 				sdp += "\r\n";
 			}
+			std::cout << sdp;
 			pc->setRemoteDescription(sdp);
 			break;
 		}
@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
 		}
 		case 3: {
 			// Send Message
-			if (!dc->isOpen()) {
+			if (!dc || !dc->isOpen()) {
 				cout << "** Channel is not Open ** ";
 				break;
 			}

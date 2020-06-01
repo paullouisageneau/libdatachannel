@@ -22,6 +22,10 @@
 #include "dtlstransport.hpp"
 #include "sctptransport.hpp"
 
+#if RTC_ENABLE_WEBSOCKET
+#include "tlstransport.hpp"
+#endif
+
 #ifdef _WIN32
 #include <winsock2.h>
 #endif
@@ -70,14 +74,20 @@ Init::Init() {
 	ERR_load_crypto_strings();
 #endif
 
-	DtlsTransport::Init();
 	SctpTransport::Init();
+	DtlsTransport::Init();
+#if RTC_ENABLE_WEBSOCKET
+	TlsTransport::Init();
+#endif
 }
 
 Init::~Init() {
 	CleanupCertificateCache();
-	DtlsTransport::Cleanup();
 	SctpTransport::Cleanup();
+	DtlsTransport::Cleanup();
+#if RTC_ENABLE_WEBSOCKET
+	TlsTransport::Cleanup();
+#endif
 
 #ifdef _WIN32
 	WSACleanup();

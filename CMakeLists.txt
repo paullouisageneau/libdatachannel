@@ -1,11 +1,12 @@
-cmake_minimum_required (VERSION 3.7)
-project (libdatachannel
+cmake_minimum_required(VERSION 3.7)
+project(libdatachannel
 	DESCRIPTION "WebRTC DataChannels Library"
 	VERSION 0.5.1
 	LANGUAGES CXX)
 
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 option(USE_JUICE "Use libjuice instead of libnice" OFF)
+option(RTC_ENABLE_WEBSOCKET "Build WebSocket support" ON)
 
 if(USE_GNUTLS)
 	option(USE_NETTLE "Use Nettle instead of OpenSSL in libjuice" ON)
@@ -39,6 +40,14 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.cpp
 )
 
+set(LIBDATACHANNEL_WEBSOCKET_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/src/base64.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/tcptransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/tlstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/websocket.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/wstransport.cpp
+)
+
 set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/candidate.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/channel.hpp
@@ -55,20 +64,14 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/reliability.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.h
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocket.hpp
 )
 
 set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi.cpp
-)
-
-set(TESTS_OFFERER_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/offerer.cpp
-)
-
-set(TESTS_ANSWERER_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/p2p/answerer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/websocket.cpp
 )
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -87,8 +90,28 @@ endif()
 add_library(Usrsctp::Usrsctp ALIAS usrsctp)
 add_library(Usrsctp::UsrsctpStatic ALIAS usrsctp-static)
 
-add_library(datachannel SHARED ${LIBDATACHANNEL_SOURCES})
+if (RTC_ENABLE_WEBSOCKET)
+	add_library(datachannel SHARED
+		${LIBDATACHANNEL_SOURCES}
+		${LIBDATACHANNEL_WEBSOCKET_SOURCES})
+	add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
+		${LIBDATACHANNEL_SOURCES}
+		${LIBDATACHANNEL_WEBSOCKET_SOURCES})
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=1)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=1)
+else()
+	add_library(datachannel SHARED
+		${LIBDATACHANNEL_SOURCES})
+	add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
+		${LIBDATACHANNEL_SOURCES})
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=0)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=0)
+endif()
+
 set_target_properties(datachannel PROPERTIES
+	VERSION ${PROJECT_VERSION}
+	CXX_STANDARD 17)
+set_target_properties(datachannel-static PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
 
@@ -98,11 +121,6 @@ target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inclu
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(datachannel PUBLIC Threads::Threads)
 target_link_libraries(datachannel PRIVATE Usrsctp::UsrsctpStatic)
-
-add_library(datachannel-static STATIC EXCLUDE_FROM_ALL ${LIBDATACHANNEL_SOURCES})
-set_target_properties(datachannel-static PROPERTIES
-	VERSION ${PROJECT_VERSION}
-	CXX_STANDARD 17)
 
 target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
@@ -158,28 +176,19 @@ add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
 install(TARGETS datachannel LIBRARY DESTINATION lib)
 install(FILES ${LIBDATACHANNEL_HEADERS} DESTINATION include/rtc)
 
-# Main Test
+# Tests
 add_executable(datachannel-tests ${TESTS_SOURCES})
 set_target_properties(datachannel-tests PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
 set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
 target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(datachannel-tests datachannel)
+target_link_libraries(datachannel-tests datachannel nlohmann_json::nlohmann_json)
 
-# P2P Test: offerer
-add_executable(datachannel-offerer ${TESTS_OFFERER_SOURCES})
-set_target_properties(datachannel-offerer PROPERTIES
-	VERSION ${PROJECT_VERSION}
-	CXX_STANDARD 17)
-set_target_properties(datachannel-offerer PROPERTIES OUTPUT_NAME offerer)
-target_link_libraries(datachannel-offerer datachannel)
-
-# P2P Test: answerer
-add_executable(datachannel-answerer ${TESTS_ANSWERER_SOURCES})
-set_target_properties(datachannel-answerer PROPERTIES
-	VERSION ${PROJECT_VERSION}
-	CXX_STANDARD 17)
-set_target_properties(datachannel-answerer PROPERTIES OUTPUT_NAME answerer)
-target_link_libraries(datachannel-answerer datachannel)
+# Examples
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+add_subdirectory(deps/json)
+add_subdirectory(examples/client)
+add_subdirectory(examples/copy-paste)
+add_subdirectory(examples/copy-paste-capi)
 
