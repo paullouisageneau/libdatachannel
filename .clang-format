@@ -13,9 +13,4 @@ Language: JavaScript
 IndentWidth: 2
 UseTab: Never
 ColumnLimit: 100
----
-Language: Python
-IndentWidth: 4
-UseTab: Never
-ColumnLimit: 79
 ...
