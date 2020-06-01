@@ -147,7 +147,7 @@ void WsTransport::close() {
 	if (state() == State::Connected) {
 		sendFrame({CLOSE, NULL, 0, true, true});
 		PLOG_INFO << "WebSocket closing";
-		changeState(State::Completed);
+		changeState(State::Disconnected);
 	}
 }
 

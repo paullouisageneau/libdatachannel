@@ -32,9 +32,9 @@ using namespace std;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 void test_websocket() {
-	InitLogger(LogLevel::Verbose);
+	InitLogger(LogLevel::Debug);
 
-	const string myMessage = "Hello world";
+	const string myMessage = "Hello world from libdatachannel";
 
 	auto ws = std::make_shared<WebSocket>();
 
@@ -45,6 +45,8 @@ void test_websocket() {
 		cout << "WebSocket: Open" << endl;
 		ws->send(myMessage);
 	});
+
+	ws->onClosed([]() { cout << "WebSocket: Closed" << endl; });
 
 	std::atomic<bool> received = false;
 	ws->onMessage([&received, &myMessage](const variant<binary, string> &message) {

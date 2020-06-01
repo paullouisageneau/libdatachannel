@@ -75,9 +75,9 @@ void WebSocket::open(const string &url) {
 }
 
 void WebSocket::close() {
-	PLOG_VERBOSE << "Closing WebSocket";
 	auto state = mState.load();
 	if (state == State::Connecting || state == State::Open) {
+		PLOG_VERBOSE << "Closing WebSocket";
 		changeState(State::Closing);
 		if (auto transport = std::atomic_load(&mWsTransport))
 			transport->close();
@@ -87,8 +87,10 @@ void WebSocket::close() {
 }
 
 void WebSocket::remoteClose() {
-	close();
-	closeTransports();
+	if (mState.load() != State::Closed) {
+		close();
+		closeTransports();
+	}
 }
 
 bool WebSocket::send(const std::variant<binary, string> &data) {
@@ -287,7 +289,13 @@ std::shared_ptr<WsTransport> WebSocket::initWsTransport() {
 void WebSocket::closeTransports() {
 	PLOG_VERBOSE << "Closing transports";
 
-	changeState(State::Closed);
+	if (mState.load() != State::Closed) {
+		changeState(State::Closed);
+		triggerClosed();
+	}
+
+	// Reset callbacks now that state is changed
+	resetCallbacks();
 
 	// Pass the references to a thread, allowing to terminate a transport from its own thread
 	auto ws = std::atomic_exchange(&mWsTransport, decltype(mWsTransport)(nullptr));
