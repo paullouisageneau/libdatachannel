@@ -78,6 +78,9 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
+set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)
+add_subdirectory(deps/plog)
+
 add_subdirectory(deps/usrsctp EXCLUDE_FROM_ALL)
 if (MSYS OR MINGW)
 	target_compile_definitions(usrsctp PUBLIC -DSCTP_STDINT_INCLUDE=<stdint.h>)
@@ -116,17 +119,15 @@ set_target_properties(datachannel-static PROPERTIES
 	CXX_STANDARD 17)
 
 target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(datachannel PUBLIC Threads::Threads)
+target_link_libraries(datachannel PUBLIC Threads::Threads plog::plog)
 target_link_libraries(datachannel PRIVATE Usrsctp::UsrsctpStatic)
 
 target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/deps/plog/include)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(datachannel-static PUBLIC Threads::Threads)
+target_link_libraries(datachannel-static PUBLIC Threads::Threads plog::plog)
 target_link_libraries(datachannel-static PRIVATE Usrsctp::UsrsctpStatic)
 
 if(WIN32)
