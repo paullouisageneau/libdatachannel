@@ -50,13 +50,13 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 
 	PLOG_DEBUG << "Initializing TLS transport (GnuTLS)";
 
-	gnutls:: : check(gnutls_certificate_allocate_credentials(&mCreds));
+	gnutls::check(gnutls_certificate_allocate_credentials(&mCreds));
 	gnutls::check(gnutls_init(&mSession, GNUTLS_CLIENT));
 
 	try {
-        check_gnutls(gnutls_certificate_set_x509_system_trust(mCreds));
-        check_gnutls(gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCreds));
-        gnutls_session_set_verify_cert(mSession, mHost.c_str(), 0);
+		gnutls::check(gnutls_certificate_set_x509_system_trust(mCreds));
+		gnutls::check(gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCreds));
+		gnutls_session_set_verify_cert(mSession, mHost.c_str(), 0);
 
 		const char *priorities = "SECURE128:-VERS-SSL3.0:-ARCFOUR-128";
 		const char *err_pos = NULL;
