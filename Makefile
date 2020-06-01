@@ -38,6 +38,14 @@ else
         LIBS+=glib-2.0 gobject-2.0 nice
 endif
 
+RTC_ENABLE_MEDIA ?= 0
+ifneq ($(RTC_ENABLE_MEDIA), 0)
+        CPPFLAGS+=-DRTC_ENABLE_MEDIA=1
+        LIBS+=srtp
+else
+        CPPFLAGS+=-DRTC_ENABLE_MEDIA=0
+endif
+
 RTC_ENABLE_WEBSOCKET ?= 1
 ifneq ($(RTC_ENABLE_WEBSOCKET), 0)
         CPPFLAGS+=-DRTC_ENABLE_WEBSOCKET=1

@@ -79,6 +79,7 @@ public:
 	std::optional<string> localAddress() const;
 	std::optional<string> remoteAddress() const;
 
+	void setLocalDescription(std::optional<Description> description = nullopt);
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
 
@@ -91,13 +92,21 @@ public:
 	void onStateChange(std::function<void(State state)> callback);
 	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
 
-	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
-
 	// Stats
 	void clearStats();
 	size_t bytesSent();
 	size_t bytesReceived();
 	std::optional<std::chrono::milliseconds> rtt();
+
+	// Media
+	bool hasMedia() const;
+	void sendMedia(const binary &packet);
+	void send(const byte *packet, size_t size);
+
+	void onMedia(std::function<void(const binary &packet)> callback);
+
+	// libnice only
+	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
 
 private:
 	std::shared_ptr<IceTransport> initIceTransport(Description::Role role);
@@ -108,6 +117,7 @@ private:
 	void endLocalCandidates();
 	bool checkFingerprint(const std::string &fingerprint) const;
 	void forwardMessage(message_ptr message);
+	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
 
 	std::shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, const string &label,
@@ -126,6 +136,8 @@ private:
 	bool changeGatheringState(GatheringState state);
 
 	void resetCallbacks();
+
+	void outgoingMedia(message_ptr message);
 
 	const Configuration mConfig;
 	const future_certificate_ptr mCertificate;
@@ -150,6 +162,7 @@ private:
 	synchronized_callback<const Candidate &> mLocalCandidateCallback;
 	synchronized_callback<State> mStateChangeCallback;
 	synchronized_callback<GatheringState> mGatheringStateChangeCallback;
+	synchronized_callback<const binary &> mMediaCallback;
 };
 
 } // namespace rtc

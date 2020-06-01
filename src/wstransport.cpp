@@ -16,13 +16,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#if RTC_ENABLE_WEBSOCKET
-
 #include "wstransport.hpp"
 #include "tcptransport.hpp"
 #include "tlstransport.hpp"
-
 #include "base64.hpp"
+
+#if RTC_ENABLE_WEBSOCKET
 
 #include <chrono>
 #include <list>
@@ -75,14 +74,6 @@ bool WsTransport::stop() {
 }
 
 bool WsTransport::send(message_ptr message) {
-	if (!message)
-		return false;
-
-	// Call the mutable message overload with a copy
-	return send(std::make_shared<Message>(*message));
-}
-
-bool WsTransport::send(mutable_message_ptr message) {
 	if (!message || state() != State::Connected)
 		return false;
 

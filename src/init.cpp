@@ -21,20 +21,18 @@
 #include "certificate.hpp"
 #include "dtlstransport.hpp"
 #include "sctptransport.hpp"
+#include "tls.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 #include "tlstransport.hpp"
 #endif
 
-#ifdef _WIN32
-#include <winsock2.h>
+#if RTC_ENABLE_MEDIA
+#include "dtlssrtptransport.hpp"
 #endif
 
-#if USE_GNUTLS
-// Nothing to do
-#else
-#include <openssl/err.h>
-#include <openssl/ssl.h>
+#ifdef _WIN32
+#include <winsock2.h>
 #endif
 
 using std::shared_ptr;
@@ -69,15 +67,16 @@ Init::Init() {
 #if USE_GNUTLS
 		// Nothing to do
 #else
-	OPENSSL_init_ssl(0, NULL);
-	SSL_load_error_strings();
-	ERR_load_crypto_strings();
+	openssl::init();
 #endif
 
 	SctpTransport::Init();
 	DtlsTransport::Init();
 #if RTC_ENABLE_WEBSOCKET
 	TlsTransport::Init();
+#endif
+#if RTC_ENABLE_MEDIA
+	DtlsSrtpTransport::Init();
 #endif
 }
 
@@ -87,6 +86,9 @@ Init::~Init() {
 	DtlsTransport::Cleanup();
 #if RTC_ENABLE_WEBSOCKET
 	TlsTransport::Cleanup();
+#endif
+#if RTC_ENABLE_MEDIA
+	DtlsSrtpTransport::Cleanup();
 #endif
 
 #ifdef _WIN32

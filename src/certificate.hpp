@@ -20,15 +20,10 @@
 #define RTC_CERTIFICATE_H
 
 #include "include.hpp"
+#include "tls.hpp"
 
 #include <future>
 #include <tuple>
-
-#if USE_GNUTLS
-#include <gnutls/x509.h>
-#else
-#include <openssl/x509.h>
-#endif
 
 namespace rtc {
 

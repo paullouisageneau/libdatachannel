@@ -19,11 +19,11 @@
 #ifndef RTC_TCP_TRANSPORT_H
 #define RTC_TCP_TRANSPORT_H
 
-#if RTC_ENABLE_WEBSOCKET
-
 #include "include.hpp"
 #include "queue.hpp"
 #include "transport.hpp"
+
+#if RTC_ENABLE_WEBSOCKET
 
 #include <mutex>
 #include <thread>

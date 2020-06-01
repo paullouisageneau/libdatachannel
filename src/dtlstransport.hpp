@@ -23,6 +23,7 @@
 #include "include.hpp"
 #include "peerconnection.hpp"
 #include "queue.hpp"
+#include "tls.hpp"
 #include "transport.hpp"
 
 #include <atomic>
@@ -30,12 +31,6 @@
 #include <memory>
 #include <mutex>
 #include <thread>
-
-#if USE_GNUTLS
-#include <gnutls/gnutls.h>
-#else
-#include <openssl/ssl.h>
-#endif
 
 namespace rtc {
 
@@ -52,19 +47,20 @@ public:
 	              verifier_callback verifierCallback, state_callback stateChangeCallback);
 	~DtlsTransport();
 
-	bool stop() override;
-	bool send(message_ptr message) override; // false if dropped
+	virtual bool stop() override;
+	virtual bool send(message_ptr message) override; // false if dropped
 
-private:
-	void incoming(message_ptr message) override;
+protected:
+	virtual void incoming(message_ptr message) override;
+	virtual void postHandshake();
 	void runRecvLoop();
 
 	const certificate_ptr mCertificate;
+	const verifier_callback mVerifierCallback;
+	const bool mIsClient;
 
 	Queue<message_ptr> mIncomingQueue;
 	std::thread mRecvThread;
-
-	verifier_callback mVerifierCallback;
 
 #if USE_GNUTLS
 	gnutls_session_t mSession;

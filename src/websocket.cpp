@@ -131,7 +131,7 @@ size_t WebSocket::availableAmount() const { return mRecvQueue.amount(); }
 
 bool WebSocket::changeState(State state) { return mState.exchange(state) != state; }
 
-bool WebSocket::outgoing(mutable_message_ptr message) {
+bool WebSocket::outgoing(message_ptr message) {
 	if (mState != State::Open || !mWsTransport)
 		throw std::runtime_error("WebSocket is not open");
 
@@ -302,7 +302,7 @@ void WebSocket::closeTransports() {
 	auto tls = std::atomic_exchange(&mTlsTransport, decltype(mTlsTransport)(nullptr));
 	auto tcp = std::atomic_exchange(&mTcpTransport, decltype(mTcpTransport)(nullptr));
 	if (ws || tls || tcp) {
-		std::thread t([ws, tls, tcp]() mutable {
+		std::thread t([ws, tls, tcp, token = mInitToken]() mutable {
 			if (ws)
 				ws->stop();
 			if (tls)

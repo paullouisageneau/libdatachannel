@@ -27,6 +27,10 @@ extern "C" {
 
 // libdatachannel C API
 
+#ifndef RTC_ENABLE_MEDIA
+#define RTC_ENABLE_MEDIA 1
+#endif
+
 #ifndef RTC_ENABLE_WEBSOCKET
 #define RTC_ENABLE_WEBSOCKET 1
 #endif

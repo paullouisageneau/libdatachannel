@@ -66,7 +66,7 @@ public:
 private:
 	void remoteClose();
 	void open(std::shared_ptr<SctpTransport> transport);
-	bool outgoing(mutable_message_ptr message);
+	bool outgoing(message_ptr message);
 	void incoming(message_ptr message);
 	void processOpenMessage(message_ptr message);
 

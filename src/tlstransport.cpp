@@ -16,10 +16,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#if RTC_ENABLE_WEBSOCKET
-
 #include "tlstransport.hpp"
 #include "tcptransport.hpp"
+
+#if RTC_ENABLE_WEBSOCKET
 
 #include <chrono>
 #include <cstring>
@@ -33,25 +33,9 @@ using std::string;
 using std::unique_ptr;
 using std::weak_ptr;
 
-#if USE_GNUTLS
-
-namespace {
-
-static bool check_gnutls(int ret, const string &message = "GnuTLS error") {
-	if (ret < 0) {
-		if (!gnutls_error_is_fatal(ret)) {
-			PLOG_INFO << gnutls_strerror(ret);
-			return false;
-		}
-		PLOG_ERROR << message << ": " << gnutls_strerror(ret);
-		throw std::runtime_error(message + ": " + gnutls_strerror(ret));
-	}
-	return true;
-}
-
-} // namespace
-
 namespace rtc {
+
+#if USE_GNUTLS
 
 void TlsTransport::Init() {
 	// Nothing to do
@@ -66,18 +50,18 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 
 	PLOG_DEBUG << "Initializing TLS transport (GnuTLS)";
 
-	check_gnutls(gnutls_certificate_allocate_credentials(&mCreds));
-	check_gnutls(gnutls_init(&mSession, GNUTLS_CLIENT));
+	gnutls::check(gnutls_certificate_allocate_credentials(&mCreds));
+	gnutls::check(gnutls_init(&mSession, GNUTLS_CLIENT));
 
 	try {
-        check_gnutls(gnutls_certificate_set_x509_system_trust(mCreds));
-        check_gnutls(gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCreds));
-        gnutls_session_set_verify_cert(mSession, mHost.c_str(), 0);
+		gnutls::check(gnutls_certificate_set_x509_system_trust(mCreds));
+		gnutls::check(gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCreds));
+		gnutls_session_set_verify_cert(mSession, mHost.c_str(), 0);
 
 		const char *priorities = "SECURE128:-VERS-SSL3.0:-ARCFOUR-128";
 		const char *err_pos = NULL;
-		check_gnutls(gnutls_priority_set_direct(mSession, priorities, &err_pos),
-		             "Failed to set TLS priorities");
+		gnutls::check(gnutls_priority_set_direct(mSession, priorities, &err_pos),
+		              "Failed to set TLS priorities");
 
        	PLOG_VERBOSE << "Server Name Indication: " << mHost;
 		gnutls_server_name_set(mSession, GNUTLS_NAME_DNS, mHost.data(), mHost.size());
@@ -100,6 +84,7 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 
 TlsTransport::~TlsTransport() {
 	stop();
+
 	gnutls_deinit(mSession);
 	gnutls_certificate_free_credentials(mCreds);
 }
@@ -128,7 +113,7 @@ bool TlsTransport::send(message_ptr message) {
 		ret = gnutls_record_send(mSession, message->data(), message->size());
 	} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
 
-	return check_gnutls(ret);
+	return gnutls::check(ret);
 }
 
 void TlsTransport::incoming(message_ptr message) {
@@ -150,7 +135,7 @@ void TlsTransport::runRecvLoop() {
 		do {
 			ret = gnutls_handshake(mSession);
 		} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN ||
-		         !check_gnutls(ret, "TLS handshake failed"));
+		         !gnutls::check(ret, "TLS handshake failed"));
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "TLS handshake: " << e.what();
@@ -175,7 +160,7 @@ void TlsTransport::runRecvLoop() {
 				break;
 			}
 
-			if (check_gnutls(ret)) {
+			if (gnutls::check(ret)) {
 				if (ret == 0) {
 					// Closed
 					PLOG_DEBUG << "TLS connection cleanly closed";
@@ -250,59 +235,13 @@ int TlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) {
 	return !t->mIncomingQueue.empty() ? 1 : 0;
 }
 
-} // namespace rtc
-
 #else // USE_GNUTLS==0
-
-#include <openssl/bio.h>
-#include <openssl/ec.h>
-#include <openssl/err.h>
-#include <openssl/ssl.h>
-
-namespace {
-
-const int BIO_EOF = -1;
-
-string openssl_error_string(unsigned long err) {
-	const size_t bufferSize = 256;
-	char buffer[bufferSize];
-	ERR_error_string_n(err, buffer, bufferSize);
-	return string(buffer);
-}
-
-bool check_openssl(int success, const string &message = "OpenSSL error") {
-	if (success)
-		return true;
-
-	string str = openssl_error_string(ERR_get_error());
-	PLOG_ERROR << message << ": " << str;
-	throw std::runtime_error(message + ": " + str);
-}
-
-bool check_openssl_ret(SSL *ssl, int ret, const string &message = "OpenSSL error") {
-	if (ret == BIO_EOF)
-		return true;
-
-	unsigned long err = SSL_get_error(ssl, ret);
-	if (err == SSL_ERROR_NONE || err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
-		return true;
-	}
-	if (err == SSL_ERROR_ZERO_RETURN) {
-		PLOG_DEBUG << "TLS connection cleanly closed";
-		return false;
-	}
-	string str = openssl_error_string(err);
-	PLOG_ERROR << str;
-	throw std::runtime_error(message + ": " + str);
-}
-
-} // namespace
-
-namespace rtc {
 
 int TlsTransport::TransportExIndex = -1;
 
 void TlsTransport::Init() {
+	openssl::init();
+
 	if (TransportExIndex < 0) {
 		TransportExIndex = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 	}
@@ -321,8 +260,8 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 		if (!(mCtx = SSL_CTX_new(SSLv23_method()))) // version-flexible
 			throw std::runtime_error("Failed to create SSL context");
 
-		check_openssl(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
-		              "Failed to set SSL priorities");
+		openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
+		               "Failed to set SSL priorities");
 
 		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3);
 		SSL_CTX_set_min_proto_version(mCtx, TLS1_VERSION);
@@ -340,7 +279,7 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 		SSL_set_ex_data(mSsl, TransportExIndex, this);
 
 		SSL_set_hostflags(mSsl, 0);
-		check_openssl(SSL_set1_host(mSsl, mHost.c_str()), "Failed to set SSL host");
+		openssl::check(SSL_set1_host(mSsl, mHost.c_str()), "Failed to set SSL host");
 
 		PLOG_VERBOSE << "Server Name Indication: " << mHost;
 		SSL_set_tlsext_host_name(mSsl, mHost.c_str());
@@ -399,7 +338,7 @@ bool TlsTransport::send(message_ptr message) {
 		return true;
 
 	int ret = SSL_write(mSsl, message->data(), message->size());
-	if (!check_openssl_ret(mSsl, ret))
+	if (!openssl::check(mSsl, ret))
 		return false;
 
 	const size_t bufferSize = 4096;
@@ -428,7 +367,7 @@ void TlsTransport::runRecvLoop() {
 			if (state() == State::Connecting) {
 				// Initiate or continue the handshake
 				int ret = SSL_do_handshake(mSsl);
-				if (!check_openssl_ret(mSsl, ret, "Handshake failed"))
+				if (!openssl::check(mSsl, ret, "Handshake failed"))
 					break;
 
 				// Output
@@ -441,7 +380,7 @@ void TlsTransport::runRecvLoop() {
 				}
 			} else {
 				int ret = SSL_read(mSsl, buffer, bufferSize);
-				if (!check_openssl_ret(mSsl, ret))
+				if (!openssl::check(mSsl, ret))
 					break;
 
 				if (ret > 0)
@@ -483,8 +422,8 @@ void TlsTransport::InfoCallback(const SSL *ssl, int where, int ret) {
 	}
 }
 
-} // namespace rtc
-
 #endif
+
+} // namespace rtc
 
 #endif

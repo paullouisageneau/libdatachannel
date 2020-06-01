@@ -42,11 +42,11 @@ public:
 	string typeString() const;
 	Role role() const;
 	string roleString() const;
-	string mid() const;
+	string dataMid() const;
 	std::optional<string> fingerprint() const;
 	std::optional<uint16_t> sctpPort() const;
 	std::optional<size_t> maxMessageSize() const;
-	bool trickleEnabled() const;
+	bool ended() const;
 
 	void hintType(Type type);
 	void setFingerprint(string fingerprint);
@@ -57,21 +57,40 @@ public:
 	void endCandidates();
 	std::vector<Candidate> extractCandidates();
 
-	operator string() const;
+	bool hasMedia() const;
+	void addMedia(const Description &source);
 
+	operator string() const;
 	string generateSdp(const string &eol) const;
 
 private:
 	Type mType;
 	Role mRole;
 	string mSessionId;
-	string mMid;
 	string mIceUfrag, mIcePwd;
 	std::optional<string> mFingerprint;
-	std::optional<uint16_t> mSctpPort;
-	std::optional<size_t> mMaxMessageSize;
+
+	// Data
+	struct Data {
+		string mid;
+		std::optional<uint16_t> sctpPort;
+		std::optional<size_t> maxMessageSize;
+	};
+	Data mData;
+
+	// Media (non-data)
+	struct Media {
+		Media(const string &mline);
+		string type;
+		string description;
+		string mid;
+		std::vector<string> attributes;
+	};
+	std::map<string, Media> mMedia; // by mid
+
+	// Candidates
 	std::vector<Candidate> mCandidates;
-	bool mTrickle;
+	bool mEnded = false;
 
 	static Type stringToType(const string &typeString);
 	static string typeToString(Type type);

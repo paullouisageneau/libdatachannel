@@ -23,6 +23,10 @@
 #include "include.hpp"
 #include "sctptransport.hpp"
 
+#if RTC_ENABLE_MEDIA
+#include "dtlssrtptransport.hpp"
+#endif
+
 #include <thread>
 
 namespace rtc {
@@ -67,6 +71,22 @@ std::optional<Description> PeerConnection::remoteDescription() const {
 	return mRemoteDescription;
 }
 
+void PeerConnection::setLocalDescription(std::optional<Description> description) {
+	if (auto iceTransport = std::atomic_load(&mIceTransport)) {
+		throw std::logic_error("Local description is already set");
+	} else {
+		// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
+		// setup:actpass.
+		// See https://tools.ietf.org/html/rfc5763#section-5
+		iceTransport = initIceTransport(Description::Role::ActPass);
+		Description localDescription = iceTransport->getLocalDescription(Description::Type::Offer);
+		if (description)
+			localDescription.addMedia(*description);
+		processLocalDescription(localDescription);
+		iceTransport->gatherLocalCandidates();
+	}
+}
+
 void PeerConnection::setRemoteDescription(Description description) {
 	description.hintType(localDescription() ? Description::Type::Answer : Description::Type::Offer);
 	auto remoteCandidates = description.extractCandidates();
@@ -82,7 +102,9 @@ void PeerConnection::setRemoteDescription(Description description) {
 
 	if (mRemoteDescription->type() == Description::Type::Offer) {
 		// This is an offer and we are the answerer.
-		processLocalDescription(iceTransport->getLocalDescription(Description::Type::Answer));
+		Description localDescription = iceTransport->getLocalDescription(Description::Type::Answer);
+		localDescription.addMedia(description); // blindly accept media
+		processLocalDescription(localDescription);
 		iceTransport->gatherLocalCandidates();
 	} else {
 		// This is an answer and we are the offerer.
@@ -190,6 +212,39 @@ void PeerConnection::onGatheringStateChange(std::function<void(GatheringState st
 	mGatheringStateChangeCallback = callback;
 }
 
+bool PeerConnection::hasMedia() const {
+	auto local = localDescription();
+	auto remote = remoteDescription();
+	return (local && local->hasMedia()) || (remote && remote->hasMedia());
+}
+
+void PeerConnection::sendMedia(const binary &packet) {
+	outgoingMedia(make_message(packet.begin(), packet.end(), Message::Binary));
+}
+
+void PeerConnection::send(const byte *packet, size_t size) {
+	outgoingMedia(make_message(packet, packet + size, Message::Binary));
+}
+
+void PeerConnection::onMedia(std::function<void(const binary &packet)> callback) {
+	mMediaCallback = callback;
+}
+
+void PeerConnection::outgoingMedia(message_ptr message) {
+	if (!hasMedia())
+		throw std::runtime_error("PeerConnection has no media support");
+
+#if RTC_ENABLE_MEDIA
+	auto transport = std::atomic_load(&mDtlsTransport);
+	if (!transport)
+		throw std::runtime_error("PeerConnection is not open");
+
+	std::dynamic_pointer_cast<DtlsSrtpTransport>(transport)->send(message);
+#else
+	PLOG_WARNING << "Ignoring sent media (not compiled with SRTP support)";
+#endif
+}
+
 shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role) {
 	try {
 		if (auto transport = std::atomic_load(&mIceTransport))
@@ -259,27 +314,48 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 		auto certificate = mCertificate.get();
 		auto lower = std::atomic_load(&mIceTransport);
-		auto transport = std::make_shared<DtlsTransport>(
-		    lower, certificate, weak_bind(&PeerConnection::checkFingerprint, this, _1),
-		    [this, weak_this = weak_from_this()](DtlsTransport::State state) {
-			    auto shared_this = weak_this.lock();
-			    if (!shared_this)
-				    return;
-			    switch (state) {
-			    case DtlsTransport::State::Connected:
-				    initSctpTransport();
-				    break;
-			    case DtlsTransport::State::Failed:
-				    changeState(State::Failed);
-				    break;
-			    case DtlsTransport::State::Disconnected:
-				    changeState(State::Disconnected);
-				    break;
-			    default:
-				    // Ignore
-				    break;
-			    }
-		    });
+		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1);
+		auto stateChangeCallback = [this,
+		                            weak_this = weak_from_this()](DtlsTransport::State state) {
+			auto shared_this = weak_this.lock();
+			if (!shared_this)
+				return;
+
+			switch (state) {
+			case DtlsTransport::State::Connected:
+				initSctpTransport();
+				break;
+			case DtlsTransport::State::Failed:
+				changeState(State::Failed);
+				break;
+			case DtlsTransport::State::Disconnected:
+				changeState(State::Disconnected);
+				break;
+			default:
+				// Ignore
+				break;
+			}
+		};
+
+		shared_ptr<DtlsTransport> transport;
+		if (hasMedia()) {
+#if RTC_ENABLE_MEDIA
+			PLOG_INFO << "This connection requires media support";
+
+			// DTLS-SRTP
+			transport = std::make_shared<DtlsSrtpTransport>(
+			    lower, certificate, verifierCallback,
+			    std::bind(&PeerConnection::forwardMedia, this, _1), stateChangeCallback);
+#else
+			PLOG_WARNING << "Ignoring media support (not compiled with SRTP support)";
+#endif
+		}
+
+		if (!transport) {
+			// DTLS only
+			transport = std::make_shared<DtlsTransport>(lower, certificate, verifierCallback,
+			                                            stateChangeCallback);
+		}
 
 		std::atomic_store(&mDtlsTransport, transport);
 		if (mState == State::Closed) {
@@ -316,8 +392,15 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 				    openDataChannels();
 				    break;
 			    case SctpTransport::State::Failed:
+				    LOG_WARNING << "SCTP transport failed";
 				    remoteCloseDataChannels();
+#if RTC_ENABLE_MEDIA
+				    // Ignore SCTP failure if media is present
+				    if (!hasMedia())
+					    changeState(State::Failed);
+#else
 				    changeState(State::Failed);
+#endif
 				    break;
 			    case SctpTransport::State::Disconnected:
 				    remoteCloseDataChannels();
@@ -358,7 +441,7 @@ void PeerConnection::closeTransports() {
 	auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
 	auto ice = std::atomic_exchange(&mIceTransport, decltype(mIceTransport)(nullptr));
 	if (sctp || dtls || ice) {
-		std::thread t([sctp, dtls, ice]() mutable {
+		std::thread t([sctp, dtls, ice, token = mInitToken]() mutable {
 			if (sctp)
 				sctp->stop();
 			if (dtls)
@@ -420,6 +503,11 @@ void PeerConnection::forwardMessage(message_ptr message) {
 	}
 
 	channel->incoming(message);
+}
+
+void PeerConnection::forwardMedia(message_ptr message) {
+	if (message)
+		mMediaCallback(*message);
 }
 
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {

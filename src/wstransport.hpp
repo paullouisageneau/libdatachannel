@@ -19,10 +19,10 @@
 #ifndef RTC_WS_TRANSPORT_H
 #define RTC_WS_TRANSPORT_H
 
-#if RTC_ENABLE_WEBSOCKET
-
 #include "include.hpp"
 #include "transport.hpp"
+
+#if RTC_ENABLE_WEBSOCKET
 
 namespace rtc {
 
@@ -37,7 +37,6 @@ public:
 
 	bool stop() override;
 	bool send(message_ptr message) override;
-	bool send(mutable_message_ptr message);
 
 	void incoming(message_ptr message) override;
 

@@ -31,6 +31,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/configuration.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/datachannel.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/dtlssrtptransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/dtlstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/icetransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/init.cpp
@@ -38,6 +39,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/peerconnection.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtc.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/tls.cpp
 )
 
 set(LIBDATACHANNEL_WEBSOCKET_SOURCES
@@ -77,6 +79,7 @@ set(TESTS_SOURCES
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
+find_package(SRTP)
 
 set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)
 add_subdirectory(deps/plog)
@@ -135,39 +138,56 @@ if(WIN32)
 	target_link_libraries(datachannel-static PRIVATE wsock32 ws2_32) # winsock2
 endif()
 
+if(SRTP_FOUND)
+	if(NOT TARGET SRTP::SRTP)
+		add_library(SRTP::SRTP UNKNOWN IMPORTED)
+		set_target_properties(SRTP::SRTP PROPERTIES
+			INTERFACE_INCLUDE_DIRECTORIES ${SRTP_INCLUDE_DIRS}
+			IMPORTED_LINK_INTERFACE_LANGUAGES C
+			IMPORTED_LOCATION ${SRTP_LIBRARIES})
+	endif()
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=1)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=1)
+	target_link_libraries(datachannel PRIVATE SRTP::SRTP)
+	target_link_libraries(datachannel-static PRIVATE SRTP::SRTP)
+else()
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=0)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=0)
+endif()
+
 if (USE_GNUTLS)
 	find_package(GnuTLS REQUIRED)
 	if(NOT TARGET GnuTLS::GnuTLS)
 		add_library(GnuTLS::GnuTLS UNKNOWN IMPORTED)
 		set_target_properties(GnuTLS::GnuTLS PROPERTIES
-			INTERFACE_INCLUDE_DIRECTORIES "${GNUTLS_INCLUDE_DIRS}"
-			INTERFACE_COMPILE_DEFINITIONS "${GNUTLS_DEFINITIONS}"
-			IMPORTED_LINK_INTERFACE_LANGUAGES "C"
-			IMPORTED_LOCATION "${GNUTLS_LIBRARIES}")
+			INTERFACE_INCLUDE_DIRECTORIES ${GNUTLS_INCLUDE_DIRS}
+			INTERFACE_COMPILE_DEFINITIONS ${GNUTLS_DEFINITIONS}
+			IMPORTED_LINK_INTERFACE_LANGUAGES C
+			IMPORTED_LOCATION ${GNUTLS_LIBRARIES})
 	endif()
 	target_compile_definitions(datachannel PRIVATE USE_GNUTLS=1)
-	target_link_libraries(datachannel PRIVATE GnuTLS::GnuTLS)
 	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=1)
+	target_link_libraries(datachannel PRIVATE GnuTLS::GnuTLS)
 	target_link_libraries(datachannel-static PRIVATE GnuTLS::GnuTLS)
 else()
 	find_package(OpenSSL REQUIRED)
 	target_compile_definitions(datachannel PRIVATE USE_GNUTLS=0)
-	target_link_libraries(datachannel PRIVATE OpenSSL::SSL)
 	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=0)
+	target_link_libraries(datachannel PRIVATE OpenSSL::SSL)
 	target_link_libraries(datachannel-static PRIVATE OpenSSL::SSL)
 endif()
 
 if (USE_JUICE)
 	add_subdirectory(deps/libjuice EXCLUDE_FROM_ALL)
 	target_compile_definitions(datachannel PRIVATE USE_JUICE=1)
-	target_link_libraries(datachannel PRIVATE LibJuice::LibJuiceStatic)
 	target_compile_definitions(datachannel-static PRIVATE USE_JUICE=1)
+	target_link_libraries(datachannel PRIVATE LibJuice::LibJuiceStatic)
 	target_link_libraries(datachannel-static PRIVATE LibJuice::LibJuiceStatic)
 else()
 	find_package(LibNice REQUIRED)
 	target_compile_definitions(datachannel PRIVATE USE_JUICE=0)
-	target_link_libraries(datachannel PRIVATE LibNice::LibNice)
 	target_compile_definitions(datachannel-static PRIVATE USE_JUICE=0)
+	target_link_libraries(datachannel PRIVATE LibNice::LibNice)
 	target_link_libraries(datachannel-static PRIVATE LibNice::LibNice)
 endif()
 

@@ -154,13 +154,13 @@ bool DataChannel::isOpen(void) const { return mIsOpen; }
 bool DataChannel::isClosed(void) const { return mIsClosed; }
 
 size_t DataChannel::maxMessageSize() const {
-	size_t max = DEFAULT_MAX_MESSAGE_SIZE;
+	size_t remoteMax = DEFAULT_MAX_MESSAGE_SIZE;
 	if (auto pc = mPeerConnection.lock())
 		if (auto description = pc->remoteDescription())
 			if (auto maxMessageSize = description->maxMessageSize())
-				return *maxMessageSize > 0 ? *maxMessageSize : LOCAL_MAX_MESSAGE_SIZE;
+				remoteMax = *maxMessageSize > 0 ? *maxMessageSize : LOCAL_MAX_MESSAGE_SIZE;
 
-	return std::min(max, LOCAL_MAX_MESSAGE_SIZE);
+	return std::min(remoteMax, LOCAL_MAX_MESSAGE_SIZE);
 }
 
 size_t DataChannel::availableAmount() const { return mRecvQueue.amount(); }
@@ -196,7 +196,7 @@ void DataChannel::open(shared_ptr<SctpTransport> transport) {
 	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
 }
 
-bool DataChannel::outgoing(mutable_message_ptr message) {
+bool DataChannel::outgoing(message_ptr message) {
 	if (mIsClosed)
 		throw std::runtime_error("DataChannel is closed");
 
