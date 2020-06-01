@@ -79,7 +79,7 @@ public:
 	std::optional<string> localAddress() const;
 	std::optional<string> remoteAddress() const;
 
-	void setLocalDescription(Description description);
+	void setLocalDescription(std::optional<Description> description = nullopt);
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
 

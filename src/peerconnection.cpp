@@ -71,7 +71,7 @@ std::optional<Description> PeerConnection::remoteDescription() const {
 	return mRemoteDescription;
 }
 
-void PeerConnection::setLocalDescription(Description description) {
+void PeerConnection::setLocalDescription(std::optional<Description> description) {
 	if (auto iceTransport = std::atomic_load(&mIceTransport)) {
 		throw std::logic_error("Local description is already set");
 	} else {
@@ -80,7 +80,8 @@ void PeerConnection::setLocalDescription(Description description) {
 		// See https://tools.ietf.org/html/rfc5763#section-5
 		iceTransport = initIceTransport(Description::Role::ActPass);
 		Description localDescription = iceTransport->getLocalDescription(Description::Type::Offer);
-		localDescription.addMedia(description);
+		if (description)
+			localDescription.addMedia(*description);
 		processLocalDescription(localDescription);
 		iceTransport->gatherLocalCandidates();
 	}
