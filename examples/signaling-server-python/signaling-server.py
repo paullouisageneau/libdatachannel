@@ -1,0 +1,78 @@
+#!/usr/bin/env python
+#
+# Signaling server example for libdatachannel
+# Copyright (c) 2020 Paul-Louis Ageneau
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import sys
+import ssl
+import json
+import asyncio
+import logging
+import websockets
+
+
+logger = logging.getLogger('websockets')
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler(sys.stdout))
+
+clients = {}
+
+
+async def handle_websocket(websocket, path):
+    client_id = None
+    try:
+        splitted = path.split('/')
+        splitted.pop(0)
+        client_id = splitted.pop(0)
+        print('Client {} connected'.format(client_id))
+
+        clients[client_id] = websocket
+        while True:
+            data = await websocket.recv()
+            print('Client {} << {}'.format(client_id, data))
+            message = json.loads(data)
+            destination_id = message['id']
+            destination_websocket = clients.get(destination_id)
+            if destination_websocket:
+                message['id'] = client_id
+                data = json.dumps(message)
+                print('Client {} >> {}'.format(destination_id, data))
+                await destination_websocket.send(data)
+            else:
+                print('Client {} not found'.format(destination_id))
+
+    except Exception as e:
+        print(e)
+
+    finally:
+        if client_id:
+            del clients[client_id]
+            print('Client {} disconnected'.format(client_id))
+
+if __name__ == '__main__':
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+    ssl_cert = sys.argv[2] if len(sys.argv) > 2 else None
+
+    if ssl_cert:
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ssl_context.load_cert_chain(ssl_cert)
+    else:
+        ssl_context = None
+
+    print('Listening on port {}'.format(port))
+    start_server = websockets.serve(handle_websocket, '127.0.0.1', port, ssl=ssl_context)
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()

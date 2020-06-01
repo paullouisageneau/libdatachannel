@@ -1,16 +1,45 @@
-# libdatachannel - C/C++ WebRTC DataChannels
+# libdatachannel - C/C++ WebRTC Data Channels
 
-libdatachannel is a standalone implementation of WebRTC DataChannels in C++17 with C bindings for POSIX platforms and Microsoft Windows. It enables direct connectivity between native applications and web browsers without the pain of importing the entire WebRTC stack. Its API is modelled as a simplified version of the JavaScript WebRTC API, in order to ease the design of cross-environment applications.
+libdatachannel is a standalone implementation of WebRTC Data Channels and WebSockets in C++17 with C bindings for POSIX platforms (including Linux and Apple macOS) and Microsoft Windows. It enables direct connectivity between native applications and web browsers without the pain of importing the entire WebRTC stack. Its API is modelled as a simplified version of the JavaScript WebRTC and WebSocket browser API, in order to ease the design of cross-environment applications.
+
+It can be compiled with multiple backends:
+- The security layer can be provided through [GnuTLS](https://www.gnutls.org/) or [OpenSSL](https://www.openssl.org/).
+- The connectivity for WebRTC can be provided through my ad-hoc ICE library [libjuice](https://github.com/paullouisageneau/libjuice) as submodule or through [libnice](https://github.com/libnice/libnice).
 
 This projet is originally inspired by [librtcdcpp](https://github.com/chadnickbok/librtcdcpp), however it is a complete rewrite from scratch, because the messy architecture of librtcdcpp made solving its implementation issues difficult.
-
-The connectivity can be provided through my ad-hoc ICE library [libjuice](https://github.com/paullouisageneau/libjuice) as submodule or through [libnice](https://github.com/libnice/libnice). The security layer can be provided through [GnuTLS](https://www.gnutls.org/) or [OpenSSL](https://www.openssl.org/).
 
 Licensed under LGPLv2, see [LICENSE](https://github.com/paullouisageneau/libdatachannel/blob/master/LICENSE).
 
 ## Compatibility
 
-The library aims at fully implementing WebRTC SCTP DataChannels ([draft-ietf-rtcweb-data-channel-13](https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13)) over DTLS/UDP ([RFC7350](https://tools.ietf.org/html/rfc7350) and [RFC8261](https://tools.ietf.org/html/rfc8261)) with ICE ([RFC8445](https://tools.ietf.org/html/rfc8445)). It has been tested to be compatible with Firefox and Chromium. It supports IPv6 and Multicast DNS candidates resolution ([draft-ietf-rtcweb-mdns-ice-candidates-03](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-03)) provided the operating system also supports it.
+The library aims at implementing the following communication protocols:
+
+### WebRTC Data Channel
+
+The WebRTC stack has been tested to be compatible with Firefox and Chromium.
+
+Protocol stack:
+- SCTP-based Data Channels ([draft-ietf-rtcweb-data-channel-13](https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13))
+- DTLS/UDP ([RFC7350](https://tools.ietf.org/html/rfc7350) and [RFC8261](https://tools.ietf.org/html/rfc8261))
+- ICE ([RFC8445](https://tools.ietf.org/html/rfc8445)) with STUN ([RFC5389](https://tools.ietf.org/html/rfc5389))
+
+Features:
+- Full IPv6 support
+- Trickle ICE ([draft-ietf-ice-trickle-21](https://tools.ietf.org/html/draft-ietf-ice-trickle-21))
+- Multicast DNS candidates ([draft-ietf-rtcweb-mdns-ice-candidates-04](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-04))
+- TURN relaying ([RFC5766](https://tools.ietf.org/html/rfc5766)) with [libnice](https://github.com/libnice/libnice) as ICE backend
+
+### WebSocket
+
+WebSocket is the protocol of choice for WebRTC signaling. The support is optional and can be disabled at compile time.
+
+Protocol stack:
+- WebSocket protocol ([RFC6455](https://tools.ietf.org/html/rfc6455)), client-side only
+- HTTP over TLS ([RFC2818](https://tools.ietf.org/html/rfc2818))
+
+Features:
+- IPv6 and IPv4/IPv6 dual-stack support
+- Keepalive with ping/pong
 
 ## Dependencies
 
@@ -20,8 +49,8 @@ Optional:
 - libnice: https://nice.freedesktop.org/ (substituable with libjuice)
 
 Submodules:
-- usrsctp: https://github.com/sctplab/usrsctp
 - libjuice: https://github.com/paullouisageneau/libjuice
+- usrsctp: https://github.com/sctplab/usrsctp
 
 ## Building
 ### Building with CMake (preferred)
@@ -41,9 +70,11 @@ $ git submodule update --init --recursive
 $ make USE_JUICE=1 USE_GNUTLS=1
 ```
 
-## Example
+## Examples
 
-In the following example, note the callbacks are called in another thread.
+See [examples](https://github.com/paullouisageneau/libdatachannel/blob/master/examples/) for a complete usage example with signaling server (under GPLv2).
+
+Additionnaly, you might want to have a look at the [C API](https://github.com/paullouisageneau/libdatachannel/blob/dev/include/rtc/rtc.h).
 
 ### Signal a PeerConnection
 
@@ -93,9 +124,11 @@ pc->onGatheringStateChange([](PeerConnection::GatheringState state) {
 
 ```cpp
 auto dc = pc->createDataChannel("test");
+
 dc->onOpen([]() {
     cout << "Open" << endl;
 });
+
 dc->onMessage([](const variant<binary, string> &message) {
     if (holds_alternative<string>(message)) {
         cout << "Received: " << get<string>(message) << endl;
@@ -114,7 +147,22 @@ pc->onDataChannel([&dc](shared_ptr<rtc::DataChannel> incoming) {
 
 ```
 
-See [test/connectivity.cpp](https://github.com/paullouisageneau/libdatachannel/blob/master/test/connectivity.cpp) for a complete local connection example.
+### Open a WebSocket
 
-See [test/cpai.cpp](https://github.com/paullouisageneau/libdatachannel/blob/master/test/capi.cpp) for a C API example.
+```cpp
+auto ws = make_shared<rtc::WebSocket>();
+
+ws->onOpen([]() {
+	cout << "WebSocket open" << endl;
+});
+
+ws->onMessage([](const variant<binary, string> &message) {
+    if (holds_alternative<string>(message)) {
+        cout << "WebSocket received: " << get<string>(message) << endl;
+    }
+});
+
+ws->open("wss://my.websocket/service");
+
+```
 

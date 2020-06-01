@@ -46,31 +46,38 @@ void TlsTransport::Cleanup() {
 }
 
 TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_callback callback)
-    : Transport(lower, std::move(callback)) {
+    : Transport(lower, std::move(callback)), mHost(std::move(host)) {
 
 	PLOG_DEBUG << "Initializing TLS transport (GnuTLS)";
 
+	gnutls:: : check(gnutls_certificate_allocate_credentials(&mCreds));
 	gnutls::check(gnutls_init(&mSession, GNUTLS_CLIENT));
 
 	try {
+        check_gnutls(gnutls_certificate_set_x509_system_trust(mCreds));
+        check_gnutls(gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCreds));
+        gnutls_session_set_verify_cert(mSession, mHost.c_str(), 0);
+
 		const char *priorities = "SECURE128:-VERS-SSL3.0:-ARCFOUR-128";
 		const char *err_pos = NULL;
 		gnutls::check(gnutls_priority_set_direct(mSession, priorities, &err_pos),
 		              "Failed to set TLS priorities");
 
-		gnutls_session_set_ptr(mSession, this);
+       	PLOG_VERBOSE << "Server Name Indication: " << mHost;
+		gnutls_server_name_set(mSession, GNUTLS_NAME_DNS, mHost.data(), mHost.size());
+
+ 		gnutls_session_set_ptr(mSession, this);
 		gnutls_transport_set_ptr(mSession, this);
 		gnutls_transport_set_push_function(mSession, WriteCallback);
 		gnutls_transport_set_pull_function(mSession, ReadCallback);
 		gnutls_transport_set_pull_timeout_function(mSession, TimeoutCallback);
 
-		gnutls_server_name_set(mSession, GNUTLS_NAME_DNS, host.data(), host.size());
-
-		mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
+       	mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
 		registerIncoming();
 
 	} catch (...) {
 		gnutls_deinit(mSession);
+		gnutls_certificate_free_credentials(mCreds);
 		throw;
 	}
 }
@@ -79,6 +86,7 @@ TlsTransport::~TlsTransport() {
 	stop();
 
 	gnutls_deinit(mSession);
+	gnutls_certificate_free_credentials(mCreds);
 }
 
 bool TlsTransport::stop() {
@@ -92,10 +100,13 @@ bool TlsTransport::stop() {
 }
 
 bool TlsTransport::send(message_ptr message) {
-	if (!message)
+	if (!message || state() != State::Connected)
 		return false;
 
 	PLOG_VERBOSE << "Send size=" << message->size();
+
+	if(message->size() == 0)
+		return true;
 
 	ssize_t ret;
 	do {
@@ -182,16 +193,37 @@ ssize_t TlsTransport::WriteCallback(gnutls_transport_ptr_t ptr, const void *data
 
 ssize_t TlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen) {
 	TlsTransport *t = static_cast<TlsTransport *>(ptr);
-	if (auto next = t->mIncomingQueue.pop()) {
-		auto message = *next;
-		ssize_t len = std::min(maxlen, message->size());
-		std::memcpy(data, message->data(), len);
+
+	message_ptr &message = t->mIncomingMessage;
+	size_t &position = t->mIncomingMessagePosition;
+
+	if(message && position >= message->size())
+		message.reset();
+
+	if(!message) {
+		position = 0;
+		while (auto next = t->mIncomingQueue.pop()) {
+			message = *next;
+			if (message->size() > 0)
+				break;
+			else
+				t->recv(message); // Pass zero-sized messages through
+		}
+	}
+
+	if(message) {
+		size_t available = message->size() - position;
+		ssize_t len = std::min(maxlen, available);
+		std::memcpy(data, message->data() + position, len);
+		position+= len;
 		gnutls_transport_set_errno(t->mSession, 0);
 		return len;
 	}
-	// Closed
-	gnutls_transport_set_errno(t->mSession, 0);
-	return 0;
+	else {
+		// Closed
+		gnutls_transport_set_errno(t->mSession, 0);
+		return 0;
+	}
 }
 
 int TlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) {
@@ -220,47 +252,62 @@ void TlsTransport::Cleanup() {
 }
 
 TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_callback callback)
-    : Transport(lower, std::move(callback)) {
+    : Transport(lower, std::move(callback)), mHost(std::move(host)) {
 
 	PLOG_DEBUG << "Initializing TLS transport (OpenSSL)";
 
-	if (!(mCtx = SSL_CTX_new(SSLv23_method()))) // version-flexible
-		throw std::runtime_error("Failed to create SSL context");
+	try {
+		if (!(mCtx = SSL_CTX_new(SSLv23_method()))) // version-flexible
+			throw std::runtime_error("Failed to create SSL context");
 
-	openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
-	               "Failed to set SSL priorities");
+		openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
+		               "Failed to set SSL priorities");
 
-	SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3);
-	SSL_CTX_set_min_proto_version(mCtx, TLS1_VERSION);
-	SSL_CTX_set_read_ahead(mCtx, 1);
-	SSL_CTX_set_quiet_shutdown(mCtx, 1);
-	SSL_CTX_set_info_callback(mCtx, InfoCallback);
+		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3);
+		SSL_CTX_set_min_proto_version(mCtx, TLS1_VERSION);
+		SSL_CTX_set_read_ahead(mCtx, 1);
+		SSL_CTX_set_quiet_shutdown(mCtx, 1);
+		SSL_CTX_set_info_callback(mCtx, InfoCallback);
 
-	SSL_CTX_set_default_verify_paths(mCtx);
-	SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER, NULL);
-	SSL_CTX_set_verify_depth(mCtx, 4);
+		SSL_CTX_set_default_verify_paths(mCtx);
+		SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER, NULL);
+		SSL_CTX_set_verify_depth(mCtx, 4);
 
-	if (!(mSsl = SSL_new(mCtx)))
-		throw std::runtime_error("Failed to create SSL instance");
+		if (!(mSsl = SSL_new(mCtx)))
+			throw std::runtime_error("Failed to create SSL instance");
 
-	SSL_set_ex_data(mSsl, TransportExIndex, this);
-	SSL_set_tlsext_host_name(mSsl, host.c_str());
+		SSL_set_ex_data(mSsl, TransportExIndex, this);
 
-	SSL_set_connect_state(mSsl);
+		SSL_set_hostflags(mSsl, 0);
+		openssl::check(SSL_set1_host(mSsl, mHost.c_str()), "Failed to set SSL host");
 
-	if (!(mInBio = BIO_new(BIO_s_mem())) || !(mOutBio = BIO_new(BIO_s_mem())))
-		throw std::runtime_error("Failed to create BIO");
+		PLOG_VERBOSE << "Server Name Indication: " << mHost;
+		SSL_set_tlsext_host_name(mSsl, mHost.c_str());
 
-	BIO_set_mem_eof_return(mInBio, BIO_EOF);
-	BIO_set_mem_eof_return(mOutBio, BIO_EOF);
-	SSL_set_bio(mSsl, mInBio, mOutBio);
+		SSL_set_connect_state(mSsl);
 
-	auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
-	    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
-	SSL_set_options(mSsl, SSL_OP_SINGLE_ECDH_USE);
-	SSL_set_tmp_ecdh(mSsl, ecdh.get());
+		if (!(mInBio = BIO_new(BIO_s_mem())) || !(mOutBio = BIO_new(BIO_s_mem())))
+			throw std::runtime_error("Failed to create BIO");
 
-	mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
+		BIO_set_mem_eof_return(mInBio, BIO_EOF);
+		BIO_set_mem_eof_return(mOutBio, BIO_EOF);
+		SSL_set_bio(mSsl, mInBio, mOutBio);
+
+		auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
+		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
+		SSL_set_options(mSsl, SSL_OP_SINGLE_ECDH_USE);
+		SSL_set_tmp_ecdh(mSsl, ecdh.get());
+
+		mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
+		registerIncoming();
+
+	} catch (...) {
+		if (mSsl)
+			SSL_free(mSsl);
+		if (mCtx)
+			SSL_CTX_free(mCtx);
+		throw;
+	}
 }
 
 TlsTransport::~TlsTransport() {
@@ -282,8 +329,13 @@ bool TlsTransport::stop() {
 }
 
 bool TlsTransport::send(message_ptr message) {
-	if (!message)
+	if (!message || state() != State::Connected)
 		return false;
+
+	PLOG_VERBOSE << "Send size=" << message->size();
+
+	if (message->size() == 0)
+		return true;
 
 	int ret = SSL_write(mSsl, message->data(), message->size());
 	if (!openssl::check(mSsl, ret))
@@ -291,8 +343,8 @@ bool TlsTransport::send(message_ptr message) {
 
 	const size_t bufferSize = 4096;
 	byte buffer[bufferSize];
-	while (int len = BIO_read(mOutBio, buffer, bufferSize))
-		outgoing(make_message(buffer, buffer + len));
+	while ((ret = BIO_read(mOutBio, buffer, bufferSize)) > 0)
+		outgoing(make_message(buffer, buffer + ret));
 
 	return true;
 }
@@ -311,34 +363,41 @@ void TlsTransport::runRecvLoop() {
 	try {
 		changeState(State::Connecting);
 
-		SSL_do_handshake(mSsl);
-		while (int len = BIO_read(mOutBio, buffer, bufferSize))
-			outgoing(make_message(buffer, buffer + len));
+		while (true) {
+			if (state() == State::Connecting) {
+				// Initiate or continue the handshake
+				int ret = SSL_do_handshake(mSsl);
+				if (!openssl::check(mSsl, ret, "Handshake failed"))
+					break;
 
-		while (auto next = mIncomingQueue.pop()) {
-			message_ptr message = *next;
-			message_ptr decrypted;
+				// Output
+				while ((ret = BIO_read(mOutBio, buffer, bufferSize)) > 0)
+					outgoing(make_message(buffer, buffer + ret));
 
-			BIO_write(mInBio, message->data(), message->size());
+				if (SSL_is_init_finished(mSsl)) {
+					PLOG_INFO << "TLS handshake finished";
+					changeState(State::Connected);
+				}
+			} else {
+				int ret = SSL_read(mSsl, buffer, bufferSize);
+				if (!openssl::check(mSsl, ret))
+					break;
 
-			int ret = SSL_read(mSsl, buffer, bufferSize);
-			if (!openssl::check(mSsl, ret))
-				break;
-
-			if (ret > 0)
-				decrypted = make_message(buffer, buffer + ret);
-
-			while (int len = BIO_read(mOutBio, buffer, bufferSize))
-				outgoing(make_message(buffer, buffer + len));
-
-			if (state() == State::Connecting && SSL_is_init_finished(mSsl)) {
-				PLOG_INFO << "TLS handshake finished";
-				changeState(State::Connected);
+				if (ret > 0)
+					recv(make_message(buffer, buffer + ret));
 			}
 
-			if (decrypted)
-				recv(decrypted);
+			auto next = mIncomingQueue.pop();
+			if (!next)
+				break;
+
+			message_ptr message = *next;
+			if (message->size() > 0)
+				BIO_write(mInBio, message->data(), message->size()); // Input
+			else
+				recv(message); // Pass zero-sized messages through
 		}
+
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "TLS recv: " << e.what();
 	}

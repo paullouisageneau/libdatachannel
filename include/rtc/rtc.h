@@ -129,6 +129,9 @@ int rtcGetAvailableAmount(int id); // total size available to receive
 int rtcSetAvailableCallback(int id, availableCallbackFunc cb);
 int rtcReceiveMessage(int id, char *buffer, int *size);
 
+// Cleanup
+void rtcCleanup();
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

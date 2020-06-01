@@ -22,23 +22,34 @@ using namespace std;
 
 void test_connectivity();
 void test_capi();
+void test_websocket();
 
 int main(int argc, char **argv) {
 	try {
-		cout << endl << "*** Running connectivity test..." << endl;
+		cout << endl << "*** Running WebRTC connectivity test..." << endl;
 		test_connectivity();
-		cout << "*** Finished connectivity test" << endl;
+		cout << "*** Finished WebRTC connectivity test" << endl;
 	} catch (const exception &e) {
-		cerr << "Connectivity test failed: " << e.what() << endl;
+		cerr << "WebRTC connectivity test failed: " << e.what() << endl;
 		return -1;
 	}
 	try {
-		cout << endl << "*** Running C API test..." << endl;
+		cout << endl << "*** Running WebRTC C API test..." << endl;
 		test_capi();
-		cout << "*** Finished C API test" << endl;
+		cout << "*** Finished WebRTC C API test" << endl;
 	} catch (const exception &e) {
-		cerr << "C API test failed: " << e.what() << endl;
+		cerr << "WebRTC C API test failed: " << e.what() << endl;
 		return -1;
 	}
+#if RTC_ENABLE_WEBSOCKET
+	try {
+		cout << endl << "*** Running WebSocket test..." << endl;
+		test_websocket();
+		cout << "*** Finished WebSocket test" << endl;
+	} catch (const exception &e) {
+		cerr << "WebSocket test failed: " << e.what() << endl;
+		return -1;
+	}
+#endif
 	return 0;
 }

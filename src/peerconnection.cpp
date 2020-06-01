@@ -40,11 +40,17 @@ PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 
 PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New),
-      mGatheringState(GatheringState::New) {}
+      mGatheringState(GatheringState::New) {
+	PLOG_VERBOSE << "Creating PeerConnection";
+}
 
-PeerConnection::~PeerConnection() { close(); }
+PeerConnection::~PeerConnection() {
+	close();
+	PLOG_VERBOSE << "Destroying PeerConnection";
+}
 
 void PeerConnection::close() {
+	PLOG_VERBOSE << "Closing PeerConnection";
 	closeDataChannels();
 	closeTransports();
 }
@@ -305,10 +311,15 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		if (auto transport = std::atomic_load(&mDtlsTransport))
 			return transport;
 
+		auto certificate = mCertificate.get();
 		auto lower = std::atomic_load(&mIceTransport);
 		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1);
 		auto stateChangeCallback = [this,
 		                            weak_this = weak_from_this()](DtlsTransport::State state) {
+			auto shared_this = weak_this.lock();
+			if (!shared_this)
+				return;
+
 			switch (state) {
 			case DtlsTransport::State::Connected:
 				initSctpTransport();
@@ -332,7 +343,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 			// DTLS-SRTP
 			transport = std::make_shared<DtlsSrtpTransport>(
-			    lower, mCertificate, verifierCallback,
+			    lower, certificate, verifierCallback,
 			    std::bind(&PeerConnection::forwardMedia, this, _1), stateChangeCallback);
 #else
 			PLOG_WARNING << "Ignoring media support (not compiled with SRTP support)";
@@ -341,7 +352,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 		if (!transport) {
 			// DTLS only
-			transport = std::make_shared<DtlsTransport>(lower, mCertificate, verifierCallback,
+			transport = std::make_shared<DtlsTransport>(lower, certificate, verifierCallback,
 			                                            stateChangeCallback);
 		}
 
@@ -416,6 +427,8 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 }
 
 void PeerConnection::closeTransports() {
+	PLOG_VERBOSE << "Closing transports";
+
 	// Change state to sink state Closed to block init methods
 	changeState(State::Closed);
 
@@ -578,9 +591,11 @@ void PeerConnection::processLocalDescription(Description description) {
 	if (auto remote = remoteDescription())
 		remoteSctpPort = remote->sctpPort();
 
+	auto certificate = mCertificate.get(); // wait for certificate if not ready
+
 	std::lock_guard lock(mLocalDescriptionMutex);
 	mLocalDescription.emplace(std::move(description));
-	mLocalDescription->setFingerprint(mCertificate->fingerprint());
+	mLocalDescription->setFingerprint(certificate->fingerprint());
 	mLocalDescription->setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
 	mLocalDescription->setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
 

@@ -49,11 +49,17 @@ public:
 protected:
 	void runRecvLoop();
 
+	string mHost;
+
 	Queue<message_ptr> mIncomingQueue;
 	std::thread mRecvThread;
 
 #if USE_GNUTLS
 	gnutls_session_t mSession;
+	gnutls_certificate_credentials_t mCreds;
+
+	message_ptr mIncomingMessage;
+	size_t mIncomingMessagePosition = 0;
 
 	static ssize_t WriteCallback(gnutls_transport_ptr_t ptr, const void *data, size_t len);
 	static ssize_t ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen);

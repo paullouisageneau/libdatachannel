@@ -48,7 +48,6 @@ public:
 	};
 
 	WebSocket();
-	WebSocket(const string &url);
 	~WebSocket();
 
 	State readyState() const;

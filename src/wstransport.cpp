@@ -78,32 +78,50 @@ bool WsTransport::send(message_ptr message) {
 		return false;
 
 	PLOG_VERBOSE << "Send size=" << message->size();
-
 	return sendFrame({message->type == Message::String ? TEXT_FRAME : BINARY_FRAME, message->data(),
 	                  message->size(), true, true});
 }
 
 void WsTransport::incoming(message_ptr message) {
-	try {
+	auto s = state();
+	if (s != State::Connecting && s != State::Connected)
+		return; // Drop
+
+	if (message) {
+		PLOG_VERBOSE << "Incoming size=" << message->size();
+
+		if (message->size() == 0) {
+			// TCP is idle, send a ping
+			PLOG_DEBUG << "WebSocket sending ping";
+			uint32_t dummy = 0;
+			sendFrame({PING, reinterpret_cast<byte *>(&dummy), 4, true, true});
+			return;
+		}
+
 		mBuffer.insert(mBuffer.end(), message->begin(), message->end());
 
-		if (state() == State::Connecting) {
-			if (size_t len = readHttpResponse(mBuffer.data(), mBuffer.size())) {
-				mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
-				PLOG_INFO << "WebSocket open";
-				changeState(State::Connected);
+		try {
+			if (state() == State::Connecting) {
+				if (size_t len = readHttpResponse(mBuffer.data(), mBuffer.size())) {
+					PLOG_INFO << "WebSocket open";
+					changeState(State::Connected);
+					mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
+				}
 			}
-		}
 
-		if (state() == State::Connected) {
-			Frame frame = {};
-			while (size_t len = readFrame(mBuffer.data(), mBuffer.size(), frame)) {
-				mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
-				recvFrame(frame);
+			if (state() == State::Connected) {
+				Frame frame;
+				while (size_t len = readFrame(mBuffer.data(), mBuffer.size(), frame)) {
+					recvFrame(frame);
+					mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
+				}
 			}
+
+			return;
+
+		} catch (const std::exception &e) {
+			PLOG_ERROR << e.what();
 		}
-	} catch (const std::exception &e) {
-		PLOG_ERROR << e.what();
 	}
 
 	if (state() == State::Connected) {
@@ -120,7 +138,7 @@ void WsTransport::close() {
 	if (state() == State::Connected) {
 		sendFrame({CLOSE, NULL, 0, true, true});
 		PLOG_INFO << "WebSocket closing";
-		changeState(State::Completed);
+		changeState(State::Disconnected);
 	}
 }
 
@@ -131,8 +149,8 @@ bool WsTransport::sendHttpRequest() {
 	random_bytes_engine generator(seed);
 
 	binary key(16);
-	std::generate(reinterpret_cast<uint8_t *>(key.data()),
-	              reinterpret_cast<uint8_t *>(key.data() + key.size()), generator);
+	auto k = reinterpret_cast<uint8_t *>(key.data());
+	std::generate(k, k + key.size(), generator);
 
 	const string request = "GET " + mPath +
 	                       " HTTP/1.1\r\n"
@@ -157,6 +175,7 @@ size_t WsTransport::readHttpResponse(const byte *buffer, size_t size) {
 	auto begin = reinterpret_cast<const char *>(buffer);
 	auto end = begin + size;
 	auto cur = begin;
+
 	while (true) {
 		auto last = cur;
 		cur = std::find(cur, end, '\n');
@@ -251,7 +270,7 @@ size_t WsTransport::readFrame(byte *buffer, size_t size, Frame &frame) {
 		cur += 2;
 	} else if (frame.length == 0x7F) {
 		if (end - cur < 8)
-			return false;
+			return 0;
 		frame.length = ntohll(*reinterpret_cast<const uint64_t *>(cur));
 		cur += 8;
 	}
@@ -265,49 +284,63 @@ size_t WsTransport::readFrame(byte *buffer, size_t size, Frame &frame) {
 	}
 
 	if (end - cur < frame.length)
-		return false;
+		return 0;
 
 	frame.payload = cur;
 	if (maskingKey)
 		for (size_t i = 0; i < frame.length; ++i)
 			frame.payload[i] ^= maskingKey[i % 4];
+	cur += frame.length;
 
-	return end - buffer;
+	return cur - buffer;
 }
 
 void WsTransport::recvFrame(const Frame &frame) {
+	PLOG_DEBUG << "WebSocket received frame: opcode=" << int(frame.opcode)
+	           << ", length=" << frame.length;
+
 	switch (frame.opcode) {
 	case TEXT_FRAME:
 	case BINARY_FRAME: {
 		if (!mPartial.empty()) {
+			PLOG_WARNING << "WebSocket unfinished message: type="
+			             << (mPartialOpcode == TEXT_FRAME ? "text" : "binary")
+			             << ", length=" << mPartial.size();
 			auto type = mPartialOpcode == TEXT_FRAME ? Message::String : Message::Binary;
 			recv(make_message(mPartial.begin(), mPartial.end(), type));
 			mPartial.clear();
 		}
+		mPartialOpcode = frame.opcode;
 		if (frame.fin) {
+			PLOG_DEBUG << "WebSocket finished message: type="
+			           << (frame.opcode == TEXT_FRAME ? "text" : "binary")
+			           << ", length=" << frame.length;
 			auto type = frame.opcode == TEXT_FRAME ? Message::String : Message::Binary;
-			recv(make_message(frame.payload, frame.payload + frame.length));
+			recv(make_message(frame.payload, frame.payload + frame.length, type));
 		} else {
 			mPartial.insert(mPartial.end(), frame.payload, frame.payload + frame.length);
-			mPartialOpcode = frame.opcode;
 		}
 		break;
 	}
 	case CONTINUATION: {
 		mPartial.insert(mPartial.end(), frame.payload, frame.payload + frame.length);
 		if (frame.fin) {
+			PLOG_DEBUG << "WebSocket finished message: type="
+			           << (frame.opcode == TEXT_FRAME ? "text" : "binary")
+			           << ", length=" << mPartial.size();
 			auto type = mPartialOpcode == TEXT_FRAME ? Message::String : Message::Binary;
-			recv(make_message(mPartial.begin(), mPartial.end()));
+			recv(make_message(mPartial.begin(), mPartial.end(), type));
 			mPartial.clear();
 		}
 		break;
 	}
 	case PING: {
+		PLOG_DEBUG << "WebSocket received ping, sending pong";
 		sendFrame({PONG, frame.payload, frame.length, true, true});
 		break;
 	}
 	case PONG: {
-		// TODO
+		PLOG_DEBUG << "WebSocket received pong";
 		break;
 	}
 	case CLOSE: {
@@ -324,6 +357,9 @@ void WsTransport::recvFrame(const Frame &frame) {
 }
 
 bool WsTransport::sendFrame(const Frame &frame) {
+	PLOG_DEBUG << "WebSocket sending frame: opcode=" << int(frame.opcode)
+	           << ", length=" << frame.length;
+
 	byte buffer[14];
 	byte *cur = buffer;
 
@@ -331,13 +367,13 @@ bool WsTransport::sendFrame(const Frame &frame) {
 
 	if (frame.length < 0x7E) {
 		*cur++ = byte((frame.length & 0x7F) | (frame.mask ? 0x80 : 0));
-	} else if (frame.length <= 0xFF) {
+	} else if (frame.length <= 0xFFFF) {
 		*cur++ = byte(0x7E | (frame.mask ? 0x80 : 0));
-		*reinterpret_cast<uint16_t *>(cur) = uint16_t(frame.length);
+		*reinterpret_cast<uint16_t *>(cur) = htons(uint16_t(frame.length));
 		cur += 2;
 	} else {
 		*cur++ = byte(0x7F | (frame.mask ? 0x80 : 0));
-		*reinterpret_cast<uint64_t *>(cur) = uint64_t(frame.length);
+		*reinterpret_cast<uint64_t *>(cur) = htonll(uint64_t(frame.length));
 		cur += 8;
 	}
 
@@ -345,9 +381,10 @@ bool WsTransport::sendFrame(const Frame &frame) {
 		auto seed = system_clock::now().time_since_epoch().count();
 		random_bytes_engine generator(seed);
 
-		auto *maskingKey = cur;
-		std::generate(reinterpret_cast<uint8_t *>(maskingKey),
-		              reinterpret_cast<uint8_t *>(maskingKey + 4), generator);
+		byte *maskingKey = reinterpret_cast<byte *>(cur);
+
+		auto u = reinterpret_cast<uint8_t *>(maskingKey);
+		std::generate(u, u + 4, generator);
 		cur += 4;
 
 		for (size_t i = 0; i < frame.length; ++i)

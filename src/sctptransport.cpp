@@ -21,6 +21,7 @@
 #include <chrono>
 #include <exception>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 #ifdef USE_JUICE
@@ -62,7 +63,10 @@ void SctpTransport::Init() {
 	usrsctp_sysctl_set_sctp_heartbeat_interval_default(10 * 1000); // ms
 }
 
-void SctpTransport::Cleanup() { usrsctp_finish(); }
+void SctpTransport::Cleanup() {
+	while (usrsctp_finish() != 0)
+		std::this_thread::sleep_for(100ms);
+}
 
 SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
                              message_callback recvCallback, amount_callback bufferedAmountCallback,

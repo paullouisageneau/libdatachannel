@@ -100,7 +100,10 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 		throw std::runtime_error("Failed to create the ICE agent");
 }
 
-IceTransport::~IceTransport() { stop(); }
+IceTransport::~IceTransport() {
+	stop();
+	mAgent.reset();
+}
 
 bool IceTransport::stop() {
 	return Transport::stop();

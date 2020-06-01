@@ -22,6 +22,7 @@
 #include "include.hpp"
 #include "tls.hpp"
 
+#include <future>
 #include <tuple>
 
 namespace rtc {
@@ -57,7 +58,12 @@ string make_fingerprint(gnutls_x509_crt_t crt);
 string make_fingerprint(X509 *x509);
 #endif
 
-std::shared_ptr<Certificate> make_certificate(const string &commonName);
+using certificate_ptr = std::shared_ptr<Certificate>;
+using future_certificate_ptr = std::shared_future<certificate_ptr>;
+
+future_certificate_ptr make_certificate(string commonName); // cached
+
+void CleanupCertificateCache();
 
 } // namespace rtc
 
