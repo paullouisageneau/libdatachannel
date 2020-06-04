@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.7)
-cmake_policy(SET CMP0079 NEW)
 
 add_executable(datachannel-copy-paste-offerer offerer.cpp)
 set_target_properties(datachannel-copy-paste-offerer PROPERTIES
