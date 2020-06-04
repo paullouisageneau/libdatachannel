@@ -21,6 +21,8 @@ lib libdatachannel
 	<include>./include
 	<library>/libdatachannel//plog
 	<cxxflags>-pthread
+	<toolset>gcc:<cxxflags>"-Wno-pedantic -Wno-unused-parameter"
+	<toolset>clang:<cxxflags>"-Wno-pedantic -Wno-unused-parameter"
 	;
 
 feature gnutls : off on : composite propagated ;
