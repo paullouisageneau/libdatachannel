@@ -60,7 +60,10 @@ private:
 
 template <typename T>
 Queue<T>::Queue(size_t limit, amount_function func) : mLimit(limit), mAmount(0) {
-	mAmountFunction = func ? func : [](const T &element) -> size_t { return 1; };
+	mAmountFunction = func ? func : [](const T &element) -> size_t {
+		static_cast<void>(element);
+		return 1;
+	};
 }
 
 template <typename T> Queue<T>::~Queue() { stop(); }

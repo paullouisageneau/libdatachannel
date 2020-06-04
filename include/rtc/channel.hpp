@@ -29,6 +29,9 @@ namespace rtc {
 
 class Channel {
 public:
+	Channel() = default;
+	virtual ~Channel() = default;
+
 	virtual void close() = 0;
 	virtual bool send(const std::variant<binary, string> &data) = 0; // returns false if buffered
 
