@@ -19,7 +19,21 @@
 #ifndef RTC_LOG_H
 #define RTC_LOG_H
 
+// Disable warnings before including plog
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wall"
+#elif defined(_MSC_VER)
+#pragma warning(push, 0)
+#endif
+
 #include "plog/Log.h"
+
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 namespace rtc {
 
