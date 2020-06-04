@@ -23,10 +23,10 @@ lib libdatachannel
 	<cxxflags>-pthread
 	;
 
-# feature crypto : openssl gnutls : composite propagated ;
-feature.compose <crypto>openssl
+feature gnutls : off on : composite propagated ;
+feature.compose <gnutls>off
     : <define>USE_GNUTLS=0 ;
-feature.compose <crypto>gnutls
+feature.compose <gnutls>on
     : <define>USE_GNUTLS=1 ;
 
 alias plog
