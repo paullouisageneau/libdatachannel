@@ -48,7 +48,7 @@ class SctpTransport;
 using certificate_ptr = std::shared_ptr<Certificate>;
 using future_certificate_ptr = std::shared_future<certificate_ptr>;
 
-class PeerConnection : public std::enable_shared_from_this<PeerConnection> {
+class PeerConnection final : public std::enable_shared_from_this<PeerConnection> {
 public:
 	enum class State : int {
 		New = RTC_NEW,
