@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
 project(libdatachannel
 	DESCRIPTION "WebRTC DataChannels Library"
-	VERSION 0.5.1
+	VERSION 0.6.0
 	LANGUAGES CXX)
 
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
