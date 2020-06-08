@@ -18,6 +18,7 @@
 
 #include "rtc/rtc.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -91,7 +92,7 @@ void test_connectivity() {
 	shared_ptr<DataChannel> dc2;
 	pc2->onDataChannel([&dc2](shared_ptr<DataChannel> dc) {
 		cout << "DataChannel 2: Received with label \"" << dc->label() << "\"" << endl;
-		dc2 = dc;
+		std::atomic_store(&dc2, dc);
 		dc2->onMessage([](const variant<binary, string> &message) {
 			if (holds_alternative<string>(message)) {
 				cout << "Message 2: " << get<string>(message) << endl;
@@ -115,14 +116,15 @@ void test_connectivity() {
 	});
 
 	int attempts = 10;
-	while ((!dc2 || !dc2->isOpen() || !dc1->isOpen()) && attempts--)
+	shared_ptr<DataChannel> adc2;
+	while ((!(adc2 = std::atomic_load(&dc2)) || adc2->isOpen() || !dc1->isOpen()) && attempts--)
 		this_thread::sleep_for(1s);
 
 	if (pc1->state() != PeerConnection::State::Connected &&
 	    pc2->state() != PeerConnection::State::Connected)
 		throw runtime_error("PeerConnection is not connected");
 
-	if (!dc1->isOpen() || !dc2->isOpen())
+	if (!adc2 || !adc2->isOpen() || !dc1->isOpen())
 		throw runtime_error("DataChannel is not open");
 
 	if (auto addr = pc1->localAddress())
