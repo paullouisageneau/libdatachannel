@@ -74,6 +74,7 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/websocket.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
 )
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -205,6 +206,16 @@ set_target_properties(datachannel-tests PROPERTIES
 set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
 target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(datachannel-tests datachannel nlohmann_json::nlohmann_json)
+
+# Benchmark
+add_executable(datachannel-benchmark test/benchmark.cpp)
+set_target_properties(datachannel-benchmark PROPERTIES
+	VERSION ${PROJECT_VERSION}
+	CXX_STANDARD 17)
+set_target_properties(datachannel-benchmark PROPERTIES OUTPUT_NAME benchmark)
+target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
+target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(datachannel-benchmark datachannel)
 
 # Examples
 set(JSON_BuildTests OFF CACHE INTERNAL "")

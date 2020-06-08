@@ -16,13 +16,27 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <chrono>
 #include <iostream>
 
 using namespace std;
+using namespace chrono_literals;
 
 void test_connectivity();
 void test_capi();
 void test_websocket();
+size_t benchmark(chrono::milliseconds duration);
+
+void test_benchmark() {
+	size_t goodput = benchmark(10s);
+
+	if (goodput == 0)
+		throw runtime_error("No data received");
+
+	const size_t threshold = 5000; // 5 MB/s;
+	if (goodput < threshold)
+		throw runtime_error("Goodput is too low");
+}
 
 int main(int argc, char **argv) {
 	try {
@@ -51,5 +65,13 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 #endif
+	try {
+		cout << endl << "*** Running WebRTC benchmark..." << endl;
+		test_benchmark();
+		cout << "*** Finished WebRTC benchmark" << endl;
+	} catch (const exception &e) {
+		cerr << "WebRTC benchmark failed: " << e.what() << endl;
+		return -1;
+	}
 	return 0;
 }

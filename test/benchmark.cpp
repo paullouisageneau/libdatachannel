@@ -26,24 +26,24 @@
 
 using namespace rtc;
 using namespace std;
+using namespace chrono_literals;
+
+using chrono::duration_cast;
+using chrono::milliseconds;
+using chrono::steady_clock;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-void test_connectivity() {
-	InitLogger(LogLevel::Debug);
+size_t benchmark(milliseconds duration) {
+	InitLogger(LogLevel::Warning);
 
 	Configuration config1;
-	// STUN server example
 	// config1.iceServers.emplace_back("stun:stun.l.google.com:19302");
 
 	auto pc1 = std::make_shared<PeerConnection>(config1);
 
 	Configuration config2;
-	// STUN server example
 	// config2.iceServers.emplace_back("stun:stun.l.google.com:19302");
-	// Port range example
-	config2.portRangeBegin = 5000;
-	config2.portRangeEnd = 6000;
 
 	auto pc2 = std::make_shared<PeerConnection>(config2);
 
@@ -89,62 +89,95 @@ void test_connectivity() {
 		cout << "Gathering state 2: " << state << endl;
 	});
 
+	const size_t messageSize = 65535;
+	binary messageData(messageSize);
+	fill(messageData.begin(), messageData.end(), byte(0xFF));
+	atomic<size_t> receivedSize = 0;
+
 	shared_ptr<DataChannel> dc2;
-	pc2->onDataChannel([&dc2](shared_ptr<DataChannel> dc) {
-		cout << "DataChannel 2: Received with label \"" << dc->label() << "\"" << endl;
+	pc2->onDataChannel([&dc2, &receivedSize](shared_ptr<DataChannel> dc) {
 		std::atomic_store(&dc2, dc);
-		dc2->onMessage([](const variant<binary, string> &message) {
-			if (holds_alternative<string>(message)) {
-				cout << "Message 2: " << get<string>(message) << endl;
+		dc2->onMessage([&receivedSize](const variant<binary, string> &message) {
+			if (holds_alternative<binary>(message)) {
+				const auto &bin = get<binary>(message);
+				receivedSize += bin.size();
 			}
 		});
-		dc2->send("Hello from 2");
 	});
 
-	auto dc1 = pc1->createDataChannel("test");
-	dc1->onOpen([wdc1 = make_weak_ptr(dc1)]() {
+	steady_clock::time_point startTime = steady_clock::now();
+	steady_clock::time_point openTime = steady_clock::now();
+
+	auto dc1 = pc1->createDataChannel("benchmark");
+	dc1->onOpen([wdc1 = make_weak_ptr(dc1), &messageData, &openTime]() {
 		auto dc1 = wdc1.lock();
 		if (!dc1)
 			return;
-		cout << "DataChannel 1: Open" << endl;
-		dc1->send("Hello from 1");
+
+		openTime = steady_clock::now();
+
+		cout << "DataChannel open, sending data..." << endl;
+		while (dc1->bufferedAmount() == 0) {
+			dc1->send(messageData);
+		}
+
+		// When sent data is buffered in the DataChannel,
+		// wait for onBufferedAmountLow callback to continue
 	});
-	dc1->onMessage([](const variant<binary, string> &message) {
-		if (holds_alternative<string>(message)) {
-			cout << "Message 1: " << get<string>(message) << endl;
+
+	dc1->onBufferedAmountLow([wdc1 = make_weak_ptr(dc1), &messageData]() {
+		auto dc1 = wdc1.lock();
+		if (!dc1)
+			return;
+
+		// Continue sending
+		while (dc1->bufferedAmount() == 0) {
+			dc1->send(messageData);
 		}
 	});
 
-	int attempts = 10;
-	shared_ptr<DataChannel> adc2;
-	while ((!(adc2 = std::atomic_load(&dc2)) || adc2->isOpen() || !dc1->isOpen()) && attempts--)
-		this_thread::sleep_for(1s);
+	const int steps = 10;
+	const auto stepDuration = duration / 10;
+	for (int i = 0; i < steps; ++i) {
+		this_thread::sleep_for(stepDuration);
+		cout << "Received: " << receivedSize.load() / 1000 << " KB" << endl;
+	}
 
-	if (pc1->state() != PeerConnection::State::Connected &&
-	    pc2->state() != PeerConnection::State::Connected)
-		throw runtime_error("PeerConnection is not connected");
+	dc1->close();
 
-	if (!adc2 || !adc2->isOpen() || !dc1->isOpen())
-		throw runtime_error("DataChannel is not open");
+	steady_clock::time_point endTime = steady_clock::now();
 
-	if (auto addr = pc1->localAddress())
-		cout << "Local address 1:  " << *addr << endl;
-	if (auto addr = pc1->remoteAddress())
-		cout << "Remote address 1: " << *addr << endl;
-	if (auto addr = pc2->localAddress())
-		cout << "Local address 2:  " << *addr << endl;
-	if (auto addr = pc2->remoteAddress())
-		cout << "Remote address 2: " << *addr << endl;
+	auto connectDuration = duration_cast<milliseconds>(openTime - startTime);
+	auto transferDuration = duration_cast<milliseconds>(endTime - openTime);
 
-	// Delay close of peer 2 to check closing works properly
+	cout << "Test duration: " << duration.count() << " ms" << endl;
+	cout << "Connect duration: " << connectDuration.count() << " ms" << endl;
+
+	size_t received = receivedSize.load();
+	size_t goodput = received / transferDuration.count();
+	cout << "Goodput: " << goodput * 0.001 << " MB/s"
+	     << " (" << goodput * 0.001 * 8 << " Mbit/s)" << endl;
+
 	pc1->close();
-	this_thread::sleep_for(1s);
 	pc2->close();
-	this_thread::sleep_for(1s);
 
-	// You may call rtc::Cleanup() when finished to free static resources
 	rtc::Cleanup();
-	this_thread::sleep_for(1s);
 
-	cout << "Success" << endl;
+	return goodput;
 }
+
+#ifdef BENCHMARK_MAIN
+int main(int argc, char **argv) {
+	try {
+		size_t goodput = benchmark(30s);
+		if (goodput == 0)
+			throw runtime_error("No data received");
+
+		return 0;
+
+	} catch (const std::exception &e) {
+		cerr << "Benchmark failed: " << e.what() << endl;
+		return -1;
+	}
+}
+#endif
