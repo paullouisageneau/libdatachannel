@@ -93,7 +93,10 @@ size_t benchmark(milliseconds duration) {
 	binary messageData(messageSize);
 	fill(messageData.begin(), messageData.end(), byte(0xFF));
 	atomic<size_t> receivedSize = 0;
-	std::atomic<steady_clock::time_point> startTime, openTime, receivedTime, endTime;
+	std::atomic<steady_clock::time_point> startTime{steady_clock::now()};
+	std::atomic<steady_clock::time_point> openTime{steady_clock::now()};
+	std::atomic<steady_clock::time_point> receivedTime{steady_clock::now()};
+	std::atomic<steady_clock::time_point> endTime{steady_clock::now()};
 
 	shared_ptr<DataChannel> dc2;
 	pc2->onDataChannel([&dc2, &receivedSize, &receivedTime, &endTime](shared_ptr<DataChannel> dc) {
