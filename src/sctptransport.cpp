@@ -385,7 +385,13 @@ void SctpTransport::updateBufferedAmount(uint16_t streamId, long delta) {
 	else
 		it->second = amount;
 
-	mBufferedAmountCallback(streamId, amount);
+	mSendMutex.unlock();
+	try {
+		mBufferedAmountCallback(streamId, amount);
+	} catch (const std::exception &e) {
+		PLOG_WARNING << "SCTP buffered amount callback: " << e.what();
+	}
+	mSendMutex.lock();
 }
 
 void SctpTransport::sendReset(uint16_t streamId) {
@@ -421,7 +427,7 @@ bool SctpTransport::safeFlush() {
 		return true;
 
 	} catch (const std::exception &e) {
-		PLOG_ERROR << "SCTP flush: " << e.what();
+		PLOG_WARNING << "SCTP flush: " << e.what();
 		return false;
 	}
 }
