@@ -93,28 +93,36 @@ size_t benchmark(milliseconds duration) {
 	binary messageData(messageSize);
 	fill(messageData.begin(), messageData.end(), byte(0xFF));
 	atomic<size_t> receivedSize = 0;
+	std::atomic<steady_clock::time_point> startTime, openTime, receivedTime, endTime;
 
 	shared_ptr<DataChannel> dc2;
-	pc2->onDataChannel([&dc2, &receivedSize](shared_ptr<DataChannel> dc) {
+	pc2->onDataChannel([&dc2, &receivedSize, &receivedTime, &endTime](shared_ptr<DataChannel> dc) {
 		std::atomic_store(&dc2, dc);
-		dc2->onMessage([&receivedSize](const variant<binary, string> &message) {
+
+		dc2->onMessage([&receivedTime, &receivedSize](const variant<binary, string> &message) {
 			if (holds_alternative<binary>(message)) {
 				const auto &bin = get<binary>(message);
+				if (receivedSize == 0)
+					receivedTime.store(steady_clock::now());
 				receivedSize += bin.size();
 			}
 		});
+
+		dc2->onClosed([&endTime]() {
+			cout << "DataChannel closed." << endl;
+			endTime.store(steady_clock::now());
+		});
 	});
 
-	steady_clock::time_point startTime = steady_clock::now();
-	steady_clock::time_point openTime = steady_clock::now();
-
+	startTime = steady_clock::now();
 	auto dc1 = pc1->createDataChannel("benchmark");
+
 	dc1->onOpen([wdc1 = make_weak_ptr(dc1), &messageData, &openTime]() {
 		auto dc1 = wdc1.lock();
 		if (!dc1)
 			return;
 
-		openTime = steady_clock::now();
+		openTime.store(steady_clock::now());
 
 		cout << "DataChannel open, sending data..." << endl;
 		while (dc1->bufferedAmount() == 0) {
@@ -145,16 +153,18 @@ size_t benchmark(milliseconds duration) {
 
 	dc1->close();
 
-	steady_clock::time_point endTime = steady_clock::now();
+	if (auto adc2 = std::atomic_load(&dc2))
+		while (!adc2->isClosed())
+			this_thread::sleep_for(1s);
 
-	auto connectDuration = duration_cast<milliseconds>(openTime - startTime);
-	auto transferDuration = duration_cast<milliseconds>(endTime - openTime);
+	auto connectDuration = duration_cast<milliseconds>(openTime.load() - startTime.load());
+	auto transferDuration = duration_cast<milliseconds>(endTime.load() - receivedTime.load());
 
 	cout << "Test duration: " << duration.count() << " ms" << endl;
 	cout << "Connect duration: " << connectDuration.count() << " ms" << endl;
 
 	size_t received = receivedSize.load();
-	size_t goodput = received / transferDuration.count();
+	size_t goodput = transferDuration.count() > 0 ? received / transferDuration.count() : 0;
 	cout << "Goodput: " << goodput * 0.001 << " MB/s"
 	     << " (" << goodput * 0.001 * 8 << " Mbit/s)" << endl;
 

@@ -117,7 +117,7 @@ void test_connectivity() {
 
 	int attempts = 10;
 	shared_ptr<DataChannel> adc2;
-	while ((!(adc2 = std::atomic_load(&dc2)) || adc2->isOpen() || !dc1->isOpen()) && attempts--)
+	while ((!(adc2 = std::atomic_load(&dc2)) || !adc2->isOpen() || !dc1->isOpen()) && attempts--)
 		this_thread::sleep_for(1s);
 
 	if (pc1->state() != PeerConnection::State::Connected &&
