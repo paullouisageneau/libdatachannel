@@ -92,30 +92,32 @@ size_t benchmark(milliseconds duration) {
 	const size_t messageSize = 65535;
 	binary messageData(messageSize);
 	fill(messageData.begin(), messageData.end(), byte(0xFF));
+
 	atomic<size_t> receivedSize = 0;
-	std::atomic<steady_clock::time_point> startTime{steady_clock::now()};
-	std::atomic<steady_clock::time_point> openTime{steady_clock::now()};
-	std::atomic<steady_clock::time_point> receivedTime{steady_clock::now()};
-	std::atomic<steady_clock::time_point> endTime{steady_clock::now()};
+	atomic<bool> finished = false;
+
+	steady_clock::time_point startTime, openTime, receivedTime, endTime;
 
 	shared_ptr<DataChannel> dc2;
-	pc2->onDataChannel([&dc2, &receivedSize, &receivedTime, &endTime](shared_ptr<DataChannel> dc) {
-		std::atomic_store(&dc2, dc);
+	pc2->onDataChannel(
+	    [&dc2, &finished, &receivedSize, &receivedTime, &endTime](shared_ptr<DataChannel> dc) {
+		    dc->onMessage([&receivedTime, &receivedSize](const variant<binary, string> &message) {
+			    if (holds_alternative<binary>(message)) {
+				    const auto &bin = get<binary>(message);
+				    if (receivedSize == 0)
+					    receivedTime = steady_clock::now();
+				    receivedSize += bin.size();
+			    }
+		    });
 
-		dc2->onMessage([&receivedTime, &receivedSize](const variant<binary, string> &message) {
-			if (holds_alternative<binary>(message)) {
-				const auto &bin = get<binary>(message);
-				if (receivedSize == 0)
-					receivedTime.store(steady_clock::now());
-				receivedSize += bin.size();
-			}
-		});
+		    dc->onClosed([&finished, &endTime]() {
+			    cout << "DataChannel closed." << endl;
+			    endTime = steady_clock::now();
+			    finished = true;
+		    });
 
-		dc2->onClosed([&endTime]() {
-			cout << "DataChannel closed." << endl;
-			endTime.store(steady_clock::now());
-		});
-	});
+		    std::atomic_store(&dc2, dc);
+	    });
 
 	startTime = steady_clock::now();
 	auto dc1 = pc1->createDataChannel("benchmark");
@@ -125,7 +127,7 @@ size_t benchmark(milliseconds duration) {
 		if (!dc1)
 			return;
 
-		openTime.store(steady_clock::now());
+		openTime = steady_clock::now();
 
 		cout << "DataChannel open, sending data..." << endl;
 		while (dc1->bufferedAmount() == 0) {
@@ -154,14 +156,14 @@ size_t benchmark(milliseconds duration) {
 		cout << "Received: " << receivedSize.load() / 1000 << " KB" << endl;
 	}
 
-	dc1->close();
+	if (auto adc2 = std::atomic_load(&dc2); adc2->isOpen()) {
+		dc1->close();
+		while (!finished)
+			this_thread::sleep_for(100ms);
+	}
 
-	if (auto adc2 = std::atomic_load(&dc2))
-		while (!adc2->isClosed())
-			this_thread::sleep_for(1s);
-
-	auto connectDuration = duration_cast<milliseconds>(openTime.load() - startTime.load());
-	auto transferDuration = duration_cast<milliseconds>(endTime.load() - receivedTime.load());
+	auto connectDuration = duration_cast<milliseconds>(openTime - startTime);
+	auto transferDuration = duration_cast<milliseconds>(endTime - receivedTime);
 
 	cout << "Test duration: " << duration.count() << " ms" << endl;
 	cout << "Connect duration: " << connectDuration.count() << " ms" << endl;

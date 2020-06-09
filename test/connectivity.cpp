@@ -64,6 +64,7 @@ void test_connectivity() {
 	});
 
 	pc1->onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
+
 	pc1->onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "Gathering state 1: " << state << endl;
 	});
@@ -85,6 +86,7 @@ void test_connectivity() {
 	});
 
 	pc2->onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
+
 	pc2->onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "Gathering state 2: " << state << endl;
 	});
@@ -92,13 +94,16 @@ void test_connectivity() {
 	shared_ptr<DataChannel> dc2;
 	pc2->onDataChannel([&dc2](shared_ptr<DataChannel> dc) {
 		cout << "DataChannel 2: Received with label \"" << dc->label() << "\"" << endl;
-		std::atomic_store(&dc2, dc);
-		dc2->onMessage([](const variant<binary, string> &message) {
+
+		dc->onMessage([](const variant<binary, string> &message) {
 			if (holds_alternative<string>(message)) {
 				cout << "Message 2: " << get<string>(message) << endl;
 			}
 		});
-		dc2->send("Hello from 2");
+
+		dc->send("Hello from 2");
+
+		std::atomic_store(&dc2, dc);
 	});
 
 	auto dc1 = pc1->createDataChannel("test");
@@ -106,6 +111,7 @@ void test_connectivity() {
 		auto dc1 = wdc1.lock();
 		if (!dc1)
 			return;
+
 		cout << "DataChannel 1: Open" << endl;
 		dc1->send("Hello from 1");
 	});
