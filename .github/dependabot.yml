@@ -1,5 +1,5 @@
 version: 2
-example-web:
+updates:
   - package-ecosystem: "npm"
     directory: "examples/web"
     schedule:
