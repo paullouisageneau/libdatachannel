@@ -31,6 +31,7 @@ using init_token = std::shared_ptr<Init>;
 class Init {
 public:
 	static init_token Token();
+	static void Preload();
 	static void Cleanup();
 
 	~Init();
@@ -43,6 +44,7 @@ private:
 	static std::mutex Mutex;
 };
 
+inline void Preload() { Init::Preload(); }
 inline void Cleanup() { Init::Cleanup(); }
 
 } // namespace rtc

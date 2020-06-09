@@ -183,10 +183,13 @@ size_t benchmark(milliseconds duration) {
 #ifdef BENCHMARK_MAIN
 int main(int argc, char **argv) {
 	try {
+		rtc::Preload();
+
 		size_t goodput = benchmark(30s);
 		if (goodput == 0)
 			throw runtime_error("No data received");
 
+		rtc::Cleanup();
 		return 0;
 
 	} catch (const std::exception &e) {

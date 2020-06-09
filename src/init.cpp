@@ -55,6 +55,11 @@ init_token Init::Token() {
 	return Global;
 }
 
+void Init::Preload() {
+	Token();                   // pre-init
+	make_certificate().wait(); // preload certificate
+}
+
 void Init::Cleanup() { Global.reset(); }
 
 Init::Init() {

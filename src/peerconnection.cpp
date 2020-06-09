@@ -39,7 +39,7 @@ using std::weak_ptr;
 PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 
 PeerConnection::PeerConnection(const Configuration &config)
-    : mConfig(config), mCertificate(make_certificate("libdatachannel")), mState(State::New),
+    : mConfig(config), mCertificate(make_certificate()), mState(State::New),
       mGatheringState(GatheringState::New) {
 	PLOG_VERBOSE << "Creating PeerConnection";
 }
