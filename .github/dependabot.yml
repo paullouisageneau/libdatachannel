@@ -1,0 +1,6 @@
+version: 2
+example-web:
+  - package-ecosystem: "npm"
+    directory: "examples/web"
+    schedule:
+      interval: "weekly"
