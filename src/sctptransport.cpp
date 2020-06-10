@@ -64,8 +64,8 @@ void SctpTransport::Init() {
 
 	usrsctp_sysctl_set_sctp_max_chunks_on_queue(10 * 1024);
 
-	// Change congestion control from the default TCP Reno (RFC 2581) to HighSpeed TCP (RFC 3649)
-	usrsctp_sysctl_set_sctp_default_cc_module(SCTP_CC_HSTCP);
+	// Change congestion control from the default TCP Reno (RFC 2581) to H-TCP
+	usrsctp_sysctl_set_sctp_default_cc_module(SCTP_CC_HTCP);
 
 	// Increase the initial window size to 10 MTUs (RFC 6928)
 	usrsctp_sysctl_set_sctp_initial_cwnd(10);
