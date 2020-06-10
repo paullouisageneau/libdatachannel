@@ -36,12 +36,10 @@ namespace rtc {
 #if USE_GNUTLS
 
 void DtlsTransport::Init() {
-	// Nothing to do
+	gnutls_global_init(); // optional
 }
 
-void DtlsTransport::Cleanup() {
-	// Nothing to do
-}
+void DtlsTransport::Cleanup() { gnutls_global_deinit(); }
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
                              verifier_callback verifierCallback, state_callback stateChangeCallback)
