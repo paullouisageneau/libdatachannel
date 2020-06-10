@@ -42,6 +42,9 @@ PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate()), mState(State::New),
       mGatheringState(GatheringState::New) {
 	PLOG_VERBOSE << "Creating PeerConnection";
+
+	if (config.portRangeEnd && config.portRangeBegin > config.portRangeEnd)
+		throw std::invalid_argument("Invalid port range");
 }
 
 PeerConnection::~PeerConnection() {

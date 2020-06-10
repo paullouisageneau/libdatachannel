@@ -60,6 +60,10 @@ typedef enum { // Don't change, it must match plog severity
 	RTC_LOG_VERBOSE = 6
 } rtcLogLevel;
 
+const int RTC_ERR_SUCCESS = 0;
+const int RTC_ERR_INVALID = -1; // invalid argument
+const int RTC_ERR_FAILURE = -2; // runtime error
+
 typedef struct {
 	const char **iceServers;
 	int iceServersCount;
@@ -129,7 +133,8 @@ int rtcGetAvailableAmount(int id); // total size available to receive
 int rtcSetAvailableCallback(int id, availableCallbackFunc cb);
 int rtcReceiveMessage(int id, char *buffer, int *size);
 
-// Cleanup
+// Optional preload and cleanup
+void rtcPreload();
 void rtcCleanup();
 
 #ifdef __cplusplus

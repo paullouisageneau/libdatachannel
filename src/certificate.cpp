@@ -235,7 +235,7 @@ namespace {
 template <class F, class... Args>
 std::future<std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>> thread_call(F &&f,
                                                                                   Args &&... args) {
-	using R = std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>;
+	using R = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
 	std::packaged_task<R()> task(std::bind(f, std::forward<Args>(args)...));
 	std::future<R> future = task.get_future();
 	std::thread t(std::move(task));
