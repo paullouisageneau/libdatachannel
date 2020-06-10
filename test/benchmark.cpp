@@ -35,7 +35,8 @@ using chrono::steady_clock;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 size_t benchmark(milliseconds duration) {
-	InitLogger(LogLevel::Warning);
+	rtc::InitLogger(LogLevel::Warning);
+	rtc::Preload();
 
 	Configuration config1;
 	// config1.iceServers.emplace_back("stun:stun.l.google.com:19302");
@@ -177,19 +178,17 @@ size_t benchmark(milliseconds duration) {
 	pc2->close();
 	this_thread::sleep_for(1s);
 
+	rtc::Cleanup();
 	return goodput;
 }
 
 #ifdef BENCHMARK_MAIN
 int main(int argc, char **argv) {
 	try {
-		rtc::Preload();
-
 		size_t goodput = benchmark(30s);
 		if (goodput == 0)
 			throw runtime_error("No data received");
 
-		rtc::Cleanup();
 		return 0;
 
 	} catch (const std::exception &e) {
