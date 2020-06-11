@@ -59,7 +59,7 @@ int SelectInterrupter::prepare(fd_set &readfds, fd_set &writefds) {
 	if (mDummySock == INVALID_SOCKET)
 		mDummySock = ::socket(AF_INET, SOCK_DGRAM, 0);
 	FD_SET(mDummySock, &readfds);
-	return SOCK_TO_INT(mDummySock) + 1;
+	return SOCKET_TO_INT(mDummySock) + 1;
 #else
 	int ret;
 	do {
@@ -226,7 +226,7 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 
 		int error = 0;
 		socklen_t errorlen = sizeof(error);
-		if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, &error, &errorlen) != 0)
+		if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, (char *)&error, &errorlen) != 0)
 			throw std::runtime_error("Failed to get socket error code");
 
 		if (error != 0) {
@@ -271,7 +271,7 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 	auto data = reinterpret_cast<const char *>(message->data());
 	auto size = message->size();
 	while (size) {
-#ifdef __APPLE__
+#if defined(__APPLE__) or defined(_WIN32)
 		int flags = 0;
 #else
 		int flags = MSG_NOSIGNAL;
