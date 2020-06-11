@@ -19,12 +19,19 @@
 
 #include <rtc/rtc.h>
 
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include "getline.h"
+#include <windows.h>
+static void sleep(unsigned int secs) { Sleep(secs * 1000); }
+#else
 #include <unistd.h> // for sleep
-#include <ctype.h>
+#endif
 
 char* state_print(rtcState state);
 char* rtcGatheringState_print(rtcState state);
@@ -65,13 +72,11 @@ int main(int argc, char **argv){
         memset(&config, 0, sizeof(config));
 
         Peer *peer = (Peer *)malloc(sizeof(Peer));
-        if (!peer) {
-
-                printf("Error allocating memory for peer\n");
-                deletePeer(peer);
-
-        }
-        memset(peer, 0, sizeof(Peer));
+	    if (!peer) {
+		    fprintf(stderr, "Error allocating memory for peer\n");
+		    return -1;
+	    }
+	    memset(peer, 0, sizeof(Peer));
 
         printf("Peer created\n");
 
@@ -85,25 +90,17 @@ int main(int argc, char **argv){
 
         // Since this is the offere, we will create a datachannel
         peer->dc = rtcCreateDataChannel(peer->pc, "test");
-
         rtcSetOpenCallback(peer->dc, openCallback);
-
-
         rtcSetClosedCallback(peer->dc, closedCallback);
-
         rtcSetMessageCallback(peer->dc, messageCallback);
 
+	    sleep(1);
 
-        sleep(1);
-
-        bool exit = false;
-
+	    bool exit = false;
         while (!exit) {
 
                 printf("\n");
                 printf("***************************************************************************************\n");
-
-                // << endl
                 printf("* 0: Exit /"
                        " 1: Enter remote description /"
                        " 2: Enter remote candidate /"
@@ -113,13 +110,14 @@ int main(int argc, char **argv){
 
                 int command = -1;
                 int c;
-                if (scanf("%d", &command)) {
 
-                }else {
-                        break;
-                }
-                while ((c = getchar()) != '\n' && c != EOF) { }
-                fflush(stdin);
+		        if (!scanf("%d", &command)) {
+			        break;
+		        }
+
+		        while ((c = getchar()) != '\n' && c != EOF) {
+		        }
+		        fflush(stdin);
 
                 switch (command) {
                 case 0: {
@@ -210,11 +208,6 @@ int main(int argc, char **argv){
         return 0;
 }
 
-
-
-
-
-
 static void descriptionCallback(const char *sdp, const char *type, void *ptr) {
         // Peer *peer = (Peer *)ptr;
         printf("Description %s:\n%s\n", "offerer", sdp);
@@ -238,22 +231,17 @@ static void gatheringStateCallback(rtcGatheringState state, void *ptr) {
         printf("Gathering state %s: %s\n", "offerer", rtcGatheringState_print(state));
 }
 
-
 static void openCallback(void *ptr) {
         Peer *peer = (Peer *)ptr;
         peer->connected = true;
         char buffer[256];
         if (rtcGetDataChannelLabel(peer->dc, buffer, 256) >= 0)
                 printf("DataChannel %s: Received with label \"%s\"\n","offerer", buffer);
-
-
 }
 
 static void closedCallback(void *ptr) {
         Peer *peer = (Peer *)ptr;
         peer->connected = false;
-
-
 }
 
 static void messageCallback(const char *message, int size, void *ptr) {
@@ -264,6 +252,7 @@ static void messageCallback(const char *message, int size, void *ptr) {
                 printf("Message %s: [binary of size %d]\n", "offerer", size);
         }
 }
+
 static void deletePeer(Peer *peer) {
         if (peer) {
                 if (peer->dc)
@@ -274,14 +263,14 @@ static void deletePeer(Peer *peer) {
         }
 }
 
-
 int all_space(const char *str) {
         while (*str) {
                 if (!isspace(*str++)) {
                         return 0;
                 }
         }
-        return 1;
+
+	    return 1;
 }
 
 char* state_print(rtcState state) {
@@ -330,5 +319,4 @@ char* rtcGatheringState_print(rtcState state) {
         }
 
         return str;
-
 }
