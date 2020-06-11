@@ -33,7 +33,7 @@ void test_benchmark() {
 	if (goodput == 0)
 		throw runtime_error("No data received");
 
-	const size_t threshold = 5000; // 5 MB/s;
+	const size_t threshold = 1000; // 1 MB/s;
 	if (goodput < threshold)
 		throw runtime_error("Goodput is too low");
 }

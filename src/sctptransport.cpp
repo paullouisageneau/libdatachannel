@@ -61,6 +61,14 @@ void SctpTransport::Init() {
 	usrsctp_sysctl_set_sctp_rto_initial_default(1 * 1000);         // ms
 	usrsctp_sysctl_set_sctp_init_rto_max_default(10 * 1000);       // ms
 	usrsctp_sysctl_set_sctp_heartbeat_interval_default(10 * 1000); // ms
+
+	usrsctp_sysctl_set_sctp_max_chunks_on_queue(10 * 1024);
+
+	// Change congestion control from the default TCP Reno (RFC 2581) to H-TCP
+	usrsctp_sysctl_set_sctp_default_cc_module(SCTP_CC_HTCP);
+
+	// Increase the initial window size to 10 MTUs (RFC 6928)
+	usrsctp_sysctl_set_sctp_initial_cwnd(10);
 }
 
 void SctpTransport::Cleanup() {
@@ -158,11 +166,11 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 	// The default send and receive window size of usrsctp is 256KiB, which is too small for
 	// realistic RTTs, therefore we increase it to 1MiB for better performance.
 	// See https://bugzilla.mozilla.org/show_bug.cgi?id=1051685
-	int bufSize = 1024 * 1024;
-	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_RCVBUF, &bufSize, sizeof(bufSize)))
+	int bufferSize = 1024 * 1024;
+	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize)))
 		throw std::runtime_error("Could not set SCTP recv buffer size, errno=" +
 		                         std::to_string(errno));
-	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_SNDBUF, &bufSize, sizeof(bufSize)))
+	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_SNDBUF, &bufferSize, sizeof(bufferSize)))
 		throw std::runtime_error("Could not set SCTP send buffer size, errno=" +
 		                         std::to_string(errno));
 
