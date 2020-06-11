@@ -134,13 +134,10 @@ void PeerConnection::setRemoteDescription(Description description) {
 }
 
 void PeerConnection::addRemoteCandidate(Candidate candidate) {
-	std::lock_guard lock(mRemoteDescriptionMutex);
 
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	if (!mRemoteDescription || !iceTransport)
 		throw std::logic_error("Remote candidate set without remote description");
-
-	mRemoteDescription->addCandidate(candidate);
 
 	if (candidate.resolve(Candidate::ResolveMode::Simple)) {
 		iceTransport->addRemoteCandidate(candidate);
@@ -154,6 +151,9 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 		});
 		t.detach();
 	}
+
+	std::lock_guard lock(mRemoteDescriptionMutex);
+	mRemoteDescription->addCandidate(candidate);
 }
 
 std::optional<string> PeerConnection::localAddress() const {
