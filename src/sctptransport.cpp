@@ -67,8 +67,14 @@ void SctpTransport::Init() {
 	// Change congestion control from the default TCP Reno (RFC 2581) to H-TCP
 	usrsctp_sysctl_set_sctp_default_cc_module(SCTP_CC_HTCP);
 
+	// Enable Non-Renegable Selective Acknowledgments (NR-SACKs)
+	usrsctp_sysctl_set_sctp_nrsack_enable(1);
+
 	// Increase the initial window size to 10 MTUs (RFC 6928)
 	usrsctp_sysctl_set_sctp_initial_cwnd(10);
+
+	// Reduce SACK delay from the default 200ms to 20ms
+	usrsctp_sysctl_set_sctp_delayed_sack_time_default(20); // ms
 }
 
 void SctpTransport::Cleanup() {
