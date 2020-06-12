@@ -157,9 +157,9 @@ size_t benchmark(milliseconds duration) {
 		cout << "Received: " << receivedSize.load() / 1000 << " KB" << endl;
 	}
 
-	if (auto adc2 = std::atomic_load(&dc2); adc2->isOpen()) {
+	if (auto adc2 = std::atomic_load(&dc2)) {
 		dc1->close();
-		while (!finished)
+		while (!finished && adc2->isOpen())
 			this_thread::sleep_for(100ms);
 	}
 

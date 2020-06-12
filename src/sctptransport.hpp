@@ -97,7 +97,7 @@ private:
 	std::mutex mWriteMutex;
 	std::condition_variable mWrittenCondition;
 	std::atomic<bool> mWritten = false; // written outside lock
-	bool mWrittenOnce = false;
+	std::atomic<bool> mWrittenOnce = false; // same
 
 	binary mPartialRecv, mPartialStringData, mPartialBinaryData;
 

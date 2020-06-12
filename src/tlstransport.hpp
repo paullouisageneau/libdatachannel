@@ -26,7 +26,6 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
-#include <mutex>
 #include <thread>
 
 namespace rtc {
