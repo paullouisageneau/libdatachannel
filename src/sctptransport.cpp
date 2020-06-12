@@ -279,7 +279,7 @@ void SctpTransport::incoming(message_ptr message) {
 	// There could be a race condition here where we receive the remote INIT before the local one is
 	// sent, which would result in the connection being aborted. Therefore, we need to wait for data
 	// to be sent on our side (i.e. the local INIT) before proceeding.
-	{
+	if (!mWrittenOnce) { // test the atomic boolean is not set first to prevent a lock contention
 		std::unique_lock lock(mWriteMutex);
 		mWrittenCondition.wait(lock, [&]() { return mWrittenOnce || state() != State::Connected; });
 	}
@@ -376,18 +376,20 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 		ret = usrsctp_sendv(mSock, &zero, 1, nullptr, 0, &spa, sizeof(spa), SCTP_SENDV_SPA, 0);
 	}
 
-	if (ret >= 0) {
-		PLOG_VERBOSE << "SCTP sent size=" << message->size();
-		if (message->type == Message::Type::Binary || message->type == Message::Type::String)
-			mBytesSent += message->size();
-		return true;
-	} else if (errno == EWOULDBLOCK || errno == EAGAIN) {
-		PLOG_VERBOSE << "SCTP sending not possible";
-		return false;
-	} else {
+	if (ret < 0) {
+		if (errno == EWOULDBLOCK || errno == EAGAIN) {
+			PLOG_VERBOSE << "SCTP sending not possible";
+			return false;
+		}
+
 		PLOG_ERROR << "SCTP sending failed, errno=" << errno;
 		throw std::runtime_error("Sending failed, errno=" + std::to_string(errno));
 	}
+
+	PLOG_VERBOSE << "SCTP sent size=" << message->size();
+	if (message->type == Message::Type::Binary || message->type == Message::Type::String)
+		mBytesSent += message->size();
+	return true;
 }
 
 void SctpTransport::updateBufferedAmount(uint16_t streamId, long delta) {
@@ -491,6 +493,7 @@ int SctpTransport::handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_
 		std::unique_lock lock(mWriteMutex);
 		if (!outgoing(make_message(data, data + len)))
 			return -1;
+
 		mWritten = true;
 		mWrittenOnce = true;
 		mWrittenCondition.notify_all();
