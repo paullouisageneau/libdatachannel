@@ -92,18 +92,20 @@ void PeerConnection::setLocalDescription(std::optional<Description> description)
 
 void PeerConnection::setRemoteDescription(Description description) {
 	description.hintType(localDescription() ? Description::Type::Answer : Description::Type::Offer);
-	auto remoteCandidates = description.extractCandidates();
-
-	std::lock_guard lock(mRemoteDescriptionMutex);
-	mRemoteDescription.emplace(std::move(description));
+	auto type = description.type();
+	auto remoteCandidates = description.extractCandidates(); // Candidates will be added at the end
 
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	if (!iceTransport)
 		iceTransport = initIceTransport(Description::Role::ActPass);
+	iceTransport->setRemoteDescription(description);
 
-	iceTransport->setRemoteDescription(*mRemoteDescription);
+	{
+		std::lock_guard lock(mRemoteDescriptionMutex);
+		mRemoteDescription.emplace(std::move(description));
+	}
 
-	if (mRemoteDescription->type() == Description::Type::Offer) {
+	if (type == Description::Type::Offer) {
 		// This is an offer and we are the answerer.
 		Description localDescription = iceTransport->getLocalDescription(Description::Type::Answer);
 		localDescription.addMedia(description); // blindly accept media
@@ -597,11 +599,13 @@ void PeerConnection::processLocalDescription(Description description) {
 
 	auto certificate = mCertificate.get(); // wait for certificate if not ready
 
-	std::lock_guard lock(mLocalDescriptionMutex);
-	mLocalDescription.emplace(std::move(description));
-	mLocalDescription->setFingerprint(certificate->fingerprint());
-	mLocalDescription->setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
-	mLocalDescription->setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+	{
+		std::lock_guard lock(mLocalDescriptionMutex);
+		mLocalDescription.emplace(std::move(description));
+		mLocalDescription->setFingerprint(certificate->fingerprint());
+		mLocalDescription->setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
+		mLocalDescription->setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+	}
 
 	mLocalDescriptionCallback(*mLocalDescription);
 }

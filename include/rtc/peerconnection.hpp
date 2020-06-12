@@ -145,7 +145,7 @@ private:
 	init_token mInitToken = Init::Token();
 
 	std::optional<Description> mLocalDescription, mRemoteDescription;
-	mutable std::recursive_mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
+	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
 
 	std::shared_ptr<IceTransport> mIceTransport;
 	std::shared_ptr<DtlsTransport> mDtlsTransport;
