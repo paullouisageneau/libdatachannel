@@ -31,9 +31,6 @@ jobs:
       run: git submodule update --init --recursive
     - name: cmake
       run: cmake -B build -DUSE_JUICE=1 -DUSE_GNUTLS=1
-      env:
-# hack to bypass EPERM issue on sendto()
-        CFLAGS: -DJUICE_ENABLE_ADDRS_LOCALHOST
     - name: make
       run: (cd build; make -j2)
     - name: test
