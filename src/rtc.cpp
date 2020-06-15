@@ -57,7 +57,7 @@ void *getUserPointer(int id) {
 void setUserPointer(int i, void *ptr) {
 	std::lock_guard lock(mutex);
 	if (ptr)
-		userPointerMap.insert(std::make_pair(i, ptr));
+		userPointerMap[i] = ptr;
 	else
 		userPointerMap.erase(i);
 }
