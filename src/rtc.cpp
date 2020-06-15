@@ -333,6 +333,9 @@ int rtcGetLocalAddress(int pc, char *buffer, int size) {
 		if (!buffer)
 			throw std::invalid_argument("Unexpected null pointer");
 
+		if (size <= 0)
+			return 0;
+
 		if (auto addr = peerConnection->localAddress()) {
 			const char *data = addr->data();
 			size = std::min(size_t(size - 1), addr->size());
@@ -349,6 +352,9 @@ int rtcGetRemoteAddress(int pc, char *buffer, int size) {
 
 		if (!buffer)
 			throw std::invalid_argument("Unexpected null pointer");
+
+		if (size <= 0)
+			return 0;
 
 		if (auto addr = peerConnection->remoteAddress()) {
 			const char *data = addr->data();
@@ -367,16 +373,15 @@ int rtcGetDataChannelLabel(int dc, char *buffer, int size) {
 		if (!buffer)
 			throw std::invalid_argument("Unexpected null pointer");
 
-		if (size >= 0) {
-			string label = dataChannel->label();
-			const char *data = label.data();
-			size = std::min(size_t(size - 1), label.size());
-			std::copy(data, data + size, buffer);
-			buffer[size] = '\0';
-			return size + 1;
-		} else {
+		if (size <= 0)
 			return 0;
-		}
+
+		string label = dataChannel->label();
+		const char *data = label.data();
+		size = std::min(size_t(size - 1), label.size());
+		std::copy(data, data + size, buffer);
+		buffer[size] = '\0';
+		return size + 1;
 	});
 }
 
