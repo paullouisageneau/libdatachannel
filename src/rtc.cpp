@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2019-2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,15 +18,16 @@
 
 #include "include.hpp"
 
+#include "rtc.h"
+
 #include "datachannel.hpp"
 #include "log.hpp"
 #include "peerconnection.hpp"
-
 #if RTC_ENABLE_WEBSOCKET
 #include "websocket.hpp"
 #endif
 
-#include <rtc.h>
+#include "plog/Formatters/FuncMessageFormatter.h"
 
 #include <exception>
 #include <mutex>
@@ -161,9 +162,42 @@ template <typename F> int wrap(F func) {
 		return RTC_ERR_SUCCESS;                                                                    \
 	})
 
+class plog_appender : public plog::IAppender {
+public:
+	plog_appender(rtcLogCallbackFunc cb = nullptr) { set_callback(cb); }
+
+	void set_callback(rtcLogCallbackFunc cb) {
+		std::lock_guard lock(mutex);
+		callback = cb;
+	}
+
+	void write(const plog::Record &record) override {
+		plog::Severity severity = record.getSeverity();
+		std::string formatted = plog::FuncMessageFormatter::format(record);
+		formatted.pop_back(); // remove newline
+
+		std::lock_guard lock(mutex);
+		if (callback)
+			callback(static_cast<rtcLogLevel>(record.getSeverity()), formatted.c_str());
+		else
+			std::cout << plog::severityToString(severity) << " " << formatted << std::endl;
+	}
+
+private:
+	rtcLogCallbackFunc callback;
+};
+
 } // namespace
 
-void rtcInitLogger(rtcLogLevel level) { InitLogger(static_cast<LogLevel>(level)); }
+void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
+	static std::optional<plog_appender> appender;
+	if (appender)
+		appender->set_callback(cb);
+	else if (cb)
+		appender.emplace(plog_appender(cb));
+
+	InitLogger(static_cast<plog::Severity>(level), appender ? &appender.value() : nullptr);
+}
 
 void rtcSetUserPointer(int i, void *ptr) { setUserPointer(i, ptr); }
 

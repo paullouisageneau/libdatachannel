@@ -65,16 +65,16 @@ static void deletePeer(Peer *peer);
 int all_space(const char *str);
 
 int main(int argc, char **argv){
-        rtcInitLogger(RTC_LOG_DEBUG);
+	rtcInitLogger(RTC_LOG_DEBUG, NULL);
 
-        // Create peer
-        rtcConfiguration config;
-        memset(&config, 0, sizeof(config));
+	// Create peer
+	rtcConfiguration config;
+	memset(&config, 0, sizeof(config));
 
-        Peer *peer = (Peer *)malloc(sizeof(Peer));
-	    if (!peer) {
-		    fprintf(stderr, "Error allocating memory for peer\n");
-		    return -1;
+	Peer *peer = (Peer *)malloc(sizeof(Peer));
+	if (!peer) {
+		fprintf(stderr, "Error allocating memory for peer\n");
+		return -1;
 	    }
 	    memset(peer, 0, sizeof(Peer));
 

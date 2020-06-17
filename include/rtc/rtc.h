@@ -71,21 +71,21 @@ typedef struct {
 	uint16_t portRangeEnd;
 } rtcConfiguration;
 
-typedef void(rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
-typedef void(rtcDataChannelCallbackFunc)(int dc, void *ptr);
-typedef void(rtcDescriptionCallbackFunc)(const char *sdp, const char *type, void *ptr);
-typedef void(rtcCandidateCallbackFunc)(const char *cand, const char *mid, void *ptr);
-typedef void(rtcStateChangeCallbackFunc)(rtcState state, void *ptr);
-typedef void(rtcGatheringStateCallbackFunc)(rtcGatheringState state, void *ptr);
-typedef void(rtcOpenCallbackFunc)(void *ptr);
-typedef void(rtcClosedCallbackFunc)(void *ptr);
-typedef void(rtcErrorCallbackFunc)(const char *error, void *ptr);
-typedef void(rtcMessageCallbackFunc)(const char *message, int size, void *ptr);
-typedef void(rtcBufferedAmountLowCallbackFunc)(void *ptr);
-typedef void(rtcAvailableCallbackFunc)(void *ptr);
+typedef void (*rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
+typedef void (*rtcDataChannelCallbackFunc)(int dc, void *ptr);
+typedef void (*rtcDescriptionCallbackFunc)(const char *sdp, const char *type, void *ptr);
+typedef void (*rtcCandidateCallbackFunc)(const char *cand, const char *mid, void *ptr);
+typedef void (*rtcStateChangeCallbackFunc)(rtcState state, void *ptr);
+typedef void (*rtcGatheringStateCallbackFunc)(rtcGatheringState state, void *ptr);
+typedef void (*rtcOpenCallbackFunc)(void *ptr);
+typedef void (*rtcClosedCallbackFunc)(void *ptr);
+typedef void (*rtcErrorCallbackFunc)(const char *error, void *ptr);
+typedef void (*rtcMessageCallbackFunc)(const char *message, int size, void *ptr);
+typedef void (*rtcBufferedAmountLowCallbackFunc)(void *ptr);
+typedef void (*rtcAvailableCallbackFunc)(void *ptr);
 
 // Log
-void rtcInitLogger(rtcLogLevel level);
+void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb); // NULL cb to log to stdout
 
 // User pointer
 void rtcSetUserPointer(int id, void *ptr);
