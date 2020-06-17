@@ -19,6 +19,7 @@
 #include "include.hpp"
 
 #include "datachannel.hpp"
+#include "log.hpp"
 #include "peerconnection.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
@@ -241,7 +242,7 @@ int rtcDeleteWebsocket(int ws) {
 }
 #endif
 
-int rtcSetDataChannelCallback(int pc, dataChannelCallbackFunc cb) {
+int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
@@ -256,7 +257,7 @@ int rtcSetDataChannelCallback(int pc, dataChannelCallbackFunc cb) {
 	});
 }
 
-int rtcSetLocalDescriptionCallback(int pc, descriptionCallbackFunc cb) {
+int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
@@ -268,7 +269,7 @@ int rtcSetLocalDescriptionCallback(int pc, descriptionCallbackFunc cb) {
 	});
 }
 
-int rtcSetLocalCandidateCallback(int pc, candidateCallbackFunc cb) {
+int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
@@ -280,7 +281,7 @@ int rtcSetLocalCandidateCallback(int pc, candidateCallbackFunc cb) {
 	});
 }
 
-int rtcSetStateChangeCallback(int pc, stateChangeCallbackFunc cb) {
+int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
@@ -292,7 +293,7 @@ int rtcSetStateChangeCallback(int pc, stateChangeCallbackFunc cb) {
 	});
 }
 
-int rtcSetGatheringStateChangeCallback(int pc, gatheringStateCallbackFunc cb) {
+int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
@@ -385,7 +386,7 @@ int rtcGetDataChannelLabel(int dc, char *buffer, int size) {
 	});
 }
 
-int rtcSetOpenCallback(int id, openCallbackFunc cb) {
+int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
@@ -395,7 +396,7 @@ int rtcSetOpenCallback(int id, openCallbackFunc cb) {
 	});
 }
 
-int rtcSetClosedCallback(int id, closedCallbackFunc cb) {
+int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
@@ -405,7 +406,7 @@ int rtcSetClosedCallback(int id, closedCallbackFunc cb) {
 	});
 }
 
-int rtcSetErrorCallback(int id, errorCallbackFunc cb) {
+int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
@@ -416,7 +417,7 @@ int rtcSetErrorCallback(int id, errorCallbackFunc cb) {
 	});
 }
 
-int rtcSetMessageCallback(int id, messageCallbackFunc cb) {
+int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
@@ -464,7 +465,7 @@ int rtcSetBufferedAmountLowThreshold(int id, int amount) {
 	});
 }
 
-int rtcSetBufferedAmountLowCallback(int id, bufferedAmountLowCallbackFunc cb) {
+int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
@@ -478,7 +479,7 @@ int rtcGetAvailableAmount(int id) {
 	return WRAP({ return int(getChannel(id)->availableAmount()); });
 }
 
-int rtcSetAvailableCallback(int id, availableCallbackFunc cb) {
+int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
