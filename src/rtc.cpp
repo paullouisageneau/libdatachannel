@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2019-2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,14 +18,16 @@
 
 #include "include.hpp"
 
-#include "datachannel.hpp"
-#include "peerconnection.hpp"
+#include "rtc.h"
 
+#include "datachannel.hpp"
+#include "log.hpp"
+#include "peerconnection.hpp"
 #if RTC_ENABLE_WEBSOCKET
 #include "websocket.hpp"
 #endif
 
-#include <rtc.h>
+#include "plog/Formatters/FuncMessageFormatter.h"
 
 #include <exception>
 #include <mutex>
@@ -160,9 +162,42 @@ template <typename F> int wrap(F func) {
 		return RTC_ERR_SUCCESS;                                                                    \
 	})
 
+class plog_appender : public plog::IAppender {
+public:
+	plog_appender(rtcLogCallbackFunc cb = nullptr) { set_callback(cb); }
+
+	void set_callback(rtcLogCallbackFunc cb) {
+		std::lock_guard lock(mutex);
+		callback = cb;
+	}
+
+	void write(const plog::Record &record) override {
+		plog::Severity severity = record.getSeverity();
+		std::string formatted = plog::FuncMessageFormatter::format(record);
+		formatted.pop_back(); // remove newline
+
+		std::lock_guard lock(mutex);
+		if (callback)
+			callback(static_cast<rtcLogLevel>(record.getSeverity()), formatted.c_str());
+		else
+			std::cout << plog::severityToString(severity) << " " << formatted << std::endl;
+	}
+
+private:
+	rtcLogCallbackFunc callback;
+};
+
 } // namespace
 
-void rtcInitLogger(rtcLogLevel level) { InitLogger(static_cast<LogLevel>(level)); }
+void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
+	static std::optional<plog_appender> appender;
+	if (appender)
+		appender->set_callback(cb);
+	else if (cb)
+		appender.emplace(plog_appender(cb));
+
+	InitLogger(static_cast<plog::Severity>(level), appender ? &appender.value() : nullptr);
+}
 
 void rtcSetUserPointer(int i, void *ptr) { setUserPointer(i, ptr); }
 
@@ -241,7 +276,7 @@ int rtcDeleteWebsocket(int ws) {
 }
 #endif
 
-int rtcSetDataChannelCallback(int pc, dataChannelCallbackFunc cb) {
+int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
@@ -256,7 +291,7 @@ int rtcSetDataChannelCallback(int pc, dataChannelCallbackFunc cb) {
 	});
 }
 
-int rtcSetLocalDescriptionCallback(int pc, descriptionCallbackFunc cb) {
+int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
@@ -268,7 +303,7 @@ int rtcSetLocalDescriptionCallback(int pc, descriptionCallbackFunc cb) {
 	});
 }
 
-int rtcSetLocalCandidateCallback(int pc, candidateCallbackFunc cb) {
+int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
@@ -280,7 +315,7 @@ int rtcSetLocalCandidateCallback(int pc, candidateCallbackFunc cb) {
 	});
 }
 
-int rtcSetStateChangeCallback(int pc, stateChangeCallbackFunc cb) {
+int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
@@ -292,7 +327,7 @@ int rtcSetStateChangeCallback(int pc, stateChangeCallbackFunc cb) {
 	});
 }
 
-int rtcSetGatheringStateChangeCallback(int pc, gatheringStateCallbackFunc cb) {
+int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
@@ -385,7 +420,7 @@ int rtcGetDataChannelLabel(int dc, char *buffer, int size) {
 	});
 }
 
-int rtcSetOpenCallback(int id, openCallbackFunc cb) {
+int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
@@ -395,7 +430,7 @@ int rtcSetOpenCallback(int id, openCallbackFunc cb) {
 	});
 }
 
-int rtcSetClosedCallback(int id, closedCallbackFunc cb) {
+int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
@@ -405,7 +440,7 @@ int rtcSetClosedCallback(int id, closedCallbackFunc cb) {
 	});
 }
 
-int rtcSetErrorCallback(int id, errorCallbackFunc cb) {
+int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
@@ -416,7 +451,7 @@ int rtcSetErrorCallback(int id, errorCallbackFunc cb) {
 	});
 }
 
-int rtcSetMessageCallback(int id, messageCallbackFunc cb) {
+int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
@@ -464,7 +499,7 @@ int rtcSetBufferedAmountLowThreshold(int id, int amount) {
 	});
 }
 
-int rtcSetBufferedAmountLowCallback(int id, bufferedAmountLowCallbackFunc cb) {
+int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
@@ -478,7 +513,7 @@ int rtcGetAvailableAmount(int id) {
 	return WRAP({ return int(getChannel(id)->availableAmount()); });
 }
 
-int rtcSetAvailableCallback(int id, availableCallbackFunc cb) {
+int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)

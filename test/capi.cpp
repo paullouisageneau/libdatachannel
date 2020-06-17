@@ -136,7 +136,7 @@ static void deletePeer(Peer *peer) {
 int test_capi_main() {
 	int attempts;
 
-	rtcInitLogger(RTC_LOG_DEBUG);
+	rtcInitLogger(RTC_LOG_DEBUG, nullptr);
 
 	// Create peer 1
 	rtcConfiguration config1;

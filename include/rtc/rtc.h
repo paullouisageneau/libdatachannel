@@ -71,20 +71,21 @@ typedef struct {
 	uint16_t portRangeEnd;
 } rtcConfiguration;
 
-typedef void (*dataChannelCallbackFunc)(int dc, void *ptr);
-typedef void (*descriptionCallbackFunc)(const char *sdp, const char *type, void *ptr);
-typedef void (*candidateCallbackFunc)(const char *cand, const char *mid, void *ptr);
-typedef void (*stateChangeCallbackFunc)(rtcState state, void *ptr);
-typedef void (*gatheringStateCallbackFunc)(rtcGatheringState state, void *ptr);
-typedef void (*openCallbackFunc)(void *ptr);
-typedef void (*closedCallbackFunc)(void *ptr);
-typedef void (*errorCallbackFunc)(const char *error, void *ptr);
-typedef void (*messageCallbackFunc)(const char *message, int size, void *ptr);
-typedef void (*bufferedAmountLowCallbackFunc)(void *ptr);
-typedef void (*availableCallbackFunc)(void *ptr);
+typedef void (*rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
+typedef void (*rtcDataChannelCallbackFunc)(int dc, void *ptr);
+typedef void (*rtcDescriptionCallbackFunc)(const char *sdp, const char *type, void *ptr);
+typedef void (*rtcCandidateCallbackFunc)(const char *cand, const char *mid, void *ptr);
+typedef void (*rtcStateChangeCallbackFunc)(rtcState state, void *ptr);
+typedef void (*rtcGatheringStateCallbackFunc)(rtcGatheringState state, void *ptr);
+typedef void (*rtcOpenCallbackFunc)(void *ptr);
+typedef void (*rtcClosedCallbackFunc)(void *ptr);
+typedef void (*rtcErrorCallbackFunc)(const char *error, void *ptr);
+typedef void (*rtcMessageCallbackFunc)(const char *message, int size, void *ptr);
+typedef void (*rtcBufferedAmountLowCallbackFunc)(void *ptr);
+typedef void (*rtcAvailableCallbackFunc)(void *ptr);
 
 // Log
-void rtcInitLogger(rtcLogLevel level);
+void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb); // NULL cb to log to stdout
 
 // User pointer
 void rtcSetUserPointer(int id, void *ptr);
@@ -93,11 +94,11 @@ void rtcSetUserPointer(int id, void *ptr);
 int rtcCreatePeerConnection(const rtcConfiguration *config); // returns pc id
 int rtcDeletePeerConnection(int pc);
 
-int rtcSetDataChannelCallback(int pc, dataChannelCallbackFunc cb);
-int rtcSetLocalDescriptionCallback(int pc, descriptionCallbackFunc cb);
-int rtcSetLocalCandidateCallback(int pc, candidateCallbackFunc cb);
-int rtcSetStateChangeCallback(int pc, stateChangeCallbackFunc cb);
-int rtcSetGatheringStateChangeCallback(int pc, gatheringStateCallbackFunc cb);
+int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
+int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb);
+int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb);
+int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb);
+int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb);
 
 int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
@@ -118,19 +119,19 @@ int rtcDeleteWebsocket(int ws);
 #endif
 
 // DataChannel and WebSocket common API
-int rtcSetOpenCallback(int id, openCallbackFunc cb);
-int rtcSetClosedCallback(int id, closedCallbackFunc cb);
-int rtcSetErrorCallback(int id, errorCallbackFunc cb);
-int rtcSetMessageCallback(int id, messageCallbackFunc cb);
+int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb);
+int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb);
+int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb);
+int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb);
 int rtcSendMessage(int id, const char *data, int size);
 
 int rtcGetBufferedAmount(int id); // total size buffered to send
 int rtcSetBufferedAmountLowThreshold(int id, int amount);
-int rtcSetBufferedAmountLowCallback(int id, bufferedAmountLowCallbackFunc cb);
+int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb);
 
 // DataChannel and WebSocket common extended API
 int rtcGetAvailableAmount(int id); // total size available to receive
-int rtcSetAvailableCallback(int id, availableCallbackFunc cb);
+int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb);
 int rtcReceiveMessage(int id, char *buffer, int *size);
 
 // Optional preload and cleanup
