@@ -206,7 +206,11 @@ set_target_properties(datachannel-tests PROPERTIES
 	CXX_STANDARD 17)
 set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
 target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(datachannel-tests datachannel nlohmann_json::nlohmann_json)
+if(WIN32)
+	target_link_libraries(datachannel-tests datachannel-static) # DLL exports only the C API
+else()
+	target_link_libraries(datachannel-tests datachannel)
+endif()
 
 # Benchmark
 add_executable(datachannel-benchmark test/benchmark.cpp)
@@ -216,7 +220,11 @@ set_target_properties(datachannel-benchmark PROPERTIES
 set_target_properties(datachannel-benchmark PROPERTIES OUTPUT_NAME benchmark)
 target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
 target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(datachannel-benchmark datachannel)
+if(WIN32)
+	target_link_libraries(datachannel-benchmark datachannel-static) # DLL exports only the C API
+else()
+	target_link_libraries(datachannel-benchmark datachannel)
+endif()
 
 # Examples
 set(JSON_BuildTests OFF CACHE INTERNAL "")
