@@ -141,8 +141,8 @@ RTC_EXPORT int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb);
 RTC_EXPORT int rtcReceiveMessage(int id, char *buffer, int *size);
 
 // Optional preload and cleanup
-RTC_EXPORT void rtcPreload();
-RTC_EXPORT void rtcCleanup();
+RTC_EXPORT void rtcPreload(void);
+RTC_EXPORT void rtcCleanup(void);
 
 #ifdef __cplusplus
 } // extern "C"

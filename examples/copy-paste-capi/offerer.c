@@ -44,8 +44,6 @@ typedef struct {
         bool connected;
 } Peer;
 
-Peer *peer = NULL;
-
 static void descriptionCallback(const char *sdp, const char *type, void *ptr);
 
 static void candidateCallback(const char *cand, const char *mid, void *ptr);
@@ -302,21 +300,21 @@ char* state_print(rtcState state) {
 
 }
 
-char* rtcGatheringState_print(rtcState state) {
-        char* str = NULL;
-        switch (state) {
-        case RTC_GATHERING_NEW:
-                str = "RTC_GATHERING_NEW";
-                break;
-        case RTC_GATHERING_INPROGRESS:
-                str = "RTC_GATHERING_INPROGRESS";
-                break;
-        case RTC_GATHERING_COMPLETE:
-                str = "RTC_GATHERING_COMPLETE";
-                break;
-        default:
-                break;
-        }
+char *rtcGatheringState_print(rtcGatheringState state) {
+	char *str = NULL;
+	switch (state) {
+	case RTC_GATHERING_NEW:
+		str = "RTC_GATHERING_NEW";
+		break;
+	case RTC_GATHERING_INPROGRESS:
+		str = "RTC_GATHERING_INPROGRESS";
+		break;
+	case RTC_GATHERING_COMPLETE:
+		str = "RTC_GATHERING_COMPLETE";
+		break;
+	default:
+		break;
+	}
 
-        return str;
+	return str;
 }

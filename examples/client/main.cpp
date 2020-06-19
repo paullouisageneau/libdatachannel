@@ -212,7 +212,7 @@ string randomId(size_t length) {
 	    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
 	string id(length, '0');
 	default_random_engine rng(random_device{}());
-	uniform_int_distribution<int> dist(0, characters.size() - 1);
+	uniform_int_distribution<int> dist(0, int(characters.size() - 1));
 	generate(id.begin(), id.end(), [&]() { return characters.at(dist(rng)); });
 	return id;
 }

@@ -1,10 +1,11 @@
 // Simple POSIX getline() implementation
 // This code is public domain
 
-#include "malloc.h"
-#include "stdio.h"
+#include <malloc.h>
+#include <stddef.h>
+#include <stdio.h>
 
-ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
+int getline(char **lineptr, size_t *n, FILE *stream) {
 	if (!lineptr || !stream || !n)
 		return -1;
 
@@ -20,7 +21,7 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
 		*n = 128;
 	}
 
-	size_t pos = 0;
+	int pos = 0;
 	while(c != EOF) {
         if (pos + 1 >= *n) {
             size_t new_size = *n + (*n >> 2);
@@ -45,4 +46,3 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream) {
     (*lineptr)[pos] = '\0';
     return pos;
 }
-
