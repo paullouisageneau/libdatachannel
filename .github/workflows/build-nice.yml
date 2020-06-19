@@ -1,4 +1,4 @@
-name: Build and test with libnice
+name: Build with libnice
 on:
   push:
     branches:

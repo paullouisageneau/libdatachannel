@@ -1,4 +1,4 @@
-name: Build and test with OpenSSL
+name: Build with OpenSSL
 on:
   push:
     branches:

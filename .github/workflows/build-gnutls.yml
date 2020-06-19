@@ -1,4 +1,4 @@
-name: Build and test with GnuTLS
+name: Build with GnuTLS
 on:
   push:
     branches:
