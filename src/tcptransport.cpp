@@ -336,7 +336,7 @@ void TcpTransport::runLoop() {
 				char buffer[bufferSize];
 				int len = ::recv(mSock, buffer, bufferSize, 0);
 				if (len < 0) {
-					if (errno == EAGAIN || errno == EWOULDBLOCK) {
+					if (sockerrno == EAGAIN || sockerrno == EWOULDBLOCK) {
 						continue;
 					} else {
 						throw std::runtime_error("Connection lost");
