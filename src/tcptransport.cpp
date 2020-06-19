@@ -150,7 +150,7 @@ void TcpTransport::connect(const string &hostname, const string &service) {
 
 	for (auto p = result; p; p = p->ai_next) {
 		try {
-			connect(p->ai_addr, p->ai_addrlen);
+			connect(p->ai_addr, socklen_t(p->ai_addrlen));
 
 			PLOG_INFO << "Connected to " << hostname << ":" << service;
 			freeaddrinfo(result);
@@ -271,12 +271,12 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 	auto data = reinterpret_cast<const char *>(message->data());
 	auto size = message->size();
 	while (size) {
-#if defined(__APPLE__) or defined(_WIN32)
+#if defined(__APPLE__) || defined(_WIN32)
 		int flags = 0;
 #else
 		int flags = MSG_NOSIGNAL;
 #endif
-		int len = ::send(mSock, data, size, flags);
+		int len = ::send(mSock, data, int(size), flags);
 		if (len < 0) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
 				message = make_message(message->end() - size, message->end());

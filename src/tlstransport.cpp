@@ -337,7 +337,7 @@ bool TlsTransport::send(message_ptr message) {
 	if (message->size() == 0)
 		return true;
 
-	int ret = SSL_write(mSsl, message->data(), message->size());
+	int ret = SSL_write(mSsl, message->data(), int(message->size()));
 	if (!openssl::check(mSsl, ret))
 		return false;
 
@@ -393,7 +393,7 @@ void TlsTransport::runRecvLoop() {
 
 			message_ptr message = *next;
 			if (message->size() > 0)
-				BIO_write(mInBio, message->data(), message->size()); // Input
+				BIO_write(mInBio, message->data(), int(message->size())); // Input
 			else
 				recv(message); // Pass zero-sized messages through
 		}

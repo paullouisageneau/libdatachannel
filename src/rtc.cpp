@@ -35,6 +35,11 @@
 #include <unordered_map>
 #include <utility>
 
+#ifdef _WIN32
+#include <codecvt>
+#include <locale>
+#endif
+
 using namespace rtc;
 using std::shared_ptr;
 using std::string;
@@ -174,9 +179,14 @@ public:
 	void write(const plog::Record &record) override {
 		plog::Severity severity = record.getSeverity();
 		auto formatted = plog::FuncMessageFormatter::format(record);
-		std::string str(formatted.begin(), formatted.end());
 		formatted.pop_back(); // remove newline
-
+#ifdef _WIN32
+		using convert_type = std::codecvt_utf8<wchar_t>;
+		std::wstring_convert<convert_type, wchar_t> converter;
+		std::string str = converter.to_bytes(formatted);
+#else
+		std::string str = formatted;
+#endif
 		std::lock_guard lock(mutex);
 		if (callback)
 			callback(static_cast<rtcLogLevel>(record.getSeverity()), str.c_str());
@@ -374,10 +384,10 @@ int rtcGetLocalAddress(int pc, char *buffer, int size) {
 
 		if (auto addr = peerConnection->localAddress()) {
 			const char *data = addr->data();
-			size = std::min(size_t(size - 1), addr->size());
+			size = std::min(size - 1, int(addr->size()));
 			std::copy(data, data + size, buffer);
 			buffer[size] = '\0';
-			return int(size + 1);
+			return size + 1;
 		}
 	});
 }
@@ -394,7 +404,7 @@ int rtcGetRemoteAddress(int pc, char *buffer, int size) {
 
 		if (auto addr = peerConnection->remoteAddress()) {
 			const char *data = addr->data();
-			size = std::min(size_t(size - 1), addr->size());
+			size = std::min(size - 1, int(addr->size()));
 			std::copy(data, data + size, buffer);
 			buffer[size] = '\0';
 			return int(size + 1);
@@ -414,7 +424,7 @@ int rtcGetDataChannelLabel(int dc, char *buffer, int size) {
 
 		string label = dataChannel->label();
 		const char *data = label.data();
-		size = std::min(size_t(size - 1), label.size());
+		size = std::min(size - 1, int(label.size()));
 		std::copy(data, data + size, buffer);
 		buffer[size] = '\0';
 		return int(size + 1);

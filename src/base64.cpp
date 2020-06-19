@@ -42,7 +42,7 @@ string to_base64(const binary &data) {
 		i += 3;
 	}
 
-	int left = data.size() - i;
+	int left = int(data.size() - i);
 	if (left) {
 		auto d0 = to_integer<uint8_t>(data[i]);
 		out += tab[d0 >> 2];

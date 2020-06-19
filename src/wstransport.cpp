@@ -50,7 +50,7 @@ using std::to_integer;
 using std::to_string;
 
 using random_bytes_engine =
-    std::independent_bits_engine<std::default_random_engine, CHAR_BIT, unsigned char>;
+    std::independent_bits_engine<std::default_random_engine, CHAR_BIT, unsigned short>;
 
 WsTransport::WsTransport(std::shared_ptr<Transport> lower, string host, string path,
                          message_callback recvCallback, state_callback stateCallback)
@@ -145,12 +145,12 @@ void WsTransport::close() {
 bool WsTransport::sendHttpRequest() {
 	changeState(State::Connecting);
 
-	auto seed = system_clock::now().time_since_epoch().count();
+	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
 	random_bytes_engine generator(seed);
 
 	binary key(16);
 	auto k = reinterpret_cast<uint8_t *>(key.data());
-	std::generate(k, k + key.size(), generator);
+	std::generate(k, k + key.size(), [&]() { return uint8_t(generator()); });
 
 	const string request = "GET " + mPath +
 	                       " HTTP/1.1\r\n"
@@ -283,7 +283,7 @@ size_t WsTransport::readFrame(byte *buffer, size_t size, Frame &frame) {
 		cur += 4;
 	}
 
-	if (end - cur < frame.length)
+	if (size_t(end - cur) < frame.length)
 		return 0;
 
 	frame.payload = cur;
@@ -292,7 +292,7 @@ size_t WsTransport::readFrame(byte *buffer, size_t size, Frame &frame) {
 			frame.payload[i] ^= maskingKey[i % 4];
 	cur += frame.length;
 
-	return cur - buffer;
+	return size_t(cur - buffer);
 }
 
 void WsTransport::recvFrame(const Frame &frame) {
@@ -378,13 +378,13 @@ bool WsTransport::sendFrame(const Frame &frame) {
 	}
 
 	if (frame.mask) {
-		auto seed = system_clock::now().time_since_epoch().count();
+		auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
 		random_bytes_engine generator(seed);
 
 		byte *maskingKey = reinterpret_cast<byte *>(cur);
 
 		auto u = reinterpret_cast<uint8_t *>(maskingKey);
-		std::generate(u, u + 4, generator);
+		std::generate(u, u + 4, [&]() { return uint8_t(generator()); });
 		cur += 4;
 
 		for (size_t i = 0; i < frame.length; ++i)
