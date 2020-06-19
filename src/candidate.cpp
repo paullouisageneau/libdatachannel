@@ -98,8 +98,8 @@ bool Candidate::resolve(ResolveMode mode) {
 					// Rewrite the candidate
 					char nodebuffer[MAX_NUMERICNODE_LEN];
 					char servbuffer[MAX_NUMERICSERV_LEN];
-					if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
-					                servbuffer, MAX_NUMERICSERV_LEN,
+					if (getnameinfo(p->ai_addr, socklen_t(p->ai_addrlen), nodebuffer,
+					                MAX_NUMERICNODE_LEN, servbuffer, MAX_NUMERICSERV_LEN,
 					                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 						const char sp{' '};
 						std::ostringstream oss;

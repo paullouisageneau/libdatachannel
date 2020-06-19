@@ -186,8 +186,8 @@ void DataChannel::open(shared_ptr<SctpTransport> transport) {
 	open.channelType = mReliability->type;
 	open.priority = htons(0);
 	open.reliabilityParameter = htonl(reliabilityParameter);
-	open.labelLength = htons(mLabel.size());
-	open.protocolLength = htons(mProtocol.size());
+	open.labelLength = htons(uint16_t(mLabel.size()));
+	open.protocolLength = htons(uint16_t(mProtocol.size()));
 
 	auto end = reinterpret_cast<char *>(buffer.data() + sizeof(OpenMessage));
 	std::copy(mLabel.begin(), mLabel.end(), end);

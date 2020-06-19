@@ -659,12 +659,12 @@ void PeerConnection::resetCallbacks() {
 }
 
 bool PeerConnection::getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote) {
-#if not USE_JUICE
+#if USE_JUICE
+	PLOG_WARNING << "getSelectedCandidatePair() is not implemented for libjuice";
+	return false;
+#else
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	return iceTransport->getSelectedCandidatePair(local, remote);
-#else
-	PLOG_WARNING << "getSelectedCandidatePair is not implemented for libjuice";
-	return false;
 #endif
 }
 
