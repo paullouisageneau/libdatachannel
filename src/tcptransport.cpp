@@ -21,6 +21,7 @@
 #if RTC_ENABLE_WEBSOCKET
 
 #include <exception>
+
 #ifndef _WIN32
 #include <fcntl.h>
 #include <unistd.h>
@@ -278,7 +279,7 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 #endif
 		int len = ::send(mSock, data, int(size), flags);
 		if (len < 0) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			if (sockerrno == EAGAIN || sockerrno == EWOULDBLOCK) {
 				message = make_message(message->end() - size, message->end());
 				return false;
 			} else {
