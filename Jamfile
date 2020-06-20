@@ -60,11 +60,8 @@ alias juice
 make libusrsctp.a : : @make_libusrsctp ;
 actions make_libusrsctp
 {
-	(cd $(CWD)/deps/usrsctp && \
-		./bootstrap && \
-		./configure --enable-static --disable-debug CFLAGS="-fPIC -Wno-address-of-packed-member" && \
-		make)
-    cp $(CWD)/deps/usrsctp/usrsctplib/.libs/libusrsctp.a $(<)
+	(cd $(CWD)/deps/usrsctp && cmake -B build -D CMAKE_C_FLAGS="-fPIC" && cd build && make -j2 usrsctplib-static)
+    cp $(CWD)/deps/usrsctp/build/usrsctplib/libusrsctp.a $(<)
 }
 
 make libjuice.a : : @make_libjuice ;
@@ -82,7 +79,7 @@ rule make_libjuice ( targets * : sources * : properties * )
 }
 actions make_libjuice
 {
-	(cd $(CWD)/deps/libjuice && make $(MAKEOPTS))
-    cp $(CWD)/deps/libjuice/libjuice.a $(<)
+	(cd $(CWD)/deps/libjuice && cmake -B build -D CMAKE_C_FLAGS="-fPIC" && cd build && make -j2 juice-static)
+    cp $(CWD)/deps/libjuice/build/libjuice-static.a $(<)
 }
 
