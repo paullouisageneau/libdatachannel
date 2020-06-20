@@ -132,14 +132,14 @@ namespace rtc {
 
 Certificate::Certificate(string crt_pem, string key_pem) {
 	BIO *bio = BIO_new(BIO_s_mem());
-	BIO_write(bio, crt_pem.data(), crt_pem.size());
+	BIO_write(bio, crt_pem.data(), int(crt_pem.size()));
 	mX509 = shared_ptr<X509>(PEM_read_bio_X509(bio, nullptr, 0, 0), X509_free);
 	BIO_free(bio);
 	if (!mX509)
 		throw std::invalid_argument("Unable to import certificate PEM");
 
 	bio = BIO_new(BIO_s_mem());
-	BIO_write(bio, key_pem.data(), key_pem.size());
+	BIO_write(bio, key_pem.data(), int(key_pem.size()));
 	mPKey = shared_ptr<EVP_PKEY>(PEM_read_bio_PrivateKey(bio, nullptr, 0, 0), EVP_PKEY_free);
 	BIO_free(bio);
 	if (!mPKey)
@@ -233,8 +233,8 @@ namespace {
 // Helper function roughly equivalent to std::async with policy std::launch::async
 // since std::async might be unreliable on some platforms (e.g. Mingw32 on Windows)
 template <class F, class... Args>
-std::future<std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>> thread_call(F &&f,
-                                                                                  Args &&... args) {
+std::future<std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>>
+thread_call(F &&f, Args &&... args) {
 	using R = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
 	std::packaged_task<R()> task(std::bind(f, std::forward<Args>(args)...));
 	std::future<R> future = task.get_future();

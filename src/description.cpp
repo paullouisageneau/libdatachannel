@@ -26,6 +26,7 @@
 
 using std::size_t;
 using std::string;
+using std::chrono::system_clock;
 
 namespace {
 
@@ -54,7 +55,7 @@ Description::Description(const string &sdp, Type type, Role role)
 	mData.mid = "data";
 	hintType(type);
 
-	auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
 	std::default_random_engine generator(seed);
 	std::uniform_int_distribution<uint32_t> uniform;
 	mSessionId = std::to_string(uniform(generator));

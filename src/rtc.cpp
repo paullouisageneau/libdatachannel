@@ -35,6 +35,11 @@
 #include <unordered_map>
 #include <utility>
 
+#ifdef _WIN32
+#include <codecvt>
+#include <locale>
+#endif
+
 using namespace rtc;
 using std::shared_ptr;
 using std::string;
@@ -145,7 +150,7 @@ shared_ptr<Channel> getChannel(int id) {
 
 template <typename F> int wrap(F func) {
 	try {
-		return func();
+		return int(func());
 
 	} catch (const std::invalid_argument &e) {
 		PLOG_ERROR << e.what();
@@ -173,14 +178,20 @@ public:
 
 	void write(const plog::Record &record) override {
 		plog::Severity severity = record.getSeverity();
-		std::string formatted = plog::FuncMessageFormatter::format(record);
+		auto formatted = plog::FuncMessageFormatter::format(record);
 		formatted.pop_back(); // remove newline
-
+#ifdef _WIN32
+		using convert_type = std::codecvt_utf8<wchar_t>;
+		std::wstring_convert<convert_type, wchar_t> converter;
+		std::string str = converter.to_bytes(formatted);
+#else
+		std::string str = formatted;
+#endif
 		std::lock_guard lock(mutex);
 		if (callback)
-			callback(static_cast<rtcLogLevel>(record.getSeverity()), formatted.c_str());
+			callback(static_cast<rtcLogLevel>(record.getSeverity()), str.c_str());
 		else
-			std::cout << plog::severityToString(severity) << " " << formatted << std::endl;
+			std::cout << plog::severityToString(severity) << " " << str << std::endl;
 	}
 
 private:
@@ -373,7 +384,7 @@ int rtcGetLocalAddress(int pc, char *buffer, int size) {
 
 		if (auto addr = peerConnection->localAddress()) {
 			const char *data = addr->data();
-			size = std::min(size_t(size - 1), addr->size());
+			size = std::min(size - 1, int(addr->size()));
 			std::copy(data, data + size, buffer);
 			buffer[size] = '\0';
 			return size + 1;
@@ -393,10 +404,10 @@ int rtcGetRemoteAddress(int pc, char *buffer, int size) {
 
 		if (auto addr = peerConnection->remoteAddress()) {
 			const char *data = addr->data();
-			size = std::min(size_t(size - 1), addr->size());
+			size = std::min(size - 1, int(addr->size()));
 			std::copy(data, data + size, buffer);
 			buffer[size] = '\0';
-			return size + 1;
+			return int(size + 1);
 		}
 	});
 }
@@ -413,10 +424,10 @@ int rtcGetDataChannelLabel(int dc, char *buffer, int size) {
 
 		string label = dataChannel->label();
 		const char *data = label.data();
-		size = std::min(size_t(size - 1), label.size());
+		size = std::min(size - 1, int(label.size()));
 		std::copy(data, data + size, buffer);
 		buffer[size] = '\0';
-		return size + 1;
+		return int(size + 1);
 	});
 }
 
@@ -457,7 +468,7 @@ int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb) {
 		if (cb)
 			channel->onMessage(
 			    [id, cb](const binary &b) {
-				    cb(reinterpret_cast<const char *>(b.data()), b.size(), getUserPointer(id));
+				    cb(reinterpret_cast<const char *>(b.data()), int(b.size()), getUserPointer(id));
 			    },
 			    [id, cb](const string &s) { cb(s.c_str(), -1, getUserPointer(id)); });
 		else
@@ -478,7 +489,7 @@ int rtcSendMessage(int id, const char *data, int size) {
 			return size;
 		} else {
 			string str(data);
-			int len = str.size();
+			int len = int(str.size());
 			channel->send(std::move(str));
 			return len;
 		}

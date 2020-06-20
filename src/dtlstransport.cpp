@@ -24,6 +24,14 @@
 #include <exception>
 #include <iostream>
 
+#if !USE_GNUTLS
+#ifdef _WIN32
+#include <winsock2.h> // for timeval
+#else
+#include <sys/time.h> // for timeval
+#endif
+#endif
+
 using namespace std::chrono;
 
 using std::shared_ptr;
@@ -382,7 +390,7 @@ bool DtlsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
-	int ret = SSL_write(mSsl, message->data(), message->size());
+	int ret = SSL_write(mSsl, message->data(), int(message->size()));
 	return openssl::check(mSsl, ret);
 }
 
@@ -416,7 +424,7 @@ void DtlsTransport::runRecvLoop() {
 			// Process pending messages
 			while (!mIncomingQueue.empty()) {
 				auto message = *mIncomingQueue.pop();
-				BIO_write(mInBio, message->data(), message->size());
+				BIO_write(mInBio, message->data(), int(message->size()));
 
 				if (state() == State::Connecting) {
 					// Continue the handshake

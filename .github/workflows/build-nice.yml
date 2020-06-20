@@ -1,4 +1,4 @@
-name: Build and test with libnice
+name: Build with libnice
 on:
   push:
     branches:
@@ -7,7 +7,7 @@ on:
     branches:
     - master
 jobs:
-  build-ubuntu:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2

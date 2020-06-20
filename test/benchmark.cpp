@@ -95,13 +95,12 @@ size_t benchmark(milliseconds duration) {
 	fill(messageData.begin(), messageData.end(), byte(0xFF));
 
 	atomic<size_t> receivedSize = 0;
-	atomic<bool> finished = false;
 
 	steady_clock::time_point startTime, openTime, receivedTime, endTime;
 
 	shared_ptr<DataChannel> dc2;
 	pc2->onDataChannel(
-	    [&dc2, &finished, &receivedSize, &receivedTime, &endTime](shared_ptr<DataChannel> dc) {
+	    [&dc2, &receivedSize, &receivedTime](shared_ptr<DataChannel> dc) {
 		    dc->onMessage([&receivedTime, &receivedSize](const variant<binary, string> &message) {
 			    if (holds_alternative<binary>(message)) {
 				    const auto &bin = get<binary>(message);
@@ -111,11 +110,7 @@ size_t benchmark(milliseconds duration) {
 			    }
 		    });
 
-		    dc->onClosed([&finished, &endTime]() {
-			    cout << "DataChannel closed." << endl;
-			    endTime = steady_clock::now();
-			    finished = true;
-		    });
+		    dc->onClosed([]() { cout << "DataChannel closed." << endl; });
 
 		    std::atomic_store(&dc2, dc);
 	    });
@@ -157,11 +152,9 @@ size_t benchmark(milliseconds duration) {
 		cout << "Received: " << receivedSize.load() / 1000 << " KB" << endl;
 	}
 
-	if (auto adc2 = std::atomic_load(&dc2)) {
-		dc1->close();
-		while (!finished && adc2->isOpen())
-			this_thread::sleep_for(100ms);
-	}
+	dc1->close();
+
+	endTime = steady_clock::now();
 
 	auto connectDuration = duration_cast<milliseconds>(openTime - startTime);
 	auto transferDuration = duration_cast<milliseconds>(endTime - receivedTime);

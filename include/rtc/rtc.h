@@ -23,9 +23,11 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
-
-// libdatachannel C API
+#ifdef _WIN32
+#define RTC_EXPORT __declspec(dllexport)
+#else
+#define RTC_EXPORT
+#endif
 
 #ifndef RTC_ENABLE_MEDIA
 #define RTC_ENABLE_MEDIA 1
@@ -34,6 +36,10 @@ extern "C" {
 #ifndef RTC_ENABLE_WEBSOCKET
 #define RTC_ENABLE_WEBSOCKET 1
 #endif
+
+#include <stdint.h>
+
+// libdatachannel C API
 
 typedef enum {
 	RTC_NEW = 0,
@@ -85,58 +91,58 @@ typedef void (*rtcBufferedAmountLowCallbackFunc)(void *ptr);
 typedef void (*rtcAvailableCallbackFunc)(void *ptr);
 
 // Log
-void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb); // NULL cb to log to stdout
+RTC_EXPORT void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb); // NULL cb to log to stdout
 
 // User pointer
-void rtcSetUserPointer(int id, void *ptr);
+RTC_EXPORT void rtcSetUserPointer(int id, void *ptr);
 
 // PeerConnection
-int rtcCreatePeerConnection(const rtcConfiguration *config); // returns pc id
-int rtcDeletePeerConnection(int pc);
+RTC_EXPORT int rtcCreatePeerConnection(const rtcConfiguration *config); // returns pc id
+RTC_EXPORT int rtcDeletePeerConnection(int pc);
 
-int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
-int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb);
-int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb);
-int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb);
-int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb);
+RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
+RTC_EXPORT int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb);
+RTC_EXPORT int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb);
+RTC_EXPORT int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb);
+RTC_EXPORT int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb);
 
-int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
-int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
+RTC_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
+RTC_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
 
-int rtcGetLocalAddress(int pc, char *buffer, int size);
-int rtcGetRemoteAddress(int pc, char *buffer, int size);
+RTC_EXPORT int rtcGetLocalAddress(int pc, char *buffer, int size);
+RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 
 // DataChannel
-int rtcCreateDataChannel(int pc, const char *label); // returns dc id
-int rtcDeleteDataChannel(int dc);
+RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
+RTC_EXPORT int rtcDeleteDataChannel(int dc);
 
-int rtcGetDataChannelLabel(int dc, char *buffer, int size);
+RTC_EXPORT int rtcGetDataChannelLabel(int dc, char *buffer, int size);
 
 // WebSocket
 #if RTC_ENABLE_WEBSOCKET
-int rtcCreateWebSocket(const char *url); // returns ws id
-int rtcDeleteWebsocket(int ws);
+RTC_EXPORT int rtcCreateWebSocket(const char *url); // returns ws id
+RTC_EXPORT int rtcDeleteWebsocket(int ws);
 #endif
 
 // DataChannel and WebSocket common API
-int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb);
-int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb);
-int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb);
-int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb);
-int rtcSendMessage(int id, const char *data, int size);
+RTC_EXPORT int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb);
+RTC_EXPORT int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb);
+RTC_EXPORT int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb);
+RTC_EXPORT int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb);
+RTC_EXPORT int rtcSendMessage(int id, const char *data, int size);
 
-int rtcGetBufferedAmount(int id); // total size buffered to send
-int rtcSetBufferedAmountLowThreshold(int id, int amount);
-int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb);
+RTC_EXPORT int rtcGetBufferedAmount(int id); // total size buffered to send
+RTC_EXPORT int rtcSetBufferedAmountLowThreshold(int id, int amount);
+RTC_EXPORT int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb);
 
 // DataChannel and WebSocket common extended API
-int rtcGetAvailableAmount(int id); // total size available to receive
-int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb);
-int rtcReceiveMessage(int id, char *buffer, int *size);
+RTC_EXPORT int rtcGetAvailableAmount(int id); // total size available to receive
+RTC_EXPORT int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb);
+RTC_EXPORT int rtcReceiveMessage(int id, char *buffer, int *size);
 
 // Optional preload and cleanup
-void rtcPreload();
-void rtcCleanup();
+RTC_EXPORT void rtcPreload(void);
+RTC_EXPORT void rtcCleanup(void);
 
 #ifdef __cplusplus
 } // extern "C"

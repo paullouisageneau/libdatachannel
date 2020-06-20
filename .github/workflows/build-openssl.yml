@@ -1,4 +1,4 @@
-name: Build and test with OpenSSL
+name: Build with OpenSSL
 on:
   push:
     branches:
@@ -7,7 +7,7 @@ on:
     branches:
     - master
 jobs:
-  build-ubuntu:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -38,3 +38,19 @@ jobs:
       run: (cd build; make -j2)
     - name: test
       run: ./build/tests
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: ilammy/msvc-dev-cmd@v1
+    - name: submodules
+      run: git submodule update --init --recursive
+    - name: cmake
+      run: cmake -B build -G "NMake Makefiles" -DUSE_JUICE=1 -DUSE_GNUTLS=0
+    - name: nmake
+      run: |
+        cd build
+        nmake
+    - name: test
+      run: build/tests.exe
+

@@ -21,6 +21,7 @@
 #if RTC_ENABLE_WEBSOCKET
 
 #include <exception>
+
 #ifndef _WIN32
 #include <fcntl.h>
 #include <unistd.h>
@@ -150,7 +151,7 @@ void TcpTransport::connect(const string &hostname, const string &service) {
 
 	for (auto p = result; p; p = p->ai_next) {
 		try {
-			connect(p->ai_addr, p->ai_addrlen);
+			connect(p->ai_addr, socklen_t(p->ai_addrlen));
 
 			PLOG_INFO << "Connected to " << hostname << ":" << service;
 			freeaddrinfo(result);
@@ -201,7 +202,7 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 
 		// Initiate connection
 		int ret = ::connect(mSock, addr, addrlen);
-		if (ret < 0 && errno != EINPROGRESS) {
+		if (ret < 0 && sockerrno != SEINPROGRESS && sockerrno != SEWOULDBLOCK) {
 			std::ostringstream msg;
 			msg << "TCP connection to " << node << ":" << serv << " failed, errno=" << sockerrno;
 			throw std::runtime_error(msg.str());
@@ -271,14 +272,14 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 	auto data = reinterpret_cast<const char *>(message->data());
 	auto size = message->size();
 	while (size) {
-#if defined(__APPLE__) or defined(_WIN32)
+#if defined(__APPLE__) || defined(_WIN32)
 		int flags = 0;
 #else
 		int flags = MSG_NOSIGNAL;
 #endif
-		int len = ::send(mSock, data, size, flags);
+		int len = ::send(mSock, data, int(size), flags);
 		if (len < 0) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			if (sockerrno == SEAGAIN || sockerrno == SEWOULDBLOCK) {
 				message = make_message(message->end() - size, message->end());
 				return false;
 			} else {
@@ -335,7 +336,7 @@ void TcpTransport::runLoop() {
 				char buffer[bufferSize];
 				int len = ::recv(mSock, buffer, bufferSize, 0);
 				if (len < 0) {
-					if (errno == EAGAIN || errno == EWOULDBLOCK) {
+					if (sockerrno == SEAGAIN || sockerrno == SEWOULDBLOCK) {
 						continue;
 					} else {
 						throw std::runtime_error("Connection lost");

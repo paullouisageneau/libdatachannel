@@ -40,6 +40,7 @@ using namespace std::chrono_literals;
 
 using std::shared_ptr;
 using std::weak_ptr;
+using std::chrono::system_clock;
 
 #if USE_JUICE
 
@@ -69,7 +70,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 
 	// Randomize servers order
 	std::vector<IceServer> servers = config.iceServers;
-	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
 	std::shuffle(servers.begin(), servers.end(), std::default_random_engine(seed));
 
 	// Pick a STUN server (TURN support is not implemented in libjuice yet)
@@ -82,7 +83,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 			mStunHostname = server.hostname;
 			mStunService = server.service;
 			jconfig.stun_server_host = mStunHostname.c_str();
-			jconfig.stun_server_port = std::stoul(mStunService);
+			jconfig.stun_server_port = uint16_t(std::stoul(mStunService));
 			break;
 		}
 	}
@@ -337,7 +338,7 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 
 	// Randomize order
 	std::vector<IceServer> servers = config.iceServers;
-	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
 	std::shuffle(servers.begin(), servers.end(), std::default_random_engine(seed));
 
 	// Add one STUN server

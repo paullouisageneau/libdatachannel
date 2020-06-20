@@ -269,9 +269,19 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 		SSL_CTX_set_quiet_shutdown(mCtx, 1);
 		SSL_CTX_set_info_callback(mCtx, InfoCallback);
 
-		SSL_CTX_set_default_verify_paths(mCtx);
-		SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER, NULL);
-		SSL_CTX_set_verify_depth(mCtx, 4);
+		// SSL_CTX_set_default_verify_paths() does nothing on Windows
+#ifndef _WIN32
+		if (SSL_CTX_set_default_verify_paths(mCtx)) {
+#else
+		if (false) {
+#endif
+			PLOG_INFO << "SSL root CA certificates available, server verification enabled";
+			SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER, NULL);
+			SSL_CTX_set_verify_depth(mCtx, 4);
+		} else {
+			PLOG_WARNING << "SSL root CA certificates unavailable, server verification disabled";
+			SSL_CTX_set_verify(mCtx, SSL_VERIFY_NONE, NULL);
+		}
 
 		if (!(mSsl = SSL_new(mCtx)))
 			throw std::runtime_error("Failed to create SSL instance");
@@ -337,7 +347,7 @@ bool TlsTransport::send(message_ptr message) {
 	if (message->size() == 0)
 		return true;
 
-	int ret = SSL_write(mSsl, message->data(), message->size());
+	int ret = SSL_write(mSsl, message->data(), int(message->size()));
 	if (!openssl::check(mSsl, ret))
 		return false;
 
@@ -393,7 +403,7 @@ void TlsTransport::runRecvLoop() {
 
 			message_ptr message = *next;
 			if (message->size() > 0)
-				BIO_write(mInBio, message->data(), message->size()); // Input
+				BIO_write(mInBio, message->data(), int(message->size())); // Input
 			else
 				recv(message); // Pass zero-sized messages through
 		}

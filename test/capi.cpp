@@ -18,7 +18,6 @@
 
 #include <rtc/rtc.h>
 
-#include <cstdbool>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>

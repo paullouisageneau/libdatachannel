@@ -33,9 +33,6 @@ static void sleep(unsigned int secs) { Sleep(secs * 1000); }
 #include <unistd.h> // for sleep
 #endif
 
-char* state_print(rtcState state);
-char* rtcGatheringState_print(rtcState state);
-
 typedef struct {
         rtcState state;
         rtcGatheringState gatheringState;
@@ -44,23 +41,17 @@ typedef struct {
         bool connected;
 } Peer;
 
-Peer *peer = NULL;
-
 static void descriptionCallback(const char *sdp, const char *type, void *ptr);
-
 static void candidateCallback(const char *cand, const char *mid, void *ptr);
-
 static void stateChangeCallback(rtcState state, void *ptr);
-
 static void gatheringStateCallback(rtcGatheringState state, void *ptr);
-
 static void openCallback(void *ptr);
-
 static void closedCallback(void *ptr);
-
 static void messageCallback(const char *message, int size, void *ptr);
-
 static void deletePeer(Peer *peer);
+
+char *state_print(rtcState state);
+char *rtcGatheringState_print(rtcGatheringState state);
 
 int all_space(const char *str);
 
@@ -263,60 +254,59 @@ static void deletePeer(Peer *peer) {
         }
 }
 
+char *state_print(rtcState state) {
+	char *str = NULL;
+	switch (state) {
+	case RTC_NEW:
+		str = "RTC_NEW";
+		break;
+	case RTC_CONNECTING:
+		str = "RTC_CONNECTING";
+		break;
+	case RTC_CONNECTED:
+		str = "RTC_CONNECTED";
+		break;
+	case RTC_DISCONNECTED:
+		str = "RTC_DISCONNECTED";
+		break;
+	case RTC_FAILED:
+		str = "RTC_FAILED";
+		break;
+	case RTC_CLOSED:
+		str = "RTC_CLOSED";
+		break;
+	default:
+		break;
+	}
+
+	return str;
+}
+
+char *rtcGatheringState_print(rtcGatheringState state) {
+	char *str = NULL;
+	switch (state) {
+	case RTC_GATHERING_NEW:
+		str = "RTC_GATHERING_NEW";
+		break;
+	case RTC_GATHERING_INPROGRESS:
+		str = "RTC_GATHERING_INPROGRESS";
+		break;
+	case RTC_GATHERING_COMPLETE:
+		str = "RTC_GATHERING_COMPLETE";
+		break;
+	default:
+		break;
+	}
+
+	return str;
+}
+
 int all_space(const char *str) {
-        while (*str) {
-                if (!isspace(*str++)) {
-                        return 0;
-                }
-        }
+	while (*str) {
+		if (!isspace(*str++)) {
+			return 0;
+		}
+	}
 
-	    return 1;
-}
-
-char* state_print(rtcState state) {
-        char *str = NULL;
-        switch (state) {
-        case RTC_NEW:
-                str = "RTC_NEW";
-                break;
-        case RTC_CONNECTING:
-                str = "RTC_CONNECTING";
-                break;
-        case RTC_CONNECTED:
-                str = "RTC_CONNECTED";
-                break;
-        case RTC_DISCONNECTED:
-                str = "RTC_DISCONNECTED";
-                break;
-        case RTC_FAILED:
-                str = "RTC_FAILED";
-                break;
-        case RTC_CLOSED:
-                str = "RTC_CLOSED";
-                break;
-        default:
-                break;
-        }
-
-        return str;
-
-}
-
-char* rtcGatheringState_print(rtcState state) {
-        char* str = NULL;
-        switch (state) {
-        case RTC_GATHERING_NEW:
-                str = "RTC_GATHERING_NEW";
-                break;
-        case RTC_GATHERING_INPROGRESS:
-                str = "RTC_GATHERING_INPROGRESS";
-                break;
-        case RTC_GATHERING_COMPLETE:
-                str = "RTC_GATHERING_COMPLETE";
-                break;
-        default:
-                break;
-        }
-
-        return str;
+	return 1;
 }
