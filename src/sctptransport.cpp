@@ -473,16 +473,16 @@ int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, co
 		} else {
 			// SCTP message
 			if (flags & MSG_EOR) {
-				if (!mPartialData.empty()) {
-					mPartialData.insert(mPartialData.end(), data, data + len);
-					data = mPartialData.data();
-					len = mPartialData.size();
+				if (!mPartialMessage.empty()) {
+					mPartialMessage.insert(mPartialMessage.end(), data, data + len);
+					data = mPartialMessage.data();
+					len = mPartialMessage.size();
 				}
 				// Message is complete, process it
 				processData(data, len, info.rcv_sid, PayloadId(htonl(info.rcv_ppid)));
-				mPartialData.clear();
+				mPartialMessage.clear();
 			} else {
-				mPartialData.insert(mPartialData.end(), data, data + len);
+				mPartialMessage.insert(mPartialMessage.end(), data, data + len);
 			}
 		}
 

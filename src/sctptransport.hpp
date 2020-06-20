@@ -99,7 +99,7 @@ private:
 	std::atomic<bool> mWritten = false; // written outside lock
 	std::atomic<bool> mWrittenOnce = false; // same
 
-	binary mPartialData, mPartialNotification;
+	binary mPartialMessage, mPartialNotification;
 	binary mPartialStringData, mPartialBinaryData;
 
 	// Stats
