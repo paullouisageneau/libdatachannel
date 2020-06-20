@@ -269,7 +269,12 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 		SSL_CTX_set_quiet_shutdown(mCtx, 1);
 		SSL_CTX_set_info_callback(mCtx, InfoCallback);
 
+		// SSL_CTX_set_default_verify_paths() does nothing on Windows
+#ifndef _WIN32
 		if (SSL_CTX_set_default_verify_paths(mCtx)) {
+#else
+		if (false) {
+#endif
 			PLOG_INFO << "SSL root CA certificates available, server verification enabled";
 			SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER, NULL);
 			SSL_CTX_set_verify_depth(mCtx, 4);
