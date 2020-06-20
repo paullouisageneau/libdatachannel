@@ -207,7 +207,7 @@ void IceTransport::processCandidate(const string &candidate) {
 
 void IceTransport::processGatheringDone() { changeGatheringState(GatheringState::Complete); }
 
-void IceTransport::StateChangeCallback(juice_agent_t *agent, juice_state_t state, void *user_ptr) {
+void IceTransport::StateChangeCallback(juice_agent_t *, juice_state_t state, void *user_ptr) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(user_ptr);
 	try {
 		iceTransport->processStateChange(static_cast<unsigned int>(state));
@@ -216,7 +216,7 @@ void IceTransport::StateChangeCallback(juice_agent_t *agent, juice_state_t state
 	}
 }
 
-void IceTransport::CandidateCallback(juice_agent_t *agent, const char *sdp, void *user_ptr) {
+void IceTransport::CandidateCallback(juice_agent_t *, const char *sdp, void *user_ptr) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(user_ptr);
 	try {
 		iceTransport->processCandidate(sdp);
@@ -225,7 +225,7 @@ void IceTransport::CandidateCallback(juice_agent_t *agent, const char *sdp, void
 	}
 }
 
-void IceTransport::GatheringDoneCallback(juice_agent_t *agent, void *user_ptr) {
+void IceTransport::GatheringDoneCallback(juice_agent_t *, void *user_ptr) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(user_ptr);
 	try {
 		iceTransport->processGatheringDone();
@@ -234,8 +234,7 @@ void IceTransport::GatheringDoneCallback(juice_agent_t *agent, void *user_ptr) {
 	}
 }
 
-void IceTransport::RecvCallback(juice_agent_t *agent, const char *data, size_t size,
-                                void *user_ptr) {
+void IceTransport::RecvCallback(juice_agent_t *, const char *data, size_t size, void *user_ptr) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(user_ptr);
 	try {
 		PLOG_VERBOSE << "Incoming size=" << size;
