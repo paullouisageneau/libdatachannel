@@ -202,7 +202,7 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 
 		// Initiate connection
 		int ret = ::connect(mSock, addr, addrlen);
-		if (ret < 0 && errno != EINPROGRESS) {
+		if (ret < 0 && sockerrno != SEINPROGRESS && sockerrno != SEWOULDBLOCK) {
 			std::ostringstream msg;
 			msg << "TCP connection to " << node << ":" << serv << " failed, errno=" << sockerrno;
 			throw std::runtime_error(msg.str());
