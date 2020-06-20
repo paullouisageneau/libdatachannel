@@ -279,7 +279,7 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 #endif
 		int len = ::send(mSock, data, int(size), flags);
 		if (len < 0) {
-			if (sockerrno == EAGAIN || sockerrno == EWOULDBLOCK) {
+			if (sockerrno == SEAGAIN || sockerrno == SEWOULDBLOCK) {
 				message = make_message(message->end() - size, message->end());
 				return false;
 			} else {
@@ -336,7 +336,7 @@ void TcpTransport::runLoop() {
 				char buffer[bufferSize];
 				int len = ::recv(mSock, buffer, bufferSize, 0);
 				if (len < 0) {
-					if (sockerrno == EAGAIN || sockerrno == EWOULDBLOCK) {
+					if (sockerrno == SEAGAIN || sockerrno == SEWOULDBLOCK) {
 						continue;
 					} else {
 						throw std::runtime_error("Connection lost");
