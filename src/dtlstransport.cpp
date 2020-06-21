@@ -428,7 +428,7 @@ void DtlsTransport::runRecvLoop() {
 
 				if (state() == State::Connecting) {
 					// Continue the handshake
-					int ret = SSL_do_handshake(mSsl);
+					ret = SSL_do_handshake(mSsl);
 					if (!openssl::check(mSsl, ret, "Handshake failed"))
 						break;
 
@@ -442,7 +442,7 @@ void DtlsTransport::runRecvLoop() {
 						postHandshake();
 					}
 				} else {
-					int ret = SSL_read(mSsl, buffer, bufferSize);
+					ret = SSL_read(mSsl, buffer, bufferSize);
 					if (!openssl::check(mSsl, ret))
 						break;
 
@@ -455,7 +455,7 @@ void DtlsTransport::runRecvLoop() {
 			std::optional<milliseconds> duration;
 			if (state() == State::Connecting) {
 				// Warning: This function breaks the usual return value convention
-				int ret = DTLSv1_handle_timeout(mSsl);
+				ret = DTLSv1_handle_timeout(mSsl);
 				if (ret < 0) {
 					throw std::runtime_error("Handshake timeout"); // write BIO can't fail
 				} else if (ret > 0) {

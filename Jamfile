@@ -3,6 +3,12 @@ import feature : feature ;
 project libdatachannel ;
 path-constant CWD : . ;
 
+feature gnutls : off on : composite propagated ;
+feature.compose <gnutls>off
+    : <define>USE_GNUTLS=0 ;
+feature.compose <gnutls>on
+    : <define>USE_GNUTLS=1 ;
+
 lib libdatachannel
 	: # sources
 	[ glob ./src/*.cpp ]
@@ -12,9 +18,15 @@ lib libdatachannel
 	<define>USE_JUICE=1
 	<define>RTC_ENABLE_MEDIA=0
 	<define>RTC_ENABLE_WEBSOCKET=0
+	<toolset>msvc:<define>WIN32_LEAN_AND_MEAN
+	<toolset>msvc:<define>NOMINMAX
+	<toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS
+	<toolset>msvc:<define>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 	<library>/libdatachannel//usrsctp
 	<library>/libdatachannel//juice
 	<library>/libdatachannel//plog
+    <gnutls>off:<library>ssl
+    <gnutls>off:<library>crypto
 	: # default build
 	<link>static
 	: # usage requirements
@@ -22,14 +34,7 @@ lib libdatachannel
 	<library>/libdatachannel//plog
 	<toolset>gcc:<cxxflags>"-pthread -Wno-pedantic -Wno-unused-parameter -Wno-unused-variable"
 	<toolset>clang:<cxxflags>"-pthread -Wno-pedantic -Wno-unused-parameter -Wno-unused-variable"
-	<toolset>msvc:<cxxflags>"/DWIN32_LEAN_AND_MEAN /DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING"
 	;
-
-feature gnutls : off on : composite propagated ;
-feature.compose <gnutls>off
-    : <define>USE_GNUTLS=0 ;
-feature.compose <gnutls>on
-    : <define>USE_GNUTLS=1 ;
 
 alias plog
     : # no sources
@@ -85,7 +90,7 @@ actions make_libusrsctp
 }
 actions make_libusrsctp_msvc
 {
-    (cd $(CWD)/deps/usrsctp && cmake -B build -G "NMake Makefiles" && cd build && nmake usrsctplib-static)
+    (cd $(CWD)/deps/usrsctp && cmake -B build -G "Visual Studio 16 2019" && cd build && msbuild usrsctplib.sln)
     cp $(CWD)/deps/usrsctp/build/usrsctplib/libusrsctp.lib $(<)
 }
 
@@ -121,7 +126,86 @@ rule make_libjuice_msvc ( targets * : sources * : properties * )
 }
 actions make_libjuice_msvc
 {
-    (cd $(CWD)/deps/libjuice && cmake -B build -G "NMake Makefiles" $(CMAKEOPTS) && cd build && nmake juice-static)
+    (cd $(CWD)/deps/libjuice && cmake -B build -G "Visual Studio 16 2019" $(CMAKEOPTS) && cd build && msbuild libjuice.sln)
     cp $(CWD)/deps/libjuice/build/libjuice-static.lib $(<)
 }
+
+# the search path to pick up the openssl libraries from. This is the <search>
+# property of those libraries
+rule openssl-lib-path ( properties * )
+{
+    local OPENSSL_LIB = [ feature.get-values <openssl-lib> : $(properties) ] ;
+
+    if <target-os>darwin in $(properties) && $(OPENSSL_LIB) = ""
+    {
+        # on macOS, default to pick up openssl from the homebrew installation
+        # brew install openssl
+        OPENSSL_LIB = /usr/local/opt/openssl/lib ;
+    }
+    else if <target-os>windows in $(properties) && $(OPENSSL_LIB) = ""
+    {
+        # on windows, assume openssl is installed to c:\OpenSSL-Win32
+        if <address-model>64 in $(properties)
+        { OPENSSL_LIB = c:\\OpenSSL-Win64\\lib ; }
+        else
+        { OPENSSL_LIB = c:\\OpenSSL-Win32\\lib ; }
+    }
+
+    local result ;
+    result += <search>$(OPENSSL_LIB) ;
+    return $(result) ;
+}
+
+# the include path to pick up openssl headers from. This is the
+# usage-requirement for the openssl-related libraries
+rule openssl-include-path ( properties * )
+{
+    local OPENSSL_INCLUDE = [ feature.get-values <openssl-include> : $(properties) ] ;
+
+    if <target-os>darwin in $(properties) && $(OPENSSL_INCLUDE) = ""
+    {
+        # on macOS, default to pick up openssl from the homebrew installation
+        # brew install openssl
+        OPENSSL_INCLUDE = /usr/local/opt/openssl/include ;
+    }
+    else if <target-os>windows in $(properties) && $(OPENSSL_INCLUDE) = ""
+    {
+        # on windows, assume openssl is installed to c:\OpenSSL-Win32
+        if <address-model>64 in $(properties)
+        { OPENSSL_INCLUDE = c:\\OpenSSL-Win64\\include ; }
+        else
+        { OPENSSL_INCLUDE = c:\\OpenSSL-Win32\\include ; }
+    }
+
+    local result ;
+    result += <include>$(OPENSSL_INCLUDE) ;
+    return $(result) ;
+}
+
+# libraries for openssl on windows
+lib advapi32 : : <name>advapi32 ;
+lib user32 : : <name>user32 ;
+lib shell32 : : <name>shell32 ;
+lib gdi32 : : <name>gdi32 ;
+lib bcrypt : : <name>bcrypt ;
+lib z : : <link>shared <name>z ;
+alias ssl-deps : advapi32 user32 shell32 gdi32 ;
+
+# pre OpenSSL 1.1 windows
+lib crypto : ssl-deps : <target-os>windows <openssl-version>pre1.1 <name>libeay32
+    <conditional>@openssl-lib-path : : <conditional>@openssl-include-path ;
+lib ssl : ssl-deps : <target-os>windows <openssl-version>pre1.1 <name>ssleay32
+    <use>crypto <conditional>@openssl-lib-path : : <conditional>@openssl-include-path ;
+
+# OpenSSL 1.1+ windows
+lib crypto : ssl-deps : <toolset>msvc <openssl-version>1.1 <name>libcrypto
+    <conditional>@openssl-lib-path : : <conditional>@openssl-include-path ;
+lib ssl : ssl-deps : <toolset>msvc <openssl-version>1.1 <name>libssl <use>crypto
+    <conditional>@openssl-lib-path : : <conditional>@openssl-include-path ;
+
+# generic OpenSSL
+lib crypto : : <name>crypto <use>z <conditional>@openssl-lib-path : :
+    <conditional>@openssl-include-path ;
+lib ssl : : <name>ssl <use>crypto <conditional>@openssl-lib-path : :
+    <conditional>@openssl-include-path ;
 

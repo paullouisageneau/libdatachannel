@@ -48,6 +48,11 @@ gnutls_datum_t make_datum(char *data, size_t size);
 
 #else // USE_GNUTLS==0
 
+#ifdef _WIN32
+// Include winsock2.h header first since OpenSSL may include winsock.h
+#include <winsock2.h>
+#endif
+
 #include <openssl/ssl.h>
 
 #include <openssl/bio.h>

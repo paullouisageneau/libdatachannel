@@ -483,7 +483,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		return;
 	}
 
-	auto channel = findDataChannel(message->stream);
+	auto channel = findDataChannel(uint16_t(message->stream));
 
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	auto sctpTransport = std::atomic_load(&mSctpTransport);
@@ -658,7 +658,8 @@ void PeerConnection::resetCallbacks() {
 	mGatheringStateChangeCallback = nullptr;
 }
 
-bool PeerConnection::getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote) {
+bool PeerConnection::getSelectedCandidatePair([[maybe_unused]] CandidateInfo *local,
+                                              [[maybe_unused]] CandidateInfo *remote) {
 #if USE_JUICE
 	PLOG_WARNING << "getSelectedCandidatePair() is not implemented for libjuice";
 	return false;

@@ -448,8 +448,8 @@ bool SctpTransport::safeFlush() {
 	}
 }
 
-int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, const byte *data,
-                              size_t len, struct sctp_rcvinfo info, int flags) {
+int SctpTransport::handleRecv(struct socket * /*sock*/, union sctp_sockstore /*addr*/,
+                              const byte *data, size_t len, struct sctp_rcvinfo info, int flags) {
 	try {
 		PLOG_VERBOSE << "Handle recv, len=" << len;
 		if (!len)
@@ -500,7 +500,7 @@ int SctpTransport::handleSend(size_t free) {
 	return safeFlush() ? 0 : -1;
 }
 
-int SctpTransport::handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_df) {
+int SctpTransport::handleWrite(byte *data, size_t len, uint8_t /*tos*/, uint8_t /*set_df*/) {
 	try {
 		PLOG_VERBOSE << "Handle write, len=" << len;
 
