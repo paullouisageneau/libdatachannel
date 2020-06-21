@@ -187,11 +187,11 @@ std::vector<Candidate> Description::extractCandidates() {
 bool Description::hasMedia() const { return !mMedia.empty(); }
 
 void Description::addMedia(const Description &source) {
-	for (auto [mid, media] : source.mMedia)
-		if (mid != mData.mid)
-			mMedia.emplace(mid, media);
+	for (auto p : source.mMedia)
+		if (p.first != mData.mid)
+			mMedia.emplace(std::move(p));
 		else
-			PLOG_WARNING << "Media mid \"" << mid << "\" is the same as data mid, ignoring";
+			PLOG_WARNING << "Media mid \"" << p.first << "\" is the same as data mid, ignoring";
 }
 
 Description::operator string() const { return generateSdp("\r\n"); }
@@ -212,8 +212,8 @@ string Description::generateSdp(const string &eol) const {
 	// see Negotiating Media Multiplexing Using the Session Description Protocol
 	// https://tools.ietf.org/html/draft-ietf-mmusic-sdp-bundle-negotiation-54
 	sdp << "a=group:BUNDLE";
-	for (const auto &[mid, _] : mMedia)
-		sdp << " " << mid;
+	for (const auto &m : mMedia)
+		sdp << " " << m.first; // mid
 	sdp << " " << mData.mid << eol;
 
 	// Data
@@ -232,12 +232,13 @@ string Description::generateSdp(const string &eol) const {
 	if (!mMedia.empty()) {
 		// Lip-sync
 		sdp << "a=group:LS";
-		for (const auto &[mid, _] : mMedia)
-			sdp << " " << mid;
+		for (const auto &m : mMedia)
+			sdp << " " << m.first; // mid
 		sdp << eol;
 
 		// Descriptions and attributes
-		for (const auto &[_, media] : mMedia) {
+		for (const auto &m : mMedia) {
+			const auto &media = m.second;
 			sdp << "m=" << media.type << ' ' << 0 << ' ' << media.description << eol;
 			sdp << "c=IN IP4 0.0.0.0" << eol;
 			sdp << "a=bundle-only" << eol;
