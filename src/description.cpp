@@ -253,7 +253,7 @@ string Description::generateSdp(const string &eol) const {
 	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
 	sdp << "a=ice-pwd:" << mIcePwd << eol;
 	sdp << "a=setup:" << roleToString(mRole) << eol;
-	sdp << "a=dtls-id:1" << eol;
+	sdp << "a=tls-id:1" << eol;
 	if (mFingerprint)
 		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
 
