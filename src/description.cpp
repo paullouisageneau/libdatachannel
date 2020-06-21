@@ -113,7 +113,8 @@ Description::Description(const string &sdp, Type type, Role role)
 				if (match_prefix(value, "sha-256 ")) {
 					mFingerprint = value.substr(8);
 					std::transform(mFingerprint->begin(), mFingerprint->end(),
-					               mFingerprint->begin(), [](char c) { return std::toupper(c); });
+					               mFingerprint->begin(),
+					               [](char c) { return char(std::toupper(c)); });
 				} else {
 					PLOG_WARNING << "Unknown SDP fingerprint type: " << value;
 				}

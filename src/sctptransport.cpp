@@ -262,7 +262,7 @@ bool SctpTransport::send(message_ptr message) {
 		return true;
 
 	mSendQueue.push(message);
-	updateBufferedAmount(message->stream, long(message_size_func(message)));
+	updateBufferedAmount(uint16_t(message->stream), long(message_size_func(message)));
 	return false;
 }
 
@@ -302,7 +302,7 @@ bool SctpTransport::trySendQueue() {
 		if (!trySendMessage(message))
 			return false;
 		mSendQueue.pop();
-		updateBufferedAmount(message->stream, -long(message_size_func(message)));
+		updateBufferedAmount(uint16_t(message->stream), -long(message_size_func(message)));
 	}
 	return true;
 }
@@ -324,7 +324,7 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 		ppid = PPID_CONTROL;
 		break;
 	case Message::Reset:
-		sendReset(message->stream);
+		sendReset(uint16_t(message->stream));
 		return true;
 	default:
 		// Ignore

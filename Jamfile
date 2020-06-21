@@ -20,9 +20,9 @@ lib libdatachannel
 	: # usage requirements
 	<include>./include
 	<library>/libdatachannel//plog
-	<cxxflags>-pthread
-	<toolset>gcc:<cxxflags>"-Wno-pedantic -Wno-unused-parameter -Wno-unused-variable"
-	<toolset>clang:<cxxflags>"-Wno-pedantic -Wno-unused-parameter -Wno-unused-variable"
+	<toolset>gcc:<cxxflags>"-pthread -Wno-pedantic -Wno-unused-parameter -Wno-unused-variable"
+	<toolset>clang:<cxxflags>"-pthread -Wno-pedantic -Wno-unused-parameter -Wno-unused-variable"
+	<toolset>msvc:<cxxflags>"-DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING"
 	;
 
 feature gnutls : off on : composite propagated ;
@@ -45,7 +45,16 @@ alias usrsctp
     : # no default build
     : # usage requirements
     <include>./deps/usrsctp/usrsctplib
-	<library>libusrsctp.a
+    <library>libusrsctp.a
+    ;
+
+alias usrsctp
+    : # no sources
+    : <toolset>msvc
+    : # no default build
+    : # usage requirements
+    <include>./deps/usrsctp/usrsctplib
+    <library>libusrsctp.lib
     ;
 
 alias juice
@@ -54,35 +63,65 @@ alias juice
     : # no default build
     : # usage requirements
     <include>./deps/libjuice/include
-	<library>libjuice.a
+    <library>libjuice-static.a
+    ;
+
+alias juice
+    : # no sources
+    : <toolset>msvc
+    : # no default build
+    : # usage requirements
+    <include>./deps/libjuice/include
+    <library>libjuice-static.lib
     ;
 
 make libusrsctp.a : : @make_libusrsctp ;
+make libusrsctp.lib : : @make_libusrsctp_msvc ;
+
 actions make_libusrsctp
 {
-	(cd $(CWD)/deps/usrsctp && \
-		./bootstrap && \
-		./configure --enable-static --disable-debug CFLAGS="-fPIC -Wno-address-of-packed-member" && \
-		make)
-    cp $(CWD)/deps/usrsctp/usrsctplib/.libs/libusrsctp.a $(<)
+    (cd $(CWD)/deps/usrsctp && cmake -B build -D CMAKE_C_FLAGS="-fPIC" && cd build && make -j2 usrsctplib-static)
+    cp $(CWD)/deps/usrsctp/build/usrsctplib/libusrsctp.a $(<)
+}
+actions make_libusrsctp_msvc
+{
+    (cd $(CWD)/deps/usrsctp && cmake -B build -G "NMake Makefiles" && cd build && nmake usrsctplib-static)
+    cp $(CWD)/deps/usrsctp/build/usrsctplib/libusrsctp.lib $(<)
 }
 
-make libjuice.a : : @make_libjuice ;
+make libjuice-static.a : : @make_libjuice ;
+make libjuice-static.lib : : @make_libjuice_msvc ;
 
 rule make_libjuice ( targets * : sources * : properties * )
 {
 	if <crypto>gnutls in $(properties)
 	{
-		MAKEOPTS on $(targets) = "USE_NETTLE=1" ;
+		CMAKEOPTS on $(targets) = "-D USE_NETTLE=1" ;
 	}
 	else
 	{
-		MAKEOPTS on $(targets) = "USE_NETTLE=0" ;
+		CMAKEOPTS on $(targets) = "-D USE_NETTLE=0" ;
 	}
 }
 actions make_libjuice
 {
-	(cd $(CWD)/deps/libjuice && make $(MAKEOPTS))
-    cp $(CWD)/deps/libjuice/libjuice.a $(<)
+    (cd $(CWD)/deps/libjuice && cmake -B build -D CMAKE_C_FLAGS="-fPIC" $(CMAKEOPTS) && cd build && make -j2 juice-static)
+    cp $(CWD)/deps/libjuice/build/libjuice-static.a $(<)
+}
+rule make_libjuice_msvc ( targets * : sources * : properties * )
+{
+	if <crypto>gnutls in $(properties)
+	{
+		CMAKEOPTS on $(targets) = "-D USE_NETTLE=1" ;
+	}
+	else
+	{
+		CMAKEOPTS on $(targets) = "-D USE_NETTLE=0" ;
+	}
+}
+actions make_libjuice_msvc
+{
+    (cd $(CWD)/deps/libjuice && cmake -B build -G "NMake Makefiles" $(CMAKEOPTS) && cd build && nmake juice-static)
+    cp $(CWD)/deps/libjuice/build/libjuice-static.lib $(<)
 }
 

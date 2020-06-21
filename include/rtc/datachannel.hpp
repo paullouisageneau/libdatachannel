@@ -108,8 +108,8 @@ template <typename Iterator> bool DataChannel::sendBuffer(Iterator first, Iterat
 	auto message = std::make_shared<Message>(size);
 	auto pos = message->begin();
 	for (Iterator it = first; it != last; ++it) {
-		auto [bytes, size] = to_bytes(*it);
-		pos = std::copy(bytes, bytes + size, pos);
+		auto [bytes, len] = to_bytes(*it);
+		pos = std::copy(bytes, bytes + len, pos);
 	}
 	return outgoing(message);
 }
