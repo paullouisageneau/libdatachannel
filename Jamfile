@@ -80,7 +80,7 @@ make libusrsctp.lib : : @make_libusrsctp_msvc ;
 
 actions make_libusrsctp
 {
-    (cd $(CWD)/deps/usrsctp && cmake -B build -D CMAKE_C_FLAGS="-fPIC" && cd build && make -j2 usrsctplib-static)
+    (cd $(CWD)/deps/usrsctp && cmake -B build -DCMAKE_C_FLAGS="-fPIC" && cd build && make -j2 usrsctplib-static)
     cp $(CWD)/deps/usrsctp/build/usrsctplib/libusrsctp.a $(<)
 }
 actions make_libusrsctp_msvc
@@ -96,27 +96,27 @@ rule make_libjuice ( targets * : sources * : properties * )
 {
 	if <crypto>gnutls in $(properties)
 	{
-		CMAKEOPTS on $(targets) = "-D USE_NETTLE=1" ;
+		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=1" ;
 	}
 	else
 	{
-		CMAKEOPTS on $(targets) = "-D USE_NETTLE=0" ;
+		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=0" ;
 	}
 }
 actions make_libjuice
 {
-    (cd $(CWD)/deps/libjuice && cmake -B build -D CMAKE_C_FLAGS="-fPIC" $(CMAKEOPTS) && cd build && make -j2 juice-static)
+    (cd $(CWD)/deps/libjuice && cmake -B build -DCMAKE_C_FLAGS="-fPIC" $(CMAKEOPTS) && cd build && make -j2 juice-static)
     cp $(CWD)/deps/libjuice/build/libjuice-static.a $(<)
 }
 rule make_libjuice_msvc ( targets * : sources * : properties * )
 {
 	if <crypto>gnutls in $(properties)
 	{
-		CMAKEOPTS on $(targets) = "-D USE_NETTLE=1" ;
+		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=1" ;
 	}
 	else
 	{
-		CMAKEOPTS on $(targets) = "-D USE_NETTLE=0" ;
+		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=0" ;
 	}
 }
 actions make_libjuice_msvc
