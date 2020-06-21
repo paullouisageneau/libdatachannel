@@ -453,27 +453,41 @@ int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, co
 	try {
 		PLOG_VERBOSE << "Handle recv, len=" << len;
 		if (!len)
-			return -1;
+			return 0; // Ignore
 
-		// This is valid because SCTP_FRAGMENT_INTERLEAVE is set to level 0
-		// so partial messages and notifications may not be interleaved.
-		if (flags & MSG_EOR) {
-			if (!mPartialRecv.empty()) {
-				mPartialRecv.insert(mPartialRecv.end(), data, data + len);
-				data = mPartialRecv.data();
-				len = mPartialRecv.size();
-			}
-			// Message/Notification is complete, process it
-			if (flags & MSG_NOTIFICATION)
+		// SCTP_FRAGMENT_INTERLEAVE does not seem to work as expected for messages > 64KB,
+		// therefore partial notifications and messages need to be handled separately.
+		if (flags & MSG_NOTIFICATION) {
+			// SCTP event notification
+			if (flags & MSG_EOR) {
+				if (!mPartialNotification.empty()) {
+					mPartialNotification.insert(mPartialNotification.end(), data, data + len);
+					data = mPartialNotification.data();
+					len = mPartialNotification.size();
+				}
+				// Notification is complete, process it
 				processNotification(reinterpret_cast<const union sctp_notification *>(data), len);
-			else
-				processData(data, len, info.rcv_sid, PayloadId(htonl(info.rcv_ppid)));
+				mPartialNotification.clear();
+			} else {
+				mPartialNotification.insert(mPartialNotification.end(), data, data + len);
+			}
 
-			mPartialRecv.clear();
 		} else {
-			// Message/Notification is not complete
-			mPartialRecv.insert(mPartialRecv.end(), data, data + len);
+			// SCTP message
+			if (flags & MSG_EOR) {
+				if (!mPartialMessage.empty()) {
+					mPartialMessage.insert(mPartialMessage.end(), data, data + len);
+					data = mPartialMessage.data();
+					len = mPartialMessage.size();
+				}
+				// Message is complete, process it
+				processData(data, len, info.rcv_sid, PayloadId(htonl(info.rcv_ppid)));
+				mPartialMessage.clear();
+			} else {
+				mPartialMessage.insert(mPartialMessage.end(), data, data + len);
+			}
 		}
+
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "SCTP recv: " << e.what();
 		return -1;
