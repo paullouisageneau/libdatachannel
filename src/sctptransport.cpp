@@ -455,6 +455,8 @@ int SctpTransport::handleRecv(struct socket *sock, union sctp_sockstore addr, co
 		if (!len)
 			return 0; // Ignore
 
+		// SCTP_FRAGMENT_INTERLEAVE does not seem to work as expected for messages > 64KB,
+		// therefore partial notifications and messages need to be handled separately.
 		if (flags & MSG_NOTIFICATION) {
 			// SCTP event notification
 			if (flags & MSG_EOR) {
