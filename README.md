@@ -72,13 +72,15 @@ The CMake library targets `libdatachannel` and `libdatachannel-static` respectiv
 #### POSIX-compliant operating systems (including Linux and Apple macOS)
 ```bash
 $ cmake -B build -DUSE_JUICE=1 -DUSE_GNUTLS=1
-$ cd build && make -j2
+$ cd build
+$ make -j2
 ```
 
 #### Microsoft Windows with MinGW cross-compilation
 ```bash
 $ cmake -B build -DUSE_JUICE=1 -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw/toolchain-x86_64-w64-mingw32.cmake # replace with your toolchain file
-$ cd build && make -j2
+$ cd build
+$ make -j2
 ```
 
 #### Microsoft Windows with Microsoft Visual C++
