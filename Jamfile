@@ -85,7 +85,7 @@ make usrsctp.lib : : @make_libusrsctp_msvc ;
 
 actions make_libusrsctp
 {
-    (cd $(CWD)/deps/usrsctp && cmake -B build -DCMAKE_C_FLAGS="-fPIC" && cd build && make -j2 usrsctplib-static)
+    (cd $(CWD)/deps/usrsctp && cmake -B build -DCMAKE_C_FLAGS="-fPIC" && cd build && make -j2 usrsctp-static)
     cp $(CWD)/deps/usrsctp/build/usrsctplib/libusrsctp.a $(<)
 }
 actions make_libusrsctp_msvc
