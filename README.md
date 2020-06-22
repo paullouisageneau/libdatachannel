@@ -44,31 +44,53 @@ Features:
 
 ## Dependencies
 
+Dependencies:
 - GnuTLS: https://www.gnutls.org/ or OpenSSL: https://www.openssl.org/
 
-Optional:
+Optional dependencies:
 - libnice: https://nice.freedesktop.org/ (substituable with libjuice)
-- libSRTP: https://github.com/cisco/libsrtp
+- libSRTP: https://github.com/cisco/libsrtp (only necessary for media transport)
 
 Submodules:
 - libjuice: https://github.com/paullouisageneau/libjuice
 - usrsctp: https://github.com/sctplab/usrsctp
 
 ## Building
-### Building with CMake (preferred)
+
+### Clone repository and submodules
 
 ```bash
+$ git clone https://github.com/paullouisageneau/libdatachannel.git
+$ cd libdatachannel
 $ git submodule update --init --recursive
-$ mkdir build
-$ cd build
-$ cmake -DUSE_JUICE=1 -DUSE_GNUTLS=1 ..
-$ make
 ```
 
-### Building directly with Make
+### Building with CMake
+
+The CMake library targets `libdatachannel` and `libdatachannel-static` respectively correspond to the shared and static libraries. On Windows, the DLL resulting from the shared library build only exposes the C API, use the static library for the C++ API. The default target will build tests and examples.
+
+#### POSIX-compliant operating systems (including Linux and Apple macOS)
+```bash
+$ cmake -B build -DUSE_JUICE=1 -DUSE_GNUTLS=1
+$ cd build && make -j2
+```
+
+#### Microsoft Windows with MinGW cross-compilation
+```bash
+$ cmake -B build -DUSE_JUICE=1 -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw/toolchain-x86_64-w64-mingw32.cmake # replace with your toolchain file
+$ cd build && make -j2
+```
+
+#### Microsoft Windows with Microsoft Visual C++
+```bash
+$ cmake -B build -G "NMake Makefiles" -DUSE_JUICE=1
+$ cd build
+$ nmake
+```
+
+### Building directly with Make (Linux only)
 
 ```bash
-$ git submodule update --init --recursive
 $ make USE_JUICE=1 USE_GNUTLS=1
 ```
 
