@@ -59,7 +59,7 @@ alias usrsctp
     : # no default build
     : # usage requirements
     <include>./deps/usrsctp/usrsctplib
-    <library>libusrsctp.lib
+    <library>usrsctp.lib
     ;
 
 alias juice
@@ -77,11 +77,11 @@ alias juice
     : # no default build
     : # usage requirements
     <include>./deps/libjuice/include
-    <library>libjuice-static.lib
+    <library>juice-static.lib
     ;
 
 make libusrsctp.a : : @make_libusrsctp ;
-make libusrsctp.lib : : @make_libusrsctp_msvc ;
+make usrsctp.lib : : @make_libusrsctp_msvc ;
 
 actions make_libusrsctp
 {
@@ -90,12 +90,17 @@ actions make_libusrsctp
 }
 actions make_libusrsctp_msvc
 {
-    (cd $(CWD)/deps/usrsctp && cmake -B build -G "Visual Studio 16 2019" && cd build && msbuild usrsctplib.sln)
-    cp $(CWD)/deps/usrsctp/build/usrsctplib/libusrsctp.lib $(<)
+	SET OLDD=%CD%
+    cd $(CWD)/deps/usrsctp
+    cmake -B build -G "Visual Studio 16 2019"
+    cd build
+    msbuild usrsctplib.sln /property:Configuration=Release
+    cd %OLDD%
+    cp $(CWD)/deps/usrsctp/build/usrsctplib/Release/usrsctp.lib $(<)
 }
 
 make libjuice-static.a : : @make_libjuice ;
-make libjuice-static.lib : : @make_libjuice_msvc ;
+make juice-static.lib : : @make_libjuice_msvc ;
 
 rule make_libjuice ( targets * : sources * : properties * )
 {
@@ -126,8 +131,13 @@ rule make_libjuice_msvc ( targets * : sources * : properties * )
 }
 actions make_libjuice_msvc
 {
-    (cd $(CWD)/deps/libjuice && cmake -B build -G "Visual Studio 16 2019" $(CMAKEOPTS) && cd build && msbuild libjuice.sln)
-    cp $(CWD)/deps/libjuice/build/libjuice-static.lib $(<)
+	SET OLDD=%CD%
+    cd $(CWD)/deps/libjuice
+    cmake -B build -G "Visual Studio 16 2019" $(CMAKEOPTS)
+    cd build
+    msbuild libjuice.sln /property:Configuration=Release
+    cd %OLDD%
+    cp $(CWD)/deps/libjuice/build/Release/juice-static.lib $(<)
 }
 
 # the search path to pick up the openssl libraries from. This is the <search>
@@ -182,7 +192,7 @@ rule openssl-include-path ( properties * )
     return $(result) ;
 }
 
-# libraries for openssl on windows
+# libraries for OpenSSL on Windows
 lib advapi32 : : <name>advapi32 ;
 lib user32 : : <name>user32 ;
 lib shell32 : : <name>shell32 ;
@@ -191,19 +201,13 @@ lib bcrypt : : <name>bcrypt ;
 lib z : : <link>shared <name>z ;
 alias ssl-deps : advapi32 user32 shell32 gdi32 ;
 
-# pre OpenSSL 1.1 windows
-lib crypto : ssl-deps : <target-os>windows <openssl-version>pre1.1 <name>libeay32
-    <conditional>@openssl-lib-path : : <conditional>@openssl-include-path ;
-lib ssl : ssl-deps : <target-os>windows <openssl-version>pre1.1 <name>ssleay32
-    <use>crypto <conditional>@openssl-lib-path : : <conditional>@openssl-include-path ;
-
-# OpenSSL 1.1+ windows
+# OpenSSL on Windows
 lib crypto : ssl-deps : <toolset>msvc <openssl-version>1.1 <name>libcrypto
     <conditional>@openssl-lib-path : : <conditional>@openssl-include-path ;
 lib ssl : ssl-deps : <toolset>msvc <openssl-version>1.1 <name>libssl <use>crypto
     <conditional>@openssl-lib-path : : <conditional>@openssl-include-path ;
 
-# generic OpenSSL
+# OpenSSL on other platforms
 lib crypto : : <name>crypto <use>z <conditional>@openssl-lib-path : :
     <conditional>@openssl-include-path ;
 lib ssl : : <name>ssl <use>crypto <conditional>@openssl-lib-path : :

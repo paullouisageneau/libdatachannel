@@ -308,7 +308,8 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
 
 	try {
-		if (!(mCtx = SSL_CTX_new(DTLS_method())))
+		mCtx = SSL_CTX_new(DTLS_method());
+		if (!mCtx)
 			throw std::runtime_error("Failed to create SSL context");
 
 		openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
@@ -332,7 +333,8 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 
 		openssl::check(SSL_CTX_check_private_key(mCtx), "SSL local private key check failed");
 
-		if (!(mSsl = SSL_new(mCtx)))
+		mSsl = SSL_new(mCtx);
+		if (!mSsl)
 			throw std::runtime_error("Failed to create SSL instance");
 
 		SSL_set_ex_data(mSsl, TransportExIndex, this);
@@ -342,7 +344,9 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 		else
 			SSL_set_accept_state(mSsl);
 
-		if (!(mInBio = BIO_new(BIO_s_mem())) || !(mOutBio = BIO_new(BioMethods)))
+		mInBio = BIO_new(BIO_s_mem());
+		mOutBio = BIO_new(BioMethods);
+		if (!mInBio || !mOutBio)
 			throw std::runtime_error("Failed to create BIO");
 
 		BIO_set_mem_eof_return(mInBio, BIO_EOF);
@@ -494,7 +498,7 @@ void DtlsTransport::runRecvLoop() {
 	}
 }
 
-int DtlsTransport::CertificateCallback(int preverify_ok, X509_STORE_CTX *ctx) {
+int DtlsTransport::CertificateCallback(int /*preverify_ok*/, X509_STORE_CTX *ctx) {
 	SSL *ssl =
 	    static_cast<SSL *>(X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx()));
 	DtlsTransport *t =
@@ -543,7 +547,7 @@ int DtlsTransport::BioMethodWrite(BIO *bio, const char *in, int inl) {
 	return inl; // can't fail
 }
 
-long DtlsTransport::BioMethodCtrl(BIO *bio, int cmd, long num, void *ptr) {
+long DtlsTransport::BioMethodCtrl(BIO * /*bio*/, int cmd, long /*num*/, void * /*ptr*/) {
 	switch (cmd) {
 	case BIO_CTRL_FLUSH:
 		return 1;
