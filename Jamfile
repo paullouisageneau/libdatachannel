@@ -85,7 +85,7 @@ make usrsctp.lib : : @make_libusrsctp_msvc ;
 
 actions make_libusrsctp
 {
-    (cd $(CWD)/deps/usrsctp && cmake -B build -DCMAKE_C_FLAGS="-fPIC" && cd build && make -j2 usrsctp-static)
+    (cd $(CWD)/deps/usrsctp && cmake -Bbuild -DCMAKE_C_FLAGS="-fPIC" && cd build && make -j2 usrsctp-static)
     cp $(CWD)/deps/usrsctp/build/usrsctplib/libusrsctp.a $(<)
 }
 actions make_libusrsctp_msvc
@@ -104,23 +104,35 @@ make juice-static.lib : : @make_libjuice_msvc ;
 
 rule make_libjuice ( targets * : sources * : properties * )
 {
-	if <crypto>gnutls in $(properties)
+	if <gnutls>on in $(properties)
 	{
 		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=1" ;
 	}
-	else
-	{
+	else {
+		local OPENSSL_INCLUDE = [ feature.get-values <openssl-include> : $(properties) ] ;
+
+		if <target-os>darwin in $(properties) && $(OPENSSL_INCLUDE) = ""
+		{
+			# on macOS, default to pick up openssl from the homebrew installation
+			# brew install openssl
+			OPENSSL_INCLUDE = /usr/local/opt/openssl/include ;
+		}
+
 		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=0" ;
+		if $(OPENSSL_INCLUDE) != ""
+		{
+			CMAKEOPTS on $(targets) += " -DOPENSSL_ROOT_DIR=$(OPENSSL_INCLUDE)/.." ;
+		}
 	}
 }
 actions make_libjuice
 {
-    (cd $(CWD)/deps/libjuice && cmake -B build -DCMAKE_C_FLAGS="-fPIC" $(CMAKEOPTS) && cd build && make -j2 juice-static)
+    (cd $(CWD)/deps/libjuice && cmake -Bbuild -DCMAKE_C_FLAGS="-fPIC" $(CMAKEOPTS) && cd build && make -j2 juice-static)
     cp $(CWD)/deps/libjuice/build/libjuice-static.a $(<)
 }
 rule make_libjuice_msvc ( targets * : sources * : properties * )
 {
-	if <crypto>gnutls in $(properties)
+	if <gnutls>on in $(properties)
 	{
 		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=1" ;
 	}
