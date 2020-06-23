@@ -25,8 +25,9 @@ lib libdatachannel
 	<library>/libdatachannel//usrsctp
 	<library>/libdatachannel//juice
 	<library>/libdatachannel//plog
-    <gnutls>off:<library>ssl
-    <gnutls>off:<library>crypto
+	<gnutls>on:<library>gnutls
+	<gnutls>off:<library>ssl
+	<gnutls>off:<library>crypto
 	: # default build
 	<link>static
 	: # usage requirements
@@ -69,6 +70,7 @@ alias juice
     : # usage requirements
     <include>./deps/libjuice/include
     <library>libjuice-static.a
+    <gnutls>on:<library>nettle
     ;
 
 alias juice
@@ -227,4 +229,8 @@ lib crypto : : <name>crypto <use>z <conditional>@openssl-lib-path : :
     <conditional>@openssl-include-path ;
 lib ssl : : <name>ssl <use>crypto <conditional>@openssl-lib-path : :
     <conditional>@openssl-include-path ;
+
+# GnuTLS
+lib gnutls : : <link>shared <name>gnutls ;
+lib nettle : : <link>shared <name>nettle ;
 
