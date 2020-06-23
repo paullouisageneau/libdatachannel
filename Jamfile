@@ -85,14 +85,16 @@ make usrsctp.lib : : @make_libusrsctp_msvc ;
 
 actions make_libusrsctp
 {
-    (cd $(CWD)/deps/usrsctp && cmake -Bbuild -DCMAKE_C_FLAGS="-fPIC" . && cd build && make -j2 usrsctp-static)
+    (cd $(CWD)/deps/usrsctp && mkdir build && cd build && cmake -DCMAKE_C_FLAGS="-fPIC" .. && make -j2 usrsctp-static)
     cp $(CWD)/deps/usrsctp/build/usrsctplib/libusrsctp.a $(<)
 }
 actions make_libusrsctp_msvc
 {
 	SET OLDD=%CD%
     cd $(CWD)/deps/usrsctp
-    cmake -B build -G "Visual Studio 16 2019"
+    mkdir build
+    cd build
+    cmake -G "Visual Studio 16 2019" ..
     cd build
     msbuild usrsctplib.sln /property:Configuration=Release
     cd %OLDD%
@@ -127,7 +129,7 @@ rule make_libjuice ( targets * : sources * : properties * )
 }
 actions make_libjuice
 {
-    (cd $(CWD)/deps/libjuice && cmake -Bbuild -DCMAKE_C_FLAGS="-fPIC" $(CMAKEOPTS) . && cd build && make -j2 juice-static)
+    (cd $(CWD)/deps/libjuice && mkdir build && cd build && cmake -DCMAKE_C_FLAGS="-fPIC" $(CMAKEOPTS) .. && make -j2 juice-static)
     cp $(CWD)/deps/libjuice/build/libjuice-static.a $(<)
 }
 rule make_libjuice_msvc ( targets * : sources * : properties * )
@@ -145,8 +147,9 @@ actions make_libjuice_msvc
 {
 	SET OLDD=%CD%
     cd $(CWD)/deps/libjuice
-    cmake -B build -G "Visual Studio 16 2019" $(CMAKEOPTS)
+    mkdir build
     cd build
+    cmake -G "Visual Studio 16 2019" $(CMAKEOPTS) ..
     msbuild libjuice.sln /property:Configuration=Release
     cd %OLDD%
     cp $(CWD)/deps/libjuice/build/Release/juice-static.lib $(<)
