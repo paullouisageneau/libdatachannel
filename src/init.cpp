@@ -60,7 +60,10 @@ void Init::Preload() {
 	make_certificate().wait(); // preload certificate
 }
 
-void Init::Cleanup() { Global.reset(); }
+void Init::Cleanup() {
+	Global.reset();
+	CleanupCertificateCache();
+}
 
 Init::Init() {
 #ifdef _WIN32
@@ -86,7 +89,6 @@ Init::Init() {
 }
 
 Init::~Init() {
-	CleanupCertificateCache();
 	SctpTransport::Cleanup();
 	DtlsTransport::Cleanup();
 #if RTC_ENABLE_WEBSOCKET
