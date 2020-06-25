@@ -38,21 +38,21 @@ else
         LIBS+=glib-2.0 gobject-2.0 nice
 endif
 
-RTC_ENABLE_MEDIA ?= 0
-ifneq ($(RTC_ENABLE_MEDIA), 0)
+USE_SRTP ?= 0
+ifneq ($(USE_SRTP), 0)
         CPPFLAGS+=-DRTC_ENABLE_MEDIA=1
         LIBS+=srtp
 else
         CPPFLAGS+=-DRTC_ENABLE_MEDIA=0
 endif
 
-RTC_ENABLE_WEBSOCKET ?= 1
-ifneq ($(RTC_ENABLE_WEBSOCKET), 0)
+
+NO_WEBSOCKET ?= 0
+ifeq ($(NO_WEBSOCKET), 0)
         CPPFLAGS+=-DRTC_ENABLE_WEBSOCKET=1
 else
         CPPFLAGS+=-DRTC_ENABLE_WEBSOCKET=0
 endif
-
 
 INCLUDES+=$(shell pkg-config --cflags $(LIBS))
 LDLIBS+=$(LOCALLIBS) $(shell pkg-config --libs $(LIBS))

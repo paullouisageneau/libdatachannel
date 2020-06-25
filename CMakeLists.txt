@@ -6,7 +6,8 @@ project(libdatachannel
 
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 option(USE_JUICE "Use libjuice instead of libnice" OFF)
-option(RTC_ENABLE_WEBSOCKET "Build WebSocket support" ON)
+option(USE_SRTP "Enable SRTP for media support" OFF)
+option(NO_WEBSOCKET "Disable WebSocket support" OFF)
 
 if(USE_GNUTLS)
 	option(USE_NETTLE "Use Nettle instead of OpenSSL in libjuice" ON)
@@ -82,7 +83,6 @@ set(TESTS_SOURCES
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
-find_package(SRTP)
 
 set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)
 add_subdirectory(deps/plog)
@@ -99,7 +99,14 @@ endif()
 add_library(Usrsctp::Usrsctp ALIAS usrsctp)
 add_library(Usrsctp::UsrsctpStatic ALIAS usrsctp-static)
 
-if (RTC_ENABLE_WEBSOCKET)
+if (NO_WEBSOCKET)
+	add_library(datachannel SHARED
+		${LIBDATACHANNEL_SOURCES})
+	add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
+		${LIBDATACHANNEL_SOURCES})
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=0)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=0)
+else()
 	add_library(datachannel SHARED
 		${LIBDATACHANNEL_SOURCES}
 		${LIBDATACHANNEL_WEBSOCKET_SOURCES})
@@ -108,13 +115,6 @@ if (RTC_ENABLE_WEBSOCKET)
 		${LIBDATACHANNEL_WEBSOCKET_SOURCES})
 	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=1)
 	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=1)
-else()
-	add_library(datachannel SHARED
-		${LIBDATACHANNEL_SOURCES})
-	add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
-		${LIBDATACHANNEL_SOURCES})
-	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=0)
-	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=0)
 endif()
 
 set_target_properties(datachannel PROPERTIES
@@ -141,7 +141,8 @@ if(WIN32)
 	target_link_libraries(datachannel-static PRIVATE wsock32 ws2_32) # winsock2
 endif()
 
-if(SRTP_FOUND)
+if(USE_SRTP)
+	find_package(SRTP REQUIRED)
 	if(NOT TARGET SRTP::SRTP)
 		add_library(SRTP::SRTP UNKNOWN IMPORTED)
 		set_target_properties(SRTP::SRTP PROPERTIES
