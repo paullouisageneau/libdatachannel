@@ -194,6 +194,11 @@ SctpTransport::~SctpTransport() {
 }
 
 bool SctpTransport::stop() {
+	// Transport::stop() will unregister incoming() from the lower layer, therefore we need to make
+	// sure the thread from lower layers is not blocked in incoming() by the WrittenOnce condition.
+	mWrittenOnce = true;
+	mWrittenCondition.notify_all();
+
 	if (!Transport::stop())
 		return false;
 
