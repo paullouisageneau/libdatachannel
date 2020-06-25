@@ -107,8 +107,9 @@ bool Candidate::resolve(ResolveMode mode) {
 						oss << sp << nodebuffer << sp << servbuffer << sp << "typ" << sp << type;
 						oss << left;
 						mCandidate = oss.str();
+						mIsResolved = true;
 						PLOG_VERBOSE << "Resolved candidate: " << mCandidate;
-						return mIsResolved = true;
+						break;
 					}
 				}
 		}
@@ -116,7 +117,7 @@ bool Candidate::resolve(ResolveMode mode) {
 		freeaddrinfo(result);
 	}
 
-	return false;
+	return mIsResolved;
 }
 
 bool Candidate::isResolved() const { return mIsResolved; }
