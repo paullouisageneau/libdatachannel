@@ -227,7 +227,7 @@ void PeerConnection::sendMedia(const binary &packet) {
 	outgoingMedia(make_message(packet.begin(), packet.end(), Message::Binary));
 }
 
-void PeerConnection::send(const byte *packet, size_t size) {
+void PeerConnection::sendMedia(const byte *packet, size_t size) {
 	outgoingMedia(make_message(packet, packet + size, Message::Binary));
 }
 

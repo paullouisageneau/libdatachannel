@@ -101,7 +101,7 @@ public:
 	// Media
 	bool hasMedia() const;
 	void sendMedia(const binary &packet);
-	void send(const byte *packet, size_t size);
+	void sendMedia(const byte *packet, size_t size);
 
 	void onMedia(std::function<void(const binary &packet)> callback);
 
