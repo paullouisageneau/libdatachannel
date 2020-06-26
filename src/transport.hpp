@@ -41,12 +41,17 @@ public:
 
 	virtual ~Transport() {
 		stop();
-		if (mLower)
-			mLower->onRecv(nullptr); // doing it on stop could cause a deadlock
 	}
 
 	virtual bool stop() {
-		return !mShutdown.exchange(true);
+		if (mShutdown.exchange(true))
+			return false;
+
+		// We don't want incoming() to be called by the lower layer anymore
+		if (mLower)
+			mLower->onRecv(nullptr);
+
+		return true;
 	}
 
 	void registerIncoming() {
