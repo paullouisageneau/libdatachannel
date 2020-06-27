@@ -108,11 +108,11 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Demultiplexing packet with first byte, value=" << unsigned(value);
 
-	if (value >= 128 && value <= 191) {
+	if (value >= 20 && value <= 63) {
 		PLOG_VERBOSE << "Incoming DTLS packet, size=" << size;
 		DtlsTransport::incoming(message);
 
-	} else if (value >= 20 && value <= 63) {
+	} else if (value >= 128 && value <= 191) {
 		PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
 
 		if (srtp_err_status_t err = srtp_unprotect(mSrtpIn, message->data(), &size)) {
