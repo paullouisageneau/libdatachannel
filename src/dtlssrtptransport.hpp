@@ -47,8 +47,8 @@ private:
 
 	message_callback mSrtpRecvCallback;
 
-	srtp_t mSrtp;
-	bool mCreated = false;
+	srtp_t mSrtpIn, mSrtpOut;
+	bool mInitDone = false;
 };
 
 } // namespace rtc
