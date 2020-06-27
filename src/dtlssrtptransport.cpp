@@ -44,16 +44,6 @@ DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
       mSrtpRecvCallback(std::move(srtpRecvCallback)) { // distinct from Transport recv callback
 
 	PLOG_DEBUG << "Initializing SRTP transport";
-
-#if USE_GNUTLS
-	PLOG_DEBUG << "Initializing DTLS-SRTP transport (GnuTLS)";
-	gnutls::check(gnutls_srtp_set_profile(mSession, GNUTLS_SRTP_AES128_CM_HMAC_SHA1_80),
-	              "Failed to set SRTP profile");
-#else
-	PLOG_DEBUG << "Initializing DTLS-SRTP transport (OpenSSL)";
-	openssl::check(SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"),
-	               "Failed to set SRTP profile");
-#endif
 }
 
 DtlsSrtpTransport::~DtlsSrtpTransport() {
@@ -67,13 +57,13 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	if (!message)
 		return false;
 
-	int size = message->size();
-	PLOG_VERBOSE << "Send size=" << size;
-
 	if (!mCreated) {
 		PLOG_WARNING << "SRTP media sent before keys are derived";
 		return false;
 	}
+
+	int size = message->size();
+	PLOG_VERBOSE << "Send size=" << size;
 
 	// srtp_protect() assumes that it can write SRTP_MAX_TRAILER_LEN (for the authentication tag)
 	// into the location in memory immediately following the RTP packet.
@@ -128,6 +118,18 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 	} else {
 		PLOG_WARNING << "Unknown packet type, value=" << value << ", size=" << size;
 	}
+}
+
+void DtlsSrtpTransport::postCreation() {
+#if USE_GNUTLS
+	PLOG_DEBUG << "Initializing DTLS-SRTP transport (GnuTLS)";
+	gnutls::check(gnutls_srtp_set_profile(mSession, GNUTLS_SRTP_AES128_CM_HMAC_SHA1_80),
+	              "Failed to set SRTP profile");
+#else
+	PLOG_DEBUG << "Initializing DTLS-SRTP transport (OpenSSL)";
+	openssl::check(SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"),
+	               "Failed to set SRTP profile");
+#endif
 }
 
 void DtlsSrtpTransport::postHandshake() {
