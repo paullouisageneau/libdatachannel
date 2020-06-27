@@ -42,8 +42,11 @@ DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
     : DtlsTransport(lower, certificate, std::move(verifierCallback),
                     std::move(stateChangeCallback)),
       mSrtpRecvCallback(std::move(srtpRecvCallback)) { // distinct from Transport recv callback
-
-	PLOG_DEBUG << "Initializing SRTP transport";
+#if USE_GNUTLS
+	PLOG_DEBUG << "Initializing DTLS-SRTP transport (GnuTLS)";
+#else
+	PLOG_DEBUG << "Initializing DTLS-SRTP transport (OpenSSL)";
+#endif
 }
 
 DtlsSrtpTransport::~DtlsSrtpTransport() {
@@ -121,14 +124,14 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 }
 
 void DtlsSrtpTransport::postCreation() {
+	PLOG_DEBUG << "Setting SRTP profile";
 #if USE_GNUTLS
-	PLOG_DEBUG << "Initializing DTLS-SRTP transport (GnuTLS)";
 	gnutls::check(gnutls_srtp_set_profile(mSession, GNUTLS_SRTP_AES128_CM_HMAC_SHA1_80),
 	              "Failed to set SRTP profile");
 #else
-	PLOG_DEBUG << "Initializing DTLS-SRTP transport (OpenSSL)";
-	openssl::check(SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"),
-	               "Failed to set SRTP profile");
+	// returns 0 on success, 1 on error
+	if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"), "Failed to set SRTP profile")
+		throw std::runtime_error("Failed to set SRTP profile: " + openssl::error_string(ERR_get_error()));
 #endif
 }
 
@@ -178,9 +181,12 @@ void DtlsSrtpTransport::postHandshake() {
 	// This provides the client write master key, the server write master key, the client write
 	// master salt and the server write master salt in that order.
 	const string label = "EXTRACTOR-dtls_srtp";
-	openssl::check(SSL_export_keying_material(mSsl, material, materialLen, label.c_str(),
-	                                          label.size(), nullptr, 0, 0),
-	               "Failed to derive SRTP keys");
+
+	// returns 1 on success, 0 or -1 on failure (OpenSSL API is a complete mess...)
+	if (SSL_export_keying_material(mSsl, material, materialLen, label.c_str(), label.size(),
+	                               nullptr, 0, 0) <= 0)
+		throw std::runtime_error("Failed to derive SRTP keys: " +
+		                         openssl::error_string(ERR_get_error()));
 
 	clientKey = material;
 	clientSalt = clientKey + SRTP_AES_128_KEY_LEN;
