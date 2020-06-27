@@ -106,9 +106,12 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 	// RTP (or RTCP [...]). If the value is between 20 and 63 (inclusive), the packet is DTLS.
 	uint8_t value = to_integer<uint8_t>(*message->begin());
 
+	PLOG_VERBOSE << "Demultiplexing packet with first byte, value=" << unsigned(value);
+
 	if (value >= 128 && value <= 191) {
 		PLOG_VERBOSE << "Incoming DTLS packet, size=" << size;
 		DtlsTransport::incoming(message);
+
 	} else if (value >= 20 && value <= 63) {
 		PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
 
