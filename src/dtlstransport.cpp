@@ -414,6 +414,10 @@ void DtlsTransport::incoming(message_ptr message) {
 	mIncomingQueue.push(message);
 }
 
+void DtlsTransport::postCreation() {
+	// Dummy
+}
+
 void DtlsTransport::postHandshake() {
 	// Dummy
 }
