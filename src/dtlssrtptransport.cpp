@@ -145,11 +145,13 @@ void DtlsSrtpTransport::postHandshake() {
 	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtp);
 	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtcp);
 	inbound.ssrc.type = ssrc_any_inbound;
+	inbound.ssrc.value = 0;
 
 	srtp_policy_t outbound = {};
 	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&outbound.rtp);
 	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&outbound.rtcp);
 	outbound.ssrc.type = ssrc_any_outbound;
+	outbound.ssrc.value = 0;
 
 	const size_t materialLen = SRTP_AES_ICM_128_KEY_LEN_WSALT * 2;
 	unsigned char material[materialLen];
@@ -192,7 +194,7 @@ void DtlsSrtpTransport::postHandshake() {
 	clientSalt = clientKey + SRTP_AES_128_KEY_LEN;
 
 	serverKey = material + SRTP_AES_ICM_128_KEY_LEN_WSALT;
-	serverSalt = serverSalt + SRTP_AES_128_KEY_LEN;
+	serverSalt = serverKey + SRTP_AES_128_KEY_LEN;
 #endif
 
 	unsigned char clientSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
