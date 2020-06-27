@@ -38,7 +38,7 @@ public:
 	                  state_callback stateChangeCallback);
 	~DtlsSrtpTransport();
 
-	bool send(message_ptr message) override;
+	bool sendMedia(message_ptr message);
 
 private:
 	void incoming(message_ptr message) override;

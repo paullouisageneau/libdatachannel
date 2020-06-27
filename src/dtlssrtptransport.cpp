@@ -63,12 +63,17 @@ DtlsSrtpTransport::~DtlsSrtpTransport() {
 		srtp_dealloc(mSrtp);
 }
 
-bool DtlsSrtpTransport::send(message_ptr message) {
+bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	if (!message)
 		return false;
 
 	int size = message->size();
 	PLOG_VERBOSE << "Send size=" << size;
+
+	if (!mCreated) {
+		PLOG_WARNING << "SRTP media sent before keys are derived";
+		return false;
+	}
 
 	// srtp_protect() assumes that it can write SRTP_MAX_TRAILER_LEN (for the authentication tag)
 	// into the location in memory immediately following the RTP packet.
