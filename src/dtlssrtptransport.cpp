@@ -87,6 +87,12 @@ bool DtlsSrtpTransport::send(message_ptr message) {
 }
 
 void DtlsSrtpTransport::incoming(message_ptr message) {
+	if (!mCreated) {
+		// Bypas
+		DtlsTransport::incoming(message);
+		return;
+	}
+
 	int size = message->size();
 	if (size == 0)
 		return;
@@ -97,10 +103,10 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 	// RTP (or RTCP [...]). If the value is between 20 and 63 (inclusive), the packet is DTLS.
 	uint8_t value = to_integer<uint8_t>(*message->begin());
 
-	if (value >= 128 && value <= 192) {
+	if (value >= 128 && value <= 191) {
 		PLOG_VERBOSE << "Incoming DTLS packet, size=" << size;
 		DtlsTransport::incoming(message);
-	} else if (value >= 20 && value <= 64) {
+	} else if (value >= 20 && value <= 63) {
 		PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
 
 		if (srtp_err_status_t err = srtp_unprotect(mSrtp, message->data(), &size)) {
@@ -122,6 +128,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 void DtlsSrtpTransport::postHandshake() {
 	if (mCreated)
 		return;
+
+	PLOG_INFO << "Deriving SRTP keying material";
 
 	srtp_policy_t inbound = {};
 	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtp);
