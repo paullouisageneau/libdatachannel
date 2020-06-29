@@ -52,6 +52,7 @@ public:
 
 protected:
 	virtual void incoming(message_ptr message) override;
+	virtual void postCreation();
 	virtual void postHandshake();
 	void runRecvLoop();
 

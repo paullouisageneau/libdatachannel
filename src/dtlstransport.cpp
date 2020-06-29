@@ -85,6 +85,8 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		gnutls_transport_set_pull_function(mSession, ReadCallback);
 		gnutls_transport_set_pull_timeout_function(mSession, TimeoutCallback);
 
+		postCreation();
+
 		mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
 		registerIncoming();
 
@@ -135,6 +137,10 @@ void DtlsTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	mIncomingQueue.push(message);
+}
+
+void DtlsTransport::postCreation() {
+	// Dummy
 }
 
 void DtlsTransport::postHandshake() {
@@ -406,6 +412,10 @@ void DtlsTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	mIncomingQueue.push(message);
+}
+
+void DtlsTransport::postCreation() {
+	// Dummy
 }
 
 void DtlsTransport::postHandshake() {

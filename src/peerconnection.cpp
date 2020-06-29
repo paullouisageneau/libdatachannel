@@ -244,7 +244,7 @@ void PeerConnection::outgoingMedia(message_ptr message) {
 	if (!transport)
 		throw std::runtime_error("PeerConnection is not open");
 
-	std::dynamic_pointer_cast<DtlsSrtpTransport>(transport)->send(message);
+	std::dynamic_pointer_cast<DtlsSrtpTransport>(transport)->sendMedia(message);
 #else
 	PLOG_WARNING << "Ignoring sent media (not compiled with SRTP support)";
 #endif
