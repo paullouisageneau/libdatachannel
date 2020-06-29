@@ -73,17 +73,44 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	int size = message->size();
 	PLOG_VERBOSE << "Send size=" << size;
 
-	// srtp_protect() assumes that it can write SRTP_MAX_TRAILER_LEN (for the authentication tag)
-	// into the location in memory immediately following the RTP packet.
+	// The RTP header has a minimum size of 12 bytes
+	if (size < 12)
+		throw std::runtime_error("RTP/RTCP packet too short");
+
+	// srtp_protect() and srtp_protect_rtcp() assume that they can write SRTP_MAX_TRAILER_LEN (for
+	// the authentication tag) into the location in memory immediately following the RTP packet.
 	message->resize(size + SRTP_MAX_TRAILER_LEN);
-	if (srtp_err_status_t err = srtp_protect(mSrtpOut, message->data(), &size)) {
-		if (err == srtp_err_status_replay_fail)
-			throw std::runtime_error("SRTP packet is a replay");
-		else
-			throw std::runtime_error("SRTP protect error, status=" +
-			                         to_string(static_cast<int>(err)));
+
+	uint8_t value2 = to_integer<uint8_t>(*(message->begin() + 1)) & 0x7F;
+	PLOG_VERBOSE << "Demultiplexing SRTCP and SRTP with RTP payload type, value="
+	             << unsigned(value2);
+
+	// RFC 5761 Multiplexing RTP and RTCP 4. Distinguishable RTP and RTCP Packets
+	// It is RECOMMENDED to follow the guidelines in the RTP/AVP profile for the choice of RTP
+	// payload type values, with the additional restriction that payload type values in the
+	// range 64-95 MUST NOT be used. Specifically, dynamic RTP payload types SHOULD be chosen in
+	// the range 96-127 where possible. Values below 64 MAY be used if that is insufficient
+	// [...]
+	if (value2 >= 64 && value2 <= 95) { // Range 64-95 (inclusive) MUST be RTCP
+		if (srtp_err_status_t err = srtp_protect_rtcp(mSrtpOut, message->data(), &size)) {
+			if (err == srtp_err_status_replay_fail)
+				throw std::runtime_error("SRTCP packet is a replay");
+			else
+				throw std::runtime_error("SRTCP protect error, status=" +
+				                         to_string(static_cast<int>(err)));
+		}
+		PLOG_VERBOSE << "Protected SRTCP packet, size=" << size;
+	} else {
+		if (srtp_err_status_t err = srtp_protect(mSrtpOut, message->data(), &size)) {
+			if (err == srtp_err_status_replay_fail)
+				throw std::runtime_error("SRTP packet is a replay");
+			else
+				throw std::runtime_error("SRTP protect error, status=" +
+				                         to_string(static_cast<int>(err)));
+		}
+		PLOG_VERBOSE << "Protected SRTP packet, size=" << size;
 	}
-	PLOG_VERBOSE << "Protected SRTP packet, size=" << size;
+
 	message->resize(size);
 	outgoing(message);
 	return true;
@@ -104,30 +131,53 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 	// The process for demultiplexing a packet is as follows. The receiver looks at the first byte
 	// of the packet. [...] If the value is in between 128 and 191 (inclusive), then the packet is
 	// RTP (or RTCP [...]). If the value is between 20 and 63 (inclusive), the packet is DTLS.
-	uint8_t value = to_integer<uint8_t>(*message->begin());
+	uint8_t value1 = to_integer<uint8_t>(*message->begin());
+	PLOG_VERBOSE << "Demultiplexing DTLS and SRTP/SRTCP with first byte, value="
+	             << unsigned(value1);
 
-	PLOG_VERBOSE << "Demultiplexing packet with first byte, value=" << unsigned(value);
-
-	if (value >= 20 && value <= 63) {
+	if (value1 >= 20 && value1 <= 63) {
 		PLOG_VERBOSE << "Incoming DTLS packet, size=" << size;
 		DtlsTransport::incoming(message);
 
-	} else if (value >= 128 && value <= 191) {
-		PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
-
-		if (srtp_err_status_t err = srtp_unprotect(mSrtpIn, message->data(), &size)) {
-			if (err == srtp_err_status_replay_fail)
-				PLOG_WARNING << "Incoming SRTP packet is a replay";
-			else
-				PLOG_WARNING << "SRTP unprotect error, status=" << err;
+	} else if (value1 >= 128 && value1 <= 191) {
+		// The RTP header has a minimum size of 12 bytes
+		if (size < 12) {
+			PLOG_WARNING << "Incoming SRTP/SRTCP packet too short, size=" << size;
 			return;
 		}
-		PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
+
+		uint8_t value2 = to_integer<uint8_t>(*(message->begin() + 1)) & 0x7F;
+		PLOG_VERBOSE << "Demultiplexing SRTCP and SRTP with RTP payload type, value="
+		             << unsigned(value2);
+
+		// See RFC 5761 reference above
+		if (value2 >= 64 && value2 <= 95) { // Range 64-95 (inclusive) MUST be RTCP
+			PLOG_VERBOSE << "Incoming SRTCP packet, size=" << size;
+			if (srtp_err_status_t err = srtp_unprotect_rtcp(mSrtpIn, message->data(), &size)) {
+				if (err == srtp_err_status_replay_fail)
+					PLOG_WARNING << "Incoming SRTCP packet is a replay";
+				else
+					PLOG_WARNING << "SRTCP unprotect error, status=" << err;
+				return;
+			}
+			PLOG_VERBOSE << "Unprotected SRTCP packet, size=" << size;
+		} else {
+			PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
+			if (srtp_err_status_t err = srtp_unprotect(mSrtpIn, message->data(), &size)) {
+				if (err == srtp_err_status_replay_fail)
+					PLOG_WARNING << "Incoming SRTP packet is a replay";
+				else
+					PLOG_WARNING << "SRTP unprotect error, status=" << err;
+				return;
+			}
+			PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
+		}
+
 		message->resize(size);
 		mSrtpRecvCallback(message);
 
 	} else {
-		PLOG_WARNING << "Unknown packet type, value=" << unsigned(value) << ", size=" << size;
+		PLOG_WARNING << "Unknown packet type, value=" << unsigned(value1) << ", size=" << size;
 	}
 }
 
