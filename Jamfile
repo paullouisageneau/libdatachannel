@@ -25,7 +25,7 @@ lib libdatachannel
 	<library>/libdatachannel//usrsctp
 	<library>/libdatachannel//juice
 	<library>/libdatachannel//plog
-	<gnutls>on:<library>gnutls
+	<gnutls>on:<library>gnutls/<link>shared
 	<gnutls>off:<library>ssl
 	<gnutls>off:<library>crypto
 	: # default build
