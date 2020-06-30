@@ -220,18 +220,6 @@ string Description::generateSdp(const string &eol) const {
 
 	sdp << "a=msid-semantic: WMS" << eol;
 
-	// Data
-	const string dataDescription = "UDP/DTLS/SCTP webrtc-datachannel";
-	sdp << "m=application" << ' ' << (!mMedia.empty() ? 0 : 9) << ' ' << dataDescription << eol;
-	sdp << "c=IN IP4 0.0.0.0" << eol;
-	if (!mMedia.empty())
-		sdp << "a=bundle-only" << eol;
-	sdp << "a=mid:" << mData.mid << eol;
-	if (mData.sctpPort)
-		sdp << "a=sctp-port:" << *mData.sctpPort << eol;
-	if (mData.maxMessageSize)
-		sdp << "a=max-message-size:" << *mData.maxMessageSize << eol;
-
 	// Non-data media
 	if (!mMedia.empty()) {
 		// Lip-sync
@@ -251,6 +239,19 @@ string Description::generateSdp(const string &eol) const {
 				sdp << "a=" << attr << eol;
 		}
 	}
+
+	// Data
+	const string dataDescription = "UDP/DTLS/SCTP webrtc-datachannel";
+	sdp << "m=application" << ' ' << (!mMedia.empty() ? 0 : 9) << ' ' << dataDescription << eol;
+	sdp << "c=IN IP4 0.0.0.0" << eol;
+	if (!mMedia.empty())
+		sdp << "a=bundle-only" << eol;
+	sdp << "a=mid:" << mData.mid << eol;
+	if (mData.sctpPort)
+		sdp << "a=sctp-port:" << *mData.sctpPort << eol;
+	if (mData.maxMessageSize)
+		sdp << "a=max-message-size:" << *mData.maxMessageSize << eol;
+
 
 	// Common
 	if (!mEnded)
