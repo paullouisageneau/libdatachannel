@@ -49,6 +49,7 @@ public:
 	bool ended() const;
 
 	void hintType(Type type);
+	void setDataMid(string mid);
 	void setFingerprint(string fingerprint);
 	void setSctpPort(uint16_t port);
 	void setMaxMessageSize(size_t size);
