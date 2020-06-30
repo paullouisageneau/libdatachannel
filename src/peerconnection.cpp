@@ -594,14 +594,20 @@ void PeerConnection::remoteCloseDataChannels() {
 
 void PeerConnection::processLocalDescription(Description description) {
 	std::optional<uint16_t> remoteSctpPort;
-	if (auto remote = remoteDescription())
-		remoteSctpPort = remote->sctpPort();
+	std::optional<string> remoteDataMid;
+	if (auto remote = remoteDescription()) {
+		remoteDataMid = remote->dataMid();
+	    remoteSctpPort = remote->sctpPort();
+	}
 
 	auto certificate = mCertificate.get(); // wait for certificate if not ready
 
 	{
 		std::lock_guard lock(mLocalDescriptionMutex);
 		mLocalDescription.emplace(std::move(description));
+		if (remoteDataMid)
+			mLocalDescription->setDataMid(*remoteDataMid);
+
 		mLocalDescription->setFingerprint(certificate->fingerprint());
 		mLocalDescription->setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
 		mLocalDescription->setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);

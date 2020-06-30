@@ -163,6 +163,8 @@ void Description::hintType(Type type) {
 	}
 }
 
+void Description::setDataMid(string mid) { mData.mid = mid; }
+
 void Description::setFingerprint(string fingerprint) {
 	mFingerprint.emplace(std::move(fingerprint));
 }
@@ -216,17 +218,7 @@ string Description::generateSdp(const string &eol) const {
 		sdp << " " << m.first; // mid
 	sdp << " " << mData.mid << eol;
 
-	// Data
-	const string dataDescription = "UDP/DTLS/SCTP webrtc-datachannel";
-	sdp << "m=application" << ' ' << (!mMedia.empty() ? 0 : 9) << ' ' << dataDescription << eol;
-	sdp << "c=IN IP4 0.0.0.0" << eol;
-	if (!mMedia.empty())
-		sdp << "a=bundle-only" << eol;
-	sdp << "a=mid:" << mData.mid << eol;
-	if (mData.sctpPort)
-		sdp << "a=sctp-port:" << *mData.sctpPort << eol;
-	if (mData.maxMessageSize)
-		sdp << "a=max-message-size:" << *mData.maxMessageSize << eol;
+	sdp << "a=msid-semantic: WMS" << eol;
 
 	// Non-data media
 	if (!mMedia.empty()) {
@@ -248,12 +240,28 @@ string Description::generateSdp(const string &eol) const {
 		}
 	}
 
+	// Data
+	const string dataDescription = "UDP/DTLS/SCTP webrtc-datachannel";
+	sdp << "m=application" << ' ' << (!mMedia.empty() ? 0 : 9) << ' ' << dataDescription << eol;
+	sdp << "c=IN IP4 0.0.0.0" << eol;
+	if (!mMedia.empty())
+		sdp << "a=bundle-only" << eol;
+	sdp << "a=mid:" << mData.mid << eol;
+	if (mData.sctpPort)
+		sdp << "a=sctp-port:" << *mData.sctpPort << eol;
+	if (mData.maxMessageSize)
+		sdp << "a=max-message-size:" << *mData.maxMessageSize << eol;
+
+
 	// Common
-	sdp << "a=ice-options:trickle" << eol;
+	if (!mEnded)
+		sdp << "a=ice-options:trickle" << eol;
+
 	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
 	sdp << "a=ice-pwd:" << mIcePwd << eol;
 	sdp << "a=setup:" << roleToString(mRole) << eol;
 	sdp << "a=tls-id:1" << eol;
+
 	if (mFingerprint)
 		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
 
