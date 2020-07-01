@@ -87,7 +87,7 @@ private:
 		string mid;
 		std::vector<string> attributes;
 	};
-	std::map<string, Media> mMedia; // by mid
+	std::map<int, Media> mMedia; // by m-line index
 
 	// Candidates
 	std::vector<Candidate> mCandidates;
