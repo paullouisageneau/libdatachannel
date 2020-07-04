@@ -86,9 +86,8 @@ void init() {
 
 	std::lock_guard lock(mutex);
 	if (!done) {
-		OPENSSL_init_ssl(0, NULL);
-		SSL_load_error_strings();
-		ERR_load_crypto_strings();
+		OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr);
+		OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr);
 		done = true;
 	}
 }
