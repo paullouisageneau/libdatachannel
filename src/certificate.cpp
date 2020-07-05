@@ -201,8 +201,8 @@ certificate_ptr make_certificate_impl(string commonName) {
 	auto *commonNameBytes =
 	    reinterpret_cast<unsigned char *>(const_cast<char *>(commonName.c_str()));
 
-	if (!X509_gmtime_adj(X509_get_notBefore(x509.get()), 3600 * -1) ||
-	    !X509_gmtime_adj(X509_get_notAfter(x509.get()), 3600 * 24 * 365) ||
+	if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 3600 * -1) ||
+	    !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 3600 * 24 * 365) ||
 	    !X509_set_version(x509.get(), 1) || !X509_set_pubkey(x509.get(), pkey.get()) ||
 	    !BN_pseudo_rand(serial_number.get(), serialSize, 0, 0) ||
 	    !BN_to_ASN1_INTEGER(serial_number.get(), X509_get_serialNumber(x509.get())) ||

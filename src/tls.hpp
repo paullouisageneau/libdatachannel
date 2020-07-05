@@ -60,6 +60,8 @@ gnutls_datum_t make_datum(char *data, size_t size);
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
+#include <openssl/rsa.h>
+#include <openssl/bn.h>
 
 #ifndef BIO_EOF
 #define BIO_EOF -1
