@@ -502,7 +502,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 			mDataChannels.insert(std::make_pair(message->stream, channel));
 		} else {
 			// Invalid, close the DataChannel
-			sctpTransport->close(message->stream);
+			sctpTransport->closeStream(message->stream);
 			return;
 		}
 	}

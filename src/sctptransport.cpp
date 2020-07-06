@@ -186,11 +186,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 
 SctpTransport::~SctpTransport() {
 	stop();
-
-	if (mSock)
-		usrsctp_close(mSock);
-
-	usrsctp_deregister_address(this);
+	close();
 }
 
 bool SctpTransport::stop() {
@@ -207,6 +203,24 @@ bool SctpTransport::stop() {
 	shutdown();
 	onRecv(nullptr);
 	return true;
+}
+
+// Workaround for sctplab/usrsctp#405: Send callback is invoked on already closed socket
+// https://github.com/sctplab/usrsctp/issues/405
+// Internal function of usrsctp to reset the send callback before calling close
+extern "C" {
+int register_send_cb(struct socket *, uint32_t, int (*)(struct socket *, uint32_t));
+}
+
+void SctpTransport::close() {
+	if (mSock) {
+		// Workaround for sctplab/usrsctp#405
+		// TODO: Remove when the issue is fixed
+		register_send_cb(mSock, 0, nullptr);
+
+		usrsctp_close(mSock);
+		mSock = nullptr;
+	}
 }
 
 void SctpTransport::connect() {
@@ -245,9 +259,7 @@ void SctpTransport::shutdown() {
 		PLOG_WARNING << "SCTP shutdown failed, errno=" << errno;
 	}
 
-	// close() abort the connection when linger is disabled, call it now
-	usrsctp_close(mSock);
-	mSock = nullptr;
+	close();
 
 	PLOG_INFO << "SCTP disconnected";
 	changeState(State::Disconnected);
@@ -271,7 +283,7 @@ bool SctpTransport::send(message_ptr message) {
 	return false;
 }
 
-void SctpTransport::close(unsigned int stream) {
+void SctpTransport::closeStream(unsigned int stream) {
 	send(make_message(0, Message::Reset, uint16_t(stream)));
 }
 
@@ -507,9 +519,9 @@ int SctpTransport::handleSend(size_t free) {
 
 int SctpTransport::handleWrite(byte *data, size_t len, uint8_t /*tos*/, uint8_t /*set_df*/) {
 	try {
+		std::unique_lock lock(mWriteMutex);
 		PLOG_VERBOSE << "Handle write, len=" << len;
 
-		std::unique_lock lock(mWriteMutex);
 		if (!outgoing(make_message(data, data + len)))
 			return -1;
 
@@ -633,7 +645,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 		if (flags & SCTP_STREAM_RESET_OUTGOING_SSN) {
 			for (int i = 0; i < count; ++i) {
 				uint16_t streamId = reset_event.strreset_stream_list[i];
-				close(streamId);
+				closeStream(streamId);
 			}
 		}
 		if (flags & SCTP_STREAM_RESET_INCOMING_SSN) {
