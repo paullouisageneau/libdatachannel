@@ -214,7 +214,7 @@ string Description::generateSdp(const string &eol) const {
 	// see Negotiating Media Multiplexing Using the Session Description Protocol
 	// https://tools.ietf.org/html/draft-ietf-mmusic-sdp-bundle-negotiation-54
 	sdp << "a=group:BUNDLE";
-	for (int i = 0; i < mMedia.size() + 1; ++i)
+	for (int i = 0; i < int(mMedia.size() + 1); ++i)
 		if (auto it = mMedia.find(i); it != mMedia.end())
 			sdp << ' ' << it->second.mid;
 		else
@@ -233,7 +233,7 @@ string Description::generateSdp(const string &eol) const {
 	}
 
 	// Descriptions and attributes
-	for (int i = 0; i < mMedia.size() + 1; ++i) {
+	for (int i = 0; i < int(mMedia.size() + 1); ++i) {
 		if (auto it = mMedia.find(i); it != mMedia.end()) {
 			// Non-data media
 			const auto &media = it->second;

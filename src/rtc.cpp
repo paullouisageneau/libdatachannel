@@ -487,7 +487,7 @@ int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb) {
 			    },
 			    [id, cb](const string &s) {
 				    if (auto ptr = getUserPointer(id))
-					    cb(s.c_str(), -(s.size() + 1), *ptr);
+					    cb(s.c_str(), -int(s.size() + 1), *ptr);
 			    });
 		else
 			channel->onMessage(nullptr);
