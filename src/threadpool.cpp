@@ -20,6 +20,11 @@
 
 namespace rtc {
 
+ThreadPool &ThreadPool::Instance() {
+	static ThreadPool instance;
+	return instance;
+}
+
 ThreadPool::ThreadPool(int count) { spawn(count); }
 
 ThreadPool::~ThreadPool() { join(); }

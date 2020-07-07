@@ -37,12 +37,11 @@ using invoke_future_t = std::future<std::invoke_result_t<std::decay_t<F>, std::d
 
 class ThreadPool final {
 public:
-	explicit ThreadPool(int count);
+	static ThreadPool &Instance();
 	ThreadPool(const ThreadPool &) = delete;
 	ThreadPool &operator=(const ThreadPool &) = delete;
 	ThreadPool(ThreadPool &&) = delete;
 	ThreadPool &operator=(ThreadPool &&) = delete;
-	~ThreadPool();
 
 	int count() const;
 	void spawn(int count = 1);
@@ -54,6 +53,9 @@ public:
 	auto enqueue(F &&f, Args &&... args) -> invoke_future_t<F, Args...>;
 
 protected:
+	explicit ThreadPool(int count = 0);
+	~ThreadPool();
+
 	std::function<void()> dequeue(); // returns null function if joining
 
 	std::vector<std::thread> mWorkers;
