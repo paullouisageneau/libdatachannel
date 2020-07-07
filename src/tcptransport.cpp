@@ -107,6 +107,7 @@ bool TcpTransport::stop() {
 }
 
 bool TcpTransport::send(message_ptr message) {
+	std::unique_lock lock(mSockMutex);
 	if (state() != State::Connected)
 		return false;
 
@@ -126,6 +127,7 @@ void TcpTransport::incoming(message_ptr message) {
 }
 
 bool TcpTransport::outgoing(message_ptr message) {
+	// mSockMutex must be locked
 	// If nothing is pending, try to send directly
 	// It's safe because if the queue is empty, the thread is not sending
 	if (mSendQueue.empty() && trySendMessage(message))
@@ -174,6 +176,7 @@ void TcpTransport::connect(const string &hostname, const string &service) {
 }
 
 void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
+	std::unique_lock lock(mSockMutex);
 	try {
 		char node[MAX_NUMERICNODE_LEN];
 		char serv[MAX_NUMERICSERV_LEN];
@@ -248,15 +251,18 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 }
 
 void TcpTransport::close() {
+	std::unique_lock lock(mSockMutex);
 	if (mSock != INVALID_SOCKET) {
 		PLOG_DEBUG << "Closing TCP socket";
 		::closesocket(mSock);
 		mSock = INVALID_SOCKET;
 	}
 	changeState(State::Disconnected);
+	interruptSelect();
 }
 
 bool TcpTransport::trySendQueue() {
+	// mSockMutex must be locked
 	while (auto next = mSendQueue.peek()) {
 		auto message = *next;
 		if (!trySendMessage(message)) {
@@ -269,6 +275,7 @@ bool TcpTransport::trySendQueue() {
 }
 
 bool TcpTransport::trySendMessage(message_ptr &message) {
+	// mSockMutex must be locked
 	auto data = reinterpret_cast<const char *>(message->data());
 	auto size = message->size();
 	while (size) {
@@ -314,13 +321,19 @@ void TcpTransport::runLoop() {
 		changeState(State::Connected);
 
 		while (true) {
+			std::unique_lock lock(mSockMutex);
+			if (mSock == INVALID_SOCKET)
+				break;
+
 			fd_set readfds, writefds;
 			int n = prepareSelect(readfds, writefds);
 
 			struct timeval tv;
 			tv.tv_sec = 10;
 			tv.tv_usec = 0;
+			lock.unlock();
 			int ret = ::select(n, &readfds, &writefds, NULL, &tv);
+			lock.lock();
 			if (ret < 0) {
 				throw std::runtime_error("Failed to wait on socket");
 			} else if (ret == 0) {

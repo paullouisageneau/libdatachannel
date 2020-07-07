@@ -21,6 +21,7 @@
 #include "certificate.hpp"
 #include "dtlstransport.hpp"
 #include "sctptransport.hpp"
+#include "threadpool.hpp"
 #include "tls.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
@@ -72,6 +73,8 @@ Init::Init() {
 		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
 #endif
 
+	ThreadPool::Instance().spawn(THREADPOOL_SIZE);
+
 #if USE_GNUTLS
 		// Nothing to do
 #else
@@ -97,6 +100,8 @@ Init::~Init() {
 #if RTC_ENABLE_MEDIA
 	DtlsSrtpTransport::Cleanup();
 #endif
+
+	ThreadPool::Instance().join();
 
 #ifdef _WIN32
 	WSACleanup();

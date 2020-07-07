@@ -16,68 +16,69 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_THREADPOOL_H
-#define RTC_THREADPOOL_H
+#ifndef RTC_PROCESSOR_H
+#define RTC_PROCESSOR_H
 
 #include "include.hpp"
+#include "threadpool.hpp"
 
 #include <condition_variable>
-#include <functional>
 #include <future>
 #include <memory>
 #include <mutex>
 #include <queue>
-#include <stdexcept>
-#include <thread>
-#include <vector>
 
 namespace rtc {
 
-template <class F, class... Args>
-using invoke_future_t = std::future<std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>>;
-
-class ThreadPool final {
+class Processor final {
 public:
-	static ThreadPool &Instance();
+	Processor() = default;
+	~Processor();
 
-	ThreadPool(const ThreadPool &) = delete;
-	ThreadPool &operator=(const ThreadPool &) = delete;
-	ThreadPool(ThreadPool &&) = delete;
-	ThreadPool &operator=(ThreadPool &&) = delete;
+	Processor(const Processor &) = delete;
+	Processor &operator=(const Processor &) = delete;
+	Processor(Processor &&) = delete;
+	Processor &operator=(Processor &&) = delete;
 
-	int count() const;
-	void spawn(int count = 1);
 	void join();
-	void run();
-	bool runOne();
 
 	template <class F, class... Args>
 	auto enqueue(F &&f, Args &&... args) -> invoke_future_t<F, Args...>;
 
 protected:
-	ThreadPool() = default;
-	~ThreadPool();
+	void schedule();
 
-	std::function<void()> dequeue(); // returns null function if joining
-
-	std::vector<std::thread> mWorkers;
 	std::queue<std::function<void()>> mTasks;
-	std::atomic<bool> mJoining = false;
+	bool mPending = false;
 
-	mutable std::mutex mMutex, mWorkersMutex;
+	mutable std::mutex mMutex;
 	std::condition_variable mCondition;
 };
 
 template <class F, class... Args>
-auto ThreadPool::enqueue(F &&f, Args &&... args) -> invoke_future_t<F, Args...> {
+auto Processor::enqueue(F &&f, Args &&... args) -> invoke_future_t<F, Args...> {
 	std::unique_lock lock(mMutex);
 	using R = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
 	auto task = std::make_shared<std::packaged_task<R()>>(
 	    std::bind(std::forward<F>(f), std::forward<Args>(args)...));
 	std::future<R> result = task->get_future();
 
-	mTasks.emplace([task = std::move(task)]() { return (*task)(); });
-	mCondition.notify_one();
+	auto bundle = [this, task = std::move(task)]() {
+		try {
+			(*task)();
+		} catch (const std::exception &e) {
+			PLOG_WARNING << "Unhandled exception in task: " << e.what();
+		}
+		schedule();
+	};
+
+	if (!mPending) {
+		ThreadPool::Instance().enqueue(std::move(bundle));
+		mPending = true;
+	} else {
+		mTasks.emplace(std::move(bundle));
+	}
+
 	return result;
 }
 

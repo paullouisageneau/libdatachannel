@@ -25,40 +25,32 @@ ThreadPool &ThreadPool::Instance() {
 	return instance;
 }
 
-ThreadPool::ThreadPool(int count) { spawn(count); }
-
 ThreadPool::~ThreadPool() { join(); }
 
 int ThreadPool::count() const {
-	std::unique_lock lock(mMutex);
+	std::unique_lock lock(mWorkersMutex);
 	return mWorkers.size();
 }
 
 void ThreadPool::spawn(int count) {
-	std::unique_lock lock(mMutex);
+	std::unique_lock lock(mWorkersMutex);
+	mJoining = false;
 	while (count-- > 0)
 		mWorkers.emplace_back(std::bind(&ThreadPool::run, this));
 }
 
 void ThreadPool::join() {
-	try {
-		std::unique_lock lock(mMutex);
-		mJoining = true;
-		mCondition.notify_all();
+	std::unique_lock lock(mWorkersMutex);
+	mJoining = true;
+	mCondition.notify_all();
 
-		auto workers = std::move(mWorkers);
-		mWorkers.clear();
+	for (auto &w : mWorkers)
+		if (w.get_id() == std::this_thread::get_id())
+			w.detach(); // detach ourselves
+		else
+			w.join(); // join others
 
-		lock.unlock();
-		for (auto &w : workers)
-			w.join();
-
-	} catch (...) {
-		mJoining = false;
-		throw;
-	}
-
-	mJoining = false;
+	mWorkers.clear();
 }
 
 void ThreadPool::run() {

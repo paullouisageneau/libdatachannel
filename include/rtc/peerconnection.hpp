@@ -41,6 +41,7 @@
 namespace rtc {
 
 class Certificate;
+class Processor;
 class IceTransport;
 class DtlsTransport;
 class SctpTransport;
@@ -139,10 +140,10 @@ private:
 
 	void outgoingMedia(message_ptr message);
 
+	const init_token mInitToken = Init::Token();
 	const Configuration mConfig;
 	const future_certificate_ptr mCertificate;
-
-	init_token mInitToken = Init::Token();
+	const std::unique_ptr<Processor> mProcessor;
 
 	std::optional<Description> mLocalDescription, mRemoteDescription;
 	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
