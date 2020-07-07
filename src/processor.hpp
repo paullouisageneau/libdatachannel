@@ -30,6 +30,7 @@
 
 namespace rtc {
 
+// Processed tasks in order by delegating them to the thread pool
 class Processor final {
 public:
 	Processor() = default;
@@ -49,7 +50,7 @@ protected:
 	void schedule();
 
 	std::queue<std::function<void()>> mTasks;
-	bool mPending = false;
+	bool mPending = false; // true iff a task is pending in the thread pool
 
 	mutable std::mutex mMutex;
 	std::condition_variable mCondition;
@@ -69,7 +70,7 @@ auto Processor::enqueue(F &&f, Args &&... args) -> invoke_future_t<F, Args...> {
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Unhandled exception in task: " << e.what();
 		}
-		schedule();
+		schedule(); // chain the next task
 	};
 
 	if (!mPending) {
