@@ -89,12 +89,10 @@ rule make_libusrsctp ( targets * : sources * : properties * )
 {
 	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
 	VARIANT on $(targets) = $(VARIANT) ;
-	BUILD_DIR on $(targets) = "build-$(VARIANT)" ;
-
 	if <gnutls>on in $(properties)
-	{ BUILD_DIR on $(targets) += "-gnutls" ; }
+	{ BUILD_DIR on $(targets) = "build-gnutls-$(VARIANT)" ; }
 	else
-	{ BUILD_DIR on $(targets) += "-openssl" ; }
+	{ BUILD_DIR on $(targets) = "build-openssl-$(VARIANT)" ; }
 }
 actions make_libusrsctp
 {
@@ -105,12 +103,10 @@ rule make_libusrsctp_msvc ( targets * : sources * : properties * )
 {
 	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
 	VARIANT on $(targets) = $(VARIANT) ;
-	BUILD_DIR on $(targets) = "build-$(VARIANT)" ;
-
 	if <gnutls>on in $(properties)
-	{ BUILD_DIR on $(targets) += "-gnutls" ; }
+	{ BUILD_DIR on $(targets) = "build-gnutls-$(VARIANT)" ; }
 	else
-	{ BUILD_DIR on $(targets) += "-openssl" ; }
+	{ BUILD_DIR on $(targets) = "build-openssl-$(VARIANT)" ; }
 }
 actions make_libusrsctp_msvc
 {
@@ -131,11 +127,9 @@ rule make_libjuice ( targets * : sources * : properties * )
 {
 	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
 	VARIANT on $(targets) = $(VARIANT) ;
-	BUILD_DIR on $(targets) = "build-$(VARIANT)" ;
-
 	if <gnutls>on in $(properties)
 	{
-		BUILD_DIR on $(targets) += "-gnutls" ;
+		BUILD_DIR on $(targets) = "build-gnutls-$(VARIANT)" ;
 		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=1" ;
 	}
 	else
@@ -149,7 +143,7 @@ rule make_libjuice ( targets * : sources * : properties * )
 			OPENSSL_INCLUDE = /usr/local/opt/openssl/include ;
 		}
 
-		BUILD_DIR on $(targets) += "-openssl" ;
+		BUILD_DIR on $(targets) = "build-openssl-$(VARIANT)" ;
 		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=0" ;
 		if $(OPENSSL_INCLUDE) != ""
 		{ CMAKEOPTS on $(targets) += " -DOPENSSL_ROOT_DIR=$(OPENSSL_INCLUDE)/.." ; }
@@ -164,16 +158,14 @@ rule make_libjuice_msvc ( targets * : sources * : properties * )
 {
 	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
 	VARIANT on $(targets) = $(VARIANT) ;
-	BUILD_DIR on $(targets) = "build-$(VARIANT)" ;
-
 	if <gnutls>on in $(properties)
 	{
-		BUILD_DIR on $(targets) += "-gnutls" ;
+		BUILD_DIR on $(targets) += "build-gnutls-$(VARIANT)" ;
 		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=1" ;
 	}
 	else
 	{
-		BUILD_DIR on $(targets) += "-openssl" ;
+		BUILD_DIR on $(targets) += "build-openssl-$(VARIANT)" ;
 		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=0" ;
 	}
 }
