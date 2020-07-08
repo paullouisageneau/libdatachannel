@@ -20,6 +20,7 @@
 #define RTC_THREADPOOL_H
 
 #include "include.hpp"
+#include "init.hpp"
 
 #include <condition_variable>
 #include <functional>
@@ -76,7 +77,7 @@ auto ThreadPool::enqueue(F &&f, Args &&... args) -> invoke_future_t<F, Args...> 
 	    std::bind(std::forward<F>(f), std::forward<Args>(args)...));
 	std::future<R> result = task->get_future();
 
-	mTasks.emplace([task = std::move(task)]() { return (*task)(); });
+	mTasks.emplace([task = std::move(task), token = Init::Token()]() { return (*task)(); });
 	mCondition.notify_one();
 	return result;
 }

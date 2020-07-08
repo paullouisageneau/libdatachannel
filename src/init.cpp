@@ -57,13 +57,12 @@ init_token Init::Token() {
 }
 
 void Init::Preload() {
-	Token();                   // pre-init
+	init_token token = Token(); // pre-init
 	make_certificate().wait(); // preload certificate
 }
 
 void Init::Cleanup() {
 	Global.reset();
-	CleanupCertificateCache();
 }
 
 Init::Init() {
@@ -96,6 +95,10 @@ Init::Init() {
 Init::~Init() {
 	// We need to lock Mutex ourselves
 	std::lock_guard lock(Mutex);
+	if (Global)
+		return;
+
+	CleanupCertificateCache();
 
 	SctpTransport::Cleanup();
 	DtlsTransport::Cleanup();
