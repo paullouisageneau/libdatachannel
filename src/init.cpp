@@ -43,6 +43,8 @@ namespace rtc {
 namespace {
 
 void doInit() {
+	PLOG_DEBUG << "Global initialization";
+
 #ifdef _WIN32
 	WSADATA wsaData;
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
@@ -52,7 +54,7 @@ void doInit() {
 	ThreadPool::Instance().spawn(THREADPOOL_SIZE);
 
 #if USE_GNUTLS
-		// Nothing to do
+	// Nothing to do
 #else
 	openssl::init();
 #endif
@@ -68,6 +70,8 @@ void doInit() {
 }
 
 void doCleanup() {
+	PLOG_DEBUG << "Global cleanup";
+
 	ThreadPool::Instance().join();
 	CleanupCertificateCache();
 
@@ -112,7 +116,8 @@ init_token Init::Load(bool preloading) {
 
 void Init::Preload() {
 	init_token token = Load(true);
-	make_certificate().wait();  // preload certificate
+	PLOG_DEBUG << "Preloading certificate";
+	make_certificate().wait();
 }
 
 void Init::Cleanup() {
@@ -127,14 +132,9 @@ Init::Init() {
 }
 
 Init::~Init() {
-	std::thread t([]() {
-		// We need to lock Mutex ourselves
-		std::lock_guard lock(Mutex);
-		if (Weak.lock())
-			return;
-
-		doCleanup();
-	});
+	// We need to lock Mutex ourselves
+	std::unique_lock lock(Mutex);
+	std::thread t([lock = std::move(lock)]() { doCleanup(); });
 	t.detach();
 }
 
