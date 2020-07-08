@@ -67,6 +67,8 @@ void Init::Cleanup() {
 }
 
 Init::Init() {
+	// Mutex is locked by Token() here
+
 #ifdef _WIN32
 	WSADATA wsaData;
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
@@ -92,6 +94,9 @@ Init::Init() {
 }
 
 Init::~Init() {
+	// We need to lock Mutex ourselves
+	std::lock_guard lock(Mutex);
+
 	SctpTransport::Cleanup();
 	DtlsTransport::Cleanup();
 #if RTC_ENABLE_WEBSOCKET
