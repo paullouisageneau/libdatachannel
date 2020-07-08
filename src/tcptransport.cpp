@@ -38,8 +38,8 @@ SelectInterrupter::SelectInterrupter() {
 		throw std::runtime_error("Failed to create pipe");
 	::fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
 	::fcntl(pipefd[1], F_SETFL, O_NONBLOCK);
-	mPipeOut = pipefd[0]; // read
-	mPipeIn = pipefd[1];  // write
+	mPipeOut = pipefd[1]; // read
+	mPipeIn = pipefd[0];  // write
 #endif
 }
 
@@ -62,11 +62,8 @@ int SelectInterrupter::prepare(fd_set &readfds, fd_set &writefds) {
 	FD_SET(mDummySock, &readfds);
 	return SOCKET_TO_INT(mDummySock) + 1;
 #else
-	int ret;
-	do {
-		char dummy;
-		ret = ::read(mPipeIn, &dummy, 1);
-	} while (ret > 0);
+	char dummy;
+	::read(mPipeIn, &dummy, 1);
 	FD_SET(mPipeIn, &readfds);
 	return mPipeIn + 1;
 #endif
@@ -334,6 +331,9 @@ void TcpTransport::runLoop() {
 			lock.unlock();
 			int ret = ::select(n, &readfds, &writefds, NULL, &tv);
 			lock.lock();
+			if (mSock == INVALID_SOCKET)
+				break;
+
 			if (ret < 0) {
 				throw std::runtime_error("Failed to wait on socket");
 			} else if (ret == 0) {
