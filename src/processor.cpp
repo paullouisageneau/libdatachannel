@@ -16,37 +16,29 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_INIT_H
-#define RTC_INIT_H
-
-#include "include.hpp"
-
-#include <mutex>
+#include "processor.hpp"
 
 namespace rtc {
 
-using init_token = std::shared_ptr<void>;
+Processor::~Processor() { join(); }
 
-class Init {
-public:
-	static init_token Token();
-	static void Preload();
-	static void Cleanup();
+void Processor::join() {
+	std::unique_lock lock(mMutex);
+	mCondition.wait(lock, [this]() { return !mPending && mTasks.empty(); });
+}
 
-	~Init();
+void Processor::schedule() {
+	std::unique_lock lock(mMutex);
+	if (mTasks.empty()) {
+		// No more tasks
+		mPending = false;
+		mCondition.notify_all();
+		return;
+	}
 
-private:
-	Init();
-
-	static std::weak_ptr<void> Weak;
-	static std::shared_ptr<void> *Global;
-	static bool Initialized;
-	static std::recursive_mutex Mutex;
-};
-
-inline void Preload() { Init::Preload(); }
-inline void Cleanup() { Init::Cleanup(); }
+	ThreadPool::Instance().enqueue(std::move(mTasks.front()));
+	mTasks.pop();
+}
 
 } // namespace rtc
 
-#endif

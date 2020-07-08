@@ -18,8 +18,9 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
-#include "include.hpp"
 #include "websocket.hpp"
+#include "include.hpp"
+#include "threadpool.hpp"
 
 #include "tcptransport.hpp"
 #include "tlstransport.hpp"
@@ -301,21 +302,18 @@ void WebSocket::closeTransports() {
 	auto ws = std::atomic_exchange(&mWsTransport, decltype(mWsTransport)(nullptr));
 	auto tls = std::atomic_exchange(&mTlsTransport, decltype(mTlsTransport)(nullptr));
 	auto tcp = std::atomic_exchange(&mTcpTransport, decltype(mTcpTransport)(nullptr));
-	if (ws || tls || tcp) {
-		std::thread t([ws, tls, tcp, token = mInitToken]() mutable {
-			if (ws)
-				ws->stop();
-			if (tls)
-				tls->stop();
-			if (tcp)
-				tcp->stop();
+	ThreadPool::Instance().enqueue([ws, tls, tcp]() mutable {
+		if (ws)
+			ws->stop();
+		if (tls)
+			tls->stop();
+		if (tcp)
+			tcp->stop();
 
-			ws.reset();
-			tls.reset();
-			tcp.reset();
-		});
-		t.detach();
-	}
+		ws.reset();
+		tls.reset();
+		tcp.reset();
+	});
 }
 
 } // namespace rtc

@@ -72,7 +72,7 @@ void test_websocket() {
 		throw runtime_error("Expected message not received");
 
 	ws->close();
-	this_thread::sleep_for(1s);
+	this_thread::sleep_for(2s);
 
 	// You may call rtc::Cleanup() when finished to free static resources
 	rtc::Cleanup();

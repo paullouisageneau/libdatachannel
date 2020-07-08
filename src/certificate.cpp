@@ -17,6 +17,7 @@
  */
 
 #include "certificate.hpp"
+#include "threadpool.hpp"
 
 #include <cassert>
 #include <chrono>
@@ -230,19 +231,6 @@ namespace rtc {
 
 namespace {
 
-// Helper function roughly equivalent to std::async with policy std::launch::async
-// since std::async might be unreliable on some platforms (e.g. Mingw32 on Windows)
-template <class F, class... Args>
-std::future<std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>>
-thread_call(F &&f, Args &&... args) {
-	using R = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
-	std::packaged_task<R()> task(std::bind(f, std::forward<Args>(args)...));
-	std::future<R> future = task.get_future();
-	std::thread t(std::move(task));
-	t.detach();
-	return future;
-}
-
 static std::unordered_map<string, future_certificate_ptr> CertificateCache;
 static std::mutex CertificateCacheMutex;
 
@@ -254,7 +242,7 @@ future_certificate_ptr make_certificate(string commonName) {
 	if (auto it = CertificateCache.find(commonName); it != CertificateCache.end())
 		return it->second;
 
-	auto future = thread_call(make_certificate_impl, commonName);
+	auto future = ThreadPool::Instance().enqueue(make_certificate_impl, commonName);
 	auto shared = future.share();
 	CertificateCache.emplace(std::move(commonName), shared);
 	return shared;

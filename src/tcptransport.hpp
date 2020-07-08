@@ -78,6 +78,7 @@ private:
 	string mHostname, mService;
 
 	socket_t mSock = INVALID_SOCKET;
+	std::mutex mSockMutex;
 	std::thread mThread;
 	SelectInterrupter mInterrupter;
 	Queue<message_ptr> mSendQueue;

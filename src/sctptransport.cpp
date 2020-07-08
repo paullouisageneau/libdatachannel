@@ -410,7 +410,7 @@ void SctpTransport::updateBufferedAmount(uint16_t streamId, long delta) {
 	try {
 		mBufferedAmountCallback(streamId, amount);
 	} catch (const std::exception &e) {
-		PLOG_WARNING << "SCTP buffered amount callback: " << e.what();
+		PLOG_DEBUG << "SCTP buffered amount callback: " << e.what();
 	}
 	mSendMutex.lock();
 }

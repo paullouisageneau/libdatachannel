@@ -18,9 +18,12 @@
 
 #include "peerconnection.hpp"
 #include "certificate.hpp"
+#include "include.hpp"
+#include "processor.hpp"
+#include "threadpool.hpp"
+
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
-#include "include.hpp"
 #include "sctptransport.hpp"
 
 #if RTC_ENABLE_MEDIA
@@ -39,8 +42,8 @@ using std::weak_ptr;
 PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 
 PeerConnection::PeerConnection(const Configuration &config)
-    : mConfig(config), mCertificate(make_certificate()), mState(State::New),
-      mGatheringState(GatheringState::New) {
+    : mConfig(config), mCertificate(make_certificate()), mProcessor(std::make_unique<Processor>()),
+      mState(State::New), mGatheringState(GatheringState::New) {
 	PLOG_VERBOSE << "Creating PeerConnection";
 
 	if (config.portRangeEnd && config.portRangeBegin > config.portRangeEnd)
@@ -145,6 +148,7 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 		iceTransport->addRemoteCandidate(candidate);
 	} else {
 		// OK, we might need a lookup, do it asynchronously
+		// We don't use the thread pool because we have no control on the timeout
 		weak_ptr<IceTransport> weakIceTransport{iceTransport};
 		std::thread t([weakIceTransport, candidate]() mutable {
 			if (candidate.resolve(Candidate::ResolveMode::Lookup))
@@ -445,21 +449,18 @@ void PeerConnection::closeTransports() {
 	auto sctp = std::atomic_exchange(&mSctpTransport, decltype(mSctpTransport)(nullptr));
 	auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
 	auto ice = std::atomic_exchange(&mIceTransport, decltype(mIceTransport)(nullptr));
-	if (sctp || dtls || ice) {
-		std::thread t([sctp, dtls, ice, token = mInitToken]() mutable {
-			if (sctp)
-				sctp->stop();
-			if (dtls)
-				dtls->stop();
-			if (ice)
-				ice->stop();
+	ThreadPool::Instance().enqueue([sctp, dtls, ice]() mutable {
+		if (sctp)
+			sctp->stop();
+		if (dtls)
+			dtls->stop();
+		if (ice)
+			ice->stop();
 
-			sctp.reset();
-			dtls.reset();
-			ice.reset();
-		});
-		t.detach();
-	}
+		sctp.reset();
+		dtls.reset();
+		ice.reset();
+	});
 }
 
 void PeerConnection::endLocalCandidates() {
@@ -613,7 +614,7 @@ void PeerConnection::processLocalDescription(Description description) {
 		mLocalDescription->setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
 	}
 
-	mLocalDescriptionCallback(*mLocalDescription);
+	mProcessor->enqueue([this]() { mLocalDescriptionCallback(*mLocalDescription); });
 }
 
 void PeerConnection::processLocalCandidate(Candidate candidate) {
@@ -623,7 +624,8 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 
 	mLocalDescription->addCandidate(candidate);
 
-	mLocalCandidateCallback(candidate);
+	mProcessor->enqueue(
+	    [this, candidate = std::move(candidate)]() { mLocalCandidateCallback(candidate); });
 }
 
 void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
@@ -631,7 +633,8 @@ void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 	if (!dataChannel)
 		return;
 
-	mDataChannelCallback(dataChannel);
+	mProcessor->enqueue(
+	    [this, dataChannel = std::move(dataChannel)]() { mDataChannelCallback(dataChannel); });
 }
 
 bool PeerConnection::changeState(State state) {
@@ -645,13 +648,13 @@ bool PeerConnection::changeState(State state) {
 
 	} while (!mState.compare_exchange_weak(current, state));
 
-	mStateChangeCallback(state);
+	mProcessor->enqueue([this, state]() { mStateChangeCallback(state); });
 	return true;
 }
 
 bool PeerConnection::changeGatheringState(GatheringState state) {
 	if (mGatheringState.exchange(state) != state)
-		mGatheringStateChangeCallback(state);
+		mProcessor->enqueue([this, state] { mGatheringStateChangeCallback(state); });
 	return true;
 }
 

@@ -21,6 +21,7 @@
 #include "certificate.hpp"
 #include "dtlstransport.hpp"
 #include "sctptransport.hpp"
+#include "threadpool.hpp"
 #include "tls.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
@@ -39,41 +40,21 @@ using std::shared_ptr;
 
 namespace rtc {
 
-std::weak_ptr<Init> Init::Weak;
-init_token Init::Global;
-std::mutex Init::Mutex;
+namespace {
 
-init_token Init::Token() {
-	std::lock_guard lock(Mutex);
+void doInit() {
+	PLOG_DEBUG << "Global initialization";
 
-	if (!Global) {
-		if (auto token = Weak.lock())
-			Global = token;
-		else
-			Global = shared_ptr<Init>(new Init());
-	}
-	return Global;
-}
-
-void Init::Preload() {
-	Token();                   // pre-init
-	make_certificate().wait(); // preload certificate
-}
-
-void Init::Cleanup() {
-	Global.reset();
-	CleanupCertificateCache();
-}
-
-Init::Init() {
 #ifdef _WIN32
 	WSADATA wsaData;
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
 		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
 #endif
 
+	ThreadPool::Instance().spawn(THREADPOOL_SIZE);
+
 #if USE_GNUTLS
-		// Nothing to do
+	// Nothing to do
 #else
 	openssl::init();
 #endif
@@ -88,7 +69,12 @@ Init::Init() {
 #endif
 }
 
-Init::~Init() {
+void doCleanup() {
+	PLOG_DEBUG << "Global cleanup";
+
+	ThreadPool::Instance().join();
+	CleanupCertificateCache();
+
 	SctpTransport::Cleanup();
 	DtlsTransport::Cleanup();
 #if RTC_ENABLE_WEBSOCKET
@@ -101,6 +87,58 @@ Init::~Init() {
 #ifdef _WIN32
 	WSACleanup();
 #endif
+}
+
+} // namespace
+
+std::weak_ptr<void> Init::Weak;
+std::shared_ptr<void> *Init::Global = nullptr;
+bool Init::Initialized = false;
+std::recursive_mutex Init::Mutex;
+
+init_token Init::Token() {
+	std::unique_lock lock(Mutex);
+	if (auto token = Weak.lock())
+		return token;
+
+	delete Global;
+	Global = new shared_ptr<void>(new Init());
+	Weak = *Global;
+	return *Global;
+}
+
+void Init::Preload() {
+	std::unique_lock lock(Mutex);
+	auto token = Token();
+	if (!Global)
+		Global = new shared_ptr<void>(token);
+
+	PLOG_DEBUG << "Preloading certificate";
+	make_certificate().wait();
+}
+
+void Init::Cleanup() {
+	std::unique_lock lock(Mutex);
+	delete Global;
+	Global = nullptr;
+}
+
+Init::Init() {
+	// Mutex is locked by Token() here
+	if (!std::exchange(Initialized, true))
+		doInit();
+}
+
+Init::~Init() {
+	std::thread t([]() {
+		// We need to lock Mutex ourselves
+		std::unique_lock lock(Mutex);
+		if (Global)
+			return;
+		if (std::exchange(Initialized, false))
+			doCleanup();
+	});
+	t.detach();
 }
 
 } // namespace rtc

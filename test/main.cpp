@@ -18,6 +18,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <thread>
 
 using namespace std;
 using namespace chrono_literals;
@@ -71,7 +72,10 @@ int main(int argc, char **argv) {
 		cout << "*** Finished WebRTC benchmark" << endl;
 	} catch (const exception &e) {
 		cerr << "WebRTC benchmark failed: " << e.what() << endl;
+		std::this_thread::sleep_for(2s);
 		return -1;
 	}
+
+	std::this_thread::sleep_for(2s);
 	return 0;
 }
