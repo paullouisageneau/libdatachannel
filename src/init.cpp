@@ -133,6 +133,8 @@ Init::~Init() {
 	std::thread t([]() {
 		// We need to lock Mutex ourselves
 		std::unique_lock lock(Mutex);
+		if (Global)
+			return;
 		if (std::exchange(Initialized, false))
 			doCleanup();
 	});
