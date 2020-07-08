@@ -94,20 +94,12 @@ void doCleanup() {
 std::weak_ptr<void> Init::Weak;
 std::shared_ptr<void> *Init::Global = nullptr;
 bool Init::Initialized = false;
-std::mutex Init::Mutex;
+std::recursive_mutex Init::Mutex;
 
-init_token Init::Token() { return Load(false); }
-
-init_token Init::Load(bool preloading) {
-	std::lock_guard lock(Mutex);
-	if (auto token = Weak.lock()) {
-		if (preloading) {
-			// if preloading, set Global
-			delete Global;
-			Global = new shared_ptr<void>(token);
-		}
+init_token Init::Token() {
+	std::unique_lock lock(Mutex);
+	if (auto token = Weak.lock())
 		return token;
-	}
 
 	delete Global;
 	Global = new shared_ptr<void>(new Init());
@@ -116,31 +108,35 @@ init_token Init::Load(bool preloading) {
 }
 
 void Init::Preload() {
-	init_token token = Load(true);
+	std::unique_lock lock(Mutex);
+	auto token = Token();
+	if (!Global)
+		Global = new shared_ptr<void>(token);
+
 	PLOG_DEBUG << "Preloading certificate";
 	make_certificate().wait();
 }
 
 void Init::Cleanup() {
-	std::lock_guard lock(Mutex);
+	std::unique_lock lock(Mutex);
 	delete Global;
 	Global = nullptr;
 }
 
 Init::Init() {
 	// Mutex is locked by Token() here
-	if (!std::exchange(Initialized, true)) {
+	if (!std::exchange(Initialized, true))
 		doInit();
-	}
 }
 
 Init::~Init() {
-	// We need to lock Mutex ourselves
-	std::unique_lock lock(Mutex);
-	if (std::exchange(Initialized, false)) {
-		std::thread t([lock = std::move(lock)]() { doCleanup(); });
-		t.detach();
-	}
+	std::thread t([]() {
+		// We need to lock Mutex ourselves
+		std::unique_lock lock(Mutex);
+		if (std::exchange(Initialized, false))
+			doCleanup();
+	});
+	t.detach();
 }
 
 } // namespace rtc

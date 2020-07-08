@@ -37,12 +37,11 @@ public:
 
 private:
 	Init();
-	static init_token Load(bool preloading);
 
 	static std::weak_ptr<void> Weak;
 	static std::shared_ptr<void> *Global;
 	static bool Initialized;
-	static std::mutex Mutex;
+	static std::recursive_mutex Mutex;
 };
 
 inline void Preload() { Init::Preload(); }
