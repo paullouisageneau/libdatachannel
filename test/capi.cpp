@@ -200,7 +200,7 @@ int test_capi_main() {
 
 	// You may call rtcCleanup() when finished to free static resources
 	rtcCleanup();
-	sleep(1);
+	sleep(2);
 
 	printf("Success\n");
 	return 0;
