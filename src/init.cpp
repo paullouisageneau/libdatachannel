@@ -40,34 +40,9 @@ using std::shared_ptr;
 
 namespace rtc {
 
-std::weak_ptr<Init> Init::Weak;
-init_token Init::Global;
-std::mutex Init::Mutex;
+namespace {
 
-init_token Init::Token() {
-	std::lock_guard lock(Mutex);
-
-	if (!Global) {
-		if (auto token = Weak.lock())
-			Global = token;
-		else
-			Global = shared_ptr<Init>(new Init());
-	}
-	return Global;
-}
-
-void Init::Preload() {
-	init_token token = Token(); // pre-init
-	make_certificate().wait(); // preload certificate
-}
-
-void Init::Cleanup() {
-	Global.reset();
-}
-
-Init::Init() {
-	// Mutex is locked by Token() here
-
+void doInit() {
 #ifdef _WIN32
 	WSADATA wsaData;
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
@@ -92,12 +67,8 @@ Init::Init() {
 #endif
 }
 
-Init::~Init() {
-	// We need to lock Mutex ourselves
-	std::lock_guard lock(Mutex);
-	if (Global)
-		return;
-
+void doCleanup() {
+	ThreadPool::Instance().join();
 	CleanupCertificateCache();
 
 	SctpTransport::Cleanup();
@@ -109,11 +80,62 @@ Init::~Init() {
 	DtlsSrtpTransport::Cleanup();
 #endif
 
-	ThreadPool::Instance().join();
-
 #ifdef _WIN32
 	WSACleanup();
 #endif
+}
+
+} // namespace
+
+std::weak_ptr<void> Init::Weak;
+std::shared_ptr<void> *Init::Global = nullptr;
+std::mutex Init::Mutex;
+
+init_token Init::Token() { return Load(false); }
+
+init_token Init::Load(bool preloading) {
+	std::lock_guard lock(Mutex);
+	if (auto token = Weak.lock()) {
+		if (preloading) {
+			// if preloading, set Global
+			delete Global;
+			Global = new shared_ptr<void>(token);
+		}
+		return token;
+	}
+
+	delete Global;
+	Global = new shared_ptr<void>(new Init());
+	Weak = *Global;
+	return *Global;
+}
+
+void Init::Preload() {
+	init_token token = Load(true);
+	make_certificate().wait();  // preload certificate
+}
+
+void Init::Cleanup() {
+	std::lock_guard lock(Mutex);
+	delete Global;
+	Global = nullptr;
+}
+
+Init::Init() {
+	// Mutex is locked by Token() here
+	doInit();
+}
+
+Init::~Init() {
+	std::thread t([]() {
+		// We need to lock Mutex ourselves
+		std::lock_guard lock(Mutex);
+		if (Weak.lock())
+			return;
+
+		doCleanup();
+	});
+	t.detach();
 }
 
 } // namespace rtc

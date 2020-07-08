@@ -25,8 +25,7 @@
 
 namespace rtc {
 
-class Init;
-using init_token = std::shared_ptr<Init>;
+using init_token = std::shared_ptr<void>;
 
 class Init {
 public:
@@ -38,9 +37,10 @@ public:
 
 private:
 	Init();
+	static init_token Load(bool preloading);
 
-	static std::weak_ptr<Init> Weak;
-	static init_token Global;
+	static std::weak_ptr<void> Weak;
+	static std::shared_ptr<void> *Global;
 	static std::mutex Mutex;
 };
 
