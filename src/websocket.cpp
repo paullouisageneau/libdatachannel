@@ -302,7 +302,7 @@ void WebSocket::closeTransports() {
 	auto ws = std::atomic_exchange(&mWsTransport, decltype(mWsTransport)(nullptr));
 	auto tls = std::atomic_exchange(&mTlsTransport, decltype(mTlsTransport)(nullptr));
 	auto tcp = std::atomic_exchange(&mTcpTransport, decltype(mTcpTransport)(nullptr));
-	ThreadPool::Instance().enqueue([ws, tls, tcp, token = Init::Token()]() mutable {
+	ThreadPool::Instance().enqueue([ws, tls, tcp]() mutable {
 		if (ws)
 			ws->stop();
 		if (tls)

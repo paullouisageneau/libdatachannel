@@ -45,10 +45,7 @@ void ThreadPool::join() {
 	mCondition.notify_all();
 
 	for (auto &w : mWorkers)
-		if (w.get_id() == std::this_thread::get_id())
-			w.detach(); // detach ourselves
-		else
-			w.join(); // join others
+		w.join();
 
 	mWorkers.clear();
 }

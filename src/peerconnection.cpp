@@ -449,7 +449,7 @@ void PeerConnection::closeTransports() {
 	auto sctp = std::atomic_exchange(&mSctpTransport, decltype(mSctpTransport)(nullptr));
 	auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
 	auto ice = std::atomic_exchange(&mIceTransport, decltype(mIceTransport)(nullptr));
-	ThreadPool::Instance().enqueue([sctp, dtls, ice, token = mInitToken]() mutable {
+	ThreadPool::Instance().enqueue([sctp, dtls, ice]() mutable {
 		if (sctp)
 			sctp->stop();
 		if (dtls)

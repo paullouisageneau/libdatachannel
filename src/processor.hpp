@@ -20,6 +20,7 @@
 #define RTC_PROCESSOR_H
 
 #include "include.hpp"
+#include "init.hpp"
 #include "threadpool.hpp"
 
 #include <condition_variable>
@@ -48,6 +49,9 @@ public:
 
 protected:
 	void schedule();
+
+	// Keep an init token
+	const init_token mInitToken = Init::Token();
 
 	std::queue<std::function<void()>> mTasks;
 	bool mPending = false; // true iff a task is pending in the thread pool
