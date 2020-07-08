@@ -93,6 +93,7 @@ void doCleanup() {
 
 std::weak_ptr<void> Init::Weak;
 std::shared_ptr<void> *Init::Global = nullptr;
+bool Init::Initialized = false;
 std::mutex Init::Mutex;
 
 init_token Init::Token() { return Load(false); }
@@ -128,14 +129,18 @@ void Init::Cleanup() {
 
 Init::Init() {
 	// Mutex is locked by Token() here
-	doInit();
+	if (!std::exchange(Initialized, true)) {
+		doInit();
+	}
 }
 
 Init::~Init() {
 	// We need to lock Mutex ourselves
 	std::unique_lock lock(Mutex);
-	std::thread t([lock = std::move(lock)]() { doCleanup(); });
-	t.detach();
+	if (std::exchange(Initialized, false)) {
+		std::thread t([lock = std::move(lock)]() { doCleanup(); });
+		t.detach();
+	}
 }
 
 } // namespace rtc

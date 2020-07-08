@@ -41,6 +41,7 @@ private:
 
 	static std::weak_ptr<void> Weak;
 	static std::shared_ptr<void> *Global;
+	static bool Initialized;
 	static std::mutex Mutex;
 };
 
