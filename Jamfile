@@ -85,20 +85,37 @@ alias juice
 make libusrsctp.a : : @make_libusrsctp ;
 make usrsctp.lib : : @make_libusrsctp_msvc ;
 
+rule make_libusrsctp ( targets * : sources * : properties * )
+{
+	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
+	VARIANT on $(targets) = $(VARIANT) ;
+	if <gnutls>on in $(properties)
+	{ BUILD_DIR on $(targets) = "build-gnutls-$(VARIANT)" ; }
+	else
+	{ BUILD_DIR on $(targets) = "build-openssl-$(VARIANT)" ; }
+}
 actions make_libusrsctp
 {
-    (cd $(CWD)/deps/usrsctp && mkdir build && cd build && cmake -DCMAKE_C_FLAGS="-fPIC" .. && make -j2 usrsctp-static)
-    cp $(CWD)/deps/usrsctp/build/usrsctplib/libusrsctp.a $(<)
+    (cd $(CWD)/deps/usrsctp && mkdir $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(VARIANT) -DCMAKE_C_FLAGS="-fPIC" .. && make -j2 usrsctp-static)
+    cp $(CWD)/deps/usrsctp/$(BUILD_DIR)/usrsctplib/libusrsctp.a $(<)
+}
+rule make_libusrsctp_msvc ( targets * : sources * : properties * )
+{
+	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
+	VARIANT on $(targets) = $(VARIANT) ;
+	if <gnutls>on in $(properties)
+	{ BUILD_DIR on $(targets) = "build-gnutls-$(VARIANT)" ; }
+	else
+	{ BUILD_DIR on $(targets) = "build-openssl-$(VARIANT)" ; }
 }
 actions make_libusrsctp_msvc
 {
 	SET OLDD=%CD%
     cd $(CWD)/deps/usrsctp
-    mkdir build
-    cd build
+    mkdir $(BUILD_SIR)
+    cd $(BUILD_DIR)
     cmake -G "Visual Studio 16 2019" ..
-    cd build
-    msbuild usrsctplib.sln /property:Configuration=Release
+    msbuild usrsctplib.sln /property:Configuration=$(VARIANT)
     cd %OLDD%
     cp $(CWD)/deps/usrsctp/build/usrsctplib/Release/usrsctp.lib $(<)
 }
@@ -108,11 +125,15 @@ make juice-static.lib : : @make_libjuice_msvc ;
 
 rule make_libjuice ( targets * : sources * : properties * )
 {
+	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
+	VARIANT on $(targets) = $(VARIANT) ;
 	if <gnutls>on in $(properties)
 	{
+		BUILD_DIR on $(targets) = "build-gnutls-$(VARIANT)" ;
 		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=1" ;
 	}
-	else {
+	else
+	{
 		local OPENSSL_INCLUDE = [ feature.get-values <openssl-include> : $(properties) ] ;
 
 		if <target-os>darwin in $(properties) && $(OPENSSL_INCLUDE) = ""
@@ -122,26 +143,29 @@ rule make_libjuice ( targets * : sources * : properties * )
 			OPENSSL_INCLUDE = /usr/local/opt/openssl/include ;
 		}
 
+		BUILD_DIR on $(targets) = "build-openssl-$(VARIANT)" ;
 		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=0" ;
 		if $(OPENSSL_INCLUDE) != ""
-		{
-			CMAKEOPTS on $(targets) += " -DOPENSSL_ROOT_DIR=$(OPENSSL_INCLUDE)/.." ;
-		}
+		{ CMAKEOPTS on $(targets) += " -DOPENSSL_ROOT_DIR=$(OPENSSL_INCLUDE)/.." ; }
 	}
 }
 actions make_libjuice
 {
-    (cd $(CWD)/deps/libjuice && mkdir build && cd build && cmake -DCMAKE_C_FLAGS="-fPIC" $(CMAKEOPTS) .. && make -j2 juice-static)
-    cp $(CWD)/deps/libjuice/build/libjuice-static.a $(<)
+    (cd $(CWD)/deps/libjuice && mkdir $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=$(VARIANT) $(CMAKEOPTS) .. && make -j2 juice-static)
+    cp $(CWD)/deps/libjuice/$(BUILD_DIR)/libjuice-static.a $(<)
 }
 rule make_libjuice_msvc ( targets * : sources * : properties * )
 {
+	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
+	VARIANT on $(targets) = $(VARIANT) ;
 	if <gnutls>on in $(properties)
 	{
+		BUILD_DIR on $(targets) += "build-gnutls-$(VARIANT)" ;
 		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=1" ;
 	}
 	else
 	{
+		BUILD_DIR on $(targets) += "build-openssl-$(VARIANT)" ;
 		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=0" ;
 	}
 }
@@ -149,12 +173,12 @@ actions make_libjuice_msvc
 {
 	SET OLDD=%CD%
     cd $(CWD)/deps/libjuice
-    mkdir build
-    cd build
+    mkdir $(BUILD_DIR)
+    cd $(BUILD_DIR)
     cmake -G "Visual Studio 16 2019" $(CMAKEOPTS) ..
-    msbuild libjuice.sln /property:Configuration=Release
+    msbuild libjuice.sln /property:Configuration=$(VARIANT)
     cd %OLDD%
-    cp $(CWD)/deps/libjuice/build/Release/juice-static.lib $(<)
+    cp $(CWD)/deps/libjuice/$(BUILD_DIR)/Release/juice-static.lib $(<)
 }
 
 # the search path to pick up the openssl libraries from. This is the <search>
