@@ -50,6 +50,9 @@ using std::shared_ptr;
 
 namespace rtc {
 
+std::unordered_set<SctpTransport *> SctpTransport::Instances;
+std::shared_mutex SctpTransport::InstancesMutex;
+
 void SctpTransport::Init() {
 	usrsctp_init(0, &SctpTransport::WriteCallback, nullptr);
 	usrsctp_sysctl_set_sctp_ecn_enable(0);
@@ -92,6 +95,11 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 	PLOG_DEBUG << "Initializing SCTP transport";
 
 	usrsctp_register_address(this);
+	{
+		std::unique_lock lock(InstancesMutex);
+		Instances.insert(this);
+	}
+
 	mSock = usrsctp_socket(AF_CONN, SOCK_STREAM, IPPROTO_SCTP, &SctpTransport::RecvCallback,
 	                       &SctpTransport::SendCallback, 0, this);
 	if (!mSock)
@@ -187,7 +195,12 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 SctpTransport::~SctpTransport() {
 	stop();
 	close();
+
 	usrsctp_deregister_address(this);
+	{
+		std::unique_lock lock(InstancesMutex);
+		Instances.erase(this);
+	}
 }
 
 bool SctpTransport::stop() {
@@ -206,19 +219,8 @@ bool SctpTransport::stop() {
 	return true;
 }
 
-// Workaround for sctplab/usrsctp#405: Send callback is invoked on already closed socket
-// https://github.com/sctplab/usrsctp/issues/405
-// Internal function of usrsctp to reset the send callback before calling close
-extern "C" {
-int register_send_cb(struct socket *, uint32_t, int (*)(struct socket *, uint32_t));
-}
-
 void SctpTransport::close() {
 	if (mSock) {
-		// Workaround for sctplab/usrsctp#405
-		// TODO: Remove when the issue is fixed
-		register_send_cb(mSock, 0, nullptr);
-
 		usrsctp_close(mSock);
 		mSock = nullptr;
 	}
@@ -704,7 +706,15 @@ int SctpTransport::SendCallback(struct socket *sock, uint32_t sb_free) {
 
 	auto sconn = reinterpret_cast<struct sockaddr_conn *>(&paddrinfo.spinfo_address);
 	void *ptr = sconn->sconn_addr;
-	return static_cast<SctpTransport *>(ptr)->handleSend(size_t(sb_free));
+	auto *transport = static_cast<SctpTransport *>(ptr);
+
+	// Workaround for sctplab/usrsctp#405: Send callback is invoked on already closed socket
+	// https://github.com/sctplab/usrsctp/issues/405
+	std::shared_lock lock(InstancesMutex);
+	if (Instances.find(transport) == Instances.end())
+		return -1;
+
+	return transport->handleSend(size_t(sb_free));
 }
 
 int SctpTransport::WriteCallback(void *ptr, void *data, size_t len, uint8_t tos, uint8_t set_df) {
