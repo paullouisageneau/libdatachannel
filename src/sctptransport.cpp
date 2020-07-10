@@ -187,6 +187,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 SctpTransport::~SctpTransport() {
 	stop();
 	close();
+	usrsctp_deregister_address(this);
 }
 
 bool SctpTransport::stop() {
