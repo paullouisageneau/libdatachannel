@@ -46,7 +46,7 @@ public:
 
 	bool stop() override;
 	bool send(message_ptr message) override; // false if buffered
-	void close(unsigned int stream);
+	void closeStream(unsigned int stream);
 	void flush();
 
 	// Stats
@@ -70,6 +70,7 @@ private:
 
 	void connect();
 	void shutdown();
+	void close();
 	void incoming(message_ptr message) override;
 
 	bool trySendQueue();

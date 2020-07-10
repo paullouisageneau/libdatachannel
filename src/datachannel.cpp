@@ -96,7 +96,7 @@ void DataChannel::close() {
 	mIsClosed = true;
 	if (mIsOpen.exchange(false))
 		if (auto transport = mSctpTransport.lock())
-			transport->close(mStream);
+			transport->closeStream(mStream);
 
 	mSctpTransport.reset();
 	resetCallbacks();
