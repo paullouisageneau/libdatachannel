@@ -29,7 +29,7 @@ ThreadPool::~ThreadPool() { join(); }
 
 int ThreadPool::count() const {
 	std::unique_lock lock(mWorkersMutex);
-	return mWorkers.size();
+	return int(mWorkers.size());
 }
 
 void ThreadPool::spawn(int count) {
