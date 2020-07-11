@@ -112,7 +112,7 @@ actions make_libusrsctp_msvc
 {
 	SET OLDD=%CD%
     cd $(CWD)/deps/usrsctp
-    mkdir $(BUILD_SIR)
+    mkdir $(BUILD_DIR)
     cd $(BUILD_DIR)
     cmake -G "Visual Studio 16 2019" ..
     msbuild usrsctplib.sln /property:Configuration=$(VARIANT)
