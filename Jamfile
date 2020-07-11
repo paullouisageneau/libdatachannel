@@ -117,7 +117,7 @@ actions make_libusrsctp_msvc
     cmake -G "Visual Studio 16 2019" ..
     msbuild usrsctplib.sln /property:Configuration=$(VARIANT)
     cd %OLDD%
-    cp $(CWD)/deps/usrsctp/build/usrsctplib/Release/usrsctp.lib $(<)
+    cp $(CWD)/deps/usrsctp/$(BUILD_DIR)/usrsctplib/Release/usrsctp.lib $(<)
 }
 
 make libjuice-static.a : : @make_libjuice ;
