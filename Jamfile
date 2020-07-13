@@ -89,10 +89,7 @@ rule make_libusrsctp ( targets * : sources * : properties * )
 {
 	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
 	VARIANT on $(targets) = $(VARIANT) ;
-	if <gnutls>on in $(properties)
-	{ BUILD_DIR on $(targets) = "build-gnutls-$(VARIANT)" ; }
-	else
-	{ BUILD_DIR on $(targets) = "build-openssl-$(VARIANT)" ; }
+	BUILD_DIR on $(targets) = "build-$(VARIANT)" ;
 }
 actions make_libusrsctp
 {
@@ -103,10 +100,7 @@ rule make_libusrsctp_msvc ( targets * : sources * : properties * )
 {
 	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
 	VARIANT on $(targets) = $(VARIANT) ;
-	if <gnutls>on in $(properties)
-	{ BUILD_DIR on $(targets) = "build-gnutls-$(VARIANT)" ; }
-	else
-	{ BUILD_DIR on $(targets) = "build-openssl-$(VARIANT)" ; }
+	BUILD_DIR on $(targets) = "build-$(VARIANT)" ;
 }
 actions make_libusrsctp_msvc
 {
