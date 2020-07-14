@@ -95,7 +95,7 @@ rule make_libusrsctp ( targets * : sources * : properties * )
 }
 actions make_libusrsctp
 {
-    (cd $(CWD)/deps/usrsctp && mkdir $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(VARIANT) -DCMAKE_C_FLAGS="-fPIC -Wno-unknown-warning-option -Wno-format-truncation" .. && make -j2 usrsctp-static)
+    (cd $(CWD)/deps/usrsctp && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(VARIANT) -DCMAKE_C_FLAGS="-fPIC -Wno-unknown-warning-option -Wno-format-truncation" .. && make -j2 usrsctp-static)
     cp $(CWD)/deps/usrsctp/$(BUILD_DIR)/usrsctplib/libusrsctp.a $(<)
 }
 rule make_libusrsctp_msvc ( targets * : sources * : properties * )
@@ -128,7 +128,7 @@ rule make_libjuice_gnutls ( targets * : sources * : properties * )
 }
 actions make_libjuice_gnutls
 {
-    (cd $(CWD)/deps/libjuice && mkdir $(BUILD_DIR) && cd $(BUILD_DIR) && cmake $(CMAKEOPTS) .. && make -j2 juice-static)
+    (cd $(CWD)/deps/libjuice && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake $(CMAKEOPTS) .. && make -j2 juice-static)
     cp $(CWD)/deps/libjuice/$(BUILD_DIR)/libjuice-static.a $(<)
 }
 rule make_libjuice_openssl ( targets * : sources * : properties * )
@@ -150,7 +150,7 @@ rule make_libjuice_openssl ( targets * : sources * : properties * )
 }
 actions make_libjuice_openssl
 {
-    (cd $(CWD)/deps/libjuice && mkdir $(BUILD_DIR) && cd $(BUILD_DIR) && cmake $(CMAKEOPTS) .. && make -j2 juice-static)
+    (cd $(CWD)/deps/libjuice && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake $(CMAKEOPTS) .. && make -j2 juice-static)
     cp $(CWD)/deps/libjuice/$(BUILD_DIR)/libjuice-static.a $(<)
 }
 rule make_libjuice_msvc ( targets * : sources * : properties * )
