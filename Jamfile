@@ -70,9 +70,8 @@ alias juice
     : # usage requirements
     <include>./deps/libjuice/include
     <gnutls>on:<library>libjuice-gnutls.a
-    <gnutls>on:<library>nettle
+    <gnutls>on:<library>nettle/<link>shared
     <gnutls>off:<library>libjuice-openssl.a
-    <gnutls>off:<library>crypto
     ;
 
 alias juice
