@@ -21,8 +21,9 @@
 namespace rtc {
 
 ThreadPool &ThreadPool::Instance() {
-	static ThreadPool instance;
-	return instance;
+	// Init handles joining on cleanup
+	static ThreadPool *instance = new ThreadPool;
+	return *instance;
 }
 
 ThreadPool::~ThreadPool() { join(); }
