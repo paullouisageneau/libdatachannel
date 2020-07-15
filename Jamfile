@@ -69,8 +69,9 @@ alias juice
     : # no default build
     : # usage requirements
     <include>./deps/libjuice/include
-    <library>libjuice-static.a
-    <gnutls>on:<library>nettle
+    <gnutls>on:<library>libjuice-gnutls.a
+    <gnutls>on:<library>nettle/<link>shared
+    <gnutls>off:<library>libjuice-openssl.a
     ;
 
 alias juice
@@ -89,24 +90,18 @@ rule make_libusrsctp ( targets * : sources * : properties * )
 {
 	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
 	VARIANT on $(targets) = $(VARIANT) ;
-	if <gnutls>on in $(properties)
-	{ BUILD_DIR on $(targets) = "build-gnutls-$(VARIANT)" ; }
-	else
-	{ BUILD_DIR on $(targets) = "build-openssl-$(VARIANT)" ; }
+	BUILD_DIR on $(targets) = "build-$(VARIANT)" ;
 }
 actions make_libusrsctp
 {
-    (cd $(CWD)/deps/usrsctp && mkdir $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(VARIANT) -DCMAKE_C_FLAGS="-fPIC -Wno-unknown-warning-option -Wno-format-truncation" .. && make -j2 usrsctp-static)
+    (cd $(CWD)/deps/usrsctp && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(VARIANT) -DCMAKE_C_FLAGS="-fPIC -Wno-unknown-warning-option -Wno-format-truncation" .. && make -j2 usrsctp-static)
     cp $(CWD)/deps/usrsctp/$(BUILD_DIR)/usrsctplib/libusrsctp.a $(<)
 }
 rule make_libusrsctp_msvc ( targets * : sources * : properties * )
 {
 	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
 	VARIANT on $(targets) = $(VARIANT) ;
-	if <gnutls>on in $(properties)
-	{ BUILD_DIR on $(targets) = "build-gnutls-$(VARIANT)" ; }
-	else
-	{ BUILD_DIR on $(targets) = "build-openssl-$(VARIANT)" ; }
+	BUILD_DIR on $(targets) = "build-$(VARIANT)" ;
 }
 actions make_libusrsctp_msvc
 {
@@ -120,38 +115,41 @@ actions make_libusrsctp_msvc
     cp $(CWD)/deps/usrsctp/$(BUILD_DIR)/usrsctplib/Release/usrsctp.lib $(<)
 }
 
-make libjuice-static.a : : @make_libjuice ;
+make libjuice-gnutls.a : : @make_libjuice_gnutls ;
+make libjuice-openssl.a : : @make_libjuice_openssl ;
 make juice-static.lib : : @make_libjuice_msvc ;
 
-rule make_libjuice ( targets * : sources * : properties * )
+rule make_libjuice_gnutls ( targets * : sources * : properties * )
 {
 	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
-	VARIANT on $(targets) = $(VARIANT) ;
-	if <gnutls>on in $(properties)
-	{
-		BUILD_DIR on $(targets) = "build-gnutls-$(VARIANT)" ;
-		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=1" ;
-	}
-	else
-	{
-		local OPENSSL_INCLUDE = [ feature.get-values <openssl-include> : $(properties) ] ;
-
-		if <target-os>darwin in $(properties) && $(OPENSSL_INCLUDE) = ""
-		{
-			# on macOS, default to pick up openssl from the homebrew installation
-			# brew install openssl
-			OPENSSL_INCLUDE = /usr/local/opt/openssl/include ;
-		}
-
-		BUILD_DIR on $(targets) = "build-openssl-$(VARIANT)" ;
-		CMAKEOPTS on $(targets) = "-DUSE_NETTLE=0" ;
-		if $(OPENSSL_INCLUDE) != ""
-		{ CMAKEOPTS on $(targets) += " -DOPENSSL_ROOT_DIR=$(OPENSSL_INCLUDE)/.." ; }
-	}
+	BUILD_DIR on $(targets) = "build-gnutls-$(VARIANT)" ;
+	CMAKEOPTS on $(targets) = "-DCMAKE_C_FLAGS=\"-fPIC\" -DCMAKE_BUILD_TYPE=$(VARIANT) -DUSE_NETTLE=1" ;
 }
-actions make_libjuice
+actions make_libjuice_gnutls
 {
-    (cd $(CWD)/deps/libjuice && mkdir $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_C_FLAGS="-fPIC" -DCMAKE_BUILD_TYPE=$(VARIANT) $(CMAKEOPTS) .. && make -j2 juice-static)
+    (cd $(CWD)/deps/libjuice && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake $(CMAKEOPTS) .. && make -j2 juice-static)
+    cp $(CWD)/deps/libjuice/$(BUILD_DIR)/libjuice-static.a $(<)
+}
+rule make_libjuice_openssl ( targets * : sources * : properties * )
+{
+	local VARIANT = [ feature.get-values <variant> : $(properties) ] ;
+	BUILD_DIR on $(targets) = "build-openssl-$(VARIANT)" ;
+	CMAKEOPTS on $(targets) = "-DCMAKE_C_FLAGS=\"-fPIC\" -DCMAKE_BUILD_TYPE=$(VARIANT) -DUSE_NETTLE=0" ;
+
+	local OPENSSL_INCLUDE = [ feature.get-values <openssl-include> : $(properties) ] ;
+	if <target-os>darwin in $(properties) && $(OPENSSL_INCLUDE) = ""
+	{
+		# on macOS, default to pick up openssl from the homebrew installation
+		# brew install openssl
+		OPENSSL_INCLUDE = /usr/local/opt/openssl/include ;
+	}
+
+	if $(OPENSSL_INCLUDE) != ""
+	{ CMAKEOPTS on $(targets) += " -DOPENSSL_ROOT_DIR=$(OPENSSL_INCLUDE)/.." ; }
+}
+actions make_libjuice_openssl
+{
+    (cd $(CWD)/deps/libjuice && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake $(CMAKEOPTS) .. && make -j2 juice-static)
     cp $(CWD)/deps/libjuice/$(BUILD_DIR)/libjuice-static.a $(<)
 }
 rule make_libjuice_msvc ( targets * : sources * : properties * )
