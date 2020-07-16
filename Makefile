@@ -25,17 +25,17 @@ else
         LIBS+=openssl
 endif
 
-USE_JUICE ?= 0
-ifneq ($(USE_JUICE), 0)
-        CPPFLAGS+=-DUSE_JUICE=1
+USE_NICE ?= 0
+ifneq ($(USE_NICE), 0)
+        CPPFLAGS+=-DUSE_NICE=1
+        LIBS+=glib-2.0 gobject-2.0 nice
+else
+        CPPFLAGS+=-DUSE_NICE=0
         INCLUDES+=-I$(JUICE_DIR)/include
         LOCALLIBS+=libjuice.a
 ifneq ($(USE_GNUTLS), 0)
         LIBS+=nettle
 endif
-else
-        CPPFLAGS+=-DUSE_JUICE=0
-        LIBS+=glib-2.0 gobject-2.0 nice
 endif
 
 USE_SRTP ?= 0

@@ -669,12 +669,12 @@ void PeerConnection::resetCallbacks() {
 
 bool PeerConnection::getSelectedCandidatePair([[maybe_unused]] CandidateInfo *local,
                                               [[maybe_unused]] CandidateInfo *remote) {
-#if USE_JUICE
-	PLOG_WARNING << "getSelectedCandidatePair() is not implemented for libjuice";
-	return false;
-#else
+#if USE_NICE
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	return iceTransport->getSelectedCandidatePair(local, remote);
+#else
+	PLOG_WARNING << "getSelectedCandidatePair() is only implemented with libnice as ICE backend";
+	return false;
 #endif
 }
 

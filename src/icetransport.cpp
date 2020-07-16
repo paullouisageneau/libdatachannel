@@ -42,7 +42,7 @@ using std::shared_ptr;
 using std::weak_ptr;
 using std::chrono::system_clock;
 
-#if USE_JUICE
+#if !USE_NICE
 
 namespace rtc {
 
@@ -269,7 +269,7 @@ void IceTransport::LogCallback(juice_log_level_t level, const char *message) {
 
 } // namespace rtc
 
-#else // USE_JUICE == 0
+#else // USE_NICE == 1
 
 namespace rtc {
 

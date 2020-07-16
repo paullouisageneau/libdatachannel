@@ -24,7 +24,7 @@
 #include <thread>
 #include <vector>
 
-#ifdef USE_JUICE
+#if !USE_NICE
 #ifndef __APPLE__
 // libjuice enables Linux path MTU discovery or sets the DF flag
 #define USE_PMTUD 1
@@ -32,7 +32,7 @@
 // Setting the DF flag is not available on Mac OS
 #define USE_PMTUD 0
 #endif
-#else
+#else // USE_NICE == 1
 #ifdef __linux__
 // Linux UDP does path MTU discovery by default (setting DF and returning EMSGSIZE)
 // It should be safe to enable discovery for SCTP.

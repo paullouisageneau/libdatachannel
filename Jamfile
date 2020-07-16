@@ -15,7 +15,7 @@ lib libdatachannel
 	: # requirements
 	<cxxstd>17
 	<include>./include/rtc
-	<define>USE_JUICE=1
+	<define>USE_NICE=0
 	<define>RTC_ENABLE_MEDIA=0
 	<define>RTC_ENABLE_WEBSOCKET=0
 	<toolset>msvc:<define>WIN32_LEAN_AND_MEAN
