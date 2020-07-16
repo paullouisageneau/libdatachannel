@@ -26,7 +26,7 @@
 #include "peerconnection.hpp"
 #include "transport.hpp"
 
-#if USE_JUICE
+#if !USE_NICE
 #include <juice/juice.h>
 #else
 #include <nice/agent.h>
@@ -63,7 +63,7 @@ public:
 	bool stop() override;
 	bool send(message_ptr message) override; // false if dropped
 
-#if !USE_JUICE
+#if USE_NICE
 	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
 #endif
 
@@ -85,7 +85,7 @@ private:
 	candidate_callback mCandidateCallback;
 	gathering_state_callback mGatheringStateChangeCallback;
 
-#if USE_JUICE
+#if !USE_NICE
 	std::unique_ptr<juice_agent_t, void (*)(juice_agent_t *)> mAgent;
 	string mStunHostname;
 	string mStunService;
