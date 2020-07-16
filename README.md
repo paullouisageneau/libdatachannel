@@ -2,7 +2,7 @@
 
 libdatachannel is a standalone implementation of WebRTC Data Channels and WebSockets in C++17 with C bindings for POSIX platforms (including Linux and Apple macOS) and Microsoft Windows. It enables direct connectivity between native applications and web browsers without the pain of importing the entire WebRTC stack. The interface consists of simplified versions of the JavaScript WebRTC and WebSocket APIs present in browsers, in order to ease the design of cross-environment applications.
 It can be compiled with multiple backends:
-- The security layer can be provided through [GnuTLS](https://www.gnutls.org/) or [OpenSSL](https://www.openssl.org/).
+- The security layer can be provided through [OpenSSL](https://www.openssl.org/) or [GnuTLS](https://www.gnutls.org/).
 - The connectivity for WebRTC can be provided through my ad-hoc ICE library [libjuice](https://github.com/paullouisageneau/libjuice) as submodule or through [libnice](https://github.com/libnice/libnice).
 
 This projet is originally inspired by [librtcdcpp](https://github.com/chadnickbok/librtcdcpp), however it is a complete rewrite from scratch, because the messy architecture of librtcdcpp made solving its implementation issues difficult.
@@ -53,7 +53,7 @@ Submodules:
 
 Optional dependencies:
 - libnice: https://nice.freedesktop.org/ (only if selected as ICE backend instead of libjuice)
-- libSRTP: https://github.com/cisco/libsrtp (only necessary for media transport)
+- libSRTP: https://github.com/cisco/libsrtp (only necessary for supporting media transport)
 
 ## Building
 
@@ -67,7 +67,9 @@ $ git submodule update --init --recursive
 
 ### Building with CMake
 
-The CMake library targets `libdatachannel` and `libdatachannel-static` respectively correspond to the shared and static libraries. On Windows, the DLL resulting from the shared library build only exposes the C API, use the static library for the C++ API. The default target will build tests and examples. The option `USE_GNUTLS` allows to switch between OpenSSL (default) and GnuTLS, and the option `USE_NICE` allows to switch between libjuice as submodule (default) and libnice.
+The CMake library targets `libdatachannel` and `libdatachannel-static` respectively correspond to the shared and static libraries. The default target will build tests and examples. The option `USE_GNUTLS` allows to switch between OpenSSL (default) and GnuTLS, and the option `USE_NICE` allows to switch between libjuice as submodule (default) and libnice.
+
+On Windows, the DLL resulting from the shared library build only exposes the C API, use the static library for the C++ API.
 
 #### POSIX-compliant operating systems (including Linux and Apple macOS)
 ```bash
