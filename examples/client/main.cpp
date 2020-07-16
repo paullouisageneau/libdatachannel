@@ -49,7 +49,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 string randomId(size_t length);
 
 int main(int argc, char **argv) {
-	rtc::InitLogger(LogLevel::Warning);
+	rtc::InitLogger(LogLevel::Debug);
 
 	Configuration config;
 	config.iceServers.emplace_back("stun:stun.l.google.com:19302"); // change to your STUN server
