@@ -24,6 +24,7 @@
 
 #include "tcptransport.hpp"
 #include "tlstransport.hpp"
+#include "verifiedtlstransport.hpp"
 #include "wstransport.hpp"
 
 #include <regex>
@@ -34,7 +35,12 @@
 
 namespace rtc {
 
-WebSocket::WebSocket() { PLOG_VERBOSE << "Creating WebSocket"; }
+using std::shared_ptr;
+
+WebSocket::WebSocket(std::optional<Configuration> config)
+    : mConfig(config ? std::move(*config) : Configuration()) {
+	PLOG_VERBOSE << "Creating WebSocket";
+}
 
 WebSocket::~WebSocket() {
 	PLOG_VERBOSE << "Destroying WebSocket";
@@ -149,7 +155,7 @@ void WebSocket::incoming(message_ptr message) {
 	}
 }
 
-std::shared_ptr<TcpTransport> WebSocket::initTcpTransport() {
+shared_ptr<TcpTransport> WebSocket::initTcpTransport() {
 	using State = TcpTransport::State;
 	try {
 		std::lock_guard lock(mInitMutex);
@@ -194,7 +200,7 @@ std::shared_ptr<TcpTransport> WebSocket::initTcpTransport() {
 	}
 }
 
-std::shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
+shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 	using State = TlsTransport::State;
 	try {
 		std::lock_guard lock(mInitMutex);
@@ -202,27 +208,40 @@ std::shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 			return transport;
 
 		auto lower = std::atomic_load(&mTcpTransport);
-		auto transport = std::make_shared<TlsTransport>(
-		    lower, mHost, [this, weak_this = weak_from_this()](State state) {
-			    auto shared_this = weak_this.lock();
-			    if (!shared_this)
-				    return;
-			    switch (state) {
-			    case State::Connected:
-				    initWsTransport();
-				    break;
-			    case State::Failed:
-				    triggerError("TCP connection failed");
-				    remoteClose();
-				    break;
-			    case State::Disconnected:
-				    remoteClose();
-				    break;
-			    default:
-				    // Ignore
-				    break;
-			    }
-		    });
+		auto stateChangeCallback = [this, weak_this = weak_from_this()](State state) {
+			auto shared_this = weak_this.lock();
+			if (!shared_this)
+				return;
+			switch (state) {
+			case State::Connected:
+				initWsTransport();
+				break;
+			case State::Failed:
+				triggerError("TCP connection failed");
+				remoteClose();
+				break;
+			case State::Disconnected:
+				remoteClose();
+				break;
+			default:
+				// Ignore
+				break;
+			}
+		};
+
+		shared_ptr<TlsTransport> transport;
+#ifdef _WIN32
+		if (!mConfig.disableTlsVerification) {
+			PLOG_WARNING << "TLS certificate verification with root CA is not supported on Windows";
+		}
+		transport = std::make_shared<TlsTransport>(lower, mHost, stateChangeCallback);
+#else
+		if (mConfig.disableTlsVerification)
+			transport = std::make_shared<TlsTransport>(lower, mHost, stateChangeCallback);
+		else
+			transport = std::make_shared<VerifiedTlsTransport>(lower, mHost, stateChangeCallback);
+#endif
+
 		std::atomic_store(&mTlsTransport, transport);
 		if (mState == WebSocket::State::Closed) {
 			mTlsTransport.reset();
@@ -237,14 +256,14 @@ std::shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 	}
 }
 
-std::shared_ptr<WsTransport> WebSocket::initWsTransport() {
+shared_ptr<WsTransport> WebSocket::initWsTransport() {
 	using State = WsTransport::State;
 	try {
 		std::lock_guard lock(mInitMutex);
 		if (auto transport = std::atomic_load(&mWsTransport))
 			return transport;
 
-		std::shared_ptr<Transport> lower = std::atomic_load(&mTlsTransport);
+		shared_ptr<Transport> lower = std::atomic_load(&mTlsTransport);
 		if (!lower)
 			lower = std::atomic_load(&mTcpTransport);
 		auto transport = std::make_shared<WsTransport>(

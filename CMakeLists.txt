@@ -59,6 +59,7 @@ set(LIBDATACHANNEL_WEBSOCKET_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/base64.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/tcptransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/tlstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/verifiedtlstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/websocket.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/wstransport.cpp
 )
