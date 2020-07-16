@@ -47,13 +47,13 @@ Features:
 Dependencies:
 - GnuTLS: https://www.gnutls.org/ or OpenSSL: https://www.openssl.org/
 
-Optional dependencies:
-- libnice: https://nice.freedesktop.org/ (substituable with libjuice)
-- libSRTP: https://github.com/cisco/libsrtp (only necessary for media transport)
-
 Submodules:
 - libjuice: https://github.com/paullouisageneau/libjuice
 - usrsctp: https://github.com/sctplab/usrsctp
+
+Optional dependencies:
+- libnice: https://nice.freedesktop.org/ (only if selected as ICE backend instead of libjuice)
+- libSRTP: https://github.com/cisco/libsrtp (only necessary for media transport)
 
 ## Building
 
@@ -67,33 +67,35 @@ $ git submodule update --init --recursive
 
 ### Building with CMake
 
-The CMake library targets `libdatachannel` and `libdatachannel-static` respectively correspond to the shared and static libraries. On Windows, the DLL resulting from the shared library build only exposes the C API, use the static library for the C++ API. The default target will build tests and examples.
+The CMake library targets `libdatachannel` and `libdatachannel-static` respectively correspond to the shared and static libraries. On Windows, the DLL resulting from the shared library build only exposes the C API, use the static library for the C++ API. The default target will build tests and examples. The option `USE_GNUTLS` allows to switch between OpenSSL (default) and GnuTLS, and the option `USE_NICE` allows to switch between libjuice as submodule (default) and libnice.
 
 #### POSIX-compliant operating systems (including Linux and Apple macOS)
 ```bash
-$ cmake -B build -DUSE_JUICE=1 -DUSE_GNUTLS=1
+$ cmake -B build -DUSE_GNUTLS=1 -DUSE_NICE=0
 $ cd build
 $ make -j2
 ```
 
 #### Microsoft Windows with MinGW cross-compilation
 ```bash
-$ cmake -B build -DUSE_JUICE=1 -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw/toolchain-x86_64-w64-mingw32.cmake # replace with your toolchain file
+$ cmake -B build -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw/toolchain-x86_64-w64-mingw32.cmake # replace with your toolchain file
 $ cd build
 $ make -j2
 ```
 
 #### Microsoft Windows with Microsoft Visual C++
 ```bash
-$ cmake -B build -G "NMake Makefiles" -DUSE_JUICE=1
+$ cmake -B build -G "NMake Makefiles"
 $ cd build
 $ nmake
 ```
 
 ### Building directly with Make (Linux only)
 
+The option `USE_GNUTLS` allows to switch between OpenSSL (default) and GnuTLS, and the option `USE_NICE` allows to switch between libjuice as submodule (default) and libnice.
+
 ```bash
-$ make USE_JUICE=1 USE_GNUTLS=1
+$ make USE_GNUTLS=1 USE_NICE=0
 ```
 
 ## Examples
