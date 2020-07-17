@@ -122,12 +122,11 @@ RTC_EXPORT int rtcGetDataChannelLabel(int dc, char *buffer, int size);
 // WebSocket
 #if RTC_ENABLE_WEBSOCKET
 typedef struct {
-	bool disableTlsVerification;
+	bool disableTlsVerification; // if true, don't verify the TLS certificate
 } rtcWsConfiguration;
 
 RTC_EXPORT int rtcCreateWebSocket(const char *url); // returns ws id
-RTC_EXPORT int rtcCreateWebSocketEx(const char *url,
-                                    const rtcWsConfiguration *config); // returns ws id
+RTC_EXPORT int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config);
 RTC_EXPORT int rtcDeleteWebsocket(int ws);
 #endif
 
