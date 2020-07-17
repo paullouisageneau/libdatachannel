@@ -37,6 +37,7 @@ extern "C" {
 #define RTC_ENABLE_WEBSOCKET 1
 #endif
 
+#include <stdbool.h>
 #include <stdint.h>
 
 // libdatachannel C API
@@ -120,7 +121,13 @@ RTC_EXPORT int rtcGetDataChannelLabel(int dc, char *buffer, int size);
 
 // WebSocket
 #if RTC_ENABLE_WEBSOCKET
+typedef struct {
+	bool disableTlsVerification;
+} rtcWsConfiguration;
+
 RTC_EXPORT int rtcCreateWebSocket(const char *url); // returns ws id
+RTC_EXPORT int rtcCreateWebSocketEx(const char *url,
+                                    const rtcWsConfiguration *config); // returns ws id
 RTC_EXPORT int rtcDeleteWebsocket(int ws);
 #endif
 
