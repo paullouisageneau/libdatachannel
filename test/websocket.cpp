@@ -38,6 +38,10 @@ void test_websocket() {
 
 	auto ws = std::make_shared<WebSocket>();
 
+	// Certificate verification can be disabled
+	// auto ws = std::make_shared<WebSocket>(WebSocket::Configuration{.disableTlsVerification =
+	// true});
+
 	ws->onOpen([wws = make_weak_ptr(ws), &myMessage]() {
 		auto ws = wws.lock();
 		if (!ws)
