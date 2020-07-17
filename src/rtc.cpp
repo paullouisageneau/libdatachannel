@@ -273,6 +273,16 @@ int rtcCreateWebSocket(const char *url) {
 	});
 }
 
+int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
+	return WRAP({
+		WebSocket::Configuration c;
+		c.disableTlsVerification = config->disableTlsVerification;
+		auto ws = std::make_shared<WebSocket>(c);
+		ws->open(url);
+		return emplaceWebSocket(ws);
+	});
+}
+
 int rtcDeleteWebsocket(int ws) {
 	return WRAP({
 		auto webSocket = getWebSocket(ws);

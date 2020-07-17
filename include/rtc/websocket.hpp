@@ -47,7 +47,11 @@ public:
 		Closed = 3,
 	};
 
-	WebSocket();
+	struct Configuration {
+		bool disableTlsVerification = false; // if true, don't verify the TLS certificate
+	};
+
+	WebSocket(std::optional<Configuration> config = nullopt);
 	~WebSocket();
 
 	State readyState() const;
@@ -82,6 +86,7 @@ private:
 	std::shared_ptr<WsTransport> mWsTransport;
 	std::recursive_mutex mInitMutex;
 
+	const Configuration mConfig;
 	string mScheme, mHost, mHostname, mService, mPath;
 	std::atomic<State> mState = State::Closed;
 

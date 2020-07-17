@@ -38,14 +38,15 @@ public:
 	static void Cleanup();
 
 	TlsTransport(std::shared_ptr<TcpTransport> lower, string host, state_callback callback);
-	~TlsTransport();
+	virtual ~TlsTransport();
 
 	bool stop() override;
 	bool send(message_ptr message) override;
 
-	void incoming(message_ptr message) override;
-
 protected:
+	virtual void incoming(message_ptr message) override;
+	virtual void postCreation();
+	virtual void postHandshake();
 	void runRecvLoop();
 
 	string mHost;

@@ -56,7 +56,6 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 	try {
 		gnutls::check(gnutls_certificate_set_x509_system_trust(mCreds));
 		gnutls::check(gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCreds));
-		gnutls_session_set_verify_cert(mSession, mHost.c_str(), 0);
 
 		const char *priorities = "SECURE128:-VERS-SSL3.0:-ARCFOUR-128";
 		const char *err_pos = NULL;
@@ -72,7 +71,9 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 		gnutls_transport_set_pull_function(mSession, ReadCallback);
 		gnutls_transport_set_pull_timeout_function(mSession, TimeoutCallback);
 
-       	mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
+		postCreation();
+
+		mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
 		registerIncoming();
 
 	} catch (...) {
@@ -123,6 +124,14 @@ void TlsTransport::incoming(message_ptr message) {
 		mIncomingQueue.stop();
 }
 
+void TlsTransport::postCreation() {
+	// Dummy
+}
+
+void TlsTransport::postHandshake() {
+	// Dummy
+}
+
 void TlsTransport::runRecvLoop() {
 	const size_t bufferSize = 4096;
 	char buffer[bufferSize];
@@ -147,6 +156,7 @@ void TlsTransport::runRecvLoop() {
 	try {
 		PLOG_INFO << "TLS handshake finished";
 		changeState(State::Connected);
+		postHandshake();
 
 		while (true) {
 			ssize_t ret;
@@ -263,25 +273,16 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 		openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
 		               "Failed to set SSL priorities");
 
+		if (!SSL_CTX_set_default_verify_paths(mCtx)) {
+			PLOG_WARNING << "SSL root CA certificates unavailable";
+		}
+
 		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3);
 		SSL_CTX_set_min_proto_version(mCtx, TLS1_VERSION);
 		SSL_CTX_set_read_ahead(mCtx, 1);
 		SSL_CTX_set_quiet_shutdown(mCtx, 1);
 		SSL_CTX_set_info_callback(mCtx, InfoCallback);
-
-		// SSL_CTX_set_default_verify_paths() does nothing on Windows
-#ifndef _WIN32
-		if (SSL_CTX_set_default_verify_paths(mCtx)) {
-#else
-		if (false) {
-#endif
-			PLOG_INFO << "SSL root CA certificates available, server verification enabled";
-			SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER, NULL);
-			SSL_CTX_set_verify_depth(mCtx, 4);
-		} else {
-			PLOG_WARNING << "SSL root CA certificates unavailable, server verification disabled";
-			SSL_CTX_set_verify(mCtx, SSL_VERIFY_NONE, NULL);
-		}
+		SSL_CTX_set_verify(mCtx, SSL_VERIFY_NONE, NULL);
 
 		if (!(mSsl = SSL_new(mCtx)))
 			throw std::runtime_error("Failed to create SSL instance");
@@ -307,6 +308,8 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
 		SSL_set_options(mSsl, SSL_OP_SINGLE_ECDH_USE);
 		SSL_set_tmp_ecdh(mSsl, ecdh.get());
+
+		postCreation();
 
 		mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
 		registerIncoming();
@@ -366,6 +369,14 @@ void TlsTransport::incoming(message_ptr message) {
 		mIncomingQueue.stop();
 }
 
+void TlsTransport::postCreation() {
+	// Dummy
+}
+
+void TlsTransport::postHandshake() {
+	// Dummy
+}
+
 void TlsTransport::runRecvLoop() {
 	const size_t bufferSize = 4096;
 	byte buffer[bufferSize];
@@ -387,6 +398,7 @@ void TlsTransport::runRecvLoop() {
 				if (SSL_is_init_finished(mSsl)) {
 					PLOG_INFO << "TLS handshake finished";
 					changeState(State::Connected);
+					postHandshake();
 				}
 			} else {
 				int ret = SSL_read(mSsl, buffer, bufferSize);
