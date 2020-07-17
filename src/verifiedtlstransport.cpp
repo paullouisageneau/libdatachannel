@@ -37,6 +37,7 @@ VerifiedTlsTransport::VerifiedTlsTransport(shared_ptr<TcpTransport> lower, strin
 VerifiedTlsTransport::~VerifiedTlsTransport() {}
 
 void VerifiedTlsTransport::postCreation() {
+	PLOG_DEBUG << "Setting up TLS certificate verification";
 	gnutls_session_set_verify_cert(mSession, mHost.c_str(), 0);
 }
 
@@ -53,6 +54,7 @@ VerifiedTlsTransport::VerifiedTlsTransport(shared_ptr<TcpTransport> lower, strin
 VerifiedTlsTransport::~VerifiedTlsTransport() {}
 
 void VerifiedTlsTransport::postCreation() {
+	PLOG_DEBUG << "Setting up TLS certificate verification";
 	SSL_set_verify(mSsl, SSL_VERIFY_PEER, NULL);
 	SSL_set_verify_depth(mSsl, 4);
 }
