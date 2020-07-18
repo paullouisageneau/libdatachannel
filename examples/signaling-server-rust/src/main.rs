@@ -1,147 +1,108 @@
-#![feature(proc_macro_hygiene, decl_macro)]
+/*
+ * Rust signaling server example for libdatachannel
+ * Copyright (c) 2020 Paul-Louis Ageneau
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
-#[macro_use]
-extern crate rocket;
-extern crate rocket_cors;
-#[macro_use]
-extern crate rocket_contrib;
-#[macro_use]
-extern crate serde_derive;
+extern crate tokio;
+extern crate tungstenite;
+extern crate futures_util;
+extern crate futures_channel;
+extern crate json;
 
-extern crate bincode;
+use std::env;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
-use std::sync::Mutex;
+use tokio::net::{TcpListener, TcpStream};
+use tungstenite::protocol::Message;
+use tungstenite::handshake::server::{Request, Response};
 
-use rocket_contrib::json::{Json, JsonValue};
+use futures_util::{future, pin_mut, StreamExt};
+use futures_util::stream::TryStreamExt;
+use futures_channel::mpsc;
 
-use rocket::http::Method; // 1.
+type Id = String;
+type Tx = mpsc::UnboundedSender<Message>;
+type ClientsMap = Arc<Mutex<HashMap<Id, Tx>>>;
 
-use rocket_cors::{
-    AllowedHeaders, AllowedOrigins, Error, // 2.
-    Cors, CorsOptions // 3.
-};
+async fn handle(clients: ClientsMap, stream: TcpStream) {
+    let mut client_id = Id::new();
+    let callback = |req: &Request, response: Response| {
+        let path: &str = req.uri().path();
+        let tokens: Vec<&str> = path.split('/').collect();
+        client_id = tokens[1].to_string();
+        return Ok(response);
+    };
 
-fn make_cors() -> Cors {
-    let allowed_origins = AllowedOrigins::some_exact(&[ // 4.
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-        "http://localhost:8000",
-        "http://0.0.0.0:8000",
-    ]);
+    let websocket = tokio_tungstenite::accept_hdr_async(stream, callback)
+        .await.expect("WebSocket handshake failed");
+	println!("Client {} connected", &client_id);
 
-    CorsOptions { // 5.
-        allowed_origins,
-        allowed_methods: vec![Method::Get, Method::Post].into_iter().map(From::from).collect(), // 1.
-        allowed_headers: AllowedHeaders::some(&[
-            "Authorization",
-            "Accept",
-            "Content-Type",
-            "User-Agent",
-            "Access-Control-Allow-Origin", // 6.
-        ]),
-        allow_credentials: true,
-        ..Default::default()
-    }
-    .to_cors()
-    .expect("error while building CORS")
-}
+    let (tx, rx) = mpsc::unbounded();
+    clients.lock().unwrap().insert(client_id.clone(), tx);
 
-type Data = Mutex<String>;
+    let (outgoing, incoming) = websocket.split();
+    let forward = rx.map(Ok).forward(outgoing);
+    let process = incoming.try_for_each(|msg| {
+        if msg.is_text() {
+            let text = msg.to_text().unwrap();
+            println!("Client {} << {}", &client_id, &text);
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
-pub struct ChannelData {
-    pub description: String,
-    pub candidate: String,
-}
+            // Parse
+            let mut content = json::parse(text).unwrap();
+            let remote_id = content["id"].to_string();
+            let mut locked = clients.lock().unwrap();
 
-impl Default for ChannelData {
-    fn default() -> ChannelData {
-        ChannelData {
-            description: "".to_owned(),
-            candidate: "".to_owned(),
+            match locked.get_mut(&remote_id) {
+                Some(remote) => {
+                    // Format
+                    content.insert("id", client_id.clone()).unwrap();
+                    let text = json::stringify(content);
+
+                    // Send to remote
+                    println!("Client {} >> {}", &remote_id, &text);
+                    remote.unbounded_send(Message::text(text)).unwrap();
+                },
+                _ => println!("Client {} not found", &remote_id),
+            }
         }
+        future::ok(())
+    });
+
+    pin_mut!(process, forward);
+    future::select(process, forward).await;
+
+    println!("Client {} disconnected", &client_id);
+    clients.lock().unwrap().remove(&client_id);
+}
+
+#[tokio::main]
+async fn main() -> Result<(), std::io::Error> {
+    let service = env::args().nth(1).unwrap_or("8000".to_string());
+    let endpoint = format!("127.0.0.1:{}", service);
+
+    let mut listener = TcpListener::bind(endpoint)
+    	.await.expect("Listener binding failed");
+
+    let clients = ClientsMap::new(Mutex::new(HashMap::new()));
+
+    while let Ok((stream, _)) = listener.accept().await {
+        tokio::spawn(handle(clients.clone(), stream));
     }
+
+    return Ok(())
 }
 
-#[post("/json", data = "<payload>")]
-fn new(payload: String, state: rocket::State<Data>) -> JsonValue {
-    let mut data = state.lock().expect("state locked");
-    *data = payload;
-    json!({ "status": "ok" })
-}
-
-#[get("/json")]
-fn get(state: rocket::State<Data>) -> Option<String> {
-    let data = state.lock().expect("state locked");
-    Some(data.clone())
-}
-
-#[catch(404)]
-fn not_found() -> JsonValue {
-    json!({
-        "status": "error",
-        "reason": "Resource was not found."
-    })
-}
-
-fn rocket() -> rocket::Rocket {
-    rocket::ignite()
-        .mount("/state", routes![new, get])
-        .register(catchers![not_found])
-        .manage(Mutex::new(String::new()))
-        .attach(make_cors())
-}
-
-fn main() {
-    rocket().launch();
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    use rocket::http::{ContentType, Status};
-    use rocket::local::Client;
-
-    #[test]
-    fn test_save_load() {
-        let data = ChannelData {
-            description: "v=0
-            o=- 3294530454 0 IN IP4 127.0.0.1
-            s=-
-            t=0 0
-            a=group:BUNDLE 0
-            m=application 9 UDP/DTLS/SCTP webrtc-datachannel
-            c=IN IP4 0.0.0.0
-            a=ice-ufrag:ntAX
-            a=ice-pwd:H59OKuJgItlvJZR5E78QYo
-            a=ice-options:trickle
-            a=mid:0
-            a=setup:actpass
-            a=dtls-id:1
-            a=fingerprint:sha-256 72:0E:8D:8C:9F:A2:E4:40:E7:2E:23:EF:F6:E7:89:94:0F:6B:78:9A:36:61:43:2C:6A:45:30:62:CB:68:B3:73
-            a=sctp-port:5000
-            a=max-message-size:262144".to_owned(),
-            candidate: "a=candidate:1 1 UDP 2122317823 10.0.1.83 55100 typ host".to_owned(),
-        };
-        println!("{:?}", data);
-        let client = Client::new(rocket()).unwrap();
-
-        let res = client
-            .post("/state/json")
-            .header(ContentType::JSON)
-            .remote("127.0.0.1:8000".parse().unwrap())
-            .body(serde_json::to_vec(&data).unwrap())
-            .dispatch();
-        assert_eq!(res.status(), Status::Ok);
-
-        let mut res = client
-            .get("/state/json")
-            .header(ContentType::JSON)
-            .dispatch();
-        assert_eq!(res.status(), Status::Ok);
-
-        let body = res.body().unwrap().into_string().unwrap();
-        println!("{}", body);
-    }
-}

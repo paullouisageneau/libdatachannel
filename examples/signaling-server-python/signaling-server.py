@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Signaling server example for libdatachannel
+# Python signaling server example for libdatachannel
 # Copyright (c) 2020 Paul-Louis Ageneau
 #
 # This program is free software: you can redistribute it and/or modify
