@@ -338,6 +338,7 @@ void TcpTransport::runLoop() {
 				throw std::runtime_error("Failed to wait on socket");
 			} else if (ret == 0) {
 				PLOG_VERBOSE << "TCP is idle";
+				mSockMutex.unlock(); // unlock now since the upper layer might send on incoming
 				incoming(make_message(0));
 				continue;
 			}
@@ -359,6 +360,7 @@ void TcpTransport::runLoop() {
 				if (len == 0)
 					break; // clean close
 
+				mSockMutex.unlock(); // unlock now since the upper layer might send on incoming
 				auto *b = reinterpret_cast<byte *>(buffer);
 				incoming(make_message(b, b + len));
 			}
