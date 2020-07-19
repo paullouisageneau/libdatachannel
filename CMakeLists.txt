@@ -98,7 +98,7 @@ find_package(Threads REQUIRED)
 set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)
 add_subdirectory(deps/plog)
 
-set(sctp_build_programs 0)
+option(sctp_build_programs 0)
 add_subdirectory(deps/usrsctp EXCLUDE_FROM_ALL)
 if (MSYS OR MINGW)
 	target_compile_definitions(usrsctp PUBLIC -DSCTP_STDINT_INCLUDE=<stdint.h>)
