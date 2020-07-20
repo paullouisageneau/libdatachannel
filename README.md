@@ -198,4 +198,5 @@ ws->open("wss://my.websocket/service");
 
 ## External resources
 - Rust wrappers for libdatachannel: [lerouxrgd/datachannel-rs](https://github.com/lerouxrgd/datachannel-rs)
+- WebAssembly wrappers compatible with libdatachannel: [paullouisageneau/datachannel-wasm](https://github.com/paullouisageneau/datachannel-wasm)
 
