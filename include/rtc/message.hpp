@@ -37,6 +37,8 @@ struct Message : binary {
 	Message(Iterator begin_, Iterator end_, Type type_ = Binary)
 	    : binary(begin_, end_), type(type_) {}
 
+	Message(binary &&data, Type type_ = Binary) : binary(std::move(data)), type(type_) {}
+
 	Type type;
 	unsigned int stream = 0;
 	std::shared_ptr<Reliability> reliability;
@@ -63,6 +65,15 @@ inline message_ptr make_message(size_t size, Message::Type type = Message::Binar
                                 unsigned int stream = 0,
                                 std::shared_ptr<Reliability> reliability = nullptr) {
 	auto message = std::make_shared<Message>(size, type);
+	message->stream = stream;
+	message->reliability = reliability;
+	return message;
+}
+
+inline message_ptr make_message(binary &&data, Message::Type type = Message::Binary,
+                                unsigned int stream = 0,
+                                std::shared_ptr<Reliability> reliability = nullptr) {
+	auto message = std::make_shared<Message>(std::move(data), type);
 	message->stream = stream;
 	message->reliability = reliability;
 	return message;

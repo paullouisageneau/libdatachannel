@@ -86,7 +86,7 @@ private:
 	int handleSend(size_t free);
 	int handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_df);
 
-	void processData(const byte *data, size_t len, uint16_t streamId, PayloadId ppid);
+	void processData(binary &&data, uint16_t streamId, PayloadId ppid);
 	void processNotification(const union sctp_notification *notify, size_t len);
 
 	const uint16_t mPort;

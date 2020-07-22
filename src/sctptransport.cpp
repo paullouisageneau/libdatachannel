@@ -479,32 +479,22 @@ int SctpTransport::handleRecv(struct socket * /*sock*/, union sctp_sockstore /*a
 		// therefore partial notifications and messages need to be handled separately.
 		if (flags & MSG_NOTIFICATION) {
 			// SCTP event notification
+			mPartialNotification.insert(mPartialNotification.end(), data, data + len);
 			if (flags & MSG_EOR) {
-				if (!mPartialNotification.empty()) {
-					mPartialNotification.insert(mPartialNotification.end(), data, data + len);
-					data = mPartialNotification.data();
-					len = mPartialNotification.size();
-				}
 				// Notification is complete, process it
-				processNotification(reinterpret_cast<const union sctp_notification *>(data), len);
+				processNotification(
+				    reinterpret_cast<const union sctp_notification *>(mPartialNotification.data()),
+				    mPartialNotification.size());
 				mPartialNotification.clear();
-			} else {
-				mPartialNotification.insert(mPartialNotification.end(), data, data + len);
 			}
-
 		} else {
 			// SCTP message
+			mPartialMessage.insert(mPartialMessage.end(), data, data + len);
 			if (flags & MSG_EOR) {
-				if (!mPartialMessage.empty()) {
-					mPartialMessage.insert(mPartialMessage.end(), data, data + len);
-					data = mPartialMessage.data();
-					len = mPartialMessage.size();
-				}
 				// Message is complete, process it
-				processData(data, len, info.rcv_sid, PayloadId(htonl(info.rcv_ppid)));
+				processData(std::move(mPartialMessage), info.rcv_sid,
+				            PayloadId(htonl(info.rcv_ppid)));
 				mPartialMessage.clear();
-			} else {
-				mPartialMessage.insert(mPartialMessage.end(), data, data + len);
 			}
 		}
 
@@ -539,62 +529,56 @@ int SctpTransport::handleWrite(byte *data, size_t len, uint8_t /*tos*/, uint8_t 
 	return 0; // success
 }
 
-void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, PayloadId ppid) {
-	PLOG_VERBOSE << "Process data, len=" << len;
+void SctpTransport::processData(binary &&data, uint16_t sid, PayloadId ppid) {
+	PLOG_VERBOSE << "Process data, size=" << data.size();
 
 	// The usage of the PPIDs "WebRTC String Partial" and "WebRTC Binary Partial" is deprecated.
 	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.6
 	// We handle them at reception for compatibility reasons but should never send them.
 	switch (ppid) {
 	case PPID_CONTROL:
-		recv(make_message(data, data + len, Message::Control, sid));
+		recv(make_message(std::move(data), Message::Control, sid));
 		break;
 
 	case PPID_STRING_PARTIAL: // deprecated
-		mPartialStringData.insert(mPartialStringData.end(), data, data + len);
+		mPartialStringData.insert(mPartialStringData.end(), data.begin(), data.end());
 		break;
 
 	case PPID_STRING:
 		if (mPartialStringData.empty()) {
-			mBytesReceived += len;
-			recv(make_message(data, data + len, Message::String, sid));
+			mBytesReceived += data.size();
+			recv(make_message(std::move(data), Message::String, sid));
 		} else {
-			mPartialStringData.insert(mPartialStringData.end(), data, data + len);
+			mPartialStringData.insert(mPartialStringData.end(), data.begin(), data.end());
 			mBytesReceived += mPartialStringData.size();
-			recv(make_message(mPartialStringData.begin(), mPartialStringData.end(), Message::String,
-			                  sid));
+			recv(make_message(std::move(mPartialStringData), Message::String, sid));
 			mPartialStringData.clear();
 		}
 		break;
 
 	case PPID_STRING_EMPTY:
-		// This only accounts for when the partial data is empty
-		recv(make_message(mPartialStringData.begin(), mPartialStringData.end(), Message::String,
-		                  sid));
+		recv(make_message(std::move(mPartialStringData), Message::String, sid));
 		mPartialStringData.clear();
 		break;
 
 	case PPID_BINARY_PARTIAL: // deprecated
-		mPartialBinaryData.insert(mPartialBinaryData.end(), data, data + len);
+		mPartialBinaryData.insert(mPartialBinaryData.end(), data.begin(), data.end());
 		break;
 
 	case PPID_BINARY:
 		if (mPartialBinaryData.empty()) {
-			mBytesReceived += len;
-			recv(make_message(data, data + len, Message::Binary, sid));
+			mBytesReceived += data.size();
+			recv(make_message(std::move(data), Message::Binary, sid));
 		} else {
-			mPartialBinaryData.insert(mPartialBinaryData.end(), data, data + len);
+			mPartialBinaryData.insert(mPartialBinaryData.end(), data.begin(), data.end());
 			mBytesReceived += mPartialBinaryData.size();
-			recv(make_message(mPartialBinaryData.begin(), mPartialBinaryData.end(), Message::Binary,
-			                  sid));
+			recv(make_message(std::move(mPartialBinaryData), Message::Binary, sid));
 			mPartialBinaryData.clear();
 		}
 		break;
 
 	case PPID_BINARY_EMPTY:
-		// This only accounts for when the partial data is empty
-		recv(make_message(mPartialBinaryData.begin(), mPartialBinaryData.end(), Message::Binary,
-		                  sid));
+		recv(make_message(std::move(mPartialBinaryData), Message::Binary, sid));
 		mPartialBinaryData.clear();
 		break;
 
