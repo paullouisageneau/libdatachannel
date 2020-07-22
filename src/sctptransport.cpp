@@ -584,7 +584,7 @@ void SctpTransport::processData(const byte *data, size_t len, uint16_t sid, Payl
 			recv(make_message(data, data + len, Message::Binary, sid));
 		} else {
 			mPartialBinaryData.insert(mPartialBinaryData.end(), data, data + len);
-			mBytesReceived += mPartialStringData.size();
+			mBytesReceived += mPartialBinaryData.size();
 			recv(make_message(mPartialBinaryData.begin(), mPartialBinaryData.end(), Message::Binary,
 			                  sid));
 			mPartialBinaryData.clear();
