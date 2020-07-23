@@ -85,6 +85,7 @@ template <typename... P> class synchronized_callback {
 public:
 	synchronized_callback() = default;
 	synchronized_callback(synchronized_callback &&cb) { *this = std::move(cb); }
+	synchronized_callback(const synchronized_callback &cb) { *this = cb; }
 	synchronized_callback(std::function<void(P...)> func) { *this = std::move(func); }
 	~synchronized_callback() { *this = nullptr; }
 
@@ -92,6 +93,12 @@ public:
 		std::scoped_lock lock(mutex, cb.mutex);
 		callback = std::move(cb.callback);
 		cb.callback = nullptr;
+		return *this;
+	}
+
+	synchronized_callback &operator=(const synchronized_callback &cb) {
+		std::scoped_lock lock(mutex, cb.mutex);
+		callback = cb.callback;
 		return *this;
 	}
 
