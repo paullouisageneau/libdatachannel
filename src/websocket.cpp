@@ -317,7 +317,7 @@ void WebSocket::closeTransports() {
 	// Reset callbacks now that state is changed
 	resetCallbacks();
 
-	// Pass the references to a thread, allowing to terminate a transport from its own thread
+	// Pass the pointers to a thread, allowing to terminate a transport from its own thread
 	auto ws = std::atomic_exchange(&mWsTransport, decltype(mWsTransport)(nullptr));
 	auto tls = std::atomic_exchange(&mTlsTransport, decltype(mTlsTransport)(nullptr));
 	auto tcp = std::atomic_exchange(&mTcpTransport, decltype(mTcpTransport)(nullptr));
