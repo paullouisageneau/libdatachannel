@@ -84,8 +84,16 @@ template <typename F, typename T, typename... Args> auto weak_bind(F &&f, T *t, 
 template <typename... P> class synchronized_callback {
 public:
 	synchronized_callback() = default;
+	synchronized_callback(synchronized_callback &&cb) { *this = std::move(cb); }
 	synchronized_callback(std::function<void(P...)> func) { *this = std::move(func); }
 	~synchronized_callback() { *this = nullptr; }
+
+	synchronized_callback &operator=(synchronized_callback &&cb) {
+		std::scoped_lock lock(mutex, cb.mutex);
+		callback = std::move(cb.callback);
+		cb.callback = nullptr;
+		return *this;
+	}
 
 	synchronized_callback &operator=(std::function<void(P...)> func) {
 		std::lock_guard lock(mutex);

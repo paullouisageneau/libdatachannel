@@ -446,9 +446,10 @@ void PeerConnection::closeTransports() {
 	// Change state to sink state Closed
 	changeState(State::Closed);
 
-	// Reset callbacks after calls are processed (in particular state change to Closed)
-	mProcessor->enqueue(std::bind(&PeerConnection::resetCallbacks, this));
+	// Reset callbacks now that state is changed
+	resetCallbacks();
 
+	// Initiate transport stop on the processor after closing the data channels
 	mProcessor->enqueue([this]() {
 		// Pass the pointers to a thread
 		auto sctp = std::atomic_exchange(&mSctpTransport, decltype(mSctpTransport)(nullptr));
@@ -654,7 +655,12 @@ bool PeerConnection::changeState(State state) {
 
 	} while (!mState.compare_exchange_weak(current, state));
 
-	mProcessor->enqueue([this, state]() { mStateChangeCallback(state); });
+	if (state == State::Closed)
+		// This is the last state change, so we may steal the callback
+		mProcessor->enqueue([this, cb = std::move(mStateChangeCallback)]() { cb(State::Closed); });
+	else
+		mProcessor->enqueue([this, state]() { mStateChangeCallback(state); });
+
 	return true;
 }
 
