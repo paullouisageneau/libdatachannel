@@ -451,7 +451,7 @@ void SctpTransport::sendReset(uint16_t streamId) {
 		mWrittenCondition.wait_for(lock, 1000ms,
 		                           [&]() { return mWritten || state() != State::Connected; });
 	} else if (errno == EINVAL) {
-		PLOG_VERBOSE << "SCTP stream " << streamId << " already reset";
+		PLOG_DEBUG << "SCTP stream " << streamId << " already reset";
 	} else {
 		PLOG_WARNING << "SCTP reset stream " << streamId << " failed, errno=" << errno;
 	}

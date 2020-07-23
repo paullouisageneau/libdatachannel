@@ -51,13 +51,17 @@ PeerConnection::PeerConnection(const Configuration &config)
 }
 
 PeerConnection::~PeerConnection() {
-	close();
 	PLOG_VERBOSE << "Destroying PeerConnection";
+	close();
+	mProcessor->join();
 }
 
 void PeerConnection::close() {
 	PLOG_VERBOSE << "Closing PeerConnection";
-	closeDataChannels();
+
+	// Close data channels asynchronously
+	mProcessor->enqueue(std::bind(&PeerConnection::closeDataChannels, this));
+
 	closeTransports();
 }
 
@@ -439,27 +443,29 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 void PeerConnection::closeTransports() {
 	PLOG_VERBOSE << "Closing transports";
 
-	// Change state to sink state Closed to block init methods
+	// Change state to sink state Closed
 	changeState(State::Closed);
 
-	// Reset callbacks now that state is changed
-	resetCallbacks();
+	// Reset callbacks after calls are processed (in particular state change to Closed)
+	mProcessor->enqueue(std::bind(&PeerConnection::resetCallbacks, this));
 
-	// Pass the references to a thread, allowing to terminate a transport from its own thread
-	auto sctp = std::atomic_exchange(&mSctpTransport, decltype(mSctpTransport)(nullptr));
-	auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
-	auto ice = std::atomic_exchange(&mIceTransport, decltype(mIceTransport)(nullptr));
-	ThreadPool::Instance().enqueue([sctp, dtls, ice]() mutable {
-		if (sctp)
-			sctp->stop();
-		if (dtls)
-			dtls->stop();
-		if (ice)
-			ice->stop();
+	mProcessor->enqueue([this]() {
+		// Pass the pointers to a thread
+		auto sctp = std::atomic_exchange(&mSctpTransport, decltype(mSctpTransport)(nullptr));
+		auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
+		auto ice = std::atomic_exchange(&mIceTransport, decltype(mIceTransport)(nullptr));
+		ThreadPool::Instance().enqueue([sctp, dtls, ice]() mutable {
+			if (sctp)
+				sctp->stop();
+			if (dtls)
+				dtls->stop();
+			if (ice)
+				ice->stop();
 
-		sctp.reset();
-		dtls.reset();
-		ice.reset();
+			sctp.reset();
+			dtls.reset();
+			ice.reset();
+		});
 	});
 }
 
