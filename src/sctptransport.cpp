@@ -679,8 +679,10 @@ int SctpTransport::RecvCallback(struct socket *sock, union sctp_sockstore addr, 
 	auto *transport = static_cast<SctpTransport *>(ptr);
 
 	std::shared_lock lock(InstancesMutex);
-	if (Instances.find(transport) == Instances.end())
+	if (Instances.find(transport) == Instances.end()) {
+		free(data);
 		return -1;
+	}
 
 	int ret =
 	    transport->handleRecv(sock, addr, static_cast<const byte *>(data), len, recv_info, flags);
