@@ -676,8 +676,16 @@ std::optional<milliseconds> SctpTransport::rtt() {
 
 int SctpTransport::RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data,
                                 size_t len, struct sctp_rcvinfo recv_info, int flags, void *ptr) {
-	int ret = static_cast<SctpTransport *>(ptr)->handleRecv(
-	    sock, addr, static_cast<const byte *>(data), len, recv_info, flags);
+	auto *transport = static_cast<SctpTransport *>(ptr);
+
+	std::shared_lock lock(InstancesMutex);
+	if (Instances.find(transport) == Instances.end()) {
+		free(data);
+		return -1;
+	}
+
+	int ret =
+	    transport->handleRecv(sock, addr, static_cast<const byte *>(data), len, recv_info, flags);
 	free(data);
 	return ret;
 }
@@ -692,8 +700,6 @@ int SctpTransport::SendCallback(struct socket *sock, uint32_t sb_free) {
 	void *ptr = sconn->sconn_addr;
 	auto *transport = static_cast<SctpTransport *>(ptr);
 
-	// Workaround for sctplab/usrsctp#405: Send callback is invoked on already closed socket
-	// https://github.com/sctplab/usrsctp/issues/405
 	std::shared_lock lock(InstancesMutex);
 	if (Instances.find(transport) == Instances.end())
 		return -1;
@@ -702,8 +708,15 @@ int SctpTransport::SendCallback(struct socket *sock, uint32_t sb_free) {
 }
 
 int SctpTransport::WriteCallback(void *ptr, void *data, size_t len, uint8_t tos, uint8_t set_df) {
-	return static_cast<SctpTransport *>(ptr)->handleWrite(static_cast<byte *>(data), len, tos,
-	                                                      set_df);
+	auto *transport = static_cast<SctpTransport *>(ptr);
+
+	// Workaround for sctplab/usrsctp#405: Send callback is invoked on already closed socket
+	// https://github.com/sctplab/usrsctp/issues/405
+	std::shared_lock lock(InstancesMutex);
+	if (Instances.find(transport) == Instances.end())
+		return -1;
+
+	return transport->handleWrite(static_cast<byte *>(data), len, tos, set_df);
 }
 
 } // namespace rtc
