@@ -82,6 +82,11 @@ std::optional<Description> PeerConnection::remoteDescription() const {
 }
 
 void PeerConnection::setLocalDescription(std::optional<Description> description) {
+	if (description)
+		PLOG_VERBOSE << "Setting local description: " << string(*description);
+	else
+		PLOG_VERBOSE << "Setting default local description";
+
 	if (auto iceTransport = std::atomic_load(&mIceTransport)) {
 		throw std::logic_error("Local description is already set");
 	} else {
@@ -98,6 +103,8 @@ void PeerConnection::setLocalDescription(std::optional<Description> description)
 }
 
 void PeerConnection::setRemoteDescription(Description description) {
+	PLOG_VERBOSE << "Setting remote description: " << string(description);
+
 	description.hintType(localDescription() ? Description::Type::Answer : Description::Type::Offer);
 	auto type = description.type();
 	auto remoteCandidates = description.extractCandidates(); // Candidates will be added at the end
@@ -143,6 +150,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 }
 
 void PeerConnection::addRemoteCandidate(Candidate candidate) {
+	PLOG_VERBOSE << "Adding remote candidate: " << string(candidate);
 
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	if (!mRemoteDescription || !iceTransport)
