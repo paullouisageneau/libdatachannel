@@ -82,10 +82,7 @@ std::optional<Description> PeerConnection::remoteDescription() const {
 }
 
 void PeerConnection::setLocalDescription(std::optional<Description> description) {
-	if (description)
-		PLOG_VERBOSE << "Setting local description: " << string(*description);
-	else
-		PLOG_VERBOSE << "Setting default local description";
+	PLOG_VERBOSE << "Setting local description";
 
 	if (auto iceTransport = std::atomic_load(&mIceTransport)) {
 		throw std::logic_error("Local description is already set");
