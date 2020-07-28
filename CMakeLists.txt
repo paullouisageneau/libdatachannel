@@ -10,6 +10,7 @@ option(USE_NICE "Use libnice instead of libjuice" OFF)
 option(USE_SRTP "Enable SRTP for media support" OFF)
 option(NO_WEBSOCKET "Disable WebSocket support" OFF)
 option(NO_EXAMPLES "Disable examples" OFF)
+option(NO_TESTS "Disable tests build" ON)
 
 if(USE_NICE)
 	option(USE_JUICE "Use libjuice" OFF)
@@ -214,30 +215,32 @@ install(TARGETS datachannel LIBRARY DESTINATION lib)
 install(FILES ${LIBDATACHANNEL_HEADERS} DESTINATION include/rtc)
 
 # Tests
-add_executable(datachannel-tests ${TESTS_SOURCES})
-set_target_properties(datachannel-tests PROPERTIES
-	VERSION ${PROJECT_VERSION}
-	CXX_STANDARD 17)
-set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
-target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-if(WIN32)
-	target_link_libraries(datachannel-tests datachannel-static) # DLL exports only the C API
-else()
-	target_link_libraries(datachannel-tests datachannel)
-endif()
+if(NOT NO_TESTS)
+	add_executable(datachannel-tests ${TESTS_SOURCES})
+	set_target_properties(datachannel-tests PROPERTIES
+		VERSION ${PROJECT_VERSION}
+		CXX_STANDARD 17)
+	set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
+	target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+	if(WIN32)
+		target_link_libraries(datachannel-tests datachannel-static) # DLL exports only the C API
+	else()
+		target_link_libraries(datachannel-tests datachannel)
+	endif()
 
-# Benchmark
-add_executable(datachannel-benchmark test/benchmark.cpp)
-set_target_properties(datachannel-benchmark PROPERTIES
-	VERSION ${PROJECT_VERSION}
-	CXX_STANDARD 17)
-set_target_properties(datachannel-benchmark PROPERTIES OUTPUT_NAME benchmark)
-target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
-target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-if(WIN32)
-	target_link_libraries(datachannel-benchmark datachannel-static) # DLL exports only the C API
-else()
-	target_link_libraries(datachannel-benchmark datachannel)
+	# Benchmark
+	add_executable(datachannel-benchmark test/benchmark.cpp)
+	set_target_properties(datachannel-benchmark PROPERTIES
+		VERSION ${PROJECT_VERSION}
+		CXX_STANDARD 17)
+	set_target_properties(datachannel-benchmark PROPERTIES OUTPUT_NAME benchmark)
+	target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
+	target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+	if(WIN32)
+		target_link_libraries(datachannel-benchmark datachannel-static) # DLL exports only the C API
+	else()
+		target_link_libraries(datachannel-benchmark datachannel)
+	endif()
 endif()
 
 # Examples
