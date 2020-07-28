@@ -10,7 +10,7 @@ option(USE_NICE "Use libnice instead of libjuice" OFF)
 option(USE_SRTP "Enable SRTP for media support" OFF)
 option(NO_WEBSOCKET "Disable WebSocket support" OFF)
 option(NO_EXAMPLES "Disable examples" OFF)
-option(NO_TESTS "Disable tests build" ON)
+option(NO_TESTS "Disable tests build" OFF)
 
 if(USE_NICE)
 	option(USE_JUICE "Use libjuice" OFF)
