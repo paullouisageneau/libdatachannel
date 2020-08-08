@@ -256,7 +256,7 @@ int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
 				if (reliability->maxPacketLifeTime > 0) {
 					r.type = Reliability::TYPE_PARTIAL_RELIABLE_TIMED;
 					r.rexmit = milliseconds(reliability->maxPacketLifeTime);
-				} else if (reliability->maxRetransmits > 0) {
+				} else {
 					r.type = Reliability::TYPE_PARTIAL_RELIABLE_REXMIT;
 					r.rexmit = int(reliability->maxRetransmits);
 				}
