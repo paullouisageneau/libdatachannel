@@ -29,6 +29,7 @@
 
 #include "plog/Formatters/FuncMessageFormatter.h"
 
+#include <chrono>
 #include <exception>
 #include <mutex>
 #include <type_traits>
@@ -43,6 +44,7 @@
 using namespace rtc;
 using std::shared_ptr;
 using std::string;
+using std::chrono::milliseconds;
 
 namespace {
 
@@ -241,9 +243,30 @@ int rtcDeletePeerConnection(int pc) {
 }
 
 int rtcCreateDataChannel(int pc, const char *label) {
+	return rtcCreateDataChannelExt(pc, label, nullptr, nullptr);
+}
+
+int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
+                            const rtcReliability *reliability) {
 	return WRAP({
+		Reliability r = {};
+		if (reliability) {
+			r.unordered = reliability->unordered;
+			if (reliability->unreliable) {
+				if (reliability->maxPacketLifeTime > 0) {
+					r.type = Reliability::TYPE_PARTIAL_RELIABLE_TIMED;
+					r.rexmit = milliseconds(reliability->maxPacketLifeTime);
+				} else if (reliability->maxRetransmits > 0) {
+					r.type = Reliability::TYPE_PARTIAL_RELIABLE_REXMIT;
+					r.rexmit = int(reliability->maxRetransmits);
+				}
+			} else {
+				r.type = Reliability::TYPE_RELIABLE;
+			}
+		}
 		auto peerConnection = getPeerConnection(pc);
-		int dc = emplaceDataChannel(peerConnection->createDataChannel(string(label)));
+		int dc = emplaceDataChannel(peerConnection->createDataChannel(
+		    string(label ? label : ""), string(protocol ? protocol : ""), r));
 		if (auto ptr = getUserPointer(pc))
 			rtcSetUserPointer(dc, *ptr);
 		return dc;
@@ -444,6 +467,48 @@ int rtcGetDataChannelLabel(int dc, char *buffer, int size) {
 		std::copy(data, data + size, buffer);
 		buffer[size] = '\0';
 		return int(size + 1);
+	});
+}
+
+int rtcGetDataChannelProtocol(int dc, char *buffer, int size) {
+	return WRAP({
+		auto dataChannel = getDataChannel(dc);
+
+		if (!buffer)
+			throw std::invalid_argument("Unexpected null pointer");
+
+		if (size <= 0)
+			return 0;
+
+		string protocol = dataChannel->protocol();
+		const char *data = protocol.data();
+		size = std::min(size - 1, int(protocol.size()));
+		std::copy(data, data + size, buffer);
+		buffer[size] = '\0';
+		return int(size + 1);
+	});
+}
+
+int rtcGetDataChannelReliability(int dc, rtcReliability *reliability) {
+	return WRAP({
+		auto dataChannel = getDataChannel(dc);
+
+		if (!reliability)
+			throw std::invalid_argument("Unexpected null pointer");
+
+		Reliability r = dataChannel->reliability();
+		std::memset(reliability, sizeof(*reliability), 0);
+		reliability->unordered = r.unordered;
+		if (r.type == Reliability::TYPE_PARTIAL_RELIABLE_TIMED) {
+			reliability->unreliable = true;
+			reliability->maxPacketLifeTime = std::get<milliseconds>(r.rexmit).count();
+		} else if (r.type == Reliability::TYPE_PARTIAL_RELIABLE_REXMIT) {
+			reliability->unreliable = true;
+			reliability->maxRetransmits = unsigned(std::get<int>(r.rexmit));
+		} else {
+			reliability->unreliable = false;
+		}
+		return 0;
 	});
 }
 
