@@ -98,5 +98,10 @@ wsServer.on('request', (req) => {
   clients[id] = conn;
 });
 
-httpServer.listen(8000);
+const hostname = '127.0.0.1';
+const port = 8000;
+
+httpServer.listen(port, hostname, () => {
+  console.log(`Server listening on ${hostname}:${port}`);
+});
 
