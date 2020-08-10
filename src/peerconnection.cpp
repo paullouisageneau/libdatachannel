@@ -662,7 +662,7 @@ bool PeerConnection::changeState(State state) {
 
 	if (state == State::Closed)
 		// This is the last state change, so we may steal the callback
-		mProcessor->enqueue([this, cb = std::move(mStateChangeCallback)]() { cb(State::Closed); });
+		mProcessor->enqueue([cb = std::move(mStateChangeCallback)]() { cb(State::Closed); });
 	else
 		mProcessor->enqueue([this, state]() { mStateChangeCallback(state); });
 
