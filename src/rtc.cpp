@@ -501,7 +501,7 @@ int rtcGetDataChannelReliability(int dc, rtcReliability *reliability) {
 		reliability->unordered = r.unordered;
 		if (r.type == Reliability::Type::Timed) {
 			reliability->unreliable = true;
-			reliability->maxPacketLifeTime = std::get<milliseconds>(r.rexmit).count();
+			reliability->maxPacketLifeTime = unsigned(std::get<milliseconds>(r.rexmit).count());
 		} else if (r.type == Reliability::Type::Rexmit) {
 			reliability->unreliable = true;
 			reliability->maxRetransmits = unsigned(std::get<int>(r.rexmit));

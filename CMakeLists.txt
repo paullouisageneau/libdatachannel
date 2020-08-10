@@ -216,8 +216,8 @@ install(FILES ${LIBDATACHANNEL_HEADERS} DESTINATION include/rtc)
 
 # Warnings as errors
 if(MSVC)
-  target_compile_options(datachannel PRIVATE /W4 /WX)
-  target_compile_options(datachannel-static PRIVATE /W4 /WX)
+  target_compile_options(datachannel PRIVATE /WX)
+  target_compile_options(datachannel-static PRIVATE /WX)
 else()
   target_compile_options(datachannel PRIVATE -Wall -Wextra -Werror)
   target_compile_options(datachannel-static PRIVATE -Wall -Wextra -Werror)
