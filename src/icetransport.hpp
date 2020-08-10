@@ -113,8 +113,9 @@ private:
 	static gboolean TimeoutCallback(gpointer userData);
 	static void LogCallback(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message,
 	                        gpointer user_data);
-	static const CandidateType NiceTypeToCandidateType(NiceCandidateType type);
-	static const CandidateTransportType NiceTransportTypeToCandidateTransportType(NiceCandidateTransport type);
+	static CandidateType NiceTypeToCandidateType(NiceCandidateType type);
+	static CandidateTransportType
+	NiceTransportTypeToCandidateTransportType(NiceCandidateTransport type);
 #endif
 };
 

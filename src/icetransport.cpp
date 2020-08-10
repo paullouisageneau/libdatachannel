@@ -622,7 +622,8 @@ void IceTransport::CandidateCallback(NiceAgent *agent, NiceCandidate *candidate,
 	g_free(cand);
 }
 
-void IceTransport::GatheringDoneCallback(NiceAgent *agent, guint streamId, gpointer userData) {
+void IceTransport::GatheringDoneCallback(NiceAgent * /*agent*/, guint /*streamId*/,
+                                         gpointer userData) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(userData);
 	try {
 		iceTransport->processGatheringDone();
@@ -631,8 +632,8 @@ void IceTransport::GatheringDoneCallback(NiceAgent *agent, guint streamId, gpoin
 	}
 }
 
-void IceTransport::StateChangeCallback(NiceAgent *agent, guint streamId, guint componentId,
-                                       guint state, gpointer userData) {
+void IceTransport::StateChangeCallback(NiceAgent * /*agent*/, guint /*streamId*/,
+                                       guint /*componentId*/, guint state, gpointer userData) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(userData);
 	try {
 		iceTransport->processStateChange(state);
@@ -641,8 +642,8 @@ void IceTransport::StateChangeCallback(NiceAgent *agent, guint streamId, guint c
 	}
 }
 
-void IceTransport::RecvCallback(NiceAgent *agent, guint streamId, guint componentId, guint len,
-                                gchar *buf, gpointer userData) {
+void IceTransport::RecvCallback(NiceAgent * /*agent*/, guint /*streamId*/, guint /*componentId*/,
+                                guint len, gchar *buf, gpointer userData) {
 	auto iceTransport = static_cast<rtc::IceTransport *>(userData);
 	try {
 		PLOG_VERBOSE << "Incoming size=" << len;
@@ -663,8 +664,8 @@ gboolean IceTransport::TimeoutCallback(gpointer userData) {
 	return FALSE;
 }
 
-void IceTransport::LogCallback(const gchar *logDomain, GLogLevelFlags logLevel,
-                               const gchar *message, gpointer userData) {
+void IceTransport::LogCallback(const gchar * /*logDomain*/, GLogLevelFlags logLevel,
+                               const gchar *message, gpointer /*userData*/) {
 	plog::Severity severity;
 	unsigned int flags = logLevel & G_LOG_LEVEL_MASK;
 	if (flags & G_LOG_LEVEL_ERROR)
@@ -708,7 +709,7 @@ bool IceTransport::getSelectedCandidatePair(CandidateInfo *localInfo, CandidateI
 	return true;
 }
 
-const CandidateType IceTransport::NiceTypeToCandidateType(NiceCandidateType type) {
+CandidateType IceTransport::NiceTypeToCandidateType(NiceCandidateType type) {
 	switch (type) {
 	case NiceCandidateType::NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
 		return CandidateType::PeerReflexive;
@@ -721,7 +722,7 @@ const CandidateType IceTransport::NiceTypeToCandidateType(NiceCandidateType type
 	}
 }
 
-const CandidateTransportType
+CandidateTransportType
 IceTransport::NiceTransportTypeToCandidateTransportType(NiceCandidateTransport type) {
 	switch (type) {
 	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
