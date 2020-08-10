@@ -54,7 +54,7 @@ SelectInterrupter::~SelectInterrupter() {
 #endif
 }
 
-int SelectInterrupter::prepare(fd_set &readfds, fd_set &writefds) {
+int SelectInterrupter::prepare(fd_set &readfds, [[maybe_unused]] fd_set &writefds) {
 	std::lock_guard lock(mMutex);
 #ifdef _WIN32
 	if (mDummySock == INVALID_SOCKET)

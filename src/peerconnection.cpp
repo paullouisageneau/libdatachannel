@@ -248,7 +248,7 @@ void PeerConnection::onMedia(std::function<void(const binary &packet)> callback)
 	mMediaCallback = callback;
 }
 
-void PeerConnection::outgoingMedia(message_ptr message) {
+void PeerConnection::outgoingMedia([[maybe_unused]] message_ptr message) {
 	if (!hasMedia())
 		throw std::runtime_error("PeerConnection has no media support");
 

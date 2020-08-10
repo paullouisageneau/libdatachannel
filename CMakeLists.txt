@@ -214,6 +214,15 @@ add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
 install(TARGETS datachannel LIBRARY DESTINATION lib)
 install(FILES ${LIBDATACHANNEL_HEADERS} DESTINATION include/rtc)
 
+# Warnings as errors
+if(MSVC)
+  target_compile_options(datachannel PRIVATE /W4 /WX)
+  target_compile_options(datachannel-static PRIVATE /W4 /WX)
+else()
+  target_compile_options(datachannel PRIVATE -Wall -Wextra -Werror)
+  target_compile_options(datachannel-static PRIVATE -Wall -Wextra -Werror)
+endif()
+
 # Tests
 if(NOT NO_TESTS)
 	add_executable(datachannel-tests ${TESTS_SOURCES})

@@ -497,7 +497,7 @@ int rtcGetDataChannelReliability(int dc, rtcReliability *reliability) {
 			throw std::invalid_argument("Unexpected null pointer");
 
 		Reliability r = dataChannel->reliability();
-		std::memset(reliability, sizeof(*reliability), 0);
+		std::memset(reliability, 0, sizeof(*reliability));
 		reliability->unordered = r.unordered;
 		if (r.type == Reliability::Type::Timed) {
 			reliability->unreliable = true;
