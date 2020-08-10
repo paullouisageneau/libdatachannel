@@ -254,14 +254,14 @@ int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
 			r.unordered = reliability->unordered;
 			if (reliability->unreliable) {
 				if (reliability->maxPacketLifeTime > 0) {
-					r.type = Reliability::TYPE_PARTIAL_RELIABLE_TIMED;
+					r.type = Reliability::Type::Timed;
 					r.rexmit = milliseconds(reliability->maxPacketLifeTime);
 				} else {
-					r.type = Reliability::TYPE_PARTIAL_RELIABLE_REXMIT;
+					r.type = Reliability::Type::Rexmit;
 					r.rexmit = int(reliability->maxRetransmits);
 				}
 			} else {
-				r.type = Reliability::TYPE_RELIABLE;
+				r.type = Reliability::Type::Reliable;
 			}
 		}
 		auto peerConnection = getPeerConnection(pc);
@@ -499,10 +499,10 @@ int rtcGetDataChannelReliability(int dc, rtcReliability *reliability) {
 		Reliability r = dataChannel->reliability();
 		std::memset(reliability, sizeof(*reliability), 0);
 		reliability->unordered = r.unordered;
-		if (r.type == Reliability::TYPE_PARTIAL_RELIABLE_TIMED) {
+		if (r.type == Reliability::Type::Timed) {
 			reliability->unreliable = true;
 			reliability->maxPacketLifeTime = std::get<milliseconds>(r.rexmit).count();
-		} else if (r.type == Reliability::TYPE_PARTIAL_RELIABLE_REXMIT) {
+		} else if (r.type == Reliability::Type::Rexmit) {
 			reliability->unreliable = true;
 			reliability->maxRetransmits = unsigned(std::get<int>(r.rexmit));
 		} else {

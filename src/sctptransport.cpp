@@ -372,12 +372,12 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 		spa.sendv_sndinfo.snd_flags |= SCTP_UNORDERED;
 
 	switch (reliability.type) {
-	case Reliability::TYPE_PARTIAL_RELIABLE_REXMIT:
+	case Reliability::Type::Rexmit:
 		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
 		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
 		spa.sendv_prinfo.pr_value = uint32_t(std::get<int>(reliability.rexmit));
 		break;
-	case Reliability::TYPE_PARTIAL_RELIABLE_TIMED:
+	case Reliability::Type::Timed:
 		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
 		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_TTL;
 		spa.sendv_prinfo.pr_value = uint32_t(std::get<milliseconds>(reliability.rexmit).count());

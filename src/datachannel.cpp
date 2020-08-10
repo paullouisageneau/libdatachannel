@@ -31,6 +31,7 @@ namespace rtc {
 
 using std::shared_ptr;
 using std::weak_ptr;
+using std::chrono::milliseconds;
 
 // Messages for the DataChannel establishment protocol
 // See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09
@@ -41,6 +42,12 @@ enum MessageType : uint8_t {
 	MESSAGE_ACK = 0x02,
 	MESSAGE_OPEN = 0x03,
 	MESSAGE_CLOSE = 0x04
+};
+
+enum ChannelType : uint8_t {
+	CHANNEL_RELIABLE = 0x00,
+	CHANNEL_PARTIAL_RELIABLE_REXMIT = 0x01,
+	CHANNEL_PARTIAL_RELIABLE_TIMED = 0x02
 };
 
 #pragma pack(push, 1)
@@ -168,22 +175,33 @@ size_t DataChannel::availableAmount() const { return mRecvQueue.amount(); }
 void DataChannel::open(shared_ptr<SctpTransport> transport) {
 	mSctpTransport = transport;
 
-	uint8_t channelType = static_cast<uint8_t>(mReliability->type);
-	if (mReliability->unordered)
-		channelType &= 0x80;
-
-	using std::chrono::milliseconds;
-	uint32_t reliabilityParameter = 0;
-	if (mReliability->type == Reliability::TYPE_PARTIAL_RELIABLE_REXMIT)
+	uint8_t channelType;
+	uint32_t reliabilityParameter;
+	switch (mReliability->type) {
+	case Reliability::Type::Rexmit:
+		channelType = CHANNEL_PARTIAL_RELIABLE_REXMIT;
 		reliabilityParameter = uint32_t(std::get<int>(mReliability->rexmit));
-	else if (mReliability->type == Reliability::TYPE_PARTIAL_RELIABLE_TIMED)
+		break;
+
+	case Reliability::Type::Timed:
+		channelType = CHANNEL_PARTIAL_RELIABLE_TIMED;
 		reliabilityParameter = uint32_t(std::get<milliseconds>(mReliability->rexmit).count());
+		break;
+
+	default:
+		channelType = CHANNEL_RELIABLE;
+		reliabilityParameter = 0;
+		break;
+	}
+
+	if (mReliability->unordered)
+		channelType |= 0x80;
 
 	const size_t len = sizeof(OpenMessage) + mLabel.size() + mProtocol.size();
 	binary buffer(len, byte(0));
 	auto &open = *reinterpret_cast<OpenMessage *>(buffer.data());
 	open.type = MESSAGE_OPEN;
-	open.channelType = mReliability->type;
+	open.channelType = channelType;
 	open.priority = htons(0);
 	open.reliabilityParameter = htonl(reliabilityParameter);
 	open.labelLength = htons(uint16_t(mLabel.size()));
@@ -272,19 +290,18 @@ void DataChannel::processOpenMessage(message_ptr message) {
 	mLabel.assign(end, open.labelLength);
 	mProtocol.assign(end + open.labelLength, open.protocolLength);
 
-	using std::chrono::milliseconds;
 	mReliability->unordered = (open.reliabilityParameter & 0x80) != 0;
 	switch (open.channelType & 0x7F) {
-	case Reliability::TYPE_PARTIAL_RELIABLE_REXMIT:
-		mReliability->type = Reliability::TYPE_PARTIAL_RELIABLE_REXMIT;
+	case CHANNEL_PARTIAL_RELIABLE_REXMIT:
+		mReliability->type = Reliability::Type::Rexmit;
 		mReliability->rexmit = int(open.reliabilityParameter);
 		break;
-	case Reliability::TYPE_PARTIAL_RELIABLE_TIMED:
-		mReliability->type = Reliability::TYPE_PARTIAL_RELIABLE_TIMED;
+	case CHANNEL_PARTIAL_RELIABLE_TIMED:
+		mReliability->type = Reliability::Type::Timed;
 		mReliability->rexmit = milliseconds(open.reliabilityParameter);
 		break;
 	default:
-		mReliability->type = Reliability::TYPE_RELIABLE;
+		mReliability->type = Reliability::Type::Reliable;
 		mReliability->rexmit = int(0);
 	}
 
