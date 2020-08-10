@@ -81,25 +81,25 @@ std::optional<Description> PeerConnection::remoteDescription() const {
 	return mRemoteDescription;
 }
 
-void PeerConnection::setLocalDescription(std::optional<Description> description) {
+void PeerConnection::setLocalDescription(std::optional<Description> mediaDescription) {
 	PLOG_VERBOSE << "Setting local description";
 
-	if (auto iceTransport = std::atomic_load(&mIceTransport)) {
+	if (std::atomic_load(&mIceTransport))
 		throw std::logic_error("Local description is already set");
-	} else {
-		// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
-		// setup:actpass.
-		// See https://tools.ietf.org/html/rfc5763#section-5
-		iceTransport = initIceTransport(Description::Role::ActPass);
-		Description localDescription = iceTransport->getLocalDescription(Description::Type::Offer);
-		if (description)
-			localDescription.addMedia(*description);
-		processLocalDescription(localDescription);
-		iceTransport->gatherLocalCandidates();
-	}
+
+	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
+	// setup:actpass.
+	// See https://tools.ietf.org/html/rfc5763#section-5
+	auto iceTransport = initIceTransport(Description::Role::ActPass);
+	Description localDescription = iceTransport->getLocalDescription(Description::Type::Offer);
+	if (mediaDescription)
+		localDescription.addMedia(*mediaDescription);
+	processLocalDescription(localDescription);
+	iceTransport->gatherLocalCandidates();
 }
 
-void PeerConnection::setRemoteDescription(Description description) {
+void PeerConnection::setRemoteDescription(Description description,
+                                          std::optional<Description> mediaDescription) {
 	PLOG_VERBOSE << "Setting remote description: " << string(description);
 
 	description.hintType(localDescription() ? Description::Type::Answer : Description::Type::Offer);
@@ -119,7 +119,8 @@ void PeerConnection::setRemoteDescription(Description description) {
 	if (type == Description::Type::Offer) {
 		// This is an offer and we are the answerer.
 		Description localDescription = iceTransport->getLocalDescription(Description::Type::Answer);
-		localDescription.addMedia(description); // blindly accept media
+		if (mediaDescription)
+			localDescription.addMedia(*mediaDescription);
 		processLocalDescription(localDescription);
 		iceTransport->gatherLocalCandidates();
 	} else {
