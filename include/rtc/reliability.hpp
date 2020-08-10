@@ -27,13 +27,9 @@
 namespace rtc {
 
 struct Reliability {
-	enum Type : uint8_t {
-		TYPE_RELIABLE = 0x00,
-		TYPE_PARTIAL_RELIABLE_REXMIT = 0x01,
-		TYPE_PARTIAL_RELIABLE_TIMED = 0x02,
-	};
+	enum class Type { Reliable = 0, Rexmit, Timed };
 
-	Type type = TYPE_RELIABLE;
+	Type type = Type::Reliable;
 	bool unordered = false;
 	std::variant<int, std::chrono::milliseconds> rexmit = 0;
 };

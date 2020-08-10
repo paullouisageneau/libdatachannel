@@ -78,6 +78,13 @@ typedef struct {
 	uint16_t portRangeEnd;
 } rtcConfiguration;
 
+typedef struct {
+	bool unordered;
+	bool unreliable;
+	unsigned int maxPacketLifeTime; // ignored if reliable
+	unsigned int maxRetransmits;    // ignored if reliable
+} rtcReliability;
+
 typedef void (*rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
 typedef void (*rtcDataChannelCallbackFunc)(int dc, void *ptr);
 typedef void (*rtcDescriptionCallbackFunc)(const char *sdp, const char *type, void *ptr);
@@ -115,9 +122,13 @@ RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 
 // DataChannel
 RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
+RTC_EXPORT int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
+                                       const rtcReliability *reliability); // returns dc id
 RTC_EXPORT int rtcDeleteDataChannel(int dc);
 
 RTC_EXPORT int rtcGetDataChannelLabel(int dc, char *buffer, int size);
+RTC_EXPORT int rtcGetDataChannelProtocol(int dc, char *buffer, int size);
+RTC_EXPORT int rtcGetDataChannelReliability(int dc, rtcReliability *reliability);
 
 // WebSocket
 #if RTC_ENABLE_WEBSOCKET
