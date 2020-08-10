@@ -80,8 +80,9 @@ public:
 	std::optional<string> localAddress() const;
 	std::optional<string> remoteAddress() const;
 
-	void setLocalDescription(std::optional<Description> description = nullopt);
-	void setRemoteDescription(Description description);
+	void setLocalDescription(std::optional<Description> mediaDescription = nullopt);
+	void setRemoteDescription(Description description,
+	                          std::optional<Description> mediaDescription = nullopt);
 	void addRemoteCandidate(Candidate candidate);
 
 	std::shared_ptr<DataChannel> createDataChannel(const string &label, const string &protocol = "",
