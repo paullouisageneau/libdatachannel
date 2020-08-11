@@ -228,7 +228,7 @@ string Description::generateSdp(const string &eol) const {
 	}
 
 	// Session-level attributes
-	sdp << "a=msid-semantic: WMS" << eol;
+	sdp << "a=msid-semantic:WMS *" << eol;
 	sdp << "a=setup:" << roleToString(mRole) << eol;
 	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
 	sdp << "a=ice-pwd:" << mIcePwd << eol;
@@ -259,7 +259,7 @@ string Description::generateSdp(const string &eol) const {
 			if (!mMedia.empty())
 				sdp << "a=bundle-only" << eol;
 			sdp << "a=mid:" << mData.mid << eol;
-			sdp << "a=tls-id:1" << eol;
+			sdp << "a=sendrecv" << eol;
 			if (mData.sctpPort)
 				sdp << "a=sctp-port:" << *mData.sctpPort << eol;
 			if (mData.maxMessageSize)
@@ -290,7 +290,7 @@ string Description::generateDataSdp(const string &eol) const {
 	sdp << "m=application 9 UDP/DTLS/SCTP webrtc-datachannel";
 	sdp << "c=IN IP4 0.0.0.0" << eol;
 	sdp << "a=mid:" << mData.mid << eol;
-	sdp << "a=tls-id:1" << eol;
+	sdp << "a=sendrecv" << eol;
 	if (mData.sctpPort)
 		sdp << "a=sctp-port:" << *mData.sctpPort << eol;
 	if (mData.maxMessageSize)
