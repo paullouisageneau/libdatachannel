@@ -223,6 +223,18 @@ string Description::generateSdp(const string &eol) const {
 
 	sdp << "a=msid-semantic: WMS" << eol;
 
+    // Common
+    if (!mEnded)
+        sdp << "a=ice-options:trickle" << eol;
+
+    sdp << "a=ice-ufrag:" << mIceUfrag << eol;
+    sdp << "a=ice-pwd:" << mIcePwd << eol;
+    sdp << "a=setup:" << roleToString(mRole) << eol;
+    sdp << "a=tls-id:1" << eol;
+
+    if (mFingerprint)
+        sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
+
 	// Non-data media
 	if (!mMedia.empty()) {
 		// Lip-sync
@@ -256,20 +268,6 @@ string Description::generateSdp(const string &eol) const {
 				sdp << "a=sctp-port:" << *mData.sctpPort << eol;
 			if (mData.maxMessageSize)
 				sdp << "a=max-message-size:" << *mData.maxMessageSize << eol;
-		}
-
-		if (i == 0) {
-			// Common
-			if (!mEnded)
-				sdp << "a=ice-options:trickle" << eol;
-
-			sdp << "a=ice-ufrag:" << mIceUfrag << eol;
-			sdp << "a=ice-pwd:" << mIcePwd << eol;
-			sdp << "a=setup:" << roleToString(mRole) << eol;
-			sdp << "a=tls-id:1" << eol;
-
-			if (mFingerprint)
-				sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
 		}
 	}
 
