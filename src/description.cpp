@@ -229,7 +229,7 @@ string Description::generateSdp(const string &eol) const {
 
     sdp << "a=ice-ufrag:" << mIceUfrag << eol;
     sdp << "a=ice-pwd:" << mIcePwd << eol;
-    sdp << "a=setup:" << roleToString(mRole) << eol;g
+    sdp << "a=setup:" << roleToString(mRole) << eol;
     sdp << "a=tls-id:1" << eol;
 
     if (mFingerprint)
@@ -268,10 +268,6 @@ string Description::generateSdp(const string &eol) const {
 				sdp << "a=sctp-port:" << *mData.sctpPort << eol;
 			if (mData.maxMessageSize)
 				sdp << "a=max-message-size:" << *mData.maxMessageSize << eol;
-		}
-
-		if (i == 0) {
-
 		}
 	}
 
