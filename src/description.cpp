@@ -150,6 +150,14 @@ string Description::roleString() const { return roleToString(mRole); }
 
 string Description::dataMid() const { return mData.mid; }
 
+string Description::bundleMid() const {
+	// Get the mid of the first media
+	if (auto it = mMedia.find(0); it != mMedia.end())
+		return it->second.mid;
+	else
+		return mData.mid;
+}
+
 std::optional<string> Description::fingerprint() const { return mFingerprint; }
 
 std::optional<uint16_t> Description::sctpPort() const { return mData.sctpPort; }
