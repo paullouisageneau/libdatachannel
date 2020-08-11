@@ -199,9 +199,6 @@ void Description::addMedia(const Description &source) {
 Description::operator string() const { return generateSdp("\r\n"); }
 
 string Description::generateSdp(const string &eol) const {
-	if (!mFingerprint)
-		throw std::logic_error("Fingerprint must be set to generate an SDP string");
-
 	std::ostringstream sdp;
 
 	// Header
@@ -221,20 +218,6 @@ string Description::generateSdp(const string &eol) const {
 			sdp << ' ' << mData.mid;
 	sdp << eol;
 
-	sdp << "a=msid-semantic: WMS" << eol;
-
-	// Common
-	if (!mEnded)
-		sdp << "a=ice-options:trickle" << eol;
-
-	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
-	sdp << "a=ice-pwd:" << mIcePwd << eol;
-	sdp << "a=setup:" << roleToString(mRole) << eol;
-	sdp << "a=tls-id:1" << eol;
-
-	if (mFingerprint)
-		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
-
 	// Non-data media
 	if (!mMedia.empty()) {
 		// Lip-sync
@@ -244,7 +227,19 @@ string Description::generateSdp(const string &eol) const {
 		sdp << eol;
 	}
 
-	// Descriptions and attributes
+	// Session-level attributes
+	sdp << "a=msid-semantic: WMS" << eol;
+	sdp << "a=setup:" << roleToString(mRole) << eol;
+	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
+	sdp << "a=ice-pwd:" << mIcePwd << eol;
+
+	if (!mEnded)
+		sdp << "a=ice-options:trickle" << eol;
+
+	if (mFingerprint)
+		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
+
+	// Media descriptions and attributes
 	for (int i = 0; i < int(mMedia.size() + 1); ++i) {
 		if (auto it = mMedia.find(i); it != mMedia.end()) {
 			// Non-data media
@@ -264,6 +259,7 @@ string Description::generateSdp(const string &eol) const {
 			if (!mMedia.empty())
 				sdp << "a=bundle-only" << eol;
 			sdp << "a=mid:" << mData.mid << eol;
+			sdp << "a=tls-id:1" << eol;
 			if (mData.sctpPort)
 				sdp << "a=sctp-port:" << *mData.sctpPort << eol;
 			if (mData.maxMessageSize)
@@ -274,6 +270,46 @@ string Description::generateSdp(const string &eol) const {
 	// Candidates
 	for (const auto &candidate : mCandidates)
 		sdp << string(candidate) << eol;
+
+	if (mEnded)
+		sdp << "a=end-of-candidates" << eol;
+
+	return sdp.str();
+}
+
+string Description::generateDataSdp(const string &eol) const {
+	std::ostringstream sdp;
+
+	// Header
+	sdp << "v=0" << eol;
+	sdp << "o=- " << mSessionId << " 0 IN IP4 127.0.0.1" << eol;
+	sdp << "s=-" << eol;
+	sdp << "t=0 0" << eol;
+
+	// Data
+	sdp << "m=application 9 UDP/DTLS/SCTP webrtc-datachannel";
+	sdp << "c=IN IP4 0.0.0.0" << eol;
+	sdp << "a=mid:" << mData.mid << eol;
+	sdp << "a=tls-id:1" << eol;
+	if (mData.sctpPort)
+		sdp << "a=sctp-port:" << *mData.sctpPort << eol;
+	if (mData.maxMessageSize)
+		sdp << "a=max-message-size:" << *mData.maxMessageSize << eol;
+
+	sdp << "a=setup:" << roleToString(mRole) << eol;
+	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
+	sdp << "a=ice-pwd:" << mIcePwd << eol;
+
+	if (!mEnded)
+		sdp << "a=ice-options:trickle" << eol;
+
+	if (mFingerprint)
+		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
+
+	// Candidates
+	for (const auto &candidate : mCandidates)
+		sdp << string(candidate) << eol;
+
 	if (mEnded)
 		sdp << "a=end-of-candidates" << eol;
 
