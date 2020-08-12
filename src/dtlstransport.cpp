@@ -85,8 +85,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		gnutls_transport_set_pull_function(mSession, ReadCallback);
 		gnutls_transport_set_pull_timeout_function(mSession, TimeoutCallback);
 
-		postCreation();
-
 		mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
 		registerIncoming();
 
@@ -149,7 +147,7 @@ void DtlsTransport::postHandshake() {
 
 void DtlsTransport::runRecvLoop() {
 	const size_t maxMtu = 4096;
-
+    postCreation();
 	// Handshake loop
 	try {
 		changeState(State::Connecting);
