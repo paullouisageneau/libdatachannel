@@ -5,6 +5,7 @@
  * Copyright (c) 2020 Will Munn
  * Copyright (c) 2020 Nico Chatzi
  * Copyright (c) 2020 Lara Mackey
+ * Copyright (c) 2020 Erik Cota-Robles
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -30,6 +31,7 @@
 #include <random>
 #include <thread>
 #include <unordered_map>
+#include "parse_cl.h"
 
 using namespace rtc;
 using namespace std;
@@ -49,10 +51,25 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 string randomId(size_t length);
 
 int main(int argc, char **argv) {
+	Cmdline *params;
+	try {
+		params = new Cmdline(argc, argv);
+	} catch (const std::range_error&e) {
+		std::cout<< e.what() << '\n';
+		delete params;
+		return -1;
+	}
+
 	rtc::InitLogger(LogLevel::Debug);
 
 	Configuration config;
-	config.iceServers.emplace_back("stun:stun.l.google.com:19302"); // change to your STUN server
+	string stunServer = "";
+	if (params->stunServer().substr(0,5).compare("stun:") != 0) {
+		stunServer = "stun:";
+	}
+	stunServer += params->stunServer() + ":" + to_string(params->stunPort());
+	cout << "Stun server is " << stunServer << endl;
+	config.iceServers.emplace_back(stunServer);
 
 	localId = randomId(4);
 	cout << "The local ID is: " << localId << endl;
@@ -101,7 +118,13 @@ int main(int argc, char **argv) {
 		}
 	});
 
-	const string url = "ws://localhost:8000/" + localId;
+	string wsPrefix = "";
+	if (params->webSocketServer().substr(0,5).compare("ws://") != 0) {
+		wsPrefix = "ws://";
+	}
+	const string url = wsPrefix + params->webSocketServer() + ":" +
+		to_string(params->webSocketPort()) + "/" + localId;
+	cout << "Url is " << url << endl;
 	ws->open(url);
 
 	cout << "Waiting for signaling to be connected..." << endl;
@@ -153,6 +176,7 @@ int main(int argc, char **argv) {
 
 	dataChannelMap.clear();
 	peerConnectionMap.clear();
+	delete params;
 	return 0;
 }
 

@@ -3,7 +3,7 @@ if(POLICY CMP0079)
 	cmake_policy(SET CMP0079 NEW)
 endif()
 
-add_executable(datachannel-client main.cpp)
+add_executable(datachannel-client main.cpp parse_cl.cpp parse_cl.h)
 set_target_properties(datachannel-client PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME client)
