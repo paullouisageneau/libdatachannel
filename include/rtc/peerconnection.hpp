@@ -105,7 +105,7 @@ public:
 	void sendMedia(const binary &packet);
 	void sendMedia(const byte *packet, size_t size);
 
-	void onMedia(std::function<void(const binary &packet)> callback);
+	void onMedia(const std::function<void(rtc::message_ptr)>& callback);
 
 	// libnice only
 	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
@@ -164,7 +164,7 @@ private:
 	synchronized_callback<const Candidate &> mLocalCandidateCallback;
 	synchronized_callback<State> mStateChangeCallback;
 	synchronized_callback<GatheringState> mGatheringStateChangeCallback;
-	synchronized_callback<const binary &> mMediaCallback;
+	synchronized_callback<rtc::message_ptr> mMediaCallback;
 };
 
 } // namespace rtc

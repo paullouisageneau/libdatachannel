@@ -245,7 +245,7 @@ void PeerConnection::sendMedia(const byte *packet, size_t size) {
 	outgoingMedia(make_message(packet, packet + size, Message::Binary));
 }
 
-void PeerConnection::onMedia(std::function<void(const binary &packet)> callback) {
+void PeerConnection::onMedia(const std::function<void(rtc::message_ptr)>& callback) {
 	mMediaCallback = callback;
 }
 
@@ -526,7 +526,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 
 void PeerConnection::forwardMedia(message_ptr message) {
 	if (message)
-		mMediaCallback(*message);
+		mMediaCallback(message);
 }
 
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
