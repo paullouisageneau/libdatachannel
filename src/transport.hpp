@@ -39,9 +39,9 @@ public:
 	    : mLower(std::move(lower)), mStateChangeCallback(std::move(callback)) {
 	}
 
-	virtual ~Transport() {
-		stop();
-	}
+	virtual ~Transport() { stop(); }
+
+	virtual void start() {}
 
 	virtual bool stop() {
 		if (mShutdown.exchange(true))

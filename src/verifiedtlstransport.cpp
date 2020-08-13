@@ -28,43 +28,24 @@ using std::weak_ptr;
 
 namespace rtc {
 
-#if USE_GNUTLS
 
 VerifiedTlsTransport::VerifiedTlsTransport(shared_ptr<TcpTransport> lower, string host,
                                            state_callback callback)
-    : TlsTransport(std::move(lower), std::move(host), std::move(callback)) {}
+    : TlsTransport(std::move(lower), std::move(host), std::move(callback)) {
 
-VerifiedTlsTransport::~VerifiedTlsTransport() {}
-
-void VerifiedTlsTransport::postCreation() {
+#if USE_GNUTLS
 	PLOG_DEBUG << "Setting up TLS certificate verification";
 	gnutls_session_set_verify_cert(mSession, mHost.c_str(), 0);
-}
-
-void VerifiedTlsTransport::postHandshake() {
-	// Nothing to do
-}
-
-#else // USE_GNUTLS==0
-
-VerifiedTlsTransport::VerifiedTlsTransport(shared_ptr<TcpTransport> lower, string host,
-                                           state_callback callback)
-    : TlsTransport(std::move(lower), std::move(host), std::move(callback)) {}
-
-VerifiedTlsTransport::~VerifiedTlsTransport() {}
-
-void VerifiedTlsTransport::postCreation() {
+#else
 	PLOG_DEBUG << "Setting up TLS certificate verification";
 	SSL_set_verify(mSsl, SSL_VERIFY_PEER, NULL);
 	SSL_set_verify_depth(mSsl, 4);
-}
-
-void VerifiedTlsTransport::postHandshake() {
-	// Nothing to do
-}
-
 #endif
+}
+
+VerifiedTlsTransport::~VerifiedTlsTransport() {}
 
 } // namespace rtc
 
 #endif
+
