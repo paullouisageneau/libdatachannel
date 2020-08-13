@@ -71,11 +71,6 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 		gnutls_transport_set_pull_function(mSession, ReadCallback);
 		gnutls_transport_set_pull_timeout_function(mSession, TimeoutCallback);
 
-		postCreation();
-
-		mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
-		registerIncoming();
-
 	} catch (...) {
 		gnutls_deinit(mSession);
 		gnutls_certificate_free_credentials(mCreds);
@@ -88,6 +83,15 @@ TlsTransport::~TlsTransport() {
 
 	gnutls_deinit(mSession);
 	gnutls_certificate_free_credentials(mCreds);
+}
+
+void TlsTransport::start() {
+	Transport::start();
+
+	registerIncoming();
+
+	PLOG_DEBUG << "Starting TLS recv thread";
+	mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
 }
 
 bool TlsTransport::stop() {
@@ -122,10 +126,6 @@ void TlsTransport::incoming(message_ptr message) {
 		mIncomingQueue.push(message);
 	else
 		mIncomingQueue.stop();
-}
-
-void TlsTransport::postCreation() {
-	// Dummy
 }
 
 void TlsTransport::postHandshake() {
@@ -309,11 +309,6 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 		SSL_set_options(mSsl, SSL_OP_SINGLE_ECDH_USE);
 		SSL_set_tmp_ecdh(mSsl, ecdh.get());
 
-		postCreation();
-
-		mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
-		registerIncoming();
-
 	} catch (...) {
 		if (mSsl)
 			SSL_free(mSsl);
@@ -328,6 +323,15 @@ TlsTransport::~TlsTransport() {
 
 	SSL_free(mSsl);
 	SSL_CTX_free(mCtx);
+}
+
+void TlsTransport::start() {
+	Transport::start();
+
+	registerIncoming();
+
+	PLOG_DEBUG << "Starting TLS recv thread";
+	mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
 }
 
 bool TlsTransport::stop() {
@@ -367,10 +371,6 @@ void TlsTransport::incoming(message_ptr message) {
 		mIncomingQueue.push(message);
 	else
 		mIncomingQueue.stop();
-}
-
-void TlsTransport::postCreation() {
-	// Dummy
 }
 
 void TlsTransport::postHandshake() {

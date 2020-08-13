@@ -45,6 +45,18 @@ DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
 
 	PLOG_DEBUG << "Initializing DTLS-SRTP transport";
 
+#if USE_GNUTLS
+	PLOG_DEBUG << "Setting SRTP profile (GnuTLS)";
+	gnutls::check(gnutls_srtp_set_profile(mSession, GNUTLS_SRTP_AES128_CM_HMAC_SHA1_80),
+	              "Failed to set SRTP profile");
+#else
+	PLOG_DEBUG << "Setting SRTP profile (OpenSSL)";
+	// returns 0 on success, 1 on error
+	if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"), "Failed to set SRTP profile")
+		throw std::runtime_error("Failed to set SRTP profile: " +
+		                         openssl::error_string(ERR_get_error()));
+#endif
+
 	if (srtp_err_status_t err = srtp_create(&mSrtpIn, nullptr)) {
 		throw std::runtime_error("SRTP create failed, status=" + to_string(static_cast<int>(err)));
 	}
@@ -55,7 +67,7 @@ DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
 }
 
 DtlsSrtpTransport::~DtlsSrtpTransport() {
-	stop();
+	stop(); // stop before deallocating
 
 	srtp_dealloc(mSrtpIn);
 	srtp_dealloc(mSrtpOut);
@@ -179,19 +191,6 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 	} else {
 		PLOG_WARNING << "Unknown packet type, value=" << unsigned(value1) << ", size=" << size;
 	}
-}
-
-void DtlsSrtpTransport::postCreation() {
-#if USE_GNUTLS
-	PLOG_DEBUG << "Setting SRTP profile (GnuTLS)";
-	gnutls::check(gnutls_srtp_set_profile(mSession, GNUTLS_SRTP_AES128_CM_HMAC_SHA1_80),
-	              "Failed to set SRTP profile");
-#else
-	PLOG_DEBUG << "Setting SRTP profile (OpenSSL)";
-	// returns 0 on success, 1 on error
-	if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"), "Failed to set SRTP profile")
-		throw std::runtime_error("Failed to set SRTP profile: " + openssl::error_string(ERR_get_error()));
-#endif
 }
 
 void DtlsSrtpTransport::postHandshake() {

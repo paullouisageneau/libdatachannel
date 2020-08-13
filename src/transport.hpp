@@ -39,12 +39,12 @@ public:
 	    : mLower(std::move(lower)), mStateChangeCallback(std::move(callback)) {
 	}
 
-	virtual ~Transport() {
-		stop();
-	}
+	virtual ~Transport() { stop(); }
+
+	virtual void start() { mStopped = false; }
 
 	virtual bool stop() {
-		if (mShutdown.exchange(true))
+		if (mStopped.exchange(true))
 			return false;
 
 		// We don't want incoming() to be called by the lower layer anymore
@@ -95,7 +95,7 @@ private:
 	synchronized_callback<message_ptr> mRecvCallback;
 
 	std::atomic<State> mState = State::Disconnected;
-	std::atomic<bool> mShutdown = false;
+	std::atomic<bool> mStopped = true;
 };
 
 } // namespace rtc

@@ -189,10 +189,11 @@ shared_ptr<TcpTransport> WebSocket::initTcpTransport() {
 		std::atomic_store(&mTcpTransport, transport);
 		if (mState == WebSocket::State::Closed) {
 			mTcpTransport.reset();
-			transport->stop();
 			throw std::runtime_error("Connection is closed");
 		}
+		transport->start();
 		return transport;
+
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
 		remoteClose();
@@ -245,10 +246,11 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 		std::atomic_store(&mTlsTransport, transport);
 		if (mState == WebSocket::State::Closed) {
 			mTlsTransport.reset();
-			transport->stop();
 			throw std::runtime_error("Connection is closed");
 		}
+		transport->start();
 		return transport;
+
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
 		remoteClose();
@@ -295,9 +297,9 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 		std::atomic_store(&mWsTransport, transport);
 		if (mState == WebSocket::State::Closed) {
 			mWsTransport.reset();
-			transport->stop();
 			throw std::runtime_error("Connection is closed");
 		}
+		transport->start();
 		return transport;
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();

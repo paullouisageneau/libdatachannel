@@ -42,7 +42,6 @@ public:
 
 private:
 	void incoming(message_ptr message) override;
-	void postCreation() override;
 	void postHandshake() override;
 
 	message_callback mSrtpRecvCallback;
