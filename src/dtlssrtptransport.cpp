@@ -67,6 +67,8 @@ DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
 }
 
 DtlsSrtpTransport::~DtlsSrtpTransport() {
+	stop(); // stop before deallocating
+
 	srtp_dealloc(mSrtpIn);
 	srtp_dealloc(mSrtpOut);
 }
