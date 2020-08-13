@@ -85,9 +85,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		gnutls_transport_set_pull_function(mSession, ReadCallback);
 		gnutls_transport_set_pull_timeout_function(mSession, TimeoutCallback);
 
-		mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
-		registerIncoming();
-
 	} catch (...) {
 		gnutls_deinit(mSession);
 		throw;
@@ -98,6 +95,15 @@ DtlsTransport::~DtlsTransport() {
 	stop();
 
 	gnutls_deinit(mSession);
+}
+
+void DtlsTransport::start() {
+	Transport::start();
+
+	registerIncoming();
+
+	PLOG_DEBUG << "Starting DTLS recv thread";
+	mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
 }
 
 bool DtlsTransport::stop() {
@@ -137,17 +143,12 @@ void DtlsTransport::incoming(message_ptr message) {
 	mIncomingQueue.push(message);
 }
 
-void DtlsTransport::postCreation() {
-	// Dummy
-}
-
 void DtlsTransport::postHandshake() {
 	// Dummy
 }
 
 void DtlsTransport::runRecvLoop() {
 	const size_t maxMtu = 4096;
-    postCreation();
 	// Handshake loop
 	try {
 		changeState(State::Connecting);
@@ -362,9 +363,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 		SSL_set_options(mSsl, SSL_OP_SINGLE_ECDH_USE);
 		SSL_set_tmp_ecdh(mSsl, ecdh.get());
 
-		mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
-		registerIncoming();
-
 	} catch (...) {
 		if (mSsl)
 			SSL_free(mSsl);
@@ -379,6 +377,15 @@ DtlsTransport::~DtlsTransport() {
 
 	SSL_free(mSsl);
 	SSL_CTX_free(mCtx);
+}
+
+void DtlsTransport::start() {
+	Transport::start();
+
+	registerIncoming();
+
+	PLOG_DEBUG << "Starting DTLS recv thread";
+	mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
 }
 
 bool DtlsTransport::stop() {
@@ -410,10 +417,6 @@ void DtlsTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	mIncomingQueue.push(message);
-}
-
-void DtlsTransport::postCreation() {
-	// Dummy
 }
 
 void DtlsTransport::postHandshake() {

@@ -187,9 +187,6 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_SNDBUF, &bufferSize, sizeof(bufferSize)))
 		throw std::runtime_error("Could not set SCTP send buffer size, errno=" +
 		                         std::to_string(errno));
-
-	registerIncoming();
-	connect();
 }
 
 SctpTransport::~SctpTransport() {
@@ -201,6 +198,13 @@ SctpTransport::~SctpTransport() {
 		std::unique_lock lock(InstancesMutex);
 		Instances.erase(this);
 	}
+}
+
+void SctpTransport::start() {
+	Transport::start();
+
+	registerIncoming();
+	connect();
 }
 
 bool SctpTransport::stop() {
@@ -230,7 +234,7 @@ void SctpTransport::connect() {
 	if (!mSock)
 		return;
 
-	PLOG_DEBUG << "SCTP connect";
+	PLOG_DEBUG << "SCTP connecting";
 	changeState(State::Connecting);
 
 	struct sockaddr_conn sconn = {};
