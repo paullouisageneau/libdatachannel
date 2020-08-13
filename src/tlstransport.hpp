@@ -40,12 +40,12 @@ public:
 	TlsTransport(std::shared_ptr<TcpTransport> lower, string host, state_callback callback);
 	virtual ~TlsTransport();
 
+	void start() override;
 	bool stop() override;
 	bool send(message_ptr message) override;
 
 protected:
 	virtual void incoming(message_ptr message) override;
-	virtual void postCreation();
 	virtual void postHandshake();
 	void runRecvLoop();
 

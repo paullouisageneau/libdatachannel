@@ -46,6 +46,7 @@ public:
 	              amount_callback bufferedAmountCallback, state_callback stateChangeCallback);
 	~SctpTransport();
 
+	void start() override;
 	bool stop() override;
 	bool send(message_ptr message) override; // false if buffered
 	void closeStream(unsigned int stream);

@@ -56,6 +56,7 @@ public:
 	TcpTransport(const string &hostname, const string &service, state_callback callback);
 	~TcpTransport();
 
+	void start() override;
 	bool stop() override;
 	bool send(message_ptr message) override;
 

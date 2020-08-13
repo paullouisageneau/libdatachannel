@@ -314,9 +314,9 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role
 		std::atomic_store(&mIceTransport, transport);
 		if (mState == State::Closed) {
 			mIceTransport.reset();
-			transport->stop();
 			throw std::runtime_error("Connection is closed");
 		}
+		transport->start();
 		return transport;
 
 	} catch (const std::exception &e) {
@@ -379,9 +379,9 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		std::atomic_store(&mDtlsTransport, transport);
 		if (mState == State::Closed) {
 			mDtlsTransport.reset();
-			transport->stop();
 			throw std::runtime_error("Connection is closed");
 		}
+		transport->start();
 		return transport;
 
 	} catch (const std::exception &e) {
@@ -434,9 +434,9 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 		std::atomic_store(&mSctpTransport, transport);
 		if (mState == State::Closed) {
 			mSctpTransport.reset();
-			transport->stop();
 			throw std::runtime_error("Connection is closed");
 		}
+		transport->start();
 		return transport;
 
 	} catch (const std::exception &e) {
