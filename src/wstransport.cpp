@@ -58,12 +58,16 @@ WsTransport::WsTransport(std::shared_ptr<Transport> lower, string host, string p
 	onRecv(recvCallback);
 
 	PLOG_DEBUG << "Initializing WebSocket transport";
+}
+
+WsTransport::~WsTransport() { stop(); }
+
+void WsTransport::start() {
+	Transport::start();
 
 	registerIncoming();
 	sendHttpRequest();
 }
-
-WsTransport::~WsTransport() { stop(); }
 
 bool WsTransport::stop() {
 	if (!Transport::stop())
@@ -143,6 +147,7 @@ void WsTransport::close() {
 }
 
 bool WsTransport::sendHttpRequest() {
+	PLOG_DEBUG << "Sending WebSocket HTTP request";
 	changeState(State::Connecting);
 
 	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());

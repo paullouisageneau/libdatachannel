@@ -35,6 +35,7 @@ public:
 	            message_callback recvCallback, state_callback stateCallback);
 	~WsTransport();
 
+	void start() override;
 	bool stop() override;
 	bool send(message_ptr message) override;
 

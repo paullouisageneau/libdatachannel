@@ -86,11 +86,15 @@ TcpTransport::TcpTransport(const string &hostname, const string &service, state_
     : Transport(nullptr, std::move(callback)), mHostname(hostname), mService(service) {
 
 	PLOG_DEBUG << "Initializing TCP transport";
-	mThread = std::thread(&TcpTransport::runLoop, this);
 }
 
-TcpTransport::~TcpTransport() {
-	stop();
+TcpTransport::~TcpTransport() { stop(); }
+
+void TcpTransport::start() {
+	Transport::start();
+
+	PLOG_DEBUG << "Starting TCP recv thread";
+	mThread = std::thread(&TcpTransport::runLoop, this);
 }
 
 bool TcpTransport::stop() {

@@ -29,10 +29,6 @@ class VerifiedTlsTransport final : public TlsTransport {
 public:
 	VerifiedTlsTransport(std::shared_ptr<TcpTransport> lower, string host, state_callback callback);
 	~VerifiedTlsTransport();
-
-protected:
-	void postCreation() override;
-	void postHandshake() override;
 };
 
 } // namespace rtc
