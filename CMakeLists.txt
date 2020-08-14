@@ -73,6 +73,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/configuration.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/datachannel.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/description.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtp.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/include.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/init.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/log.hpp

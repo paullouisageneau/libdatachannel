@@ -29,12 +29,18 @@
 
 namespace rtc {
 
+
 class Description {
 public:
 	enum class Type { Unspec = 0, Offer = 1, Answer = 2 };
 	enum class Role { ActPass = 0, Passive = 1, Active = 2 };
+    enum Direction {
+        SEND_ONLY,
+        RECV_ONLY,
+        BOTH
+    };
 
-	Description(const string &sdp, const string &typeString = "");
+    Description(const string &sdp, const string &typeString = "");
 	Description(const string &sdp, Type type);
 	Description(const string &sdp, Type type, Role role);
 
@@ -66,6 +72,81 @@ public:
 	string generateSdp(const string &eol) const;
 	string generateDataSdp(const string &eol) const;
 
+	// Data
+    struct Data {
+        string mid;
+        std::optional<uint16_t> sctpPort;
+        std::optional<size_t> maxMessageSize;
+    };
+
+    // Media (non-data)
+    struct Media {
+        Media(const string &lines);
+        string type;
+        string description;
+        string mid;
+        std::vector<string> attributes;
+        std::vector<string> attributesl;
+        int bAS = -1;
+
+        struct RTPMap {
+            RTPMap(const string &mLine);
+
+            int pt;
+            string format;
+            int clockRate;
+            string encParams;
+
+            std::vector<string> rtcpFbs;
+            std::vector<string> fmtps;
+
+            void removeFB(const char *string);
+
+        };
+
+        std::unordered_map<int, RTPMap> rtpMap;
+
+        Media::RTPMap& getFormat(int fmt);
+        Media::RTPMap& getFormat(const string& fmt);
+
+        Direction getDirection() {
+            for (auto attr : attributes) {
+                if (attr == "sendrecv")
+                    return Direction::BOTH;
+                if (attr == "recvonly")
+                    return Direction::RECV_ONLY;
+                if (attr == "sendonly")
+                    return Direction::SEND_ONLY;
+            }
+        }
+
+        void setDirection(Direction dir) {
+            auto it = attributes.begin();
+            while (it != attributes.end()) {
+                if (*it == "sendrecv" || *it == "sendonly" || *it == "recvonly")
+                    it = attributes.erase(it);
+                else
+                    it++;
+            }
+            if (dir == Direction::BOTH)
+                attributes.emplace(attributes.begin(), "sendrecv");
+            else if (dir == Direction::RECV_ONLY)
+                attributes.emplace(attributes.begin(), "recvonly");
+            if (dir == Direction::SEND_ONLY)
+                attributes.emplace(attributes.begin(), "sendonly");
+        }
+
+        void removeFormat(const string &fmt);
+
+        void addH264Codec(int pt);
+    };
+
+    std::_Rb_tree_iterator<std::pair<const int, Media>> getMedia(int mLine);
+
+    Media & addAudioMedia();
+
+    Media &addVideoMedia(bool direction);
+
 private:
 	Type mType;
 	Role mRole;
@@ -73,22 +154,8 @@ private:
 	string mIceUfrag, mIcePwd;
 	std::optional<string> mFingerprint;
 
-	// Data
-	struct Data {
-		string mid;
-		std::optional<uint16_t> sctpPort;
-		std::optional<size_t> maxMessageSize;
-	};
 	Data mData;
 
-	// Media (non-data)
-	struct Media {
-		Media(const string &mline);
-		string type;
-		string description;
-		string mid;
-		std::vector<string> attributes;
-	};
 	std::map<int, Media> mMedia; // by m-line index
 
 	// Candidates

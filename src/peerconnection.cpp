@@ -342,7 +342,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 			switch (state) {
 			case DtlsTransport::State::Connected:
-				initSctpTransport();
+                initSctpTransport();
 				break;
 			case DtlsTransport::State::Failed:
 				changeState(State::Failed);
