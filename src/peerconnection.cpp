@@ -102,6 +102,9 @@ void PeerConnection::setRemoteDescription(Description description,
                                           std::optional<Description> mediaDescription) {
 	PLOG_VERBOSE << "Setting remote description: " << string(description);
 
+	if (!description.fingerprint())
+		throw std::runtime_error("Remote description is incomplete");
+
 	description.hintType(localDescription() ? Description::Type::Answer : Description::Type::Offer);
 	auto type = description.type();
 	auto remoteCandidates = description.extractCandidates(); // Candidates will be added at the end
