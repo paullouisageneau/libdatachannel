@@ -43,6 +43,7 @@ public:
 	Role role() const;
 	string roleString() const;
 	string dataMid() const;
+	string bundleMid() const;
 	std::optional<string> fingerprint() const;
 	std::optional<uint16_t> sctpPort() const;
 	std::optional<size_t> maxMessageSize() const;
@@ -63,6 +64,7 @@ public:
 
 	operator string() const;
 	string generateSdp(const string &eol) const;
+	string generateDataSdp(const string &eol) const;
 
 private:
 	Type mType;
