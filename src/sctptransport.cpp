@@ -623,7 +623,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 
 	case SCTP_SENDER_DRY_EVENT: {
 		PLOG_VERBOSE << "SCTP dry event";
-		// It not should be necessary since the send callback should have been called already,
+		// It should not be necessary since the send callback should have been called already,
 		// but to be sure, let's try to send now.
 		safeFlush();
 		break;
