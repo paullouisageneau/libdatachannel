@@ -474,7 +474,8 @@ public:
 
             // TODO For the time being, we will send RR's/REMB's when we get an SR
             pushRR(0);
-            pushREMB(requestedBitrate);
+            if (requestedBitrate > 0)
+                pushREMB(requestedBitrate);
         }
         return std::nullopt;
     }

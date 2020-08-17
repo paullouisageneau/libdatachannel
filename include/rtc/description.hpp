@@ -120,6 +120,9 @@ public:
         void addH264Codec(int payloadType);
         void addVP8Codec(int payloadType);
         void addVP9Codec(int payloadType);
+
+        void setBitrate(int bitrate);
+        int getBitrate() const;
     };
 
     std::_Rb_tree_iterator<std::pair<const int, Media>> getMedia(int mLine);

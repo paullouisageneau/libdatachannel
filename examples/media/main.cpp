@@ -40,7 +40,7 @@ int main() {
             pc->sendMedia(ptr);
         }
     });
-    session.requestBitrate(3000000); // Request 3Mbps (Browsers do not encode more than 2.5MBps from a webcam)
+//    session.requestBitrate(4000000); // Request 3Mbps (Browsers do not encode more than 2.5MBps from a webcam)
     pc->onMedia([&session, &sock_fd, &addr](const rtc::message_ptr& ptr) {
         auto resp = session.onData(ptr);
         if (resp.has_value()) {
@@ -52,6 +52,8 @@ int main() {
     rtc::Description offer;
     rtc::Description::Media &m = offer.addVideoMedia(rtc::Description::RecvOnly);
     m.addH264Codec(96);
+    m.setBitrate(3000); // Request 3Mbps (Browsers do not encode more than 2.5MBps from a webcam)
+//    m.setBitrate(5000000);
     pc->setLocalDescription(offer);
     auto dc = pc->createDataChannel("test");
 

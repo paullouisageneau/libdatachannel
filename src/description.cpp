@@ -465,6 +465,13 @@ Description::Direction Description::Media::getDirection() {
     return Direction::Unknown;
 }
 
+void Description::Media::setBitrate(int bitrate) {
+    this->bAS = bitrate;
+}
+int Description::Media::getBitrate() const {
+    return this->bAS;
+}
+
 void Description::Media::setDirection(Description::Direction dir) {
     auto it = attributes.begin();
     while (it != attributes.end()) {
