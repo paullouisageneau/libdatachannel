@@ -32,17 +32,20 @@ namespace rtc {
 
 class Description {
 public:
-	enum class Type { Unspec = 0, Offer = 1, Answer = 2 };
+
+    enum class Type { Unspec = 0, Offer = 1, Answer = 2 };
 	enum class Role { ActPass = 0, Passive = 1, Active = 2 };
     enum Direction {
         SEND_ONLY,
         RECV_ONLY,
-        BOTH
+        BOTH,
+        UNKNOWN
     };
 
     Description(const string &sdp, const string &typeString = "");
 	Description(const string &sdp, Type type);
 	Description(const string &sdp, Type type, Role role);
+    Description(): Description(""){};
 
 	Type type() const;
 	string typeString() const;
@@ -100,52 +103,30 @@ public:
             std::vector<string> rtcpFbs;
             std::vector<string> fmtps;
 
-            void removeFB(const char *string);
-
+            void removeFB(const string& string);
+            void addFB(const string& string);
         };
 
         std::unordered_map<int, RTPMap> rtpMap;
 
         Media::RTPMap& getFormat(int fmt);
         Media::RTPMap& getFormat(const string& fmt);
-
-        Direction getDirection() {
-            for (auto attr : attributes) {
-                if (attr == "sendrecv")
-                    return Direction::BOTH;
-                if (attr == "recvonly")
-                    return Direction::RECV_ONLY;
-                if (attr == "sendonly")
-                    return Direction::SEND_ONLY;
-            }
-        }
-
-        void setDirection(Direction dir) {
-            auto it = attributes.begin();
-            while (it != attributes.end()) {
-                if (*it == "sendrecv" || *it == "sendonly" || *it == "recvonly")
-                    it = attributes.erase(it);
-                else
-                    it++;
-            }
-            if (dir == Direction::BOTH)
-                attributes.emplace(attributes.begin(), "sendrecv");
-            else if (dir == Direction::RECV_ONLY)
-                attributes.emplace(attributes.begin(), "recvonly");
-            if (dir == Direction::SEND_ONLY)
-                attributes.emplace(attributes.begin(), "sendonly");
-        }
-
         void removeFormat(const string &fmt);
 
-        void addH264Codec(int pt);
+        Direction getDirection();
+        void setDirection(Direction dir);
+
+        void addVideoCodec(int payloadType, const string& codec);
+        void addH264Codec(int payloadType);
+        void addVP8Codec(int payloadType);
+        void addVP9Codec(int payloadType);
     };
 
     std::_Rb_tree_iterator<std::pair<const int, Media>> getMedia(int mLine);
 
     Media & addAudioMedia();
 
-    Media &addVideoMedia(bool direction);
+    Media &addVideoMedia(Direction direction=Direction::RECV_ONLY);
 
 private:
 	Type mType;

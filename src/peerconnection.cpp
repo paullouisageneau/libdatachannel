@@ -245,6 +245,10 @@ void PeerConnection::sendMedia(const byte *packet, size_t size) {
 	outgoingMedia(make_message(packet, packet + size, Message::Binary));
 }
 
+void PeerConnection::sendMedia(message_ptr ptr) {
+    outgoingMedia(std::move(ptr));
+}
+
 void PeerConnection::onMedia(const std::function<void(rtc::message_ptr)>& callback) {
 	mMediaCallback = callback;
 }

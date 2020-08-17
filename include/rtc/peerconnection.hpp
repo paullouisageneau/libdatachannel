@@ -103,7 +103,8 @@ public:
 	// Media
 	bool hasMedia() const;
 	void sendMedia(const binary &packet);
-	void sendMedia(const byte *packet, size_t size);
+    void sendMedia(const byte *packet, size_t size);
+    void sendMedia(rtc::message_ptr ptr);
 
 	void onMedia(const std::function<void(rtc::message_ptr)>& callback);
 

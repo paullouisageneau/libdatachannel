@@ -388,7 +388,7 @@ Description::Media::RTPMap& Description::Media::getFormat(int fmt) {
     return it->second;
 }
 
-Description::Media::RTPMap &Description::Media::getFormat(const string& fmt) {
+Description::Media::RTPMap& Description::Media::getFormat(const string& fmt) {
     for (auto &[key, val] : this->rtpMap) {
         if (val.format == fmt)
             return val;
@@ -434,15 +434,52 @@ void Description::Media::removeFormat(const string &fmt) {
     }
 }
 
-void Description::Media::addH264Codec(int pt) {
-    RTPMap map(std::to_string(pt) + " H264/90000");
-    map.rtcpFbs.emplace_back("nack");
+void Description::Media::addVideoCodec(int payloadType, const string &codec) {
+    RTPMap map(std::to_string(payloadType) + " " + codec + "/90000");
+    map.addFB("nack");
+    map.addFB("goog-remb");
     this->rtpMap.insert(std::pair<int, RTPMap>(map.pt, map));
+}
 
-    RTPMap rtxMap(std::to_string(pt+1) + " rtx/90000");
-    rtxMap.fmtps.emplace_back("apt=" + std::to_string(pt));
-    this->rtpMap.insert(std::pair<int, RTPMap>(rtxMap.pt, rtxMap));
-};
+void Description::Media::addH264Codec(int pt) {
+    addVideoCodec(pt, "H264");
+}
+
+void Description::Media::addVP8Codec(int payloadType) {
+    addVideoCodec(payloadType, "VP8");
+}
+
+void Description::Media::addVP9Codec(int payloadType) {
+    addVideoCodec(payloadType, "VP9");
+}
+
+Description::Direction Description::Media::getDirection() {
+    for (auto attr : attributes) {
+        if (attr == "sendrecv")
+            return Direction::BOTH;
+        if (attr == "recvonly")
+            return Direction::RECV_ONLY;
+        if (attr == "sendonly")
+            return Direction::SEND_ONLY;
+    }
+    return Direction::UNKNOWN;
+}
+
+void Description::Media::setDirection(Description::Direction dir) {
+    auto it = attributes.begin();
+    while (it != attributes.end()) {
+        if (*it == "sendrecv" || *it == "sendonly" || *it == "recvonly")
+            it = attributes.erase(it);
+        else
+            it++;
+    }
+    if (dir == Direction::BOTH)
+        attributes.emplace(attributes.begin(), "sendrecv");
+    else if (dir == Direction::RECV_ONLY)
+        attributes.emplace(attributes.begin(), "recvonly");
+    if (dir == Direction::SEND_ONLY)
+        attributes.emplace(attributes.begin(), "sendonly");
+}
 
 Description::Media::RTPMap::RTPMap(const string &mline) {
     size_t p = mline.find(' ');
@@ -466,7 +503,7 @@ Description::Media::RTPMap::RTPMap(const string &mline) {
     }
 }
 
-    void Description::Media::RTPMap::removeFB(const char *string) {
+void Description::Media::RTPMap::removeFB(const string& string) {
         auto it = rtcpFbs.begin();
         while (it != rtcpFbs.end()) {
             if (it->find(string) != std::string::npos) {
@@ -476,7 +513,11 @@ Description::Media::RTPMap::RTPMap(const string &mline) {
         }
     }
 
-    Description::Type Description::stringToType(const string &typeString) {
+void Description::Media::RTPMap::addFB(const string& string) {
+    rtcpFbs.emplace_back(string);
+}
+
+Description::Type Description::stringToType(const string &typeString) {
 	if (typeString == "offer")
 		return Type::Offer;
 	else if (typeString == "answer")
@@ -521,43 +562,18 @@ rtc::Description::Media& Description::addAudioMedia() {
     return this->mMedia.at(mMedia.size()-1);
 }
 
-Description::Media &Description::addVideoMedia(bool direction) {
+Description::Media& Description::addVideoMedia(Description::Direction direction) {
     rtc::Description::Media media("video 9 UDP/TLS/RTP/SAVPF");
     media.mid = "video";
-
-    /*
-     *
-a=msid:janus janusv0
-a=ssrc:3730453306 cname:janus
-a=ssrc:3730453306 msid:janus janusv0
-a=ssrc:3730453306 mslabel:janus
-a=ssrc:3730453306 label:janusv0
-a=ssrc:2731410783 cname:janus
-a=ssrc:2731410783 msid:janus janusv0
-a=ssrc:2731410783 mslabel:janus
-a=ssrc:2731410783 label:janusv0
-     */
-
     media.attributes.emplace_back("rtcp-mux");
 
-//    media.attributesl.emplace_back("ssrc-group:FID 1 2");
-//    media.attributesl.emplace_back("msid:janus janusv0");
-//
-//    media.attributesl.emplace_back("ssrc:1 cname:janus");
-//    media.attributesl.emplace_back("ssrc:1 msid:janus janusv0");
-//    media.attributesl.emplace_back("ssrc:1 mslabel:janus");
-//    media.attributesl.emplace_back("ssrc:1 label:janusv0");
-//
-//    media.attributesl.emplace_back("ssrc:2 cname:janus");
-//    media.attributesl.emplace_back("ssrc:2 msid:janus janusv0");
-//    media.attributesl.emplace_back("ssrc:2 mslabel:janus");
-//    media.attributesl.emplace_back("ssrc:2 label:janusv0");
+    media.setDirection(direction);
 
     this->mMedia.insert(std::pair<int, Media>(this->mMedia.size(), media));
     return this->mMedia.at(mMedia.size()-1);
 }
 
-    std::ostream &operator<<(std::ostream &out, const rtc::Description &description) {
+std::ostream &operator<<(std::ostream &out, const rtc::Description &description) {
 	return out << std::string(description);
 }
 
