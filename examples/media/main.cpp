@@ -50,7 +50,7 @@ int main() {
     });
 
     rtc::Description offer;
-    rtc::Description::Media &m = offer.addVideoMedia(rtc::Description::RECV_ONLY);
+    rtc::Description::Media &m = offer.addVideoMedia(rtc::Description::RecvOnly);
     m.addH264Codec(96);
     pc->setLocalDescription(offer);
     auto dc = pc->createDataChannel("test");

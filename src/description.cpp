@@ -456,13 +456,13 @@ void Description::Media::addVP9Codec(int payloadType) {
 Description::Direction Description::Media::getDirection() {
     for (auto attr : attributes) {
         if (attr == "sendrecv")
-            return Direction::BOTH;
+            return Direction::SendRecv;
         if (attr == "recvonly")
-            return Direction::RECV_ONLY;
+            return Direction::RecvOnly;
         if (attr == "sendonly")
-            return Direction::SEND_ONLY;
+            return Direction::SendOnly;
     }
-    return Direction::UNKNOWN;
+    return Direction::Unknown;
 }
 
 void Description::Media::setDirection(Description::Direction dir) {
@@ -473,11 +473,11 @@ void Description::Media::setDirection(Description::Direction dir) {
         else
             it++;
     }
-    if (dir == Direction::BOTH)
+    if (dir == Direction::SendRecv)
         attributes.emplace(attributes.begin(), "sendrecv");
-    else if (dir == Direction::RECV_ONLY)
+    else if (dir == Direction::RecvOnly)
         attributes.emplace(attributes.begin(), "recvonly");
-    if (dir == Direction::SEND_ONLY)
+    if (dir == Direction::SendOnly)
         attributes.emplace(attributes.begin(), "sendonly");
 }
 

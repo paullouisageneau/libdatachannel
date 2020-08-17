@@ -36,10 +36,10 @@ public:
     enum class Type { Unspec = 0, Offer = 1, Answer = 2 };
 	enum class Role { ActPass = 0, Passive = 1, Active = 2 };
     enum Direction {
-        SEND_ONLY,
-        RECV_ONLY,
-        BOTH,
-        UNKNOWN
+        SendOnly,
+        RecvOnly,
+        SendRecv,
+        Unknown
     };
 
     Description(const string &sdp, const string &typeString = "");
@@ -126,7 +126,7 @@ public:
 
     Media & addAudioMedia();
 
-    Media &addVideoMedia(Direction direction=Direction::RECV_ONLY);
+    Media &addVideoMedia(Direction direction=Direction::RecvOnly);
 
 private:
 	Type mType;
