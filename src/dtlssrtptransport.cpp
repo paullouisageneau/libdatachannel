@@ -52,7 +52,7 @@ DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
 #else
 	PLOG_DEBUG << "Setting SRTP profile (OpenSSL)";
 	// returns 0 on success, 1 on error
-	if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"), "Failed to set SRTP profile")
+	if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"))
 		throw std::runtime_error("Failed to set SRTP profile: " +
 		                         openssl::error_string(ERR_get_error()));
 #endif
