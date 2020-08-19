@@ -580,8 +580,9 @@ Description::Media& Description::addVideoMedia(Description::Direction direction)
     return this->mMedia.at(mMedia.size()-1);
 }
 
+} // namespace rtc
+
 std::ostream &operator<<(std::ostream &out, const rtc::Description &description) {
 	return out << std::string(description);
 }
 
-}

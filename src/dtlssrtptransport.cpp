@@ -155,7 +155,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 
 	} else if (value1 >= 128 && value1 <= 191) {
 		// The RTP header has a minimum size of 12 bytes
-		if (size < 12) {
+		// An RTCP packet can have a minimum size of 8 bytes
+		if (size < 8) {
 			PLOG_WARNING << "Incoming SRTP/SRTCP packet too short, size=" << size;
 			return;
 		}
