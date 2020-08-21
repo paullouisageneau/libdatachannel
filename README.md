@@ -118,12 +118,12 @@ config.iceServers.emplace_back("mystunserver.org:3478");
 
 auto pc = make_shared<rtc::PeerConnection>(config);
 
-pc->onLocalDescription([](const rtc::Description &sdp) {
+pc->onLocalDescription([](rtc::Description sdp) {
     // Send the SDP to the remote peer
     MY_SEND_DESCRIPTION_TO_REMOTE(string(sdp));
 });
 
-pc->onLocalCandidate([](const rtc::Candidate &candidate) {
+pc->onLocalCandidate([](rtc::Candidate candidate) {
     // Send the candidate to the remote peer
     MY_SEND_CANDIDATE_TO_REMOTE(candidate.candidate(), candidate.mid());
 });
