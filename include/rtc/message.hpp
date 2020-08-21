@@ -24,6 +24,8 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
+#include <variant>
 
 namespace rtc {
 
@@ -46,6 +48,7 @@ struct Message : binary {
 
 using message_ptr = std::shared_ptr<Message>;
 using message_callback = std::function<void(message_ptr message)>;
+using message_variant = std::variant<binary, string>;
 
 constexpr auto message_size_func = [](const message_ptr &m) -> size_t {
 	return m->type == Message::Binary || m->type == Message::String ? m->size() : 0;
@@ -77,6 +80,30 @@ inline message_ptr make_message(binary &&data, Message::Type type = Message::Bin
 	message->stream = stream;
 	message->reliability = reliability;
 	return message;
+}
+
+inline message_ptr make_message(message_variant data) {
+	return std::visit( //
+	    overloaded{
+	        [&](binary data) { return make_message(std::move(data), Message::Binary); },
+	        [&](string data) {
+		        auto b = reinterpret_cast<const byte *>(data.data());
+		        return make_message(b, b + data.size(), Message::String);
+	        },
+	    },
+	    std::move(data));
+}
+
+inline std::optional<message_variant> to_variant(Message &&message) {
+	switch (message.type) {
+	case Message::String:
+		return std::make_optional(
+		    string(reinterpret_cast<const char *>(message.data()), message.size()));
+	case Message::Binary:
+		return std::make_optional(std::move(message));
+	default:
+		return nullopt;
+	}
 }
 
 } // namespace rtc

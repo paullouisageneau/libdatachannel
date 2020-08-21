@@ -100,16 +100,7 @@ void WebSocket::remoteClose() {
 	}
 }
 
-bool WebSocket::send(const std::variant<binary, string> &data) {
-	return std::visit(
-	    [&](const auto &d) {
-		    using T = std::decay_t<decltype(d)>;
-		    constexpr auto type = std::is_same_v<T, string> ? Message::String : Message::Binary;
-		    auto *b = reinterpret_cast<const byte *>(d.data());
-		    return outgoing(std::make_shared<Message>(b, b + d.size(), type));
-	    },
-	    data);
-}
+bool WebSocket::send(message_variant data) { return outgoing(make_message(std::move(data))); }
 
 bool WebSocket::isOpen() const { return mState == State::Open; }
 
@@ -117,20 +108,11 @@ bool WebSocket::isClosed() const { return mState == State::Closed; }
 
 size_t WebSocket::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
 
-std::optional<std::variant<binary, string>> WebSocket::receive() {
-	while (!mRecvQueue.empty()) {
-		auto message = *mRecvQueue.pop();
-		switch (message->type) {
-		case Message::String:
-			return std::make_optional(
-			    string(reinterpret_cast<const char *>(message->data()), message->size()));
-		case Message::Binary:
-			return std::make_optional(std::move(*message));
-		default:
-			// Ignore
-			break;
-		}
-	}
+std::optional<message_variant> WebSocket::receive() {
+	while (!mRecvQueue.empty())
+		if (auto variant = to_variant(std::move(**mRecvQueue.pop())))
+			return variant;
+
 	return nullopt;
 }
 

@@ -240,17 +240,15 @@ bool PeerConnection::hasMedia() const {
 	return (local && local->hasMedia()) || (remote && remote->hasMedia());
 }
 
-void PeerConnection::sendMedia(const binary &packet) {
-	outgoingMedia(make_message(packet.begin(), packet.end(), Message::Binary));
+void PeerConnection::sendMedia(binary packet) {
+	outgoingMedia(make_message(std::move(packet), Message::Binary));
 }
 
 void PeerConnection::sendMedia(const byte *packet, size_t size) {
 	outgoingMedia(make_message(packet, packet + size, Message::Binary));
 }
 
-void PeerConnection::onMedia(std::function<void(const binary &packet)> callback) {
-	mMediaCallback = callback;
-}
+void PeerConnection::onMedia(std::function<void(binary)> callback) { mMediaCallback = callback; }
 
 void PeerConnection::outgoingMedia([[maybe_unused]] message_ptr message) {
 	if (!hasMedia())
@@ -529,7 +527,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 
 void PeerConnection::forwardMedia(message_ptr message) {
 	if (message)
-		mMediaCallback(*message);
+		mMediaCallback(std::move(*message));
 }
 
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {

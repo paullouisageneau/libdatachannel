@@ -542,7 +542,7 @@ int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
-			channel->onError([id, cb](const string &error) {
+			channel->onError([id, cb](string error) {
 				if (auto ptr = getUserPointer(id))
 					cb(error.c_str(), *ptr);
 			});
@@ -556,11 +556,11 @@ int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb) {
 		auto channel = getChannel(id);
 		if (cb)
 			channel->onMessage(
-			    [id, cb](const binary &b) {
+			    [id, cb](binary b) {
 				    if (auto ptr = getUserPointer(id))
 					    cb(reinterpret_cast<const char *>(b.data()), int(b.size()), *ptr);
 			    },
-			    [id, cb](const string &s) {
+			    [id, cb](string s) {
 				    if (auto ptr = getUserPointer(id))
 					    cb(s.c_str(), -int(s.size() + 1), *ptr);
 			    });
@@ -643,13 +643,13 @@ int rtcReceiveMessage(int id, char *buffer, int *size) {
 		if (auto message = channel->receive())
 			return std::visit( //
 			    overloaded{    //
-			               [&](const binary &b) {
+			               [&](binary b) {
 				               *size = std::min(*size, int(b.size()));
 				               auto data = reinterpret_cast<const char *>(b.data());
 				               std::copy(data, data + *size, buffer);
 				               return 1;
 			               },
-			               [&](const string &s) {
+			               [&](string s) {
 				               int len = std::min(*size - 1, int(s.size()));
 				               if (len >= 0) {
 					               std::copy(s.data(), s.data() + len, buffer);
