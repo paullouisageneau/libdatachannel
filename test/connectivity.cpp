@@ -47,20 +47,20 @@ void test_connectivity() {
 
 	auto pc2 = std::make_shared<PeerConnection>(config2);
 
-	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](const Description &sdp) {
+	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](Description sdp) {
 		auto pc2 = wpc2.lock();
 		if (!pc2)
 			return;
 		cout << "Description 1: " << sdp << endl;
-		pc2->setRemoteDescription(sdp);
+		pc2->setRemoteDescription(std::move(sdp));
 	});
 
-	pc1->onLocalCandidate([wpc2 = make_weak_ptr(pc2)](const Candidate &candidate) {
+	pc1->onLocalCandidate([wpc2 = make_weak_ptr(pc2)](Candidate candidate) {
 		auto pc2 = wpc2.lock();
 		if (!pc2)
 			return;
 		cout << "Candidate 1: " << candidate << endl;
-		pc2->addRemoteCandidate(candidate);
+		pc2->addRemoteCandidate(std::move(candidate));
 	});
 
 	pc1->onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
@@ -69,20 +69,20 @@ void test_connectivity() {
 		cout << "Gathering state 1: " << state << endl;
 	});
 
-	pc2->onLocalDescription([wpc1 = make_weak_ptr(pc1)](const Description &sdp) {
+	pc2->onLocalDescription([wpc1 = make_weak_ptr(pc1)](Description sdp) {
 		auto pc1 = wpc1.lock();
 		if (!pc1)
 			return;
 		cout << "Description 2: " << sdp << endl;
-		pc1->setRemoteDescription(sdp);
+		pc1->setRemoteDescription(std::move(sdp));
 	});
 
-	pc2->onLocalCandidate([wpc1 = make_weak_ptr(pc1)](const Candidate &candidate) {
+	pc2->onLocalCandidate([wpc1 = make_weak_ptr(pc1)](Candidate candidate) {
 		auto pc1 = wpc1.lock();
 		if (!pc1)
 			return;
 		cout << "Candidate 2: " << candidate << endl;
-		pc1->addRemoteCandidate(candidate);
+		pc1->addRemoteCandidate(std::move(candidate));
 	});
 
 	pc2->onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });

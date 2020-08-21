@@ -217,12 +217,11 @@ void PeerConnection::onDataChannel(
 	mDataChannelCallback = callback;
 }
 
-void PeerConnection::onLocalDescription(
-    std::function<void(const Description &description)> callback) {
+void PeerConnection::onLocalDescription(std::function<void(Description description)> callback) {
 	mLocalDescriptionCallback = callback;
 }
 
-void PeerConnection::onLocalCandidate(std::function<void(const Candidate &candidate)> callback) {
+void PeerConnection::onLocalCandidate(std::function<void(Candidate candidate)> callback) {
 	mLocalCandidateCallback = callback;
 }
 
@@ -628,7 +627,9 @@ void PeerConnection::processLocalDescription(Description description) {
 		mLocalDescription->setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
 	}
 
-	mProcessor->enqueue([this]() { mLocalDescriptionCallback(*mLocalDescription); });
+	mProcessor->enqueue([this, description = *mLocalDescription]() {
+		mLocalDescriptionCallback(std::move(description));
+	});
 }
 
 void PeerConnection::processLocalCandidate(Candidate candidate) {
@@ -638,8 +639,9 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 
 	mLocalDescription->addCandidate(candidate);
 
-	mProcessor->enqueue(
-	    [this, candidate = std::move(candidate)]() { mLocalCandidateCallback(candidate); });
+	mProcessor->enqueue([this, candidate = std::move(candidate)]() {
+		mLocalCandidateCallback(std::move(candidate));
+	});
 }
 
 void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {

@@ -341,7 +341,7 @@ int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
-			peerConnection->onLocalDescription([pc, cb](const Description &desc) {
+			peerConnection->onLocalDescription([pc, cb](Description desc) {
 				if (auto ptr = getUserPointer(pc))
 					cb(string(desc).c_str(), desc.typeString().c_str(), *ptr);
 			});
@@ -354,7 +354,7 @@ int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
-			peerConnection->onLocalCandidate([pc, cb](const Candidate &cand) {
+			peerConnection->onLocalCandidate([pc, cb](Candidate cand) {
 				if (auto ptr = getUserPointer(pc))
 					cb(cand.candidate().c_str(), cand.mid().c_str(), *ptr);
 			});
