@@ -95,7 +95,7 @@ void test_connectivity() {
 	pc2->onDataChannel([&dc2](shared_ptr<DataChannel> dc) {
 		cout << "DataChannel 2: Received with label \"" << dc->label() << "\"" << endl;
 
-		dc->onMessage([](const variant<binary, string> &message) {
+		dc->onMessage([](variant<binary, string> message) {
 			if (holds_alternative<string>(message)) {
 				cout << "Message 2: " << get<string>(message) << endl;
 			}

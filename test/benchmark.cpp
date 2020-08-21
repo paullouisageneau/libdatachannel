@@ -99,21 +99,20 @@ size_t benchmark(milliseconds duration) {
 	steady_clock::time_point startTime, openTime, receivedTime, endTime;
 
 	shared_ptr<DataChannel> dc2;
-	pc2->onDataChannel(
-	    [&dc2, &receivedSize, &receivedTime](shared_ptr<DataChannel> dc) {
-		    dc->onMessage([&receivedTime, &receivedSize](const variant<binary, string> &message) {
-			    if (holds_alternative<binary>(message)) {
-				    const auto &bin = get<binary>(message);
-				    if (receivedSize == 0)
-					    receivedTime = steady_clock::now();
-				    receivedSize += bin.size();
-			    }
-		    });
+	pc2->onDataChannel([&dc2, &receivedSize, &receivedTime](shared_ptr<DataChannel> dc) {
+		dc->onMessage([&receivedTime, &receivedSize](variant<binary, string> message) {
+			if (holds_alternative<binary>(message)) {
+				const auto &bin = get<binary>(message);
+				if (receivedSize == 0)
+					receivedTime = steady_clock::now();
+				receivedSize += bin.size();
+			}
+		});
 
-		    dc->onClosed([]() { cout << "DataChannel closed." << endl; });
+		dc->onClosed([]() { cout << "DataChannel closed." << endl; });
 
-		    std::atomic_store(&dc2, dc);
-	    });
+		std::atomic_store(&dc2, dc);
+	});
 
 	startTime = steady_clock::now();
 	auto dc1 = pc1->createDataChannel("benchmark");

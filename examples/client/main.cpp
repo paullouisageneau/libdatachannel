@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 
 	ws->onError([](const string &error) { cout << "WebSocket failed: " << error << endl; });
 
-	ws->onMessage([&](const variant<binary, string> &data) {
+	ws->onMessage([&](variant<binary, string> data) {
 		if (!holds_alternative<string>(data))
 			return;
 

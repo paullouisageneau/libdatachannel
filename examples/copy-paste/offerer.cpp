@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 
 	dc->onClosed([&]() { cout << "[DataChannel closed: " << dc->label() << "]" << endl; });
 
-	dc->onMessage([](const variant<binary, string> &message) {
+	dc->onMessage([](variant<binary, string> message) {
 		if (holds_alternative<string>(message)) {
 			cout << "[Received: " << get<string>(message) << "]" << endl;
 		}
