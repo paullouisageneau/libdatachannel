@@ -159,7 +159,7 @@ dc->onOpen([]() {
     cout << "Open" << endl;
 });
 
-dc->onMessage([](const variant<binary, string> &message) {
+dc->onMessage([](variant<binary, string> message) {
     if (holds_alternative<string>(message)) {
         cout << "Received: " << get<string>(message) << endl;
     }
@@ -186,7 +186,7 @@ ws->onOpen([]() {
 	cout << "WebSocket open" << endl;
 });
 
-ws->onMessage([](const variant<binary, string> &message) {
+ws->onMessage([](variant<binary, string> message) {
     if (holds_alternative<string>(message)) {
         cout << "WebSocket received: " << get<string>(message) << endl;
     }
