@@ -58,14 +58,14 @@ public:
 
 	void open(const string &url);
 	void close() override;
-	bool send(const std::variant<binary, string> &data) override;
+	bool send(const message_variant data) override;
 
 	bool isOpen() const override;
 	bool isClosed() const override;
 	size_t maxMessageSize() const override;
 
 	// Extended API
-	std::optional<std::variant<binary, string>> receive() override;
+	std::optional<message_variant> receive() override;
 	size_t availableAmount() const override; // total size available to receive
 
 private:

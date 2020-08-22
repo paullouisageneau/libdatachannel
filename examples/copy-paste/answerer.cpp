@@ -36,12 +36,12 @@ int main(int argc, char **argv) {
 
 	auto pc = std::make_shared<PeerConnection>(config);
 
-	pc->onLocalDescription([](const Description &description) {
+	pc->onLocalDescription([](Description description) {
 		cout << "Local Description (Paste this to the other peer):" << endl;
 		cout << string(description) << endl;
 	});
 
-	pc->onLocalCandidate([](const Candidate &candidate) {
+	pc->onLocalCandidate([](Candidate candidate) {
 		cout << "Local Candidate (Paste this to the other peer after the local description):"
 		     << endl;
 		cout << string(candidate) << endl << endl;
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 
 		dc->onClosed([&]() { cout << "[DataChannel closed: " << dc->label() << "]" << endl; });
 
-		dc->onMessage([](const variant<binary, string> &message) {
+		dc->onMessage([](variant<binary, string> message) {
 			if (holds_alternative<string>(message)) {
 				cout << "[Received message: " << get<string>(message) << "]" << endl;
 			}

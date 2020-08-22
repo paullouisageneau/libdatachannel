@@ -34,11 +34,9 @@ void Channel::onClosed(std::function<void()> callback) {
 	mClosedCallback = callback;
 }
 
-void Channel::onError(std::function<void(const string &error)> callback) {
-	mErrorCallback = callback;
-}
+void Channel::onError(std::function<void(string error)> callback) { mErrorCallback = callback; }
 
-void Channel::onMessage(std::function<void(const std::variant<binary, string> &data)> callback) {
+void Channel::onMessage(std::function<void(message_variant data)> callback) {
 	mMessageCallback = callback;
 
 	// Pass pending messages
@@ -46,10 +44,10 @@ void Channel::onMessage(std::function<void(const std::variant<binary, string> &d
 		mMessageCallback(*message);
 }
 
-void Channel::onMessage(std::function<void(const binary &data)> binaryCallback,
-                        std::function<void(const string &data)> stringCallback) {
-	onMessage([binaryCallback, stringCallback](const std::variant<binary, string> &data) {
-		std::visit(overloaded{binaryCallback, stringCallback}, data);
+void Channel::onMessage(std::function<void(binary data)> binaryCallback,
+                        std::function<void(string data)> stringCallback) {
+	onMessage([binaryCallback, stringCallback](std::variant<binary, string> data) {
+		std::visit(overloaded{binaryCallback, stringCallback}, std::move(data));
 	});
 }
 
@@ -67,7 +65,7 @@ void Channel::triggerOpen() { mOpenCallback(); }
 
 void Channel::triggerClosed() { mClosedCallback(); }
 
-void Channel::triggerError(const string &error) { mErrorCallback(error); }
+void Channel::triggerError(string error) { mErrorCallback(error); }
 
 void Channel::triggerAvailable(size_t count) {
 	if (count == 1)

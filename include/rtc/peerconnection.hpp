@@ -89,8 +89,8 @@ public:
 	                                               const Reliability &reliability = {});
 
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
-	void onLocalDescription(std::function<void(const Description &description)> callback);
-	void onLocalCandidate(std::function<void(const Candidate &candidate)> callback);
+	void onLocalDescription(std::function<void(Description description)> callback);
+	void onLocalCandidate(std::function<void(Candidate candidate)> callback);
 	void onStateChange(std::function<void(State state)> callback);
 	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
 
@@ -102,10 +102,10 @@ public:
 
 	// Media
 	bool hasMedia() const;
-	void sendMedia(const binary &packet);
+	void sendMedia(binary packet);
 	void sendMedia(const byte *packet, size_t size);
 
-	void onMedia(std::function<void(const binary &packet)> callback);
+	void onMedia(std::function<void(binary)> callback);
 
 	// libnice only
 	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
@@ -160,11 +160,11 @@ private:
 	std::atomic<GatheringState> mGatheringState;
 
 	synchronized_callback<std::shared_ptr<DataChannel>> mDataChannelCallback;
-	synchronized_callback<const Description &> mLocalDescriptionCallback;
-	synchronized_callback<const Candidate &> mLocalCandidateCallback;
+	synchronized_callback<Description> mLocalDescriptionCallback;
+	synchronized_callback<Candidate> mLocalCandidateCallback;
 	synchronized_callback<State> mStateChangeCallback;
 	synchronized_callback<GatheringState> mGatheringStateChangeCallback;
-	synchronized_callback<const binary &> mMediaCallback;
+	synchronized_callback<binary> mMediaCallback;
 };
 
 } // namespace rtc

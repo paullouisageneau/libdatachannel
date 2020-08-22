@@ -48,20 +48,20 @@ size_t benchmark(milliseconds duration) {
 
 	auto pc2 = std::make_shared<PeerConnection>(config2);
 
-	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](const Description &sdp) {
+	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](Description sdp) {
 		auto pc2 = wpc2.lock();
 		if (!pc2)
 			return;
 		cout << "Description 1: " << sdp << endl;
-		pc2->setRemoteDescription(sdp);
+		pc2->setRemoteDescription(std::move(sdp));
 	});
 
-	pc1->onLocalCandidate([wpc2 = make_weak_ptr(pc2)](const Candidate &candidate) {
+	pc1->onLocalCandidate([wpc2 = make_weak_ptr(pc2)](Candidate candidate) {
 		auto pc2 = wpc2.lock();
 		if (!pc2)
 			return;
 		cout << "Candidate 1: " << candidate << endl;
-		pc2->addRemoteCandidate(candidate);
+		pc2->addRemoteCandidate(std::move(candidate));
 	});
 
 	pc1->onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
@@ -69,20 +69,20 @@ size_t benchmark(milliseconds duration) {
 		cout << "Gathering state 1: " << state << endl;
 	});
 
-	pc2->onLocalDescription([wpc1 = make_weak_ptr(pc1)](const Description &sdp) {
+	pc2->onLocalDescription([wpc1 = make_weak_ptr(pc1)](Description sdp) {
 		auto pc1 = wpc1.lock();
 		if (!pc1)
 			return;
 		cout << "Description 2: " << sdp << endl;
-		pc1->setRemoteDescription(sdp);
+		pc1->setRemoteDescription(std::move(sdp));
 	});
 
-	pc2->onLocalCandidate([wpc1 = make_weak_ptr(pc1)](const Candidate &candidate) {
+	pc2->onLocalCandidate([wpc1 = make_weak_ptr(pc1)](Candidate candidate) {
 		auto pc1 = wpc1.lock();
 		if (!pc1)
 			return;
 		cout << "Candidate 2: " << candidate << endl;
-		pc1->addRemoteCandidate(candidate);
+		pc1->addRemoteCandidate(std::move(candidate));
 	});
 
 	pc2->onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
@@ -99,21 +99,20 @@ size_t benchmark(milliseconds duration) {
 	steady_clock::time_point startTime, openTime, receivedTime, endTime;
 
 	shared_ptr<DataChannel> dc2;
-	pc2->onDataChannel(
-	    [&dc2, &receivedSize, &receivedTime](shared_ptr<DataChannel> dc) {
-		    dc->onMessage([&receivedTime, &receivedSize](const variant<binary, string> &message) {
-			    if (holds_alternative<binary>(message)) {
-				    const auto &bin = get<binary>(message);
-				    if (receivedSize == 0)
-					    receivedTime = steady_clock::now();
-				    receivedSize += bin.size();
-			    }
-		    });
+	pc2->onDataChannel([&dc2, &receivedSize, &receivedTime](shared_ptr<DataChannel> dc) {
+		dc->onMessage([&receivedTime, &receivedSize](variant<binary, string> message) {
+			if (holds_alternative<binary>(message)) {
+				const auto &bin = get<binary>(message);
+				if (receivedSize == 0)
+					receivedTime = steady_clock::now();
+				receivedSize += bin.size();
+			}
+		});
 
-		    dc->onClosed([]() { cout << "DataChannel closed." << endl; });
+		dc->onClosed([]() { cout << "DataChannel closed." << endl; });
 
-		    std::atomic_store(&dc2, dc);
-	    });
+		std::atomic_store(&dc2, dc);
+	});
 
 	startTime = steady_clock::now();
 	auto dc1 = pc1->createDataChannel("benchmark");

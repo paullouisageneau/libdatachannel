@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2019-2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -24,6 +24,8 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
+#include <variant>
 
 namespace rtc {
 
@@ -46,8 +48,9 @@ struct Message : binary {
 
 using message_ptr = std::shared_ptr<Message>;
 using message_callback = std::function<void(message_ptr message)>;
+using message_variant = std::variant<binary, string>;
 
-constexpr auto message_size_func = [](const message_ptr &m) -> size_t {
+inline size_t message_size_func(const message_ptr &m) {
 	return m->type == Message::Binary || m->type == Message::String ? m->size() : 0;
 };
 
@@ -61,23 +64,16 @@ message_ptr make_message(Iterator begin, Iterator end, Message::Type type = Mess
 	return message;
 }
 
-inline message_ptr make_message(size_t size, Message::Type type = Message::Binary,
-                                unsigned int stream = 0,
-                                std::shared_ptr<Reliability> reliability = nullptr) {
-	auto message = std::make_shared<Message>(size, type);
-	message->stream = stream;
-	message->reliability = reliability;
-	return message;
-}
+message_ptr make_message(size_t size, Message::Type type = Message::Binary, unsigned int stream = 0,
+                         std::shared_ptr<Reliability> reliability = nullptr);
 
-inline message_ptr make_message(binary &&data, Message::Type type = Message::Binary,
-                                unsigned int stream = 0,
-                                std::shared_ptr<Reliability> reliability = nullptr) {
-	auto message = std::make_shared<Message>(std::move(data), type);
-	message->stream = stream;
-	message->reliability = reliability;
-	return message;
-}
+message_ptr make_message(binary &&data, Message::Type type = Message::Binary,
+                         unsigned int stream = 0,
+                         std::shared_ptr<Reliability> reliability = nullptr);
+
+message_ptr make_message(message_variant data);
+
+std::optional<message_variant> to_variant(Message &&message);
 
 } // namespace rtc
 

@@ -50,7 +50,7 @@ public:
 	Reliability reliability() const;
 
 	void close(void) override;
-	bool send(const std::variant<binary, string> &data) override;
+	bool send(message_variant data) override;
 	bool send(const byte *data, size_t size);
 	template <typename Buffer> bool sendBuffer(const Buffer &buf);
 	template <typename Iterator> bool sendBuffer(Iterator first, Iterator last);
@@ -61,7 +61,7 @@ public:
 
 	// Extended API
 	size_t availableAmount() const override;
-	std::optional<std::variant<binary, string>> receive() override;
+	std::optional<message_variant> receive() override;
 
 private:
 	void remoteClose();
