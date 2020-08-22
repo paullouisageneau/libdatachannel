@@ -239,12 +239,12 @@ bool PeerConnection::hasMedia() const {
 	return (local && local->hasMedia()) || (remote && remote->hasMedia());
 }
 
-std::shared_ptr<Track> PeerConnection::createTrack(string mid) {
+std::shared_ptr<Track> PeerConnection::createTrack(Description::Media description) {
 	if (localDescription())
 		throw std::logic_error("Tracks must be created before local description");
 
-	auto track = std::make_shared<Track>(mid);
-	mTracks.emplace(std::make_pair(mid, track));
+	auto track = std::make_shared<Track>(std::move(description));
+	mTracks.emplace(std::make_pair(track->mid(), track));
 	return track;
 }
 

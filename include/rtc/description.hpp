@@ -66,20 +66,12 @@ public:
 	string generateSdp(const string &eol) const;
 	string generateDataSdp(const string &eol) const;
 
-private:
-	Type mType;
-	Role mRole;
-	string mSessionId;
-	string mIceUfrag, mIcePwd;
-	std::optional<string> mFingerprint;
-
 	// Data
 	struct Data {
 		string mid;
 		std::optional<uint16_t> sctpPort;
 		std::optional<size_t> maxMessageSize;
 	};
-	Data mData;
 
 	// Media (non-data)
 	struct Media {
@@ -89,6 +81,14 @@ private:
 		string mid;
 		std::vector<string> attributes;
 	};
+
+private:
+	Type mType;
+	Role mRole;
+	string mSessionId;
+	string mIceUfrag, mIcePwd;
+	std::optional<string> mFingerprint;
+	Data mData;
 	std::map<int, Media> mMedia; // by m-line index
 
 	// Candidates

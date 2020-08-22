@@ -103,7 +103,7 @@ public:
 
 	// Media support requires compilation with SRTP
 	bool hasMedia() const;
-	std::shared_ptr<Track> createTrack(string mid);
+	std::shared_ptr<Track> createTrack(Description::Media description);
 	void onTrack(std::function<void(std::shared_ptr<Track> track)> callback);
 
 	// libnice only

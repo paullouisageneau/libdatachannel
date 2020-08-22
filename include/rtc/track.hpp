@@ -20,6 +20,7 @@
 #define RTC_TRACK_H
 
 #include "channel.hpp"
+#include "description.hpp"
 #include "include.hpp"
 #include "message.hpp"
 #include "queue.hpp"
@@ -35,10 +36,11 @@ class DtlsSrtpTransport;
 
 class Track final : public std::enable_shared_from_this<Track>, public Channel {
 public:
-	Track(string mid);
+	Track(Description::Media description);
 	~Track() = default;
 
 	string mid() const;
+	Description::Media description() const;
 
 	void close(void) override;
 	bool send(message_variant data) override;
@@ -61,7 +63,7 @@ private:
 	bool outgoing(message_ptr message);
 	void incoming(message_ptr message);
 
-	const string mMid;
+	Description::Media mMediaDescription;
 	std::atomic<bool> mIsClosed = false;
 
 	Queue<message_ptr> mRecvQueue;

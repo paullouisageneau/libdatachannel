@@ -25,9 +25,12 @@ namespace rtc {
 using std::shared_ptr;
 using std::weak_ptr;
 
-Track::Track(string mid) : mMid(std::move(mid)), mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
+Track::Track(Description::Media description)
+    : mMediaDescription(std::move(description)), mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
-string Track::mid() const { return mMid; }
+string Track::mid() const { return mMediaDescription.mid; }
+
+Description::Media Track::description() const { return mMediaDescription; }
 
 void Track::close() {
 	mIsClosed = true;
