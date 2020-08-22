@@ -53,7 +53,7 @@ message_variant to_variant(Message &&message) {
 	case Message::String:
 		return string(reinterpret_cast<const char *>(message.data()), message.size());
 	default:
-		return message;
+		return std::move(message);
 	}
 }
 
