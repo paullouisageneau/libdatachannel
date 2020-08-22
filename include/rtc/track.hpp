@@ -29,12 +29,13 @@
 
 namespace rtc {
 
-class PeerConnection;
+#if RTC_ENABLE_MEDIA
 class DtlsSrtpTransport;
+#endif
 
 class Track final : public std::enable_shared_from_this<Track>, public Channel {
 public:
-	Track(string mid, std::shared_ptr<DtlsSrtpTransport> transport = nullptr);
+	Track(string mid);
 	~Track() = default;
 
 	string mid() const;
@@ -52,12 +53,15 @@ public:
 	std::optional<message_variant> receive() override;
 
 private:
+#if RTC_ENABLE_MEDIA
 	void open(std::shared_ptr<DtlsSrtpTransport> transport);
+	std::weak_ptr<DtlsSrtpTransport> mDtlsSrtpTransport;
+#endif
+
 	bool outgoing(message_ptr message);
 	void incoming(message_ptr message);
 
 	const string mMid;
-	std::weak_ptr<DtlsSrtpTransport> mDtlsSrtpTransport;
 	std::atomic<bool> mIsClosed = false;
 
 	Queue<message_ptr> mRecvQueue;
@@ -68,3 +72,4 @@ private:
 } // namespace rtc
 
 #endif
+

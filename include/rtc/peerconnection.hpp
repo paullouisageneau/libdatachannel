@@ -28,6 +28,7 @@
 #include "message.hpp"
 #include "reliability.hpp"
 #include "rtc.hpp"
+#include "track.hpp"
 
 #include <atomic>
 #include <functional>
@@ -85,8 +86,8 @@ public:
 	                          std::optional<Description> mediaDescription = nullopt);
 	void addRemoteCandidate(Candidate candidate);
 
-	std::shared_ptr<DataChannel> createDataChannel(const string &label, const string &protocol = "",
-	                                               const Reliability &reliability = {});
+	std::shared_ptr<DataChannel> createDataChannel(string label, string protocol = "",
+	                                               Reliability reliability = {});
 
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
 	void onLocalDescription(std::function<void(Description description)> callback);
@@ -100,12 +101,10 @@ public:
 	size_t bytesReceived();
 	std::optional<std::chrono::milliseconds> rtt();
 
-	// Media
+	// Media support requires compilation with SRTP
 	bool hasMedia() const;
-	void sendMedia(binary packet);
-	void sendMedia(const byte *packet, size_t size);
-
-	void onMedia(std::function<void(binary)> callback);
+	std::shared_ptr<Track> createTrack(string mid);
+	void onTrack(std::function<void(std::shared_ptr<Track> track)> callback);
 
 	// libnice only
 	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
@@ -122,18 +121,20 @@ private:
 	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
 
-	std::shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, const string &label,
-	                                                const string &protocol,
-	                                                const Reliability &reliability);
+	std::shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, string label,
+	                                                string protocol, Reliability reliability);
 	std::shared_ptr<DataChannel> findDataChannel(uint16_t stream);
 	void iterateDataChannels(std::function<void(std::shared_ptr<DataChannel> channel)> func);
 	void openDataChannels();
 	void closeDataChannels();
 	void remoteCloseDataChannels();
 
+	void openTracks();
+
 	void processLocalDescription(Description description);
 	void processLocalCandidate(Candidate candidate);
 	void triggerDataChannel(std::weak_ptr<DataChannel> weakDataChannel);
+	void triggerTrack(std::weak_ptr<Track> weakTrack);
 	bool changeState(State state);
 	bool changeGatheringState(GatheringState state);
 
@@ -153,8 +154,9 @@ private:
 	std::shared_ptr<DtlsTransport> mDtlsTransport;
 	std::shared_ptr<SctpTransport> mSctpTransport;
 
-	std::unordered_map<unsigned int, std::weak_ptr<DataChannel>> mDataChannels;
-	std::shared_mutex mDataChannelsMutex;
+	std::unordered_map<unsigned int, std::weak_ptr<DataChannel>> mDataChannels; // by stream ID
+	std::unordered_map<string, std::weak_ptr<Track>> mTracks;                   // by mid
+	std::shared_mutex mDataChannelsMutex, mTracksMutex;
 
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;
@@ -164,7 +166,7 @@ private:
 	synchronized_callback<Candidate> mLocalCandidateCallback;
 	synchronized_callback<State> mStateChangeCallback;
 	synchronized_callback<GatheringState> mGatheringStateChangeCallback;
-	synchronized_callback<binary> mMediaCallback;
+	synchronized_callback<std::shared_ptr<Track>> mTrackCallback;
 };
 
 } // namespace rtc

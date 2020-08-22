@@ -25,12 +25,7 @@ namespace rtc {
 using std::shared_ptr;
 using std::weak_ptr;
 
-Track::Track(string mid, shared_ptr<DtlsSrtpTransport> transport)
-    : mMid(std::move(mid)), mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
-
-	if (transport)
-		open(transport);
-}
+Track::Track(string mid) : mMid(std::move(mid)), mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
 string Track::mid() const { return mMid; }
 
@@ -52,7 +47,13 @@ std::optional<message_variant> Track::receive() {
 	return nullopt;
 }
 
-bool Track::isOpen(void) const { return !mIsClosed && mDtlsSrtpTransport.lock(); }
+bool Track::isOpen(void) const {
+#if RTC_ENABLE_MEDIA
+	return !mIsClosed && mDtlsSrtpTransport.lock();
+#else
+	return !mIsClosed;
+#endif
+}
 
 bool Track::isClosed(void) const { return mIsClosed; }
 
@@ -60,22 +61,31 @@ size_t Track::maxMessageSize() const {
 	return 65535 - 12 - 4; // SRTP/UDP
 }
 
-size_t Track::availableAmount() const { return mRecvQueue.amount(); }
+size_t Track::availableAmount() const {
+	return mRecvQueue.amount();
+}
 
+#if RTC_ENABLE_MEDIA
 void Track::open(shared_ptr<DtlsSrtpTransport> transport) { mDtlsSrtpTransport = transport; }
+#endif
 
 bool Track::outgoing(message_ptr message) {
 	if (mIsClosed)
 		throw std::runtime_error("Track is closed");
 
+	if (message->size() > maxMessageSize())
+		throw std::runtime_error("Message size exceeds limit");
+
+#if RTC_ENABLE_MEDIA
 	auto transport = mDtlsSrtpTransport.lock();
 	if (!transport)
 		throw std::runtime_error("Track transport is not open");
 
-	if (message->size() > maxMessageSize())
-		throw std::runtime_error("Message size exceeds limit");
-
-	return transport->send(message);
+	return transport->sendMedia(message);
+#else
+	PLOG_WARNING << "Ignoring track send (not compiled with SRTP support)";
+	return false;
+#endif
 }
 
 void Track::incoming(message_ptr message) {
@@ -91,3 +101,4 @@ void Track::incoming(message_ptr message) {
 }
 
 } // namespace rtc
+

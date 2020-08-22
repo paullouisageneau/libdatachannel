@@ -198,12 +198,12 @@ bool DataChannel::outgoing(message_ptr message) {
 	if (mIsClosed)
 		throw std::runtime_error("DataChannel is closed");
 
+	if (message->size() > maxMessageSize())
+		throw std::runtime_error("Message size exceeds limit");
+
 	auto transport = mSctpTransport.lock();
 	if (!transport)
 		throw std::runtime_error("DataChannel transport is not open");
-
-	if (message->size() > maxMessageSize())
-		throw std::runtime_error("Message size exceeds limit");
 
 	// Before the ACK has been received on a DataChannel, all messages must be sent ordered
 	message->reliability = mIsOpen ? mReliability : nullptr;
