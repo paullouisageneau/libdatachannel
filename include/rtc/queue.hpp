@@ -39,6 +39,7 @@ public:
 
 	void stop();
 	bool empty() const;
+	bool full() const;
 	size_t size() const;   // elements
 	size_t amount() const; // amount
 	void push(T element);
@@ -78,6 +79,11 @@ template <typename T> void Queue<T>::stop() {
 template <typename T> bool Queue<T>::empty() const {
 	std::lock_guard lock(mMutex);
 	return mQueue.empty();
+}
+
+template <typename T> bool Queue<T>::full() const {
+	std::lock_guard lock(mMutex);
+	return mQueue.size() >= mLimit;
 }
 
 template <typename T> size_t Queue<T>::size() const {

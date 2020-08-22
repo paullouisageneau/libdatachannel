@@ -38,7 +38,8 @@ namespace rtc {
 using std::shared_ptr;
 
 WebSocket::WebSocket(std::optional<Configuration> config)
-    : mConfig(config ? std::move(*config) : Configuration()) {
+    : mConfig(config ? std::move(*config) : Configuration()),
+      mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
 	PLOG_VERBOSE << "Creating WebSocket";
 }
 
@@ -109,10 +110,11 @@ bool WebSocket::isClosed() const { return mState == State::Closed; }
 size_t WebSocket::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
 
 std::optional<message_variant> WebSocket::receive() {
-	while (!mRecvQueue.empty())
-		if (auto variant = to_variant(std::move(**mRecvQueue.pop())))
-			return variant;
-
+	while (!mRecvQueue.empty()) {
+		auto message = *mRecvQueue.pop();
+		if (message->type != Message::Control)
+			return to_variant(std::move(*message));
+	}
 	return nullopt;
 }
 
@@ -319,6 +321,6 @@ void WebSocket::closeTransports() {
 	});
 }
 
-} // namespace rtc
+	} // namespace rtc
 
 #endif

@@ -48,15 +48,12 @@ message_ptr make_message(message_variant data) {
 	    std::move(data));
 }
 
-std::optional<message_variant> to_variant(Message &&message) {
+message_variant to_variant(Message &&message) {
 	switch (message.type) {
 	case Message::String:
-		return std::make_optional(
-		    string(reinterpret_cast<const char *>(message.data()), message.size()));
-	case Message::Binary:
-		return std::make_optional(std::move(message));
+		return string(reinterpret_cast<const char *>(message.data()), message.size());
 	default:
-		return nullopt;
+		return message;
 	}
 }
 

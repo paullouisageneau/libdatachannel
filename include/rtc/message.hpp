@@ -73,7 +73,7 @@ message_ptr make_message(binary &&data, Message::Type type = Message::Binary,
 
 message_ptr make_message(message_variant data);
 
-std::optional<message_variant> to_variant(Message &&message);
+message_variant to_variant(Message &&message);
 
 } // namespace rtc
 

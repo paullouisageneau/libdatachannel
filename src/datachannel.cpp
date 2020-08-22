@@ -72,8 +72,6 @@ struct CloseMessage {
 };
 #pragma pack(pop)
 
-const size_t RECV_QUEUE_LIMIT = 1024 * 1024; // 1 MiB
-
 DataChannel::DataChannel(weak_ptr<PeerConnection> pc, unsigned int stream, string label,
                          string protocol, Reliability reliability)
     : mPeerConnection(pc), mStream(stream), mLabel(std::move(label)),
@@ -130,10 +128,9 @@ std::optional<message_variant> DataChannel::receive() {
 			auto raw = reinterpret_cast<const uint8_t *>(message->data());
 			if (!message->empty() && raw[0] == MESSAGE_CLOSE)
 				remoteClose();
-			continue;
+		} else {
+			return to_variant(std::move(*message));
 		}
-		if (auto variant = to_variant(std::move(*message)))
-			return variant;
 	}
 
 	return nullopt;
@@ -201,12 +198,12 @@ bool DataChannel::outgoing(message_ptr message) {
 	if (mIsClosed)
 		throw std::runtime_error("DataChannel is closed");
 
-	if (message->size() > maxMessageSize())
-		throw std::runtime_error("Message size exceeds limit");
-
 	auto transport = mSctpTransport.lock();
 	if (!transport)
-		throw std::runtime_error("DataChannel has no transport");
+		throw std::runtime_error("DataChannel transport is not open");
+
+	if (message->size() > maxMessageSize())
+		throw std::runtime_error("Message size exceeds limit");
 
 	// Before the ACK has been received on a DataChannel, all messages must be sent ordered
 	message->reliability = mIsOpen ? mReliability : nullptr;
