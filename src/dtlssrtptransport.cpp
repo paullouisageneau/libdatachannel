@@ -84,9 +84,11 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 
 	int size = message->size();
 	PLOG_VERBOSE << "Send size=" << size;
+//    return outgoing(message);
 
 	// The RTP header has a minimum size of 12 bytes
-	if (size < 12)
+	// An RTCP packet can have a minimum size of 8 bytes
+	if (size < 8)
 		throw std::runtime_error("RTP/RTCP packet too short");
 
 	// srtp_protect() and srtp_protect_rtcp() assume that they can write SRTP_MAX_TRAILER_LEN (for
@@ -124,8 +126,8 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	}
 
 	message->resize(size);
-	outgoing(message);
-	return true;
+	return outgoing(message);
+//	return DtlsTransport::send(message);
 }
 
 void DtlsSrtpTransport::incoming(message_ptr message) {

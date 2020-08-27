@@ -132,11 +132,38 @@ Description::Description(const string &sdp, Type type, Role role)
 			} else if (key == "candidate") {
 				addCandidate(Candidate(attr, currentMedia ? currentMedia->mid : mData.mid));
 			} else if (key == "end-of-candidates") {
-				mEnded = true;
+                mEnded = true;
 			} else if (currentMedia) {
-				currentMedia->attributes.emplace_back(line.substr(2));
+			    if (key == "rtpmap") {
+                    Description::Media::RTPMap map(value);
+                    currentMedia->rtpMap.insert(std::pair<int, Description::Media::RTPMap>(map.pt, map));
+                }else if (key == "rtcp-fb") {
+                    size_t p = value.find(' ');
+                    int pt = std::stoi(value.substr(0, p));
+                    auto it = currentMedia->rtpMap.find(pt);
+                    if (it == currentMedia->rtpMap.end()) {
+                        PLOG_WARNING << "rtcp-fb applied before it's rtpmap. Ignoring";
+                    } else
+                        it->second.rtcpFbs.emplace_back(value.substr(p + 1));
+                }else if (key == "fmtp") {
+                    size_t p = value.find(' ');
+                    int pt = std::stoi(value.substr(0, p));
+                    auto it = currentMedia->rtpMap.find(pt);
+                    if (it == currentMedia->rtpMap.end()) {
+                        PLOG_WARNING << "fmtp applied before it's rtpmap. Ignoring";
+                    } else
+                        it->second.fmtps.emplace_back(value.substr(p + 1));
+
+                } else if (key == "b") {
+
+                }else
+				    currentMedia->attributes.emplace_back(line.substr(2));
+			    std::cout << key << std::endl;
 			}
+		}else if (match_prefix(line, "b=AS")) {
+            currentMedia->bAS = std::stoi(line.substr(line.find(':')+1));
 		}
+
 	} while (!finished);
 }
 
@@ -252,13 +279,34 @@ string Description::generateSdp(const string &eol) const {
 		if (auto it = mMedia.find(i); it != mMedia.end()) {
 			// Non-data media
 			const auto &media = it->second;
-			sdp << "m=" << media.type << ' ' << 0 << ' ' << media.description << eol;
+			sdp << "m=" << media.type << ' ' << 0 << ' ' << media.description;
+
+            for (const auto& [key, _] : media.rtpMap)
+                sdp << " " << key;
+
+            sdp << eol;
 			sdp << "c=IN IP4 0.0.0.0" << eol;
+            if (media.bAS > -1)
+                sdp << "b=AS:" << media.bAS << eol;
 			sdp << "a=bundle-only" << eol;
 			sdp << "a=mid:" << media.mid << eol;
 			for (const auto &attr : media.attributes)
 				sdp << "a=" << attr << eol;
+			for (const auto& [_, map] : media.rtpMap) {
+			    // Create the a=rtpmap
+			    sdp << "a=rtpmap:" << map.pt << " " << map.format << "/" << map.clockRate;
+			    if (!map.encParams.empty())
+			        sdp << "/" << map.encParams;
+			    sdp << eol;
 
+
+                for (const auto &val : map.rtcpFbs)
+                    sdp << "a=rtcp-fb:" << map.pt << " " << val << eol;
+                for (const auto &val : map.fmtps)
+                    sdp << "a=fmtp:" << map.pt << " " << val << eol;
+			}
+            for (const auto &attr : media.attributesl)
+                sdp << "a=" << attr << eol;
 		} else {
 			// Data
 			const string description = "UDP/DTLS/SCTP webrtc-datachannel";
@@ -328,8 +376,152 @@ Description::Media::Media(const string &mline) {
 	size_t p = mline.find(' ');
 	this->type = mline.substr(0, p);
 	if (p != string::npos)
-		if (size_t q = mline.find(' ', p + 1); q != string::npos)
-			this->description = mline.substr(q + 1);
+		if (size_t q = mline.find(' ', p + 1); q != string::npos) {
+            this->description = mline.substr(q + 1, mline.find(' ', q+1)-q-2);
+        }
+}
+
+Description::Media::RTPMap& Description::Media::getFormat(int fmt) {
+    auto it = this->rtpMap.find(fmt);
+    if (it == this->rtpMap.end())
+        throw std::invalid_argument("mLineIndex is out of bounds");
+    return it->second;
+}
+
+Description::Media::RTPMap& Description::Media::getFormat(const string& fmt) {
+    for (auto &[key, val] : this->rtpMap) {
+        if (val.format == fmt)
+            return val;
+    }
+    throw std::invalid_argument("format was not found");
+}
+
+void Description::Media::removeFormat(const string &fmt) {
+    auto it = this->rtpMap.begin();
+    std::vector<int> remed;
+
+    // Remove the actual formats
+    while (it != this->rtpMap.end()) {
+        if (it->second.format == fmt) {
+            remed.emplace_back(it->first);
+            it = this->rtpMap.erase(it);
+        } else
+            it++;
+    }
+
+    // Remove any other rtpmaps that depend on the formats we just removed
+    it = this->rtpMap.begin();
+    while (it != this->rtpMap.end()) {
+        auto it2 = it->second.fmtps.begin();
+        bool rem = false;
+        while (it2 != it->second.fmtps.end()) {
+            if (it2->find("apt=") == 0) {
+                for (auto remid : remed) {
+                    if (it2->find(std::to_string(remid)) != string::npos) {
+                        std::cout << *it2 << " " << remid << std::endl;
+                        it = this->rtpMap.erase(it);
+                        rem = true;
+                        break;
+                    }
+                }
+                break;
+            }
+            it2++;
+        }
+        if (!rem)
+
+            it++;
+    }
+}
+
+void Description::Media::addVideoCodec(int payloadType, const string &codec) {
+    RTPMap map(std::to_string(payloadType) + " " + codec + "/90000");
+    map.addFB("nack");
+    map.addFB("goog-remb");
+    this->rtpMap.insert(std::pair<int, RTPMap>(map.pt, map));
+}
+
+void Description::Media::addH264Codec(int pt) {
+    addVideoCodec(pt, "H264");
+}
+
+void Description::Media::addVP8Codec(int payloadType) {
+    addVideoCodec(payloadType, "VP8");
+}
+
+void Description::Media::addVP9Codec(int payloadType) {
+    addVideoCodec(payloadType, "VP9");
+}
+
+Description::Direction Description::Media::getDirection() {
+    for (auto attr : attributes) {
+        if (attr == "sendrecv")
+            return Direction::SendRecv;
+        if (attr == "recvonly")
+            return Direction::RecvOnly;
+        if (attr == "sendonly")
+            return Direction::SendOnly;
+    }
+    return Direction::Unknown;
+}
+
+void Description::Media::setBitrate(int bitrate) {
+    this->bAS = bitrate;
+}
+int Description::Media::getBitrate() const {
+    return this->bAS;
+}
+
+void Description::Media::setDirection(Description::Direction dir) {
+    auto it = attributes.begin();
+    while (it != attributes.end()) {
+        if (*it == "sendrecv" || *it == "sendonly" || *it == "recvonly")
+            it = attributes.erase(it);
+        else
+            it++;
+    }
+    if (dir == Direction::SendRecv)
+        attributes.emplace(attributes.begin(), "sendrecv");
+    else if (dir == Direction::RecvOnly)
+        attributes.emplace(attributes.begin(), "recvonly");
+    if (dir == Direction::SendOnly)
+        attributes.emplace(attributes.begin(), "sendonly");
+}
+
+Description::Media::RTPMap::RTPMap(const string &mline) {
+    size_t p = mline.find(' ');
+
+    this->pt = std::stoi(mline.substr(0, p));
+
+    auto line = mline.substr(p+1);
+    size_t spl = line.find('/');
+    this->format = line.substr(0, spl);
+
+    line = line.substr(spl+1);
+    spl = line.find('/');
+    if (spl == string::npos) {
+        spl = line.find(' ');
+    }
+    if (spl == string::npos)
+        this->clockRate = std::stoi(line);
+    else {
+        this->clockRate = std::stoi(line.substr(0, spl));
+        this->encParams = line.substr(spl);
+    }
+}
+
+void Description::Media::RTPMap::removeFB(const string& string) {
+        auto it = rtcpFbs.begin();
+        while (it != rtcpFbs.end()) {
+            if (it->find(string) != std::string::npos) {
+                it = rtcpFbs.erase(it);
+            } else
+                it++;
+        }
+    }
+
+void Description::Media::RTPMap::addFB(const string& string) {
+    rtcpFbs.emplace_back(string);
 }
 
 Description::Type Description::stringToType(const string &typeString) {
@@ -363,9 +555,33 @@ string Description::roleToString(Role role) {
 	}
 }
 
-} // namespace rtc
+std::_Rb_tree_iterator<std::pair<const int, Description::Media>> Description::getMedia(int mLine) {
+    return this->mMedia.find(mLine);
+}
+
+rtc::Description::Media& Description::addAudioMedia() {
+    rtc::Description::Media media("audio 9 UDP/TLS/RTP/SAVPF");
+    media.mid = "audio";
+
+    media.attributes.emplace_back("rtcp-mux");
+
+    this->mMedia.insert(std::pair<int, Media>(this->mMedia.size(), media));
+    return this->mMedia.at(mMedia.size()-1);
+}
+
+Description::Media& Description::addVideoMedia(Description::Direction direction) {
+    rtc::Description::Media media("video 9 UDP/TLS/RTP/SAVPF");
+    media.mid = "video";
+    media.attributes.emplace_back("rtcp-mux");
+
+    media.setDirection(direction);
+
+    this->mMedia.insert(std::pair<int, Media>(this->mMedia.size(), media));
+    return this->mMedia.at(mMedia.size()-1);
+}
 
 std::ostream &operator<<(std::ostream &out, const rtc::Description &description) {
 	return out << std::string(description);
 }
 
+}
