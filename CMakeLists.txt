@@ -49,11 +49,13 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/icetransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/init.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/log.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/message.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/peerconnection.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtc.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/tls.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/threadpool.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/tls.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/track.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/processor.cpp
 )
 
@@ -83,6 +85,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/reliability.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.h
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/track.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocket.hpp
 )
 

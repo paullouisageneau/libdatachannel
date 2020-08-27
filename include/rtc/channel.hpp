@@ -20,6 +20,7 @@
 #define RTC_CHANNEL_H
 
 #include "include.hpp"
+#include "message.hpp"
 
 #include <atomic>
 #include <functional>
@@ -33,7 +34,7 @@ public:
 	virtual ~Channel() = default;
 
 	virtual void close() = 0;
-	virtual bool send(const std::variant<binary, string> &data) = 0; // returns false if buffered
+	virtual bool send(message_variant data) = 0; // returns false if buffered
 
 	virtual bool isOpen() const = 0;
 	virtual bool isClosed() const = 0;
@@ -42,24 +43,24 @@ public:
 
 	void onOpen(std::function<void()> callback);
 	void onClosed(std::function<void()> callback);
-	void onError(std::function<void(const string &error)> callback);
+	void onError(std::function<void(string error)> callback);
 
-	void onMessage(std::function<void(const std::variant<binary, string> &data)> callback);
-	void onMessage(std::function<void(const binary &data)> binaryCallback,
-	               std::function<void(const string &data)> stringCallback);
+	void onMessage(std::function<void(message_variant data)> callback);
+	void onMessage(std::function<void(binary data)> binaryCallback,
+	               std::function<void(string data)> stringCallback);
 
 	void onBufferedAmountLow(std::function<void()> callback);
 	void setBufferedAmountLowThreshold(size_t amount);
 
 	// Extended API
-	virtual std::optional<std::variant<binary, string>> receive() = 0; // only if onMessage unset
+	virtual std::optional<message_variant> receive() = 0; // only if onMessage unset
 	virtual size_t availableAmount() const; // total size available to receive
 	void onAvailable(std::function<void()> callback);
 
 protected:
 	virtual void triggerOpen();
 	virtual void triggerClosed();
-	virtual void triggerError(const string &error);
+	virtual void triggerError(string error);
 	virtual void triggerAvailable(size_t count);
 	virtual void triggerBufferedAmount(size_t amount);
 
@@ -68,8 +69,8 @@ protected:
 private:
 	synchronized_callback<> mOpenCallback;
 	synchronized_callback<> mClosedCallback;
-	synchronized_callback<const string &> mErrorCallback;
-	synchronized_callback<const std::variant<binary, string> &> mMessageCallback;
+	synchronized_callback<string> mErrorCallback;
+	synchronized_callback<message_variant> mMessageCallback;
 	synchronized_callback<> mAvailableCallback;
 	synchronized_callback<> mBufferedAmountLowCallback;
 

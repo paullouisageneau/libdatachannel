@@ -139,7 +139,7 @@ private:
 	std::optional<string> mFingerprint;
 
 	Data mData;
-
+  
 	std::map<int, Media> mMedia; // by m-line index
 
 	// Candidates
