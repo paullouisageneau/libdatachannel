@@ -28,13 +28,14 @@ using std::weak_ptr;
 Track::Track(Description::Media description)
     : mMediaDescription(std::move(description)), mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
-string Track::mid() const { return mMediaDescription.mid; }
+string Track::mid() const { return mMediaDescription.mid(); }
 
 Description::Media Track::description() const { return mMediaDescription; }
 
 void Track::close() {
 	mIsClosed = true;
 	resetCallbacks();
+	setRtcpHandler(nullptr);
 }
 
 bool Track::send(message_variant data) { return outgoing(make_message(std::move(data))); }
@@ -95,12 +96,37 @@ void Track::incoming(message_ptr message) {
 	if (!message)
 		return;
 
+	if (mRtcpHandler) {
+		auto opt = mRtcpHandler->incoming(message);
+		if (!opt)
+			return;
+
+		message = *opt;
+	}
+
 	// Tail drop if queue is full
 	if (mRecvQueue.full())
 		return;
 
 	mRecvQueue.push(message);
 	triggerAvailable(mRecvQueue.size());
+}
+
+void Track::setRtcpHandler(std::shared_ptr<RtcpHandler> handler) {
+	if (mRtcpHandler)
+		mRtcpHandler->onOutgoing(nullptr);
+
+	mRtcpHandler = std::move(handler);
+	if (mRtcpHandler) {
+		mRtcpHandler->onOutgoing([this]([[maybe_unused]] message_ptr message) {
+#if RTC_ENABLE_MEDIA
+			if (auto transport = mDtlsSrtpTransport.lock())
+				transport->sendMedia(message);
+#else
+			PLOG_WARNING << "Ignoring RTCP send (not compiled with SRTP support)";
+#endif
+		});
+	}
 }
 
 } // namespace rtc

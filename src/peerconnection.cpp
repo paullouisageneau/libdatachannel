@@ -81,7 +81,7 @@ std::optional<Description> PeerConnection::remoteDescription() const {
 	return mRemoteDescription;
 }
 
-void PeerConnection::setLocalDescription(std::optional<Description> mediaDescription) {
+void PeerConnection::setLocalDescription() {
 	PLOG_VERBOSE << "Setting local description";
 
 	if (std::atomic_load(&mIceTransport))
@@ -92,14 +92,11 @@ void PeerConnection::setLocalDescription(std::optional<Description> mediaDescrip
 	// See https://tools.ietf.org/html/rfc5763#section-5
 	auto iceTransport = initIceTransport(Description::Role::ActPass);
 	Description localDescription = iceTransport->getLocalDescription(Description::Type::Offer);
-	if (mediaDescription)
-		localDescription.addMedia(*mediaDescription);
 	processLocalDescription(localDescription);
 	iceTransport->gatherLocalCandidates();
 }
 
-void PeerConnection::setRemoteDescription(Description description,
-                                          std::optional<Description> mediaDescription) {
+void PeerConnection::setRemoteDescription(Description description) {
 	PLOG_VERBOSE << "Setting remote description: " << string(description);
 
 	if (!description.fingerprint())
@@ -122,8 +119,6 @@ void PeerConnection::setRemoteDescription(Description description,
 	if (type == Description::Type::Offer) {
 		// This is an offer and we are the answerer.
 		Description localDescription = iceTransport->getLocalDescription(Description::Type::Answer);
-		if (mediaDescription)
-			localDescription.addMedia(*mediaDescription);
 		processLocalDescription(localDescription);
 		iceTransport->gatherLocalCandidates();
 	} else {
@@ -625,8 +620,14 @@ void PeerConnection::processLocalDescription(Description description) {
 	    remoteSctpPort = remote->sctpPort();
 	}
 
+	// Set the same data mid as remote
 	if (remoteDataMid)
 		description.setDataMid(*remoteDataMid);
+
+	// Set the media
+	for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
+		if (auto track = it->second.lock())
+			description.addMedia(track->description());
 
 	description.setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
 	description.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);

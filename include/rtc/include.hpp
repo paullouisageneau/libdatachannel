@@ -41,12 +41,14 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace rtc {
 
 using std::byte;
 using std::string;
+using std::string_view;
 using binary = std::vector<byte>;
 
 using std::nullopt;

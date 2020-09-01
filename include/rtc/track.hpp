@@ -24,6 +24,7 @@
 #include "include.hpp"
 #include "message.hpp"
 #include "queue.hpp"
+#include "rtp.hpp"
 
 #include <atomic>
 #include <variant>
@@ -54,6 +55,9 @@ public:
 	size_t availableAmount() const override;
 	std::optional<message_variant> receive() override;
 
+	// RTCP handler
+	void setRtcpHandler(std::shared_ptr<RtcpHandler> handler);
+
 private:
 #if RTC_ENABLE_MEDIA
 	void open(std::shared_ptr<DtlsSrtpTransport> transport);
@@ -67,6 +71,7 @@ private:
 	std::atomic<bool> mIsClosed = false;
 
 	Queue<message_ptr> mRecvQueue;
+	std::shared_ptr<RtcpHandler> mRtcpHandler;
 
 	friend class PeerConnection;
 };

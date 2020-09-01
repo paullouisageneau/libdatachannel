@@ -32,20 +32,13 @@ namespace rtc {
 
 class Description {
 public:
-
-    enum class Type { Unspec = 0, Offer = 1, Answer = 2 };
+	enum class Type { Unspec = 0, Offer = 1, Answer = 2 };
 	enum class Role { ActPass = 0, Passive = 1, Active = 2 };
-    enum Direction {
-        SendOnly,
-        RecvOnly,
-        SendRecv,
-        Unknown
-    };
+	enum Direction { SendOnly, RecvOnly, SendRecv, Unknown };
 
-    Description(const string &sdp, const string &typeString = "");
+	Description(const string &sdp, const string &typeString = "");
 	Description(const string &sdp, Type type);
 	Description(const string &sdp, Type type, Role role);
-    Description(): Description(""){};
 
 	Type type() const;
 	string typeString() const;
@@ -68,68 +61,76 @@ public:
 	void endCandidates();
 	std::vector<Candidate> extractCandidates();
 
-	bool hasMedia() const;
-	void addMedia(const Description &source);
-
 	operator string() const;
-	string generateSdp(const string &eol) const;
-	string generateDataSdp(const string &eol) const;
+	string generateSdp(string_view eol) const;
+	string generateDataSdp(string_view eol) const;
 
-	// Data
-    struct Data {
-        string mid;
-        std::optional<uint16_t> sctpPort;
-        std::optional<size_t> maxMessageSize;
-    };
+	// Media (non-data)
+	class Media {
+	public:
+		Media(string mline, Direction dir = Direction::Unknown, string mid = "media");
 
-    // Media (non-data)
-    struct Media {
-        Media(const string &lines);
-        string type;
-        string description;
-        string mid;
-        std::vector<string> attributes;
-        std::vector<string> attributesl;
-        int bAS = -1;
+		string type() const { return mType; }
+		string description() const { return mDescription; }
+		string mid() const { return mMid; }
 
-        struct RTPMap {
-            RTPMap(const string &mLine);
+		void removeFormat(const string &fmt);
 
-            int pt;
-            string format;
-            int clockRate;
-            string encParams;
+		Direction getDirection();
+		void setDirection(Direction dir);
 
-            std::vector<string> rtcpFbs;
-            std::vector<string> fmtps;
+		void addVideoCodec(int payloadType, const string &codec);
+		void addH264Codec(int payloadType);
+		void addVP8Codec(int payloadType);
+		void addVP9Codec(int payloadType);
 
-            void removeFB(const string& string);
-            void addFB(const string& string);
-        };
+		void setBitrate(int bitrate);
+		int getBitrate() const;
 
-        std::unordered_map<int, RTPMap> rtpMap;
+		void parseSdpLine(string line);
+		string generateSdp(string_view eol) const;
 
-        Media::RTPMap& getFormat(int fmt);
-        Media::RTPMap& getFormat(const string& fmt);
-        void removeFormat(const string &fmt);
+	private:
+		string mType;
+		string mDescription;
+		string mMid;
+		std::vector<string> mAttributes;
+		std::vector<string> mAttributesl;
+		int mBas = -1;
 
-        Direction getDirection();
-        void setDirection(Direction dir);
+		struct RTPMap {
+			RTPMap(const string &mLine);
 
-        void addVideoCodec(int payloadType, const string& codec);
-        void addH264Codec(int payloadType);
-        void addVP8Codec(int payloadType);
-        void addVP9Codec(int payloadType);
+			void removeFB(const string &string);
+			void addFB(const string &string);
 
-        void setBitrate(int bitrate);
-        int getBitrate() const;
-    };
+			int pt;
+			string format;
+			int clockRate;
+			string encParams;
 
-    std::_Rb_tree_iterator<std::pair<const int, Media>> getMedia(int mLine);
+			std::vector<string> rtcpFbs;
+			std::vector<string> fmtps;
+		};
 
-    Media & addAudioMedia();
+		Media::RTPMap &getFormat(int fmt);
+		Media::RTPMap &getFormat(const string &fmt);
 
-    Media &addVideoMedia(Direction direction=Direction::RecvOnly);
+		std::unordered_map<int, RTPMap> mRtpMap;
+	};
+
+	class AudioMedia : public Media {
+	public:
+		AudioMedia(Direction dir, string mid = "audio");
+	};
+
+	class VideoMedia : public Media {
+	public:
+		VideoMedia(Direction dir, string mid = "video");
+	};
+
+	bool hasMedia() const;
+	void addMedia(Media media);
 
 private:
 	Type mType;
@@ -138,8 +139,14 @@ private:
 	string mIceUfrag, mIcePwd;
 	std::optional<string> mFingerprint;
 
+	struct Data {
+		string mid;
+		std::optional<uint16_t> sctpPort;
+		std::optional<size_t> maxMessageSize;
+	};
+
 	Data mData;
-  
+
 	std::map<int, Media> mMedia; // by m-line index
 
 	// Candidates
