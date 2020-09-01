@@ -1,12 +1,38 @@
+/*
+ * libdatachannel client example
+ * Copyright (c) 2020 Staz M
+ * Copyright (c) 2020 Paul-Louis Ageneau
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+
+#include "rtc/rtc.hpp"
+
 #include <iostream>
 #include <memory>
-#include <rtc/log.hpp>
-#include <rtc/rtc.hpp>
-#include <rtc/rtp.hpp>
+#include <utility>
 
 #include <nlohmann/json.hpp>
-#include <utility>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #include <arpa/inet.h>
+typedef int SOCKET;
+#endif
 
 using nlohmann::json;
 
@@ -27,7 +53,7 @@ int main() {
 		}
 	});
 
-	int sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
+	SOCKET sock = socket(AF_INET, SOCK_DGRAM, 0);
 	sockaddr_in addr;
 	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 	addr.sin_port = htons(5000);
@@ -45,9 +71,9 @@ int main() {
 	track->setRtcpHandler(session);
 
 	track->onMessage(
-	    [&session, &sock_fd, &addr](rtc::binary message) {
+	    [session, sock, addr](rtc::binary message) {
 		    // This is an RTP packet
-		    sendto(sock_fd, message.data(), message.size(), 0,
+		    sendto(sock, reinterpret_cast<const char *>(message.data()), message.size(), 0,
 		           reinterpret_cast<const struct sockaddr *>(&addr), sizeof(addr));
 	    },
 	    nullptr);
