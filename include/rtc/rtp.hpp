@@ -354,10 +354,8 @@ private:
 	unsigned int requestedBitrate = 0;
 	synchronized_callback<rtc::message_ptr> txCB;
 	SSRC ssrc = 0;
-	uint32_t greatestSeqNo = 0, greatestTS;
+	uint32_t greatestSeqNo = 0;
 	uint64_t syncRTPTS, syncNTPTS;
-
-	unsigned int rotationCount = 0;
 
 public:
 	void onOutgoing(std::function<void(rtc::message_ptr)> cb) override { txCB = cb; }
