@@ -201,7 +201,7 @@ std::vector<Candidate> Description::extractCandidates() {
 
 bool Description::hasMedia() const { return !mMedia.empty(); }
 
-void Description::addMedia(Media media) { mMedia.emplace(mMedia.size(), std::move(media)); }
+void Description::addMedia(Media media) { mMedia.emplace(int(mMedia.size()), std::move(media)); }
 
 Description::operator string() const { return generateSdp("\r\n"); }
 

@@ -31,7 +31,15 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #else
-#include <netinet/in.h>
+#include <arpa/inet.h>
+#endif
+
+#ifndef htonll
+#define htonll(x)                                                                                  \
+	((uint64_t)htonl(((uint64_t)(x)&0xFFFFFFFF) << 32) | (uint64_t)htonl((uint64_t)(x) >> 32))
+#endif
+#ifndef ntohll
+#define ntohll(x) htonll(x)
 #endif
 
 namespace rtc {
@@ -71,8 +79,8 @@ public:
 
 		// Middle 32 bits of NTP Timestamp
 		//		  this->lastReport = lastSR_NTP >> 16u;
-		setNTPOfSR(lastSR_NTP);
-		setDelaySinceSR(lastSR_DELAY);
+		setNTPOfSR(uint32_t(lastSR_NTP));
+		setDelaySinceSR(uint32_t(lastSR_DELAY));
 
 		// The delay, expressed in units of 1/65536 seconds
 		//		  this->delaySinceLastReport = lastSR_DELAY;
@@ -166,9 +174,8 @@ public:
 	void print() {
 		std::cout << "SR ";
 		header.print();
-		std::cout << " SSRC:" << ntohl(senderSSRC) << " NTP TS: " << ntpTimestamp
-		          << // TODO This needs to be convereted from network-endian
-		    " RTP TS: " << ntohl(rtpTimestamp) << " packetCount: " << ntohl(packetCount)
+		std::cout << " SSRC:" << ntohl(senderSSRC) << " NTP TS: " << ntohll(ntpTimestamp)
+		          << " RTP TS: " << ntohl(rtpTimestamp) << " packetCount: " << ntohl(packetCount)
 		          << " octetCount: " << ntohl(octetCount) << std::endl;
 
 		for (int i = 0; i < header.getReportCount(); i++) {
@@ -192,10 +199,10 @@ public:
 	}
 
 	inline uint32_t getRTPTS() const { return ntohl(rtpTimestamp); }
-	inline uint32_t getNTPTS() const { return ntohl(ntpTimestamp); }
+	inline uint32_t getNTPTS() const { return ntohll(ntpTimestamp); }
 
-	inline void setRTPTS(uint32_t ts) { this->rtpTimestamp = htons(ts); }
-	inline void setNTPTS(uint32_t ts) { this->ntpTimestamp = htons(ts); }
+	inline void setRTPTS(uint32_t ts) { this->rtpTimestamp = htonl(ts); }
+	inline void setNTPTS(uint32_t ts) { this->ntpTimestamp = htonll(ts); }
 };
 
 struct RTCP_RR {
@@ -268,10 +275,10 @@ struct RTCP_REMB {
 	SSRC senderSSRC;
 	SSRC mediaSourceSSRC;
 
-	/*! \brief Unique identifier ('R' 'E' 'M' 'B') */
-	char id[4];
+	// Unique identifier
+	const char id[4] = {'R', 'E', 'M', 'B'};
 
-	/*! \brief Num SSRC, Br Exp, Br Mantissa (bit mask) */
+	// Num SSRC, Br Exp, Br Mantissa (bit mask)
 	uint32_t bitrate;
 
 	SSRC ssrc[1];
@@ -282,11 +289,6 @@ struct RTCP_REMB {
 	}
 
 	void preparePacket(SSRC senderSSRC, unsigned int numSSRC, unsigned int bitrate) {
-		//		  version = 2;
-		//		  format = 15;
-		//		  padding = false;
-		//		  payloadType = 206;
-
 		// Report Count becomes the format here.
 		header.prepareHeader(206, 15, 0);
 
@@ -294,11 +296,6 @@ struct RTCP_REMB {
 		mediaSourceSSRC = 0;
 
 		this->senderSSRC = htonl(senderSSRC);
-		id[0] = 'R';
-		id[1] = 'E';
-		id[2] = 'M';
-		id[3] = 'B';
-
 		setBitrate(numSSRC, bitrate);
 	}
 
@@ -310,7 +307,7 @@ struct RTCP_REMB {
 		}
 
 		// "length" in packet is one less than the number of 32 bit words in the packet.
-		header.setLength((offsetof(RTCP_REMB, ssrc) / 4) - 1 + numSSRC);
+		header.setLength(uint16_t((offsetof(RTCP_REMB, ssrc) / 4) - 1 + numSSRC));
 
 		this->bitrate = htonl((numSSRC << (32u - 8u)) | (exp << (32u - 8u - 6u)) | bitrate);
 	}
