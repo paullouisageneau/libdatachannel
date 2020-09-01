@@ -26,29 +26,26 @@
 #include <cmath>
 #include <functional>
 #include <iostream>
-
 #include <utility>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #include <netinet/in.h>
+#endif
 
 namespace rtc {
 
 typedef uint32_t SSRC;
 
+#pragma pack(push, 1)
+
 struct RTCP_ReportBlock {
 private:
 	SSRC ssrc;
-
-	/** fraction lost is 8 bits; packets lost is 24 bits */
-	uint32_t fractionLostAndPacketsLost;
-
-#if __BYTE_ORDER == __BIG_ENDIAN
-	uint32_t seqNoCycles : 16;
-	uint32_t highestSeqNo : 16;
-#elif __BYTE_ORDER == __LITTLE_ENDIAN
-	uint32_t highestSeqNo : 16;
-	uint32_t seqNoCycles : 16;
-#endif
-
+	uint32_t fractionLostAndPacketsLost; // fraction lost is 8-bit, packets lost is 24-bit
+	uint16_t seqNoCycles;
+	uint16_t highestSeqNo;
 	uint32_t arrivalJitter;
 	uint32_t lastReport;
 	uint32_t delaySinceLastReport;
@@ -118,20 +115,12 @@ public:
 	inline uint32_t getDelaySinceSR() const { return ntohl(delaySinceLastReport); }
 };
 
-
 struct RTCP_HEADER {
 private:
-#if __BYTE_ORDER == __BIG_ENDIAN
-	uint16_t version : 2;
-	uint16_t padding:1;
-	uint16_t rc:5;
-	uint16_t payloadType:8;
-#elif __BYTE_ORDER == __LITTLE_ENDIAN
-	uint16_t reportCount : 5;
-	uint16_t padding : 1;
-	uint16_t version : 2;
-	uint16_t payloadType : 8;
-#endif
+	uint8_t version : 2;
+	uint8_t padding : 1;
+	uint8_t reportCount : 5;
+	uint8_t payloadType;
 	uint16_t length;
 
 public:
@@ -180,11 +169,11 @@ public:
 		std::cout << " SSRC:" << ntohl(senderSSRC) << " NTP TS: " << ntpTimestamp
 		          << // TODO This needs to be convereted from network-endian
 		    " RTP TS: " << ntohl(rtpTimestamp) << " packetCount: " << ntohl(packetCount)
-		          << " octetCount: " << ntohl(octetCount) << "\n";
+		          << " octetCount: " << ntohl(octetCount) << std::endl;
 
 		for (int i = 0; i < header.getReportCount(); i++) {
 			getReportBlock(i)->print();
-			std::cout << "\n";
+			std::cout << std::endl;
 		}
 	}
 
@@ -219,17 +208,11 @@ public:
 	void print() {
 		std::cout << "RR ";
 		header.print();
-		std::cout <<
-		    //					"version:" << (uint16_t) version <<
-		    //					" padding:" << (padding ? "T" : "F") <<
-		    //					" reportCount: " << (uint16_t) reportCount <<
-		    //					" payloadType:" << (uint16_t) payloadType <<
-		    //					" totalLength:" << ntohs(length) <<
-		    " SSRC:" << ntohl(senderSSRC) << "\n";
+		std::cout << " SSRC:" << ntohl(senderSSRC) << std::endl;
 
 		for (int i = 0; i < header.getReportCount(); i++) {
 			getReportBlock(i)->print();
-			std::cout << "\n";
+			std::cout << std::endl;
 		}
 	}
 	RTCP_ReportBlock *getReportBlock(int num) { return &reportBlocks + num; }
@@ -264,21 +247,12 @@ public:
 
 struct RTP
 {
-#if __BYTE_ORDER == __BIG_ENDIAN
-	uint16_t version : 2;
-	uint16_t padding:1;
-	uint16_t extension:1;
-	uint16_t csrcCount:4;
-	uint16_t markerBit:1;
-	uint16_t payloadType:7;
-#elif __BYTE_ORDER == __LITTLE_ENDIAN
-	uint16_t csrCcount : 4;
-	uint16_t extension : 1;
-	uint16_t padding : 1;
-	uint16_t version : 2;
-	uint16_t payloadType : 7;
-	uint16_t markerBit : 1;
-#endif
+	uint8_t version : 2;
+	uint8_t padding : 1;
+	uint8_t extension : 1;
+	uint8_t csrcCount : 4;
+	uint8_t markerBit : 1;
+	uint8_t payloadType : 7;
 	uint16_t seqNumber;
 	uint32_t timestamp;
 	SSRC ssrc;
@@ -365,6 +339,8 @@ struct RTCP_REMB {
 		return (offsetof(RTCP_REMB, ssrc)) + sizeof(SSRC) * numSSRC;
 	}
 };
+
+#pragma pack(pop)
 
 class RtcpHandler {
 public:

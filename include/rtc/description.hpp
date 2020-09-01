@@ -116,7 +116,7 @@ public:
 		Media::RTPMap &getFormat(int fmt);
 		Media::RTPMap &getFormat(const string &fmt);
 
-		std::unordered_map<int, RTPMap> mRtpMap;
+		std::map<int, RTPMap> mRtpMap;
 	};
 
 	class AudioMedia : public Media {
