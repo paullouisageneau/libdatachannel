@@ -144,8 +144,9 @@ size_t DataChannel::maxMessageSize() const {
 	size_t remoteMax = DEFAULT_MAX_MESSAGE_SIZE;
 	if (auto pc = mPeerConnection.lock())
 		if (auto description = pc->remoteDescription())
-			if (auto maxMessageSize = description->maxMessageSize())
-				remoteMax = *maxMessageSize > 0 ? *maxMessageSize : LOCAL_MAX_MESSAGE_SIZE;
+			if (auto *application = description->application())
+				if (auto maxMessageSize = application->maxMessageSize())
+					remoteMax = *maxMessageSize > 0 ? *maxMessageSize : LOCAL_MAX_MESSAGE_SIZE;
 
 	return std::min(remoteMax, LOCAL_MAX_MESSAGE_SIZE);
 }

@@ -59,7 +59,7 @@ int main() {
 	addr.sin_port = htons(5000);
 	addr.sin_family = AF_INET;
 
-	rtc::Description::VideoMedia media(rtc::Description::RecvOnly);
+	rtc::Description::Video media("video", rtc::Description::RecvOnly);
 	media.addH264Codec(96);
 	media.setBitrate(
 	    3000); // Request 3Mbps (Browsers do not encode more than 2.5MBps from a webcam)
@@ -78,7 +78,8 @@ int main() {
 	    },
 	    nullptr);
 
-	pc->setLocalDescription();
+	// TODO
+	// pc->setLocalDescription();
 
 	std::cout << "Expect RTP video traffic on localhost:5000" << std::endl;
 	std::cout << "Please copy/paste the answer provided by the browser: " << std::endl;

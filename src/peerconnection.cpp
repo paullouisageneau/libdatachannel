@@ -99,6 +99,9 @@ void PeerConnection::setLocalDescription() {
 void PeerConnection::setRemoteDescription(Description description) {
 	PLOG_VERBOSE << "Setting remote description: " << string(description);
 
+	if (description.mediaCount() == 0)
+		throw std::runtime_error("Remote description has no media line");
+
 	if (!description.fingerprint())
 		throw std::runtime_error("Remote description is incomplete");
 
@@ -231,7 +234,7 @@ void PeerConnection::onGatheringStateChange(std::function<void(GatheringState st
 bool PeerConnection::hasMedia() const {
 	auto local = localDescription();
 	auto remote = remoteDescription();
-	return (local && local->hasMedia()) || (remote && remote->hasMedia());
+	return (local && local->hasAudioOrVideo()) || (remote && remote->hasAudioOrVideo());
 }
 
 std::shared_ptr<Track> PeerConnection::createTrack(Description::Media description) {
@@ -380,7 +383,11 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 		if (auto transport = std::atomic_load(&mSctpTransport))
 			return transport;
 
-		uint16_t sctpPort = remoteDescription()->sctpPort().value_or(DEFAULT_SCTP_PORT);
+		auto remote = remoteDescription();
+		if (!remote || !remote->application())
+			throw std::logic_error("Initializing SCTP transport without application description");
+
+		uint16_t sctpPort = remote->application()->sctpPort().value_or(DEFAULT_SCTP_PORT);
 		auto lower = std::atomic_load(&mDtlsTransport);
 		auto transport = std::make_shared<SctpTransport>(
 		    lower, sctpPort, weak_bind(&PeerConnection::forwardMessage, this, _1),
@@ -512,11 +519,41 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	if (!message)
 		return;
 
-	string mid;
-	// TODO: stream (PT) to mid
+	unsigned int payloadType = message->stream;
+	std::optional<string> mid;
+	if (auto it = mMidFromPayloadType.find(payloadType); it != mMidFromPayloadType.end()) {
+		mid = it->second;
+	} else {
+		std::lock_guard lock(mLocalDescriptionMutex);
+		if (!mLocalDescription)
+			return;
+
+		for (int i = 0; i < mLocalDescription->mediaCount(); ++i) {
+			if (auto found = std::visit( // reciprocate each media
+			        rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
+				                        return std::nullopt;
+			                        },
+			                        [&](Description::Media *media) -> std::optional<string> {
+				                        return media->hasPayloadType(payloadType)
+				                                   ? std::make_optional(media->mid())
+				                                   : nullopt;
+			                        }},
+			        mLocalDescription->media(i))) {
+
+				mMidFromPayloadType.emplace(payloadType, *found);
+				mid = *found;
+				break;
+			}
+		}
+	}
+
+	if (!mid) {
+		PLOG_WARNING << "Track not found for payload type " << payloadType;
+		return;
+	}
 
 	std::shared_lock lock(mTracksMutex); // read-only
-	if (auto it = mTracks.find(mid); it != mTracks.end())
+	if (auto it = mTracks.find(*mid); it != mTracks.end())
 		if (auto track = it->second.lock())
 			track->incoming(message);
 }
@@ -613,25 +650,56 @@ void PeerConnection::remoteCloseDataChannels() {
 }
 
 void PeerConnection::processLocalDescription(Description description) {
-	std::optional<uint16_t> remoteSctpPort;
-	std::optional<string> remoteDataMid;
 	if (auto remote = remoteDescription()) {
-		remoteDataMid = remote->dataMid();
-	    remoteSctpPort = remote->sctpPort();
+		// Reciprocate remote description
+		for (int i = 0; i < remote->mediaCount(); ++i)
+			std::visit( // reciprocate each media
+			    rtc::overloaded{
+			        [&](Description::Application *app) {
+				        PLOG_DEBUG << "Reciprocating application in local description, mid=\""
+				                   << app->mid() << "\"";
+				        auto reciprocated = app->reciprocate();
+				        reciprocated.hintSctpPort(DEFAULT_SCTP_PORT);
+				        reciprocated.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+				        description.addMedia(std::move(reciprocated));
+			        },
+			        [&](Description::Media *media) {
+				        PLOG_DEBUG << "Reciprocating media in local description, mid=\""
+				                   << media->mid() << "\"";
+
+				        description.addMedia(media->reciprocate());
+			        },
+			    },
+			    remote->media(i));
+	} else {
+		// Add application for data channels
+		{
+			std::shared_lock lock(mDataChannelsMutex);
+			if (!mDataChannels.empty()) {
+				const string mid = "data";
+				PLOG_DEBUG << "Adding application to local description, mid=\"" << mid << "\"";
+				Description::Application app;
+				app.setSctpPort(DEFAULT_SCTP_PORT);
+				app.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+				description.addMedia(std::move(app));
+			}
+		}
+
+		// Add media for local tracks
+		{
+			std::shared_lock lock(mTracksMutex);
+			for (auto it = mTracks.begin(); it != mTracks.end(); ++it) {
+				if (auto track = it->second.lock()) {
+					PLOG_DEBUG << "Adding media to local description, mid=\"" << track->mid()
+					           << "\"";
+					description.addMedia(track->description());
+				}
+			}
+		}
 	}
 
-	// Set the same data mid as remote
-	if (remoteDataMid)
-		description.setDataMid(*remoteDataMid);
-
-	// Set the media
-	for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
-		if (auto track = it->second.lock())
-			description.addMedia(track->description());
-
-	description.setSctpPort(remoteSctpPort.value_or(DEFAULT_SCTP_PORT));
-	description.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
-	description.setFingerprint(mCertificate.get()->fingerprint()); // wait for certificate
+	// Set local fingerprint (wait for certificate if necessary)
+	description.setFingerprint(mCertificate.get()->fingerprint());
 
 	std::lock_guard lock(mLocalDescriptionMutex);
 	mLocalDescription.emplace(std::move(description));

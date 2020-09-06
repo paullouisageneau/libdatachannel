@@ -14,7 +14,7 @@
     document.querySelector('button').addEventListener('click',  async () => {
         let offer = JSON.parse(document.querySelector('textarea').value);
         rtc = new RTCPeerConnection({
-            // Requirement of libdatachannel
+            // Recommended for libdatachannel
             bundlePolicy: "max-bundle",
         });
 
@@ -36,19 +36,8 @@
             }
         });
         media.getTracks().forEach(track => rtc.addTrack(track, media));
-        let answer= await  rtc.createAnswer();
+        let answer = await rtc.createAnswer();
         await rtc.setLocalDescription(answer);
-
-        // For some reason, (at least) chrome requires for you to manually add the candidates.
-        offer.sdp.split("\n").forEach(line => {
-            if (line.startsWith("a=candidate")) {
-                let cand = line.substring(2);
-                rtc.addIceCandidate({
-                    sdpMid: "video",
-                    candidate: cand.trim()
-                });
-            }
-        });
     })
 </script>
 
