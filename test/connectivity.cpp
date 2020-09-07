@@ -52,7 +52,7 @@ void test_connectivity() {
 		if (!pc2)
 			return;
 		cout << "Description 1: " << sdp << endl;
-		pc2->setRemoteDescription(std::move(sdp));
+		pc2->setRemoteDescription(string(sdp));
 	});
 
 	pc1->onLocalCandidate([wpc2 = make_weak_ptr(pc2)](Candidate candidate) {
@@ -60,7 +60,7 @@ void test_connectivity() {
 		if (!pc2)
 			return;
 		cout << "Candidate 1: " << candidate << endl;
-		pc2->addRemoteCandidate(std::move(candidate));
+		pc2->addRemoteCandidate(string(candidate));
 	});
 
 	pc1->onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
@@ -74,7 +74,7 @@ void test_connectivity() {
 		if (!pc1)
 			return;
 		cout << "Description 2: " << sdp << endl;
-		pc1->setRemoteDescription(std::move(sdp));
+		pc1->setRemoteDescription(string(sdp));
 	});
 
 	pc2->onLocalCandidate([wpc1 = make_weak_ptr(pc1)](Candidate candidate) {
@@ -82,7 +82,7 @@ void test_connectivity() {
 		if (!pc1)
 			return;
 		cout << "Candidate 2: " << candidate << endl;
-		pc1->addRemoteCandidate(std::move(candidate));
+		pc1->addRemoteCandidate(string(candidate));
 	});
 
 	pc2->onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });

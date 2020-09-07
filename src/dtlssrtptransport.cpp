@@ -84,9 +84,11 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 
 	int size = message->size();
 	PLOG_VERBOSE << "Send size=" << size;
+//    return outgoing(message);
 
 	// The RTP header has a minimum size of 12 bytes
-	if (size < 12)
+	// An RTCP packet can have a minimum size of 8 bytes
+	if (size < 8)
 		throw std::runtime_error("RTP/RTCP packet too short");
 
 	// srtp_protect() and srtp_protect_rtcp() assume that they can write SRTP_MAX_TRAILER_LEN (for
@@ -124,8 +126,8 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	}
 
 	message->resize(size);
-	outgoing(message);
-	return true;
+	return outgoing(message);
+//	return DtlsTransport::send(message);
 }
 
 void DtlsSrtpTransport::incoming(message_ptr message) {
@@ -153,7 +155,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 
 	} else if (value1 >= 128 && value1 <= 191) {
 		// The RTP header has a minimum size of 12 bytes
-		if (size < 12) {
+		// An RTCP packet can have a minimum size of 8 bytes
+		if (size < 8) {
 			PLOG_WARNING << "Incoming SRTP/SRTCP packet too short, size=" << size;
 			return;
 		}
@@ -175,6 +178,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTCP packet, size=" << size;
+			message->type = Message::Type::Control;
+			message->stream = to_integer<uint8_t>(*(message->begin() + 1)); // Payload Type
 		} else {
 			PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
 			if (srtp_err_status_t err = srtp_unprotect(mSrtpIn, message->data(), &size)) {
@@ -187,6 +192,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
+			message->type = Message::Type::Binary;
+			message->stream = value2; // Payload Type
 		}
 
 		message->resize(size);

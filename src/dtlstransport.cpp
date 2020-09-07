@@ -149,7 +149,6 @@ void DtlsTransport::postHandshake() {
 
 void DtlsTransport::runRecvLoop() {
 	const size_t maxMtu = 4096;
-
 	// Handshake loop
 	try {
 		changeState(State::Connecting);
