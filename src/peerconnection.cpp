@@ -233,8 +233,7 @@ void PeerConnection::onGatheringStateChange(std::function<void(GatheringState st
 
 bool PeerConnection::hasMedia() const {
 	auto local = localDescription();
-	auto remote = remoteDescription();
-	return (local && local->hasAudioOrVideo()) || (remote && remote->hasAudioOrVideo());
+	return local && local->hasAudioOrVideo();
 }
 
 std::shared_ptr<Track> PeerConnection::createTrack(Description::Media description) {
@@ -328,7 +327,10 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 			switch (state) {
 			case DtlsTransport::State::Connected:
-				initSctpTransport();
+				if (auto local = localDescription())
+					if (local->hasApplication())
+						initSctpTransport();
+
 				openTracks();
 				break;
 			case DtlsTransport::State::Failed:
@@ -519,6 +521,16 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	if (!message)
 		return;
 
+	if (message->type == Message::Type::Control) {
+		std::shared_lock lock(mTracksMutex); // read-only
+		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
+			if (auto track = it->second.lock())
+				return track->incoming(message);
+
+		PLOG_WARNING << "No track available to receive control, dropping";
+		return;
+	}
+
 	unsigned int payloadType = message->stream;
 	std::optional<string> mid;
 	if (auto it = mMidFromPayloadType.find(payloadType); it != mMidFromPayloadType.end()) {
@@ -529,7 +541,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 			return;
 
 		for (int i = 0; i < mLocalDescription->mediaCount(); ++i) {
-			if (auto found = std::visit( // reciprocate each media
+			if (auto found = std::visit(
 			        rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
 				                        return std::nullopt;
 			                        },
@@ -548,7 +560,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	}
 
 	if (!mid) {
-		PLOG_WARNING << "Track not found for payload type " << payloadType;
+		PLOG_WARNING << "Track not found for payload type " << payloadType << ", dropping";
 		return;
 	}
 

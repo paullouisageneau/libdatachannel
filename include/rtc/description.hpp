@@ -168,6 +168,7 @@ public:
 		Video(string mid = "video", Direction dir = Direction::SendOnly);
 	};
 
+	bool hasApplication() const;
 	bool hasAudioOrVideo() const;
 
 	int addMedia(Media media);

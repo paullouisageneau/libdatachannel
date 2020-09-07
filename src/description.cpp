@@ -208,11 +208,11 @@ string Description::generateSdp(string_view eol) const {
 	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
 	sdp << "a=ice-pwd:" << mIcePwd << eol;
 
-	if (mFingerprint)
-		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
-
 	if (!mEnded)
 		sdp << "a=ice-options:trickle" << eol;
+
+	if (mFingerprint)
+		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
 
 	// Entries
 	bool first = true;
@@ -291,6 +291,8 @@ void Description::removeApplication() {
 
 	mApplication.reset();
 }
+
+bool Description::hasApplication() const { return mApplication != nullptr; }
 
 bool Description::hasAudioOrVideo() const {
 	for (auto entry : mEntries)
@@ -466,6 +468,7 @@ void Description::Application::parseSdpLine(string_view line) {
 Description::Media::Media(string mline, string mid, Direction dir)
     : Entry(std::move(mline), std::move(mid), dir) {
 	mAttributes.emplace_back("rtcp-mux");
+	mAttributes.emplace_back("rtcp-mux-only");
 }
 
 string Description::Media::description() const {
