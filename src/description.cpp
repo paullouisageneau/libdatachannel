@@ -376,7 +376,8 @@ Description::Entry::Entry(string mline, string mid, Direction dir)
 
 string Description::Entry::generateSdp(string_view eol) const {
 	std::ostringstream sdp;
-	sdp << "m=" << type() << ' ' << 0 << ' ' << description() << eol;
+	// Port 9 is the discard protocol
+	sdp << "m=" << type() << ' ' << 9 << ' ' << description() << eol;
 	sdp << "c=IN IP4 0.0.0.0" << eol;
 	sdp << "a=bundle-only" << eol;
 	sdp << "a=mid:" << mMid << eol;
