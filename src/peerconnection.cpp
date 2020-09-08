@@ -655,6 +655,7 @@ void PeerConnection::incomingTrack(Description::Media description) {
 	if (mTracks.find(description.mid()) == mTracks.end()) {
 		auto track = std::make_shared<Track>(std::move(description));
 		mTracks.emplace(std::make_pair(track->mid(), track));
+		triggerTrack(std::move(track));
 	}
 }
 
@@ -768,11 +769,7 @@ void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 	    [this, dataChannel = std::move(dataChannel)]() { mDataChannelCallback(dataChannel); });
 }
 
-void PeerConnection::triggerTrack(std::weak_ptr<Track> weakTrack) {
-	auto track = weakTrack.lock();
-	if (!track)
-		return;
-
+void PeerConnection::triggerTrack(std::shared_ptr<Track> track) {
 	mProcessor->enqueue([this, track = std::move(track)]() { mTrackCallback(track); });
 }
 

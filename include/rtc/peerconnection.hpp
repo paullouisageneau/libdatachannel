@@ -135,7 +135,7 @@ private:
 	void processLocalDescription(Description description);
 	void processLocalCandidate(Candidate candidate);
 	void triggerDataChannel(std::weak_ptr<DataChannel> weakDataChannel);
-	void triggerTrack(std::weak_ptr<Track> weakTrack);
+	void triggerTrack(std::shared_ptr<Track> track);
 	bool changeState(State state);
 	bool changeGatheringState(GatheringState state);
 
