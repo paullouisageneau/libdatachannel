@@ -74,6 +74,11 @@ void Track::open(shared_ptr<DtlsSrtpTransport> transport) { mDtlsSrtpTransport =
 #endif
 
 bool Track::outgoing(message_ptr message) {
+	auto direction = mMediaDescription.direction();
+	if (direction == Description::Direction::RecvOnly ||
+	    direction == Description::Direction::Inactive)
+		throw std::runtime_error("Track media direction does not allow sending");
+
 	if (mIsClosed)
 		throw std::runtime_error("Track is closed");
 
@@ -102,6 +107,13 @@ void Track::incoming(message_ptr message) {
 			return;
 
 		message = *opt;
+	}
+
+	auto direction = mMediaDescription.direction();
+	if ((direction == Description::Direction::SendOnly ||
+	     direction == Description::Direction::Inactive) &&
+	    message->type != Message::Control) {
+		PLOG_WARNING << "Track media direction does not allow reception, dropping";
 	}
 
 	// Tail drop if queue is full

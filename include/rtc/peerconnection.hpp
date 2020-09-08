@@ -129,6 +129,7 @@ private:
 	void closeDataChannels();
 	void remoteCloseDataChannels();
 
+	void incomingTrack(Description::Media description);
 	void openTracks();
 
 	void processLocalDescription(Description description);

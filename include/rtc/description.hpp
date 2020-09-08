@@ -63,25 +63,27 @@ public:
 
 	class Entry {
 	public:
-		Entry(string mline, string mid = "", Direction dir = Direction::Unknown);
 		virtual ~Entry() = default;
 
 		virtual string type() const { return mType; }
 		virtual string description() const { return mDescription; }
 		virtual string mid() const { return mMid; }
-		Direction direction() const;
+		Direction direction() const { return mDirection; }
+		void setDirection(Direction dir);
 
 		virtual void parseSdpLine(string_view line);
 		virtual string generateSdp(string_view eol) const;
 
 	protected:
+		Entry(string mline, string mid = "", Direction dir = Direction::Unknown);
+
 		std::vector<string> mAttributes;
-		Direction mDirection;
 
 	private:
 		string mType;
 		string mDescription;
 		string mMid;
+		Direction mDirection;
 	};
 
 	struct Application : public Entry {
@@ -119,7 +121,6 @@ public:
 		string description() const override;
 		Media reciprocate() const;
 
-		void setDirection(Direction dir);
 		void removeFormat(const string &fmt);
 
 		void addVideoCodec(int payloadType, const string &codec);

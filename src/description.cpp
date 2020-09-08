@@ -366,13 +366,15 @@ Description::media(int index) const {
 int Description::mediaCount() const { return int(mEntries.size()); }
 
 Description::Entry::Entry(string mline, string mid, Direction dir)
-    : mDirection(dir), mMid(std::move(mid)) {
+    : mMid(std::move(mid)), mDirection(dir) {
 	size_t p = mline.find(' ');
 	mType = mline.substr(0, p);
 	if (p != string::npos)
 		if (size_t q = mline.find(' ', p + 1); q != string::npos)
 			mDescription = mline.substr(q + 1, mline.find(' ', q + 1) - (q + 1));
 }
+
+void Description::Entry::setDirection(Direction dir) { mDirection = dir; }
 
 string Description::Entry::generateSdp(string_view eol) const {
 	std::ostringstream sdp;
@@ -490,12 +492,12 @@ Description::Media Description::Media::reciprocate() const {
 	Media reciprocated(*this);
 
 	// Invert direction
-	switch (reciprocated.mDirection) {
+	switch (direction()) {
 	case Direction::RecvOnly:
-		reciprocated.mDirection = Direction::SendOnly;
+		reciprocated.setDirection(Direction::SendOnly);
 		break;
 	case Direction::SendOnly:
-		reciprocated.mDirection = Direction::RecvOnly;
+		reciprocated.setDirection(Direction::RecvOnly);
 		break;
 	default:
 		// We are good
@@ -520,8 +522,6 @@ Description::Media::RTPMap &Description::Media::getFormat(const string &fmt) {
 
 	throw std::invalid_argument("format was not found");
 }
-
-void Description::Media::setDirection(Direction dir) { mDirection = dir; }
 
 void Description::Media::removeFormat(const string &fmt) {
 	auto it = mRtpMap.begin();
