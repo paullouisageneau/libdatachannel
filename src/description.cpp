@@ -383,14 +383,17 @@ string Description::Entry::generateSdp(string_view eol) const {
 	sdp << "a=mid:" << mMid << eol;
 
 	switch (mDirection) {
-	case Direction::RecvOnly:
-		sdp << "a=recvonly" << eol;
-		break;
 	case Direction::SendOnly:
 		sdp << "a=sendonly" << eol;
 		break;
+	case Direction::RecvOnly:
+		sdp << "a=recvonly" << eol;
+		break;
 	case Direction::SendRecv:
 		sdp << "a=sendrecv" << eol;
+		break;
+	case Direction::Inactive:
+		sdp << "a=inactive" << eol;
 		break;
 	default:
 		// Ignore
@@ -410,12 +413,14 @@ void Description::Entry::parseSdpLine(string_view line) {
 
 		if (key == "mid")
 			mMid = value;
-		else if (key == "sendrecv")
-			mDirection = Direction::SendRecv;
-		else if (attr == "recvonly")
-			mDirection = Direction::RecvOnly;
 		else if (attr == "sendonly")
 			mDirection = Direction::SendOnly;
+		else if (attr == "recvonly")
+			mDirection = Direction::RecvOnly;
+		else if (key == "sendrecv")
+			mDirection = Direction::SendRecv;
+		else if (key == "inactive")
+			mDirection = Direction::Inactive;
 		else
 			mAttributes.emplace_back(line.substr(2));
 	}
@@ -515,6 +520,8 @@ Description::Media::RTPMap &Description::Media::getFormat(const string &fmt) {
 
 	throw std::invalid_argument("format was not found");
 }
+
+void Description::Media::setDirection(Direction dir) { mDirection = dir; }
 
 void Description::Media::removeFormat(const string &fmt) {
 	auto it = mRtpMap.begin();

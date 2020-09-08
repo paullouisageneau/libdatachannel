@@ -36,7 +36,7 @@ class Description {
 public:
 	enum class Type { Unspec = 0, Offer = 1, Answer = 2 };
 	enum class Role { ActPass = 0, Passive = 1, Active = 2 };
-	enum Direction { SendOnly, RecvOnly, SendRecv, Unknown };
+	enum class Direction { SendOnly, RecvOnly, SendRecv, Inactive, Unknown };
 
 	Description(const string &sdp, const string &typeString = "");
 	Description(const string &sdp, Type type);
@@ -119,6 +119,7 @@ public:
 		string description() const override;
 		Media reciprocate() const;
 
+		void setDirection(Direction dir);
 		void removeFormat(const string &fmt);
 
 		void addVideoCodec(int payloadType, const string &codec);

@@ -679,7 +679,12 @@ void PeerConnection::processLocalDescription(Description description) {
 				        PLOG_DEBUG << "Reciprocating media in local description, mid=\""
 				                   << media->mid() << "\"";
 
-				        description.addMedia(media->reciprocate());
+				        auto reciprocated = media->reciprocate();
+#if !RTC_ENABLE_MEDIA
+				        // No media support, mark as inactive
+				        reciprocated.setDirection(Description::Direction::Inactive);
+#endif
+				        description.addMedia(std::move(reciprocated));
 			        },
 			    },
 			    remote->media(i));
@@ -704,7 +709,12 @@ void PeerConnection::processLocalDescription(Description description) {
 				if (auto track = it->second.lock()) {
 					PLOG_DEBUG << "Adding media to local description, mid=\"" << track->mid()
 					           << "\"";
-					description.addMedia(track->description());
+					auto media = track->description();
+#if !RTC_ENABLE_MEDIA
+					// No media support, mark as inactive
+					media.setDirection(Description::Direction::Inactive);
+#endif
+					description.addMedia(std::move(media));
 				}
 			}
 		}

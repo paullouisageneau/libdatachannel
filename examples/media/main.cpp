@@ -59,7 +59,7 @@ int main() {
 	addr.sin_port = htons(5000);
 	addr.sin_family = AF_INET;
 
-	rtc::Description::Video media("video", rtc::Description::RecvOnly);
+	rtc::Description::Video media("video", rtc::Description::Direction::RecvOnly);
 	media.addH264Codec(96);
 	media.setBitrate(
 	    3000); // Request 3Mbps (Browsers do not encode more than 2.5MBps from a webcam)
