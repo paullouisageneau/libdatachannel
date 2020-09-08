@@ -240,6 +240,10 @@ std::shared_ptr<Track> PeerConnection::createTrack(Description::Media descriptio
 	if (localDescription())
 		throw std::logic_error("Tracks must be created before local description");
 
+	if (auto it = mTracks.find(description.mid()); it != mTracks.end())
+		if (auto track = it->second.lock())
+			return track;
+
 	auto track = std::make_shared<Track>(std::move(description));
 	mTracks.emplace(std::make_pair(track->mid(), track));
 	return track;
@@ -638,6 +642,23 @@ void PeerConnection::openDataChannels() {
 		iterateDataChannels([&](shared_ptr<DataChannel> channel) { channel->open(transport); });
 }
 
+void PeerConnection::closeDataChannels() {
+	iterateDataChannels([&](shared_ptr<DataChannel> channel) { channel->close(); });
+}
+
+void PeerConnection::remoteCloseDataChannels() {
+	iterateDataChannels([&](shared_ptr<DataChannel> channel) { channel->remoteClose(); });
+}
+
+void PeerConnection::incomingTrack(Description::Media description) {
+	std::unique_lock lock(mTracksMutex); // we are going to emplace
+	if (mTracks.find(description.mid()) == mTracks.end()) {
+		auto track = std::make_shared<Track>(std::move(description));
+		mTracks.emplace(std::make_pair(track->mid(), track));
+		triggerTrack(std::move(track));
+	}
+}
+
 void PeerConnection::openTracks() {
 #if RTC_ENABLE_MEDIA
 	if (!hasMedia())
@@ -653,13 +674,6 @@ void PeerConnection::openTracks() {
 #endif
 }
 
-void PeerConnection::closeDataChannels() {
-	iterateDataChannels([&](shared_ptr<DataChannel> channel) { channel->close(); });
-}
-
-void PeerConnection::remoteCloseDataChannels() {
-	iterateDataChannels([&](shared_ptr<DataChannel> channel) { channel->remoteClose(); });
-}
 
 void PeerConnection::processLocalDescription(Description description) {
 	if (auto remote = remoteDescription()) {
@@ -679,7 +693,15 @@ void PeerConnection::processLocalDescription(Description description) {
 				        PLOG_DEBUG << "Reciprocating media in local description, mid=\""
 				                   << media->mid() << "\"";
 
-				        description.addMedia(media->reciprocate());
+				        auto reciprocated = media->reciprocate();
+#if RTC_ENABLE_MEDIA
+				        if (reciprocated.direction() != Description::Direction::Inactive)
+					        incomingTrack(reciprocated);
+#else
+				        // No media support, mark as inactive
+				        reciprocated.setDirection(Description::Direction::Inactive);
+#endif
+				        description.addMedia(std::move(reciprocated));
 			        },
 			    },
 			    remote->media(i));
@@ -704,7 +726,12 @@ void PeerConnection::processLocalDescription(Description description) {
 				if (auto track = it->second.lock()) {
 					PLOG_DEBUG << "Adding media to local description, mid=\"" << track->mid()
 					           << "\"";
-					description.addMedia(track->description());
+					auto media = track->description();
+#if !RTC_ENABLE_MEDIA
+					// No media support, mark as inactive
+					media.setDirection(Description::Direction::Inactive);
+#endif
+					description.addMedia(std::move(media));
 				}
 			}
 		}
@@ -742,11 +769,7 @@ void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 	    [this, dataChannel = std::move(dataChannel)]() { mDataChannelCallback(dataChannel); });
 }
 
-void PeerConnection::triggerTrack(std::weak_ptr<Track> weakTrack) {
-	auto track = weakTrack.lock();
-	if (!track)
-		return;
-
+void PeerConnection::triggerTrack(std::shared_ptr<Track> track) {
 	mProcessor->enqueue([this, track = std::move(track)]() { mTrackCallback(track); });
 }
 

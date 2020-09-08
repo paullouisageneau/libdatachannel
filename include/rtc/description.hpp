@@ -36,7 +36,7 @@ class Description {
 public:
 	enum class Type { Unspec = 0, Offer = 1, Answer = 2 };
 	enum class Role { ActPass = 0, Passive = 1, Active = 2 };
-	enum Direction { SendOnly, RecvOnly, SendRecv, Unknown };
+	enum class Direction { SendOnly, RecvOnly, SendRecv, Inactive, Unknown };
 
 	Description(const string &sdp, const string &typeString = "");
 	Description(const string &sdp, Type type);
@@ -63,25 +63,27 @@ public:
 
 	class Entry {
 	public:
-		Entry(string mline, string mid = "", Direction dir = Direction::Unknown);
 		virtual ~Entry() = default;
 
 		virtual string type() const { return mType; }
 		virtual string description() const { return mDescription; }
 		virtual string mid() const { return mMid; }
-		Direction direction() const;
+		Direction direction() const { return mDirection; }
+		void setDirection(Direction dir);
 
 		virtual void parseSdpLine(string_view line);
 		virtual string generateSdp(string_view eol) const;
 
 	protected:
+		Entry(string mline, string mid = "", Direction dir = Direction::Unknown);
+
 		std::vector<string> mAttributes;
-		Direction mDirection;
 
 	private:
 		string mType;
 		string mDescription;
 		string mMid;
+		Direction mDirection;
 	};
 
 	struct Application : public Entry {

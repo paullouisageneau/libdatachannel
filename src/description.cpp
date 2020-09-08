@@ -366,13 +366,15 @@ Description::media(int index) const {
 int Description::mediaCount() const { return int(mEntries.size()); }
 
 Description::Entry::Entry(string mline, string mid, Direction dir)
-    : mDirection(dir), mMid(std::move(mid)) {
+    : mMid(std::move(mid)), mDirection(dir) {
 	size_t p = mline.find(' ');
 	mType = mline.substr(0, p);
 	if (p != string::npos)
 		if (size_t q = mline.find(' ', p + 1); q != string::npos)
 			mDescription = mline.substr(q + 1, mline.find(' ', q + 1) - (q + 1));
 }
+
+void Description::Entry::setDirection(Direction dir) { mDirection = dir; }
 
 string Description::Entry::generateSdp(string_view eol) const {
 	std::ostringstream sdp;
@@ -383,14 +385,17 @@ string Description::Entry::generateSdp(string_view eol) const {
 	sdp << "a=mid:" << mMid << eol;
 
 	switch (mDirection) {
-	case Direction::RecvOnly:
-		sdp << "a=recvonly" << eol;
-		break;
 	case Direction::SendOnly:
 		sdp << "a=sendonly" << eol;
 		break;
+	case Direction::RecvOnly:
+		sdp << "a=recvonly" << eol;
+		break;
 	case Direction::SendRecv:
 		sdp << "a=sendrecv" << eol;
+		break;
+	case Direction::Inactive:
+		sdp << "a=inactive" << eol;
 		break;
 	default:
 		// Ignore
@@ -410,12 +415,14 @@ void Description::Entry::parseSdpLine(string_view line) {
 
 		if (key == "mid")
 			mMid = value;
-		else if (key == "sendrecv")
-			mDirection = Direction::SendRecv;
-		else if (attr == "recvonly")
-			mDirection = Direction::RecvOnly;
 		else if (attr == "sendonly")
 			mDirection = Direction::SendOnly;
+		else if (attr == "recvonly")
+			mDirection = Direction::RecvOnly;
+		else if (key == "sendrecv")
+			mDirection = Direction::SendRecv;
+		else if (key == "inactive")
+			mDirection = Direction::Inactive;
 		else
 			mAttributes.emplace_back(line.substr(2));
 	}
@@ -485,12 +492,12 @@ Description::Media Description::Media::reciprocate() const {
 	Media reciprocated(*this);
 
 	// Invert direction
-	switch (reciprocated.mDirection) {
+	switch (direction()) {
 	case Direction::RecvOnly:
-		reciprocated.mDirection = Direction::SendOnly;
+		reciprocated.setDirection(Direction::SendOnly);
 		break;
 	case Direction::SendOnly:
-		reciprocated.mDirection = Direction::RecvOnly;
+		reciprocated.setDirection(Direction::RecvOnly);
 		break;
 	default:
 		// We are good
