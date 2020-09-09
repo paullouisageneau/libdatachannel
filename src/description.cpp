@@ -365,13 +365,14 @@ Description::media(int index) const {
 
 int Description::mediaCount() const { return int(mEntries.size()); }
 
-Description::Entry::Entry(string mline, string mid, Direction dir)
+Description::Entry::Entry(const string &mline, string mid, Direction dir)
     : mMid(std::move(mid)), mDirection(dir) {
-	size_t p = mline.find(' ');
-	mType = mline.substr(0, p);
-	if (p != string::npos)
-		if (size_t q = mline.find(' ', p + 1); q != string::npos)
-			mDescription = mline.substr(q + 1, mline.find(' ', q + 1) - (q + 1));
+
+	unsigned int port;
+	std::istringstream ss(mline);
+	ss >> mType;
+	ss >> port; // ignored
+	ss >> mDescription;
 }
 
 void Description::Entry::setDirection(Direction dir) { mDirection = dir; }
@@ -473,10 +474,29 @@ void Description::Application::parseSdpLine(string_view line) {
 	}
 }
 
-Description::Media::Media(string mline, string mid, Direction dir)
-    : Entry(std::move(mline), std::move(mid), dir) {
-	mAttributes.emplace_back("rtcp-mux");
-	mAttributes.emplace_back("rtcp-mux-only");
+Description::Media::Media(const string &sdp) : Entry(sdp, "", Direction::Unknown) {
+	std::istringstream ss(sdp);
+	string line;
+	while (std::getline(ss, line) || !line.empty()) {
+		trim_end(line);
+		parseSdpLine(line);
+	}
+
+	if (mid().empty())
+		throw std::invalid_argument("Missing mid in media SDP");
+
+	const std::array<string, 2> attributes = {"rtcp-mux", "rtcp-mux-only"};
+	for (auto attr : attributes)
+		if (std::find(mAttributes.begin(), mAttributes.end(), attr) != mAttributes.end())
+			mAttributes.emplace_back(attr);
+}
+
+Description::Media::Media(const string &mline, string mid, Direction dir)
+    : Entry(mline, std::move(mid), dir) {
+
+	const std::array<string, 2> attributes = {"rtcp-mux", "rtcp-mux-only"};
+	for (auto attr : attributes)
+		mAttributes.emplace_back(attr);
 }
 
 string Description::Media::description() const {
@@ -512,7 +532,7 @@ Description::Media::RTPMap &Description::Media::getFormat(int fmt) {
 	if (it != mRtpMap.end())
 		return it->second;
 
-	throw std::invalid_argument("mLineIndex is out of bounds");
+	throw std::invalid_argument("m-line index is out of bounds");
 }
 
 Description::Media::RTPMap &Description::Media::getFormat(const string &fmt) {
