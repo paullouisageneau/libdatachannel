@@ -37,7 +37,6 @@ namespace rtc {
 
 using namespace std::placeholders;
 
-using std::reinterpret_pointer_cast;
 using std::shared_ptr;
 using std::weak_ptr;
 
@@ -690,7 +689,7 @@ void PeerConnection::openTracks() {
 		return;
 
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
-		auto srtpTransport = reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
+		auto srtpTransport = std::reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
 		std::shared_lock lock(mTracksMutex); // read-only
 		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
 			if (auto track = it->second.lock())

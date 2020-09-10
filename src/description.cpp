@@ -20,6 +20,7 @@
 #include "description.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <chrono>
 #include <iostream>
