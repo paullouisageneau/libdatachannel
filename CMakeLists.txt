@@ -7,7 +7,6 @@ project(libdatachannel
 # Options
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 option(USE_NICE "Use libnice instead of libjuice" OFF)
-option(USE_SRTP "Enable SRTP for media support" OFF)
 option(NO_WEBSOCKET "Disable WebSocket support" OFF)
 option(NO_EXAMPLES "Disable examples" OFF)
 option(NO_TESTS "Disable tests build" OFF)
@@ -160,8 +159,8 @@ if(WIN32)
 	target_link_libraries(datachannel-static PRIVATE wsock32 ws2_32) # winsock2
 endif()
 
-if(USE_SRTP)
-	find_package(SRTP REQUIRED)
+find_package(SRTP)
+if(SRTP_FOUND)
 	if(NOT TARGET SRTP::SRTP)
 		add_library(SRTP::SRTP UNKNOWN IMPORTED)
 		set_target_properties(SRTP::SRTP PROPERTIES
@@ -169,11 +168,13 @@ if(USE_SRTP)
 			IMPORTED_LINK_INTERFACE_LANGUAGES C
 			IMPORTED_LOCATION ${SRTP_LIBRARIES})
 	endif()
+	message(STATUS "LibSRTP found, compiling with media transport")
 	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=1)
 	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=1)
 	target_link_libraries(datachannel PRIVATE SRTP::SRTP)
 	target_link_libraries(datachannel-static PRIVATE SRTP::SRTP)
 else()
+	message(STATUS "LibSRTP NOT found, compiling WITHOUT media transport")
 	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=0)
 	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=0)
 endif()
