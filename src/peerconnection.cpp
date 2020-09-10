@@ -331,9 +331,10 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 			switch (state) {
 			case DtlsTransport::State::Connected:
-				if (auto local = localDescription())
-					if (local->hasApplication())
-						initSctpTransport();
+				if (auto local = localDescription(); local && local->hasApplication())
+					initSctpTransport();
+				else
+					changeState(State::Connected);
 
 				openTracks();
 				break;
