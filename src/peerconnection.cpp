@@ -102,10 +102,23 @@ void PeerConnection::setRemoteDescription(Description description) {
 	PLOG_VERBOSE << "Setting remote description: " << string(description);
 
 	if (description.mediaCount() == 0)
-		throw std::runtime_error("Remote description has no media line");
+		throw std::invalid_argument("Remote description has no media line");
+
+	int activeMediaCount = 0;
+	for (int i = 0; i < description.mediaCount(); ++i)
+		std::visit( // reciprocate each media
+		    rtc::overloaded{[&](Description::Application *) { ++activeMediaCount; },
+		                    [&](Description::Media *media) {
+			                    if (media->direction() != Description::Direction::Inactive)
+				                    ++activeMediaCount;
+		                    }},
+		    description.media(i));
+
+	if (activeMediaCount == 0)
+		throw std::invalid_argument("Remote description has no active media");
 
 	if (!description.fingerprint())
-		throw std::runtime_error("Remote description is incomplete");
+		throw std::invalid_argument("Remote description has no fingerprint");
 
 	description.hintType(localDescription() ? Description::Type::Answer : Description::Type::Offer);
 	auto type = description.type();
@@ -148,7 +161,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 
 	for (const auto &candidate : remoteCandidates)
 		addRemoteCandidate(candidate);
-}
+	}
 
 void PeerConnection::addRemoteCandidate(Candidate candidate) {
 	PLOG_VERBOSE << "Adding remote candidate: " << string(candidate);
@@ -252,9 +265,10 @@ std::shared_ptr<Track> PeerConnection::createTrack(Description::Media descriptio
 			return track;
 
 #if !RTC_ENABLE_MEDIA
-	PLOG_WARNING << "Tracks will be inative (not compiled with SRTP support)";
+	if (mTracks.empty()) {
+		PLOG_WARNING << "Tracks will be inative (not compiled with SRTP support)";
+	}
 #endif
-
 	auto track = std::make_shared<Track>(std::move(description));
 	mTracks.emplace(std::make_pair(track->mid(), track));
 	return track;
@@ -658,6 +672,11 @@ void PeerConnection::remoteCloseDataChannels() {
 
 void PeerConnection::incomingTrack(Description::Media description) {
 	std::unique_lock lock(mTracksMutex); // we are going to emplace
+#if !RTC_ENABLE_MEDIA
+	if (mTracks.empty()) {
+		PLOG_WARNING << "Tracks will be inative (not compiled with SRTP support)";
+	}
+#endif
 	if (mTracks.find(description.mid()) == mTracks.end()) {
 		auto track = std::make_shared<Track>(std::move(description));
 		mTracks.emplace(std::make_pair(track->mid(), track));
@@ -709,7 +728,6 @@ void PeerConnection::processLocalDescription(Description description) {
 				        // No media support, mark as inactive
 				        reciprocated.setDirection(Description::Direction::Inactive);
 #endif
-
 				        incomingTrack(reciprocated);
 
 				        PLOG_DEBUG
@@ -721,10 +739,6 @@ void PeerConnection::processLocalDescription(Description description) {
 			        },
 			    },
 			    remote->media(i));
-
-		if (activeMediaCount == 0) {
-			PLOG_ERROR << "No active media found in remote description";
-		}
 	} else {
 		// Add application for data channels
 		{
@@ -766,9 +780,8 @@ void PeerConnection::processLocalDescription(Description description) {
 	}
 
 	// There must be at least one active media to negociate
-	if (activeMediaCount == 0) {
+	if (activeMediaCount == 0)
 		throw std::runtime_error("Nothing to negociate");
-	}
 
 	// Set local fingerprint (wait for certificate if necessary)
 	description.setFingerprint(mCertificate.get()->fingerprint());
