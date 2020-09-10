@@ -75,7 +75,7 @@ public:
 		virtual string generateSdp(string_view eol) const;
 
 	protected:
-		Entry(string mline, string mid = "", Direction dir = Direction::Unknown);
+		Entry(const string &mline, string mid, Direction dir = Direction::Unknown);
 
 		std::vector<string> mAttributes;
 
@@ -113,7 +113,8 @@ public:
 	// Media (non-data)
 	class Media : public Entry {
 	public:
-		Media(string mline, string mid = "media", Direction dir = Direction::SendOnly);
+		Media(const string &sdp);
+		Media(const string &mline, string mid, Direction dir = Direction::SendOnly);
 		Media(const Media &other) = default;
 		Media(Media &&other) = default;
 		virtual ~Media() = default;

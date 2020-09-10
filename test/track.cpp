@@ -29,7 +29,7 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-void test_connectivity() {
+void test_track() {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
@@ -91,60 +91,34 @@ void test_connectivity() {
 		cout << "Gathering state 2: " << state << endl;
 	});
 
-	shared_ptr<DataChannel> dc2;
-	pc2->onDataChannel([&dc2](shared_ptr<DataChannel> dc) {
-		cout << "DataChannel 2: Received with label \"" << dc->label() << "\"" << endl;
-		if (dc->label() != "test") {
-			cerr << "Wrong DataChannel label" << endl;
+	shared_ptr<Track> t2;
+	pc2->onTrack([&t2](shared_ptr<Track> t) {
+		cout << "Track 2: Received with mid \"" << t->mid() << "\"" << endl;
+		if (t->mid() != "test") {
+			cerr << "Wrong track mid" << endl;
 			return;
 		}
 
-		dc->onMessage([](variant<binary, string> message) {
-			if (holds_alternative<string>(message)) {
-				cout << "Message 2: " << get<string>(message) << endl;
-			}
-		});
-
-		dc->send("Hello from 2");
-
-		std::atomic_store(&dc2, dc);
+		std::atomic_store(&t2, t);
 	});
 
-	auto dc1 = pc1->createDataChannel("test");
-	dc1->onOpen([wdc1 = make_weak_ptr(dc1)]() {
-		auto dc1 = wdc1.lock();
-		if (!dc1)
-			return;
+	auto t1 = pc1->createTrack(Description::Video("test"));
 
-		cout << "DataChannel 1: Open" << endl;
-		dc1->send("Hello from 1");
-	});
-	dc1->onMessage([](const variant<binary, string> &message) {
-		if (holds_alternative<string>(message)) {
-			cout << "Message 1: " << get<string>(message) << endl;
-		}
-	});
+	pc1->setLocalDescription();
 
 	int attempts = 10;
-	shared_ptr<DataChannel> adc2;
-	while ((!(adc2 = std::atomic_load(&dc2)) || !adc2->isOpen() || !dc1->isOpen()) && attempts--)
+	shared_ptr<Track> at2;
+	while ((!(at2 = std::atomic_load(&t2)) || !at2->isOpen() || !t1->isOpen()) && attempts--)
 		this_thread::sleep_for(1s);
 
 	if (pc1->state() != PeerConnection::State::Connected &&
 	    pc2->state() != PeerConnection::State::Connected)
 		throw runtime_error("PeerConnection is not connected");
 
-	if (!adc2 || !adc2->isOpen() || !dc1->isOpen())
-		throw runtime_error("DataChannel is not open");
+	if (!at2 || !at2->isOpen() || !t1->isOpen())
+		throw runtime_error("Track is not open");
 
-	if (auto addr = pc1->localAddress())
-		cout << "Local address 1:  " << *addr << endl;
-	if (auto addr = pc1->remoteAddress())
-		cout << "Remote address 1: " << *addr << endl;
-	if (auto addr = pc2->localAddress())
-		cout << "Local address 2:  " << *addr << endl;
-	if (auto addr = pc2->remoteAddress())
-		cout << "Remote address 2: " << *addr << endl;
+	// TODO: Test sending RTP packets in track
 
 	// Delay close of peer 2 to check closing works properly
 	pc1->close();
