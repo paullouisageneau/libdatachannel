@@ -36,6 +36,7 @@ namespace rtc {
 
 using namespace std::placeholders;
 
+using std::reinterpret_pointer_cast;
 using std::shared_ptr;
 using std::weak_ptr;
 
@@ -411,13 +412,7 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 			    case SctpTransport::State::Failed:
 				    LOG_WARNING << "SCTP transport failed";
 				    remoteCloseDataChannels();
-#if RTC_ENABLE_MEDIA
-				    // Ignore SCTP failure if media is present
-				    if (!hasMedia())
-					    changeState(State::Failed);
-#else
 				    changeState(State::Failed);
-#endif
 				    break;
 			    case SctpTransport::State::Disconnected:
 				    remoteCloseDataChannels();
@@ -666,7 +661,7 @@ void PeerConnection::openTracks() {
 		return;
 
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
-		auto srtpTransport = std::reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
+		auto srtpTransport = reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
 		std::shared_lock lock(mTracksMutex); // read-only
 		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
 			if (auto track = it->second.lock())
