@@ -30,6 +30,7 @@
 #include "dtlssrtptransport.hpp"
 #endif
 
+#include <iomanip>
 #include <thread>
 
 namespace rtc {
@@ -186,6 +187,11 @@ std::optional<string> PeerConnection::remoteAddress() const {
 
 shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, string protocol,
                                                           Reliability reliability) {
+	if (auto local = localDescription(); local && !local->hasApplication()) {
+		PLOG_ERROR << "The PeerConnection was negociated without DataChannel support.";
+		throw std::runtime_error("No DataChannel support on the PeerConnection");
+	}
+
 	// RFC 5763: The answerer MUST use either a setup attribute value of setup:active or
 	// setup:passive. [...] Thus, setup:active is RECOMMENDED.
 	// See https://tools.ietf.org/html/rfc5763#section-5
@@ -244,6 +250,10 @@ std::shared_ptr<Track> PeerConnection::createTrack(Description::Media descriptio
 	if (auto it = mTracks.find(description.mid()); it != mTracks.end())
 		if (auto track = it->second.lock())
 			return track;
+
+#if !RTC_ENABLE_MEDIA
+	PLOG_WARNING << "Tracks will be inative (not compiled with SRTP support)";
+#endif
 
 	auto track = std::make_shared<Track>(std::move(description));
 	mTracks.emplace(std::make_pair(track->mid(), track));
@@ -672,45 +682,62 @@ void PeerConnection::openTracks() {
 
 
 void PeerConnection::processLocalDescription(Description description) {
+	int activeMediaCount = 0;
+
 	if (auto remote = remoteDescription()) {
 		// Reciprocate remote description
 		for (int i = 0; i < remote->mediaCount(); ++i)
 			std::visit( // reciprocate each media
 			    rtc::overloaded{
 			        [&](Description::Application *app) {
-				        PLOG_DEBUG << "Reciprocating application in local description, mid=\""
-				                   << app->mid() << "\"";
 				        auto reciprocated = app->reciprocate();
 				        reciprocated.hintSctpPort(DEFAULT_SCTP_PORT);
 				        reciprocated.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+				        ++activeMediaCount;
+
+				        PLOG_DEBUG << "Reciprocating application in local description, mid=\""
+				                   << reciprocated.mid() << "\"";
+
 				        description.addMedia(std::move(reciprocated));
 			        },
 			        [&](Description::Media *media) {
-				        PLOG_DEBUG << "Reciprocating media in local description, mid=\""
-				                   << media->mid() << "\"";
-
 				        auto reciprocated = media->reciprocate();
 #if RTC_ENABLE_MEDIA
 				        if (reciprocated.direction() != Description::Direction::Inactive)
-					        incomingTrack(reciprocated);
+					        ++activeMediaCount;
 #else
 				        // No media support, mark as inactive
 				        reciprocated.setDirection(Description::Direction::Inactive);
 #endif
+
+				        incomingTrack(reciprocated);
+
+				        PLOG_DEBUG
+				            << "Reciprocating media in local description, mid=\""
+				            << reciprocated.mid() << "\", active=" << std::boolalpha
+				            << (reciprocated.direction() != Description::Direction::Inactive);
+
 				        description.addMedia(std::move(reciprocated));
 			        },
 			    },
 			    remote->media(i));
+
+		if (activeMediaCount == 0) {
+			PLOG_ERROR << "No active media found in remote description";
+		}
 	} else {
 		// Add application for data channels
 		{
 			std::shared_lock lock(mDataChannelsMutex);
 			if (!mDataChannels.empty()) {
-				const string mid = "data";
-				PLOG_DEBUG << "Adding application to local description, mid=\"" << mid << "\"";
-				Description::Application app;
+				Description::Application app("data");
 				app.setSctpPort(DEFAULT_SCTP_PORT);
 				app.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+				++activeMediaCount;
+
+				PLOG_DEBUG << "Adding application to local description, mid=\"" << app.mid()
+				           << "\"";
+
 				description.addMedia(std::move(app));
 			}
 		}
@@ -720,17 +747,27 @@ void PeerConnection::processLocalDescription(Description description) {
 			std::shared_lock lock(mTracksMutex);
 			for (auto it = mTracks.begin(); it != mTracks.end(); ++it) {
 				if (auto track = it->second.lock()) {
-					PLOG_DEBUG << "Adding media to local description, mid=\"" << track->mid()
-					           << "\"";
 					auto media = track->description();
-#if !RTC_ENABLE_MEDIA
+#if RTC_ENABLE_MEDIA
+					if (media.direction() != Description::Direction::Inactive)
+						++activeMediaCount;
+#else
 					// No media support, mark as inactive
 					media.setDirection(Description::Direction::Inactive);
 #endif
+					PLOG_DEBUG << "Adding media to local description, mid=\"" << media.mid()
+					           << "\", active=" << std::boolalpha
+					           << (media.direction() != Description::Direction::Inactive);
+
 					description.addMedia(std::move(media));
 				}
 			}
 		}
+	}
+
+	// There must be at least one active media to negociate
+	if (activeMediaCount == 0) {
+		throw std::runtime_error("Nothing to negociate");
 	}
 
 	// Set local fingerprint (wait for certificate if necessary)
