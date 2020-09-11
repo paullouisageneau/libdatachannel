@@ -486,18 +486,14 @@ Description::Media::Media(const string &sdp) : Entry(sdp, "", Direction::Unknown
 	if (mid().empty())
 		throw std::invalid_argument("Missing mid in media SDP");
 
-	const std::array<string, 2> attributes = {"rtcp-mux", "rtcp-mux-only"};
-	for (auto attr : attributes)
-		if (std::find(mAttributes.begin(), mAttributes.end(), attr) != mAttributes.end())
-			mAttributes.emplace_back(attr);
+	if (std::find(mAttributes.begin(), mAttributes.end(), "rtcp-mux") != mAttributes.end())
+		mAttributes.emplace_back("rtcp-mux");
 }
 
 Description::Media::Media(const string &mline, string mid, Direction dir)
     : Entry(mline, std::move(mid), dir) {
 
-	const std::array<string, 2> attributes = {"rtcp-mux", "rtcp-mux-only"};
-	for (auto attr : attributes)
-		mAttributes.emplace_back(attr);
+	mAttributes.emplace_back("rtcp-mux");
 }
 
 string Description::Media::description() const {
