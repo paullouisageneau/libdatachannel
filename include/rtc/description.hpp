@@ -72,10 +72,11 @@ public:
 		void setDirection(Direction dir);
 
 		virtual void parseSdpLine(string_view line);
-		virtual string generateSdp(string_view eol) const;
+		string generateSdp(string_view eol) const;
 
 	protected:
 		Entry(const string &mline, string mid, Direction dir = Direction::Unknown);
+		virtual string generateSdpLines(string_view eol) const;
 
 		std::vector<string> mAttributes;
 
@@ -103,9 +104,10 @@ public:
 		std::optional<size_t> maxMessageSize() const { return mMaxMessageSize; }
 
 		virtual void parseSdpLine(string_view line) override;
-		virtual string generateSdp(string_view eol) const override;
 
 	private:
+		virtual string generateSdpLines(string_view eol) const override;
+
 		std::optional<uint16_t> mSctpPort;
 		std::optional<size_t> mMaxMessageSize;
 	};
@@ -135,9 +137,10 @@ public:
 		bool hasPayloadType(int payloadType) const;
 
 		virtual void parseSdpLine(string_view line) override;
-		virtual string generateSdp(string_view eol) const override;
 
 	private:
+		virtual string generateSdpLines(string_view eol) const override;
+
 		int mBas = -1;
 
 		struct RTPMap {

@@ -383,6 +383,13 @@ string Description::Entry::generateSdp(string_view eol) const {
 	// Port 9 is the discard protocol
 	sdp << "m=" << type() << ' ' << 9 << ' ' << description() << eol;
 	sdp << "c=IN IP4 0.0.0.0" << eol;
+	sdp << generateSdpLines(eol);
+
+	return sdp.str();
+}
+
+string Description::Entry::generateSdpLines(string_view eol) const {
+	std::ostringstream sdp;
 	sdp << "a=bundle-only" << eol;
 	sdp << "a=mid:" << mMid << eol;
 
@@ -445,9 +452,9 @@ Description::Application Description::Application::reciprocate() const {
 	return reciprocated;
 }
 
-string Description::Application::generateSdp(string_view eol) const {
+string Description::Application::generateSdpLines(string_view eol) const {
 	std::ostringstream sdp;
-	sdp << Entry::generateSdp(eol);
+	sdp << Entry::generateSdpLines(eol);
 
 	if (mSctpPort)
 		sdp << "a=sctp-port:" << *mSctpPort << eol;
@@ -599,12 +606,12 @@ bool Description::Media::hasPayloadType(int payloadType) const {
 	return mRtpMap.find(payloadType) != mRtpMap.end();
 }
 
-string Description::Media::generateSdp(string_view eol) const {
+string Description::Media::generateSdpLines(string_view eol) const {
 	std::ostringstream sdp;
-	sdp << Entry::generateSdp(eol);
-
 	if (mBas >= 0)
 		sdp << "b=AS:" << mBas << eol;
+
+	sdp << Entry::generateSdpLines(eol);
 
 	for (auto it = mRtpMap.begin(); it != mRtpMap.end(); ++it) {
 		auto &map = it->second;
