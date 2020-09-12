@@ -378,6 +378,8 @@ Description::Entry::Entry(const string &mline, string mid, Direction dir)
 
 void Description::Entry::setDirection(Direction dir) { mDirection = dir; }
 
+Description::Entry::operator string() const { return generateSdp("\r\n"); }
+
 string Description::Entry::generateSdp(string_view eol) const {
 	std::ostringstream sdp;
 	// Port 9 is the discard protocol

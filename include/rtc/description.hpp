@@ -71,8 +71,10 @@ public:
 		Direction direction() const { return mDirection; }
 		void setDirection(Direction dir);
 
-		virtual void parseSdpLine(string_view line);
+		operator string() const;
 		string generateSdp(string_view eol) const;
+
+		virtual void parseSdpLine(string_view line);
 
 	protected:
 		Entry(const string &mline, string mid, Direction dir = Direction::Unknown);
