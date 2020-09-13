@@ -434,7 +434,9 @@ void Description::Entry::parseSdpLine(string_view line) {
 			mDirection = Direction::SendRecv;
 		else if (key == "inactive")
 			mDirection = Direction::Inactive;
-		else
+		else if (key == "bundle-only") {
+			// always added
+		} else
 			mAttributes.emplace_back(line.substr(2));
 	}
 }
@@ -495,7 +497,7 @@ Description::Media::Media(const string &sdp) : Entry(sdp, "", Direction::Unknown
 	if (mid().empty())
 		throw std::invalid_argument("Missing mid in media SDP");
 
-	if (std::find(mAttributes.begin(), mAttributes.end(), "rtcp-mux") != mAttributes.end())
+	if (std::find(mAttributes.begin(), mAttributes.end(), "rtcp-mux") == mAttributes.end())
 		mAttributes.emplace_back("rtcp-mux");
 }
 
