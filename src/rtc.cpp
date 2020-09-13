@@ -50,6 +50,7 @@ namespace {
 
 std::unordered_map<int, shared_ptr<PeerConnection>> peerConnectionMap;
 std::unordered_map<int, shared_ptr<DataChannel>> dataChannelMap;
+std::unordered_map<int, shared_ptr<Track>> trackMap;
 #if RTC_ENABLE_WEBSOCKET
 std::unordered_map<int, shared_ptr<WebSocket>> webSocketMap;
 #endif
@@ -84,6 +85,14 @@ shared_ptr<DataChannel> getDataChannel(int id) {
 		throw std::invalid_argument("DataChannel ID does not exist");
 }
 
+shared_ptr<Track> getTrack(int id) {
+	std::lock_guard lock(mutex);
+	if (auto it = trackMap.find(id); it != trackMap.end())
+		return it->second;
+	else
+		throw std::invalid_argument("Track ID does not exist");
+}
+
 int emplacePeerConnection(shared_ptr<PeerConnection> ptr) {
 	std::lock_guard lock(mutex);
 	int pc = ++lastId;
@@ -100,6 +109,14 @@ int emplaceDataChannel(shared_ptr<DataChannel> ptr) {
 	return dc;
 }
 
+int emplaceTrack(shared_ptr<Track> ptr) {
+	std::lock_guard lock(mutex);
+	int tr = ++lastId;
+	trackMap.emplace(std::make_pair(tr, ptr));
+	userPointerMap.emplace(std::make_pair(tr, nullptr));
+	return tr;
+}
+
 void erasePeerConnection(int pc) {
 	std::lock_guard lock(mutex);
 	if (peerConnectionMap.erase(pc) == 0)
@@ -112,6 +129,13 @@ void eraseDataChannel(int dc) {
 	if (dataChannelMap.erase(dc) == 0)
 		throw std::invalid_argument("DataChannel ID does not exist");
 	userPointerMap.erase(dc);
+}
+
+void eraseTrack(int tr) {
+	std::lock_guard lock(mutex);
+	if (trackMap.erase(tr) == 0)
+		throw std::invalid_argument("Track ID does not exist");
+	userPointerMap.erase(tr);
 }
 
 #if RTC_ENABLE_WEBSOCKET
@@ -143,11 +167,13 @@ shared_ptr<Channel> getChannel(int id) {
 	std::lock_guard lock(mutex);
 	if (auto it = dataChannelMap.find(id); it != dataChannelMap.end())
 		return it->second;
+	if (auto it = trackMap.find(id); it != trackMap.end())
+		return it->second;
 #if RTC_ENABLE_WEBSOCKET
 	if (auto it = webSocketMap.find(id); it != webSocketMap.end())
 		return it->second;
 #endif
-	throw std::invalid_argument("DataChannel or WebSocket ID does not exist");
+	throw std::invalid_argument("DataChannel, Track, or WebSocket ID does not exist");
 }
 
 template <typename F> int wrap(F func) {
@@ -287,6 +313,51 @@ int rtcDeleteDataChannel(int dc) {
 	});
 }
 
+int rtcCreateTrack(int pc, const char *mediaDescriptionSdp) {
+	if (!mediaDescriptionSdp)
+		throw std::invalid_argument("Unexpected null pointer for track media description");
+
+	auto peerConnection = getPeerConnection(pc);
+	Description::Media media{string(mediaDescriptionSdp)};
+	int tr = emplaceTrack(peerConnection->createTrack(std::move(media)));
+	if (auto ptr = getUserPointer(pc))
+		rtcSetUserPointer(tr, *ptr);
+	return tr;
+}
+
+int rtcDeleteTrack(int tr) {
+	return WRAP({
+		auto track = getTrack(tr);
+		track->onOpen(nullptr);
+		track->onClosed(nullptr);
+		track->onError(nullptr);
+		track->onMessage(nullptr);
+		track->onBufferedAmountLow(nullptr);
+		track->onAvailable(nullptr);
+
+		eraseTrack(tr);
+	});
+}
+
+int rtcGetTrackDescription(int tr, char *buffer, int size) {
+	return WRAP({
+		auto track = getTrack(tr);
+
+		if (size <= 0)
+			return 0;
+
+		if (!buffer)
+			throw std::invalid_argument("Unexpected null pointer for buffer");
+
+		string description(track->description());
+		const char *data = description.data();
+		size = std::min(size - 1, int(description.size()));
+		std::copy(data, data + size, buffer);
+		buffer[size] = '\0';
+		return int(size + 1);
+	});
+}
+
 #if RTC_ENABLE_WEBSOCKET
 int rtcCreateWebSocket(const char *url) {
 	return WRAP({
@@ -320,22 +391,6 @@ int rtcDeleteWebsocket(int ws) {
 	});
 }
 #endif
-
-int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb) {
-	return WRAP({
-		auto peerConnection = getPeerConnection(pc);
-		if (cb)
-			peerConnection->onDataChannel([pc, cb](std::shared_ptr<DataChannel> dataChannel) {
-				int dc = emplaceDataChannel(dataChannel);
-				if (auto ptr = getUserPointer(pc)) {
-					rtcSetUserPointer(dc, *ptr);
-					cb(dc, *ptr);
-				}
-			});
-		else
-			peerConnection->onDataChannel(nullptr);
-	});
-}
 
 int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb) {
 	return WRAP({
@@ -389,12 +444,51 @@ int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb)
 	});
 }
 
+int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb) {
+	return WRAP({
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onDataChannel([pc, cb](std::shared_ptr<DataChannel> dataChannel) {
+				int dc = emplaceDataChannel(dataChannel);
+				if (auto ptr = getUserPointer(pc)) {
+					rtcSetUserPointer(dc, *ptr);
+					cb(dc, *ptr);
+				}
+			});
+		else
+			peerConnection->onDataChannel(nullptr);
+	});
+}
+
+int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb) {
+	return WRAP({
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onTrack([pc, cb](std::shared_ptr<Track> track) {
+				int tr = emplaceTrack(track);
+				if (auto ptr = getUserPointer(pc)) {
+					rtcSetUserPointer(tr, *ptr);
+					cb(tr, *ptr);
+				}
+			});
+		else
+			peerConnection->onTrack(nullptr);
+	});
+}
+
+int rtcSetLocalDescription(int pc) {
+	return WRAP({
+		auto peerConnection = getPeerConnection(pc);
+		peerConnection->setLocalDescription();
+	});
+}
+
 int rtcSetRemoteDescription(int pc, const char *sdp, const char *type) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 
 		if (!sdp)
-			throw std::invalid_argument("Unexpected null pointer");
+			throw std::invalid_argument("Unexpected null pointer for remote description");
 
 		peerConnection->setRemoteDescription({string(sdp), type ? string(type) : ""});
 	});
@@ -405,7 +499,7 @@ int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid) {
 		auto peerConnection = getPeerConnection(pc);
 
 		if (!cand)
-			throw std::invalid_argument("Unexpected null pointer");
+			throw std::invalid_argument("Unexpected null pointer for remote candidate");
 
 		peerConnection->addRemoteCandidate({string(cand), mid ? string(mid) : ""});
 	});
@@ -415,11 +509,11 @@ int rtcGetLocalAddress(int pc, char *buffer, int size) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 
-		if (!buffer)
-			throw std::invalid_argument("Unexpected null pointer");
-
 		if (size <= 0)
 			return 0;
+
+		if (!buffer)
+			throw std::invalid_argument("Unexpected null pointer for buffer");
 
 		if (auto addr = peerConnection->localAddress()) {
 			const char *data = addr->data();
@@ -435,11 +529,11 @@ int rtcGetRemoteAddress(int pc, char *buffer, int size) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 
-		if (!buffer)
-			throw std::invalid_argument("Unexpected null pointer");
-
 		if (size <= 0)
 			return 0;
+
+		if (!buffer)
+			throw std::invalid_argument("Unexpected null pointer for buffer");
 
 		if (auto addr = peerConnection->remoteAddress()) {
 			const char *data = addr->data();
@@ -455,11 +549,11 @@ int rtcGetDataChannelLabel(int dc, char *buffer, int size) {
 	return WRAP({
 		auto dataChannel = getDataChannel(dc);
 
-		if (!buffer)
-			throw std::invalid_argument("Unexpected null pointer");
-
 		if (size <= 0)
 			return 0;
+
+		if (!buffer)
+			throw std::invalid_argument("Unexpected null pointer for buffer");
 
 		string label = dataChannel->label();
 		const char *data = label.data();
@@ -474,11 +568,11 @@ int rtcGetDataChannelProtocol(int dc, char *buffer, int size) {
 	return WRAP({
 		auto dataChannel = getDataChannel(dc);
 
-		if (!buffer)
-			throw std::invalid_argument("Unexpected null pointer");
-
 		if (size <= 0)
 			return 0;
+
+		if (!buffer)
+			throw std::invalid_argument("Unexpected null pointer for buffer");
 
 		string protocol = dataChannel->protocol();
 		const char *data = protocol.data();
@@ -494,7 +588,7 @@ int rtcGetDataChannelReliability(int dc, rtcReliability *reliability) {
 		auto dataChannel = getDataChannel(dc);
 
 		if (!reliability)
-			throw std::invalid_argument("Unexpected null pointer");
+			throw std::invalid_argument("Unexpected null pointer for reliability");
 
 		Reliability r = dataChannel->reliability();
 		std::memset(reliability, 0, sizeof(*reliability));
@@ -573,8 +667,8 @@ int rtcSendMessage(int id, const char *data, int size) {
 	return WRAP({
 		auto channel = getChannel(id);
 
-		if (!data)
-			throw std::invalid_argument("Unexpected null pointer");
+		if (!data && size != 0)
+			throw std::invalid_argument("Unexpected null pointer for data");
 
 		if (size >= 0) {
 			auto b = reinterpret_cast<const byte *>(data);
@@ -637,25 +731,32 @@ int rtcReceiveMessage(int id, char *buffer, int *size) {
 	return WRAP({
 		auto channel = getChannel(id);
 
-		if (!buffer || !size)
-			throw std::invalid_argument("Unexpected null pointer");
+		if (!size)
+			throw std::invalid_argument("Unexpected null pointer for size");
+
+		if (!buffer && *size != 0)
+			throw std::invalid_argument("Unexpected null pointer for buffer");
 
 		if (auto message = channel->receive())
 			return std::visit( //
 			    overloaded{    //
 			               [&](binary b) {
-				               *size = std::min(*size, int(b.size()));
-				               auto data = reinterpret_cast<const char *>(b.data());
-				               std::copy(data, data + *size, buffer);
+				               if (*size > 0) {
+					               *size = std::min(*size, int(b.size()));
+					               auto data = reinterpret_cast<const char *>(b.data());
+					               std::copy(data, data + *size, buffer);
+				               }
 				               return 1;
 			               },
 			               [&](string s) {
-				               int len = std::min(*size - 1, int(s.size()));
-				               if (len >= 0) {
-					               std::copy(s.data(), s.data() + len, buffer);
-					               buffer[len] = '\0';
+				               if (*size > 0) {
+					               int len = std::min(*size - 1, int(s.size()));
+					               if (len >= 0) {
+						               std::copy(s.data(), s.data() + len, buffer);
+						               buffer[len] = '\0';
+					               }
+					               *size = -(len + 1);
 				               }
-				               *size = -(len + 1);
 				               return 1;
 			               }},
 			    *message);

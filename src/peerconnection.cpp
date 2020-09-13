@@ -685,9 +685,6 @@ void PeerConnection::incomingTrack(Description::Media description) {
 
 void PeerConnection::openTracks() {
 #if RTC_ENABLE_MEDIA
-	if (!hasMedia())
-		return;
-
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
 		auto srtpTransport = std::reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
 		std::shared_lock lock(mTracksMutex); // read-only

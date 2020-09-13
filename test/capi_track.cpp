@@ -33,12 +33,15 @@ typedef struct {
 	rtcState state;
 	rtcGatheringState gatheringState;
 	int pc;
-	int dc;
+	int tr;
 	bool connected;
 } Peer;
 
-Peer *peer1 = NULL;
-Peer *peer2 = NULL;
+static Peer *peer1 = NULL;
+static Peer *peer2 = NULL;
+
+static const char *mediaDescription = "video 9 UDP/TLS/RTP/SAVPF\r\n"
+                                      "a=mid:video\r\n";
 
 static void descriptionCallback(const char *sdp, const char *type, void *ptr) {
 	Peer *peer = (Peer *)ptr;
@@ -69,10 +72,7 @@ static void gatheringStateCallback(rtcGatheringState state, void *ptr) {
 static void openCallback(void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->connected = true;
-	printf("DataChannel %d: Open\n", peer == peer1 ? 1 : 2);
-
-	const char *message = peer == peer1 ? "Hello from 1" : "Hello from 2";
-	rtcSendMessage(peer->dc, message, -1); // negative size indicates a null-terminated string
+	printf("Track %d: Open\n", peer == peer1 ? 1 : 2);
 }
 
 static void closedCallback(void *ptr) {
@@ -80,28 +80,15 @@ static void closedCallback(void *ptr) {
 	peer->connected = false;
 }
 
-static void messageCallback(const char *message, int size, void *ptr) {
+static void trackCallback(int tr, void *ptr) {
 	Peer *peer = (Peer *)ptr;
-	if (size < 0) { // negative size indicates a null-terminated string
-		printf("Message %d: %s\n", peer == peer1 ? 1 : 2, message);
-	} else {
-		printf("Message %d: [binary of size %d]\n", peer == peer1 ? 1 : 2, size);
-	}
-}
-
-static void dataChannelCallback(int dc, void *ptr) {
-	Peer *peer = (Peer *)ptr;
-	peer->dc = dc;
+	peer->tr = tr;
 	peer->connected = true;
-	rtcSetClosedCallback(dc, closedCallback);
-	rtcSetMessageCallback(dc, messageCallback);
+	rtcSetClosedCallback(tr, closedCallback);
 
-	char buffer[256];
-	if (rtcGetDataChannelLabel(dc, buffer, 256) >= 0)
-		printf("DataChannel %d: Received with label \"%s\"\n", peer == peer1 ? 1 : 2, buffer);
-
-	const char *message = peer == peer1 ? "Hello from 1" : "Hello from 2";
-	rtcSendMessage(peer->dc, message, -1); // negative size indicates a null-terminated string
+	char buffer[1024];
+	if (rtcGetTrackDescription(tr, buffer, 1024) >= 0)
+		printf("Track %d: Received with media description: \n%s\n", peer == peer1 ? 1 : 2, buffer);
 }
 
 static Peer *createPeer(const rtcConfiguration *config) {
@@ -113,7 +100,7 @@ static Peer *createPeer(const rtcConfiguration *config) {
 	// Create peer connection
 	peer->pc = rtcCreatePeerConnection(config);
 	rtcSetUserPointer(peer->pc, peer);
-	rtcSetDataChannelCallback(peer->pc, dataChannelCallback);
+	rtcSetTrackCallback(peer->pc, trackCallback);
 	rtcSetLocalDescriptionCallback(peer->pc, descriptionCallback);
 	rtcSetLocalCandidateCallback(peer->pc, candidateCallback);
 	rtcSetStateChangeCallback(peer->pc, stateChangeCallback);
@@ -124,15 +111,15 @@ static Peer *createPeer(const rtcConfiguration *config) {
 
 static void deletePeer(Peer *peer) {
 	if (peer) {
-		if (peer->dc)
-			rtcDeleteDataChannel(peer->dc);
+		if (peer->tr)
+			rtcDeleteTrack(peer->tr);
 		if (peer->pc)
 			rtcDeletePeerConnection(peer->pc);
 		free(peer);
 	}
 }
 
-int test_capi_main() {
+int test_capi_track_main() {
 	int attempts;
 
 	rtcInitLogger(RTC_LOG_DEBUG, nullptr);
@@ -163,14 +150,16 @@ int test_capi_main() {
 	if (!peer2)
 		goto error;
 
-	// Peer 1: Create data channel
-	peer1->dc = rtcCreateDataChannel(peer1->pc, "test");
-	rtcSetOpenCallback(peer1->dc, openCallback);
-	rtcSetClosedCallback(peer1->dc, closedCallback);
-	rtcSetMessageCallback(peer1->dc, messageCallback);
+	// Peer 1: Create track
+	peer1->tr = rtcCreateTrack(peer1->pc, mediaDescription);
+	rtcSetOpenCallback(peer1->tr, openCallback);
+	rtcSetClosedCallback(peer1->tr, closedCallback);
+
+	// Initiate the handshake
+	rtcSetLocalDescription(peer1->pc);
 
 	attempts = 10;
-	while (!peer2->connected && !peer1->connected && attempts--)
+	while ((!peer2->connected || !peer1->connected) && attempts--)
 		sleep(1);
 
 	if (peer1->state != RTC_CONNECTED || peer2->state != RTC_CONNECTED) {
@@ -179,19 +168,9 @@ int test_capi_main() {
 	}
 
 	if (!peer1->connected || !peer2->connected) {
-		fprintf(stderr, "DataChannel is not connected\n");
+		fprintf(stderr, "Track is not connected\n");
 		goto error;
 	}
-
-	char buffer[256];
-	if (rtcGetLocalAddress(peer1->pc, buffer, 256) >= 0)
-		printf("Local address 1:  %s\n", buffer);
-	if (rtcGetRemoteAddress(peer1->pc, buffer, 256) >= 0)
-		printf("Remote address 1: %s\n", buffer);
-	if (rtcGetLocalAddress(peer2->pc, buffer, 256) >= 0)
-		printf("Local address 2:  %s\n", buffer);
-	if (rtcGetRemoteAddress(peer2->pc, buffer, 256) >= 0)
-		printf("Remote address 2: %s\n", buffer);
 
 	deletePeer(peer1);
 	sleep(1);
@@ -213,7 +192,7 @@ error:
 
 #include <stdexcept>
 
-void test_capi() {
-	if (test_capi_main())
+void test_capi_track() {
+	if (test_capi_track_main())
 		throw std::runtime_error("Connection failed");
 }

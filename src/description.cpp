@@ -378,6 +378,8 @@ Description::Entry::Entry(const string &mline, string mid, Direction dir)
 
 void Description::Entry::setDirection(Direction dir) { mDirection = dir; }
 
+Description::Entry::operator string() const { return generateSdp("\r\n"); }
+
 string Description::Entry::generateSdp(string_view eol) const {
 	std::ostringstream sdp;
 	// Port 9 is the discard protocol
@@ -432,7 +434,9 @@ void Description::Entry::parseSdpLine(string_view line) {
 			mDirection = Direction::SendRecv;
 		else if (key == "inactive")
 			mDirection = Direction::Inactive;
-		else
+		else if (key == "bundle-only") {
+			// always added
+		} else
 			mAttributes.emplace_back(line.substr(2));
 	}
 }
@@ -492,15 +496,10 @@ Description::Media::Media(const string &sdp) : Entry(sdp, "", Direction::Unknown
 
 	if (mid().empty())
 		throw std::invalid_argument("Missing mid in media SDP");
-
-	if (std::find(mAttributes.begin(), mAttributes.end(), "rtcp-mux") != mAttributes.end())
-		mAttributes.emplace_back("rtcp-mux");
 }
 
 Description::Media::Media(const string &mline, string mid, Direction dir)
     : Entry(mline, std::move(mid), dir) {
-
-	mAttributes.emplace_back("rtcp-mux");
 }
 
 string Description::Media::description() const {
@@ -612,6 +611,7 @@ string Description::Media::generateSdpLines(string_view eol) const {
 		sdp << "b=AS:" << mBas << eol;
 
 	sdp << Entry::generateSdpLines(eol);
+	sdp << "a=rtcp-mux" << eol;
 
 	for (auto it = mRtpMap.begin(); it != mRtpMap.end(); ++it) {
 		auto &map = it->second;
@@ -658,6 +658,8 @@ void Description::Media::parseSdpLine(string_view line) {
 			} else {
 				it->second.fmtps.emplace_back(value.substr(p + 1));
 			}
+		} else if (key == "rtcp-mux") {
+			// always added
 		} else {
 			Entry::parseSdpLine(line);
 		}
