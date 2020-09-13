@@ -70,7 +70,10 @@ size_t Track::availableAmount() const {
 }
 
 #if RTC_ENABLE_MEDIA
-void Track::open(shared_ptr<DtlsSrtpTransport> transport) { mDtlsSrtpTransport = transport; }
+void Track::open(shared_ptr<DtlsSrtpTransport> transport) {
+	mDtlsSrtpTransport = transport;
+	triggerOpen();
+}
 #endif
 
 bool Track::outgoing(message_ptr message) {
