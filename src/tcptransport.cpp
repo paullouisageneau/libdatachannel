@@ -212,36 +212,42 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 			throw std::runtime_error(msg.str());
 		}
 
-		fd_set writefds;
-		FD_ZERO(&writefds);
-		FD_SET(mSock, &writefds);
-		struct timeval tv;
-		tv.tv_sec = 10; // TODO
-		tv.tv_usec = 0;
-		ret = ::select(SOCKET_TO_INT(mSock) + 1, NULL, &writefds, NULL, &tv);
+		while (true) {
+			fd_set writefds;
+			FD_ZERO(&writefds);
+			FD_SET(mSock, &writefds);
+			struct timeval tv;
+			tv.tv_sec = 10; // TODO: Make the timeout configurable
+			tv.tv_usec = 0;
+			ret = ::select(SOCKET_TO_INT(mSock) + 1, NULL, &writefds, NULL, &tv);
 
-		if (ret < 0)
-			throw std::runtime_error("Failed to wait for socket connection");
+			if (ret < 0) {
+				if (sockerrno == SEINTR || sockerrno == SEAGAIN) // interrupted
+					continue;
+				else
+					throw std::runtime_error("Failed to wait for socket connection");
+			}
 
-		if (ret == 0) {
-			std::ostringstream msg;
-			msg << "TCP connection to " << node << ":" << serv << " timed out";
-			throw std::runtime_error(msg.str());
+			if (ret == 0) {
+				std::ostringstream msg;
+				msg << "TCP connection to " << node << ":" << serv << " timed out";
+				throw std::runtime_error(msg.str());
+			}
+
+			int error = 0;
+			socklen_t errorlen = sizeof(error);
+			if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, (char *)&error, &errorlen) != 0)
+				throw std::runtime_error("Failed to get socket error code");
+
+			if (error != 0) {
+				std::ostringstream msg;
+				msg << "TCP connection to " << node << ":" << serv << " failed, errno=" << error;
+				throw std::runtime_error(msg.str());
+			}
+
+			PLOG_DEBUG << "TCP connection to " << node << ":" << serv << " succeeded";
+			break;
 		}
-
-		int error = 0;
-		socklen_t errorlen = sizeof(error);
-		if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, (char *)&error, &errorlen) != 0)
-			throw std::runtime_error("Failed to get socket error code");
-
-		if (error != 0) {
-			std::ostringstream msg;
-			msg << "TCP connection to " << node << ":" << serv << " failed, errno=" << error;
-			throw std::runtime_error(msg.str());
-		}
-
-		PLOG_DEBUG << "TCP connection to " << node << ":" << serv << " succeeded";
-
 	} catch (...) {
 		if (mSock != INVALID_SOCKET) {
 			::closesocket(mSock);
