@@ -476,6 +476,13 @@ int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb) {
 	});
 }
 
+int rtcSetLocalDescription(int pc) {
+	return WRAP({
+		auto peerConnection = getPeerConnection(pc);
+		peerConnection->setLocalDescription();
+	});
+}
+
 int rtcSetRemoteDescription(int pc, const char *sdp, const char *type) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
