@@ -24,8 +24,9 @@ using namespace std;
 using namespace chrono_literals;
 
 void test_connectivity();
-void test_capi();
 void test_track();
+void test_capi_connectivity();
+void test_capi_track();
 void test_websocket();
 size_t benchmark(chrono::milliseconds duration);
 
@@ -50,11 +51,11 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 	try {
-		cout << endl << "*** Running WebRTC C API test..." << endl;
-		test_capi();
-		cout << "*** Finished WebRTC C API test" << endl;
+		cout << endl << "*** Running WebRTC C API connectivity test..." << endl;
+		test_capi_connectivity();
+		cout << "*** Finished WebRTC C API connectivity test" << endl;
 	} catch (const exception &e) {
-		cerr << "WebRTC C API test failed: " << e.what() << endl;
+		cerr << "WebRTC C API connectivity test failed: " << e.what() << endl;
 		return -1;
 	}
 #if RTC_ENABLE_MEDIA
@@ -64,6 +65,14 @@ int main(int argc, char **argv) {
 		cout << "*** Finished WebRTC Track test" << endl;
 	} catch (const exception &e) {
 		cerr << "WebRTC Track test failed: " << e.what() << endl;
+		return -1;
+	}
+	try {
+		cout << endl << "*** Running WebRTC C API track test..." << endl;
+		test_capi_track();
+		cout << "*** Finished WebRTC C API track test" << endl;
+	} catch (const exception &e) {
+		cerr << "WebRTC C API track test failed: " << e.what() << endl;
 		return -1;
 	}
 #endif
