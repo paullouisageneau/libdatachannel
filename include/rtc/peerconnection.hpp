@@ -80,6 +80,7 @@ public:
 	std::optional<Description> remoteDescription() const;
 	std::optional<string> localAddress() const;
 	std::optional<string> remoteAddress() const;
+	bool hasMedia() const;
 
 	void setLocalDescription();
 	void setRemoteDescription(Description description);
@@ -100,9 +101,7 @@ public:
 	size_t bytesReceived();
 	std::optional<std::chrono::milliseconds> rtt();
 
-	// Media support requires compilation with SRTP
-	bool hasMedia() const;
-
+	// Track media support requires compiling with libSRTP
 	std::shared_ptr<Track> createTrack(Description::Media description);
 	void onTrack(std::function<void(std::shared_ptr<Track> track)> callback);
 

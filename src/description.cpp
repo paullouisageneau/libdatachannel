@@ -590,6 +590,7 @@ void Description::Media::addVideoCodec(int payloadType, const string &codec) {
 	map.addFB("goog-remb");
 	if (codec == "H264") {
 		// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
+		// https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
 		// TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
 		map.fmtps.emplace_back("profile-level-id=42E02A;level-asymmetry-allowed=1");
 	}
@@ -650,7 +651,7 @@ void Description::Media::parseSdpLine(string_view line) {
 			int pt = to_integer<int>(value.substr(0, p));
 			auto it = mRtpMap.find(pt);
 			if (it == mRtpMap.end()) {
-				PLOG_WARNING << "rtcp-fb applied before its rtpmap. Ignoring";
+				PLOG_WARNING << "rtcp-fb applied before the corresponding rtpmap, ignoring";
 			} else {
 				it->second.rtcpFbs.emplace_back(value.substr(p + 1));
 			}
@@ -659,7 +660,7 @@ void Description::Media::parseSdpLine(string_view line) {
 			int pt = to_integer<int>(value.substr(0, p));
 			auto it = mRtpMap.find(pt);
 			if (it == mRtpMap.end()) {
-				PLOG_WARNING << "fmtp applied before its rtpmap. Ignoring";
+				PLOG_WARNING << "fmtp applied before the corresponding rtpmap, ignoring";
 			} else {
 				it->second.fmtps.emplace_back(value.substr(p + 1));
 			}
@@ -697,17 +698,17 @@ Description::Media::RTPMap::RTPMap(string_view mline) {
 	}
 }
 
-void Description::Media::RTPMap::removeFB(const string &string) {
+void Description::Media::RTPMap::removeFB(const string &str) {
 	auto it = rtcpFbs.begin();
 	while (it != rtcpFbs.end()) {
-		if (it->find(string) != std::string::npos) {
+		if (it->find(str) != std::string::npos) {
 			it = rtcpFbs.erase(it);
 		} else
 			it++;
 	}
 }
 
-void Description::Media::RTPMap::addFB(const string &string) { rtcpFbs.emplace_back(string); }
+void Description::Media::RTPMap::addFB(const string &str) { rtcpFbs.emplace_back(str); }
 
 Description::Audio::Audio(string mid, Direction dir)
     : Media("audio 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
