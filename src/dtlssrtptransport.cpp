@@ -84,7 +84,6 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 
 	int size = message->size();
 	PLOG_VERBOSE << "Send size=" << size;
-//    return outgoing(message);
 
 	// The RTP header has a minimum size of 12 bytes
 	// An RTCP packet can have a minimum size of 8 bytes
@@ -100,6 +99,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	             << unsigned(value2);
 
 	// RFC 5761 Multiplexing RTP and RTCP 4. Distinguishable RTP and RTCP Packets
+	// https://tools.ietf.org/html/rfc5761#section-4
 	// It is RECOMMENDED to follow the guidelines in the RTP/AVP profile for the choice of RTP
 	// payload type values, with the additional restriction that payload type values in the
 	// range 64-95 MUST NOT be used. Specifically, dynamic RTP payload types SHOULD be chosen in
@@ -142,6 +142,7 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 		return;
 
 	// RFC 5764 5.1.2. Reception
+	// https://tools.ietf.org/html/rfc5764#section-5.1.2
 	// The process for demultiplexing a packet is as follows. The receiver looks at the first byte
 	// of the packet. [...] If the value is in between 128 and 191 (inclusive), then the packet is
 	// RTP (or RTCP [...]). If the value is between 20 and 63 (inclusive), the packet is DTLS.
