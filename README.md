@@ -13,7 +13,7 @@ Licensed under LGPLv2, see [LICENSE](https://github.com/paullouisageneau/libdata
 
 The library aims at implementing the following communication protocols:
 
-### WebRTC Data Channel
+### WebRTC Data Channels and Media Transport
 
 The WebRTC stack has been tested to be compatible with Firefox and Chromium.
 
