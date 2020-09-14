@@ -27,10 +27,11 @@ Features:
 - Full IPv6 support
 - Trickle ICE ([draft-ietf-ice-trickle-21](https://tools.ietf.org/html/draft-ietf-ice-trickle-21))
 - JSEP compatible ([draft-ietf-rtcweb-jsep-26](https://tools.ietf.org/html/draft-ietf-rtcweb-jsep-26))
+- SRTP and SRTCP key derivation from DTLS ([RFC5764](https://tools.ietf.org/html/rfc5764))
 - Multicast DNS candidates ([draft-ietf-rtcweb-mdns-ice-candidates-04](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-04))
 - TURN relaying ([RFC5766](https://tools.ietf.org/html/rfc5766)) with [libnice](https://github.com/libnice/libnice) as ICE backend
 
-Note only SDP BUNDLE mode is supported for media multiplexing ([draft-ietf-mmusic-sdp-bundle-negotiation-54](https://tools.ietf.org/html/draft-ietf-mmusic-sdp-bundle-negotiation-54)).
+Note only SDP BUNDLE mode is supported for media multiplexing ([draft-ietf-mmusic-sdp-bundle-negotiation-54](https://tools.ietf.org/html/draft-ietf-mmusic-sdp-bundle-negotiation-54)). The behavior is equivalent to the JSEP bundle-only policy: the library always negociates one unique network component, where SRTP media streams are multiplexed with SRTCP control packets ([RFC5761](https://tools.ietf.org/html/rfc5761)) and SCTP/DTLS data traffic ([RFC5764](https://tools.ietf.org/html/rfc5764)).
 
 ### WebSocket
 
