@@ -588,6 +588,11 @@ void Description::Media::addVideoCodec(int payloadType, const string &codec) {
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/90000");
 	map.addFB("nack");
 	map.addFB("goog-remb");
+	if (codec == "H264") {
+		// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
+		// TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
+		map.fmtps.emplace_back("profile-level-id=42E02A;level-asymmetry-allowed=1");
+	}
 	mRtpMap.emplace(map.pt, map);
 }
 
