@@ -38,7 +38,7 @@ using nlohmann::json;
 
 int main() {
 	try {
-		rtc::InitLogger(rtc::LogLevel::Debug);
+		rtc::InitLogger(rtc::LogLevel::Warning);
 		auto pc = std::make_shared<rtc::PeerConnection>();
 
 		pc->onStateChange(
