@@ -151,7 +151,7 @@ int test_capi_track_main() {
 		goto error;
 
 	// Peer 1: Create track
-	peer1->tr = rtcCreateTrack(peer1->pc, mediaDescription);
+	peer1->tr = rtcAddTrack(peer1->pc, mediaDescription);
 	rtcSetOpenCallback(peer1->tr, openCallback);
 	rtcSetClosedCallback(peer1->tr, closedCallback);
 

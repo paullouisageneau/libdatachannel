@@ -102,7 +102,7 @@ void test_track() {
 		std::atomic_store(&t2, t);
 	});
 
-	auto t1 = pc1->createTrack(Description::Video("test"));
+	auto t1 = pc1->addTrack(Description::Video("test"));
 
 	pc1->setLocalDescription();
 

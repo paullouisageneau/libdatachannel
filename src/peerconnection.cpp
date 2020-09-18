@@ -85,8 +85,9 @@ std::optional<Description> PeerConnection::remoteDescription() const {
 void PeerConnection::setLocalDescription() {
 	PLOG_VERBOSE << "Setting local description";
 
-	if (std::atomic_load(&mIceTransport))
-		throw std::logic_error("Local description is already set");
+	if (std::atomic_load(&mIceTransport)) {
+		PLOG_DEBUG << "Local description is already set";
+	}
 
 	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
 	// setup:actpass.
@@ -197,8 +198,8 @@ std::optional<string> PeerConnection::remoteAddress() const {
 	return iceTransport ? iceTransport->getRemoteAddress() : nullopt;
 }
 
-shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, string protocol,
-                                                          Reliability reliability) {
+shared_ptr<DataChannel> PeerConnection::addDataChannel(string label, string protocol,
+                                                       Reliability reliability) {
 	if (auto local = localDescription(); local && !local->hasApplication()) {
 		PLOG_ERROR << "The PeerConnection was negociated without DataChannel support.";
 		throw std::runtime_error("No DataChannel support on the PeerConnection");
@@ -214,18 +215,17 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, string p
 	auto channel =
 	    emplaceDataChannel(role, std::move(label), std::move(protocol), std::move(reliability));
 
-	if (!iceTransport) {
-		// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
-		// setup:actpass.
-		// See https://tools.ietf.org/html/rfc5763#section-5
-		iceTransport = initIceTransport(Description::Role::ActPass);
-		processLocalDescription(iceTransport->getLocalDescription(Description::Type::Offer));
-		iceTransport->gatherLocalCandidates();
-	} else {
-		if (auto transport = std::atomic_load(&mSctpTransport))
-			if (transport->state() == SctpTransport::State::Connected)
-				channel->open(transport);
-	}
+	if (auto transport = std::atomic_load(&mSctpTransport))
+		if (transport->state() == SctpTransport::State::Connected)
+			channel->open(transport);
+
+	return channel;
+}
+
+shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, string protocol,
+                                                          Reliability reliability) {
+	auto channel = addDataChannel(label, protocol, reliability);
+	setLocalDescription();
 	return channel;
 }
 
@@ -255,7 +255,7 @@ bool PeerConnection::hasMedia() const {
 	return local && local->hasAudioOrVideo();
 }
 
-std::shared_ptr<Track> PeerConnection::createTrack(Description::Media description) {
+std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) {
 	if (localDescription())
 		throw std::logic_error("Tracks must be created before local description");
 
