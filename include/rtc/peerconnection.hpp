@@ -86,6 +86,10 @@ public:
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
 
+	std::shared_ptr<DataChannel> addDataChannel(string label, string protocol = "",
+	                                            Reliability reliability = {});
+
+	// Equivalent to calling addDataChannel() and setLocalDescription()
 	std::shared_ptr<DataChannel> createDataChannel(string label, string protocol = "",
 	                                               Reliability reliability = {});
 
@@ -102,7 +106,7 @@ public:
 	std::optional<std::chrono::milliseconds> rtt();
 
 	// Track media support requires compiling with libSRTP
-	std::shared_ptr<Track> createTrack(Description::Media description);
+	std::shared_ptr<Track> addTrack(Description::Media description);
 	void onTrack(std::function<void(std::shared_ptr<Track> track)> callback);
 
 	// libnice only

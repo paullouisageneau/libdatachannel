@@ -119,6 +119,10 @@ RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 
 // DataChannel
 RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
+RTC_EXPORT int rtcAddDataChannel(int pc, const char *label); // returns dc id
+RTC_EXPORT int rtcAddDataChannelExt(int pc, const char *label, const char *protocol,
+                                    const rtcReliability *reliability); // returns dc id
+// Equivalent to calling rtcAddDataChannel() and rtcSetLocalDescription()
 RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
 RTC_EXPORT int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
                                        const rtcReliability *reliability); // returns dc id
@@ -130,7 +134,7 @@ RTC_EXPORT int rtcGetDataChannelReliability(int dc, rtcReliability *reliability)
 
 // Track
 RTC_EXPORT int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb);
-RTC_EXPORT int rtcCreateTrack(int pc, const char *mediaDescriptionSdp); // returns tr id
+RTC_EXPORT int rtcAddTrack(int pc, const char *mediaDescriptionSdp); // returns tr id
 RTC_EXPORT int rtcDeleteTrack(int tr);
 
 RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);

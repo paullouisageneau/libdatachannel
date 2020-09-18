@@ -65,7 +65,7 @@ int main() {
 		media.setBitrate(
 		    3000); // Request 3Mbps (Browsers do not encode more than 2.5MBps from a webcam)
 
-		auto track = pc->createTrack(media);
+		auto track = pc->addTrack(media);
 
 		auto session = std::make_shared<rtc::RtcpSession>();
 		track->setRtcpHandler(session);

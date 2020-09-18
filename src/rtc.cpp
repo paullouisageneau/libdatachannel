@@ -268,12 +268,12 @@ int rtcDeletePeerConnection(int pc) {
 	});
 }
 
-int rtcCreateDataChannel(int pc, const char *label) {
-	return rtcCreateDataChannelExt(pc, label, nullptr, nullptr);
+int rtcAddDataChannel(int pc, const char *label) {
+	return rtcAddDataChannelExt(pc, label, nullptr, nullptr);
 }
 
-int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
-                            const rtcReliability *reliability) {
+int rtcAddDataChannelExt(int pc, const char *label, const char *protocol,
+                         const rtcReliability *reliability) {
 	return WRAP({
 		Reliability r = {};
 		if (reliability) {
@@ -291,12 +291,23 @@ int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
 			}
 		}
 		auto peerConnection = getPeerConnection(pc);
-		int dc = emplaceDataChannel(peerConnection->createDataChannel(
+		int dc = emplaceDataChannel(peerConnection->addDataChannel(
 		    string(label ? label : ""), string(protocol ? protocol : ""), r));
 		if (auto ptr = getUserPointer(pc))
 			rtcSetUserPointer(dc, *ptr);
 		return dc;
 	});
+}
+
+int rtcCreateDataChannel(int pc, const char *label) {
+	return rtcCreateDataChannelExt(pc, label, nullptr, nullptr);
+}
+
+int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
+                            const rtcReliability *reliability) {
+	int dc = rtcAddDataChannelExt(pc, label, protocol, reliability);
+	rtcSetLocalDescription(pc);
+	return dc;
 }
 
 int rtcDeleteDataChannel(int dc) {
@@ -313,13 +324,13 @@ int rtcDeleteDataChannel(int dc) {
 	});
 }
 
-int rtcCreateTrack(int pc, const char *mediaDescriptionSdp) {
+int rtcAddTrack(int pc, const char *mediaDescriptionSdp) {
 	if (!mediaDescriptionSdp)
 		throw std::invalid_argument("Unexpected null pointer for track media description");
 
 	auto peerConnection = getPeerConnection(pc);
 	Description::Media media{string(mediaDescriptionSdp)};
-	int tr = emplaceTrack(peerConnection->createTrack(std::move(media)));
+	int tr = emplaceTrack(peerConnection->addTrack(std::move(media)));
 	if (auto ptr = getUserPointer(pc))
 		rtcSetUserPointer(tr, *ptr);
 	return tr;
