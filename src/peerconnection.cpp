@@ -786,6 +786,7 @@ void PeerConnection::processLocalDescription(Description description) {
 	mLocalDescription.emplace(std::move(description));
 
 	mProcessor->enqueue([this, description = *mLocalDescription]() {
+		PLOG_VERBOSE << "Issuing local description: " << description;
 		mLocalDescriptionCallback(std::move(description));
 	});
 }
@@ -798,6 +799,7 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 	mLocalDescription->addCandidate(candidate);
 
 	mProcessor->enqueue([this, candidate = std::move(candidate)]() {
+		PLOG_VERBOSE << "Issuing local candidate: " << candidate;
 		mLocalCandidateCallback(std::move(candidate));
 	});
 }
