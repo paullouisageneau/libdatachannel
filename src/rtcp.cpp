@@ -17,15 +17,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_RTPL_H
-#define RTC_RTPL_H
-
-#include "include.hpp"
-#include "log.hpp"
-#include "message.hpp"
+#include "rtcp.hpp"
 
 #include <cmath>
-#include <functional>
 #include <iostream>
 #include <utility>
 
@@ -44,10 +38,6 @@
 #endif
 
 namespace rtc {
-
-using std::size_t;
-
-typedef uint32_t SSRC;
 
 #pragma pack(push, 1)
 
@@ -338,122 +328,103 @@ struct RTCP_REMB {
 
 #pragma pack(pop)
 
-class RtcpHandler {
-public:
-	virtual void onOutgoing(std::function<void(rtc::message_ptr)> cb) = 0;
-	virtual std::optional<rtc::message_ptr> incoming(rtc::message_ptr ptr) = 0;
-};
+void RtcpSession::onOutgoing(std::function<void(rtc::message_ptr)> cb) { mTxCallback = cb; }
 
-class RtcpSession : public RtcpHandler {
-private:
-	std::function<void(RTP)> onPacketCB;
-	unsigned int requestedBitrate = 0;
-	synchronized_callback<rtc::message_ptr> txCB;
-	SSRC ssrc = 0;
-	uint32_t greatestSeqNo = 0;
-	uint64_t syncRTPTS, syncNTPTS;
+std::optional<rtc::message_ptr> RtcpSession::incoming(rtc::message_ptr ptr) {
+	if (ptr->type == rtc::Message::Type::Binary) {
+		RTP *rtp = (RTP *)ptr->data();
 
-public:
-	void onOutgoing(std::function<void(rtc::message_ptr)> cb) override { txCB = cb; }
+		// https://tools.ietf.org/html/rfc3550#appendix-A.1
+		if (rtp->version() != 2) {
+			PLOG_WARNING << "RTP packet is not version 2";
 
-	std::optional<rtc::message_ptr> incoming(rtc::message_ptr ptr) override {
-		if (ptr->type == rtc::Message::Type::Binary) {
-			RTP *rtp = (RTP *)ptr->data();
+			return std::nullopt;
+		}
+		if (rtp->payloadType() == 201 || rtp->payloadType() == 200) {
+			PLOG_WARNING << "RTP packet has a payload type indicating RR/SR";
 
-			// https://tools.ietf.org/html/rfc3550#appendix-A.1
-			if (rtp->version() != 2) {
-				PLOG_WARNING << "RTP packet is not version 2";
-
-				return std::nullopt;
-			}
-			if (rtp->payloadType() == 201 || rtp->payloadType() == 200) {
-				PLOG_WARNING << "RTP packet has a payload type indicating RR/SR";
-
-				return std::nullopt;
-			}
-
-			// TODO Implement the padding bit
-			if (rtp->padding()) {
-				PLOG_WARNING << "Padding processing not implemented";
-			}
-
-			ssrc = ntohl(rtp->ssrc);
-
-			uint32_t seqNo = rtp->seqNumber();
-			// uint32_t rtpTS = rtp->getTS();
-
-			if (greatestSeqNo < seqNo)
-				greatestSeqNo = seqNo;
-
-			return ptr;
+			return std::nullopt;
 		}
 
-		assert(ptr->type == rtc::Message::Type::Control);
-		auto rr = (RTCP_RR *)ptr->data();
-		if (rr->header.payloadType() == 201) {
-			// RR
-			ssrc = rr->getSenderSSRC();
-			rr->print();
-			std::cout << std::endl;
-		} else if (rr->header.payloadType() == 200) {
-			// SR
-			ssrc = rr->getSenderSSRC();
-			auto sr = (RTCP_SR *)ptr->data();
-			syncRTPTS = sr->rtpTimestamp();
-			syncNTPTS = sr->ntpTimestamp();
-			sr->print();
-			std::cout << std::endl;
-
-			// TODO For the time being, we will send RR's/REMB's when we get an SR
-			pushRR(0);
-			if (requestedBitrate > 0)
-				pushREMB(requestedBitrate);
+		// TODO Implement the padding bit
+		if (rtp->padding()) {
+			PLOG_WARNING << "Padding processing not implemented";
 		}
-		return std::nullopt;
+
+		mSsrc = ntohl(rtp->ssrc);
+
+		uint32_t seqNo = rtp->seqNumber();
+		// uint32_t rtpTS = rtp->getTS();
+
+		if (mGreatestSeqNo < seqNo)
+			mGreatestSeqNo = seqNo;
+
+		return ptr;
 	}
 
-	void requestBitrate(unsigned int newBitrate) {
-		this->requestedBitrate = newBitrate;
-
-		PLOG_DEBUG << "[GOOG-REMB] Requesting bitrate: " << newBitrate << std::endl;
-		pushREMB(newBitrate);
-	}
-
-private:
-	void pushREMB(unsigned int bitrate) {
-		rtc::message_ptr msg =
-		    rtc::make_message(RTCP_REMB::sizeWithSSRCs(1), rtc::Message::Type::Control);
-		auto remb = (RTCP_REMB *)msg->data();
-		remb->preparePacket(ssrc, 1, bitrate);
-		remb->setSSRC(0, ssrc);
-		remb->print();
-		std::cout << std::endl;
-
-		tx(msg);
-	}
-
-	void pushRR(unsigned int lastSR_delay) {
-		// std::cout << "size " << RTCP_RR::sizeWithReportBlocks(1) << std::endl;
-		auto msg = rtc::make_message(RTCP_RR::sizeWithReportBlocks(1), rtc::Message::Type::Control);
-		auto rr = (RTCP_RR *)msg->data();
-		rr->preparePacket(ssrc, 1);
-		rr->getReportBlock(0)->preparePacket(ssrc, 0, 0, greatestSeqNo, 0, 0, syncNTPTS,
-		                                     lastSR_delay);
+	assert(ptr->type == rtc::Message::Type::Control);
+	auto rr = (RTCP_RR *)ptr->data();
+	if (rr->header.payloadType() == 201) {
+		// RR
+		mSsrc = rr->getSenderSSRC();
 		rr->print();
 		std::cout << std::endl;
+	} else if (rr->header.payloadType() == 200) {
+		// SR
+		mSsrc = rr->getSenderSSRC();
+		auto sr = (RTCP_SR *)ptr->data();
+		mSyncRTPTS = sr->rtpTimestamp();
+		mSyncNTPTS = sr->ntpTimestamp();
+		sr->print();
+		std::cout << std::endl;
 
-		tx(msg);
+		// TODO For the time being, we will send RR's/REMB's when we get an SR
+		pushRR(0);
+		if (mRequestedBitrate > 0)
+			pushREMB(mRequestedBitrate);
 	}
+	return std::nullopt;
+}
 
-	void tx(message_ptr msg) {
-		try {
-			txCB(msg);
-		} catch (const std::exception &e) {
-			LOG_DEBUG << "RTCP tx failed: " << e.what();
-		}
+void RtcpSession::requestBitrate(unsigned int newBitrate) {
+	mRequestedBitrate = newBitrate;
+
+	PLOG_DEBUG << "[GOOG-REMB] Requesting bitrate: " << newBitrate << std::endl;
+	pushREMB(newBitrate);
+}
+
+void RtcpSession::pushREMB(unsigned int bitrate) {
+	rtc::message_ptr msg =
+	    rtc::make_message(RTCP_REMB::sizeWithSSRCs(1), rtc::Message::Type::Control);
+	auto remb = (RTCP_REMB *)msg->data();
+	remb->preparePacket(mSsrc, 1, bitrate);
+	remb->setSSRC(0, mSsrc);
+	remb->print();
+	std::cout << std::endl;
+
+	tx(msg);
+}
+
+void RtcpSession::pushRR(unsigned int lastSR_delay) {
+	// std::cout << "size " << RTCP_RR::sizeWithReportBlocks(1) << std::endl;
+	auto msg = rtc::make_message(RTCP_RR::sizeWithReportBlocks(1), rtc::Message::Type::Control);
+	auto rr = (RTCP_RR *)msg->data();
+	rr->preparePacket(mSsrc, 1);
+	rr->getReportBlock(0)->preparePacket(mSsrc, 0, 0, mGreatestSeqNo, 0, 0, mSyncNTPTS,
+	                                     lastSR_delay);
+	rr->print();
+	std::cout << std::endl;
+
+	tx(msg);
+}
+
+void RtcpSession::tx(message_ptr msg) {
+	try {
+		mTxCallback(msg);
+	} catch (const std::exception &e) {
+		LOG_DEBUG << "RTCP tx failed: " << e.what();
 	}
-};
+}
 
 } // namespace rtc
 
-#endif // RTC_RTPL_H

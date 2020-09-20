@@ -51,6 +51,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/message.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/peerconnection.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtc.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcp.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/threadpool.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/tls.cpp
