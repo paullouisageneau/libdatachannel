@@ -40,6 +40,25 @@ namespace rtc {
 
 #pragma pack(push, 1)
 
+struct RTP {
+private:
+	uint8_t _first;
+	uint8_t _payloadType;
+	uint16_t _seqNumber;
+	uint32_t _timestamp;
+
+public:
+	SSRC ssrc;
+	SSRC csrc[16];
+
+	inline uint8_t version() const { return _first >> 6; }
+	inline bool padding() const { return (_first >> 5) & 0x01; }
+	inline uint8_t csrcCount() const { return _first & 0x0F; }
+	inline uint8_t payloadType() const { return _payloadType; }
+	inline uint16_t seqNumber() const { return ntohs(_seqNumber); }
+	inline uint32_t timestamp() const { return ntohl(_timestamp); }
+};
+
 struct RTCP_ReportBlock {
 	SSRC ssrc;
 
@@ -52,22 +71,10 @@ private:
 	uint32_t _delaySinceLastReport;
 
 public:
-	void log() {
-		PLOG_DEBUG << "RTCP report block: "
-		           << "ssrc="
-		           << ntohl(ssrc)
-		           // TODO: Implement these reports
-		           //	<< ", fractionLost=" << fractionLost
-		           //	<< ", packetsLost=" << packetsLost
-		           << ", highestSeqNo=" << highestSeqNo() << ", seqNoCycles=" << seqNoCycles()
-		           << ", jitter=" << jitter() << ", lastSR=" << getNTPOfSR()
-		           << ", lastSRDelay=" << getDelaySinceSR();
-	}
-
-	void preparePacket(SSRC ssrc, [[maybe_unused]] unsigned int packetsLost,
-	                   [[maybe_unused]] unsigned int totalPackets, uint16_t highestSeqNo,
-	                   uint16_t seqNoCycles, uint32_t jitter, uint64_t lastSR_NTP,
-	                   uint64_t lastSR_DELAY) {
+	inline void preparePacket(SSRC ssrc, [[maybe_unused]] unsigned int packetsLost,
+	                          [[maybe_unused]] unsigned int totalPackets, uint16_t highestSeqNo,
+	                          uint16_t seqNoCycles, uint32_t jitter, uint64_t lastSR_NTP,
+	                          uint64_t lastSR_DELAY) {
 		setSeqNo(highestSeqNo, seqNoCycles);
 		setJitter(jitter);
 		setSSRC(ssrc);
@@ -81,35 +88,35 @@ public:
 		//		  this->delaySinceLastReport = lastSR_DELAY;
 	}
 
-	void inline setSSRC(SSRC ssrc) { this->ssrc = htonl(ssrc); }
-	SSRC inline getSSRC() const { return ntohl(ssrc); }
+	inline void setSSRC(SSRC ssrc) { this->ssrc = htonl(ssrc); }
+	inline SSRC getSSRC() const { return ntohl(ssrc); }
 
-	void inline setPacketsLost([[maybe_unused]] unsigned int packetsLost,
+	inline void setPacketsLost([[maybe_unused]] unsigned int packetsLost,
 	                           [[maybe_unused]] unsigned int totalPackets) {
 		// TODO Implement loss percentages.
 		_fractionLostAndPacketsLost = 0;
 	}
-	unsigned int inline getLossPercentage() const {
+	inline unsigned int getLossPercentage() const {
 		// TODO Implement loss percentages.
 		return 0;
 	}
-	unsigned int inline getPacketLostCount() const {
+	inline unsigned int getPacketLostCount() const {
 		// TODO Implement total packets lost.
 		return 0;
 	}
 
-	uint16_t inline seqNoCycles() const { return ntohs(_seqNoCycles); }
-	uint16_t inline highestSeqNo() const { return ntohs(_highestSeqNo); }
-	uint32_t inline jitter() const { return ntohl(_jitter); }
+	inline uint16_t seqNoCycles() const { return ntohs(_seqNoCycles); }
+	inline uint16_t highestSeqNo() const { return ntohs(_highestSeqNo); }
+	inline uint32_t jitter() const { return ntohl(_jitter); }
 
-	void inline setSeqNo(uint16_t highestSeqNo, uint16_t seqNoCycles) {
+	inline void setSeqNo(uint16_t highestSeqNo, uint16_t seqNoCycles) {
 		_highestSeqNo = htons(highestSeqNo);
 		_seqNoCycles = htons(seqNoCycles);
 	}
 
-	void inline setJitter(uint32_t jitter) { _jitter = htonl(jitter); }
+	inline void setJitter(uint32_t jitter) { _jitter = htonl(jitter); }
 
-	void inline setNTPOfSR(uint32_t ntp) { _lastReport = htonl(ntp >> 16u); }
+	inline void setNTPOfSR(uint32_t ntp) { _lastReport = htonl(ntp >> 16u); }
 	inline uint32_t getNTPOfSR() const { return ntohl(_lastReport) << 16u; }
 
 	inline void setDelaySinceSR(uint32_t sr) {
@@ -117,6 +124,18 @@ public:
 		_delaySinceLastReport = htonl(sr);
 	}
 	inline uint32_t getDelaySinceSR() const { return ntohl(_delaySinceLastReport); }
+
+	inline void log() const {
+		PLOG_DEBUG << "RTCP report block: "
+		           << "ssrc="
+		           << ntohl(ssrc)
+		           // TODO: Implement these reports
+		           //	<< ", fractionLost=" << fractionLost
+		           //	<< ", packetsLost=" << packetsLost
+		           << ", highestSeqNo=" << highestSeqNo() << ", seqNoCycles=" << seqNoCycles()
+		           << ", jitter=" << jitter() << ", lastSR=" << getNTPOfSR()
+		           << ", lastSRDelay=" << getDelaySinceSR();
+	}
 };
 
 struct RTCP_HEADER {
@@ -136,14 +155,14 @@ public:
 	inline void setReportCount(uint8_t count) { _first = (_first & 0xF0) | (count & 0x0F); }
 	inline void setLength(uint16_t length) { _length = htons(length); }
 
-	void prepareHeader(uint8_t payloadType, uint8_t reportCount, uint16_t length) {
+	inline void prepareHeader(uint8_t payloadType, uint8_t reportCount, uint16_t length) {
 		_first = 0x02 << 6; // version 2, no padding
 		setReportCount(reportCount);
 		setPayloadType(payloadType);
 		setLength(length);
 	}
 
-	void log() {
+	inline void log() const {
 		PLOG_DEBUG << "RTCP header: "
 		           << "version=" << unsigned(version()) << ", padding=" << padding()
 		           << ", reportCount=" << unsigned(reportCount())
@@ -164,18 +183,6 @@ private:
 	RTCP_ReportBlock _reportBlocks;
 
 public:
-	void log() {
-		header.log();
-		PLOG_DEBUG << "RTCP SR: "
-		           << " SSRC=" << ntohl(senderSSRC) << ", NTP_TS=" << ntpTimestamp()
-		           << ", RTP_TS=" << rtpTimestamp() << ", packetCount=" << packetCount()
-		           << ", octetCount=" << octetCount();
-
-		for (unsigned i = 0; i < unsigned(header.reportCount()); i++) {
-			getReportBlock(i)->log();
-		}
-	}
-
 	inline void preparePacket(SSRC senderSSRC, uint8_t reportCount) {
 		unsigned int length =
 		    ((sizeof(header) + 24 + reportCount * sizeof(RTCP_ReportBlock)) / 4) - 1;
@@ -183,9 +190,10 @@ public:
 		this->senderSSRC = htonl(senderSSRC);
 	}
 
-	RTCP_ReportBlock *getReportBlock(int num) { return &_reportBlocks + num; }
+	inline RTCP_ReportBlock *getReportBlock(int num) { return &_reportBlocks + num; }
+	inline const RTCP_ReportBlock *getReportBlock(int num) const { return &_reportBlocks + num; }
 
-	[[nodiscard]] size_t getSize() const {
+	[[nodiscard]] inline size_t getSize() const {
 		// "length" in packet is one less than the number of 32 bit words in the packet.
 		return sizeof(uint32_t) * (1 + size_t(header.length()));
 	}
@@ -197,6 +205,18 @@ public:
 
 	inline void setNtpTimestamp(uint32_t ts) { _ntpTimestamp = htonll(ts); }
 	inline void setRtpTimestamp(uint32_t ts) { _rtpTimestamp = htonl(ts); }
+
+	inline void log() const {
+		header.log();
+		PLOG_DEBUG << "RTCP SR: "
+		           << " SSRC=" << ntohl(senderSSRC) << ", NTP_TS=" << ntpTimestamp()
+		           << ", RTP_TS=" << rtpTimestamp() << ", packetCount=" << packetCount()
+		           << ", octetCount=" << octetCount();
+
+		for (unsigned i = 0; i < unsigned(header.reportCount()); i++) {
+			getReportBlock(i)->log();
+		}
+	}
 };
 
 struct RTCP_RR {
@@ -207,16 +227,8 @@ private:
 	RTCP_ReportBlock _reportBlocks;
 
 public:
-	void log() {
-		header.log();
-		PLOG_DEBUG << "RTCP RR: "
-		           << " SSRC=" << ntohl(senderSSRC);
-
-		for (unsigned i = 0; i < unsigned(header.reportCount()); i++) {
-			getReportBlock(i)->log();
-		}
-	}
-	RTCP_ReportBlock *getReportBlock(int num) { return &_reportBlocks + num; }
+	inline RTCP_ReportBlock *getReportBlock(int num) { return &_reportBlocks + num; }
+	inline const RTCP_ReportBlock *getReportBlock(int num) const { return &_reportBlocks + num; }
 
 	inline SSRC getSenderSSRC() const { return ntohl(senderSSRC); }
 	inline void setSenderSSRC(SSRC ssrc) { this->senderSSRC = htonl(ssrc); }
@@ -236,31 +248,20 @@ public:
 	inline static size_t sizeWithReportBlocks(uint8_t reportCount) {
 		return sizeof(header) + 4 + size_t(reportCount) * sizeof(RTCP_ReportBlock);
 	}
-};
 
-struct RTP
-{
-private:
-	uint8_t _first;
-	uint8_t _payloadType;
-	uint16_t _seqNumber;
-	uint32_t _timestamp;
+	inline void log() const {
+		header.log();
+		PLOG_DEBUG << "RTCP RR: "
+		           << " SSRC=" << ntohl(senderSSRC);
 
-public:
-	SSRC ssrc;
-	SSRC csrc[16];
-
-	inline uint8_t version() const { return _first >> 6; }
-	inline bool padding() const { return (_first >> 5) & 0x01; }
-	inline uint8_t csrcCount() const { return _first & 0x0F; }
-	inline uint8_t payloadType() const { return _payloadType; }
-	inline uint16_t seqNumber() const { return ntohs(_seqNumber); }
-	inline uint32_t timestamp() const { return ntohl(_timestamp); }
+		for (unsigned i = 0; i < unsigned(header.reportCount()); i++) {
+			getReportBlock(i)->log();
+		}
+	}
 };
 
 struct RTCP_REMB {
 	RTCP_HEADER header;
-
 	SSRC senderSSRC;
 	SSRC mediaSourceSSRC;
 
@@ -272,12 +273,12 @@ struct RTCP_REMB {
 
 	SSRC ssrc[1];
 
-	[[nodiscard]] size_t getSize() const {
+	[[nodiscard]] inline size_t getSize() const {
 		// "length" in packet is one less than the number of 32 bit words in the packet.
 		return sizeof(uint32_t) * (1 + size_t(header.length()));
 	}
 
-	void preparePacket(SSRC senderSSRC, unsigned int numSSRC, unsigned int bitrate) {
+	inline void preparePacket(SSRC senderSSRC, unsigned int numSSRC, unsigned int bitrate) {
 		// Report Count becomes the format here.
 		header.prepareHeader(206, 15, 0);
 
@@ -288,7 +289,7 @@ struct RTCP_REMB {
 		setBitrate(numSSRC, bitrate);
 	}
 
-	void setBitrate(unsigned int numSSRC, unsigned int bitrate) {
+	inline void setBitrate(unsigned int numSSRC, unsigned int bitrate) {
 		unsigned int exp = 0;
 		while (bitrate > pow(2, 18) - 1) {
 			exp++;
@@ -296,7 +297,7 @@ struct RTCP_REMB {
 		}
 
 		// "length" in packet is one less than the number of 32 bit words in the packet.
-		header.setLength(uint16_t((offsetof(RTCP_REMB, ssrc) / 4) - 1 + numSSRC));
+		header.setLength(uint16_t(((sizeof(header) + 4 * 2 + 4 + 4) / 4) - 1 + numSSRC));
 
 		this->bitrate = htonl((numSSRC << (32u - 8u)) | (exp << (32u - 8u - 6u)) | bitrate);
 	}
@@ -313,16 +314,16 @@ struct RTCP_REMB {
 	//		  return ntohl(this->bitrate) & (((unsigned int) pow(2,8)-1) << (32u-8u));
 	//	  }
 
-	void log() {
+	inline void setSSRC(uint8_t iterator, SSRC ssrc) { this->ssrc[iterator] = htonl(ssrc); }
+
+	inline void log() const {
 		header.log();
 		PLOG_DEBUG << "RTCP REMB: "
 		           << " SSRC=" << ntohl(senderSSRC);
 	}
 
-	void setSSRC(uint8_t iterator, SSRC ssrc) { this->ssrc[iterator] = htonl(ssrc); }
-
 	static unsigned int sizeWithSSRCs(int numSSRC) {
-		return (offsetof(RTCP_REMB, ssrc)) + sizeof(SSRC) * numSSRC;
+		return (sizeof(header) + 4 * 2 + 4 + 4) + sizeof(SSRC) * numSSRC;
 	}
 };
 
@@ -332,7 +333,7 @@ void RtcpSession::onOutgoing(std::function<void(rtc::message_ptr)> cb) { mTxCall
 
 std::optional<rtc::message_ptr> RtcpSession::incoming(rtc::message_ptr ptr) {
 	if (ptr->type == rtc::Message::Type::Binary) {
-		RTP *rtp = (RTP *)ptr->data();
+		auto rtp = reinterpret_cast<const RTP *>(ptr->data());
 
 		// https://tools.ietf.org/html/rfc3550#appendix-A.1
 		if (rtp->version() != 2) {
@@ -363,7 +364,7 @@ std::optional<rtc::message_ptr> RtcpSession::incoming(rtc::message_ptr ptr) {
 	}
 
 	assert(ptr->type == rtc::Message::Type::Control);
-	auto rr = (RTCP_RR *)ptr->data();
+	auto rr = reinterpret_cast<const RTCP_RR *>(ptr->data());
 	if (rr->header.payloadType() == 201) {
 		// RR
 		mSsrc = rr->getSenderSSRC();
@@ -371,7 +372,7 @@ std::optional<rtc::message_ptr> RtcpSession::incoming(rtc::message_ptr ptr) {
 	} else if (rr->header.payloadType() == 200) {
 		// SR
 		mSsrc = rr->getSenderSSRC();
-		auto sr = (RTCP_SR *)ptr->data();
+		auto sr = reinterpret_cast<const RTCP_SR *>(ptr->data());
 		mSyncRTPTS = sr->rtpTimestamp();
 		mSyncNTPTS = sr->ntpTimestamp();
 		sr->log();
@@ -394,7 +395,7 @@ void RtcpSession::requestBitrate(unsigned int newBitrate) {
 void RtcpSession::pushREMB(unsigned int bitrate) {
 	rtc::message_ptr msg =
 	    rtc::make_message(RTCP_REMB::sizeWithSSRCs(1), rtc::Message::Type::Control);
-	auto remb = (RTCP_REMB *)msg->data();
+	auto remb = reinterpret_cast<RTCP_REMB *>(msg->data());
 	remb->preparePacket(mSsrc, 1, bitrate);
 	remb->setSSRC(0, mSsrc);
 	remb->log();
@@ -404,7 +405,7 @@ void RtcpSession::pushREMB(unsigned int bitrate) {
 
 void RtcpSession::pushRR(unsigned int lastSR_delay) {
 	auto msg = rtc::make_message(RTCP_RR::sizeWithReportBlocks(1), rtc::Message::Type::Control);
-	auto rr = (RTCP_RR *)msg->data();
+	auto rr = reinterpret_cast<RTCP_RR *>(msg->data());
 	rr->preparePacket(mSsrc, 1);
 	rr->getReportBlock(0)->preparePacket(mSsrc, 0, 0, mGreatestSeqNo, 0, 0, mSyncNTPTS,
 	                                     lastSR_delay);
