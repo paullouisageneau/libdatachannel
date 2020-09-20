@@ -107,7 +107,7 @@ $ make USE_GNUTLS=1 USE_NICE=0
 
 See [examples](https://github.com/paullouisageneau/libdatachannel/blob/master/examples/) for a complete usage example with signaling server (under GPLv2).
 
-Additionnaly, you might want to have a look at the [C API](https://github.com/paullouisageneau/libdatachannel/blob/dev/include/rtc/rtc.h).
+Additionnaly, you might want to have a look at the [C API](https://github.com/paullouisageneau/libdatachannel/blob/master/include/rtc/rtc.h).
 
 ### Signal a PeerConnection
 
