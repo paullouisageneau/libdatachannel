@@ -111,7 +111,7 @@ private:
 
 	static int RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
 	                        struct sctp_rcvinfo recv_info, int flags, void *user_data);
-	static int SendCallback(struct socket *sock, uint32_t sb_free);
+	static int SendCallback(struct socket *sock, uint32_t sb_free, void *ulp_info);
 	static int WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos, uint8_t set_df);
 
 	static std::unordered_set<SctpTransport *> Instances;
