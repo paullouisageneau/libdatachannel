@@ -50,7 +50,8 @@ public:
     inline uint8_t version() const { return _first >> 6; }
     inline bool padding() const { return (_first >> 5) & 0x01; }
     inline uint8_t csrcCount() const { return _first & 0x0F; }
-    inline uint8_t payloadType() const { return _payloadType; }
+    inline uint8_t marker() const { return _payloadType & 0b10000000; }
+    inline uint8_t payloadType() const { return _payloadType & 0b01111111; }
     inline uint16_t seqNumber() const { return ntohs(_seqNumber); }
     inline uint32_t timestamp() const { return ntohl(_timestamp); }
     inline uint32_t ssrc() const { return ntohl(_ssrc);}
@@ -66,8 +67,8 @@ public:
     inline void setSeqNumber(uint16_t newSeqNo) {
         _seqNumber = htons(newSeqNo);
     }
-    inline void setPayloadType(uint16_t newPayloadType) {
-        _payloadType = newPayloadType;
+    inline void setPayloadType(uint8_t newPayloadType) {
+        _payloadType = 0b01111111u & newPayloadType;
     }
     inline void setSsrc(uint32_t ssrc) {
         _ssrc = htonl(ssrc);
