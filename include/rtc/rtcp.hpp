@@ -20,6 +20,8 @@
 #ifndef RTC_RTCP_H
 #define RTC_RTCP_H
 
+#include <utility>
+
 #include "include.hpp"
 #include "log.hpp"
 #include "message.hpp"
@@ -29,25 +31,41 @@ namespace rtc {
 
 class RtcpHandler {
 public:
-	virtual void onOutgoing(std::function<void(rtc::message_ptr)> cb) = 0;
-	virtual std::optional<rtc::message_ptr> incoming(rtc::message_ptr ptr) = 0;
+    /**
+     * If there is traffic coming from the remote side
+     * @param ptr
+     * @return
+     */
+    virtual rtc::message_ptr incoming(rtc::message_ptr ptr) = 0;
+
+    /**
+     * If there is traffic being sent to the remote side
+     * @param ptr
+     * @return
+     */
+    virtual rtc::message_ptr outgoing(rtc::message_ptr ptr) = 0;
 };
 
-// An RtcpSession can be plugged into a Track to handle the whole RTCP session
-class RtcpSession : public RtcpHandler {
-public:
-	void onOutgoing(std::function<void(rtc::message_ptr)> cb) override;
+class Track;
 
-	std::optional<rtc::message_ptr> incoming(rtc::message_ptr ptr) override;
+// An RtcpSession can be plugged into a Track to handle the whole RTCP session
+class RtcpReceivingSession : public RtcpHandler {
+protected:
+    std::shared_ptr<Track> track;
+public:
+    RtcpReceivingSession(std::shared_ptr<Track> track): track(std::move(track)) {}
+
+    rtc::message_ptr incoming(rtc::message_ptr ptr) override;
+    rtc::message_ptr outgoing(rtc::message_ptr ptr) override;
+    bool send(rtc::message_ptr ptr);
+
 	void requestBitrate(unsigned int newBitrate);
 
-private:
+protected:
 	void pushREMB(unsigned int bitrate);
 	void pushRR(unsigned int lastSR_delay);
-	void tx(message_ptr msg);
 
 	unsigned int mRequestedBitrate = 0;
-	synchronized_callback<rtc::message_ptr> mTxCallback;
 	SSRC mSsrc = 0;
 	uint32_t mGreatestSeqNo = 0;
 	uint64_t mSyncRTPTS, mSyncNTPTS;

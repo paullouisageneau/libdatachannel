@@ -42,9 +42,9 @@ private:
     uint8_t _payloadType;
     uint16_t _seqNumber;
     uint32_t _timestamp;
+    SSRC _ssrc;
 
 public:
-    SSRC ssrc;
     SSRC csrc[16];
 
     inline uint8_t version() const { return _first >> 6; }
@@ -53,6 +53,25 @@ public:
     inline uint8_t payloadType() const { return _payloadType; }
     inline uint16_t seqNumber() const { return ntohs(_seqNumber); }
     inline uint32_t timestamp() const { return ntohl(_timestamp); }
+    inline uint32_t ssrc() const { return ntohl(_ssrc);}
+
+    inline size_t getSize() const {
+        return ((char*)&_ssrc) - ((char*)this) + sizeof(SSRC)*csrcCount();
+    }
+
+    char * getBody() const {
+        return ((char*) this) + getSize();
+    }
+
+    inline void setSeqNumber(uint16_t newSeqNo) {
+        _seqNumber = htons(newSeqNo);
+    }
+    inline void setPayloadType(uint16_t newPayloadType) {
+        _payloadType = newPayloadType;
+    }
+    inline void setSsrc(uint32_t ssrc) {
+        _ssrc = htonl(ssrc);
+    }
 };
 
 struct RTCP_ReportBlock {
@@ -163,6 +182,33 @@ public:
                    << "version=" << unsigned(version()) << ", padding=" << padding()
                    << ", reportCount=" << unsigned(reportCount())
                    << ", payloadType=" << unsigned(payloadType()) << ", length=" << length();
+    }
+};
+
+struct RTCP_FB_HEADER {
+    RTCP_HEADER header;
+    SSRC packetSender;
+    SSRC mediaSource;
+
+    [[nodiscard]] SSRC getPacketSenderSSRC() const {
+        return ntohl(packetSender);
+    }
+
+    [[nodiscard]] SSRC getMediaSourceSSRC() const {
+        return ntohl(mediaSource);
+    }
+
+    void setPacketSenderSSRC(SSRC ssrc) {
+        this->packetSender = htonl(ssrc);
+    }
+
+    void setMediaSourceSSRC(SSRC ssrc) {
+        this->mediaSource = htonl(ssrc);
+    }
+
+    void log() {
+        header.log();
+        PLOG_DEBUG << "FB: " << " packet sender: " << getPacketSenderSSRC() << " media source: " << getMediaSourceSSRC();
     }
 };
 
@@ -322,6 +368,141 @@ struct RTCP_REMB {
         return (sizeof(header) + 4 * 2 + 4 + 4) + sizeof(SSRC) * numSSRC;
     }
 };
+
+
+
+struct RTCP_PLI {
+    RTCP_FB_HEADER header;
+
+    void preparePacket(SSRC messageSSRC) {
+        header.header.prepareHeader(206, 1, 2);
+        header.setPacketSenderSSRC(messageSSRC);
+        header.setMediaSourceSSRC(messageSSRC);
+    }
+
+    void print() {
+        header.log();
+    }
+
+    [[nodiscard]] static unsigned int size() {
+        return sizeof(RTCP_FB_HEADER);
+    }
+};
+
+struct RTCP_FIR_PART {
+    uint32_t ssrc;
+#if __BYTE_ORDER == __BIG_ENDIAN
+    uint32_t seqNo: 8;
+    uint32_t: 24;
+#elif __BYTE_ORDER == __LITTLE_ENDIAN
+    uint32_t: 24;
+    uint32_t seqNo: 8;
+#endif
+};
+
+struct RTCP_FIR {
+    RTCP_FB_HEADER header;
+    RTCP_FIR_PART parts[1];
+
+    void preparePacket(SSRC messageSSRC, uint8_t seqNo) {
+        header.header.prepareHeader(206, 4, 2 + 2 * 1);
+        header.setPacketSenderSSRC(messageSSRC);
+        header.setMediaSourceSSRC(messageSSRC);
+        parts[0].ssrc = htonl(messageSSRC);
+        parts[0].seqNo = seqNo;
+    }
+
+    void print() {
+        header.log();
+    }
+
+    [[nodiscard]] static unsigned int size() {
+        return sizeof(RTCP_FB_HEADER) + sizeof(RTCP_FIR_PART);
+    }
+};
+
+struct RTCP_NACK_PART {
+    uint16_t pid;
+    uint16_t blp;
+};
+
+class RTCP_NACK {
+    RTCP_FB_HEADER header;
+    RTCP_NACK_PART parts[1];
+public:
+    void preparePacket(SSRC ssrc, unsigned int discreteSeqNoCount) {
+        header.header.prepareHeader(205, 1, 2 + discreteSeqNoCount);
+        header.setMediaSourceSSRC(ssrc);
+        header.setPacketSenderSSRC(ssrc);
+    }
+
+    /**
+     * Add a packet to the list of missing packets.
+     * @param fciCount The number of FCI fields that are present in this packet.
+     *                  Let the number start at zero and let this function grow the number.
+     * @param fciPID The seq no of the active FCI. It will be initialized automatically, and will change automatically.
+     * @param missingPacket The seq no of the missing packet. This will be added to the queue.
+     * @return true if the packet has grown, false otherwise.
+     */
+    bool addMissingPacket(unsigned int *fciCount, uint16_t *fciPID, const uint16_t &missingPacket) {
+        if (*fciCount == 0 || missingPacket < *fciPID || missingPacket > (*fciPID + 16)) {
+            parts[*fciCount].pid = htons(missingPacket);
+            parts[*fciCount].blp = 0;
+            *fciPID = missingPacket;
+            (*fciCount)++;
+            return true;
+        } else {
+            // TODO SPEEED!
+            parts[(*fciCount) - 1].blp = htons(
+                    ntohs(parts[(*fciCount) - 1].blp) | (1u << (unsigned int) (missingPacket - *fciPID)));
+            return false;
+        }
+    }
+
+    [[nodiscard]] static unsigned int getSize(unsigned int discreteSeqNoCount) {
+        return offsetof(RTCP_NACK, parts) + sizeof(RTCP_NACK_PART) * discreteSeqNoCount;
+    }
+};
+
+class RTP_RTX {
+private:
+    RTP header;
+public:
+
+    size_t copyTo(RTP *dest, size_t totalSize, uint8_t originalPayloadType) {
+        memmove((char*)dest, (char*)this, header.getSize());
+        dest->setSeqNumber(getOriginalSeqNo());
+        dest->setPayloadType(originalPayloadType);
+        memmove(dest->getBody(), getBody(), getBodySize(totalSize));
+        return totalSize;
+    }
+
+    [[nodiscard]] uint16_t getOriginalSeqNo() const {
+        return ntohs(*(uint16_t *) (header.getBody()));
+    }
+
+    char *getBody() {
+        return header.getBody() + sizeof(uint16_t);
+    }
+
+    size_t getBodySize(size_t totalSize) {
+        return totalSize - ((char *) getBody() - (char *) this);
+    }
+
+    RTP &getHeader() {
+        return header;
+    }
+
+    size_t normalizePacket(size_t totalSize, SSRC originalSSRC, uint8_t originalPayloadType) {
+        header.setSeqNumber(getOriginalSeqNo());
+        header.setSsrc(originalSSRC); // TODO Endianess
+        header.setPayloadType(originalPayloadType);
+        // TODO, the -12 is the size of the header (which is variable!)
+        memmove(header.getBody(), header.getBody() + 2, totalSize - 12 - sizeof(uint16_t));
+        return totalSize - sizeof(uint16_t);
+    }
+};
+
 
 #pragma pack(pop)
 };

@@ -21,6 +21,7 @@
 
 #include <cmath>
 #include <utility>
+#include "track.hpp"
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -31,10 +32,11 @@
 
 namespace rtc {
 
+rtc::message_ptr RtcpReceivingSession::outgoing(rtc::message_ptr ptr) {
+    return ptr;
+}
 
-void RtcpSession::onOutgoing(std::function<void(rtc::message_ptr)> cb) { mTxCallback = cb; }
-
-std::optional<rtc::message_ptr> RtcpSession::incoming(rtc::message_ptr ptr) {
+rtc::message_ptr RtcpReceivingSession::incoming(rtc::message_ptr ptr) {
 	if (ptr->type == rtc::Message::Type::Binary) {
 		auto rtp = reinterpret_cast<const RTP *>(ptr->data());
 
@@ -42,12 +44,12 @@ std::optional<rtc::message_ptr> RtcpSession::incoming(rtc::message_ptr ptr) {
 		if (rtp->version() != 2) {
 			PLOG_WARNING << "RTP packet is not version 2";
 
-			return std::nullopt;
+			return nullptr;
 		}
 		if (rtp->payloadType() == 201 || rtp->payloadType() == 200) {
 			PLOG_WARNING << "RTP packet has a payload type indicating RR/SR";
 
-			return std::nullopt;
+			return nullptr;
 		}
 
 		// TODO Implement the padding bit
@@ -55,7 +57,7 @@ std::optional<rtc::message_ptr> RtcpSession::incoming(rtc::message_ptr ptr) {
 			PLOG_WARNING << "Padding processing not implemented";
 		}
 
-		mSsrc = ntohl(rtp->ssrc);
+		mSsrc = rtp->ssrc();
 
 		uint32_t seqNo = rtp->seqNumber();
 		// uint32_t rtpTS = rtp->getTS();
@@ -85,17 +87,17 @@ std::optional<rtc::message_ptr> RtcpSession::incoming(rtc::message_ptr ptr) {
 		if (mRequestedBitrate > 0)
 			pushREMB(mRequestedBitrate);
 	}
-	return std::nullopt;
+	return nullptr;
 }
 
-void RtcpSession::requestBitrate(unsigned int newBitrate) {
+void RtcpReceivingSession::requestBitrate(unsigned int newBitrate) {
 	mRequestedBitrate = newBitrate;
 
 	PLOG_DEBUG << "[GOOG-REMB] Requesting bitrate: " << newBitrate << std::endl;
 	pushREMB(newBitrate);
 }
 
-void RtcpSession::pushREMB(unsigned int bitrate) {
+void RtcpReceivingSession::pushREMB(unsigned int bitrate) {
 	rtc::message_ptr msg =
 	    rtc::make_message(RTCP_REMB::sizeWithSSRCs(1), rtc::Message::Type::Control);
 	auto remb = reinterpret_cast<RTCP_REMB *>(msg->data());
@@ -103,10 +105,10 @@ void RtcpSession::pushREMB(unsigned int bitrate) {
 	remb->setSSRC(0, mSsrc);
 	remb->log();
 
-	tx(msg);
+    send(msg);
 }
 
-void RtcpSession::pushRR(unsigned int lastSR_delay) {
+void RtcpReceivingSession::pushRR(unsigned int lastSR_delay) {
 	auto msg = rtc::make_message(RTCP_RR::sizeWithReportBlocks(1), rtc::Message::Type::Control);
 	auto rr = reinterpret_cast<RTCP_RR *>(msg->data());
 	rr->preparePacket(mSsrc, 1);
@@ -114,15 +116,16 @@ void RtcpSession::pushRR(unsigned int lastSR_delay) {
 	                                     lastSR_delay);
 	rr->log();
 
-	tx(msg);
+    send(msg);
 }
 
-void RtcpSession::tx(message_ptr msg) {
+bool RtcpReceivingSession::send(message_ptr msg) {
 	try {
-		mTxCallback(msg);
+	    return track->sendControl(std::move(msg));
 	} catch (const std::exception &e) {
 		LOG_DEBUG << "RTCP tx failed: " << e.what();
 	}
+	return false;
 }
 
 } // namespace rtc

@@ -28,12 +28,7 @@
 
 using nlohmann::json;
 
-class Sender {
-    rtc::PeerConnection conn;
-};
-
 struct Receiver {
-    // TODO @paul.
     std::shared_ptr<rtc::PeerConnection> conn;
     std::shared_ptr<rtc::Track> track;
 };
@@ -63,7 +58,7 @@ int main() {
 		auto track = pc->addTrack(media);
         pc->setLocalDescription();
 
-		auto session = std::make_shared<rtc::RtcpSession>();
+		auto session = std::make_shared<rtc::RtcpReceivingSession>(track);
 		track->setRtcpHandler(session);
 
 		const rtc::SSRC targetSSRC = 4;
@@ -116,9 +111,6 @@ int main() {
 
             pc->track = pc->conn->addTrack(media);
             pc->conn->setLocalDescription();
-
-            auto session = std::make_shared<rtc::RtcpSession>();
-            pc->track->setRtcpHandler(session);
 
             pc->track->onMessage([](rtc::binary var){}, nullptr);
 
