@@ -5,6 +5,7 @@
  * Copyright (c) 2020 Will Munn
  * Copyright (c) 2020 Nico Chatzi
  * Copyright (c) 2020 Lara Mackey
+ * Copyright (c) 2020 Erik Cota-Robles
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -30,6 +31,7 @@
 #include <random>
 #include <thread>
 #include <unordered_map>
+#include "parse_cl.h"
 
 using namespace rtc;
 using namespace std;
@@ -43,19 +45,41 @@ unordered_map<string, shared_ptr<PeerConnection>> peerConnectionMap;
 unordered_map<string, shared_ptr<DataChannel>> dataChannelMap;
 
 string localId;
+bool echoDataChannelMessages = false;
 
 shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
                                                 weak_ptr<WebSocket> wws, string id);
+
+void confirmOnStdout(bool echoed, string id, string type, int length);
 string randomId(size_t length);
 
 int main(int argc, char **argv) {
+	Cmdline *params;
+	try {
+		params = new Cmdline(argc, argv);
+	} catch (const std::range_error&e) {
+		std::cout<< e.what() << '\n';
+		delete params;
+		return -1;
+	}
+
 	rtc::InitLogger(LogLevel::Debug);
 
 	Configuration config;
-	config.iceServers.emplace_back("stun:stun.l.google.com:19302"); // change to your STUN server
+	string stunServer = "";
+	if (params->stunServer().substr(0,5).compare("stun:") != 0) {
+		stunServer = "stun:";
+	}
+	stunServer += params->stunServer() + ":" + to_string(params->stunPort());
+	cout << "Stun server is " << stunServer << endl;
+	config.iceServers.emplace_back(stunServer);
 
 	localId = randomId(4);
 	cout << "The local ID is: " << localId << endl;
+
+	echoDataChannelMessages = params->echoDataChannelMessages();
+	cout << "Received data channel messages will be "
+	     << (echoDataChannelMessages ? "echoed back to sender" : "printed to stdout") << endl;
 
 	auto ws = make_shared<WebSocket>();
 
@@ -101,7 +125,13 @@ int main(int argc, char **argv) {
 		}
 	});
 
-	const string url = "ws://localhost:8000/" + localId;
+	string wsPrefix = "";
+	if (params->webSocketServer().substr(0,5).compare("ws://") != 0) {
+		wsPrefix = "ws://";
+	}
+	const string url = wsPrefix + params->webSocketServer() + ":" +
+		to_string(params->webSocketPort()) + "/" + localId;
+	cout << "Url is " << url << endl;
 	ws->open(url);
 
 	cout << "Waiting for signaling to be connected..." << endl;
@@ -137,11 +167,20 @@ int main(int argc, char **argv) {
 
 		dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
-		dc->onMessage([id](const variant<binary, string> &message) {
-			if (!holds_alternative<string>(message))
-				return;
-
-			cout << "Message from " << id << " received: " << get<string>(message) << endl;
+		dc->onMessage([id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) {
+			static bool firstMessage = true;
+			if (holds_alternative<string>(message) && (!echoDataChannelMessages || firstMessage)) {
+				cout << "Message from " << id << " received: " << get<string>(message) << endl;
+				firstMessage = false;
+			} else if (echoDataChannelMessages) {
+				bool echoed = false;
+				if (auto dc = wdc.lock()) {
+					dc->send(message);
+					echoed = true;
+				}
+				confirmOnStdout(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
+						get<string>(message).length());
+			}
 		});
 
 		dataChannelMap.emplace(id, dc);
@@ -153,6 +192,7 @@ int main(int argc, char **argv) {
 
 	dataChannelMap.clear();
 	peerConnectionMap.clear();
+	delete params;
 	return 0;
 }
 
@@ -190,11 +230,20 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 
 		dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
-		dc->onMessage([id](const variant<binary, string> &message) {
-			if (!holds_alternative<string>(message))
-				return;
-
-			cout << "Message from " << id << " received: " << get<string>(message) << endl;
+		dc->onMessage([id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) {
+			static bool firstMessage = true;
+			if (holds_alternative<string>(message) && (!echoDataChannelMessages || firstMessage)) {
+				cout << "Message from " << id << " received: " << get<string>(message) << endl;
+				firstMessage = false;
+			} else if (echoDataChannelMessages) {
+				bool echoed = false;
+				if (auto dc = wdc.lock()) {
+					dc->send(message);
+					echoed = true;
+				}
+				confirmOnStdout(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
+						get<string>(message).length());
+			}
 		});
 
 		dc->send("Hello from " + localId);
@@ -205,6 +254,19 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 	peerConnectionMap.emplace(id, pc);
 	return pc;
 };
+
+void confirmOnStdout(bool echoed, string id, string type, int length) {
+	static long count = 0;
+	static long freq = 100;
+	if (!(++count%freq)) {
+		cout << "Received " << count << " pings in total from host " << id << ", most recent of type "
+		     << type << " and " << (echoed ? "" : "un") << "successfully echoed most recent ping of size "
+		     << length << " back to " << id << endl;
+		if (count >= (freq * 10) && freq < 1000000) {
+			freq *= 10;
+		}
+	}
+}
 
 // Helper function to generate a random ID
 string randomId(size_t length) {
