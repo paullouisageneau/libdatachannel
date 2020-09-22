@@ -31,7 +31,7 @@ Ditto for AIX 3.2 and <stdlib.h>.  */
 # include <config.h>
 #endif
 
-#if !defined __STDC__ || !__STDC__
+#if 0 // !defined __STDC__ || !__STDC__
 /* This is a separate conditional since some stdc systems
 reject `defined (const)'.  */
 # ifndef const
