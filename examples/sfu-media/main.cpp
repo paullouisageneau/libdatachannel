@@ -33,6 +33,7 @@ class Sender {
 };
 
 struct Receiver {
+    // TODO @paul.
     std::shared_ptr<rtc::PeerConnection> conn;
     std::shared_ptr<rtc::Track> track;
 };
@@ -65,7 +66,7 @@ int main() {
 		auto session = std::make_shared<rtc::RtcpSession>();
 		track->setRtcpHandler(session);
 
-		const rtc::SSRC targetSSRC = 15;
+		const rtc::SSRC targetSSRC = 4;
 
 		track->onMessage(
 		    [&receivers](rtc::binary message) {
