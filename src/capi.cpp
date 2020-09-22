@@ -325,15 +325,17 @@ int rtcDeleteDataChannel(int dc) {
 }
 
 int rtcAddTrack(int pc, const char *mediaDescriptionSdp) {
-	if (!mediaDescriptionSdp)
-		throw std::invalid_argument("Unexpected null pointer for track media description");
+	return WRAP({
+		if (!mediaDescriptionSdp)
+			throw std::invalid_argument("Unexpected null pointer for track media description");
 
-	auto peerConnection = getPeerConnection(pc);
-	Description::Media media{string(mediaDescriptionSdp)};
-	int tr = emplaceTrack(peerConnection->addTrack(std::move(media)));
-	if (auto ptr = getUserPointer(pc))
-		rtcSetUserPointer(tr, *ptr);
-	return tr;
+		auto peerConnection = getPeerConnection(pc);
+		Description::Media media{string(mediaDescriptionSdp)};
+		int tr = emplaceTrack(peerConnection->addTrack(std::move(media)));
+		if (auto ptr = getUserPointer(pc))
+			rtcSetUserPointer(tr, *ptr);
+		return tr;
+	});
 }
 
 int rtcDeleteTrack(int tr) {
