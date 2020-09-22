@@ -97,7 +97,7 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_track.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/websocket.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
-)
+        include/rtc/rtp.hpp)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
@@ -273,6 +273,7 @@ if(NOT NO_EXAMPLES)
 	add_subdirectory(deps/json)
 	add_subdirectory(examples/client)
 	add_subdirectory(examples/media)
+	add_subdirectory(examples/sfu-media)
 	add_subdirectory(examples/copy-paste)
 	add_subdirectory(examples/copy-paste-capi)
 endif()
