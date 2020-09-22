@@ -1,6 +1,6 @@
 /*
  * libdatachannel client example
- * Copyright (c) 2020 Staz M
+ * Copyright (c) 2020 Staz Modrzynski
  * Copyright (c) 2020 Paul-Louis Ageneau
  *
  * This program is free software; you can redistribute it and/or

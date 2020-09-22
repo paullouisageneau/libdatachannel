@@ -1,6 +1,6 @@
 /**
  * Copyright (c) 2019-2020 Paul-Louis Ageneau
- * Copyright (c) 2020 Staz M
+ * Copyright (c) 2020 Staz Modrzynski
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -374,6 +374,9 @@ Description::Entry::Entry(const string &mline, string mid, Direction dir)
 	ss >> mType;
 	ss >> port; // ignored
 	ss >> mDescription;
+    if (direction() == Direction::SendOnly) {
+        mAttributes.emplace_back("ssrc:15 cname:test");
+    }
 }
 
 void Description::Entry::setDirection(Direction dir) { mDirection = dir; }

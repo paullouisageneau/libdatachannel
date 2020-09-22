@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Staz M
+ * Copyright (c) 2020 Staz Modrzynski
  * Copyright (c) 2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
@@ -23,10 +23,9 @@
 #include "include.hpp"
 #include "log.hpp"
 #include "message.hpp"
+#include "rtp.hpp"
 
 namespace rtc {
-
-typedef uint32_t SSRC;
 
 class RtcpHandler {
 public:
