@@ -65,11 +65,13 @@ int main() {
 		auto session = std::make_shared<rtc::RtcpSession>();
 		track->setRtcpHandler(session);
 
+		const rtc::SSRC targetSSRC = 15;
+
 		track->onMessage(
 		    [&receivers](rtc::binary message) {
 			    // This is an RTP packet
 			    auto rtp = (rtc::RTP*) message.data();
-			    rtp->ssrc = htonl(15);
+			    rtp->ssrc = htonl(targetSSRC);
 			    for (auto pc : receivers) {
 			        if (pc->track != nullptr && pc->track->isOpen()) {
                         pc->track->send(message);
@@ -108,6 +110,8 @@ int main() {
             media.addH264Codec(96);
             media.setBitrate(
                     3000); // Request 3Mbps (Browsers do not encode more than 2.5MBps from a webcam)
+
+            media.addSSRC(targetSSRC, "video-send");
 
             pc->track = pc->conn->addTrack(media);
             pc->conn->setLocalDescription();

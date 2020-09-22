@@ -71,6 +71,8 @@ public:
 		Direction direction() const { return mDirection; }
 		void setDirection(Direction dir);
 
+		void addSSRC(uint32_t ssrc, std::string name);
+
 		operator string() const;
 		string generateSdp(string_view eol) const;
 

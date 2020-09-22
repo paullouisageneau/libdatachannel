@@ -374,9 +374,7 @@ Description::Entry::Entry(const string &mline, string mid, Direction dir)
 	ss >> mType;
 	ss >> port; // ignored
 	ss >> mDescription;
-    if (direction() == Direction::SendOnly) {
-        mAttributes.emplace_back("ssrc:15 cname:test");
-    }
+
 }
 
 void Description::Entry::setDirection(Direction dir) { mDirection = dir; }
@@ -442,6 +440,10 @@ void Description::Entry::parseSdpLine(string_view line) {
 		} else
 			mAttributes.emplace_back(line.substr(2));
 	}
+}
+
+void Description::Entry::addSSRC(uint32_t ssrc, std::string name) {
+    mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + name);
 }
 
 Description::Application::Application(string mid)
