@@ -1,6 +1,6 @@
 # libdatachannel - C/C++ WebRTC Data Channels
 
-libdatachannel is a standalone implementation of WebRTC Data Channels and WebSockets in C++17 with C bindings for POSIX platforms (including GNU/Linux, Android, and Apple macOS) and Microsoft Windows. It enables direct connectivity between native applications and web browsers without the pain of importing the entire WebRTC stack. The interface consists of simplified versions of the JavaScript WebRTC and WebSocket APIs present in browsers, in order to ease the design of cross-environment applications.
+libdatachannel is a standalone implementation of WebRTC Data Channels, WebRTC Media Transport, and WebSockets in C++17 with C bindings for POSIX platforms (including GNU/Linux, Android, and Apple macOS) and Microsoft Windows. It enables direct connectivity between native applications and web browsers without the pain of importing the entire WebRTC stack. The interface consists of simplified versions of the JavaScript WebRTC and WebSocket APIs present in browsers, in order to ease the design of cross-environment applications.
 It can be compiled with multiple backends:
 - The security layer can be provided through [OpenSSL](https://www.openssl.org/) or [GnuTLS](https://www.gnutls.org/).
 - The connectivity for WebRTC can be provided through my ad-hoc ICE library [libjuice](https://github.com/paullouisageneau/libjuice) as submodule or through [libnice](https://github.com/libnice/libnice).
@@ -13,12 +13,13 @@ Licensed under LGPLv2, see [LICENSE](https://github.com/paullouisageneau/libdata
 
 The library aims at implementing the following communication protocols:
 
-### WebRTC Data Channel
+### WebRTC Data Channels and Media Transport
 
 The WebRTC stack has been tested to be compatible with Firefox and Chromium.
 
 Protocol stack:
 - SCTP-based Data Channels ([draft-ietf-rtcweb-data-channel-13](https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13))
+- SRTP-based Media Transport ([draft-ietf-rtcweb-rtp-usage-26](https://tools.ietf.org/html/draft-ietf-rtcweb-rtp-usage-26)) with [libSRTP](https://github.com/cisco/libsrtp)
 - DTLS/UDP ([RFC7350](https://tools.ietf.org/html/rfc7350) and [RFC8261](https://tools.ietf.org/html/rfc8261))
 - ICE ([RFC8445](https://tools.ietf.org/html/rfc8445)) with STUN ([RFC5389](https://tools.ietf.org/html/rfc5389))
 
@@ -26,9 +27,11 @@ Features:
 - Full IPv6 support
 - Trickle ICE ([draft-ietf-ice-trickle-21](https://tools.ietf.org/html/draft-ietf-ice-trickle-21))
 - JSEP compatible ([draft-ietf-rtcweb-jsep-26](https://tools.ietf.org/html/draft-ietf-rtcweb-jsep-26))
+- SRTP and SRTCP key derivation from DTLS ([RFC5764](https://tools.ietf.org/html/rfc5764))
 - Multicast DNS candidates ([draft-ietf-rtcweb-mdns-ice-candidates-04](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-04))
 - TURN relaying ([RFC5766](https://tools.ietf.org/html/rfc5766)) with [libnice](https://github.com/libnice/libnice) as ICE backend
-- SRTP media transport ([RFC3711](https://tools.ietf.org/html/rfc3711)) with [libSRTP](https://github.com/cisco/libsrtp)
+
+Note only SDP BUNDLE mode is supported for media multiplexing ([draft-ietf-mmusic-sdp-bundle-negotiation-54](https://tools.ietf.org/html/draft-ietf-mmusic-sdp-bundle-negotiation-54)). The behavior is equivalent to the JSEP bundle-only policy: the library always negociates one unique network component, where SRTP media streams are multiplexed with SRTCP control packets ([RFC5761](https://tools.ietf.org/html/rfc5761)) and SCTP/DTLS data traffic ([RFC5764](https://tools.ietf.org/html/rfc5764)).
 
 ### WebSocket
 
@@ -104,7 +107,7 @@ $ make USE_GNUTLS=1 USE_NICE=0
 
 See [examples](https://github.com/paullouisageneau/libdatachannel/blob/master/examples/) for a complete usage example with signaling server (under GPLv2).
 
-Additionnaly, you might want to have a look at the [C API](https://github.com/paullouisageneau/libdatachannel/blob/dev/include/rtc/rtc.h).
+Additionnaly, you might want to have a look at the [C API](https://github.com/paullouisageneau/libdatachannel/blob/master/include/rtc/rtc.h).
 
 ### Signal a PeerConnection
 
@@ -118,12 +121,12 @@ config.iceServers.emplace_back("mystunserver.org:3478");
 
 auto pc = make_shared<rtc::PeerConnection>(config);
 
-pc->onLocalDescription([](const rtc::Description &sdp) {
+pc->onLocalDescription([](rtc::Description sdp) {
     // Send the SDP to the remote peer
     MY_SEND_DESCRIPTION_TO_REMOTE(string(sdp));
 });
 
-pc->onLocalCandidate([](const rtc::Candidate &candidate) {
+pc->onLocalCandidate([](rtc::Candidate candidate) {
     // Send the candidate to the remote peer
     MY_SEND_CANDIDATE_TO_REMOTE(candidate.candidate(), candidate.mid());
 });
@@ -159,7 +162,7 @@ dc->onOpen([]() {
     cout << "Open" << endl;
 });
 
-dc->onMessage([](const variant<binary, string> &message) {
+dc->onMessage([](variant<binary, string> message) {
     if (holds_alternative<string>(message)) {
         cout << "Received: " << get<string>(message) << endl;
     }
@@ -186,7 +189,7 @@ ws->onOpen([]() {
 	cout << "WebSocket open" << endl;
 });
 
-ws->onMessage([](const variant<binary, string> &message) {
+ws->onMessage([](variant<binary, string> message) {
     if (holds_alternative<string>(message)) {
         cout << "WebSocket received: " << get<string>(message) << endl;
     }

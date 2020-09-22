@@ -29,10 +29,6 @@ extern "C" {
 #define RTC_EXPORT
 #endif
 
-#ifndef RTC_ENABLE_MEDIA
-#define RTC_ENABLE_MEDIA 1
-#endif
-
 #ifndef RTC_ENABLE_WEBSOCKET
 #define RTC_ENABLE_WEBSOCKET 1
 #endif
@@ -86,11 +82,12 @@ typedef struct {
 } rtcReliability;
 
 typedef void (*rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
-typedef void (*rtcDataChannelCallbackFunc)(int dc, void *ptr);
 typedef void (*rtcDescriptionCallbackFunc)(const char *sdp, const char *type, void *ptr);
 typedef void (*rtcCandidateCallbackFunc)(const char *cand, const char *mid, void *ptr);
 typedef void (*rtcStateChangeCallbackFunc)(rtcState state, void *ptr);
 typedef void (*rtcGatheringStateCallbackFunc)(rtcGatheringState state, void *ptr);
+typedef void (*rtcDataChannelCallbackFunc)(int dc, void *ptr);
+typedef void (*rtcTrackCallbackFunc)(int tr, void *ptr);
 typedef void (*rtcOpenCallbackFunc)(void *ptr);
 typedef void (*rtcClosedCallbackFunc)(void *ptr);
 typedef void (*rtcErrorCallbackFunc)(const char *error, void *ptr);
@@ -108,12 +105,12 @@ RTC_EXPORT void rtcSetUserPointer(int id, void *ptr);
 RTC_EXPORT int rtcCreatePeerConnection(const rtcConfiguration *config); // returns pc id
 RTC_EXPORT int rtcDeletePeerConnection(int pc);
 
-RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
 RTC_EXPORT int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb);
 RTC_EXPORT int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb);
 RTC_EXPORT int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb);
 RTC_EXPORT int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb);
 
+RTC_EXPORT int rtcSetLocalDescription(int pc);
 RTC_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 RTC_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
 
@@ -121,6 +118,11 @@ RTC_EXPORT int rtcGetLocalAddress(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 
 // DataChannel
+RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
+RTC_EXPORT int rtcAddDataChannel(int pc, const char *label); // returns dc id
+RTC_EXPORT int rtcAddDataChannelExt(int pc, const char *label, const char *protocol,
+                                    const rtcReliability *reliability); // returns dc id
+// Equivalent to calling rtcAddDataChannel() and rtcSetLocalDescription()
 RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
 RTC_EXPORT int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
                                        const rtcReliability *reliability); // returns dc id
@@ -129,6 +131,13 @@ RTC_EXPORT int rtcDeleteDataChannel(int dc);
 RTC_EXPORT int rtcGetDataChannelLabel(int dc, char *buffer, int size);
 RTC_EXPORT int rtcGetDataChannelProtocol(int dc, char *buffer, int size);
 RTC_EXPORT int rtcGetDataChannelReliability(int dc, rtcReliability *reliability);
+
+// Track
+RTC_EXPORT int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb);
+RTC_EXPORT int rtcAddTrack(int pc, const char *mediaDescriptionSdp); // returns tr id
+RTC_EXPORT int rtcDeleteTrack(int tr);
+
+RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
 
 // WebSocket
 #if RTC_ENABLE_WEBSOCKET
@@ -141,7 +150,7 @@ RTC_EXPORT int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *c
 RTC_EXPORT int rtcDeleteWebsocket(int ws);
 #endif
 
-// DataChannel and WebSocket common API
+// DataChannel, Track, and WebSocket common API
 RTC_EXPORT int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb);
 RTC_EXPORT int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb);
 RTC_EXPORT int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb);
@@ -152,7 +161,7 @@ RTC_EXPORT int rtcGetBufferedAmount(int id); // total size buffered to send
 RTC_EXPORT int rtcSetBufferedAmountLowThreshold(int id, int amount);
 RTC_EXPORT int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb);
 
-// DataChannel and WebSocket common extended API
+// DataChannel, Track, and WebSocket common extended API
 RTC_EXPORT int rtcGetAvailableAmount(int id); // total size available to receive
 RTC_EXPORT int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb);
 RTC_EXPORT int rtcReceiveMessage(int id, char *buffer, int *size);

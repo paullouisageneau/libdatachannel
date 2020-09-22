@@ -600,7 +600,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 	}
 
 	auto type = notify->sn_header.sn_type;
-	PLOG_VERBOSE << "Process notification, type=" << type;
+	PLOG_VERBOSE << "Processing notification, type=" << type;
 
 	switch (type) {
 	case SCTP_ASSOC_CHANGE: {
@@ -622,7 +622,8 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 	}
 
 	case SCTP_SENDER_DRY_EVENT: {
-		// It not should be necessary since the send callback should have been called already,
+		PLOG_VERBOSE << "SCTP dry event";
+		// It should not be necessary since the send callback should have been called already,
 		// but to be sure, let's try to send now.
 		safeFlush();
 		break;
@@ -632,6 +633,28 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 		const struct sctp_stream_reset_event &reset_event = notify->sn_strreset_event;
 		const int count = (reset_event.strreset_length - sizeof(reset_event)) / sizeof(uint16_t);
 		const uint16_t flags = reset_event.strreset_flags;
+
+		IF_PLOG(plog::verbose) {
+			std::ostringstream desc;
+			desc << "flags=";
+			if (flags & SCTP_STREAM_RESET_OUTGOING_SSN && flags & SCTP_STREAM_RESET_INCOMING_SSN)
+				desc << "outgoing|incoming";
+			else if (flags & SCTP_STREAM_RESET_OUTGOING_SSN)
+				desc << "outgoing";
+			else if (flags & SCTP_STREAM_RESET_INCOMING_SSN)
+				desc << "incoming";
+			else
+				desc << "0";
+
+			desc << ", streams=[";
+			for (int i = 0; i < count; ++i) {
+				uint16_t streamId = reset_event.strreset_stream_list[i];
+				desc << (i != 0 ? "," : "") << streamId;
+			}
+			desc << "]";
+
+			PLOG_VERBOSE << "SCTP reset event, " << desc.str();
+		}
 
 		if (flags & SCTP_STREAM_RESET_OUTGOING_SSN) {
 			for (int i = 0; i < count; ++i) {

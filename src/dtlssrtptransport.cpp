@@ -52,7 +52,7 @@ DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
 #else
 	PLOG_DEBUG << "Setting SRTP profile (OpenSSL)";
 	// returns 0 on success, 1 on error
-	if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"), "Failed to set SRTP profile")
+	if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"))
 		throw std::runtime_error("Failed to set SRTP profile: " +
 		                         openssl::error_string(ERR_get_error()));
 #endif
@@ -86,7 +86,8 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	PLOG_VERBOSE << "Send size=" << size;
 
 	// The RTP header has a minimum size of 12 bytes
-	if (size < 12)
+	// An RTCP packet can have a minimum size of 8 bytes
+	if (size < 8)
 		throw std::runtime_error("RTP/RTCP packet too short");
 
 	// srtp_protect() and srtp_protect_rtcp() assume that they can write SRTP_MAX_TRAILER_LEN (for
@@ -98,6 +99,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	             << unsigned(value2);
 
 	// RFC 5761 Multiplexing RTP and RTCP 4. Distinguishable RTP and RTCP Packets
+	// https://tools.ietf.org/html/rfc5761#section-4
 	// It is RECOMMENDED to follow the guidelines in the RTP/AVP profile for the choice of RTP
 	// payload type values, with the additional restriction that payload type values in the
 	// range 64-95 MUST NOT be used. Specifically, dynamic RTP payload types SHOULD be chosen in
@@ -124,8 +126,8 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	}
 
 	message->resize(size);
-	outgoing(message);
-	return true;
+	return outgoing(message);
+//	return DtlsTransport::send(message);
 }
 
 void DtlsSrtpTransport::incoming(message_ptr message) {
@@ -140,6 +142,7 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 		return;
 
 	// RFC 5764 5.1.2. Reception
+	// https://tools.ietf.org/html/rfc5764#section-5.1.2
 	// The process for demultiplexing a packet is as follows. The receiver looks at the first byte
 	// of the packet. [...] If the value is in between 128 and 191 (inclusive), then the packet is
 	// RTP (or RTCP [...]). If the value is between 20 and 63 (inclusive), the packet is DTLS.
@@ -153,7 +156,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 
 	} else if (value1 >= 128 && value1 <= 191) {
 		// The RTP header has a minimum size of 12 bytes
-		if (size < 12) {
+		// An RTCP packet can have a minimum size of 8 bytes
+		if (size < 8) {
 			PLOG_WARNING << "Incoming SRTP/SRTCP packet too short, size=" << size;
 			return;
 		}
@@ -168,21 +172,29 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 			if (srtp_err_status_t err = srtp_unprotect_rtcp(mSrtpIn, message->data(), &size)) {
 				if (err == srtp_err_status_replay_fail)
 					PLOG_WARNING << "Incoming SRTCP packet is a replay";
+				else if (err == srtp_err_status_auth_fail)
+					PLOG_WARNING << "Incoming SRTCP packet failed authentication check";
 				else
 					PLOG_WARNING << "SRTCP unprotect error, status=" << err;
 				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTCP packet, size=" << size;
+			message->type = Message::Type::Control;
+			message->stream = to_integer<uint8_t>(*(message->begin() + 1)); // Payload Type
 		} else {
 			PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
 			if (srtp_err_status_t err = srtp_unprotect(mSrtpIn, message->data(), &size)) {
 				if (err == srtp_err_status_replay_fail)
 					PLOG_WARNING << "Incoming SRTP packet is a replay";
+				else if (err == srtp_err_status_auth_fail)
+					PLOG_WARNING << "Incoming SRTP packet failed authentication check";
 				else
 					PLOG_WARNING << "SRTP unprotect error, status=" << err;
 				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
+			message->type = Message::Type::Binary;
+			message->stream = value2; // Payload Type
 		}
 
 		message->resize(size);
@@ -238,11 +250,11 @@ void DtlsSrtpTransport::postHandshake() {
 		throw std::runtime_error("Failed to derive SRTP keys: " +
 		                         openssl::error_string(ERR_get_error()));
 
+	// Order is client key, server key, client salt, and server salt
 	clientKey = material;
-	clientSalt = clientKey + SRTP_AES_128_KEY_LEN;
-
-	serverKey = material + SRTP_AES_ICM_128_KEY_LEN_WSALT;
-	serverSalt = serverKey + SRTP_AES_128_KEY_LEN;
+	serverKey = clientKey + SRTP_AES_128_KEY_LEN;
+	clientSalt = serverKey + SRTP_AES_128_KEY_LEN;
+	serverSalt = clientSalt + SRTP_SALT_LEN;
 #endif
 
 	unsigned char clientSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];

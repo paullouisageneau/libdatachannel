@@ -1,13 +1,12 @@
 cmake_minimum_required(VERSION 3.7)
 project(libdatachannel
 	DESCRIPTION "WebRTC Data Channels Library"
-	VERSION 0.8.0
+	VERSION 0.9.0
 	LANGUAGES CXX)
 
 # Options
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 option(USE_NICE "Use libnice instead of libjuice" OFF)
-option(USE_SRTP "Enable SRTP for media support" OFF)
 option(NO_WEBSOCKET "Disable WebSocket support" OFF)
 option(NO_EXAMPLES "Disable examples" OFF)
 option(NO_TESTS "Disable tests build" OFF)
@@ -49,12 +48,15 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/icetransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/init.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/log.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/message.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/peerconnection.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/rtc.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcp.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/tls.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/threadpool.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/tls.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/track.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/processor.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
 )
 
 set(LIBDATACHANNEL_WEBSOCKET_SOURCES
@@ -73,6 +75,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/configuration.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/datachannel.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/description.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcp.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/include.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/init.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/log.hpp
@@ -82,13 +85,16 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/reliability.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.h
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/track.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocket.hpp
 )
 
 set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/capi.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/track.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_connectivity.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_track.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/websocket.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
 )
@@ -155,8 +161,8 @@ if(WIN32)
 	target_link_libraries(datachannel-static PRIVATE wsock32 ws2_32) # winsock2
 endif()
 
-if(USE_SRTP)
-	find_package(SRTP REQUIRED)
+find_package(SRTP)
+if(SRTP_FOUND)
 	if(NOT TARGET SRTP::SRTP)
 		add_library(SRTP::SRTP UNKNOWN IMPORTED)
 		set_target_properties(SRTP::SRTP PROPERTIES
@@ -164,11 +170,13 @@ if(USE_SRTP)
 			IMPORTED_LINK_INTERFACE_LANGUAGES C
 			IMPORTED_LOCATION ${SRTP_LIBRARIES})
 	endif()
+	message(STATUS "LibSRTP found, compiling with media transport")
 	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=1)
 	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=1)
 	target_link_libraries(datachannel PRIVATE SRTP::SRTP)
 	target_link_libraries(datachannel-static PRIVATE SRTP::SRTP)
 else()
+	message(STATUS "LibSRTP NOT found, compiling WITHOUT media transport")
 	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=0)
 	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=0)
 endif()
@@ -264,6 +272,7 @@ if(NOT NO_EXAMPLES)
 	set(JSON_BuildTests OFF CACHE INTERNAL "")
 	add_subdirectory(deps/json)
 	add_subdirectory(examples/client)
+	add_subdirectory(examples/media)
 	add_subdirectory(examples/copy-paste)
 	add_subdirectory(examples/copy-paste-capi)
 endif()

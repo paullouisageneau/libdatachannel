@@ -1,5 +1,6 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2019-2020 Paul-Louis Ageneau
+ * Copyright (c) 2020 Staz M
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,18 +20,22 @@
 #include "description.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <chrono>
+#include <iostream>
 #include <random>
 #include <sstream>
 
+using std::shared_ptr;
 using std::size_t;
 using std::string;
+using std::string_view;
 using std::chrono::system_clock;
 
 namespace {
 
-inline bool match_prefix(const string &str, const string &prefix) {
+inline bool match_prefix(string_view str, string_view prefix) {
 	return str.size() >= prefix.size() &&
 	       std::mismatch(prefix.begin(), prefix.end(), str.begin()).first == prefix.end();
 }
@@ -39,6 +44,21 @@ inline void trim_end(string &str) {
 	str.erase(
 	    std::find_if(str.rbegin(), str.rend(), [](char c) { return !std::isspace(c); }).base(),
 	    str.end());
+}
+
+inline std::pair<string_view, string_view> parse_pair(string_view attr) {
+	string_view key, value;
+	if (size_t separator = attr.find(':'); separator != string::npos) {
+		key = attr.substr(0, separator);
+		value = attr.substr(separator + 1);
+	} else {
+		key = attr;
+	}
+	return std::make_pair(std::move(key), std::move(value));
+}
+
+template <typename T> T to_integer(string_view s) {
+	return std::is_signed<T>::value ? T(std::stol(string(s))) : T(std::stoul(string(s)));
 }
 
 } // namespace
@@ -52,7 +72,6 @@ Description::Description(const string &sdp, Type type) : Description(sdp, type, 
 
 Description::Description(const string &sdp, Type type, Role role)
     : mType(Type::Unspec), mRole(role) {
-	mData.mid = "data";
 	hintType(type);
 
 	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
@@ -61,50 +80,25 @@ Description::Description(const string &sdp, Type type, Role role)
 	mSessionId = std::to_string(uniform(generator));
 
 	std::istringstream ss(sdp);
-	std::optional<Media> currentMedia;
+	std::shared_ptr<Entry> current;
 
-	int mlineIndex = 0;
-	bool finished;
-	do {
-		string line;
-		finished = !std::getline(ss, line) && line.empty();
+	int index = -1;
+	string line;
+	while (std::getline(ss, line) || !line.empty()) {
 		trim_end(line);
 
 		// Media description line (aka m-line)
-		if (finished || match_prefix(line, "m=")) {
-			if (currentMedia) {
-				if (!currentMedia->mid.empty()) {
-					if (currentMedia->type == "application")
-						mData.mid = currentMedia->mid;
-					else
-						mMedia.emplace(mlineIndex, std::move(*currentMedia));
-
-					++mlineIndex;
-
-				} else if (line.find(" ICE/SDP") != string::npos) {
-					PLOG_WARNING << "SDP \"m=\" line has no corresponding mid, ignoring";
-				}
-			}
-			if (!finished)
-				currentMedia.emplace(Media(line.substr(2)));
+		if (match_prefix(line, "m=")) {
+			++index;
+			string mline = line.substr(2);
+			current = createEntry(std::move(mline), std::to_string(index), Direction::Unknown);
 
 			// Attribute line
 		} else if (match_prefix(line, "a=")) {
 			string attr = line.substr(2);
+			auto [key, value] = parse_pair(attr);
 
-			string key, value;
-			if (size_t separator = attr.find(':'); separator != string::npos) {
-				key = attr.substr(0, separator);
-				value = attr.substr(separator + 1);
-			} else {
-				key = attr;
-			}
-
-			if (key == "mid") {
-				if (currentMedia)
-					currentMedia->mid = value;
-
-			} else if (key == "setup") {
+			if (key == "setup") {
 				if (value == "active")
 					mRole = Role::Active;
 				else if (value == "passive")
@@ -125,19 +119,18 @@ Description::Description(const string &sdp, Type type, Role role)
 				mIceUfrag = value;
 			} else if (key == "ice-pwd") {
 				mIcePwd = value;
-			} else if (key == "sctp-port") {
-				mData.sctpPort = uint16_t(std::stoul(value));
-			} else if (key == "max-message-size") {
-				mData.maxMessageSize = size_t(std::stoul(value));
 			} else if (key == "candidate") {
-				addCandidate(Candidate(attr, currentMedia ? currentMedia->mid : mData.mid));
+				addCandidate(Candidate(attr, bundleMid()));
 			} else if (key == "end-of-candidates") {
 				mEnded = true;
-			} else if (currentMedia) {
-				currentMedia->attributes.emplace_back(line.substr(2));
+			} else if (current) {
+				current->parseSdpLine(std::move(line));
 			}
+
+		} else if (current) {
+			current->parseSdpLine(std::move(line));
 		}
-	} while (!finished);
+	};
 }
 
 Description::Type Description::type() const { return mType; }
@@ -148,13 +141,12 @@ Description::Role Description::role() const { return mRole; }
 
 string Description::roleString() const { return roleToString(mRole); }
 
-string Description::dataMid() const { return mData.mid; }
+string Description::bundleMid() const {
+	// Get the mid of the first media
+	return !mEntries.empty() ? mEntries[0]->mid() : "0";
+}
 
 std::optional<string> Description::fingerprint() const { return mFingerprint; }
-
-std::optional<uint16_t> Description::sctpPort() const { return mData.sctpPort; }
-
-std::optional<size_t> Description::maxMessageSize() const { return mData.maxMessageSize; }
 
 bool Description::ended() const { return mEnded; }
 
@@ -166,15 +158,9 @@ void Description::hintType(Type type) {
 	}
 }
 
-void Description::setDataMid(string mid) { mData.mid = mid; }
-
 void Description::setFingerprint(string fingerprint) {
 	mFingerprint.emplace(std::move(fingerprint));
 }
-
-void Description::setSctpPort(uint16_t port) { mData.sctpPort.emplace(port); }
-
-void Description::setMaxMessageSize(size_t size) { mData.maxMessageSize.emplace(size); }
 
 void Description::addCandidate(Candidate candidate) {
 	mCandidates.emplace_back(std::move(candidate));
@@ -189,19 +175,9 @@ std::vector<Candidate> Description::extractCandidates() {
 	return result;
 }
 
-bool Description::hasMedia() const { return !mMedia.empty(); }
-
-void Description::addMedia(const Description &source) {
-	for (auto p : source.mMedia)
-		mMedia.emplace(p);
-}
-
 Description::operator string() const { return generateSdp("\r\n"); }
 
-string Description::generateSdp(const string &eol) const {
-	if (!mFingerprint)
-		throw std::logic_error("Fingerprint must be set to generate an SDP string");
-
+string Description::generateSdp(string_view eol) const {
 	std::ostringstream sdp;
 
 	// Header
@@ -214,59 +190,70 @@ string Description::generateSdp(const string &eol) const {
 	// see Negotiating Media Multiplexing Using the Session Description Protocol
 	// https://tools.ietf.org/html/draft-ietf-mmusic-sdp-bundle-negotiation-54
 	sdp << "a=group:BUNDLE";
-	for (int i = 0; i < int(mMedia.size() + 1); ++i)
-		if (auto it = mMedia.find(i); it != mMedia.end())
-			sdp << ' ' << it->second.mid;
-		else
-			sdp << ' ' << mData.mid;
+	for (const auto &entry : mEntries)
+		sdp << ' ' << entry->mid();
 	sdp << eol;
 
-	sdp << "a=msid-semantic: WMS" << eol;
+	// Lip-sync
+	std::ostringstream lsGroup;
+	for (const auto &entry : mEntries)
+		if (entry != mApplication)
+			lsGroup << ' ' << entry->mid();
 
-	// Non-data media
-	if (!mMedia.empty()) {
-		// Lip-sync
-		sdp << "a=group:LS";
-		for (const auto &p : mMedia)
-			sdp << " " << p.second.mid;
-		sdp << eol;
-	}
+	if (!lsGroup.str().empty())
+		sdp << "a=group:LS" << lsGroup.str() << eol;
 
-	// Descriptions and attributes
-	for (int i = 0; i < int(mMedia.size() + 1); ++i) {
-		if (auto it = mMedia.find(i); it != mMedia.end()) {
-			// Non-data media
-			const auto &media = it->second;
-			sdp << "m=" << media.type << ' ' << 0 << ' ' << media.description << eol;
-			sdp << "c=IN IP4 0.0.0.0" << eol;
-			sdp << "a=bundle-only" << eol;
-			sdp << "a=mid:" << media.mid << eol;
-			for (const auto &attr : media.attributes)
-				sdp << "a=" << attr << eol;
+	// Session-level attributes
+	sdp << "a=msid-semantic:WMS *" << eol;
+	sdp << "a=setup:" << roleToString(mRole) << eol;
+	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
+	sdp << "a=ice-pwd:" << mIcePwd << eol;
 
-		} else {
-			// Data
-			const string description = "UDP/DTLS/SCTP webrtc-datachannel";
-			sdp << "m=application" << ' ' << (!mMedia.empty() ? 0 : 9) << ' ' << description << eol;
-			sdp << "c=IN IP4 0.0.0.0" << eol;
-			if (!mMedia.empty())
-				sdp << "a=bundle-only" << eol;
-			sdp << "a=mid:" << mData.mid << eol;
-			if (mData.sctpPort)
-				sdp << "a=sctp-port:" << *mData.sctpPort << eol;
-			if (mData.maxMessageSize)
-				sdp << "a=max-message-size:" << *mData.maxMessageSize << eol;
-		}
-	}
-
-	// Common
 	if (!mEnded)
 		sdp << "a=ice-options:trickle" << eol;
 
+	if (mFingerprint)
+		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
+
+	// Entries
+	bool first = true;
+	for (const auto &entry : mEntries) {
+		sdp << entry->generateSdp(eol);
+
+		if (std::exchange(first, false)) {
+			// Candidates
+			for (const auto &candidate : mCandidates)
+				sdp << string(candidate) << eol;
+
+			if (mEnded)
+				sdp << "a=end-of-candidates" << eol;
+		}
+	}
+
+	return sdp.str();
+}
+
+string Description::generateApplicationSdp(string_view eol) const {
+	std::ostringstream sdp;
+
+	// Header
+	sdp << "v=0" << eol;
+	sdp << "o=- " << mSessionId << " 0 IN IP4 127.0.0.1" << eol;
+	sdp << "s=-" << eol;
+	sdp << "t=0 0" << eol;
+
+	// Application
+	auto app = mApplication ? mApplication : std::make_shared<Application>();
+	sdp << app->generateSdp(eol);
+
+	// Session-level attributes
+	sdp << "a=msid-semantic:WMS *" << eol;
+	sdp << "a=setup:" << roleToString(mRole) << eol;
 	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
 	sdp << "a=ice-pwd:" << mIcePwd << eol;
-	sdp << "a=setup:" << roleToString(mRole) << eol;
-	sdp << "a=tls-id:1" << eol;
+
+	if (!mEnded)
+		sdp << "a=ice-options:trickle" << eol;
 
 	if (mFingerprint)
 		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
@@ -274,19 +261,460 @@ string Description::generateSdp(const string &eol) const {
 	// Candidates
 	for (const auto &candidate : mCandidates)
 		sdp << string(candidate) << eol;
+
 	if (mEnded)
 		sdp << "a=end-of-candidates" << eol;
 
 	return sdp.str();
 }
 
-Description::Media::Media(const string &mline) {
-	size_t p = mline.find(' ');
-	this->type = mline.substr(0, p);
-	if (p != string::npos)
-		if (size_t q = mline.find(' ', p + 1); q != string::npos)
-			this->description = mline.substr(q + 1);
+shared_ptr<Description::Entry> Description::createEntry(string mline, string mid, Direction dir) {
+	string type = mline.substr(0, mline.find(' '));
+	if (type == "application") {
+		removeApplication();
+		mApplication = std::make_shared<Application>(std::move(mid));
+		mEntries.emplace_back(mApplication);
+		return mApplication;
+	} else {
+		auto media = std::make_shared<Media>(std::move(mline), std::move(mid), dir);
+		mEntries.emplace_back(media);
+		return media;
+	}
 }
+
+void Description::removeApplication() {
+	if (!mApplication)
+		return;
+
+	auto it = std::find(mEntries.begin(), mEntries.end(), mApplication);
+	if (it != mEntries.end())
+		mEntries.erase(it);
+
+	mApplication.reset();
+}
+
+bool Description::hasApplication() const { return mApplication != nullptr; }
+
+bool Description::hasAudioOrVideo() const {
+	for (auto entry : mEntries)
+		if (entry != mApplication)
+			return true;
+
+	return false;
+}
+
+int Description::addMedia(Media media) {
+	mEntries.emplace_back(std::make_shared<Media>(std::move(media)));
+	return int(mEntries.size()) - 1;
+}
+
+int Description::addMedia(Application application) {
+	removeApplication();
+	mApplication = std::make_shared<Application>(std::move(application));
+	mEntries.emplace_back(mApplication);
+	return int(mEntries.size()) - 1;
+}
+
+int Description::addApplication(string mid) { return addMedia(Application(std::move(mid))); }
+
+Description::Application *Description::application() { return mApplication.get(); }
+
+int Description::addVideo(string mid, Direction dir) {
+	return addMedia(Video(std::move(mid), dir));
+}
+
+int Description::addAudio(string mid, Direction dir) {
+	return addMedia(Audio(std::move(mid), dir));
+}
+
+std::variant<Description::Media *, Description::Application *> Description::media(int index) {
+	if (index < 0 || index >= int(mEntries.size()))
+		throw std::out_of_range("Media index out of range");
+
+	const auto &entry = mEntries[index];
+	if (entry == mApplication) {
+		auto result = dynamic_cast<Application *>(entry.get());
+		if (!result)
+			throw std::logic_error("Bad type of application in description");
+		return result;
+	} else {
+		auto result = dynamic_cast<Media *>(entry.get());
+		if (!result)
+			throw std::logic_error("Bad type of media in description");
+		return result;
+	}
+}
+
+std::variant<const Description::Media *, const Description::Application *>
+Description::media(int index) const {
+	if (index < 0 || index >= int(mEntries.size()))
+		throw std::out_of_range("Media index out of range");
+
+	const auto &entry = mEntries[index];
+	if (entry == mApplication) {
+		auto result = dynamic_cast<Application *>(entry.get());
+		if (!result)
+			throw std::logic_error("Bad type of application in description");
+		return result;
+	} else {
+		auto result = dynamic_cast<Media *>(entry.get());
+		if (!result)
+			throw std::logic_error("Bad type of media in description");
+		return result;
+	}
+}
+
+int Description::mediaCount() const { return int(mEntries.size()); }
+
+Description::Entry::Entry(const string &mline, string mid, Direction dir)
+    : mMid(std::move(mid)), mDirection(dir) {
+
+	unsigned int port;
+	std::istringstream ss(mline);
+	ss >> mType;
+	ss >> port; // ignored
+	ss >> mDescription;
+}
+
+void Description::Entry::setDirection(Direction dir) { mDirection = dir; }
+
+Description::Entry::operator string() const { return generateSdp("\r\n"); }
+
+string Description::Entry::generateSdp(string_view eol) const {
+	std::ostringstream sdp;
+	// Port 9 is the discard protocol
+	sdp << "m=" << type() << ' ' << 9 << ' ' << description() << eol;
+	sdp << "c=IN IP4 0.0.0.0" << eol;
+	sdp << generateSdpLines(eol);
+
+	return sdp.str();
+}
+
+string Description::Entry::generateSdpLines(string_view eol) const {
+	std::ostringstream sdp;
+	sdp << "a=bundle-only" << eol;
+	sdp << "a=mid:" << mMid << eol;
+
+	switch (mDirection) {
+	case Direction::SendOnly:
+		sdp << "a=sendonly" << eol;
+		break;
+	case Direction::RecvOnly:
+		sdp << "a=recvonly" << eol;
+		break;
+	case Direction::SendRecv:
+		sdp << "a=sendrecv" << eol;
+		break;
+	case Direction::Inactive:
+		sdp << "a=inactive" << eol;
+		break;
+	default:
+		// Ignore
+		break;
+	}
+
+	for (const auto &attr : mAttributes)
+		sdp << "a=" << attr << eol;
+
+	return sdp.str();
+}
+
+void Description::Entry::parseSdpLine(string_view line) {
+	if (match_prefix(line, "a=")) {
+		string_view attr = line.substr(2);
+		auto [key, value] = parse_pair(attr);
+
+		if (key == "mid")
+			mMid = value;
+		else if (attr == "sendonly")
+			mDirection = Direction::SendOnly;
+		else if (attr == "recvonly")
+			mDirection = Direction::RecvOnly;
+		else if (key == "sendrecv")
+			mDirection = Direction::SendRecv;
+		else if (key == "inactive")
+			mDirection = Direction::Inactive;
+		else if (key == "bundle-only") {
+			// always added
+		} else
+			mAttributes.emplace_back(line.substr(2));
+	}
+}
+
+Description::Application::Application(string mid)
+    : Entry("application 9 UDP/DTLS/SCTP", std::move(mid), Direction::SendRecv) {}
+
+string Description::Application::description() const {
+	return Entry::description() + " webrtc-datachannel";
+}
+
+Description::Application Description::Application::reciprocate() const {
+	Application reciprocated(*this);
+
+	reciprocated.mMaxMessageSize.reset();
+
+	return reciprocated;
+}
+
+string Description::Application::generateSdpLines(string_view eol) const {
+	std::ostringstream sdp;
+	sdp << Entry::generateSdpLines(eol);
+
+	if (mSctpPort)
+		sdp << "a=sctp-port:" << *mSctpPort << eol;
+
+	if (mMaxMessageSize)
+		sdp << "a=max-message-size:" << *mMaxMessageSize << eol;
+
+	return sdp.str();
+}
+
+void Description::Application::parseSdpLine(string_view line) {
+	if (match_prefix(line, "a=")) {
+		string_view attr = line.substr(2);
+		auto [key, value] = parse_pair(attr);
+
+		if (key == "sctp-port") {
+			mSctpPort = to_integer<uint16_t>(value);
+		} else if (key == "max-message-size") {
+			mMaxMessageSize = to_integer<size_t>(value);
+		} else {
+			Entry::parseSdpLine(line);
+		}
+	} else {
+		Entry::parseSdpLine(line);
+	}
+}
+
+Description::Media::Media(const string &sdp) : Entry(sdp, "", Direction::Unknown) {
+	std::istringstream ss(sdp);
+	string line;
+	while (std::getline(ss, line) || !line.empty()) {
+		trim_end(line);
+		parseSdpLine(line);
+	}
+
+	if (mid().empty())
+		throw std::invalid_argument("Missing mid in media SDP");
+}
+
+Description::Media::Media(const string &mline, string mid, Direction dir)
+    : Entry(mline, std::move(mid), dir) {
+}
+
+string Description::Media::description() const {
+	std::ostringstream desc;
+	desc << Entry::description();
+	for (auto it = mRtpMap.begin(); it != mRtpMap.end(); ++it)
+		desc << ' ' << it->first;
+
+	return desc.str();
+}
+
+Description::Media Description::Media::reciprocate() const {
+	Media reciprocated(*this);
+
+	// Invert direction
+	switch (direction()) {
+	case Direction::RecvOnly:
+		reciprocated.setDirection(Direction::SendOnly);
+		break;
+	case Direction::SendOnly:
+		reciprocated.setDirection(Direction::RecvOnly);
+		break;
+	default:
+		// We are good
+		break;
+	}
+
+	return reciprocated;
+}
+
+Description::Media::RTPMap &Description::Media::getFormat(int fmt) {
+	auto it = mRtpMap.find(fmt);
+	if (it != mRtpMap.end())
+		return it->second;
+
+	throw std::invalid_argument("m-line index is out of bounds");
+}
+
+Description::Media::RTPMap &Description::Media::getFormat(const string &fmt) {
+	for (auto it = mRtpMap.begin(); it != mRtpMap.end(); ++it)
+		if (it->second.format == fmt)
+			return it->second;
+
+	throw std::invalid_argument("format was not found");
+}
+
+void Description::Media::removeFormat(const string &fmt) {
+	auto it = mRtpMap.begin();
+	std::vector<int> remed;
+
+	// Remove the actual formats
+	while (it != mRtpMap.end()) {
+		if (it->second.format == fmt) {
+			remed.emplace_back(it->first);
+			it = mRtpMap.erase(it);
+		} else {
+			it++;
+		}
+	}
+
+	// Remove any other rtpmaps that depend on the formats we just removed
+	it = mRtpMap.begin();
+	while (it != mRtpMap.end()) {
+		auto it2 = it->second.fmtps.begin();
+		bool rem = false;
+		while (it2 != it->second.fmtps.end()) {
+			if (it2->find("apt=") == 0) {
+				for (auto remid : remed) {
+					if (it2->find(std::to_string(remid)) != string::npos) {
+						std::cout << *it2 << ' ' << remid << std::endl;
+						it = mRtpMap.erase(it);
+						rem = true;
+						break;
+					}
+				}
+				break;
+			}
+			it2++;
+		}
+		if (!rem)
+			it++;
+	}
+}
+
+void Description::Media::addVideoCodec(int payloadType, const string &codec) {
+	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/90000");
+	map.addFB("nack");
+	map.addFB("goog-remb");
+	if (codec == "H264") {
+		// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
+		// https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
+		// TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
+		map.fmtps.emplace_back("profile-level-id=42E02A;level-asymmetry-allowed=1");
+	}
+	mRtpMap.emplace(map.pt, map);
+}
+
+void Description::Media::addH264Codec(int pt) { addVideoCodec(pt, "H264"); }
+
+void Description::Media::addVP8Codec(int payloadType) { addVideoCodec(payloadType, "VP8"); }
+
+void Description::Media::addVP9Codec(int payloadType) { addVideoCodec(payloadType, "VP9"); }
+
+void Description::Media::setBitrate(int bitrate) { mBas = bitrate; }
+
+int Description::Media::getBitrate() const { return mBas; }
+
+bool Description::Media::hasPayloadType(int payloadType) const {
+	return mRtpMap.find(payloadType) != mRtpMap.end();
+}
+
+string Description::Media::generateSdpLines(string_view eol) const {
+	std::ostringstream sdp;
+	if (mBas >= 0)
+		sdp << "b=AS:" << mBas << eol;
+
+	sdp << Entry::generateSdpLines(eol);
+	sdp << "a=rtcp-mux" << eol;
+
+	for (auto it = mRtpMap.begin(); it != mRtpMap.end(); ++it) {
+		auto &map = it->second;
+
+		// Create the a=rtpmap
+		sdp << "a=rtpmap:" << map.pt << ' ' << map.format << '/' << map.clockRate;
+		if (!map.encParams.empty())
+			sdp << '/' << map.encParams;
+		sdp << eol;
+
+		for (const auto &val : map.rtcpFbs)
+			sdp << "a=rtcp-fb:" << map.pt << ' ' << val << eol;
+		for (const auto &val : map.fmtps)
+			sdp << "a=fmtp:" << map.pt << ' ' << val << eol;
+	}
+
+	return sdp.str();
+}
+
+void Description::Media::parseSdpLine(string_view line) {
+	if (match_prefix(line, "a=")) {
+		string_view attr = line.substr(2);
+		auto [key, value] = parse_pair(attr);
+
+		if (key == "rtpmap") {
+			Description::Media::RTPMap map(value);
+			int pt = map.pt;
+			mRtpMap.emplace(pt, std::move(map));
+		} else if (key == "rtcp-fb") {
+			size_t p = value.find(' ');
+			int pt = to_integer<int>(value.substr(0, p));
+			auto it = mRtpMap.find(pt);
+			if (it == mRtpMap.end()) {
+				PLOG_WARNING << "rtcp-fb applied before the corresponding rtpmap, ignoring";
+			} else {
+				it->second.rtcpFbs.emplace_back(value.substr(p + 1));
+			}
+		} else if (key == "fmtp") {
+			size_t p = value.find(' ');
+			int pt = to_integer<int>(value.substr(0, p));
+			auto it = mRtpMap.find(pt);
+			if (it == mRtpMap.end()) {
+				PLOG_WARNING << "fmtp applied before the corresponding rtpmap, ignoring";
+			} else {
+				it->second.fmtps.emplace_back(value.substr(p + 1));
+			}
+		} else if (key == "rtcp-mux") {
+			// always added
+		} else {
+			Entry::parseSdpLine(line);
+		}
+	} else if (match_prefix(line, "b=AS")) {
+		mBas = to_integer<int>(line.substr(line.find(':') + 1));
+	} else {
+		Entry::parseSdpLine(line);
+	}
+}
+
+Description::Media::RTPMap::RTPMap(string_view mline) {
+	size_t p = mline.find(' ');
+
+	this->pt = to_integer<int>(mline.substr(0, p));
+
+	string_view line = mline.substr(p + 1);
+	size_t spl = line.find('/');
+	this->format = line.substr(0, spl);
+
+	line = line.substr(spl + 1);
+	spl = line.find('/');
+	if (spl == string::npos) {
+		spl = line.find(' ');
+	}
+	if (spl == string::npos)
+		this->clockRate = to_integer<int>(line);
+	else {
+		this->clockRate = to_integer<int>(line.substr(0, spl));
+		this->encParams = line.substr(spl);
+	}
+}
+
+void Description::Media::RTPMap::removeFB(const string &str) {
+	auto it = rtcpFbs.begin();
+	while (it != rtcpFbs.end()) {
+		if (it->find(str) != std::string::npos) {
+			it = rtcpFbs.erase(it);
+		} else
+			it++;
+	}
+}
+
+void Description::Media::RTPMap::addFB(const string &str) { rtcpFbs.emplace_back(str); }
+
+Description::Audio::Audio(string mid, Direction dir)
+    : Media("audio 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
+
+Description::Video::Video(string mid, Direction dir)
+    : Media("video 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
 
 Description::Type Description::stringToType(const string &typeString) {
 	if (typeString == "offer")
@@ -324,4 +752,3 @@ string Description::roleToString(Role role) {
 std::ostream &operator<<(std::ostream &out, const rtc::Description &description) {
 	return out << std::string(description);
 }
-

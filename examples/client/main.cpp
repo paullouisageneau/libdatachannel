@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 
 	ws->onError([](const string &error) { cout << "WebSocket failed: " << error << endl; });
 
-	ws->onMessage([&](const variant<binary, string> &data) {
+	ws->onMessage([&](variant<binary, string> data) {
 		if (!holds_alternative<string>(data))
 			return;
 
@@ -166,7 +166,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 	pc->onGatheringStateChange(
 	    [](PeerConnection::GatheringState state) { cout << "Gathering State: " << state << endl; });
 
-	pc->onLocalDescription([wws, id](const Description &description) {
+	pc->onLocalDescription([wws, id](Description description) {
 		json message = {
 		    {"id", id}, {"type", description.typeString()}, {"description", string(description)}};
 
@@ -174,7 +174,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 			ws->send(message.dump());
 	});
 
-	pc->onLocalCandidate([wws, id](const Candidate &candidate) {
+	pc->onLocalCandidate([wws, id](Candidate candidate) {
 		json message = {{"id", id},
 		                {"type", "candidate"},
 		                {"candidate", string(candidate)},

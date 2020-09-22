@@ -72,8 +72,6 @@ struct CloseMessage {
 };
 #pragma pack(pop)
 
-const size_t RECV_QUEUE_LIMIT = 1024 * 1024; // 1 MiB
-
 DataChannel::DataChannel(weak_ptr<PeerConnection> pc, unsigned int stream, string label,
                          string protocol, Reliability reliability)
     : mPeerConnection(pc), mStream(stream), mLabel(std::move(label)),
@@ -117,39 +115,21 @@ void DataChannel::remoteClose() {
 	mSctpTransport.reset();
 }
 
-bool DataChannel::send(const std::variant<binary, string> &data) {
-	return std::visit(
-	    [&](const auto &d) {
-		    using T = std::decay_t<decltype(d)>;
-		    constexpr auto type = std::is_same_v<T, string> ? Message::String : Message::Binary;
-		    auto *b = reinterpret_cast<const byte *>(d.data());
-		    return outgoing(std::make_shared<Message>(b, b + d.size(), type));
-	    },
-	    data);
-}
+bool DataChannel::send(message_variant data) { return outgoing(make_message(std::move(data))); }
 
 bool DataChannel::send(const byte *data, size_t size) {
 	return outgoing(std::make_shared<Message>(data, data + size, Message::Binary));
 }
 
-std::optional<std::variant<binary, string>> DataChannel::receive() {
+std::optional<message_variant> DataChannel::receive() {
 	while (!mRecvQueue.empty()) {
 		auto message = *mRecvQueue.pop();
-		switch (message->type) {
-		case Message::Control: {
+		if (message->type == Message::Control) {
 			auto raw = reinterpret_cast<const uint8_t *>(message->data());
-			if (raw[0] == MESSAGE_CLOSE)
+			if (!message->empty() && raw[0] == MESSAGE_CLOSE)
 				remoteClose();
-			break;
-		}
-		case Message::String:
-			return std::make_optional(
-			    string(reinterpret_cast<const char *>(message->data()), message->size()));
-		case Message::Binary:
-			return std::make_optional(std::move(*message));
-		default:
-			// Ignore
-			break;
+		} else {
+			return to_variant(std::move(*message));
 		}
 	}
 
@@ -164,8 +144,9 @@ size_t DataChannel::maxMessageSize() const {
 	size_t remoteMax = DEFAULT_MAX_MESSAGE_SIZE;
 	if (auto pc = mPeerConnection.lock())
 		if (auto description = pc->remoteDescription())
-			if (auto maxMessageSize = description->maxMessageSize())
-				remoteMax = *maxMessageSize > 0 ? *maxMessageSize : LOCAL_MAX_MESSAGE_SIZE;
+			if (auto *application = description->application())
+				if (auto maxMessageSize = application->maxMessageSize())
+					remoteMax = *maxMessageSize > 0 ? *maxMessageSize : LOCAL_MAX_MESSAGE_SIZE;
 
 	return std::min(remoteMax, LOCAL_MAX_MESSAGE_SIZE);
 }
@@ -223,7 +204,7 @@ bool DataChannel::outgoing(message_ptr message) {
 
 	auto transport = mSctpTransport.lock();
 	if (!transport)
-		throw std::runtime_error("DataChannel has no transport");
+		throw std::runtime_error("DataChannel transport is not open");
 
 	// Before the ACK has been received on a DataChannel, all messages must be sent ordered
 	message->reliability = mIsOpen ? mReliability : nullptr;

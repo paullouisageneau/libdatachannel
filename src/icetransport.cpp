@@ -123,9 +123,10 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 void IceTransport::setRemoteDescription(const Description &description) {
 	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 	                                                        : Description::Role::Active;
-	mMid = description.dataMid();
-	if (juice_set_remote_description(mAgent.get(), string(description).c_str()) < 0)
-		throw std::runtime_error("Failed to parse remote SDP");
+	mMid = description.bundleMid();
+	if (juice_set_remote_description(mAgent.get(),
+	                                 description.generateApplicationSdp("\r\n").c_str()) < 0)
+		throw std::runtime_error("Failed to parse ICE settings from remote SDP");
 }
 
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
@@ -483,12 +484,13 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 void IceTransport::setRemoteDescription(const Description &description) {
 	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 	                                                        : Description::Role::Active;
-	mMid = description.dataMid();
+	mMid = description.bundleMid();
 	mTrickleTimeout = !description.ended() ? 30s : 0s;
 
 	// Warning: libnice expects "\n" as end of line
-	if (nice_agent_parse_remote_sdp(mNiceAgent.get(), description.generateSdp("\n").c_str()) < 0)
-		throw std::runtime_error("Failed to parse remote SDP");
+	if (nice_agent_parse_remote_sdp(mNiceAgent.get(),
+	                                description.generateApplicationSdp("\n").c_str()) < 0)
+		throw std::runtime_error("Failed to parse ICE settings from remote SDP");
 }
 
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
