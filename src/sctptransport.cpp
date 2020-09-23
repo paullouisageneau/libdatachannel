@@ -702,8 +702,9 @@ std::optional<milliseconds> SctpTransport::rtt() {
 }
 
 int SctpTransport::RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data,
-                                size_t len, struct sctp_rcvinfo recv_info, int flags, void *ptr) {
-	auto *transport = static_cast<SctpTransport *>(ptr);
+                                size_t len, struct sctp_rcvinfo recv_info, int flags,
+                                void *ulp_info) {
+	auto *transport = static_cast<SctpTransport *>(ulp_info);
 
 	std::shared_lock lock(InstancesMutex);
 	if (Instances.find(transport) == Instances.end()) {
@@ -717,7 +718,7 @@ int SctpTransport::RecvCallback(struct socket *sock, union sctp_sockstore addr, 
 	return ret;
 }
 
-int SctpTransport::SendCallback(struct socket *sock, uint32_t sb_free) {
+int SctpTransport::SendCallback(struct socket *sock, uint32_t sb_free, void *ulp_info) {
 	struct sctp_paddrinfo paddrinfo = {};
 	socklen_t len = sizeof(paddrinfo);
 	if (usrsctp_getsockopt(sock, IPPROTO_SCTP, SCTP_GET_PEER_ADDR_INFO, &paddrinfo, &len))
