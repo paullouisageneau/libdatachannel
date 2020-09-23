@@ -47,6 +47,8 @@ public:
 	Role role() const;
 	string roleString() const;
 	string bundleMid() const;
+	string iceUfrag() const;
+	string icePwd() const;
 	std::optional<string> fingerprint() const;
 	bool ended() const;
 

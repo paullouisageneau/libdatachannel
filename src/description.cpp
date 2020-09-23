@@ -131,6 +131,12 @@ Description::Description(const string &sdp, Type type, Role role)
 			current->parseSdpLine(std::move(line));
 		}
 	};
+
+	if (mIceUfrag.empty())
+		throw std::invalid_argument("Missing ice-ufrag parameter in SDP description");
+
+	if (mIcePwd.empty())
+		throw std::invalid_argument("Missing ice-pwd parameter in SDP description");
 }
 
 Description::Type Description::type() const { return mType; }
@@ -145,6 +151,10 @@ string Description::bundleMid() const {
 	// Get the mid of the first media
 	return !mEntries.empty() ? mEntries[0]->mid() : "0";
 }
+
+string Description::iceUfrag() const { return mIceUfrag; }
+
+string Description::icePwd() const { return mIcePwd; }
 
 std::optional<string> Description::fingerprint() const { return mFingerprint; }
 
