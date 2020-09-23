@@ -162,7 +162,7 @@ private:
 	std::unordered_map<string, std::weak_ptr<Track>> mTracks;                   // by mid
 	std::shared_mutex mDataChannelsMutex, mTracksMutex;
 
-	std::unordered_map<unsigned int, string> mMidFromPayloadType; // cache
+	std::unordered_map<unsigned int, string> mMidFromSssrc; // cache
 
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;

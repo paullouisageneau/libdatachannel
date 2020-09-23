@@ -446,6 +446,14 @@ void Description::Media::addSSRC(uint32_t ssrc, std::string name) {
     mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + name);
 }
 
+bool Description::Media::hasSSRC(uint32_t ssrc) {
+    for (auto &val : mAttributes) {
+        if (val.find("ssrc:" + std::to_string(ssrc)) != std::string ::npos)
+            return true;
+    }
+    return false;
+}
+
 Description::Application::Application(string mid)
     : Entry("application 9 UDP/DTLS/SCTP", std::move(mid), Direction::SendRecv) {}
 
@@ -697,6 +705,8 @@ void Description::Media::parseSdpLine(string_view line) {
 void Description::Media::addRTPMap(const Description::Media::RTPMap& map) {
     mRtpMap.emplace(map.pt, map);
 }
+
+
 
 Description::Media::RTPMap::RTPMap(string_view mline) {
 	size_t p = mline.find(' ');
