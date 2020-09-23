@@ -82,11 +82,26 @@ std::optional<Description> PeerConnection::remoteDescription() const {
 	return mRemoteDescription;
 }
 
+bool PeerConnection::hasLocalDescription() const {
+	std::lock_guard lock(mLocalDescriptionMutex);
+	return bool(mLocalDescription);
+}
+
+bool PeerConnection::hasRemoteDescription() const {
+	std::lock_guard lock(mRemoteDescriptionMutex);
+	return bool(mRemoteDescription);
+}
+
+bool PeerConnection::hasMedia() const {
+	auto local = localDescription();
+	return local && local->hasAudioOrVideo();
+}
+
 void PeerConnection::setLocalDescription() {
 	PLOG_VERBOSE << "Setting local description";
 
 	if (std::atomic_load(&mIceTransport)) {
-		PLOG_DEBUG << "Local description is already set";
+		PLOG_DEBUG << "Local description is already set, ignoring";
 	}
 
 	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
@@ -100,6 +115,9 @@ void PeerConnection::setLocalDescription() {
 
 void PeerConnection::setRemoteDescription(Description description) {
 	PLOG_VERBOSE << "Setting remote description: " << string(description);
+
+	if (hasRemoteDescription())
+		throw std::logic_error("Remote description is already set");
 
 	if (description.mediaCount() == 0)
 		throw std::invalid_argument("Remote description has no media line");
@@ -120,9 +138,27 @@ void PeerConnection::setRemoteDescription(Description description) {
 	if (!description.fingerprint())
 		throw std::invalid_argument("Remote description has no fingerprint");
 
-	description.hintType(localDescription() ? Description::Type::Answer : Description::Type::Offer);
-	auto type = description.type();
-	auto remoteCandidates = description.extractCandidates(); // Candidates will be added at the end
+	description.hintType(hasLocalDescription() ? Description::Type::Answer
+	                                           : Description::Type::Offer);
+
+	if (description.type() == Description::Type::Offer) {
+		if (hasLocalDescription()) {
+			PLOG_ERROR << "Got a remote offer description while an answer was expected";
+			throw std::logic_error("Got an unexpected remote offer description");
+		}
+	} else { // Answer
+		if (auto local = localDescription()) {
+			if (description.iceUfrag() == local->iceUfrag() &&
+			    description.icePwd() == local->icePwd())
+				throw std::logic_error("Got the local description as remote description");
+		} else {
+			PLOG_ERROR << "Got a remote answer description while an offer was expected";
+			throw std::logic_error("Got an unexpected remote answer description");
+		}
+	}
+
+	// Candidates will be added at the end, extract them for now
+	auto remoteCandidates = description.extractCandidates();
 
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	if (!iceTransport)
@@ -130,11 +166,12 @@ void PeerConnection::setRemoteDescription(Description description) {
 	iceTransport->setRemoteDescription(description);
 
 	{
+		// Set as remote description
 		std::lock_guard lock(mRemoteDescriptionMutex);
 		mRemoteDescription.emplace(std::move(description));
 	}
 
-	if (type == Description::Type::Offer) {
+	if (description.type() == Description::Type::Offer) {
 		// This is an offer and we are the answerer.
 		Description localDescription = iceTransport->getLocalDescription(Description::Type::Answer);
 		processLocalDescription(localDescription);
@@ -161,7 +198,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 
 	for (const auto &candidate : remoteCandidates)
 		addRemoteCandidate(candidate);
-	}
+}
 
 void PeerConnection::addRemoteCandidate(Candidate candidate) {
 	PLOG_VERBOSE << "Adding remote candidate: " << string(candidate);
@@ -250,13 +287,8 @@ void PeerConnection::onGatheringStateChange(std::function<void(GatheringState st
 	mGatheringStateChangeCallback = callback;
 }
 
-bool PeerConnection::hasMedia() const {
-	auto local = localDescription();
-	return local && local->hasAudioOrVideo();
-}
-
 std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) {
-	if (localDescription())
+	if (hasLocalDescription())
 		throw std::logic_error("Tracks must be created before local description");
 
 	if (auto it = mTracks.find(description.mid()); it != mTracks.end())
@@ -699,6 +731,9 @@ void PeerConnection::openTracks() {
 void PeerConnection::processLocalDescription(Description description) {
 	int activeMediaCount = 0;
 
+	if (hasLocalDescription())
+		throw std::logic_error("Local description is already set");
+
 	if (auto remote = remoteDescription()) {
 		// Reciprocate remote description
 		for (int i = 0; i < remote->mediaCount(); ++i)
@@ -782,8 +817,11 @@ void PeerConnection::processLocalDescription(Description description) {
 	// Set local fingerprint (wait for certificate if necessary)
 	description.setFingerprint(mCertificate.get()->fingerprint());
 
-	std::lock_guard lock(mLocalDescriptionMutex);
-	mLocalDescription.emplace(std::move(description));
+	{
+		// Set as local description
+		std::lock_guard lock(mLocalDescriptionMutex);
+		mLocalDescription.emplace(std::move(description));
+	}
 
 	mProcessor->enqueue([this, description = *mLocalDescription]() {
 		PLOG_VERBOSE << "Issuing local description: " << description;
