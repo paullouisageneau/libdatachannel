@@ -91,11 +91,6 @@ bool Track::outgoing(message_ptr message) {
         PLOG_WARNING << "Track media direction does not allow reception, dropping";
     }
 
-	return sendControl(message);
-}
-
-bool Track::sendControl(message_ptr message) {
-
     if (mIsClosed)
         throw std::runtime_error("Track is closed");
 

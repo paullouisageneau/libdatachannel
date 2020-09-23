@@ -115,12 +115,16 @@ void RtcpReceivingSession::pushRR(unsigned int lastSR_delay) {
 
 bool RtcpReceivingSession::send(message_ptr msg) {
 	try {
-	    return track->sendControl(std::move(msg));
+	    outgoingCallback(std::move(msg));
+	    return true;
 	} catch (const std::exception &e) {
 		LOG_DEBUG << "RTCP tx failed: " << e.what();
 	}
 	return false;
 }
 
+void RtcpHandler::onOutgoing(const std::function<void(rtc::message_ptr)>& cb) {
+    this->outgoingCallback = synchronized_callback<rtc::message_ptr>(cb);
+}
 } // namespace rtc
 

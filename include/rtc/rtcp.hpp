@@ -30,30 +30,41 @@
 namespace rtc {
 
 class RtcpHandler {
+protected:
+    /**
+     * Use this callback when trying to send custom data (such as RTCP) to the client.
+     */
+    synchronized_callback<rtc::message_ptr> outgoingCallback;
 public:
     /**
-     * If there is traffic coming from the remote side
+     * Called when there is traffic coming from the peer
      * @param ptr
      * @return
      */
     virtual rtc::message_ptr incoming(rtc::message_ptr ptr) = 0;
 
     /**
-     * If there is traffic being sent to the remote side
+     * Called when there is traffic that needs to be sent to the peer
      * @param ptr
      * @return
      */
     virtual rtc::message_ptr outgoing(rtc::message_ptr ptr) = 0;
+
+
+    /**
+     * This callback is used to send traffic back to the peer.
+     * This callback skips calling the track's methods.
+     * @param cb
+     */
+    void onOutgoing(const std::function<void(rtc::message_ptr)>& cb);
+
 };
 
 class Track;
 
 // An RtcpSession can be plugged into a Track to handle the whole RTCP session
 class RtcpReceivingSession : public RtcpHandler {
-protected:
-    std::shared_ptr<Track> track;
 public:
-    RtcpReceivingSession(std::shared_ptr<Track> track): track(std::move(track)) {}
 
     rtc::message_ptr incoming(rtc::message_ptr ptr) override;
     rtc::message_ptr outgoing(rtc::message_ptr ptr) override;
