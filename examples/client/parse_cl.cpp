@@ -20,7 +20,7 @@
 #include <stdlib.h>
 
 #if defined(_WIN32) || defined(WIN32)
-#include "getopt.c"
+#include "getopt.h"
 #else
 #include <getopt.h>
 #endif

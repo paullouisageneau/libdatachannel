@@ -54,7 +54,7 @@ void confirmOnStdout(bool echoed, string id, string type, int length);
 string randomId(size_t length);
 
 int main(int argc, char **argv) {
-	Cmdline *params;
+	Cmdline *params = nullptr;
 	try {
 		params = new Cmdline(argc, argv);
 	} catch (const std::range_error&e) {
