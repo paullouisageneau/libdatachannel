@@ -603,9 +603,10 @@ void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 	addRTPMap(map);
 
 	// RTX Packets
-    RTPMap rtx(std::to_string(payloadType+1) + " RTP/90000");
+    RTPMap rtx(std::to_string(payloadType+1) + " RTX/90000");
     // TODO rtx-time is how long can a request be stashed for before needing to resend it. Needs to be parameterized
-    rtx.addFB("apt=" + std::to_string(payloadType) + ";rtx-time=3000");
+    rtx.addAttribute("apt=" + std::to_string(payloadType) + ";rtx-time=3000");
+    addRTPMap(rtx);
 }
 
 void Description::Audio::addAudioCodec(int payloadType, const string &codec) {

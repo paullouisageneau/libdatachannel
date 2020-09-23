@@ -578,7 +578,8 @@ void PeerConnection::forwardMedia(message_ptr message) {
 				mMidFromPayloadType.emplace(payloadType, *found);
 				mid = *found;
 				break;
-			}
+			}else
+                PLOG_WARNING << "Unknown payload type" << payloadType;
 		}
 	}
 

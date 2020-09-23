@@ -76,6 +76,7 @@ public:
 
 		virtual void parseSdpLine(string_view line);
 
+
 	protected:
 		Entry(const string &mline, string mid, Direction dir = Direction::Unknown);
 		virtual string generateSdpLines(string_view eol) const;
@@ -142,6 +143,10 @@ public:
 
             void removeFB(const string &string);
             void addFB(const string &string);
+            void addAttribute(std::string attr) {
+                fmtps.emplace_back(attr);
+            }
+
 
             int pt;
             string format;

@@ -59,12 +59,6 @@ rtc::message_ptr RtcpReceivingSession::incoming(rtc::message_ptr ptr) {
 
 		mSsrc = rtp->ssrc();
 
-		uint32_t seqNo = rtp->seqNumber();
-		// uint32_t rtpTS = rtp->getTS();
-
-		if (mGreatestSeqNo < seqNo)
-			mGreatestSeqNo = seqNo;
-
 		return ptr;
 	}
 
@@ -102,8 +96,8 @@ void RtcpReceivingSession::pushREMB(unsigned int bitrate) {
 	    rtc::make_message(RTCP_REMB::sizeWithSSRCs(1), rtc::Message::Type::Control);
 	auto remb = reinterpret_cast<RTCP_REMB *>(msg->data());
 	remb->preparePacket(mSsrc, 1, bitrate);
-	remb->setSSRC(0, mSsrc);
-	remb->log();
+	remb->setSsrc(0, mSsrc);
+	//remb->log();
 
     send(msg);
 }
