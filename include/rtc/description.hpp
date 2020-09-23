@@ -130,6 +130,7 @@ public:
         void removeFormat(const string &fmt);
 
         void addSSRC(uint32_t ssrc, std::string name);
+        bool hasSSRC(uint32_t ssrc);
 
 		void setBitrate(int bitrate);
 		int getBitrate() const;

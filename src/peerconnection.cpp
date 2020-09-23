@@ -544,47 +544,47 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	if (!message)
 		return;
 
-	if (message->type == Message::Type::Control) {
-		std::shared_lock lock(mTracksMutex); // read-only
-		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
-			if (auto track = it->second.lock())
-				return track->incoming(message);
+//	if (message->type == Message::Type::Control) {
+//		std::shared_lock lock(mTracksMutex); // read-only
+//		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
+//			if (auto track = it->second.lock())
+//				return track->incoming(message);
+//
+//		PLOG_WARNING << "No track available to receive control, dropping";
+//		return;
+//	}
 
-		PLOG_WARNING << "No track available to receive control, dropping";
-		return;
-	}
-
-	unsigned int payloadType = message->stream;
+	unsigned int ssrc = message->stream;
 	std::optional<string> mid;
-	if (auto it = mMidFromPayloadType.find(payloadType); it != mMidFromPayloadType.end()) {
+	if (auto it = mMidFromSssrc.find(ssrc); it != mMidFromSssrc.end()) {
 		mid = it->second;
 	} else {
 		std::lock_guard lock(mLocalDescriptionMutex);
 		if (!mLocalDescription)
 			return;
 
-		for (int i = 0; i < mLocalDescription->mediaCount(); ++i) {
+		for (int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
 			if (auto found = std::visit(
 			        rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
 				                        return std::nullopt;
 			                        },
 			                        [&](Description::Media *media) -> std::optional<string> {
-				                        return media->hasPayloadType(payloadType)
+				                        return media->hasSSRC(ssrc)
 				                                   ? std::make_optional(media->mid())
 				                                   : nullopt;
 			                        }},
-			        mLocalDescription->media(i))) {
+                    mRemoteDescription->media(i))) {
 
-				mMidFromPayloadType.emplace(payloadType, *found);
+				mMidFromSssrc.emplace(ssrc, *found);
 				mid = *found;
 				break;
 			}else
-                PLOG_WARNING << "Unknown payload type" << payloadType;
+                PLOG_WARNING << "Unknown SSRC " << ssrc;
 		}
 	}
 
 	if (!mid) {
-		PLOG_WARNING << "Track not found for payload type " << payloadType << ", dropping";
+		PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
 		return;
 	}
 

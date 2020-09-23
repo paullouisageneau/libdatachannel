@@ -183,7 +183,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 			}
 			PLOG_VERBOSE << "Unprotected SRTCP packet, size=" << size;
 			message->type = Message::Type::Control;
-			message->stream = to_integer<uint8_t>(*(message->begin() + 1)); // Payload Type
+            auto rtp = (RTCP_SR*) message->data();
+			message->stream = ntohl(rtp->senderSSRC);
 		} else {
 			PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
 			if (srtp_err_status_t err = srtp_unprotect(mSrtpIn, message->data(), &size)) {
@@ -197,7 +198,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 			}
 			PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
 			message->type = Message::Type::Binary;
-			message->stream = value2; // Payload Type
+			auto rtp = (RTP*) message->data();
+			message->stream = rtp->ssrc();
 		}
 
 		message->resize(size);
