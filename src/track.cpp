@@ -136,6 +136,18 @@ void Track::incoming(message_ptr message) {
 
 void Track::setRtcpHandler(std::shared_ptr<RtcpHandler> handler) {
 	mRtcpHandler = std::move(handler);
+	mRtcpHandler->onOutgoing([&](const rtc::message_ptr& message) {
+        #if RTC_ENABLE_MEDIA
+                auto transport = mDtlsSrtpTransport.lock();
+                if (!transport)
+                    throw std::runtime_error("Track transport is not open");
+
+                return transport->sendMedia(message);
+        #else
+                PLOG_WARNING << "Ignoring track send (not compiled with SRTP support)";
+            return false;
+        #endif
+	});
 }
 
 } // namespace rtc

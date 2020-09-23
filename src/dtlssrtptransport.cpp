@@ -90,6 +90,9 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	if (size < 8)
 		throw std::runtime_error("RTP/RTCP packet too short");
 
+//    return outgoing(message);
+//    return DtlsTransport::send(message);
+
 	// srtp_protect() and srtp_protect_rtcp() assume that they can write SRTP_MAX_TRAILER_LEN (for
 	// the authentication tag) into the location in memory immediately following the RTP packet.
 	message->resize(size + SRTP_MAX_TRAILER_LEN);

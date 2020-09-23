@@ -97,7 +97,7 @@ public:
 
         // Middle 32 bits of NTP Timestamp
         //		  this->lastReport = lastSR_NTP >> 16u;
-        setNTPOfSR(uint32_t(lastSR_NTP));
+        setNTPOfSR(uint64_t(lastSR_NTP));
         setDelaySinceSR(uint32_t(lastSR_DELAY));
 
         // The delay, expressed in units of 1/65536 seconds
@@ -142,7 +142,7 @@ public:
     inline uint32_t getDelaySinceSR() const { return ntohl(_delaySinceLastReport); }
 
     inline void log() const {
-        PLOG_DEBUG << "RTCP report block: "
+        PLOG_VERBOSE << "RTCP report block: "
                    << "ssrc="
                    << ntohl(ssrc)
                    // TODO: Implement these reports
@@ -168,7 +168,7 @@ public:
     inline uint16_t length() const { return ntohs(_length); }
 
     inline void setPayloadType(uint8_t type) { _payloadType = type; }
-    inline void setReportCount(uint8_t count) { _first = (_first & 0b11100000) | (count & 0b00011111); }
+    inline void setReportCount(uint8_t count) { _first = (_first & 0b11100000u) | (count & 0b00011111u); }
     inline void setLength(uint16_t length) { _length = htons(length); }
 
     inline void prepareHeader(uint8_t payloadType, uint8_t reportCount, uint16_t length) {
@@ -179,7 +179,7 @@ public:
     }
 
     inline void log() const {
-        PLOG_DEBUG << "RTCP header: "
+        PLOG_VERBOSE << "RTCP header: "
                    << "version=" << unsigned(version()) << ", padding=" << padding()
                    << ", reportCount=" << unsigned(reportCount())
                    << ", payloadType=" << unsigned(payloadType()) << ", length=" << length();
@@ -209,7 +209,7 @@ struct RTCP_FB_HEADER {
 
     void log() {
         header.log();
-        PLOG_DEBUG << "FB: " << " packet sender: " << getPacketSenderSSRC() << " media source: " << getMediaSourceSSRC();
+        PLOG_VERBOSE << "FB: " << " packet sender: " << getPacketSenderSSRC() << " media source: " << getMediaSourceSSRC();
     }
 };
 
@@ -251,7 +251,7 @@ public:
 
     inline void log() const {
         header.log();
-        PLOG_DEBUG << "RTCP SR: "
+        PLOG_VERBOSE << "RTCP SR: "
                    << " SSRC=" << ntohl(senderSSRC) << ", NTP_TS=" << ntpTimestamp()
                    << ", RTP_TS=" << rtpTimestamp() << ", packetCount=" << packetCount()
                    << ", octetCount=" << octetCount();
@@ -294,7 +294,7 @@ public:
 
     inline void log() const {
         header.log();
-        PLOG_DEBUG << "RTCP RR: "
+        PLOG_VERBOSE << "RTCP RR: "
                    << " SSRC=" << ntohl(senderSSRC);
 
         for (unsigned i = 0; i < unsigned(header.reportCount()); i++) {
