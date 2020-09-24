@@ -49,7 +49,7 @@ namespace rtc {
 
 Candidate::Candidate(string candidate, string mid) : mIsResolved(false) {
 	const std::array prefixes{"a=", "candidate:"};
-	for (string prefix : prefixes)
+	for (const string &prefix : prefixes)
 		if (hasprefix(candidate, prefix))
 			candidate.erase(0, prefix.size());
 
