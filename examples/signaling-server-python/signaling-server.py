@@ -63,8 +63,11 @@ async def handle_websocket(websocket, path):
             print('Client {} disconnected'.format(client_id))
 
 if __name__ == '__main__':
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+    # Usage: ./server.py [[host:]port] [SSL certificate file]
+    endpoint_or_port = sys.argv[1] if len(sys.argv) > 1 else "8000"
     ssl_cert = sys.argv[2] if len(sys.argv) > 2 else None
+
+    endpoint = endpoint_or_port if ':' in endpoint_or_port else "127.0.0.1:" + endpoint_or_port
 
     if ssl_cert:
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -72,7 +75,8 @@ if __name__ == '__main__':
     else:
         ssl_context = None
 
-    print('Listening on port {}'.format(port))
-    start_server = websockets.serve(handle_websocket, '127.0.0.1', port, ssl=ssl_context)
+    print('Listening on {}'.format(endpoint))
+    host, port = endpoint.rsplit(':', 1)
+    start_server = websockets.serve(handle_websocket, host, int(port), ssl=ssl_context)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()

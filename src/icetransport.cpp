@@ -58,8 +58,31 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	if (config.enableIceTcp) {
 		PLOG_WARNING << "ICE-TCP is not supported with libjuice";
 	}
+
+	juice_log_level_t level;
+	switch (plog::get()->getMaxSeverity()) {
+	case plog::none:
+		level = JUICE_LOG_LEVEL_NONE;
+		break;
+	case plog::fatal:
+		level = JUICE_LOG_LEVEL_VERBOSE;
+		break;
+	case plog::error:
+		level = JUICE_LOG_LEVEL_ERROR;
+		break;
+	case plog::warning:
+		level = JUICE_LOG_LEVEL_WARN;
+		break;
+	case plog::info:
+	case plog::debug: // juice debug is output as verbose
+		level = JUICE_LOG_LEVEL_INFO;
+		break;
+	default:
+		level = JUICE_LOG_LEVEL_VERBOSE;
+		break;
+	}
 	juice_set_log_handler(IceTransport::LogCallback);
-	juice_set_log_level(JUICE_LOG_LEVEL_VERBOSE);
+	juice_set_log_level(level);
 
 	juice_config_t jconfig = {};
 	jconfig.cb_state_changed = IceTransport::StateChangeCallback;

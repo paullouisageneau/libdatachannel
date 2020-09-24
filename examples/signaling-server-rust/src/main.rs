@@ -92,7 +92,9 @@ async fn handle(clients: ClientsMap, stream: TcpStream) {
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     let service = env::args().nth(1).unwrap_or("8000".to_string());
-    let endpoint = format!("127.0.0.1:{}", service);
+    let endpoint = if service.contains(':') { service } else { format!("127.0.0.1:{}", service) };
+
+	println!("Listening on {}", endpoint);
 
     let mut listener = TcpListener::bind(endpoint)
     	.await.expect("Listener binding failed");

@@ -271,7 +271,7 @@ void TcpTransport::close() {
 bool TcpTransport::trySendQueue() {
 	// mSockMutex must be locked
 	while (auto next = mSendQueue.peek()) {
-		auto message = *next;
+		message_ptr message = std::move(*next);
 		if (!trySendMessage(message)) {
 			mSendQueue.exchange(message);
 			return false;

@@ -79,13 +79,15 @@ Description::Description(const string &sdp, Type type, Role role)
 	std::uniform_int_distribution<uint32_t> uniform;
 	mSessionId = std::to_string(uniform(generator));
 
-	std::istringstream ss(sdp);
-	std::shared_ptr<Entry> current;
-
 	int index = -1;
-	string line;
-	while (std::getline(ss, line) || !line.empty()) {
+	std::shared_ptr<Entry> current;
+	std::istringstream ss(sdp);
+	while (ss) {
+		string line;
+		std::getline(ss, line);
 		trim_end(line);
+		if (line.empty())
+			continue;
 
 		// Media description line (aka m-line)
 		if (match_prefix(line, "m=")) {
@@ -130,7 +132,13 @@ Description::Description(const string &sdp, Type type, Role role)
 		} else if (current) {
 			current->parseSdpLine(std::move(line));
 		}
-	};
+	}
+
+	if (mIceUfrag.empty())
+		throw std::invalid_argument("Missing ice-ufrag parameter in SDP description");
+
+	if (mIcePwd.empty())
+		throw std::invalid_argument("Missing ice-pwd parameter in SDP description");
 }
 
 Description::Type Description::type() const { return mType; }
@@ -145,6 +153,10 @@ string Description::bundleMid() const {
 	// Get the mid of the first media
 	return !mEntries.empty() ? mEntries[0]->mid() : "0";
 }
+
+string Description::iceUfrag() const { return mIceUfrag; }
+
+string Description::icePwd() const { return mIcePwd; }
 
 std::optional<string> Description::fingerprint() const { return mFingerprint; }
 
@@ -488,9 +500,13 @@ void Description::Application::parseSdpLine(string_view line) {
 
 Description::Media::Media(const string &sdp) : Entry(sdp, "", Direction::Unknown) {
 	std::istringstream ss(sdp);
-	string line;
-	while (std::getline(ss, line) || !line.empty()) {
+	while (ss) {
+		string line;
+		std::getline(ss, line);
 		trim_end(line);
+		if (line.empty())
+			continue;
+
 		parseSdpLine(line);
 	}
 

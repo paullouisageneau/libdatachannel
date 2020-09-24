@@ -76,11 +76,13 @@ public:
 	const Configuration *config() const;
 	State state() const;
 	GatheringState gatheringState() const;
+	bool hasLocalDescription() const;
+	bool hasRemoteDescription() const;
+	bool hasMedia() const;
 	std::optional<Description> localDescription() const;
 	std::optional<Description> remoteDescription() const;
 	std::optional<string> localAddress() const;
 	std::optional<string> remoteAddress() const;
-	bool hasMedia() const;
 
 	void setLocalDescription();
 	void setRemoteDescription(Description description);
