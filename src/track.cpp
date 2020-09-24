@@ -45,8 +45,8 @@ bool Track::send(const byte *data, size_t size) {
 }
 
 std::optional<message_variant> Track::receive() {
-	if (!mRecvQueue.empty())
-		return to_variant(std::move(**mRecvQueue.pop()));
+	if (auto next = mRecvQueue.tryPop())
+		return to_variant(std::move(**next));
 
 	return nullopt;
 }
