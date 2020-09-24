@@ -122,8 +122,8 @@ bool DataChannel::send(const byte *data, size_t size) {
 }
 
 std::optional<message_variant> DataChannel::receive() {
-	while (!mRecvQueue.empty()) {
-		auto message = *mRecvQueue.pop();
+	while (auto next = mRecvQueue.tryPop()) {
+		message_ptr message = std::move(*next);
 		if (message->type == Message::Control) {
 			auto raw = reinterpret_cast<const uint8_t *>(message->data());
 			if (!message->empty() && raw[0] == MESSAGE_CLOSE)

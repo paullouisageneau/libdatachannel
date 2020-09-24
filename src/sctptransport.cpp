@@ -322,7 +322,7 @@ void SctpTransport::incoming(message_ptr message) {
 bool SctpTransport::trySendQueue() {
 	// Requires mSendMutex to be locked
 	while (auto next = mSendQueue.peek()) {
-		auto message = *next;
+		message_ptr message = std::move(*next);
 		if (!trySendMessage(message))
 			return false;
 		mSendQueue.pop();
