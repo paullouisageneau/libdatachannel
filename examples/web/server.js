@@ -98,8 +98,10 @@ wsServer.on('request', (req) => {
   clients[id] = conn;
 });
 
-const hostname = '127.0.0.1';
-const port = 8000;
+const endpoint = process.env.PORT || '8000';
+const splitted = endpoint.split(':');
+const port = splitted.pop();
+const hostname = splitted.join(':') || '127.0.0.1';
 
 httpServer.listen(port, hostname, () => {
   console.log(`Server listening on ${hostname}:${port}`);
