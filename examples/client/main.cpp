@@ -66,12 +66,16 @@ int main(int argc, char **argv) {
 
 	Configuration config;
 	string stunServer = "";
-	if (params->stunServer().substr(0,5).compare("stun:") != 0) {
-		stunServer = "stun:";
+	if (params->noStun()) {
+		cout << "No stun server is configured.  Only local hosts and public IP addresses suported." << endl;
+	} else {
+		if (params->stunServer().substr(0,5).compare("stun:") != 0) {
+			stunServer = "stun:";
+		}
+		stunServer += params->stunServer() + ":" + to_string(params->stunPort());
+		cout << "Stun server is " << stunServer << endl;
+		config.iceServers.emplace_back(stunServer);
 	}
-	stunServer += params->stunServer() + ":" + to_string(params->stunPort());
-	cout << "Stun server is " << stunServer << endl;
-	config.iceServers.emplace_back(stunServer);
 
 	localId = randomId(4);
 	cout << "The local ID is: " << localId << endl;

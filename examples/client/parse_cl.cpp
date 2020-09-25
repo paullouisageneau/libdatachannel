@@ -43,6 +43,8 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
 
   static struct option long_options[] =
   {
+    {"echo", no_argument, NULL, 'e'},
+    {"noStun", no_argument, NULL, 'n'},
     {"stunServer", required_argument, NULL, 's'},
     {"stunPort", required_argument, NULL, 't'},
     {"webSocketServer", required_argument, NULL, 'w'},
@@ -55,19 +57,28 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
   _program_name += argv[0];
 
   /* default values */
+  _e = false;
+  _n = false;
   _s = "stun.l.google.com";
   _t = 19302;
   _w = "localhost";
   _x = 8000;
-  _e = false;
   _h = false;
   _v = false;
 
   optind = 0;
-  while ((c = getopt_long (argc, argv, "s:t:w:x:ehv", long_options, &optind)) != - 1)
+  while ((c = getopt_long (argc, argv, "s:t:w:x:enhv", long_options, &optind)) != - 1)
     {
       switch (c)
         {
+        case 'e': 
+          _e = true;
+          break;
+
+        case 'n': 
+          _n = true;
+          break;
+
         case 's': 
           _s = optarg;
           break;
@@ -108,10 +119,6 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
             }
           break;
 
-        case 'e': 
-          _e = true;
-          break;
-
         case 'h': 
           _h = true;
           this->usage (EXIT_SUCCESS);
@@ -146,10 +153,12 @@ void Cmdline::usage (int status)
   else
     {
       std::cout << "\
-usage: " << _program_name << " [ -estwxhv ] \n\
+usage: " << _program_name << " [ -enstwxhv ] \n\
 libdatachannel client implementing WebRTC Data Channels with WebSocket signaling\n\
    [ -e ] [ --echo ] (type=FLAG)\n\
           Echo data channel messages back to sender rather than putting to stdout.\n\
+   [ -n ] [ --noStun ] (type=FLAG)\n\
+          Do NOT use a stun server (overrides -s and -t).\n\
    [ -s ] [ --stunServer ] (type=STRING, default=stun.l.google.com)\n\
           Stun server URL or IP address.\n\
    [ -t ] [ --stunPort ] (type=INTEGER, range=0...65535, default=19302)\n\
