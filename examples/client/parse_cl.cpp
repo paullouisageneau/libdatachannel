@@ -20,7 +20,6 @@
 #include <stdlib.h>
 
 #if defined(_WIN32) || defined(WIN32)
-#define STATIC_GETOPT
 #include "getopt.h"
 #else
 #include <getopt.h>

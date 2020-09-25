@@ -5,6 +5,7 @@ endif()
 
 if(WIN32)
 add_executable(datachannel-client main.cpp parse_cl.cpp parse_cl.h getopt.cpp getopt.h)
+target_compile_definitions(datachannel-client PUBLIC STATIC_GETOPT)
 else()
 add_executable(datachannel-client main.cpp parse_cl.cpp parse_cl.h)
 endif()
