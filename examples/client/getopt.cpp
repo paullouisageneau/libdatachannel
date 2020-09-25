@@ -84,7 +84,7 @@ static void exchange_a(char **argv, struct _getopt_data_a *d)
 		if (top - middle > middle - bottom)
 		{
 			int len = middle - bottom;
-			register int i;
+			int i;
 			for (i = 0; i < len; i++)
 			{
 				tem = argv[bottom + i];
@@ -96,7 +96,7 @@ static void exchange_a(char **argv, struct _getopt_data_a *d)
 		else
 		{
 			int len = top - middle;
-			register int i;
+			int i;
 			for (i = 0; i < len; i++)
 			{
 				tem = argv[bottom + i];
@@ -544,7 +544,7 @@ static void exchange_w(wchar_t **argv, struct _getopt_data_w *d)
 		if (top - middle > middle - bottom)
 		{
 			int len = middle - bottom;
-			register int i;
+			int i;
 			for (i = 0; i < len; i++)
 			{
 				tem = argv[bottom + i];
@@ -556,7 +556,7 @@ static void exchange_w(wchar_t **argv, struct _getopt_data_w *d)
 		else
 		{
 			int len = top - middle;
-			register int i;
+			int i;
 			for (i = 0; i < len; i++)
 			{
 				tem = argv[bottom + i];
