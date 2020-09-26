@@ -476,8 +476,6 @@ int SctpTransport::handleRecv(struct socket * /*sock*/, union sctp_sockstore /*a
                               const byte *data, size_t len, struct sctp_rcvinfo info, int flags) {
 	try {
 		PLOG_VERBOSE << "Handle recv, len=" << len;
-		if (!len)
-			return 0; // Ignore
 
 		// SCTP_FRAGMENT_INTERLEAVE does not seem to work as expected for messages > 64KB,
 		// therefore partial notifications and messages need to be handled separately.
@@ -497,7 +495,7 @@ int SctpTransport::handleRecv(struct socket * /*sock*/, union sctp_sockstore /*a
 			if (flags & MSG_EOR) {
 				// Message is complete, process it
 				processData(std::move(mPartialMessage), info.rcv_sid,
-				            PayloadId(htonl(info.rcv_ppid)));
+				            PayloadId(ntohl(info.rcv_ppid)));
 				mPartialMessage.clear();
 			}
 		}
