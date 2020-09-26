@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
 project(libdatachannel
 	DESCRIPTION "WebRTC Data Channels Library"
-	VERSION 0.9.1
+	VERSION 0.9.2
 	LANGUAGES CXX)
 
 # Options
