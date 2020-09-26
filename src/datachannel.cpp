@@ -218,6 +218,8 @@ void DataChannel::incoming(message_ptr message) {
 
 	switch (message->type) {
 	case Message::Control: {
+		if (message->size() == 0)
+			break; // Ignore
 		auto raw = reinterpret_cast<const uint8_t *>(message->data());
 		switch (raw[0]) {
 		case MESSAGE_OPEN:
