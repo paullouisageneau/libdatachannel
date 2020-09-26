@@ -133,6 +133,11 @@ bool WebSocket::outgoing(message_ptr message) {
 }
 
 void WebSocket::incoming(message_ptr message) {
+	if (!message) {
+		remoteClose();
+		return;
+	}
+
 	if (message->type == Message::String || message->type == Message::Binary) {
 		mRecvQueue.push(message);
 		triggerAvailable(mRecvQueue.size());
