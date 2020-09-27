@@ -38,6 +38,7 @@ public:
 	~Queue();
 
 	void stop();
+	bool running() const;
 	bool empty() const;
 	bool full() const;
 	size_t size() const;   // elements
@@ -78,6 +79,11 @@ template <typename T> void Queue<T>::stop() {
 	mStopping = true;
 	mPopCondition.notify_all();
 	mPushCondition.notify_all();
+}
+
+template <typename T> bool Queue<T>::running() const {
+	std::lock_guard lock(mMutex);
+	return !mQueue.empty() || !mStopping;
 }
 
 template <typename T> bool Queue<T>::empty() const {
