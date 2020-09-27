@@ -102,6 +102,7 @@ void PeerConnection::setLocalDescription() {
 
 	if (std::atomic_load(&mIceTransport)) {
 		PLOG_DEBUG << "Local description is already set, ignoring";
+		return;
 	}
 
 	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
