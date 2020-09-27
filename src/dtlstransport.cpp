@@ -435,7 +435,7 @@ void DtlsTransport::runRecvLoop() {
 
 		const size_t bufferSize = maxMtu;
 		byte buffer[bufferSize];
-		while (true) {
+		while (mIncomingQueue.running()) {
 			// Process pending messages
 			while (auto next = mIncomingQueue.tryPop()) {
 				message_ptr message = std::move(*next);
@@ -492,8 +492,7 @@ void DtlsTransport::runRecvLoop() {
 				}
 			}
 
-			if (!mIncomingQueue.wait(duration))
-				break; // queue is stopped
+			mIncomingQueue.wait(duration);
 		}
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "DTLS recv: " << e.what();
