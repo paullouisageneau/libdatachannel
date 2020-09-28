@@ -60,7 +60,8 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	}
 
 	juice_log_level_t level;
-	switch (plog::get()->getMaxSeverity()) {
+	auto logger = plog::get();
+	switch (logger ? logger->getMaxSeverity() : plog::none) {
 	case plog::none:
 		level = JUICE_LOG_LEVEL_NONE;
 		break;
