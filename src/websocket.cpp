@@ -51,31 +51,45 @@ WebSocket::~WebSocket() {
 WebSocket::State WebSocket::readyState() const { return mState; }
 
 void WebSocket::open(const string &url) {
+	PLOG_VERBOSE << "Opening WebSocket to URL: " << url;
+
 	if (mState != State::Closed)
-		throw std::runtime_error("WebSocket must be closed before opening");
+		throw std::logic_error("WebSocket must be closed before opening");
 
-	static const char *rs = R"(^(([^:\/?#]+):)?(//([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?)";
-	static std::regex regex(rs, std::regex::extended);
+	// Modified regex from RFC 3986, see https://tools.ietf.org/html/rfc3986#appendix-B
+	static const char *rs =
+	    R"(^(([^:.@/?#]+):)?(/{0,2}((([^:@]*)(:([^@]*))?)@)?(([^:/?#]*)(:([^/?#]*))?))?([^?#]*)(\?([^#]*))?(#(.*))?)";
 
-	std::smatch match;
-	if (!std::regex_match(url, match, regex))
-		throw std::invalid_argument("Malformed WebSocket URL: " + url);
+	static const std::regex r(rs, std::regex::extended);
 
-	mScheme = match[2];
-	if (mScheme != "ws" && mScheme != "wss")
+	std::smatch m;
+	if (!std::regex_match(url, m, r) || m[10].length() == 0)
+		throw std::invalid_argument("Invalid WebSocket URL: " + url);
+
+	mScheme = m[2];
+	if (mScheme.empty())
+		mScheme = "ws";
+	else if (mScheme != "ws" && mScheme != "wss")
 		throw std::invalid_argument("Invalid WebSocket scheme: " + mScheme);
 
-	mHost = match[4];
-	if (auto pos = mHost.find(':'); pos != string::npos) {
-		mHostname = mHost.substr(0, pos);
-		mService = mHost.substr(pos + 1);
-	} else {
-		mHostname = mHost;
+	mHostname = m[10];
+	mService = m[12];
+	if (mService.empty()) {
 		mService = mScheme == "ws" ? "80" : "443";
+		mHost = mHostname;
+	} else {
+		mHost = mHostname + ':' + mService;
 	}
 
-	mPath = match[5];
-	if (string query = match[7]; !query.empty())
+	while (!mHostname.empty() && mHostname.front() == '[')
+		mHostname.erase(mHostname.begin());
+	while (!mHostname.empty() && mHostname.back() == ']')
+		mHostname.pop_back();
+
+	mPath = m[13];
+	if (mPath.empty())
+		mPath += '/';
+	if (string query = m[15]; !query.empty())
 		mPath += "?" + query;
 
 	changeState(State::Connecting);
