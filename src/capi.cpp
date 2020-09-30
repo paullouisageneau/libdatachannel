@@ -230,12 +230,16 @@ private:
 
 void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
 	static std::optional<plog_appender> appender;
-	if (appender)
+	auto severity = static_cast<plog::Severity>(level);
+	if (appender) {
 		appender->set_callback(cb);
-	else if (cb)
+		InitLogger(severity, nullptr); // change the severity
+	} else if (cb) {
 		appender.emplace(plog_appender(cb));
-
-	InitLogger(static_cast<plog::Severity>(level), appender ? &appender.value() : nullptr);
+		InitLogger(severity, &appender.value());
+	} else {
+		InitLogger(severity, nullptr); // log to stdout
+	}
 }
 
 void rtcSetUserPointer(int i, void *ptr) { setUserPointer(i, ptr); }
