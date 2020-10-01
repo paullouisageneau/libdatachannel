@@ -200,7 +200,7 @@ public:
 	plog_appender(rtcLogCallbackFunc cb = nullptr) { set_callback(cb); }
 
 	void set_callback(rtcLogCallbackFunc cb) {
-		std::lock_guard lock(mutex);
+		std::lock_guard lock(callbackMutex);
 		callback = cb;
 	}
 
@@ -215,7 +215,7 @@ public:
 #else
 		std::string str = formatted;
 #endif
-		std::lock_guard lock(mutex);
+		std::lock_guard lock(callbackMutex);
 		if (callback)
 			callback(static_cast<rtcLogLevel>(record.getSeverity()), str.c_str());
 		else
@@ -224,6 +224,7 @@ public:
 
 private:
 	rtcLogCallbackFunc callback;
+	std::mutex callbackMutex;
 };
 
 } // namespace
@@ -231,6 +232,7 @@ private:
 void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
 	static std::optional<plog_appender> appender;
 	const auto severity = static_cast<plog::Severity>(level);
+	std::lock_guard lock(mutex);
 	if (appender) {
 		appender->set_callback(cb);
 		InitLogger(severity, nullptr); // change the severity
