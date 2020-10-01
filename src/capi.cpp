@@ -231,7 +231,6 @@ private:
 void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
 	static std::optional<plog_appender> appender;
 	const auto severity = static_cast<plog::Severity>(level);
-	std::lock_guard lock(mutex);
 	if (appender) {
 		appender->set_callback(cb);
 		InitLogger(severity, nullptr); // change the severity
