@@ -13,11 +13,6 @@ option(NO_TESTS "Disable tests build" OFF)
 option(WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
 
-message("CAPI_STDCALL: ${CAPI_STDCALL}")
-if(CAPI_STDCALL)
-	add_definitions(-DCAPI_STDCALL)
-endif()
-
 if(USE_NICE)
 	option(USE_JUICE "Use libjuice" OFF)
 else()
@@ -221,6 +216,11 @@ else()
 	target_compile_definitions(datachannel-static PRIVATE USE_NICE=0)
 	target_link_libraries(datachannel PRIVATE LibJuice::LibJuiceStatic)
 	target_link_libraries(datachannel-static PRIVATE LibJuice::LibJuiceStatic)
+endif()
+
+if(CAPI_STDCALL)
+	target_compile_definitions(datachannel PUBLIC CAPI_STDCALL)
+	target_compile_definitions(datachannel-static PUBLIC CAPI_STDCALL)
 endif()
 
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
