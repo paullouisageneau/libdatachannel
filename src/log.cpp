@@ -24,6 +24,8 @@
 #include "plog/Log.h"
 #include "plog/Logger.h"
 
+#include <mutex>
+
 namespace rtc {
 
 void InitLogger(LogLevel level) { InitLogger(static_cast<plog::Severity>(level)); }
@@ -31,6 +33,8 @@ void InitLogger(LogLevel level) { InitLogger(static_cast<plog::Severity>(level))
 void InitLogger(plog::Severity severity, plog::IAppender *appender) {
 	static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender;
 	static plog::Logger<0> *logger = nullptr;
+	static std::mutex mutex;
+	std::lock_guard lock(mutex);
 	if (!logger) {
 		logger = &plog::init(severity, appender ? appender : &consoleAppender);
 		PLOG_DEBUG << "Logger initialized";

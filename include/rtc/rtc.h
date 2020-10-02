@@ -102,7 +102,8 @@ typedef void (RTC_API *rtcBufferedAmountLowCallbackFunc)(void *ptr);
 typedef void (RTC_API *rtcAvailableCallbackFunc)(void *ptr);
 
 // Log
-RTC_EXPORT void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb); // NULL cb to log to stdout
+// NULL cb on the first call will log to stdout
+RTC_EXPORT void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb);
 
 // User pointer
 RTC_EXPORT void rtcSetUserPointer(int id, void *ptr);
