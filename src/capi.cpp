@@ -199,9 +199,9 @@ class plog_appender : public plog::IAppender {
 public:
 	plog_appender(rtcLogCallbackFunc cb = nullptr) { set_callback(cb); }
 
-	plog_appender(plog_appender &&appender) {
+	plog_appender(plog_appender &&appender) : callback(nullptr) {
 		std::lock_guard lock(appender.callbackMutex);
-		std::exchange(appender.callback, callback);
+		std::swap(appender.callback, callback);
 	}
 
 	void set_callback(rtcLogCallbackFunc cb) {
