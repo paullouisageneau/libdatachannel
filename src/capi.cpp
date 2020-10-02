@@ -195,16 +195,16 @@ template <typename F> int wrap(F func) {
 		return RTC_ERR_SUCCESS;                                                                    \
 	})
 
-class plog_appender : public plog::IAppender {
+class plogAppender : public plog::IAppender {
 public:
-	plog_appender(rtcLogCallbackFunc cb = nullptr) { set_callback(cb); }
+	plogAppender(rtcLogCallbackFunc cb = nullptr) { setCallback(cb); }
 
-	plog_appender(plog_appender &&appender) : callback(nullptr) {
+	plogAppender(plogAppender &&appender) : callback(nullptr) {
 		std::lock_guard lock(appender.callbackMutex);
 		std::swap(appender.callback, callback);
 	}
 
-	void set_callback(rtcLogCallbackFunc cb) {
+	void setCallback(rtcLogCallbackFunc cb) {
 		std::lock_guard lock(callbackMutex);
 		callback = cb;
 	}
@@ -235,14 +235,14 @@ private:
 } // namespace
 
 void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
-	static std::optional<plog_appender> appender;
+	static std::optional<plogAppender> appender;
 	const auto severity = static_cast<plog::Severity>(level);
 	std::lock_guard lock(mutex);
 	if (appender) {
-		appender->set_callback(cb);
+		appender->setCallback(cb);
 		InitLogger(severity, nullptr); // change the severity
 	} else if (cb) {
-		appender.emplace(plog_appender(cb));
+		appender.emplace(plogAppender(cb));
 		InitLogger(severity, &appender.value());
 	} else {
 		InitLogger(severity, nullptr); // log to stdout
