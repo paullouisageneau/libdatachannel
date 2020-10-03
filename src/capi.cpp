@@ -547,6 +547,8 @@ int rtcGetLocalDescriptionSdp(int pc, char *buffer, int size) {
 			buffer[size] = '\0';
 			return size + 1;
 		}
+
+		return RTC_ERR_FAILURE;
 	});
 }
 
