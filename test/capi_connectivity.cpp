@@ -29,6 +29,8 @@ static void sleep(unsigned int secs) { Sleep(secs * 1000); }
 #include <unistd.h> // for sleep
 #endif
 
+#define BUFFER_SIZE 4096
+
 typedef struct {
 	rtcState state;
 	rtcGatheringState gatheringState;
@@ -183,15 +185,55 @@ int test_capi_connectivity_main() {
 		goto error;
 	}
 
-	char buffer[256];
-	if (rtcGetLocalAddress(peer1->pc, buffer, 256) >= 0)
-		printf("Local address 1:  %s\n", buffer);
-	if (rtcGetRemoteAddress(peer1->pc, buffer, 256) >= 0)
-		printf("Remote address 1: %s\n", buffer);
-	if (rtcGetLocalAddress(peer2->pc, buffer, 256) >= 0)
-		printf("Local address 2:  %s\n", buffer);
-	if (rtcGetRemoteAddress(peer2->pc, buffer, 256) >= 0)
-		printf("Remote address 2: %s\n", buffer);
+	char buffer[BUFFER_SIZE];
+
+	if (rtcGetLocalDescription(peer1->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetLocalDescription failed\n");
+		goto error;
+	}
+	printf("Local description 1:  %s\n", buffer);
+
+	if (rtcGetRemoteDescription(peer1->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetRemoteDescription failed\n");
+		goto error;
+	}
+	printf("Remote description 1:  %s\n", buffer);
+
+	if (rtcGetLocalDescription(peer2->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetLocalDescription failed\n");
+		goto error;
+	}
+	printf("Local description 2:  %s\n", buffer);
+
+	if (rtcGetRemoteDescription(peer2->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetRemoteDescription failed\n");
+		goto error;
+	}
+	printf("Remote description 2:  %s\n", buffer);
+
+	if (rtcGetLocalAddress(peer1->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetLocalAddress failed\n");
+		goto error;
+	}
+	printf("Local address 1:  %s\n", buffer);
+
+	if (rtcGetRemoteAddress(peer1->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetRemoteAddress failed\n");
+		goto error;
+	}
+	printf("Remote address 1: %s\n", buffer);
+
+	if (rtcGetLocalAddress(peer2->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetLocalAddress failed\n");
+		goto error;
+	}
+	printf("Local address 2:  %s\n", buffer);
+
+	if (rtcGetRemoteAddress(peer2->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetRemoteAddress failed\n");
+		goto error;
+	}
+	printf("Remote address 2: %s\n", buffer);
 
 	deletePeer(peer1);
 	sleep(1);
