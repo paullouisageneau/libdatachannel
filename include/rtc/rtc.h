@@ -121,7 +121,8 @@ RTC_EXPORT int rtcSetLocalDescription(int pc);
 RTC_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 RTC_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
 
-RTC_EXPORT int rtcGetLocalDescriptionSdp(int pc, char *buffer, int size);
+RTC_EXPORT int rtcGetLocalDescription(int pc, char *buffer, int size);
+RTC_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);
 
 RTC_EXPORT int rtcGetLocalAddress(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
