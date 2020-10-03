@@ -552,6 +552,29 @@ int rtcGetLocalDescription(int pc, char *buffer, int size) {
 	});
 }
 
+int rtcGetRemoteDescription(int pc, char *buffer, int size) {
+	return WRAP({
+		auto peerConnection = getPeerConnection(pc);
+
+		if (size <= 0)
+			return 0;
+
+		if (!buffer)
+			throw std::invalid_argument("Unexpected null pointer for buffer");
+
+		if (auto desc = peerConnection->remoteDescription()) {
+			auto sdp = string(*desc);
+			const char *data = sdp.data();
+			size = std::min(size - 1, int(sdp.size()));
+			std::copy(data, data + size, buffer);
+			buffer[size] = '\0';
+			return size + 1;
+		}
+
+		return RTC_ERR_FAILURE;
+	});
+}
+
 int rtcGetLocalAddress(int pc, char *buffer, int size) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
