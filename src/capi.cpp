@@ -529,7 +529,7 @@ int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid) {
 	});
 }
 
-int rtcGetLocalDescriptionSdp(int pc, char *buffer, int size) {
+int rtcGetLocalDescription(int pc, char *buffer, int size) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 
