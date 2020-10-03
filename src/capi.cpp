@@ -569,6 +569,8 @@ int rtcGetLocalAddress(int pc, char *buffer, int size) {
 			buffer[size] = '\0';
 			return size + 1;
 		}
+
+		return RTC_ERR_FAILURE;
 	});
 }
 
@@ -589,6 +591,8 @@ int rtcGetRemoteAddress(int pc, char *buffer, int size) {
 			buffer[size] = '\0';
 			return int(size + 1);
 		}
+
+		return RTC_ERR_FAILURE;
 	});
 }
 
