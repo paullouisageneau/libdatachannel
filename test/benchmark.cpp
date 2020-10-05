@@ -155,7 +155,8 @@ size_t benchmark(milliseconds duration) {
 
 	endTime = steady_clock::now();
 
-	auto connectDuration = duration_cast<milliseconds>(openTime - startTime);
+	auto connectDuration = duration_cast<milliseconds>(dc1->isOpen() ? openTime - startTime
+	                                                                 : steady_clock::duration(0));
 	auto transferDuration = duration_cast<milliseconds>(endTime - receivedTime);
 
 	cout << "Test duration: " << duration.count() << " ms" << endl;

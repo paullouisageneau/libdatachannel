@@ -94,7 +94,7 @@ bool Candidate::resolve(ResolveMode mode) {
 
 		struct addrinfo *result = nullptr;
 		if (getaddrinfo(node.c_str(), service.c_str(), &hints, &result) == 0) {
-			for (auto p = result; p; p = p->ai_next)
+			for (auto p = result; p; p = p->ai_next) {
 				if (p->ai_family == AF_INET || p->ai_family == AF_INET6) {
 					// Rewrite the candidate
 					char nodebuffer[MAX_NUMERICNODE_LEN];
@@ -113,9 +113,10 @@ bool Candidate::resolve(ResolveMode mode) {
 						break;
 					}
 				}
-		}
+			}
 
-		freeaddrinfo(result);
+			freeaddrinfo(result);
+		}
 	}
 
 	return mIsResolved;

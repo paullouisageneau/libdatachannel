@@ -102,6 +102,7 @@ void PeerConnection::setLocalDescription() {
 
 	if (std::atomic_load(&mIceTransport)) {
 		PLOG_DEBUG << "Local description is already set, ignoring";
+		return;
 	}
 
 	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
@@ -546,17 +547,17 @@ void PeerConnection::forwardMessage(message_ptr message) {
 	}
 
 	auto channel = findDataChannel(uint16_t(message->stream));
-
-	auto iceTransport = std::atomic_load(&mIceTransport);
-	auto sctpTransport = std::atomic_load(&mSctpTransport);
-	if (!iceTransport || !sctpTransport)
-		return;
-
 	if (!channel) {
+		auto iceTransport = std::atomic_load(&mIceTransport);
+		auto sctpTransport = std::atomic_load(&mSctpTransport);
+		if (!iceTransport || !sctpTransport)
+			return;
+
 		const byte dataChannelOpenMessage{0x03};
 		unsigned int remoteParity = (iceTransport->role() == Description::Role::Active) ? 1 : 0;
 		if (message->type == Message::Control && *message->data() == dataChannelOpenMessage &&
 		    message->stream % 2 == remoteParity) {
+
 			channel =
 			    std::make_shared<DataChannel>(shared_from_this(), sctpTransport, message->stream);
 			channel->onOpen(weak_bind(&PeerConnection::triggerDataChannel, this,

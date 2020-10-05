@@ -60,7 +60,8 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	}
 
 	juice_log_level_t level;
-	switch (plog::get()->getMaxSeverity()) {
+	auto logger = plog::get();
+	switch (logger ? logger->getMaxSeverity() : plog::none) {
 	case plog::none:
 		level = JUICE_LOG_LEVEL_NONE;
 		break;
@@ -380,8 +381,11 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 		hints.ai_protocol = IPPROTO_UDP;
 		hints.ai_flags = AI_ADDRCONFIG;
 		struct addrinfo *result = nullptr;
-		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0)
+		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0) {
+			PLOG_WARNING << "Unable to resolve STUN server address: " << server.hostname << ':'
+			             << server.service;
 			continue;
+		}
 
 		for (auto p = result; p; p = p->ai_next) {
 			if (p->ai_family == AF_INET) {
@@ -423,8 +427,11 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 		    server.relayType == IceServer::RelayType::TurnUdp ? IPPROTO_UDP : IPPROTO_TCP;
 		hints.ai_flags = AI_ADDRCONFIG;
 		struct addrinfo *result = nullptr;
-		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0)
+		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0) {
+			PLOG_WARNING << "Unable to resolve TURN server address: " << server.hostname << ':'
+			             << server.service;
 			continue;
+		}
 
 		for (auto p = result; p; p = p->ai_next) {
 			if (p->ai_family == AF_INET || p->ai_family == AF_INET6) {

@@ -73,7 +73,7 @@ int main() {
 		track->onMessage(
 		    [session, sock, addr](rtc::binary message) {
 			    // This is an RTP packet
-			    sendto(sock, reinterpret_cast<const char *>(message.data()), message.size(), 0,
+			    sendto(sock, reinterpret_cast<const char *>(message.data()), int(message.size()), 0,
 			           reinterpret_cast<const struct sockaddr *>(&addr), sizeof(addr));
 		    },
 		    nullptr);

@@ -29,6 +29,12 @@ extern "C" {
 #define RTC_EXPORT
 #endif
 
+#ifdef CAPI_STDCALL
+#define RTC_API __stdcall
+#else
+#define RTC_API
+#endif
+
 #ifndef RTC_ENABLE_WEBSOCKET
 #define RTC_ENABLE_WEBSOCKET 1
 #endif
@@ -81,22 +87,23 @@ typedef struct {
 	unsigned int maxRetransmits;    // ignored if reliable
 } rtcReliability;
 
-typedef void (*rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
-typedef void (*rtcDescriptionCallbackFunc)(const char *sdp, const char *type, void *ptr);
-typedef void (*rtcCandidateCallbackFunc)(const char *cand, const char *mid, void *ptr);
-typedef void (*rtcStateChangeCallbackFunc)(rtcState state, void *ptr);
-typedef void (*rtcGatheringStateCallbackFunc)(rtcGatheringState state, void *ptr);
-typedef void (*rtcDataChannelCallbackFunc)(int dc, void *ptr);
-typedef void (*rtcTrackCallbackFunc)(int tr, void *ptr);
-typedef void (*rtcOpenCallbackFunc)(void *ptr);
-typedef void (*rtcClosedCallbackFunc)(void *ptr);
-typedef void (*rtcErrorCallbackFunc)(const char *error, void *ptr);
-typedef void (*rtcMessageCallbackFunc)(const char *message, int size, void *ptr);
-typedef void (*rtcBufferedAmountLowCallbackFunc)(void *ptr);
-typedef void (*rtcAvailableCallbackFunc)(void *ptr);
+typedef void (RTC_API *rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
+typedef void (RTC_API *rtcDescriptionCallbackFunc)(const char *sdp, const char *type, void *ptr);
+typedef void (RTC_API *rtcCandidateCallbackFunc)(const char *cand, const char *mid, void *ptr);
+typedef void (RTC_API *rtcStateChangeCallbackFunc)(rtcState state, void *ptr);
+typedef void (RTC_API *rtcGatheringStateCallbackFunc)(rtcGatheringState state, void *ptr);
+typedef void (RTC_API *rtcDataChannelCallbackFunc)(int dc, void *ptr);
+typedef void (RTC_API *rtcTrackCallbackFunc)(int tr, void *ptr);
+typedef void (RTC_API *rtcOpenCallbackFunc)(void *ptr);
+typedef void (RTC_API *rtcClosedCallbackFunc)(void *ptr);
+typedef void (RTC_API *rtcErrorCallbackFunc)(const char *error, void *ptr);
+typedef void (RTC_API *rtcMessageCallbackFunc)(const char *message, int size, void *ptr);
+typedef void (RTC_API *rtcBufferedAmountLowCallbackFunc)(void *ptr);
+typedef void (RTC_API *rtcAvailableCallbackFunc)(void *ptr);
 
 // Log
-RTC_EXPORT void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb); // NULL cb to log to stdout
+// NULL cb on the first call will log to stdout
+RTC_EXPORT void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb);
 
 // User pointer
 RTC_EXPORT void rtcSetUserPointer(int id, void *ptr);
@@ -113,6 +120,9 @@ RTC_EXPORT int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallb
 RTC_EXPORT int rtcSetLocalDescription(int pc);
 RTC_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 RTC_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
+
+RTC_EXPORT int rtcGetLocalDescription(int pc, char *buffer, int size);
+RTC_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);
 
 RTC_EXPORT int rtcGetLocalAddress(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);

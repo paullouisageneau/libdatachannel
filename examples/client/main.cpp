@@ -49,8 +49,7 @@ bool echoDataChannelMessages = false;
 
 shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
                                                 weak_ptr<WebSocket> wws, string id);
-
-void confirmOnStdout(bool echoed, string id, string type, int length);
+void confirmOnStdout(bool echoed, string id, string type, size_t length);
 string randomId(size_t length);
 
 int main(int argc, char **argv) {
@@ -259,7 +258,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 	return pc;
 };
 
-void confirmOnStdout(bool echoed, string id, string type, int length) {
+void confirmOnStdout(bool echoed, string id, string type, size_t length) {
 	static long count = 0;
 	static long freq = 100;
 	if (!(++count%freq)) {

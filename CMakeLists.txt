@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
 project(libdatachannel
 	DESCRIPTION "WebRTC Data Channels Library"
-	VERSION 0.9.0
+	VERSION 0.9.4
 	LANGUAGES CXX)
 
 # Options
@@ -11,6 +11,7 @@ option(NO_WEBSOCKET "Disable WebSocket support" OFF)
 option(NO_EXAMPLES "Disable examples" OFF)
 option(NO_TESTS "Disable tests build" OFF)
 option(WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
+option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
 
 if(USE_NICE)
 	option(USE_JUICE "Use libjuice" OFF)
@@ -215,6 +216,11 @@ else()
 	target_compile_definitions(datachannel-static PRIVATE USE_NICE=0)
 	target_link_libraries(datachannel PRIVATE LibJuice::LibJuiceStatic)
 	target_link_libraries(datachannel-static PRIVATE LibJuice::LibJuiceStatic)
+endif()
+
+if(CAPI_STDCALL)
+	target_compile_definitions(datachannel PUBLIC CAPI_STDCALL)
+	target_compile_definitions(datachannel-static PUBLIC CAPI_STDCALL)
 endif()
 
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
