@@ -88,18 +88,18 @@ typedef struct {
 } rtcReliability;
 
 typedef void (RTC_API *rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
-typedef void (RTC_API *rtcDescriptionCallbackFunc)(const char *sdp, const char *type, void *ptr);
-typedef void (RTC_API *rtcCandidateCallbackFunc)(const char *cand, const char *mid, void *ptr);
-typedef void (RTC_API *rtcStateChangeCallbackFunc)(rtcState state, void *ptr);
-typedef void (RTC_API *rtcGatheringStateCallbackFunc)(rtcGatheringState state, void *ptr);
-typedef void (RTC_API *rtcDataChannelCallbackFunc)(int dc, void *ptr);
-typedef void (RTC_API *rtcTrackCallbackFunc)(int tr, void *ptr);
-typedef void (RTC_API *rtcOpenCallbackFunc)(void *ptr);
-typedef void (RTC_API *rtcClosedCallbackFunc)(void *ptr);
-typedef void (RTC_API *rtcErrorCallbackFunc)(const char *error, void *ptr);
-typedef void (RTC_API *rtcMessageCallbackFunc)(const char *message, int size, void *ptr);
-typedef void (RTC_API *rtcBufferedAmountLowCallbackFunc)(void *ptr);
-typedef void (RTC_API *rtcAvailableCallbackFunc)(void *ptr);
+typedef void (RTC_API *rtcDescriptionCallbackFunc)(int pc, const char *sdp, const char *type, void *ptr);
+typedef void (RTC_API *rtcCandidateCallbackFunc)(int pc, const char *cand, const char *mid, void *ptr);
+typedef void (RTC_API *rtcStateChangeCallbackFunc)(int pc, rtcState state, void *ptr);
+typedef void (RTC_API *rtcGatheringStateCallbackFunc)(int pc, rtcGatheringState state, void *ptr);
+typedef void (RTC_API *rtcDataChannelCallbackFunc)(int pc, int dc, void *ptr);
+typedef void (RTC_API *rtcTrackCallbackFunc)(int pc, int tr, void *ptr);
+typedef void (RTC_API *rtcOpenCallbackFunc)(int id, void *ptr);
+typedef void (RTC_API *rtcClosedCallbackFunc)(int id, void *ptr);
+typedef void (RTC_API *rtcErrorCallbackFunc)(int id, const char *error, void *ptr);
+typedef void (RTC_API *rtcMessageCallbackFunc)(int id, const char *message, int size, void *ptr);
+typedef void (RTC_API *rtcBufferedAmountLowCallbackFunc)(int id, void *ptr);
+typedef void (RTC_API *rtcAvailableCallbackFunc)(int id, void *ptr);
 
 // Log
 // NULL cb on the first call will log to stdout
