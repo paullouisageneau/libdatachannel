@@ -867,6 +867,10 @@ bool PeerConnection::changeState(State state) {
 
 	} while (!mState.compare_exchange_weak(current, state));
 
+	std::ostringstream s;
+	s << state;
+	PLOG_INFO << "Changed state to " << s.str();
+
 	if (state == State::Closed)
 		// This is the last state change, so we may steal the callback
 		mProcessor->enqueue([cb = std::move(mStateChangeCallback)]() { cb(State::Closed); });
@@ -877,8 +881,12 @@ bool PeerConnection::changeState(State state) {
 }
 
 bool PeerConnection::changeGatheringState(GatheringState state) {
-	if (mGatheringState.exchange(state) != state)
+	if (mGatheringState.exchange(state) != state) {
+		std::ostringstream s;
+		s << state;
+		PLOG_INFO << "Changed gathering state to " << s.str();
 		mProcessor->enqueue([this, state] { mGatheringStateChangeCallback(state); });
+	}
 	return true;
 }
 
