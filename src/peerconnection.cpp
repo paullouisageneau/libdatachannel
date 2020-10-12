@@ -454,31 +454,31 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 		uint16_t sctpPort = remote->application()->sctpPort().value_or(DEFAULT_SCTP_PORT);
 		auto lower = std::atomic_load(&mDtlsTransport);
 		auto transport = std::make_shared<SctpTransport>(
-		    lower, sctpPort, weak_bind(&PeerConnection::forwardMessage, this, _1),
-		    weak_bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
-		    [this, weak_this = weak_from_this()](SctpTransport::State state) {
-			    auto shared_this = weak_this.lock();
-			    if (!shared_this)
-				    return;
-			    switch (state) {
-			    case SctpTransport::State::Connected:
-				    changeState(State::Connected);
-				    openDataChannels();
-				    break;
-			    case SctpTransport::State::Failed:
-				    LOG_WARNING << "SCTP transport failed";
-				    remoteCloseDataChannels();
-				    changeState(State::Failed);
-				    break;
-			    case SctpTransport::State::Disconnected:
-				    remoteCloseDataChannels();
-				    changeState(State::Disconnected);
-				    break;
-			    default:
-				    // Ignore
-				    break;
-			    }
-		    });
+			lower, sctpPort, weak_bind(&PeerConnection::forwardMessage, this, _1),
+			weak_bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
+			[this, weak_this = weak_from_this()](SctpTransport::State state) {
+				auto shared_this = weak_this.lock();
+				if (!shared_this)
+					return;
+				switch (state) {
+				case SctpTransport::State::Connected:
+					changeState(State::Connected);
+					mProcessor->enqueue(std::bind(&PeerConnection::openDataChannels, this));
+					break;
+				case SctpTransport::State::Failed:
+					LOG_WARNING << "SCTP transport failed";
+					changeState(State::Failed);
+					mProcessor->enqueue(std::bind(&PeerConnection::remoteCloseDataChannels, this));
+					break;
+				case SctpTransport::State::Disconnected:
+					changeState(State::Disconnected);
+					mProcessor->enqueue(std::bind(&PeerConnection::remoteCloseDataChannels, this));
+					break;
+				default:
+					// Ignore
+					break;
+				}
+			});
 
 		std::atomic_store(&mSctpTransport, transport);
 		if (mState == State::Closed) {
@@ -867,6 +867,10 @@ bool PeerConnection::changeState(State state) {
 
 	} while (!mState.compare_exchange_weak(current, state));
 
+	std::ostringstream s;
+	s << state;
+	PLOG_INFO << "Changed state to " << s.str();
+
 	if (state == State::Closed)
 		// This is the last state change, so we may steal the callback
 		mProcessor->enqueue([cb = std::move(mStateChangeCallback)]() { cb(State::Closed); });
@@ -877,8 +881,12 @@ bool PeerConnection::changeState(State state) {
 }
 
 bool PeerConnection::changeGatheringState(GatheringState state) {
-	if (mGatheringState.exchange(state) != state)
+	if (mGatheringState.exchange(state) != state) {
+		std::ostringstream s;
+		s << state;
+		PLOG_INFO << "Changed gathering state to " << s.str();
 		mProcessor->enqueue([this, state] { mGatheringStateChangeCallback(state); });
+	}
 	return true;
 }
 
