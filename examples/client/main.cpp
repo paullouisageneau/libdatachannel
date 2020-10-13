@@ -49,7 +49,7 @@ bool echoDataChannelMessages = false;
 
 shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
                                                 weak_ptr<WebSocket> wws, string id);
-void confirmOnStdout(bool echoed, string id, string type, size_t length);
+void printReceived(bool echoed, string id, string type, size_t length);
 string randomId(size_t length);
 
 int main(int argc, char **argv) try {
@@ -174,8 +174,8 @@ int main(int argc, char **argv) try {
 					dc->send(message);
 					echoed = true;
 				}
-				confirmOnStdout(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
-						get<string>(message).length());
+				printReceived(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
+				      get<string>(message).length());
 			}
 		});
 
@@ -240,7 +240,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 					dc->send(message);
 					echoed = true;
 				}
-				confirmOnStdout(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
+				printReceived(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
 						get<string>(message).length());
 			}
 		});
@@ -254,7 +254,8 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 	return pc;
 };
 
-void confirmOnStdout(bool echoed, string id, string type, size_t length) {
+// Helper function to print received pings
+void printReceived(bool echoed, string id, string type, size_t length) {
 	static long count = 0;
 	static long freq = 100;
 	if (!(++count%freq)) {
