@@ -60,7 +60,7 @@ int main(int argc, char **argv) try {
 	Configuration config;
 	string stunServer = "";
 	if (params->noStun()) {
-		cout << "No stun server is configured.  Only local hosts and public IP addresses suported." << endl;
+		cout << "No STUN server is configured. Only local hosts and public IP addresses supported." << endl;
 	} else {
 		if (params->stunServer().substr(0,5).compare("stun:") != 0) {
 			stunServer = "stun:";
@@ -259,7 +259,7 @@ void printReceived(bool echoed, string id, string type, size_t length) {
 	static long count = 0;
 	static long freq = 100;
 	if (!(++count%freq)) {
-		cout << "Received " << count << " pings in total from host " << id << ", most recent of type "
+		cout << "Received " << count << " pings in total from " << id << ", most recent of type "
 		     << type << " and " << (echoed ? "" : "un") << "successfully echoed most recent ping of size "
 		     << length << " back to " << id << endl;
 		if (count >= (freq * 10) && freq < 1000000) {
