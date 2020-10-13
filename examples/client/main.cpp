@@ -52,15 +52,8 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 void confirmOnStdout(bool echoed, string id, string type, size_t length);
 string randomId(size_t length);
 
-int main(int argc, char **argv) {
-	Cmdline *params = nullptr;
-	try {
-		params = new Cmdline(argc, argv);
-	} catch (const std::range_error&e) {
-		std::cout<< e.what() << '\n';
-		delete params;
-		return -1;
-	}
+int main(int argc, char **argv) try {
+	auto params = std::make_unique<Cmdline>(argc, argv);
 
 	rtc::InitLogger(LogLevel::Debug);
 
@@ -187,16 +180,19 @@ int main(int argc, char **argv) {
 		});
 
 		dataChannelMap.emplace(id, dc);
-
-		this_thread::sleep_for(1s);
 	}
 
 	cout << "Cleaning up..." << endl;
 
 	dataChannelMap.clear();
 	peerConnectionMap.clear();
-	delete params;
 	return 0;
+
+} catch (const std::exception &e) {
+	std::cout << "Error: " << e.what() << std::endl;
+	dataChannelMap.clear();
+	peerConnectionMap.clear();
+	return -1;
 }
 
 // Create and setup a PeerConnection
