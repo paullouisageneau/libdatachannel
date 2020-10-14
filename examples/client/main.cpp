@@ -30,6 +30,8 @@
 #include <memory>
 #include <random>
 #include <thread>
+#include <future>
+#include <stdexcept>
 #include <unordered_map>
 #include "parse_cl.h"
 
@@ -51,6 +53,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
                                                 weak_ptr<WebSocket> wws, string id);
 void printReceived(bool echoed, string id, string type, size_t length);
 string randomId(size_t length);
+
 
 int main(int argc, char **argv) try {
 	auto params = std::make_unique<Cmdline>(argc, argv);
@@ -79,12 +82,21 @@ int main(int argc, char **argv) try {
 
 	auto ws = make_shared<WebSocket>();
 
-	ws->onOpen([]() { cout << "WebSocket connected, signaling ready" << endl; });
+	std::promise<void> wsPromise;
+	auto wsFuture = wsPromise.get_future();
+	
+	ws->onOpen([&wsPromise]() { 
+		cout << "WebSocket connected, signaling ready" << endl;
+		wsPromise.set_value();
+	});
 
+	ws->onError([&wsPromise](string s) { 
+		cout << "WebSocket error" << endl;
+		wsPromise.set_exception(std::make_exception_ptr(std::runtime_error(s)));
+	});
+	
 	ws->onClosed([]() { cout << "WebSocket closed" << endl; });
-
-	ws->onError([](const string &error) { cout << "WebSocket failed: " << error << endl; });
-
+	
 	ws->onMessage([&](variant<binary, string> data) {
 		if (!holds_alternative<string>(data))
 			return;
@@ -129,13 +141,9 @@ int main(int argc, char **argv) try {
 		to_string(params->webSocketPort()) + "/" + localId;
 	cout << "Url is " << url << endl;
 	ws->open(url);
-
+	
 	cout << "Waiting for signaling to be connected..." << endl;
-	while (!ws->isOpen()) {
-		if (ws->isClosed())
-			return 1;
-		this_thread::sleep_for(100ms);
-	}
+	wsFuture.get();
 
 	while (true) {
 		string id;
