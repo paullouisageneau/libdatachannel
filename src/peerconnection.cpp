@@ -256,8 +256,8 @@ bool PeerConnection::hasMedia() const {
 }
 
 std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) {
-	if (localDescription())
-		throw std::logic_error("Tracks must be created before local description");
+//	if (localDescription())
+//		throw std::logic_error("Tracks must be created before local description");
 
 	if (auto it = mTracks.find(description.mid()); it != mTracks.end())
 		if (auto track = it->second.lock())
