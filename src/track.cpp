@@ -85,10 +85,11 @@ bool Track::outgoing(message_ptr message) {
     }
 
     auto direction = mMediaDescription.direction();
-    if ((direction == Description::Direction::SendOnly ||
+    if ((direction == Description::Direction::RecvOnly ||
          direction == Description::Direction::Inactive) &&
         message->type != Message::Control) {
-        PLOG_WARNING << "Track media direction does not allow reception, dropping";
+        PLOG_WARNING << "Track media direction does not allow transmission, dropping";
+        return false;
     }
 
     if (mIsClosed)
@@ -124,6 +125,7 @@ void Track::incoming(message_ptr message) {
 	     direction == Description::Direction::Inactive) &&
 	    message->type != Message::Control) {
 		PLOG_WARNING << "Track media direction does not allow reception, dropping";
+		return;
 	}
 
 	// Tail drop if queue is full
