@@ -716,56 +716,22 @@ void IceTransport::LogCallback(const gchar * /*logDomain*/, GLogLevelFlags logLe
 	PLOG(severity) << "nice: " << message;
 }
 
-bool IceTransport::getSelectedCandidatePair(CandidateInfo *localInfo, CandidateInfo *remoteInfo) {
-	NiceCandidate *local, *remote;
-	gboolean result = nice_agent_get_selected_pair(mNiceAgent.get(), mStreamId, 1, &local, &remote);
-
-	if (!result)
+bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote) {
+	NiceCandidate *niceLocal, *niceRemote;
+	if(!nice_agent_get_selected_pair(mNiceAgent.get(), mStreamId, 1, &niceLocal, &niceRemote))
 		return false;
 
-	char ipaddr[INET6_ADDRSTRLEN];
-	nice_address_to_string(&local->addr, ipaddr);
-	localInfo->address = std::string(ipaddr);
-	localInfo->port = nice_address_get_port(&local->addr);
-	localInfo->type = IceTransport::NiceTypeToCandidateType(local->type);
-	localInfo->transportType =
-	    IceTransport::NiceTransportTypeToCandidateTransportType(local->transport);
+	gchar *sdpLocal = nice_agent_generate_local_candidate_sdp(mNiceAgent.get(), niceLocal);
+	if(local) *local = Candidate(sdpLocal);
+	g_free(sdpLocal);
 
-	nice_address_to_string(&remote->addr, ipaddr);
-	remoteInfo->address = std::string(ipaddr);
-	remoteInfo->port = nice_address_get_port(&remote->addr);
-	remoteInfo->type = IceTransport::NiceTypeToCandidateType(remote->type);
-	remoteInfo->transportType =
-	    IceTransport::NiceTransportTypeToCandidateTransportType(remote->transport);
+	gchar *sdpRemote = nice_agent_generate_local_candidate_sdp(mNiceAgent.get(), niceRemote);
+	if(remote) *remote = Candidate(sdpRemote);
+	g_free(sdpRemote);
 
+	local->resolve(Candidate::ResolveMode::Simple);
+	remote->resolve(Candidate::ResolveMode::Simple);
 	return true;
-}
-
-CandidateType IceTransport::NiceTypeToCandidateType(NiceCandidateType type) {
-	switch (type) {
-	case NiceCandidateType::NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
-		return CandidateType::PeerReflexive;
-	case NiceCandidateType::NICE_CANDIDATE_TYPE_RELAYED:
-		return CandidateType::Relayed;
-	case NiceCandidateType::NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
-		return CandidateType::ServerReflexive;
-	default:
-		return CandidateType::Host;
-	}
-}
-
-CandidateTransportType
-IceTransport::NiceTransportTypeToCandidateTransportType(NiceCandidateTransport type) {
-	switch (type) {
-	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
-		return CandidateTransportType::TcpActive;
-	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
-		return CandidateTransportType::TcpPassive;
-	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_SO:
-		return CandidateTransportType::TcpSo;
-	default:
-		return CandidateTransportType::Udp;
-	}
 }
 
 } // namespace rtc

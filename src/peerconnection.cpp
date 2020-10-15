@@ -835,6 +835,7 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 	if (!mLocalDescription)
 		throw std::logic_error("Got a local candidate without local description");
 
+	candidate.resolve(Candidate::ResolveMode::Simple); // for proper SDP generation later
 	mLocalDescription->addCandidate(candidate);
 
 	mProcessor->enqueue([this, candidate = std::move(candidate)]() {
@@ -899,8 +900,8 @@ void PeerConnection::resetCallbacks() {
 	mGatheringStateChangeCallback = nullptr;
 }
 
-bool PeerConnection::getSelectedCandidatePair([[maybe_unused]] CandidateInfo *local,
-                                              [[maybe_unused]] CandidateInfo *remote) {
+bool PeerConnection::getSelectedCandidatePair([[maybe_unused]] Candidate *local,
+                                              [[maybe_unused]] Candidate *remote) {
 #if USE_NICE
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	return iceTransport->getSelectedCandidatePair(local, remote);

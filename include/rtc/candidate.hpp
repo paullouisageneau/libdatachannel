@@ -25,38 +25,46 @@
 
 namespace rtc {
 
-enum class CandidateType { Host = 0, ServerReflexive, PeerReflexive, Relayed };
-enum class CandidateTransportType { Udp = 0, TcpActive, TcpPassive, TcpSo };
-struct CandidateInfo {
-	string address;
-	int port;
-	CandidateType type;
-	CandidateTransportType transportType;
-};
-
 class Candidate {
 public:
-	Candidate(string candidate, string mid = "");
+	enum class Family { Unresolved, Ipv4, Ipv6 };
+	enum class Type { Unknown, Host, ServerReflexive, PeerReflexive, Relayed };
+	enum class TransportType { Unknown, Udp, TcpActive, TcpPassive, TcpSo, TcpUnknown };
+
+	Candidate(string candidate = "", string mid = "");
 
 	enum class ResolveMode { Simple, Lookup };
 	bool resolve(ResolveMode mode = ResolveMode::Simple);
-	bool isResolved() const;
 
 	string candidate() const;
 	string mid() const;
 	operator string() const;
 
+	bool isResolved() const;
+	Family family() const;
+	Type type() const;
+	std::optional<string> address() const;
+	std::optional<uint16_t> port() const;
+	std::optional<uint32_t> priority() const;
+
 private:
 	string mCandidate;
 	string mMid;
-	bool mIsResolved;
+
+	// Extracted on resolution
+	Family mFamily;
+	Type mType;
+	TransportType mTransportType;
+	string mAddress;
+	uint16_t mPort;
+	uint32_t mPriority;
 };
 
 } // namespace rtc
 
 std::ostream &operator<<(std::ostream &out, const rtc::Candidate &candidate);
-std::ostream &operator<<(std::ostream &out, const rtc::CandidateType &type);
-std::ostream &operator<<(std::ostream &out, const rtc::CandidateTransportType &transportType);
+std::ostream &operator<<(std::ostream &out, const rtc::Candidate::Type &type);
+std::ostream &operator<<(std::ostream &out, const rtc::Candidate::TransportType &transportType);
 
 #endif
 
