@@ -162,7 +162,10 @@ void PeerConnection::setRemoteDescription(Description description) {
 
 	for (const auto &candidate : remoteCandidates)
 		addRemoteCandidate(candidate);
-	}
+	if (std::atomic_load(&mIceTransport)) {
+            openTracks();
+    }
+}
 
 void PeerConnection::addRemoteCandidate(Candidate candidate) {
 	PLOG_VERBOSE << "Adding remote candidate: " << string(candidate);
@@ -692,8 +695,10 @@ void PeerConnection::openTracks() {
 		auto srtpTransport = std::reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
 		std::shared_lock lock(mTracksMutex); // read-only
 		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
-			if (auto track = it->second.lock())
-				track->open(srtpTransport);
+			if (auto track = it->second.lock()) {
+			    if (!track->isOpen())
+                    track->open(srtpTransport);
+            }
 	}
 #endif
 }
