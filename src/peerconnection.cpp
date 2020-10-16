@@ -85,17 +85,18 @@ std::optional<Description> PeerConnection::remoteDescription() const {
 void PeerConnection::setLocalDescription() {
 	PLOG_VERBOSE << "Setting local description";
 
-	if (std::atomic_load(&mIceTransport)) {
-		PLOG_DEBUG << "Local description is already set";
+	if (!std::atomic_load(&mIceTransport)) {
+        // RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
+        // setup:actpass.
+        // See https://tools.ietf.org/html/rfc5763#section-5
+        auto iceTransport = initIceTransport(Description::Role::ActPass);
+        Description localDescription = iceTransport->getLocalDescription(Description::Type::Offer);
+        processLocalDescription(localDescription);
+        iceTransport->gatherLocalCandidates();
+	} else {
+	    auto localDescription = std::atomic_load(&mIceTransport)->getLocalDescription(Description::Type::Offer);
+        processLocalDescription(localDescription);
 	}
-
-	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
-	// setup:actpass.
-	// See https://tools.ietf.org/html/rfc5763#section-5
-	auto iceTransport = initIceTransport(Description::Role::ActPass);
-	Description localDescription = iceTransport->getLocalDescription(Description::Type::Offer);
-	processLocalDescription(localDescription);
-	iceTransport->gatherLocalCandidates();
 }
 
 void PeerConnection::setRemoteDescription(Description description) {
@@ -270,6 +271,7 @@ std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) 
 #endif
 	auto track = std::make_shared<Track>(std::move(description));
 	mTracks.emplace(std::make_pair(track->mid(), track));
+	mTrackLines.emplace_back(track);
 	return track;
 }
 
@@ -700,7 +702,8 @@ void PeerConnection::openTracks() {
 void PeerConnection::processLocalDescription(Description description) {
 	int activeMediaCount = 0;
 
-	if (auto remote = remoteDescription()) {
+    auto remote = remoteDescription();
+	if (remote && remote->type() == Description::Type::Offer) {
 		// Reciprocate remote description
 		for (int i = 0; i < remote->mediaCount(); ++i)
 			std::visit( // reciprocate each media
@@ -756,8 +759,9 @@ void PeerConnection::processLocalDescription(Description description) {
 		// Add media for local tracks
 		{
 			std::shared_lock lock(mTracksMutex);
-			for (auto it = mTracks.begin(); it != mTracks.end(); ++it) {
-				if (auto track = it->second.lock()) {
+//			for (auto it = mTracks.begin(); it != mTracks.end(); ++it) {
+            for (auto ptr : mTrackLines) {
+				if (auto track = ptr.lock()) {
 					auto media = track->description();
 #if RTC_ENABLE_MEDIA
 					if (media.direction() != Description::Direction::Inactive)

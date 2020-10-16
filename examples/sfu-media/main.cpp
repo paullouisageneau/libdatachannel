@@ -58,7 +58,7 @@ int main() {
 		auto track = pc->addTrack(media);
         pc->setLocalDescription();
 
-		auto session = std::make_shared<rtc::RtcpReceivingSession>(track);
+		auto session = std::make_shared<rtc::RtcpReceivingSession>();
 		track->setRtcpHandler(session);
 
 		const rtc::SSRC targetSSRC = 4;
@@ -67,7 +67,7 @@ int main() {
 		    [&receivers](rtc::binary message) {
 			    // This is an RTP packet
 			    auto rtp = (rtc::RTP*) message.data();
-			    rtp->ssrc = htonl(targetSSRC);
+			    rtp->setSsrc(targetSSRC);
 			    for (auto pc : receivers) {
 			        if (pc->track != nullptr && pc->track->isOpen()) {
                         pc->track->send(message);

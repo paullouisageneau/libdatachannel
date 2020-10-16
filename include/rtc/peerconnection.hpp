@@ -160,6 +160,7 @@ private:
 
 	std::unordered_map<unsigned int, std::weak_ptr<DataChannel>> mDataChannels; // by stream ID
 	std::unordered_map<string, std::weak_ptr<Track>> mTracks;                   // by mid
+	std::vector<std::weak_ptr<Track>> mTrackLines;                              // by SDP order
 	std::shared_mutex mDataChannelsMutex, mTracksMutex;
 
 	std::unordered_map<unsigned int, string> mMidFromSssrc; // cache
