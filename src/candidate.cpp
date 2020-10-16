@@ -52,10 +52,12 @@ Candidate::Candidate(string candidate, string mid)
     : mFamily(Family::Unresolved), mType(Type::Unknown), mTransportType(TransportType::Unknown),
       mPort(0), mPriority(0) {
 
-	const std::array prefixes{"a=", "candidate:"};
-	for (const string &prefix : prefixes)
-		if (hasprefix(candidate, prefix))
-			candidate.erase(0, prefix.size());
+	if (!candidate.empty()) {
+		const std::array prefixes{"a=", "candidate:"};
+		for (const string &prefix : prefixes)
+			if (hasprefix(candidate, prefix))
+				candidate.erase(0, prefix.size());
+	}
 
 	mCandidate = std::move(candidate);
 	mMid = std::move(mid);

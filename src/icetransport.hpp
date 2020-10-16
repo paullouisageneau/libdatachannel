@@ -63,9 +63,7 @@ public:
 	bool stop() override;
 	bool send(message_ptr message) override; // false if dropped
 
-#if USE_NICE
 	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
-#endif
 
 private:
 	bool outgoing(message_ptr message) override;

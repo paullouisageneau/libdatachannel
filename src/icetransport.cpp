@@ -187,6 +187,24 @@ std::optional<string> IceTransport::getRemoteAddress() const {
 	return nullopt;
 }
 
+bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote) {
+	char sdpLocal[JUICE_MAX_CANDIDATE_SDP_STRING_LEN];
+	char sdpRemote[JUICE_MAX_CANDIDATE_SDP_STRING_LEN];
+	if (juice_get_selected_candidates(mAgent.get(), sdpLocal, JUICE_MAX_CANDIDATE_SDP_STRING_LEN,
+	                                 sdpRemote, JUICE_MAX_CANDIDATE_SDP_STRING_LEN) == 0) {
+		if (local) {
+			*local = Candidate(sdpLocal);
+			local->resolve(Candidate::ResolveMode::Simple);
+		}
+		if (remote) {
+			*remote = Candidate(sdpRemote);
+			remote->resolve(Candidate::ResolveMode::Simple);
+		}
+		return true;
+	}
+	return false;
+}
+
 bool IceTransport::send(message_ptr message) {
 	auto s = state();
 	if (!message || (s != State::Connected && s != State::Completed))
@@ -729,8 +747,10 @@ bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote)
 	if(remote) *remote = Candidate(sdpRemote);
 	g_free(sdpRemote);
 
-	local->resolve(Candidate::ResolveMode::Simple);
-	remote->resolve(Candidate::ResolveMode::Simple);
+	if (local)
+		local->resolve(Candidate::ResolveMode::Simple);
+	if (remote)
+		remote->resolve(Candidate::ResolveMode::Simple);
 	return true;
 }
 

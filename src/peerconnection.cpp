@@ -902,13 +902,8 @@ void PeerConnection::resetCallbacks() {
 
 bool PeerConnection::getSelectedCandidatePair([[maybe_unused]] Candidate *local,
                                               [[maybe_unused]] Candidate *remote) {
-#if USE_NICE
 	auto iceTransport = std::atomic_load(&mIceTransport);
-	return iceTransport->getSelectedCandidatePair(local, remote);
-#else
-	PLOG_WARNING << "getSelectedCandidatePair() is only implemented with libnice as ICE backend";
-	return false;
-#endif
+	return iceTransport ? iceTransport->getSelectedCandidatePair(local, remote) : false;
 }
 
 void PeerConnection::clearStats() {
