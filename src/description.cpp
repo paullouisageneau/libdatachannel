@@ -706,6 +706,16 @@ void Description::Media::addRTPMap(const Description::Media::RTPMap& map) {
     mRtpMap.emplace(map.pt, map);
 }
 
+std::vector<uint32_t> Description::Media::getSSRCs() {
+    std::vector<uint32_t> vec;
+    for (auto &val : mAttributes) {
+        PLOG_DEBUG << val;
+        if (val.find("ssrc:") == 0) {
+            vec.emplace_back(std::stoul((std::string)val.substr(5, val.find(" "))));
+        }
+    }
+    return vec;
+}
 
 
 Description::Media::RTPMap::RTPMap(string_view mline) {

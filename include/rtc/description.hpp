@@ -131,6 +131,7 @@ public:
 
         void addSSRC(uint32_t ssrc, std::string name);
         bool hasSSRC(uint32_t ssrc);
+        std::vector<uint32_t> getSSRCs();
 
 		void setBitrate(int bitrate);
 		int getBitrate() const;

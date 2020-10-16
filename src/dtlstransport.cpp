@@ -177,8 +177,8 @@ void DtlsTransport::runRecvLoop() {
 	// Receive loop
 	try {
 		PLOG_INFO << "DTLS handshake finished";
+        postHandshake();
 		changeState(State::Connected);
-		postHandshake();
 
 		const size_t bufferSize = maxMtu;
 		char buffer[bufferSize];

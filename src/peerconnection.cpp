@@ -162,8 +162,8 @@ void PeerConnection::setRemoteDescription(Description description) {
 
 	for (const auto &candidate : remoteCandidates)
 		addRemoteCandidate(candidate);
-	if (std::atomic_load(&mIceTransport)) {
-            openTracks();
+	if (auto transport = std::atomic_load(&mDtlsTransport); transport && transport->state() == rtc::DtlsTransport::State::Connected) {
+        openTracks();
     }
 }
 
@@ -694,11 +694,23 @@ void PeerConnection::openTracks() {
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
 		auto srtpTransport = std::reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
 		std::shared_lock lock(mTracksMutex); // read-only
-		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
-			if (auto track = it->second.lock()) {
-			    if (!track->isOpen())
+//		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
+        for (unsigned int i = 0; i < mTrackLines.size(); i++) {
+            if (auto track = mTrackLines[i].lock()) {
+                if (!track->isOpen()) {
+//                    if (track->description().direction() == rtc::Description::Direction::RecvOnly || track->description().direction() == rtc::Description::Direction::SendRecv)
+//                        srtpTransport->addInboundSSRC(0);
+//                    if (track->description().direction() == rtc::Description::Direction::SendOnly || track->description().direction() == rtc::Description::Direction::SendRecv)
+
+                    for (auto ssrc : track->description().getSSRCs())
+                        srtpTransport->addSSRC(ssrc);
+                    for (auto ssrc : std::get<rtc::Description::Media *>(remoteDescription()->media(i))->getSSRCs())
+                        srtpTransport->addSSRC(ssrc);
+
                     track->open(srtpTransport);
+                }
             }
+        }
 	}
 #endif
 }

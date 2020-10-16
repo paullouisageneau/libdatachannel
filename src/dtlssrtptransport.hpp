@@ -39,6 +39,7 @@ public:
 	~DtlsSrtpTransport();
 
 	bool sendMedia(message_ptr message);
+    void addSSRC(uint32_t ssrc);
 
 private:
 	void incoming(message_ptr message) override;
@@ -48,6 +49,9 @@ private:
 
 	srtp_t mSrtpIn, mSrtpOut;
 	bool mInitDone = false;
+
+    unsigned char clientSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
+    unsigned char serverSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
 };
 
 } // namespace rtc
