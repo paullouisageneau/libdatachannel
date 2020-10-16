@@ -606,11 +606,11 @@ void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 		// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
 		// https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
 		// TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
-		map.fmtps.emplace_back("profile-level-id=42E02A;level-asymmetry-allowed=1");
+		map.fmtps.emplace_back("profile-level-id=42E02A;packetization-mode=1;level-asymmetry-allowed=1");
 	}
 	addRTPMap(map);
 
-	// RTX Packets
+//	// RTX Packets
     RTPMap rtx(std::to_string(payloadType+1) + " RTX/90000");
     // TODO rtx-time is how long can a request be stashed for before needing to resend it. Needs to be parameterized
     rtx.addAttribute("apt=" + std::to_string(payloadType) + ";rtx-time=3000");
