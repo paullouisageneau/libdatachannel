@@ -186,6 +186,7 @@ int test_capi_connectivity_main() {
 	}
 
 	char buffer[BUFFER_SIZE];
+	char buffer2[BUFFER_SIZE];
 
 	if (rtcGetLocalDescription(peer1->pc, buffer, BUFFER_SIZE) < 0) {
 		fprintf(stderr, "rtcGetLocalDescription failed\n");
@@ -234,6 +235,22 @@ int test_capi_connectivity_main() {
 		goto error;
 	}
 	printf("Remote address 2: %s\n", buffer);
+
+
+	if (rtcGetSelectedCandidatePair(peer1->pc, buffer, BUFFER_SIZE, buffer2, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetSelectedCandidatePair failed\n");
+		goto error;
+	}
+	printf("Local candidate 1:  %s\n", buffer);
+	printf("Remote candidate 1: %s\n", buffer2);
+
+	if (rtcGetSelectedCandidatePair(peer2->pc, buffer, BUFFER_SIZE, buffer2, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetSelectedCandidatePair failed\n");
+		goto error;
+	}
+	printf("Local candidate 2:  %s\n", buffer);
+	printf("Remote candidate 2: %s\n", buffer2);
+
 
 	deletePeer(peer1);
 	sleep(1);
