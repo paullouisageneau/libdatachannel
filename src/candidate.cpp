@@ -183,13 +183,11 @@ Candidate::operator string() const {
 
 bool Candidate::isResolved() const { return mFamily != Family::Unresolved; }
 
-Candidate::Family Candidate::family() const {
-	return mFamily;
+Candidate::Family Candidate::family() const { return mFamily; }
 
-}
-Candidate::Type Candidate::type() const {
-	return mType;
-}
+Candidate::Type Candidate::type() const { return mType; }
+
+Candidate::TransportType Candidate::transportType() const { return mTransportType; }
 
 std::optional<string> Candidate::address() const {
 	return isResolved() ? std::make_optional(mAddress) : nullopt;

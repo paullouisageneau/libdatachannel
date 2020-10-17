@@ -43,6 +43,7 @@ public:
 	bool isResolved() const;
 	Family family() const;
 	Type type() const;
+	TransportType transportType() const;
 	std::optional<string> address() const;
 	std::optional<uint16_t> port() const;
 	std::optional<uint32_t> priority() const;
