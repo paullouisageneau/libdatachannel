@@ -147,6 +147,16 @@ void test_connectivity() {
 	if (auto addr = pc2->remoteAddress())
 		cout << "Remote address 2: " << *addr << endl;
 
+	Candidate local, remote;
+	if(pc1->getSelectedCandidatePair(&local, &remote)) {
+		cout << "Local candidate 1:  " << local << endl;
+		cout << "Remote candidate 1: " << remote << endl;
+	}
+	if(pc2->getSelectedCandidatePair(&local, &remote)) {
+		cout << "Local candidate 2:  " << local << endl;
+		cout << "Remote candidate 2: " << remote << endl;
+	}
+
 	// Try to open a second data channel with another label
 	shared_ptr<DataChannel> second2;
 	pc2->onDataChannel([&second2](shared_ptr<DataChannel> dc) {

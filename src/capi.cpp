@@ -619,6 +619,37 @@ int rtcGetRemoteAddress(int pc, char *buffer, int size) {
 	});
 }
 
+int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote, int remoteSize) {
+	return WRAP({
+		auto peerConnection = getPeerConnection(pc);
+
+		if (!local)
+			localSize = 0;
+		if (!remote)
+			remoteSize = 0;
+
+		Candidate localCand;
+		Candidate remoteCand;
+		if (peerConnection->getSelectedCandidatePair(&localCand, &remoteCand)) {
+			if (localSize > 0) {
+				string localSdp = string(localCand);
+				localSize = std::min(localSize - 1, int(localSdp.size()));
+				std::copy(localSdp.begin(), localSdp.begin() + localSize, local);
+				local[localSize] = '\0';
+			}
+			if (remoteSize > 0) {
+				string remoteSdp = string(remoteCand);
+				remoteSize = std::min(remoteSize - 1, int(remoteSdp.size()));
+				std::copy(remoteSdp.begin(), remoteSdp.begin() + remoteSize, remote);
+				remote[remoteSize] = '\0';
+			}
+			return localSize + remoteSize;
+		}
+
+		return RTC_ERR_FAILURE;
+	});
+}
+
 int rtcGetDataChannelLabel(int dc, char *buffer, int size) {
 	return WRAP({
 		auto dataChannel = getDataChannel(dc);

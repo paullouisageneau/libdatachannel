@@ -74,7 +74,7 @@ public:
 		void setDirection(Direction dir);
 
 		operator string() const;
-		string generateSdp(string_view eol) const;
+		string generateSdp(string_view eol, string_view addr, string_view port) const;
 
 		virtual void parseSdpLine(string_view line);
 
@@ -194,6 +194,7 @@ public:
 	Application *application();
 
 private:
+	std::optional<Candidate> defaultCandidate() const;
 	std::shared_ptr<Entry> createEntry(string mline, string mid, Direction dir);
 	void removeApplication();
 
@@ -201,6 +202,7 @@ private:
 
 	// Session-level attributes
 	Role mRole;
+	string mUsername;
 	string mSessionId;
 	string mIceUfrag, mIcePwd;
 	std::optional<string> mFingerprint;

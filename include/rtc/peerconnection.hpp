@@ -112,7 +112,7 @@ public:
 	void onTrack(std::function<void(std::shared_ptr<Track> track)> callback);
 
 	// libnice only
-	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
+	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
 private:
 	std::shared_ptr<IceTransport> initIceTransport(Description::Role role);

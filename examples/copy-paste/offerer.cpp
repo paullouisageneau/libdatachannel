@@ -127,13 +127,11 @@ int main(int argc, char **argv) {
 				cout << "** Channel is not Open ** ";
 				break;
 			}
-			CandidateInfo local, remote;
+			Candidate local, remote;
 			std::optional<std::chrono::milliseconds> rtt = pc->rtt();
 			if (pc->getSelectedCandidatePair(&local, &remote)) {
-				cout << "Local: " << local.address << ":" << local.port << " " << local.type << " "
-				     << local.transportType << endl;
-				cout << "Remote: " << remote.address << ":" << remote.port << " " << remote.type
-				     << " " << remote.transportType << endl;
+				cout << "Local: " << local << endl;
+				cout << "Remote: " << remote << endl;
 				cout << "Bytes Sent:" << pc->bytesSent()
 				     << " / Bytes Received:" << pc->bytesReceived() << " / Round-Trip Time:";
 				if (rtt.has_value())

@@ -127,6 +127,8 @@ RTC_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetLocalAddress(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 
+RTC_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote, int remoteSize);
+
 // DataChannel
 RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
 RTC_EXPORT int rtcAddDataChannel(int pc, const char *label); // returns dc id
