@@ -202,6 +202,7 @@ private:
 
 	// Session-level attributes
 	Role mRole;
+	string mUsername;
 	string mSessionId;
 	string mIceUfrag, mIcePwd;
 	std::optional<string> mFingerprint;

@@ -74,11 +74,6 @@ Description::Description(const string &sdp, Type type, Role role)
     : mType(Type::Unspec), mRole(role) {
 	hintType(type);
 
-	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
-	std::default_random_engine generator(seed);
-	std::uniform_int_distribution<uint32_t> uniform;
-	mSessionId = std::to_string(uniform(generator));
-
 	int index = -1;
 	std::shared_ptr<Entry> current;
 	std::istringstream ss(sdp);
@@ -89,14 +84,14 @@ Description::Description(const string &sdp, Type type, Role role)
 		if (line.empty())
 			continue;
 
-		// Media description line (aka m-line)
-		if (match_prefix(line, "m=")) {
-			++index;
-			string mline = line.substr(2);
-			current = createEntry(std::move(mline), std::to_string(index), Direction::Unknown);
+		if (match_prefix(line, "m=")) { // Media description line (aka m-line)
+			current = createEntry(line.substr(2), std::to_string(++index), Direction::Unknown);
 
-			// Attribute line
-		} else if (match_prefix(line, "a=")) {
+		} else if (match_prefix(line, "o=")) { // Origin line
+			std::istringstream origin(line.substr(2));
+			origin >> mUsername >> mSessionId;
+
+		} else if (match_prefix(line, "a=")) { // Attribute line
 			string attr = line.substr(2);
 			auto [key, value] = parse_pair(attr);
 
@@ -139,6 +134,16 @@ Description::Description(const string &sdp, Type type, Role role)
 
 	if (mIcePwd.empty())
 		throw std::invalid_argument("Missing ice-pwd parameter in SDP description");
+
+	if (mUsername.empty())
+		mUsername = "rtc";
+
+	if (mSessionId.empty()) {
+		auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
+		std::default_random_engine generator(seed);
+		std::uniform_int_distribution<uint32_t> uniform;
+		mSessionId = std::to_string(uniform(generator));
+	}
 }
 
 Description::Type Description::type() const { return mType; }
@@ -194,7 +199,7 @@ string Description::generateSdp(string_view eol) const {
 
 	// Header
 	sdp << "v=0" << eol;
-	sdp << "o=- " << mSessionId << " 0 IN IP4 127.0.0.1" << eol;
+	sdp << "o=" << mUsername << " " << mSessionId << " 0 IN IP4 127.0.0.1" << eol;
 	sdp << "s=-" << eol;
 	sdp << "t=0 0" << eol;
 
@@ -258,7 +263,7 @@ string Description::generateApplicationSdp(string_view eol) const {
 
 	// Header
 	sdp << "v=0" << eol;
-	sdp << "o=- " << mSessionId << " 0 IN IP4 127.0.0.1" << eol;
+	sdp << "o=" << mUsername << " " << mSessionId << " 0 IN IP4 127.0.0.1" << eol;
 	sdp << "s=-" << eol;
 	sdp << "t=0 0" << eol;
 
@@ -299,11 +304,12 @@ string Description::generateApplicationSdp(string_view eol) const {
 std::optional<Candidate> Description::defaultCandidate() const {
 	// Return the first host candidate with highest priority, favoring IPv4
 	std::optional<Candidate> result;
-	for(const auto &c : mCandidates) {
-		if(c.type() == Candidate::Type::Host) {
-			if(!result
-				|| (result->family() == Candidate::Family::Ipv6 && c.family() == Candidate::Family::Ipv4)
-				|| (result->family() == c.family() && result->priority() < c.priority()))
+	for (const auto &c : mCandidates) {
+		if (c.type() == Candidate::Type::Host) {
+			if (!result ||
+			    (result->family() == Candidate::Family::Ipv6 &&
+			     c.family() == Candidate::Family::Ipv4) ||
+			    (result->family() == c.family() && result->priority() < c.priority()))
 				result.emplace(c);
 		}
 	}
@@ -544,8 +550,7 @@ Description::Media::Media(const string &sdp) : Entry(sdp, "", Direction::Unknown
 }
 
 Description::Media::Media(const string &mline, string mid, Direction dir)
-    : Entry(mline, std::move(mid), dir) {
-}
+    : Entry(mline, std::move(mid), dir) {}
 
 string Description::Media::description() const {
 	std::ostringstream desc;
