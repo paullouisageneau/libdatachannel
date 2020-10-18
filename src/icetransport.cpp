@@ -193,11 +193,11 @@ bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote)
 	if (juice_get_selected_candidates(mAgent.get(), sdpLocal, JUICE_MAX_CANDIDATE_SDP_STRING_LEN,
 	                                 sdpRemote, JUICE_MAX_CANDIDATE_SDP_STRING_LEN) == 0) {
 		if (local) {
-			*local = Candidate(sdpLocal);
+			*local = Candidate(sdpLocal, mMid);
 			local->resolve(Candidate::ResolveMode::Simple);
 		}
 		if (remote) {
-			*remote = Candidate(sdpRemote);
+			*remote = Candidate(sdpRemote, mMid);
 			remote->resolve(Candidate::ResolveMode::Simple);
 		}
 		return true;
@@ -740,11 +740,11 @@ bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote)
 		return false;
 
 	gchar *sdpLocal = nice_agent_generate_local_candidate_sdp(mNiceAgent.get(), niceLocal);
-	if(local) *local = Candidate(sdpLocal);
+	if(local) *local = Candidate(sdpLocal, mMid);
 	g_free(sdpLocal);
 
 	gchar *sdpRemote = nice_agent_generate_local_candidate_sdp(mNiceAgent.get(), niceRemote);
-	if(remote) *remote = Candidate(sdpRemote);
+	if(remote) *remote = Candidate(sdpRemote, mMid);
 	g_free(sdpRemote);
 
 	if (local)
