@@ -695,6 +695,7 @@ void PeerConnection::openTracks() {
 		auto srtpTransport = std::reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
 		std::shared_lock lock(mTracksMutex); // read-only
 //		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
+        if (mTrackLines.size() == remoteDescription()->mediaCount()) {
         for (unsigned int i = 0; i < mTrackLines.size(); i++) {
             if (auto track = mTrackLines[i].lock()) {
                 if (!track->isOpen()) {
@@ -702,13 +703,18 @@ void PeerConnection::openTracks() {
 //                        srtpTransport->addInboundSSRC(0);
 //                    if (track->description().direction() == rtc::Description::Direction::SendOnly || track->description().direction() == rtc::Description::Direction::SendRecv)
 
-                    for (auto ssrc : track->description().getSSRCs())
+                    for (auto ssrc : track->description().getSSRCs()) {
+                        PLOG_DEBUG << "Adding " << ssrc << " to list";
                         srtpTransport->addSSRC(ssrc);
-                    for (auto ssrc : std::get<rtc::Description::Media *>(remoteDescription()->media(i))->getSSRCs())
+                    }
+                    for (auto ssrc : std::get<rtc::Description::Media *>(remoteDescription()->media(i))->getSSRCs()) {
+                        PLOG_DEBUG << "Adding " << ssrc << " to list";
                         srtpTransport->addSSRC(ssrc);
+                    }
 
                     track->open(srtpTransport);
                 }
+            }
             }
         }
 	}

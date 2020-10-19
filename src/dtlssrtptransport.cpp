@@ -178,13 +178,13 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 				else if (err == srtp_err_status_auth_fail)
 					PLOG_WARNING << "Incoming SRTCP packet failed authentication check";
 				else
-					PLOG_WARNING << "SRTCP unprotect error, status=" << err;
+					PLOG_WARNING << "SRTCP unprotect error, status=" << err << " SSRC=" << ((RTCP_SR*)message->data())->senderSSRC();
 				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTCP packet, size=" << size;
 			message->type = Message::Type::Control;
             auto rtp = (RTCP_SR*) message->data();
-			message->stream = ntohl(rtp->senderSSRC);
+			message->stream = rtp->senderSSRC();
 		} else {
 			PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
 			if (srtp_err_status_t err = srtp_unprotect(mSrtpIn, message->data(), &size)) {
@@ -193,7 +193,7 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 				else if (err == srtp_err_status_auth_fail)
 					PLOG_WARNING << "Incoming SRTP packet failed authentication check";
 				else
-					PLOG_WARNING << "SRTP unprotect error, status=" << err;
+					PLOG_WARNING << "SRTP unprotect error, status=" << err << " SSRC=" << ((RTP*)message->data())->ssrc();
 				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;

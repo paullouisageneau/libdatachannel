@@ -611,10 +611,17 @@ void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 	addRTPMap(map);
 
 //	// RTX Packets
-    RTPMap rtx(std::to_string(payloadType+1) + " RTX/90000");
-    // TODO rtx-time is how long can a request be stashed for before needing to resend it. Needs to be parameterized
-    rtx.addAttribute("apt=" + std::to_string(payloadType) + ";rtx-time=3000");
-    addRTPMap(rtx);
+/* TODO
+ *  TIL that Firefox does not properly support the negotiation of RTX! It works, but doesn't negotiate the SSRC so
+ *  we have no idea what SSRC is RTX going to be. Three solutions:
+ *  One) we don't negotitate it and (maybe) break RTX support with Edge.
+ *  Two) we do negotiate it and rebuild the original packet before we send it distribute it to each track.
+ *  Three) we complain to mozilla. This one probably won't do much.
+*/
+//    RTPMap rtx(std::to_string(payloadType+1) + " rtx/90000");
+//    // TODO rtx-time is how long can a request be stashed for before needing to resend it. Needs to be parameterized
+//    rtx.addAttribute("apt=" + std::to_string(payloadType) + ";rtx-time=3000");
+//    addRTPMap(rtx);
 }
 
 void Description::Audio::addAudioCodec(int payloadType, const string &codec) {

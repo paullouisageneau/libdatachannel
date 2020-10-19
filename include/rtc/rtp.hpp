@@ -215,7 +215,7 @@ struct RTCP_FB_HEADER {
 
 struct RTCP_SR {
     RTCP_HEADER header;
-    SSRC senderSSRC;
+    SSRC _senderSSRC;
 
 private:
     uint64_t _ntpTimestamp;
@@ -230,7 +230,7 @@ public:
         unsigned int length =
                 ((sizeof(header) + 24 + reportCount * sizeof(RTCP_ReportBlock)) / 4) - 1;
         header.prepareHeader(200, reportCount, uint16_t(length));
-        this->senderSSRC = htonl(senderSSRC);
+        this->_senderSSRC = htonl(senderSSRC);
     }
 
     inline RTCP_ReportBlock *getReportBlock(int num) { return &_reportBlocks + num; }
@@ -245,6 +245,7 @@ public:
     inline uint32_t rtpTimestamp() const { return ntohl(_rtpTimestamp); }
     inline uint32_t packetCount() const { return ntohl(_packetCount); }
     inline uint32_t octetCount() const { return ntohl(_octetCount); }
+    inline uint32_t senderSSRC() const {return ntohl(_senderSSRC);}
 
     inline void setNtpTimestamp(uint32_t ts) { _ntpTimestamp = htonll(ts); }
     inline void setRtpTimestamp(uint32_t ts) { _rtpTimestamp = htonl(ts); }
@@ -252,7 +253,7 @@ public:
     inline void log() const {
         header.log();
         PLOG_VERBOSE << "RTCP SR: "
-                   << " SSRC=" << ntohl(senderSSRC) << ", NTP_TS=" << ntpTimestamp()
+                   << " SSRC=" << senderSSRC() << ", NTP_TS=" << ntpTimestamp()
                    << ", RTP_TS=" << rtpTimestamp() << ", packetCount=" << packetCount()
                    << ", octetCount=" << octetCount();
 
