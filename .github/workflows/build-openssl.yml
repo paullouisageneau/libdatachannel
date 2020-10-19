@@ -30,7 +30,7 @@ jobs:
     - name: submodules
       run: git submodule update --init --recursive
     - name: cmake
-      run: cmake -B build -DUSE_GNUTLS=0 -WARNINGS_AS_ERRORS=1
+      run: cmake -B build -DUSE_GNUTLS=0 -WARNINGS_AS_ERRORS=1 -DENABLE_LOCAL_ADDRESS_TRANSLATION=1
       env:
         OPENSSL_ROOT_DIR: /usr/local/opt/openssl
         OPENSSL_LIBRARIES: /usr/local/opt/openssl/lib
