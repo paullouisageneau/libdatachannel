@@ -67,7 +67,7 @@ int main() {
 
 		auto track = pc->addTrack(media);
 
-		auto session = std::make_shared<rtc::RtcpSession>();
+		auto session = std::make_shared<rtc::RtcpReceivingSession>();
 		track->setRtcpHandler(session);
 
 		track->onMessage(

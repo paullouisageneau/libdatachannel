@@ -106,7 +106,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 		throw std::invalid_argument("Remote description has no media line");
 
 	int activeMediaCount = 0;
-	for (int i = 0; i < description.mediaCount(); ++i)
+	for (unsigned int i = 0; i < description.mediaCount(); ++i)
 		std::visit( // reciprocate each media
 		    rtc::overloaded{[&](Description::Application *) { ++activeMediaCount; },
 		                    [&](Description::Media *media) {
@@ -568,7 +568,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 		if (!mLocalDescription)
 			return;
 
-		for (int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
+		for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
 			if (auto found = std::visit(
 			        rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
 				                        return std::nullopt;
@@ -728,7 +728,7 @@ void PeerConnection::processLocalDescription(Description description) {
     auto remote = remoteDescription();
 	if (remote && remote->type() == Description::Type::Offer) {
 		// Reciprocate remote description
-		for (int i = 0; i < remote->mediaCount(); ++i)
+		for (unsigned int i = 0; i < remote->mediaCount(); ++i)
 			std::visit( // reciprocate each media
 			    rtc::overloaded{
 			        [&](Description::Application *app) {

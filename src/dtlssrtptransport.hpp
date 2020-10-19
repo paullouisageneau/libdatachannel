@@ -50,8 +50,8 @@ private:
 	srtp_t mSrtpIn, mSrtpOut;
 	bool mInitDone = false;
 
-    unsigned char clientSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
-    unsigned char serverSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
+    unsigned char mClientSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
+    unsigned char mServerSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
 };
 
 } // namespace rtc

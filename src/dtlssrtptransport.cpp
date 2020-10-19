@@ -262,35 +262,11 @@ void DtlsSrtpTransport::postHandshake() {
 	serverSalt = clientSalt + SRTP_SALT_LEN;
 #endif
 
-	std::memcpy(clientSessionKey, clientKey, SRTP_AES_128_KEY_LEN);
-	std::memcpy(clientSessionKey + SRTP_AES_128_KEY_LEN, clientSalt, SRTP_SALT_LEN);
+	std::memcpy(mClientSessionKey, clientKey, SRTP_AES_128_KEY_LEN);
+	std::memcpy(mClientSessionKey + SRTP_AES_128_KEY_LEN, clientSalt, SRTP_SALT_LEN);
 
-	std::memcpy(serverSessionKey, serverKey, SRTP_AES_128_KEY_LEN);
-	std::memcpy(serverSessionKey + SRTP_AES_128_KEY_LEN, serverSalt, SRTP_SALT_LEN);
-
-//	srtp_policy_t inbound = {};
-//	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtp);
-//	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtcp);
-//	inbound.ssrc.type = ssrc_any_inbound;
-//	inbound.ssrc.value = 0;
-//	inbound.key = mIsClient ? serverSessionKey : clientSessionKey;
-//	inbound.next = nullptr;
-//
-//	if (srtp_err_status_t err = srtp_add_stream(mSrtpIn, &inbound))
-//		throw std::runtime_error("SRTP add inbound stream failed, status=" +
-//		                         to_string(static_cast<int>(err)));
-//
-//	srtp_policy_t outbound = {};
-//	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&outbound.rtp);
-//	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&outbound.rtcp);
-//	outbound.ssrc.type = ssrc_any_outbound;
-//	outbound.ssrc.value = 0;
-//	outbound.key = mIsClient ? clientSessionKey : serverSessionKey;
-//	outbound.next = nullptr;
-//
-//	if (srtp_err_status_t err = srtp_add_stream(mSrtpOut, &outbound))
-//		throw std::runtime_error("SRTP add outbound stream failed, status=" +
-//		                         to_string(static_cast<int>(err)));
+	std::memcpy(mServerSessionKey, serverKey, SRTP_AES_128_KEY_LEN);
+	std::memcpy(mServerSessionKey + SRTP_AES_128_KEY_LEN, serverSalt, SRTP_SALT_LEN);
 
 	mInitDone = true;
 }
@@ -301,7 +277,7 @@ void DtlsSrtpTransport::addSSRC(uint32_t ssrc) {
     srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtcp);
     inbound.ssrc.type = ssrc_specific;
     inbound.ssrc.value = ssrc;
-    inbound.key = mIsClient ? serverSessionKey : clientSessionKey;
+    inbound.key = mIsClient ? mServerSessionKey : mClientSessionKey;
     inbound.next = nullptr;
 
     if (srtp_err_status_t err = srtp_add_stream(mSrtpIn, &inbound))
@@ -314,7 +290,7 @@ void DtlsSrtpTransport::addSSRC(uint32_t ssrc) {
     srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&outbound.rtcp);
     outbound.ssrc.type = ssrc_specific;
     outbound.ssrc.value = ssrc;
-    outbound.key = mIsClient ? clientSessionKey : serverSessionKey;
+    outbound.key = mIsClient ? mClientSessionKey : mServerSessionKey;
     outbound.next = nullptr;
 
     if (srtp_err_status_t err = srtp_add_stream(mSrtpOut, &outbound))

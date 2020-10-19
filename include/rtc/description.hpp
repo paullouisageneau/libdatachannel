@@ -202,7 +202,7 @@ public:
 
 	std::variant<Media *, Application *> media(int index);
 	std::variant<const Media *, const Application *> media(int index) const;
-	int mediaCount() const;
+	unsigned int mediaCount() const;
 
 	Application *application();
 

@@ -364,7 +364,7 @@ Description::media(int index) const {
 	}
 }
 
-int Description::mediaCount() const { return int(mEntries.size()); }
+unsigned int Description::mediaCount() const { return mEntries.size(); }
 
 Description::Entry::Entry(const string &mline, string mid, Direction dir)
     : mMid(std::move(mid)), mDirection(dir) {
