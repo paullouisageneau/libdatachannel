@@ -152,5 +152,11 @@ void Track::setRtcpHandler(std::shared_ptr<RtcpHandler> handler) {
 	});
 }
 
+bool Track::requestKeyframe() {
+    if (mRtcpHandler)
+        return mRtcpHandler->requestKeyframe();
+    return false;
+}
+
 } // namespace rtc
 

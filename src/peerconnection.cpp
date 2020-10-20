@@ -573,8 +573,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 				mMidFromSssrc.emplace(ssrc, *found);
 				mid = *found;
 				break;
-			}else
-                PLOG_WARNING << "Unknown SSRC " << ssrc;
+			}
 		}
 	}
 

@@ -55,6 +55,8 @@ public:
 	size_t availableAmount() const override;
 	std::optional<message_variant> receive() override;
 
+	bool requestKeyframe();
+
 	// RTCP handler
 	void setRtcpHandler(std::shared_ptr<RtcpHandler> handler);
 

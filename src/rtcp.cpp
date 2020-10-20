@@ -123,6 +123,18 @@ bool RtcpReceivingSession::send(message_ptr msg) {
 	return false;
 }
 
+bool RtcpReceivingSession::requestKeyframe() {
+    pushPLI();
+    return true; // TODO Make this false when it is impossible (i.e. Opus).
+}
+
+void RtcpReceivingSession::pushPLI() {
+    auto msg = rtc::make_message(rtc::RTCP_PLI::size(), rtc::Message::Type::Control);
+    auto *pli = (rtc::RTCP_PLI *) msg->data();
+    pli->preparePacket(mSsrc);
+    send(msg);
+}
+
 void RtcpHandler::onOutgoing(const std::function<void(rtc::message_ptr)>& cb) {
     this->outgoingCallback = synchronized_callback<rtc::message_ptr>(cb);
 }

@@ -58,6 +58,8 @@ public:
      */
     void onOutgoing(const std::function<void(rtc::message_ptr)>& cb);
 
+    virtual bool requestKeyframe() {return false;}
+
 };
 
 class Track;
@@ -72,9 +74,13 @@ public:
 
 	void requestBitrate(unsigned int newBitrate);
 
+    bool requestKeyframe() override;
+
 protected:
 	void pushREMB(unsigned int bitrate);
 	void pushRR(unsigned int lastSR_delay);
+
+    void pushPLI();
 
 	unsigned int mRequestedBitrate = 0;
 	SSRC mSsrc = 0;
