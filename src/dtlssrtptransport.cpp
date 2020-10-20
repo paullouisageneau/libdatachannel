@@ -177,9 +177,11 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 					PLOG_WARNING << "Incoming SRTCP packet is a replay";
 				else if (err == srtp_err_status_auth_fail)
 					PLOG_WARNING << "Incoming SRTCP packet failed authentication check";
-				else
-					PLOG_WARNING << "SRTCP unprotect error, status=" << err << " SSRC=" << ((RTCP_SR*)message->data())->senderSSRC();
-				return;
+				else {
+                    PLOG_WARNING << "SRTCP unprotect error, status=" << err << " SSRC="
+                                 << ((RTCP_SR *) message->data())->senderSSRC();
+                }
+                return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTCP packet, size=" << size;
 			message->type = Message::Type::Control;
@@ -267,6 +269,20 @@ void DtlsSrtpTransport::postHandshake() {
 
 	std::memcpy(mServerSessionKey, serverKey, SRTP_AES_128_KEY_LEN);
 	std::memcpy(mServerSessionKey + SRTP_AES_128_KEY_LEN, serverSalt, SRTP_SALT_LEN);
+
+	// Add SSRC=1 as an inbound because that is what Chrome does.
+    srtp_policy_t inbound = {};
+    srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtp);
+    srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtcp);
+    inbound.ssrc.type = ssrc_specific;
+    inbound.ssrc.value = 1;
+    inbound.key = mIsClient ? mServerSessionKey : mClientSessionKey;
+    inbound.next = nullptr;
+
+    if (srtp_err_status_t err = srtp_add_stream(mSrtpIn, &inbound)) {
+        throw std::runtime_error("SRTP add inbound stream failed, status=" +
+                                 to_string(static_cast<int>(err)));
+    }
 
 	mInitDone = true;
 }

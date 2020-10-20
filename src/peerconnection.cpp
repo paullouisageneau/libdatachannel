@@ -549,16 +549,6 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	if (!message)
 		return;
 
-//	if (message->type == Message::Type::Control) {
-//		std::shared_lock lock(mTracksMutex); // read-only
-//		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
-//			if (auto track = it->second.lock())
-//				return track->incoming(message);
-//
-//		PLOG_WARNING << "No track available to receive control, dropping";
-//		return;
-//	}
-
 	unsigned int ssrc = message->stream;
 	std::optional<string> mid;
 	if (auto it = mMidFromSssrc.find(ssrc); it != mMidFromSssrc.end()) {
