@@ -123,6 +123,7 @@ private:
 	void forwardMessage(message_ptr message);
 	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
+    std::optional<std::string> getMidFromSSRC(SSRC ssrc);
 
 	std::shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, string label,
 	                                                string protocol, Reliability reliability);

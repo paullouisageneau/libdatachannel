@@ -550,32 +550,30 @@ void PeerConnection::forwardMedia(message_ptr message) {
 		return;
 
 	unsigned int ssrc = message->stream;
-	std::optional<string> mid;
-	if (auto it = mMidFromSssrc.find(ssrc); it != mMidFromSssrc.end()) {
-		mid = it->second;
-	} else {
-		std::lock_guard lock(mLocalDescriptionMutex);
-		if (!mLocalDescription)
-			return;
+	std::optional<string> mid = getMidFromSSRC(ssrc);
 
-		for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
-			if (auto found = std::visit(
-			        rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
-				                        return std::nullopt;
-			                        },
-			                        [&](Description::Media *media) -> std::optional<string> {
-				                        return media->hasSSRC(ssrc)
-				                                   ? std::make_optional(media->mid())
-				                                   : nullopt;
-			                        }},
-                    mRemoteDescription->media(i))) {
-
-				mMidFromSssrc.emplace(ssrc, *found);
-				mid = *found;
-				break;
-			}
-		}
-	}
+	// Because chrome likes to send all report blocks as SSRC=1
+	// we have to do this monstrosity to distribute the report blocks
+    if (!mid && message->type == Message::Control) {
+        RTCP_RR* sr = (RTCP_RR*) message->data();
+        if (sr->senderSSRC() == 1 && sr->isReceiverReport()) {
+        bool hasFound = false;
+            for (int i = 0; i < sr->header.reportCount(); i++) {
+                auto block = sr->getReportBlock(i);
+                auto ssrc = block->getSSRC();
+                auto mid = getMidFromSSRC(ssrc);
+                if (mid.has_value()) {
+                    hasFound = true;
+                    std::shared_lock lock(mTracksMutex); // read-only
+                    if (auto it = mTracks.find(*mid); it != mTracks.end())
+                        if (auto track = it->second.lock())
+                            track->incoming(message);
+                }
+            }
+            if (hasFound)
+                return;
+        }
+    }
 
 	if (!mid) {
 		PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
@@ -586,6 +584,51 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	if (auto it = mTracks.find(*mid); it != mTracks.end())
 		if (auto track = it->second.lock())
 			track->incoming(message);
+}
+
+std::optional<std::string> PeerConnection::getMidFromSSRC(SSRC ssrc) {
+    if (auto it = mMidFromSssrc.find(ssrc); it != mMidFromSssrc.end()) {
+        return it->second;
+    } else {
+        std::lock_guard lock(mLocalDescriptionMutex);
+        if (!mLocalDescription)
+            return nullopt;
+
+        for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
+            if (auto found = std::visit(
+                    rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
+                        return std::nullopt;
+                    },
+                                    [&](Description::Media *media) -> std::optional<string> {
+                                        return media->hasSSRC(ssrc)
+                                               ? std::make_optional(media->mid())
+                                               : nullopt;
+                                    }},
+                    mRemoteDescription->media(i))) {
+
+                mMidFromSssrc.emplace(ssrc, *found);
+                return *found;
+            }
+        }
+
+        for (unsigned int i = 0; i < mLocalDescription->mediaCount(); ++i) {
+            if (auto found = std::visit(
+                    rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
+                        return std::nullopt;
+                    },
+                                    [&](Description::Media *media) -> std::optional<string> {
+                                        return media->hasSSRC(ssrc)
+                                               ? std::make_optional(media->mid())
+                                               : nullopt;
+                                    }},
+                    mLocalDescription->media(i))) {
+
+                mMidFromSssrc.emplace(ssrc, *found);
+                return *found;
+            }
+        }
+    }
+    return nullopt;
 }
 
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {

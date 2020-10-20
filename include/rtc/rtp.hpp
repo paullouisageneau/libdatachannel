@@ -265,7 +265,7 @@ public:
 
 struct RTCP_RR {
     RTCP_HEADER header;
-    SSRC senderSSRC;
+    SSRC _senderSSRC;
 
 private:
     RTCP_ReportBlock _reportBlocks;
@@ -274,8 +274,8 @@ public:
     inline RTCP_ReportBlock *getReportBlock(int num) { return &_reportBlocks + num; }
     inline const RTCP_ReportBlock *getReportBlock(int num) const { return &_reportBlocks + num; }
 
-    inline SSRC getSenderSSRC() const { return ntohl(senderSSRC); }
-    inline void setSenderSSRC(SSRC ssrc) { this->senderSSRC = htonl(ssrc); }
+    inline SSRC senderSSRC() const { return ntohl(_senderSSRC); }
+    inline void setSenderSSRC(SSRC ssrc) { this->_senderSSRC = htonl(ssrc); }
 
     [[nodiscard]] inline size_t getSize() const {
         // "length" in packet is one less than the number of 32 bit words in the packet.
@@ -286,17 +286,21 @@ public:
         // "length" in packet is one less than the number of 32 bit words in the packet.
         size_t length = (sizeWithReportBlocks(reportCount) / 4) - 1;
         header.prepareHeader(201, reportCount, uint16_t(length));
-        this->senderSSRC = htonl(senderSSRC);
+        this->_senderSSRC = htonl(senderSSRC);
     }
 
     inline static size_t sizeWithReportBlocks(uint8_t reportCount) {
         return sizeof(header) + 4 + size_t(reportCount) * sizeof(RTCP_ReportBlock);
     }
 
+    inline bool isReceiverReport() {
+        return header.payloadType() == 201;
+    }
+
     inline void log() const {
         header.log();
         PLOG_VERBOSE << "RTCP RR: "
-                   << " SSRC=" << ntohl(senderSSRC);
+                   << " SSRC=" << ntohl(_senderSSRC);
 
         for (unsigned i = 0; i < unsigned(header.reportCount()); i++) {
             getReportBlock(i)->log();

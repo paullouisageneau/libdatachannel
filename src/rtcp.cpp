@@ -66,11 +66,11 @@ rtc::message_ptr RtcpReceivingSession::incoming(rtc::message_ptr ptr) {
 	auto rr = reinterpret_cast<const RTCP_RR *>(ptr->data());
 	if (rr->header.payloadType() == 201) {
 		// RR
-		mSsrc = rr->getSenderSSRC();
+		mSsrc = rr->senderSSRC();
 		rr->log();
 	} else if (rr->header.payloadType() == 200) {
 		// SR
-		mSsrc = rr->getSenderSSRC();
+		mSsrc = rr->senderSSRC();
 		auto sr = reinterpret_cast<const RTCP_SR *>(ptr->data());
 		mSyncRTPTS = sr->rtpTimestamp();
 		mSyncNTPTS = sr->ntpTimestamp();
