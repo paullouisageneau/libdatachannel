@@ -158,8 +158,8 @@ target_link_libraries(datachannel-static PUBLIC Threads::Threads plog::plog)
 target_link_libraries(datachannel-static PRIVATE Usrsctp::UsrsctpStatic)
 
 if(WIN32)
-	target_link_libraries(datachannel PRIVATE wsock32 ws2_32) # winsock2
-	target_link_libraries(datachannel-static PRIVATE wsock32 ws2_32) # winsock2
+	target_link_libraries(datachannel PRIVATE ws2_32) # winsock2
+	target_link_libraries(datachannel-static PRIVATE ws2_32) # winsock2
 endif()
 
 find_package(SRTP)
