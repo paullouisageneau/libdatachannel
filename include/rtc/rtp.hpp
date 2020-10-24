@@ -424,6 +424,7 @@ struct RTCP_NACK_PART {
 };
 
 class RTCP_NACK {
+public:
     RTCP_FB_HEADER header;
     RTCP_NACK_PART parts[1];
 public:
@@ -458,6 +459,10 @@ public:
 
     [[nodiscard]] static unsigned int getSize(unsigned int discreteSeqNoCount) {
         return offsetof(RTCP_NACK, parts) + sizeof(RTCP_NACK_PART) * discreteSeqNoCount;
+    }
+
+    [[nodiscard]] unsigned int getSeqNoCount() {
+        return header.header.length() - 2;
     }
 };
 
