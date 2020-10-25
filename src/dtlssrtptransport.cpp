@@ -90,9 +90,6 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	if (size < 8)
 		throw std::runtime_error("RTP/RTCP packet too short");
 
-//    return outgoing(message);
-//    return DtlsTransport::send(message);
-
 	// srtp_protect() and srtp_protect_rtcp() assume that they can write SRTP_MAX_TRAILER_LEN (for
 	// the authentication tag) into the location in memory immediately following the RTP packet.
 	message->resize(size + SRTP_MAX_TRAILER_LEN);
@@ -130,7 +127,6 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 
 	message->resize(size);
 	return outgoing(message);
-//	return DtlsTransport::send(message);
 }
 
 void DtlsSrtpTransport::incoming(message_ptr message) {
@@ -216,6 +212,8 @@ void DtlsSrtpTransport::postHandshake() {
 	if (mInitDone)
 		return;
 
+	static_assert(SRTP_AES_ICM_128_KEY_LEN_WSALT == SRTP_AES_128_KEY_LEN + SRTP_SALT_LEN);
+
 	const size_t materialLen = SRTP_AES_ICM_128_KEY_LEN_WSALT * 2;
 	unsigned char material[materialLen];
 	const unsigned char *clientKey, *clientSalt, *serverKey, *serverSalt;
@@ -288,6 +286,9 @@ void DtlsSrtpTransport::postHandshake() {
 }
 
 void DtlsSrtpTransport::addSSRC(uint32_t ssrc) {
+	if (!mInitDone)
+		throw std::logic_error("Attempted to add SSRC before SRTP keying material is derived");
+
     srtp_policy_t inbound = {};
     srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtp);
     srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtcp);
@@ -299,7 +300,6 @@ void DtlsSrtpTransport::addSSRC(uint32_t ssrc) {
     if (srtp_err_status_t err = srtp_add_stream(mSrtpIn, &inbound))
         throw std::runtime_error("SRTP add inbound stream failed, status=" +
                                  to_string(static_cast<int>(err)));
-
 
     srtp_policy_t outbound = {};
     srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&outbound.rtp);
