@@ -21,6 +21,7 @@ Revisions:
 08/01/2012 - Ludvik Jerabek - Created separate functions for char and wchar_t characters so single dll can do both unicode and ansi
 10/15/2012 - Ludvik Jerabek - Modified to match latest GNU features
 06/19/2015 - Ludvik Jerabek - Fixed maximum option limitation caused by option_a (255) and option_w (65535) structure val variable
+24/10/2020 - Paul-Louis Ageneau - Removed Unicode version
 
 **DISCLAIMER**
 THIS MATERIAL IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
@@ -79,7 +80,6 @@ EXPRESSLY ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 	#define ARG_OPT		2	/*Argument Optional*/
 
 	#include <string.h>
-	#include <wchar.h>
 
 _BEGIN_EXTERN_C
 
@@ -87,7 +87,6 @@ _BEGIN_EXTERN_C
 	extern _GETOPT_API int opterr;
 	extern _GETOPT_API int optopt;
 
-	// Ansi
 	struct option_a
 	{
 		const char* name;
@@ -100,19 +99,6 @@ _BEGIN_EXTERN_C
 	extern _GETOPT_API int getopt_long_a(int argc, char *const *argv, const char *options, const struct option_a *long_options, int *opt_index) _GETOPT_THROW;
 	extern _GETOPT_API int getopt_long_only_a(int argc, char *const *argv, const char *options, const struct option_a *long_options, int *opt_index) _GETOPT_THROW;
 
-	// Unicode
-	struct option_w
-	{
-		const wchar_t* name;
-		int has_arg;
-		int *flag;
-		int val;
-	};
-	extern _GETOPT_API wchar_t *optarg_w;
-	extern _GETOPT_API int getopt_w(int argc, wchar_t *const *argv, const wchar_t *optstring) _GETOPT_THROW;
-	extern _GETOPT_API int getopt_long_w(int argc, wchar_t *const *argv, const wchar_t *options, const struct option_w *long_options, int *opt_index) _GETOPT_THROW;
-	extern _GETOPT_API int getopt_long_only_w(int argc, wchar_t *const *argv, const wchar_t *options, const struct option_w *long_options, int *opt_index) _GETOPT_THROW;	
-	
 _END_EXTERN_C
 
 	#undef _BEGIN_EXTERN_C
@@ -120,17 +106,10 @@ _END_EXTERN_C
 	#undef _GETOPT_THROW
 	#undef _GETOPT_API
 
-	#ifdef _UNICODE
-		#define getopt getopt_w
-		#define getopt_long getopt_long_w
-		#define getopt_long_only getopt_long_only_w
-		#define option option_w
-		#define optarg optarg_w
-	#else
-		#define getopt getopt_a
-		#define getopt_long getopt_long_a
-		#define getopt_long_only getopt_long_only_a
-		#define option option_a
-		#define optarg optarg_a
-	#endif
+	#define getopt getopt_a
+	#define getopt_long getopt_long_a
+	#define getopt_long_only getopt_long_only_a
+	#define option option_a
+	#define optarg optarg_a
+
 #endif  // __GETOPT_H_

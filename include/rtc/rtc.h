@@ -25,13 +25,13 @@ extern "C" {
 
 #ifdef _WIN32
 #define RTC_EXPORT __declspec(dllexport)
-#else
-#define RTC_EXPORT
-#endif
-
 #ifdef CAPI_STDCALL
 #define RTC_API __stdcall
 #else
+#define RTC_API
+#endif
+#else // not WIN32
+#define RTC_EXPORT
 #define RTC_API
 #endif
 
