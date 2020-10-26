@@ -237,7 +237,7 @@ static void RTC_API dataChannelCallback(int pc, int dc, void *ptr) {
 		printf("DataChannel %s: Received with label \"%s\"\n", "answerer", buffer);
 }
 
-static void deletePeer(Peer *peer) {
+static void RTC_API deletePeer(Peer *peer) {
 	if (peer) {
 		if (peer->dc)
 			rtcDeleteDataChannel(peer->dc);

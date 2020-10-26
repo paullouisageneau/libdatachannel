@@ -237,7 +237,7 @@ static void RTC_API messageCallback(int id, const char *message, int size, void 
 	}
 }
 
-static void deletePeer(Peer *peer) {
+static void RTC_API deletePeer(Peer *peer) {
 	if (peer) {
 		if (peer->dc)
 			rtcDeleteDataChannel(peer->dc);
