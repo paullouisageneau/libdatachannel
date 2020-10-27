@@ -48,7 +48,7 @@ static void RTC_API stateChangeCallback(int pc, rtcState state, void *ptr);
 static void RTC_API gatheringStateCallback(int pc, rtcGatheringState state, void *ptr);
 static void RTC_API closedCallback(int id, void *ptr);
 static void RTC_API messageCallback(int id, const char *message, int size, void *ptr);
-static void RTC_API deletePeer(Peer *peer);
+static void deletePeer(Peer *peer);
 
 char *state_print(rtcState state);
 char *rtcGatheringState_print(rtcGatheringState state);
@@ -237,7 +237,7 @@ static void RTC_API dataChannelCallback(int pc, int dc, void *ptr) {
 		printf("DataChannel %s: Received with label \"%s\"\n", "answerer", buffer);
 }
 
-static void RTC_API deletePeer(Peer *peer) {
+static void deletePeer(Peer *peer) {
 	if (peer) {
 		if (peer->dc)
 			rtcDeleteDataChannel(peer->dc);
