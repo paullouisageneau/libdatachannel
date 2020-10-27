@@ -25,7 +25,6 @@
 #include <chrono>
 #include <iostream>
 #include <random>
-#include <sstream>
 
 using std::shared_ptr;
 using std::size_t;
@@ -611,23 +610,6 @@ void Description::Media::removeFormat(const string &fmt) {
 			it++;
 	}
 }
-std::string random_string(std::size_t length)
-{
-    const std::string CHARACTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-
-    std::random_device random_device;
-    std::mt19937 generator(random_device());
-    std::uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
-
-    std::string random_string;
-
-    for (std::size_t i = 0; i < length; ++i)
-    {
-        random_string += CHARACTERS[distribution(generator)];
-    }
-
-    return random_string;
-}
 
 void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/90000");
@@ -640,7 +622,6 @@ void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 		// TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
 		map.fmtps.emplace_back("profile-level-id=42E02A;packetization-mode=1;level-asymmetry-allowed=1");
 	}
-	map.fmtps.emplace_back("literally-a-random-identifier=" + random_string(12));
 	addRTPMap(map);
 
 //	// RTX Packets
