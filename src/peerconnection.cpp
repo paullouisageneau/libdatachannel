@@ -115,8 +115,8 @@ void PeerConnection::setRemoteDescription(Description description) {
 		                    }},
 		    description.media(i));
 
-	if (activeMediaCount == 0)
-		throw std::invalid_argument("Remote description has no active media");
+//	if (activeMediaCount == 0)
+//		throw std::invalid_argument("Remote description has no active media");
 
 	if (!description.fingerprint())
 		throw std::invalid_argument("Remote description has no fingerprint");
@@ -552,12 +552,12 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	unsigned int ssrc = message->stream;
 	std::optional<string> mid = getMidFromSSRC(ssrc);
 
-	// Because chrome likes to send all report blocks as SSRC=1
+	// Browsers like to compound their packets with a random SSRC.
 	// we have to do this monstrosity to distribute the report blocks
     if (!mid && message->type == Message::Control) {
         RTCP_RR* sr = (RTCP_RR*) message->data();
-        if (sr->senderSSRC() == 1 && sr->isReceiverReport()) {
-        bool hasFound = false;
+        if (sr->isReceiverReport() ||sr->isSenderReport()) {
+            bool hasFound = false;
             for (int i = 0; i < sr->header.reportCount(); i++) {
                 auto block = sr->getReportBlock(i);
                 auto ssrc = block->getSSRC();
@@ -576,7 +576,13 @@ void PeerConnection::forwardMedia(message_ptr message) {
     }
 
 	if (!mid) {
-		PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
+	    /* TODO
+	     *   So the problem is that when stop sending streams, we stop getting report blocks for those streams
+	     *   Therefore when we get compound RTCP packets, they are empty, and we can't forward them.
+	     *   Therefore, it is expected that we don't know where to forward packets.
+	     *   Is this ideal? No! Do I know how to fix it? No!
+	     */
+//		PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
 		return;
 	}
 
@@ -726,27 +732,22 @@ void PeerConnection::openTracks() {
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
 		auto srtpTransport = std::reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
 		std::shared_lock lock(mTracksMutex); // read-only
-//		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
-        if (mTrackLines.size() == remoteDescription()->mediaCount()) {
-        for (unsigned int i = 0; i < mTrackLines.size(); i++) {
-            if (auto track = mTrackLines[i].lock()) {
+            for (unsigned int i = 0; i < mTrackLines.size(); i++) {
+                if (auto track = mTrackLines[i].lock()) {
+//                    srtpTransport->addSSRC(0);
+
+//                    for (auto ssrc : track->description().getSSRCs()) {
+//                        PLOG_DEBUG << "Adding " << ssrc << " to list";
+//                        srtpTransport->addSSRC(ssrc);
+//                    }
+//                    for (auto ssrc : std::get<rtc::Description::Media *>(remoteDescription()->media(i))->getSSRCs()) {
+//                        PLOG_DEBUG << "Adding " << ssrc << " to list";
+//                        srtpTransport->addSSRC(ssrc);
+//                    }
+
                 if (!track->isOpen()) {
-//                    if (track->description().direction() == rtc::Description::Direction::RecvOnly || track->description().direction() == rtc::Description::Direction::SendRecv)
-//                        srtpTransport->addInboundSSRC(0);
-//                    if (track->description().direction() == rtc::Description::Direction::SendOnly || track->description().direction() == rtc::Description::Direction::SendRecv)
-
-                    for (auto ssrc : track->description().getSSRCs()) {
-                        PLOG_DEBUG << "Adding " << ssrc << " to list";
-                        srtpTransport->addSSRC(ssrc);
-                    }
-                    for (auto ssrc : std::get<rtc::Description::Media *>(remoteDescription()->media(i))->getSSRCs()) {
-                        PLOG_DEBUG << "Adding " << ssrc << " to list";
-                        srtpTransport->addSSRC(ssrc);
-                    }
-
                     track->open(srtpTransport);
                 }
-            }
             }
         }
 	}
@@ -836,8 +837,8 @@ void PeerConnection::processLocalDescription(Description description) {
 	}
 
 	// There must be at least one active media to negociate
-	if (activeMediaCount == 0)
-		throw std::runtime_error("Nothing to negociate");
+//	if (activeMediaCount == 0)
+//		throw std::runtime_error("Nothing to negociate");
 
 	// Set local fingerprint (wait for certificate if necessary)
 	description.setFingerprint(mCertificate.get()->fingerprint());

@@ -446,6 +446,21 @@ void Description::Media::addSSRC(uint32_t ssrc, std::string name) {
     mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + name);
 }
 
+void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::string name) {
+    auto it = mAttributes.begin();
+    while (it != mAttributes.end()) {
+        if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
+            it = mAttributes.erase(it);
+        }else
+            it++;
+    }
+    mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + name);
+}
+
+void Description::Media::addSSRC(uint32_t ssrc) {
+    mAttributes.emplace_back("ssrc:" + std::to_string(ssrc));
+}
+
 bool Description::Media::hasSSRC(uint32_t ssrc) {
     for (auto &val : mAttributes) {
         if (val.find("ssrc:" + std::to_string(ssrc)) != std::string ::npos)
@@ -723,6 +738,7 @@ std::vector<uint32_t> Description::Media::getSSRCs() {
     }
     return vec;
 }
+
 
 
 Description::Media::RTPMap::RTPMap(string_view mline) {

@@ -42,6 +42,7 @@ public:
 
 	string mid() const;
 	Description::Media description() const;
+    void replaceSSRC(SSRC oldSSRC, SSRC ssrc, string cname);
 
 	void close(void) override;
 	bool send(message_variant data) override;
@@ -59,6 +60,7 @@ public:
 
 	// RTCP handler
 	void setRtcpHandler(std::shared_ptr<RtcpHandler> handler);
+	std::shared_ptr<RtcpHandler> getRtcpHandler();
 
 private:
 #if RTC_ENABLE_MEDIA

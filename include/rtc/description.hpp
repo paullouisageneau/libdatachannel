@@ -130,6 +130,8 @@ public:
         void removeFormat(const string &fmt);
 
         void addSSRC(uint32_t ssrc, std::string name);
+        void addSSRC(uint32_t ssrc);
+        void replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, string name);
         bool hasSSRC(uint32_t ssrc);
         std::vector<uint32_t> getSSRCs();
 
@@ -171,7 +173,8 @@ public:
 
 	public:
         void addRTPMap(const RTPMap& map);
-	};
+
+    };
 
 	class Audio : public Media {
 	public:

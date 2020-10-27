@@ -32,6 +32,10 @@ string Track::mid() const { return mMediaDescription.mid(); }
 
 Description::Media Track::description() const { return mMediaDescription; }
 
+void Track::replaceSSRC(SSRC oldSSRC, SSRC ssrc, std::string cname) {
+    mMediaDescription.replaceSSRC(oldSSRC, ssrc, cname);
+}
+
 void Track::close() {
 	mIsClosed = true;
 	resetCallbacks();
@@ -156,6 +160,10 @@ bool Track::requestKeyframe() {
     if (mRtcpHandler)
         return mRtcpHandler->requestKeyframe();
     return false;
+}
+
+std::shared_ptr<RtcpHandler> Track::getRtcpHandler() {
+    return mRtcpHandler;
 }
 
 } // namespace rtc

@@ -73,6 +73,10 @@ public:
     inline void setSsrc(uint32_t ssrc) {
         _ssrc = htonl(ssrc);
     }
+
+    void setTimestamp(uint32_t i) {
+        _timestamp = htonl(i);
+    }
 };
 
 struct RTCP_ReportBlock {
@@ -291,6 +295,10 @@ public:
 
     inline static size_t sizeWithReportBlocks(uint8_t reportCount) {
         return sizeof(header) + 4 + size_t(reportCount) * sizeof(RTCP_ReportBlock);
+    }
+
+    inline bool isSenderReport() {
+        return header.payloadType() == 200;
     }
 
     inline bool isReceiverReport() {

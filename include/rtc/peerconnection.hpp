@@ -83,6 +83,7 @@ public:
 	bool hasMedia() const;
 
 	void setLocalDescription();
+    void processLocalDescription(Description description);
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
 
@@ -136,7 +137,6 @@ private:
 	void incomingTrack(Description::Media description);
 	void openTracks();
 
-	void processLocalDescription(Description description);
 	void processLocalCandidate(Candidate candidate);
 	void triggerDataChannel(std::weak_ptr<DataChannel> weakDataChannel);
 	void triggerTrack(std::shared_ptr<Track> track);
