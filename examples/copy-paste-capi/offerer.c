@@ -48,7 +48,7 @@ static void RTC_API gatheringStateCallback(int pc, rtcGatheringState state, void
 static void RTC_API openCallback(int id, void *ptr);
 static void RTC_API closedCallback(int id, void *ptr);
 static void RTC_API messageCallback(int id, const char *message, int size, void *ptr);
-static void RTC_API deletePeer(Peer *peer);
+static void deletePeer(Peer *peer);
 
 char *state_print(rtcState state);
 char *rtcGatheringState_print(rtcGatheringState state);
