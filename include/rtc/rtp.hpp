@@ -22,6 +22,7 @@
 
 #include <cmath>
 #include <netinet/in.h>
+#include <rtc/log.hpp>
 
 #ifndef htonll
 #define htonll(x)                                                                                  \
