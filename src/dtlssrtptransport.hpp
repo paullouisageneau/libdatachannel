@@ -24,7 +24,7 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include <srtp2/srtp.h>
+#include "srtp.h"
 
 #include <atomic>
 

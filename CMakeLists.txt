@@ -161,25 +161,12 @@ if(WIN32)
 	target_link_libraries(datachannel-static PRIVATE wsock32 ws2_32) # winsock2
 endif()
 
-find_package(SRTP)
-if(SRTP_FOUND)
-	if(NOT TARGET SRTP::SRTP)
-		add_library(SRTP::SRTP UNKNOWN IMPORTED)
-		set_target_properties(SRTP::SRTP PROPERTIES
-			INTERFACE_INCLUDE_DIRECTORIES ${SRTP_INCLUDE_DIRS}
-			IMPORTED_LINK_INTERFACE_LANGUAGES C
-			IMPORTED_LOCATION ${SRTP_LIBRARIES})
-	endif()
-	message(STATUS "LibSRTP found, compiling with media transport")
-	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=1)
-	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=1)
-	target_link_libraries(datachannel PRIVATE SRTP::SRTP)
-	target_link_libraries(datachannel-static PRIVATE SRTP::SRTP)
-else()
-	message(STATUS "LibSRTP NOT found, compiling WITHOUT media transport")
-	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=0)
-	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=0)
-endif()
+add_subdirectory(deps/libsrtp EXCLUDE_FROM_ALL)
+message(STATUS "LibSRTP found, compiling with media transport")
+target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=1)
+target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=1)
+target_link_libraries(datachannel PRIVATE srtp2)
+target_link_libraries(datachannel-static PRIVATE srtp2)
 
 if (USE_GNUTLS)
 	find_package(GnuTLS REQUIRED)
