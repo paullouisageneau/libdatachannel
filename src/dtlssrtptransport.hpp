@@ -26,6 +26,8 @@
 
 #include <srtp2/srtp.h>
 
+#include <atomic>
+
 namespace rtc {
 
 class DtlsSrtpTransport final : public DtlsTransport {
@@ -39,7 +41,7 @@ public:
 	~DtlsSrtpTransport();
 
 	bool sendMedia(message_ptr message);
-    void addSSRC(uint32_t ssrc);
+	void addSSRC(uint32_t ssrc);
 
 private:
 	void incoming(message_ptr message) override;
@@ -48,10 +50,10 @@ private:
 	message_callback mSrtpRecvCallback;
 
 	srtp_t mSrtpIn, mSrtpOut;
-	bool mInitDone = false;
 
-    unsigned char mClientSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
-    unsigned char mServerSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
+	std::atomic<bool> mInitDone = false;
+	unsigned char mClientSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
+	unsigned char mServerSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
 };
 
 } // namespace rtc
