@@ -100,7 +100,7 @@ certificate_ptr make_certificate_impl(string commonName) {
 	unique_ptr<gnutls_x509_privkey_t, decltype(&free_privkey)> privkey(new_privkey(), free_privkey);
 
 #ifdef RSA_KEY_BITS_2048
-	const int bits = 2048;
+	const unsigned int bits = 2048;
 #else
 	const unsigned int bits = gnutls_sec_param_to_pk_bits(GNUTLS_PK_RSA, GNUTLS_SEC_PARAM_HIGH);
 #endif
