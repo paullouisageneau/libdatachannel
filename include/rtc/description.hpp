@@ -34,8 +34,8 @@ namespace rtc {
 
 class Description {
 public:
-	enum class Type { Unspec = 0, Offer = 1, Answer = 2 };
-	enum class Role { ActPass = 0, Passive = 1, Active = 2 };
+	enum class Type { Unspec, Offer, Answer, Pranswer, Rollback };
+	enum class Role { ActPass, Passive, Active };
 	enum class Direction { SendOnly, RecvOnly, SendRecv, Inactive, Unknown };
 
 	Description(const string &sdp, const string &typeString = "");
@@ -45,7 +45,6 @@ public:
 	Type type() const;
 	string typeString() const;
 	Role role() const;
-	string roleString() const;
 	string bundleMid() const;
 	string iceUfrag() const;
 	string icePwd() const;
@@ -193,6 +192,9 @@ public:
 
 	Application *application();
 
+	static Type stringToType(const string &typeString);
+	static string typeToString(Type type);
+
 private:
 	std::optional<Candidate> defaultCandidate() const;
 	std::shared_ptr<Entry> createEntry(string mline, string mid, Direction dir);
@@ -214,14 +216,12 @@ private:
 	// Candidates
 	std::vector<Candidate> mCandidates;
 	bool mEnded = false;
-
-	static Type stringToType(const string &typeString);
-	static string typeToString(Type type);
-	static string roleToString(Role role);
 };
 
 } // namespace rtc
 
 std::ostream &operator<<(std::ostream &out, const rtc::Description &description);
+std::ostream &operator<<(std::ostream &out, rtc::Description::Type type);
+std::ostream &operator<<(std::ostream &out, rtc::Description::Role role);
 
 #endif

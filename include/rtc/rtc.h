@@ -59,6 +59,14 @@ typedef enum {
 	RTC_GATHERING_COMPLETE = 2
 } rtcGatheringState;
 
+typedef enum {
+	RTC_SIGNALING_STABLE = 0,
+	RTC_SIGNALING_HAVE_LOCAL_OFFER = 1,
+	RTC_SIGNALING_HAVE_REMOTE_OFFER = 2,
+	RTC_SIGNALING_HAVE_LOCAL_PRANSWER = 3,
+	RTC_SIGNALING_HAVE_REMOTE_PRANSWER = 4,
+} rtcSignalingState;
+
 typedef enum { // Don't change, it must match plog severity
 	RTC_LOG_NONE = 0,
 	RTC_LOG_FATAL = 1,

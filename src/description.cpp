@@ -26,6 +26,7 @@
 #include <iostream>
 #include <random>
 #include <sstream>
+#include <unordered_map>
 
 using std::shared_ptr;
 using std::size_t;
@@ -767,12 +768,14 @@ Description::Video::Video(string mid, Direction dir)
     : Media("video 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
 
 Description::Type Description::stringToType(const string &typeString) {
-	if (typeString == "offer")
-		return Type::Offer;
-	else if (typeString == "answer")
-		return Type::Answer;
-	else
-		return Type::Unspec;
+	using TypeMap_t = std::unordered_map<string, Type>;	
+	static const TypeMap_t TypeMap = {{"unspec", Type::Unspec},
+									  {"offer", Type::Offer},
+	                                  {"answer", Type::Pranswer},
+	                                  {"pranswer", Type::Pranswer},
+	                                  {"rollback", Type::Rollback}};
+	auto it = TypeMap.find(typeString); 
+	return it != TypeMap.end() ? it->second : Type::Unspec;
 }
 
 string Description::typeToString(Type type) {
@@ -781,19 +784,12 @@ string Description::typeToString(Type type) {
 		return "offer";
 	case Type::Answer:
 		return "answer";
+	case Type::Pranswer:
+		return "pranswer";
+	case Type::Rollback:
+		return "rollback";
 	default:
-		return "";
-	}
-}
-
-string Description::roleToString(Role role) {
-	switch (role) {
-	case Role::Active:
-		return "active";
-	case Role::Passive:
-		return "passive";
-	default:
-		return "actpass";
+		return "unknown";
 	}
 }
 
@@ -802,3 +798,25 @@ string Description::roleToString(Role role) {
 std::ostream &operator<<(std::ostream &out, const rtc::Description &description) {
 	return out << std::string(description);
 }
+
+std::ostream &operator<<(std::ostream &out, rtc::Description::Type type) {
+	return out << rtc::Description::typeToString(type);
+}
+
+std::ostream &operator<<(std::ostream &out, rtc::Description::Role role) {
+	using Role = rtc::Description::Role;
+	const char *str;
+	switch (role) {
+	case Role::Active:
+		str = "active";
+		break;
+	case Role::Passive:
+		str = "passive";
+		break;
+	default:
+		str = "actpass";
+		break;
+	}
+	return out << str;
+}
+
