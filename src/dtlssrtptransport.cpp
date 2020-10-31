@@ -116,9 +116,10 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
                 if ((err = srtp_protect_rtcp(mSrtpOut, message->data(), &size)))
                     throw std::runtime_error("SRTCP protect error, status=" +
                                              to_string(static_cast<int>(err)));
-            }else
-				throw std::runtime_error("SRTCP protect error, status=" +
-				                         to_string(static_cast<int>(err)));
+            }else {
+		throw std::runtime_error("SRTCP protect error, status=" +
+					 to_string(static_cast<int>(err)));
+	    }
 		}
 		PLOG_VERBOSE << "Protected SRTCP packet, size=" << size;
 	} else {
@@ -327,6 +328,7 @@ void DtlsSrtpTransport::addSSRC(uint32_t ssrc) {
     inbound.ssrc.value = ssrc;
     inbound.key = mIsClient ? mServerSessionKey : mClientSessionKey;
     inbound.next = nullptr;
+    inbound.allow_repeat_tx = true;
 
     if (srtp_err_status_t err = srtp_add_stream(mSrtpIn, &inbound))
         throw std::runtime_error("SRTP add inbound stream failed, status=" +
@@ -339,6 +341,7 @@ void DtlsSrtpTransport::addSSRC(uint32_t ssrc) {
     outbound.ssrc.value = ssrc;
     outbound.key = mIsClient ? mClientSessionKey : mServerSessionKey;
     outbound.next = nullptr;
+    outbound.allow_repeat_tx = true;
 
     if (srtp_err_status_t err = srtp_add_stream(mSrtpOut, &outbound))
         throw std::runtime_error("SRTP add outbound stream failed, status=" +

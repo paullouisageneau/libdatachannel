@@ -613,16 +613,26 @@ void Description::Media::removeFormat(const string &fmt) {
 
 void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/90000");
-    map.addFB("nack");
-    map.addFB("nack pli");
+        map.addFB("nack");
+	    map.addFB("nack pli");
 	map.addFB("goog-remb");
 	if (codec == "H264") {
 		// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
 		// https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
 		// TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
-		map.fmtps.emplace_back("profile-level-id=42E02A;packetization-mode=1;level-asymmetry-allowed=1");
+		map.fmtps.emplace_back("profile-level-id=4de01f;packetization-mode=1;level-asymmetry-allowed=1");
+		
+		// Because certain Android devices don't like me, let us just negotiate some random
+		{
+			RTPMap map(std::to_string(payloadType+1) + ' ' + codec + "/90000");
+			map.addFB("nack");
+			    map.addFB("nack pli");
+			map.addFB("goog-remb");
+			addRTPMap(map);
+			}
 	}
 	addRTPMap(map);
+
 
 //	// RTX Packets
 /* TODO
