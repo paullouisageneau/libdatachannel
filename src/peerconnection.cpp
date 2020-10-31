@@ -134,7 +134,7 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 
 	case SignalingState::HaveRemoteOffer:
 	case SignalingState::HaveLocalPranswer:
-		if (type != Description::Type::Answer || type != Description::Type::Pranswer) {
+		if (type != Description::Type::Answer && type != Description::Type::Pranswer) {
 			std::ostringstream oss;
 			oss << "Unexpected local description type " << type
 			    << " description in signaling state " << signalingState;
@@ -172,17 +172,15 @@ void PeerConnection::setRemoteDescription(Description description) {
 
 	validateRemoteDescription(description);
 
-	auto type = description.type();
-
 	// Get the new signaling state
 	SignalingState signalingState = mSignalingState.load();
 	SignalingState newSignalingState;
 	switch (signalingState) {
 	case SignalingState::Stable:
 		description.hintType(Description::Type::Offer);
-		if (type != Description::Type::Offer) {
+		if (description.type() != Description::Type::Offer) {
 			std::ostringstream oss;
-			oss << "Unexpected remote " << type << " description in signaling state "
+			oss << "Unexpected remote " << description.type() << " description in signaling state "
 			    << signalingState;
 			throw std::logic_error(oss.str());
 		}
@@ -192,9 +190,10 @@ void PeerConnection::setRemoteDescription(Description description) {
 	case SignalingState::HaveLocalOffer:
 	case SignalingState::HaveRemotePranswer:
 		description.hintType(Description::Type::Answer);
-		if (type != Description::Type::Answer || type != Description::Type::Pranswer) {
+		if (description.type() != Description::Type::Answer &&
+		    description.type() != Description::Type::Pranswer) {
 			std::ostringstream oss;
-			oss << "Unexpected remote " << type << " description in signaling state "
+			oss << "Unexpected remote " << description.type() << " description in signaling state "
 			    << signalingState;
 			throw std::logic_error(oss.str());
 		}
@@ -209,6 +208,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 
 	// Candidates will be added at the end, extract them for now
 	auto remoteCandidates = description.extractCandidates();
+	auto type = description.type();
 
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	if (!iceTransport)
@@ -249,6 +249,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 
 void PeerConnection::addRemoteCandidate(Candidate candidate) {
 	PLOG_VERBOSE << "Adding remote candidate: " << string(candidate);
+	processRemoteCandidate(std::move(candidate));
 }
 
 std::optional<string> PeerConnection::localAddress() const {

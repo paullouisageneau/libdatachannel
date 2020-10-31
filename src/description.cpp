@@ -766,18 +766,20 @@ Description::Video::Video(string mid, Direction dir)
     : Media("video 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
 
 Description::Type Description::stringToType(const string &typeString) {
-	using TypeMap_t = std::unordered_map<string, Type>;	
+	using TypeMap_t = std::unordered_map<string, Type>;
 	static const TypeMap_t TypeMap = {{"unspec", Type::Unspec},
 									  {"offer", Type::Offer},
 	                                  {"answer", Type::Pranswer},
 	                                  {"pranswer", Type::Pranswer},
 	                                  {"rollback", Type::Rollback}};
-	auto it = TypeMap.find(typeString); 
+	auto it = TypeMap.find(typeString);
 	return it != TypeMap.end() ? it->second : Type::Unspec;
 }
 
 string Description::typeToString(Type type) {
 	switch (type) {
+	case Type::Unspec:
+		return "unspec";
 	case Type::Offer:
 		return "offer";
 	case Type::Answer:
