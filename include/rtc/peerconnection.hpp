@@ -145,8 +145,11 @@ private:
 	void incomingTrack(Description::Media description);
 	void openTracks();
 
+	void validateRemoteDescription(const Description &description);
 	void processLocalDescription(Description description);
 	void processLocalCandidate(Candidate candidate);
+	void processRemoteDescription(Description description);
+	void processRemoteCandidate(Candidate candidate);
 	void triggerDataChannel(std::weak_ptr<DataChannel> weakDataChannel);
 	void triggerTrack(std::shared_ptr<Track> track);
 	bool changeState(State state);

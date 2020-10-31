@@ -118,19 +118,50 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 			type = Description::Type::Offer;
 	}
 
+	// Get the new signaling state
+	SignalingState signalingState = mSignalingState.load();
+	SignalingState newSignalingState;
+	switch (signalingState) {
+	case SignalingState::Stable:
+		if (type != Description::Type::Offer) {
+			std::ostringstream oss;
+			oss << "Unexpected local desciption type " << type << " in signaling state "
+			    << signalingState;
+			throw std::logic_error(oss.str());
+		}
+		newSignalingState = SignalingState::HaveLocalOffer;
+		break;
+
+	case SignalingState::HaveRemoteOffer:
+	case SignalingState::HaveLocalPranswer:
+		if (type != Description::Type::Answer || type != Description::Type::Pranswer) {
+			std::ostringstream oss;
+			oss << "Unexpected local description type " << type
+			    << " description in signaling state " << signalingState;
+			throw std::logic_error(oss.str());
+		}
+		newSignalingState = SignalingState::Stable;
+		break;
+
+	default:
+		std::ostringstream oss;
+		oss << "Unexpected local description in signaling state " << signalingState << ", ignoring";
+		LOG_WARNING << oss.str();
+		return;
+	}
+
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	if (!iceTransport) {
-		if (type != Description::Type::Offer) {
-			// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
-			// setup:actpass.
-			// See https://tools.ietf.org/html/rfc5763#section-5
-			if (!iceTransport)
-				iceTransport = initIceTransport(Description::Role::ActPass);
-		}
+		// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
+		// setup:actpass.
+		// See https://tools.ietf.org/html/rfc5763#section-5
+		iceTransport = initIceTransport(Description::Role::ActPass);
 	}
 
 	Description localDescription = iceTransport->getLocalDescription(type);
 	processLocalDescription(localDescription);
+
+	changeSignalingState(newSignalingState);
 
 	if (mGatheringState == GatheringState::New)
 		iceTransport->gatherLocalCandidates();
@@ -139,29 +170,9 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 void PeerConnection::setRemoteDescription(Description description) {
 	PLOG_VERBOSE << "Setting remote description: " << string(description);
 
-	if (description.mediaCount() == 0)
-		throw std::invalid_argument("Remote description has no media line");
+	validateRemoteDescription(description);
 
-	int activeMediaCount = 0;
-	for (int i = 0; i < description.mediaCount(); ++i)
-		std::visit( // reciprocate each media
-		    rtc::overloaded{[&](Description::Application *) { ++activeMediaCount; },
-		                    [&](Description::Media *media) {
-			                    if (media->direction() != Description::Direction::Inactive)
-				                    ++activeMediaCount;
-		                    }},
-		    description.media(i));
-
-	if (activeMediaCount == 0)
-		throw std::invalid_argument("Remote description has no active media");
-
-	if (!description.fingerprint())
-		throw std::invalid_argument("Remote description has no fingerprint");
-
-	if (auto local = localDescription()) {
-		if (description.iceUfrag() == local->iceUfrag() && description.icePwd() == local->icePwd())
-			throw std::logic_error("Got the local description as remote description");
-	}
+	auto type = description.type();
 
 	// Get the new signaling state
 	SignalingState signalingState = mSignalingState.load();
@@ -169,11 +180,10 @@ void PeerConnection::setRemoteDescription(Description description) {
 	switch (signalingState) {
 	case SignalingState::Stable:
 		description.hintType(Description::Type::Offer);
-		if (description.type() != Description::Type::Offer) {
-			LOG_ERROR << "Unexpected remote " << description.type()
-			          << " description in signaling state " << signalingState << ", expected offer";
+		if (type != Description::Type::Offer) {
 			std::ostringstream oss;
-			oss << "Unexpected remote " << description.type() << " description";
+			oss << "Unexpected remote " << type << " description in signaling state "
+			    << signalingState;
 			throw std::logic_error(oss.str());
 		}
 		newSignalingState = SignalingState::HaveRemoteOffer;
@@ -182,21 +192,19 @@ void PeerConnection::setRemoteDescription(Description description) {
 	case SignalingState::HaveLocalOffer:
 	case SignalingState::HaveRemotePranswer:
 		description.hintType(Description::Type::Answer);
-		if (description.type() != Description::Type::Answer ||
-		    description.type() != Description::Type::Pranswer) {
-			LOG_ERROR << "Unexpected remote " << description.type()
-			          << " description in signaling state " << signalingState
-			          << ", expected answer";
+		if (type != Description::Type::Answer || type != Description::Type::Pranswer) {
 			std::ostringstream oss;
-			oss << "Unexpected remote " << description.type() << " description";
+			oss << "Unexpected remote " << type << " description in signaling state "
+			    << signalingState;
 			throw std::logic_error(oss.str());
 		}
 		newSignalingState = SignalingState::Stable;
 		break;
 
 	default:
-		LOG_ERROR << "Unexpected remote description in signaling state " << signalingState;
-		throw std::logic_error("Unexpected remote description");
+		std::ostringstream oss;
+		oss << "Unexpected remote description in signaling state " << signalingState;
+		throw std::logic_error(oss.str());
 	}
 
 	// Candidates will be added at the end, extract them for now
@@ -205,31 +213,13 @@ void PeerConnection::setRemoteDescription(Description description) {
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	if (!iceTransport)
 		iceTransport = initIceTransport(Description::Role::ActPass);
+
 	iceTransport->setRemoteDescription(description);
-
-	if (description.hasApplication()) {
-		if (auto current = remoteDescription(); current && !current->hasApplication())
-			if (auto dtlsTransport = std::atomic_load(&mDtlsTransport);
-			    dtlsTransport && dtlsTransport->state() == Transport::State::Connected)
-				initSctpTransport();
-	}
-
-	{
-		// Set as remote description
-		std::lock_guard lock(mRemoteDescriptionMutex);
-
-		std::vector<Candidate> existingCandidates;
-		if (mRemoteDescription)
-			existingCandidates = mRemoteDescription->extractCandidates();
-
-		mRemoteDescription.emplace(std::move(description));
-		for (const auto &candidate : existingCandidates)
-			mRemoteDescription->addCandidate(candidate);
-	}
+	processRemoteDescription(std::move(description));
 
 	changeSignalingState(newSignalingState);
 
-	if (description.type() == Description::Type::Offer) {
+	if (type == Description::Type::Offer) {
 		// This is an offer, we need to answer
 		mNegociationNeeded = true;
 		setLocalDescription(Description::Type::Answer);
@@ -251,8 +241,6 @@ void PeerConnection::setRemoteDescription(Description description) {
 			}
 			std::swap(mDataChannels, newDataChannels);
 		}
-
-		changeSignalingState(SignalingState::Stable);
 	}
 
 	for (const auto &candidate : remoteCandidates)
@@ -261,27 +249,6 @@ void PeerConnection::setRemoteDescription(Description description) {
 
 void PeerConnection::addRemoteCandidate(Candidate candidate) {
 	PLOG_VERBOSE << "Adding remote candidate: " << string(candidate);
-
-	auto iceTransport = std::atomic_load(&mIceTransport);
-	if (!mRemoteDescription || !iceTransport)
-		throw std::logic_error("Remote candidate set without remote description");
-
-	if (candidate.resolve(Candidate::ResolveMode::Simple)) {
-		iceTransport->addRemoteCandidate(candidate);
-	} else {
-		// OK, we might need a lookup, do it asynchronously
-		// We don't use the thread pool because we have no control on the timeout
-		weak_ptr<IceTransport> weakIceTransport{iceTransport};
-		std::thread t([weakIceTransport, candidate]() mutable {
-			if (candidate.resolve(Candidate::ResolveMode::Lookup))
-				if (auto iceTransport = weakIceTransport.lock())
-					iceTransport->addRemoteCandidate(candidate);
-		});
-		t.detach();
-	}
-
-	std::lock_guard lock(mRemoteDescriptionMutex);
-	mRemoteDescription->addCandidate(candidate);
 }
 
 std::optional<string> PeerConnection::localAddress() const {
@@ -794,11 +761,34 @@ void PeerConnection::openTracks() {
 #endif
 }
 
+void PeerConnection::validateRemoteDescription(const Description &description) {
+	if (!description.fingerprint())
+		throw std::invalid_argument("Remote description has no fingerprint");
+
+	if (description.mediaCount() == 0)
+		throw std::invalid_argument("Remote description has no media line");
+
+	int activeMediaCount = 0;
+	for (int i = 0; i < description.mediaCount(); ++i)
+		std::visit(rtc::overloaded{[&](const Description::Application *) { ++activeMediaCount; },
+		                           [&](const Description::Media *media) {
+			                           if (media->direction() != Description::Direction::Inactive)
+				                           ++activeMediaCount;
+		                           }},
+		           description.media(i));
+
+	if (activeMediaCount == 0)
+		throw std::invalid_argument("Remote description has no active media");
+
+	if (auto local = localDescription())
+		if (description.iceUfrag() == local->iceUfrag() && description.icePwd() == local->icePwd())
+			throw std::logic_error("Got the local description as remote description");
+
+	PLOG_VERBOSE << "Remote description looks valid";
+}
+
 void PeerConnection::processLocalDescription(Description description) {
 	int activeMediaCount = 0;
-
-	if (hasLocalDescription())
-		throw std::logic_error("Local description is already set");
 
 	if (auto remote = remoteDescription()) {
 		// Reciprocate remote description
@@ -916,6 +906,57 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 	});
 }
 
+void PeerConnection::processRemoteDescription(Description description) {
+	{
+		// Set as remote description
+		std::lock_guard lock(mRemoteDescriptionMutex);
+
+		std::vector<Candidate> existingCandidates;
+		if (mRemoteDescription)
+			existingCandidates = mRemoteDescription->extractCandidates();
+
+		mRemoteDescription.emplace(std::move(description));
+		for (const auto &candidate : existingCandidates)
+			mRemoteDescription->addCandidate(candidate);
+	}
+
+	if (description.hasApplication()) {
+		auto dtlsTransport = std::atomic_load(&mDtlsTransport);
+		auto sctpTransport = std::atomic_load(&mSctpTransport);
+		if (!sctpTransport && dtlsTransport &&
+		    dtlsTransport->state() == Transport::State::Connected)
+			initSctpTransport();
+	}
+}
+
+void PeerConnection::processRemoteCandidate(Candidate candidate) {
+	auto iceTransport = std::atomic_load(&mIceTransport);
+	if (!iceTransport)
+		throw std::logic_error("Remote candidate set without remote description");
+
+	if (candidate.resolve(Candidate::ResolveMode::Simple)) {
+		iceTransport->addRemoteCandidate(candidate);
+	} else {
+		// OK, we might need a lookup, do it asynchronously
+		// We don't use the thread pool because we have no control on the timeout
+		weak_ptr<IceTransport> weakIceTransport{iceTransport};
+		std::thread t([weakIceTransport, candidate]() mutable {
+			if (candidate.resolve(Candidate::ResolveMode::Lookup))
+				if (auto iceTransport = weakIceTransport.lock())
+					iceTransport->addRemoteCandidate(candidate);
+		});
+		t.detach();
+	}
+
+	{
+		std::lock_guard lock(mRemoteDescriptionMutex);
+		if (!mRemoteDescription)
+			throw std::logic_error("Got a remote candidate without remote description");
+
+		mRemoteDescription->addCandidate(candidate);
+	}
+}
+
 void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 	auto dataChannel = weakDataChannel.lock();
 	if (!dataChannel)
@@ -1018,7 +1059,7 @@ std::optional<std::chrono::milliseconds> PeerConnection::rtt() {
 
 } // namespace rtc
 
-std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &state) {
+std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::State state) {
 	using State = rtc::PeerConnection::State;
 	const char *str;
 	switch (state) {
@@ -1047,7 +1088,7 @@ std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &st
 	return out << str;
 }
 
-std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::GatheringState &state) {
+std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::GatheringState state) {
 	using GatheringState = rtc::PeerConnection::GatheringState;
 	const char *str;
 	switch (state) {
@@ -1067,7 +1108,7 @@ std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::Gathering
 	return out << str;
 }
 
-std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::SignalingState &state) {
+std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::SignalingState state) {
 	using SignalingState = rtc::PeerConnection::SignalingState;
 	const char *str;
 	switch (state) {

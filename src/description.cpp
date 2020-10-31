@@ -153,8 +153,6 @@ string Description::typeString() const { return typeToString(mType); }
 
 Description::Role Description::role() const { return mRole; }
 
-string Description::roleString() const { return roleToString(mRole); }
-
 string Description::bundleMid() const {
 	// Get the mid of the first media
 	return !mEntries.empty() ? mEntries[0]->mid() : "0";
@@ -223,7 +221,7 @@ string Description::generateSdp(string_view eol) const {
 
 	// Session-level attributes
 	sdp << "a=msid-semantic:WMS *" << eol;
-	sdp << "a=setup:" << roleToString(mRole) << eol;
+	sdp << "a=setup:" << mRole << eol;
 	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
 	sdp << "a=ice-pwd:" << mIcePwd << eol;
 
@@ -282,7 +280,7 @@ string Description::generateApplicationSdp(string_view eol) const {
 
 	// Session-level attributes
 	sdp << "a=msid-semantic:WMS *" << eol;
-	sdp << "a=setup:" << roleToString(mRole) << eol;
+	sdp << "a=setup:" << mRole << eol;
 	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
 	sdp << "a=ice-pwd:" << mIcePwd << eol;
 
@@ -806,6 +804,7 @@ std::ostream &operator<<(std::ostream &out, rtc::Description::Type type) {
 std::ostream &operator<<(std::ostream &out, rtc::Description::Role role) {
 	using Role = rtc::Description::Role;
 	const char *str;
+	// Used for SDP generation, do not change
 	switch (role) {
 	case Role::Active:
 		str = "active";
