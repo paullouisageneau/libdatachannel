@@ -179,6 +179,7 @@ public:
 
 	bool hasApplication() const;
 	bool hasAudioOrVideo() const;
+	bool hasMid(string_view mid) const;
 
 	int addMedia(Media media);
 	int addMedia(Application application);

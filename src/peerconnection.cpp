@@ -361,9 +361,6 @@ void PeerConnection::onSignalingStateChange(std::function<void(SignalingState st
 }
 
 std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) {
-	if (hasLocalDescription())
-		throw std::logic_error("Tracks must be created before local description");
-
 	if (auto it = mTracks.find(description.mid()); it != mTracks.end())
 		if (auto track = it->second.lock())
 			return track;
@@ -471,7 +468,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 				else
 					changeState(State::Connected);
 
-				openTracks();
+				mProcessor->enqueue(std::bind(&PeerConnection::openTracks, this));
 				break;
 			case DtlsTransport::State::Failed:
 				changeState(State::Failed);
@@ -802,7 +799,8 @@ void PeerConnection::openTracks() {
 		std::shared_lock lock(mTracksMutex); // read-only
 		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
 			if (auto track = it->second.lock())
-				track->open(srtpTransport);
+				if (!track->isOpen())
+					track->open(srtpTransport);
 	}
 #endif
 }
@@ -879,42 +877,44 @@ void PeerConnection::processLocalDescription(Description description) {
 			        },
 			    },
 			    remote->media(i));
-	} else {
-		// Add application for data channels
-		{
-			std::shared_lock lock(mDataChannelsMutex);
-			if (!mDataChannels.empty()) {
-				Description::Application app("data");
-				app.setSctpPort(DEFAULT_SCTP_PORT);
-				app.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
-				++activeMediaCount;
+	}
 
-				PLOG_DEBUG << "Adding application to local description, mid=\"" << app.mid()
-				           << "\"";
+	if (!description.hasApplication()) {
+		std::shared_lock lock(mDataChannelsMutex);
+		if (!mDataChannels.empty()) {
+			// Add application for data channels
+			Description::Application app("data");
+			app.setSctpPort(DEFAULT_SCTP_PORT);
+			app.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+			++activeMediaCount;
 
-				description.addMedia(std::move(app));
-			}
+			PLOG_DEBUG << "Adding application to local description, mid=\"" << app.mid() << "\"";
+
+			description.addMedia(std::move(app));
 		}
+	}
 
-		// Add media for local tracks
-		{
-			std::shared_lock lock(mTracksMutex);
-			for (auto it = mTracks.begin(); it != mTracks.end(); ++it) {
-				if (auto track = it->second.lock()) {
-					auto media = track->description();
+	// Add media for local tracks
+	{
+		std::shared_lock lock(mTracksMutex);
+		for (auto it = mTracks.begin(); it != mTracks.end(); ++it) {
+			if (description.hasMid(it->first))
+				continue;
+
+			if (auto track = it->second.lock()) {
+				auto media = track->description();
 #if RTC_ENABLE_MEDIA
-					if (media.direction() != Description::Direction::Inactive)
-						++activeMediaCount;
+				if (media.direction() != Description::Direction::Inactive)
+					++activeMediaCount;
 #else
-					// No media support, mark as inactive
-					media.setDirection(Description::Direction::Inactive);
+				// No media support, mark as inactive
+				media.setDirection(Description::Direction::Inactive);
 #endif
-					PLOG_DEBUG << "Adding media to local description, mid=\"" << media.mid()
-					           << "\", active=" << std::boolalpha
-					           << (media.direction() != Description::Direction::Inactive);
+				PLOG_DEBUG << "Adding media to local description, mid=\"" << media.mid()
+				           << "\", active=" << std::boolalpha
+				           << (media.direction() != Description::Direction::Inactive);
 
-					description.addMedia(std::move(media));
-				}
+				description.addMedia(std::move(media));
 			}
 		}
 	}
@@ -945,6 +945,11 @@ void PeerConnection::processLocalDescription(Description description) {
 		PLOG_VERBOSE << "Issuing local description: " << description;
 		mLocalDescriptionCallback(std::move(description));
 	});
+
+	// Reciprocated tracks might need to be open
+	if (auto dtlsTransport = std::atomic_load(&mDtlsTransport);
+	    dtlsTransport && dtlsTransport->state() == Transport::State::Connected)
+		mProcessor->enqueue(std::bind(&PeerConnection::openTracks, this));
 }
 
 void PeerConnection::processLocalCandidate(Candidate candidate) {
@@ -1108,7 +1113,6 @@ std::optional<std::chrono::milliseconds> PeerConnection::rtt() {
 	auto sctpTransport = std::atomic_load(&mSctpTransport);
 	if (sctpTransport)
 		return sctpTransport->rtt();
-	PLOG_WARNING << "Could not load sctpTransport";
 	return std::nullopt;
 }
 

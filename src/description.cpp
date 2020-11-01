@@ -346,6 +346,14 @@ bool Description::hasAudioOrVideo() const {
 	return false;
 }
 
+bool Description::hasMid(string_view mid) const {
+	for (const auto &entry : mEntries)
+		if (entry->mid() == mid)
+			return true;
+
+	return false;
+}
+
 int Description::addMedia(Media media) {
 	mEntries.emplace_back(std::make_shared<Media>(std::move(media)));
 	return int(mEntries.size()) - 1;
