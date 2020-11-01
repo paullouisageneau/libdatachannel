@@ -574,7 +574,6 @@ void PeerConnection::forwardMedia(message_ptr message) {
                         if (auto it = mTracks.find(*mid); it != mTracks.end()) {
                             if (auto track = it->second.lock()) {
                                 track->incoming(message);
-                                break;
                             }
                         }
                         ssrcsFound.emplace_back(ssrc);
@@ -588,7 +587,6 @@ void PeerConnection::forwardMedia(message_ptr message) {
                         if (auto it = mTracks.find(*mid); it != mTracks.end()) {
                             if (auto track = it->second.lock()) {
                                 track->incoming(message);
-                                break;
                             }
                         }
                         ssrcsFound.emplace_back(ssrc);
@@ -603,7 +601,6 @@ void PeerConnection::forwardMedia(message_ptr message) {
                         if (auto it = mTracks.find(*mid); it != mTracks.end()) {
                             if (auto track = it->second.lock()) {
                                 track->incoming(message);
-                                break;
                             }
                         }
                         ssrcsFound.emplace_back(ssrc);
@@ -618,7 +615,6 @@ void PeerConnection::forwardMedia(message_ptr message) {
                             if (auto it = mTracks.find(*mid); it != mTracks.end()) {
                                 if (auto track = it->second.lock()) {
                                     track->incoming(message);
-                                    break;
                                 }
                             }
                             ssrcsFound.emplace_back(ssrc);
