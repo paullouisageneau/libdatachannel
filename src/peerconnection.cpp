@@ -121,17 +121,18 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 		return;
 	}
 
-	if (!mNegociationNeeded.exchange(false)) {
-		PLOG_DEBUG << "No negociation needed";
-		return;
-	}
-
 	// Guess the description type if unspecified
 	if (type == Description::Type::Unspec) {
 		if (mSignalingState == SignalingState::HaveRemoteOffer)
 			type = Description::Type::Answer;
 		else
 			type = Description::Type::Offer;
+	}
+
+	// Only a local offer resets the negociation needed flag
+	if (type == Description::Type::Offer && !mNegociationNeeded.exchange(false)) {
+		PLOG_DEBUG << "No negociation needed";
+		return;
 	}
 
 	// Get the new signaling state
@@ -263,7 +264,6 @@ void PeerConnection::setRemoteDescription(Description description) {
 
 	if (type == Description::Type::Offer) {
 		// This is an offer, we need to answer
-		mNegociationNeeded = true;
 		setLocalDescription(Description::Type::Answer);
 	} else {
 		// This is an answer
@@ -873,22 +873,24 @@ void PeerConnection::processLocalDescription(Description description) {
 			    remote->media(i));
 	}
 
-	if (!description.hasApplication()) {
-		std::shared_lock lock(mDataChannelsMutex);
-		if (!mDataChannels.empty()) {
-			// Add application for data channels
-			Description::Application app("data");
-			app.setSctpPort(DEFAULT_SCTP_PORT);
-			app.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+	if (description.type() == Description::Type::Offer) {
+		// This is an offer, add locally created data channels and tracks
+		// Add application for data channels
+		if (!description.hasApplication()) {
+			std::shared_lock lock(mDataChannelsMutex);
+			if (!mDataChannels.empty()) {
+				Description::Application app("data");
+				app.setSctpPort(DEFAULT_SCTP_PORT);
+				app.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
 
-			PLOG_DEBUG << "Adding application to local description, mid=\"" << app.mid() << "\"";
+				PLOG_DEBUG << "Adding application to local description, mid=\"" << app.mid()
+				           << "\"";
 
-			description.addMedia(std::move(app));
+				description.addMedia(std::move(app));
+			}
 		}
-	}
 
-	// Add media for local tracks
-	{
+		// Add media for local tracks
 		std::shared_lock lock(mTracksMutex);
 		for (auto it = mTracks.begin(); it != mTracks.end(); ++it) {
 			if (description.hasMid(it->first))
