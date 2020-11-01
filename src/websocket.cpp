@@ -159,6 +159,7 @@ void WebSocket::incoming(message_ptr message) {
 }
 
 shared_ptr<TcpTransport> WebSocket::initTcpTransport() {
+	PLOG_VERBOSE << "Starting TCP transport";
 	using State = TcpTransport::State;
 	try {
 		std::lock_guard lock(mInitMutex);
@@ -205,6 +206,7 @@ shared_ptr<TcpTransport> WebSocket::initTcpTransport() {
 }
 
 shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
+	PLOG_VERBOSE << "Starting TLS transport";
 	using State = TlsTransport::State;
 	try {
 		std::lock_guard lock(mInitMutex);
@@ -262,6 +264,7 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 }
 
 shared_ptr<WsTransport> WebSocket::initWsTransport() {
+	PLOG_VERBOSE << "Starting WebSocket transport";
 	using State = WsTransport::State;
 	try {
 		std::lock_guard lock(mInitMutex);
@@ -340,6 +343,6 @@ void WebSocket::closeTransports() {
 	});
 }
 
-	} // namespace rtc
+} // namespace rtc
 
 #endif
