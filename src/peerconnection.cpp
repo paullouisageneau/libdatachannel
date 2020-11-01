@@ -109,13 +109,20 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 	if (type == Description::Type::Rollback) {
 		if (signalingState == SignalingState::HaveLocalOffer ||
 		    signalingState == SignalingState::HaveLocalPranswer) {
-			PLOG_VERBOSE << "Rolling back pending local description";
-			if (mCurrentLocalDescription)
-				mLocalDescription.emplace(std::move(*mCurrentLocalDescription));
-			else
-				mLocalDescription.reset();
+			PLOG_DEBUG << "Rolling back pending local description";
+			
+			std::unique_lock lock(mLocalDescriptionMutex);
+			if (mCurrentLocalDescription) {
+				std::vector<Candidate> existingCandidates;
+				if (mLocalDescription)
+					existingCandidates = mLocalDescription->extractCandidates();
 
-			mCurrentLocalDescription.reset();
+				mLocalDescription.emplace(std::move(*mCurrentLocalDescription));
+				mLocalDescription->addCandidates(std::move(existingCandidates));
+				mCurrentLocalDescription.reset();
+			}
+			lock.unlock();
+			
 			changeSignalingState(SignalingState::Stable);
 		}
 		return;
@@ -925,8 +932,7 @@ void PeerConnection::processLocalDescription(Description description) {
 		}
 
 		mLocalDescription.emplace(std::move(description));
-		for (const auto &candidate : existingCandidates)
-			mLocalDescription->addCandidate(candidate);
+		mLocalDescription->addCandidates(std::move(existingCandidates));
 	}
 
 	mProcessor->enqueue([this, description = *mLocalDescription]() {
@@ -964,8 +970,7 @@ void PeerConnection::processRemoteDescription(Description description) {
 			existingCandidates = mRemoteDescription->extractCandidates();
 
 		mRemoteDescription.emplace(std::move(description));
-		for (const auto &candidate : existingCandidates)
-			mRemoteDescription->addCandidate(candidate);
+		mRemoteDescription->addCandidates(std::move(existingCandidates));
 	}
 
 	if (description.hasApplication()) {

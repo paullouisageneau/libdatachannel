@@ -176,6 +176,11 @@ void Description::addCandidate(Candidate candidate) {
 	mCandidates.emplace_back(std::move(candidate));
 }
 
+void Description::addCandidates(std::vector<Candidate> candidates) {
+	for(auto candidate : candidates)
+		mCandidates.emplace_back(std::move(candidate));
+}
+
 void Description::endCandidates() { mEnded = true; }
 
 std::vector<Candidate> Description::extractCandidates() {

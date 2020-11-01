@@ -55,6 +55,7 @@ public:
 	void setFingerprint(string fingerprint);
 
 	void addCandidate(Candidate candidate);
+	void addCandidates(std::vector<Candidate> candidates);
 	void endCandidates();
 	std::vector<Candidate> extractCandidates();
 
