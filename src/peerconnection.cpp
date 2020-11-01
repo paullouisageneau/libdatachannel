@@ -1025,14 +1025,13 @@ void PeerConnection::triggerTrack(std::shared_ptr<Track> track) {
 }
 
 bool PeerConnection::changeState(State state) {
-	// Return false if the current State is Closed
 	State current;
 	do {
 		current = mState.load();
 		if (current == State::Closed)
 			return false;
 		if (current == state)
-			return true;
+			return false;
 
 	} while (!mState.compare_exchange_weak(current, state));
 
@@ -1050,22 +1049,24 @@ bool PeerConnection::changeState(State state) {
 }
 
 bool PeerConnection::changeGatheringState(GatheringState state) {
-	if (mGatheringState.exchange(state) != state) {
-		std::ostringstream s;
-		s << state;
-		PLOG_INFO << "Changed gathering state to " << s.str();
-		mProcessor->enqueue([this, state] { mGatheringStateChangeCallback(state); });
-	}
+	if (mGatheringState.exchange(state) == state)
+		return false;
+	
+	std::ostringstream s;
+	s << state;
+	PLOG_INFO << "Changed gathering state to " << s.str();
+	mProcessor->enqueue([this, state] { mGatheringStateChangeCallback(state); });
 	return true;
 }
 
 bool PeerConnection::changeSignalingState(SignalingState state) {
-	if (mSignalingState.exchange(state) != state) {
-		std::ostringstream s;
-		s << state;
-		PLOG_INFO << "Changed signaling state to " << s.str();
-		mProcessor->enqueue([this, state] { mSignalingStateChangeCallback(state); });
-	}
+	if (mSignalingState.exchange(state) == state) 
+		return false;
+	
+	std::ostringstream s;
+	s << state;
+	PLOG_INFO << "Changed signaling state to " << s.str();
+	mProcessor->enqueue([this, state] { mSignalingStateChangeCallback(state); });
 	return true;
 }
 
