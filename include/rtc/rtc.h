@@ -125,7 +125,7 @@ RTC_EXPORT int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb)
 RTC_EXPORT int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb);
 RTC_EXPORT int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb);
 
-RTC_EXPORT int rtcSetLocalDescription(int pc);
+RTC_EXPORT int rtcSetLocalDescription(int pc, const char *type);
 RTC_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 RTC_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
 

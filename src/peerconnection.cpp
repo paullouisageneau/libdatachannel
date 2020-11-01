@@ -159,7 +159,7 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 	}
 
 	Description localDescription = iceTransport->getLocalDescription(type);
-	processLocalDescription(localDescription);
+	processLocalDescription(std::move(localDescription));
 
 	changeSignalingState(newSignalingState);
 

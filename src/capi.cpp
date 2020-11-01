@@ -500,10 +500,11 @@ int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb) {
 	});
 }
 
-int rtcSetLocalDescription(int pc) {
+int rtcSetLocalDescription(int pc, const char *type) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
-		peerConnection->setLocalDescription();
+		peerConnection->setLocalDescription(type ? Description::stringToType(type)
+		                                         : Description::Type::Unspec);
 	});
 }
 
