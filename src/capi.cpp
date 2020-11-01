@@ -468,6 +468,19 @@ int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb)
 	});
 }
 
+int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb) {
+	return WRAP({
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onSignalingStateChange([pc, cb](PeerConnection::SignalingState state) {
+				if (auto ptr = getUserPointer(pc))
+					cb(pc, static_cast<rtcSignalingState>(state), *ptr);
+			});
+		else
+			peerConnection->onGatheringStateChange(nullptr);
+	});
+}
+
 int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
