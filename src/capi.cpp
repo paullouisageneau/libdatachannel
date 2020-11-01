@@ -317,7 +317,7 @@ int rtcCreateDataChannel(int pc, const char *label) {
 int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
                             const rtcReliability *reliability) {
 	int dc = rtcAddDataChannelExt(pc, label, protocol, reliability);
-	rtcSetLocalDescription(pc);
+	rtcSetLocalDescription(pc, NULL);
 	return dc;
 }
 
