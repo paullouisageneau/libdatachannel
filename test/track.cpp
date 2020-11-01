@@ -92,9 +92,10 @@ void test_track() {
 	});
 
 	shared_ptr<Track> t2;
-	pc2->onTrack([&t2](shared_ptr<Track> t) {
+	string newTrackMid;
+	pc2->onTrack([&t2, &newTrackMid](shared_ptr<Track> t) {
 		cout << "Track 2: Received with mid \"" << t->mid() << "\"" << endl;
-		if (t->mid() != "test") {
+		if (t->mid() != newTrackMid) {
 			cerr << "Wrong track mid" << endl;
 			return;
 		}
@@ -102,7 +103,9 @@ void test_track() {
 		std::atomic_store(&t2, t);
 	});
 
-	auto t1 = pc1->addTrack(Description::Video("test"));
+	// Test opening a track
+	newTrackMid = "test";
+	auto t1 = pc1->addTrack(Description::Video(newTrackMid));
 
 	pc1->setLocalDescription();
 
@@ -117,6 +120,20 @@ void test_track() {
 
 	if (!at2 || !at2->isOpen() || !t1->isOpen())
 		throw runtime_error("Track is not open");
+
+	// Test renegociation
+	newTrackMid = "added";
+	t1 = pc1->addTrack(Description::Video(newTrackMid));
+
+	pc1->setLocalDescription();
+
+	attempts = 10;
+	t2.reset();
+	while ((!(at2 = std::atomic_load(&t2)) || !at2->isOpen() || !t1->isOpen()) && attempts--)
+		this_thread::sleep_for(1s);
+
+	if (!at2 || !at2->isOpen() || !t1->isOpen())
+		throw runtime_error("Renegociated track is not open");
 
 	// TODO: Test sending RTP packets in track
 
