@@ -69,6 +69,10 @@ void test_connectivity() {
 		cout << "Gathering state 1: " << state << endl;
 	});
 
+	pc1->onSignalingStateChange([](PeerConnection::SignalingState state) {
+		cout << "Signaling state 1: " << state << endl;
+	});
+
 	pc2->onLocalDescription([wpc1 = make_weak_ptr(pc1)](Description sdp) {
 		auto pc1 = wpc1.lock();
 		if (!pc1)
@@ -89,6 +93,10 @@ void test_connectivity() {
 
 	pc2->onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "Gathering state 2: " << state << endl;
+	});
+
+	pc2->onSignalingStateChange([](PeerConnection::SignalingState state) {
+		cout << "Signaling state 2: " << state << endl;
 	});
 
 	shared_ptr<DataChannel> dc2;
