@@ -130,12 +130,6 @@ Description::Description(const string &sdp, Type type, Role role)
 		}
 	}
 
-	if (mIceUfrag.empty())
-		throw std::invalid_argument("Missing ice-ufrag parameter in SDP description");
-
-	if (mIcePwd.empty())
-		throw std::invalid_argument("Missing ice-pwd parameter in SDP description");
-
 	if (mUsername.empty())
 		mUsername = "rtc";
 
@@ -158,9 +152,9 @@ string Description::bundleMid() const {
 	return !mEntries.empty() ? mEntries[0]->mid() : "0";
 }
 
-string Description::iceUfrag() const { return mIceUfrag; }
+std::optional<string> Description::iceUfrag() const { return mIceUfrag; }
 
-string Description::icePwd() const { return mIcePwd; }
+std::optional<string> Description::icePwd() const { return mIcePwd; }
 
 std::optional<string> Description::fingerprint() const { return mFingerprint; }
 
@@ -222,12 +216,13 @@ string Description::generateSdp(string_view eol) const {
 	// Session-level attributes
 	sdp << "a=msid-semantic:WMS *" << eol;
 	sdp << "a=setup:" << mRole << eol;
-	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
-	sdp << "a=ice-pwd:" << mIcePwd << eol;
 
+	if (mIceUfrag)
+		sdp << "a=ice-ufrag:" << *mIceUfrag << eol;
+	if (mIcePwd)
+		sdp << "a=ice-pwd:" << *mIcePwd << eol;
 	if (!mEnded)
 		sdp << "a=ice-options:trickle" << eol;
-
 	if (mFingerprint)
 		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
 
@@ -281,12 +276,13 @@ string Description::generateApplicationSdp(string_view eol) const {
 	// Session-level attributes
 	sdp << "a=msid-semantic:WMS *" << eol;
 	sdp << "a=setup:" << mRole << eol;
-	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
-	sdp << "a=ice-pwd:" << mIcePwd << eol;
 
+	if (mIceUfrag)
+		sdp << "a=ice-ufrag:" << *mIceUfrag << eol;
+	if (mIcePwd)
+		sdp << "a=ice-pwd:" << *mIcePwd << eol;
 	if (!mEnded)
 		sdp << "a=ice-options:trickle" << eol;
-
 	if (mFingerprint)
 		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
 
@@ -768,7 +764,7 @@ Description::Video::Video(string mid, Direction dir)
 Description::Type Description::stringToType(const string &typeString) {
 	using TypeMap_t = std::unordered_map<string, Type>;
 	static const TypeMap_t TypeMap = {{"unspec", Type::Unspec},
-									  {"offer", Type::Offer},
+	                                  {"offer", Type::Offer},
 	                                  {"answer", Type::Pranswer},
 	                                  {"pranswer", Type::Pranswer},
 	                                  {"rollback", Type::Rollback}};
@@ -820,4 +816,3 @@ std::ostream &operator<<(std::ostream &out, rtc::Description::Role role) {
 	}
 	return out << str;
 }
-

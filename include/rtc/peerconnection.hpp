@@ -166,6 +166,7 @@ private:
 	const std::unique_ptr<Processor> mProcessor;
 
 	std::optional<Description> mLocalDescription, mRemoteDescription;
+	std::optional<Description> mCurrentLocalDescription;
 	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
 
 	std::shared_ptr<IceTransport> mIceTransport;

@@ -103,7 +103,23 @@ bool PeerConnection::hasMedia() const {
 }
 
 void PeerConnection::setLocalDescription(Description::Type type) {
-	PLOG_VERBOSE << "Setting local description";
+	PLOG_VERBOSE << "Setting local description, type=" << Description::typeToString(type);
+
+	SignalingState signalingState = mSignalingState.load();
+	if (type == Description::Type::Rollback) {
+		if (signalingState == SignalingState::HaveLocalOffer ||
+		    signalingState == SignalingState::HaveLocalPranswer) {
+			PLOG_VERBOSE << "Rolling back pending local description";
+			if (mCurrentLocalDescription)
+				mLocalDescription.emplace(std::move(*mCurrentLocalDescription));
+			else
+				mLocalDescription.reset();
+
+			mCurrentLocalDescription.reset();
+			changeSignalingState(SignalingState::Stable);
+		}
+		return;
+	}
 
 	if (!mNegociationNeeded.exchange(false)) {
 		PLOG_DEBUG << "No negociation needed";
@@ -119,7 +135,6 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 	}
 
 	// Get the new signaling state
-	SignalingState signalingState = mSignalingState.load();
 	SignalingState newSignalingState;
 	switch (signalingState) {
 	case SignalingState::Stable:
@@ -143,11 +158,12 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 		newSignalingState = SignalingState::Stable;
 		break;
 
-	default:
+	default: {
 		std::ostringstream oss;
 		oss << "Unexpected local description in signaling state " << signalingState << ", ignoring";
 		LOG_WARNING << oss.str();
 		return;
+	}
 	}
 
 	auto iceTransport = std::atomic_load(&mIceTransport);
@@ -170,6 +186,13 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 void PeerConnection::setRemoteDescription(Description description) {
 	PLOG_VERBOSE << "Setting remote description: " << string(description);
 
+	if (description.type() == Description::Type::Rollback) {
+		// This is mostly useless because we accept any offer
+		PLOG_VERBOSE << "Rolling back pending remote description";
+		changeSignalingState(SignalingState::Stable);
+		return;
+	}
+
 	validateRemoteDescription(description);
 
 	// Get the new signaling state
@@ -188,6 +211,24 @@ void PeerConnection::setRemoteDescription(Description description) {
 		break;
 
 	case SignalingState::HaveLocalOffer:
+		description.hintType(Description::Type::Answer);
+		if (description.type() == Description::Type::Offer) {
+			// The ICE agent will automatically initiate a rollback when a peer that had previously
+			// created an offer receives an offer from the remote peer
+			setLocalDescription(Description::Type::Rollback);
+			newSignalingState = SignalingState::HaveRemoteOffer;
+			break;
+		}
+		if (description.type() != Description::Type::Answer &&
+		    description.type() != Description::Type::Pranswer) {
+			std::ostringstream oss;
+			oss << "Unexpected remote " << description.type() << " description in signaling state "
+			    << signalingState;
+			throw std::logic_error(oss.str());
+		}
+		newSignalingState = SignalingState::Stable;
+		break;
+
 	case SignalingState::HaveRemotePranswer:
 		description.hintType(Description::Type::Answer);
 		if (description.type() != Description::Type::Answer &&
@@ -200,10 +241,11 @@ void PeerConnection::setRemoteDescription(Description description) {
 		newSignalingState = SignalingState::Stable;
 		break;
 
-	default:
+	default: {
 		std::ostringstream oss;
 		oss << "Unexpected remote description in signaling state " << signalingState;
 		throw std::logic_error(oss.str());
+	}
 	}
 
 	// Candidates will be added at the end, extract them for now
@@ -766,6 +808,12 @@ void PeerConnection::openTracks() {
 }
 
 void PeerConnection::validateRemoteDescription(const Description &description) {
+	if (!description.iceUfrag())
+		throw std::invalid_argument("Remote description has no ICE user fragment");
+
+	if (!description.icePwd())
+		throw std::invalid_argument("Remote description has no ICE password");
+
 	if (!description.fingerprint())
 		throw std::invalid_argument("Remote description has no fingerprint");
 
@@ -784,8 +832,9 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 	if (activeMediaCount == 0)
 		throw std::invalid_argument("Remote description has no active media");
 
-	if (auto local = localDescription())
-		if (description.iceUfrag() == local->iceUfrag() && description.icePwd() == local->icePwd())
+	if (auto local = localDescription(); local && local->iceUfrag() && local->icePwd())
+		if (*description.iceUfrag() == *local->iceUfrag() &&
+		    *description.icePwd() == *local->icePwd())
 			throw std::logic_error("Got the local description as remote description");
 
 	PLOG_VERBOSE << "Remote description looks valid";
@@ -882,8 +931,10 @@ void PeerConnection::processLocalDescription(Description description) {
 		std::lock_guard lock(mLocalDescriptionMutex);
 
 		std::vector<Candidate> existingCandidates;
-		if (mLocalDescription)
+		if (mLocalDescription) {
 			existingCandidates = mLocalDescription->extractCandidates();
+			mCurrentLocalDescription.emplace(std::move(*mLocalDescription));
+		}
 
 		mLocalDescription.emplace(std::move(description));
 		for (const auto &candidate : existingCandidates)

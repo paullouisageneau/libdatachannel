@@ -46,8 +46,8 @@ public:
 	string typeString() const;
 	Role role() const;
 	string bundleMid() const;
-	string iceUfrag() const;
-	string icePwd() const;
+	std::optional<string> iceUfrag() const;
+	std::optional<string> icePwd() const;
 	std::optional<string> fingerprint() const;
 	bool ended() const;
 
@@ -206,7 +206,7 @@ private:
 	Role mRole;
 	string mUsername;
 	string mSessionId;
-	string mIceUfrag, mIcePwd;
+	std::optional<string> mIceUfrag, mIcePwd;
 	std::optional<string> mFingerprint;
 
 	// Entries
