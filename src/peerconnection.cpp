@@ -387,7 +387,7 @@ void PeerConnection::onTrack(std::function<void(std::shared_ptr<Track>)> callbac
 }
 
 shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role) {
-	PLOG_VERBOSE << "Initializing ICE transport";
+	PLOG_VERBOSE << "Starting ICE transport";
 	try {
 		if (auto transport = std::atomic_load(&mIceTransport))
 			return transport;
@@ -450,7 +450,7 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role
 }
 
 shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
-	PLOG_VERBOSE << "Initializing DTLS transport";
+	PLOG_VERBOSE << "Starting DTLS transport";
 	try {
 		if (auto transport = std::atomic_load(&mDtlsTransport))
 			return transport;
@@ -521,14 +521,14 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 }
 
 shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
-	PLOG_VERBOSE << "Initializing SCTP transport";
+	PLOG_VERBOSE << "Starting SCTP transport";
 	try {
 		if (auto transport = std::atomic_load(&mSctpTransport))
 			return transport;
 
 		auto remote = remoteDescription();
 		if (!remote || !remote->application())
-			throw std::logic_error("Initializing SCTP transport without application description");
+			throw std::logic_error("Starting SCTP transport without application description");
 
 		uint16_t sctpPort = remote->application()->sctpPort().value_or(DEFAULT_SCTP_PORT);
 		auto lower = std::atomic_load(&mDtlsTransport);
