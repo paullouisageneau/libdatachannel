@@ -124,7 +124,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	} else {
 		if (srtp_err_status_t err = srtp_protect(mSrtpOut, message->data(), &size)) {
 			if (err == srtp_err_status_replay_fail)
-				throw std::runtime_error("SRTP packet is a replay");
+				throw std::runtime_error("Outgoing SRTP packet is a replay");
             else if (err == srtp_err_status_no_ctx) {
                 auto ssrc = ((RTP*) message->data())->ssrc();
                 PLOG_INFO << "Adding SSRC to RTP: " << ssrc;

@@ -549,31 +549,94 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	if (!message)
 		return;
 
-	unsigned int ssrc = message->stream;
-	std::optional<string> mid = getMidFromSSRC(ssrc);
 
 	// Browsers like to compound their packets with a random SSRC.
 	// we have to do this monstrosity to distribute the report blocks
-    if (!mid && message->type == Message::Control) {
-        RTCP_RR* sr = (RTCP_RR*) message->data();
-        if (sr->isReceiverReport() ||sr->isSenderReport()) {
-            bool hasFound = false;
-            for (int i = 0; i < sr->header.reportCount(); i++) {
-                auto block = sr->getReportBlock(i);
-                auto ssrc = block->getSSRC();
-                auto mid = getMidFromSSRC(ssrc);
-                if (mid.has_value()) {
-                    hasFound = true;
-                    std::shared_lock lock(mTracksMutex); // read-only
-                    if (auto it = mTracks.find(*mid); it != mTracks.end())
-                        if (auto track = it->second.lock())
-                            track->incoming(message);
+    std::optional<string> mid;
+    if (message->type == Message::Control) {
+        unsigned int offset = 0;
+        std::vector<SSRC> ssrcsFound;
+        bool hasFound = false;
+
+        while ((sizeof(rtc::RTCP_HEADER) + offset) < message->size()) {
+            auto header = (rtc::RTCP_HEADER *) (message->data() + offset);
+            if (header->lengthInBytes() > message->size() - offset) {
+                PLOG_WARNING << "Packet was truncated";
+                break;
+            } else {
+                if (header->payloadType() == 205 || header->payloadType() == 206) {
+                     auto rtcpfb = (RTCP_FB_HEADER*) header;
+                     auto ssrc = rtcpfb->getPacketSenderSSRC();
+                    mid = getMidFromSSRC(ssrc);
+                    if (mid.has_value() && std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
+                        hasFound = true;
+                        std::shared_lock lock(mTracksMutex); // read-only
+                        if (auto it = mTracks.find(*mid); it != mTracks.end()) {
+                            if (auto track = it->second.lock()) {
+                                track->incoming(message);
+                                break;
+                            }
+                        }
+                        ssrcsFound.emplace_back(ssrc);
+                    }
+
+                    ssrc = rtcpfb->getMediaSourceSSRC();
+                    mid = getMidFromSSRC(ssrc);
+                    if (mid.has_value() && std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
+                        hasFound = true;
+                        std::shared_lock lock(mTracksMutex); // read-only
+                        if (auto it = mTracks.find(*mid); it != mTracks.end()) {
+                            if (auto track = it->second.lock()) {
+                                track->incoming(message);
+                                break;
+                            }
+                        }
+                        ssrcsFound.emplace_back(ssrc);
+                    }
+                }else if (header->payloadType() == 200 || header->payloadType() == 201) {
+                    auto rtcpsr = (RTCP_SR*) header;
+                    auto ssrc = rtcpsr->senderSSRC();
+                    mid = getMidFromSSRC(ssrc);
+                    if (mid.has_value() && std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
+                        hasFound = true;
+                        std::shared_lock lock(mTracksMutex); // read-only
+                        if (auto it = mTracks.find(*mid); it != mTracks.end()) {
+                            if (auto track = it->second.lock()) {
+                                track->incoming(message);
+                                break;
+                            }
+                        }
+                        ssrcsFound.emplace_back(ssrc);
+                    }
+                    for (int i = 0; i < rtcpsr->header.reportCount(); i++) {
+                        auto block = rtcpsr->getReportBlock(i);
+                        ssrc = block->getSSRC();
+                        mid = getMidFromSSRC(ssrc);
+                        if (mid.has_value() && std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
+                            hasFound = true;
+                            std::shared_lock lock(mTracksMutex); // read-only
+                            if (auto it = mTracks.find(*mid); it != mTracks.end()) {
+                                if (auto track = it->second.lock()) {
+                                    track->incoming(message);
+                                    break;
+                                }
+                            }
+                            ssrcsFound.emplace_back(ssrc);
+                        }
+                    }
+                }else {
+                    PLOG_WARNING << "Unknown packet type: " << header->payloadType();
                 }
             }
-            if (hasFound)
-                return;
+            offset += header->lengthInBytes();
         }
+
+        if (hasFound)
+            return;
     }
+
+    unsigned int ssrc = message->stream;
+    mid = getMidFromSSRC(ssrc);
 
 	if (!mid) {
 	    /* TODO

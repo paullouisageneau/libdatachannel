@@ -171,6 +171,9 @@ public:
     inline uint8_t reportCount() const { return _first & 0x0F; }
     inline uint8_t payloadType() const { return _payloadType; }
     inline uint16_t length() const { return ntohs(_length); }
+    inline size_t lengthInBytes() const {
+        return (1+length())*4;
+    }
 
     inline void setPayloadType(uint8_t type) { _payloadType = type; }
     inline void setReportCount(uint8_t count) { _first = (_first & 0b11100000u) | (count & 0b00011111u); }
