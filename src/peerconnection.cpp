@@ -45,7 +45,7 @@ PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 PeerConnection::PeerConnection(const Configuration &config)
     : mConfig(config), mCertificate(make_certificate()), mProcessor(std::make_unique<Processor>()),
       mState(State::New), mGatheringState(GatheringState::New),
-      mSignalingState(SignalingState::Stable), mNegociationNeeded(false) {
+      mSignalingState(SignalingState::Stable), mNegotiationNeeded(false) {
 	PLOG_VERBOSE << "Creating PeerConnection";
 
 	if (config.portRangeEnd && config.portRangeBegin > config.portRangeEnd)
@@ -61,7 +61,7 @@ PeerConnection::~PeerConnection() {
 void PeerConnection::close() {
 	PLOG_VERBOSE << "Closing PeerConnection";
 
-	mNegociationNeeded = false;
+	mNegotiationNeeded = false;
 
 	// Close data channels asynchronously
 	mProcessor->enqueue(std::bind(&PeerConnection::closeDataChannels, this));
@@ -129,9 +129,9 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 			type = Description::Type::Offer;
 	}
 
-	// Only a local offer resets the negociation needed flag
-	if (type == Description::Type::Offer && !mNegociationNeeded.exchange(false)) {
-		PLOG_DEBUG << "No negociation needed";
+	// Only a local offer resets the negotiation needed flag
+	if (type == Description::Type::Offer && !mNegotiationNeeded.exchange(false)) {
+		PLOG_DEBUG << "No negotiation needed";
 		return;
 	}
 
@@ -320,10 +320,10 @@ shared_ptr<DataChannel> PeerConnection::addDataChannel(string label, string prot
 		if (transport->state() == SctpTransport::State::Connected)
 			channel->open(transport);
 
-	// Renegociation is needed iff the current local description does not have application
+	// Renegotiation is needed iff the current local description does not have application
 	std::lock_guard lock(mLocalDescriptionMutex);
 	if (!mLocalDescription || !mLocalDescription->hasApplication())
-		mNegociationNeeded = true;
+		mNegotiationNeeded = true;
 
 	return channel;
 }
@@ -373,8 +373,8 @@ std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) 
 	auto track = std::make_shared<Track>(std::move(description));
 	mTracks.emplace(std::make_pair(track->mid(), track));
 
-	// Renegociation is needed for the new track
-	mNegociationNeeded = true;
+	// Renegotiation is needed for the new track
+	mNegotiationNeeded = true;
 
 	return track;
 }

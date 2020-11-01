@@ -121,7 +121,7 @@ void test_track() {
 	if (!at2 || !at2->isOpen() || !t1->isOpen())
 		throw runtime_error("Track is not open");
 
-	// Test renegociation
+	// Test renegotiation
 	newTrackMid = "added";
 	t1 = pc1->addTrack(Description::Video(newTrackMid));
 

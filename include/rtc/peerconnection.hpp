@@ -182,7 +182,7 @@ private:
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;
 	std::atomic<SignalingState> mSignalingState;
-	std::atomic<bool> mNegociationNeeded;
+	std::atomic<bool> mNegotiationNeeded;
 
 	synchronized_callback<std::shared_ptr<DataChannel>> mDataChannelCallback;
 	synchronized_callback<Description> mLocalDescriptionCallback;
