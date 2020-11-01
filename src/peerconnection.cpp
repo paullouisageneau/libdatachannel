@@ -110,7 +110,7 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 		if (signalingState == SignalingState::HaveLocalOffer ||
 		    signalingState == SignalingState::HaveLocalPranswer) {
 			PLOG_DEBUG << "Rolling back pending local description";
-			
+
 			std::unique_lock lock(mLocalDescriptionMutex);
 			if (mCurrentLocalDescription) {
 				std::vector<Candidate> existingCandidates;
@@ -122,7 +122,7 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 				mCurrentLocalDescription.reset();
 			}
 			lock.unlock();
-			
+
 			changeSignalingState(SignalingState::Stable);
 		}
 		return;
@@ -582,7 +582,8 @@ void PeerConnection::closeTransports() {
 	PLOG_VERBOSE << "Closing transports";
 
 	// Change state to sink state Closed
-	changeState(State::Closed);
+	if (!changeState(State::Closed))
+		return; // already closed
 
 	// Reset callbacks now that state is changed
 	resetCallbacks();
@@ -1027,9 +1028,9 @@ bool PeerConnection::changeState(State state) {
 	State current;
 	do {
 		current = mState.load();
-		if (current == state)
-			return true;
 		if (current == State::Closed)
+			return false;
+		if (current == state)
 			return false;
 
 	} while (!mState.compare_exchange_weak(current, state));
@@ -1048,22 +1049,24 @@ bool PeerConnection::changeState(State state) {
 }
 
 bool PeerConnection::changeGatheringState(GatheringState state) {
-	if (mGatheringState.exchange(state) != state) {
-		std::ostringstream s;
-		s << state;
-		PLOG_INFO << "Changed gathering state to " << s.str();
-		mProcessor->enqueue([this, state] { mGatheringStateChangeCallback(state); });
-	}
+	if (mGatheringState.exchange(state) == state)
+		return false;
+	
+	std::ostringstream s;
+	s << state;
+	PLOG_INFO << "Changed gathering state to " << s.str();
+	mProcessor->enqueue([this, state] { mGatheringStateChangeCallback(state); });
 	return true;
 }
 
 bool PeerConnection::changeSignalingState(SignalingState state) {
-	if (mSignalingState.exchange(state) != state) {
-		std::ostringstream s;
-		s << state;
-		PLOG_INFO << "Changed signaling state to " << s.str();
-		mProcessor->enqueue([this, state] { mSignalingStateChangeCallback(state); });
-	}
+	if (mSignalingState.exchange(state) == state) 
+		return false;
+	
+	std::ostringstream s;
+	s << state;
+	PLOG_INFO << "Changed signaling state to " << s.str();
+	mProcessor->enqueue([this, state] { mSignalingStateChangeCallback(state); });
 	return true;
 }
 
