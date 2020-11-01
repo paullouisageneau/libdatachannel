@@ -839,8 +839,6 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 }
 
 void PeerConnection::processLocalDescription(Description description) {
-	int activeMediaCount = 0;
-
 	if (auto remote = remoteDescription()) {
 		// Reciprocate remote description
 		for (int i = 0; i < remote->mediaCount(); ++i)
@@ -850,7 +848,6 @@ void PeerConnection::processLocalDescription(Description description) {
 				        auto reciprocated = app->reciprocate();
 				        reciprocated.hintSctpPort(DEFAULT_SCTP_PORT);
 				        reciprocated.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
-				        ++activeMediaCount;
 
 				        PLOG_DEBUG << "Reciprocating application in local description, mid=\""
 				                   << reciprocated.mid() << "\"";
@@ -859,10 +856,7 @@ void PeerConnection::processLocalDescription(Description description) {
 			        },
 			        [&](Description::Media *media) {
 				        auto reciprocated = media->reciprocate();
-#if RTC_ENABLE_MEDIA
-				        if (reciprocated.direction() != Description::Direction::Inactive)
-					        ++activeMediaCount;
-#else
+#if !RTC_ENABLE_MEDIA
 				        // No media support, mark as inactive
 				        reciprocated.setDirection(Description::Direction::Inactive);
 #endif
@@ -886,7 +880,6 @@ void PeerConnection::processLocalDescription(Description description) {
 			Description::Application app("data");
 			app.setSctpPort(DEFAULT_SCTP_PORT);
 			app.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
-			++activeMediaCount;
 
 			PLOG_DEBUG << "Adding application to local description, mid=\"" << app.mid() << "\"";
 
@@ -903,10 +896,7 @@ void PeerConnection::processLocalDescription(Description description) {
 
 			if (auto track = it->second.lock()) {
 				auto media = track->description();
-#if RTC_ENABLE_MEDIA
-				if (media.direction() != Description::Direction::Inactive)
-					++activeMediaCount;
-#else
+#if !RTC_ENABLE_MEDIA
 				// No media support, mark as inactive
 				media.setDirection(Description::Direction::Inactive);
 #endif
@@ -918,10 +908,6 @@ void PeerConnection::processLocalDescription(Description description) {
 			}
 		}
 	}
-
-	// There must be at least one active media to negociate
-	if (activeMediaCount == 0)
-		throw std::runtime_error("Nothing to negociate");
 
 	// Set local fingerprint (wait for certificate if necessary)
 	description.setFingerprint(mCertificate.get()->fingerprint());
