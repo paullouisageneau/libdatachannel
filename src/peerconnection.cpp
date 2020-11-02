@@ -621,7 +621,8 @@ void PeerConnection::forwardMedia(message_ptr message) {
                         }
                     }
                 }else {
-                    PLOG_WARNING << "Unknown packet type: " << header->payloadType();
+		    // This warning is commonly thrown with SDES PT=202
+                    // PLOG_WARNING << "Unknown packet type: " << (int) header->payloadType();
                 }
             }
             offset += header->lengthInBytes();
@@ -641,7 +642,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	     *   Therefore, it is expected that we don't know where to forward packets.
 	     *   Is this ideal? No! Do I know how to fix it? No!
 	     */
-//		PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
+		//PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
 		return;
 	}
 
