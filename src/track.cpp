@@ -32,6 +32,10 @@ string Track::mid() const { return mMediaDescription.mid(); }
 
 Description::Media Track::description() const { return mMediaDescription; }
 
+void Track::setDescription(Description::Media description) {
+	mMediaDescription = std::move(description);
+}
+
 void Track::close() {
 	mIsClosed = true;
 	resetCallbacks();

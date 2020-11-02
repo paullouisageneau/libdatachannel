@@ -368,19 +368,23 @@ void PeerConnection::onSignalingStateChange(std::function<void(SignalingState st
 }
 
 std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) {
-	if (auto it = mTracks.find(description.mid()); it != mTracks.end())
-		if (auto track = it->second.lock())
-			return track;
-
 #if !RTC_ENABLE_MEDIA
 	if (mTracks.empty()) {
 		PLOG_WARNING << "Tracks will be inative (not compiled with SRTP support)";
 	}
 #endif
-	auto track = std::make_shared<Track>(std::move(description));
-	mTracks.emplace(std::make_pair(track->mid(), track));
 
-	// Renegotiation is needed for the new track
+    std::shared_ptr<Track> track;
+	if (auto it = mTracks.find(description.mid()); it != mTracks.end())
+		if(track = it->second.lock(); track)
+			track->setDescription(std::move(description));
+
+	if(!track) {
+		track = std::make_shared<Track>(std::move(description));
+		mTracks.emplace(std::make_pair(track->mid(), track));
+	}
+
+	// Renegotiation is needed for the new or updated track
 	mNegotiationNeeded = true;
 
 	return track;
@@ -1051,7 +1055,7 @@ bool PeerConnection::changeState(State state) {
 bool PeerConnection::changeGatheringState(GatheringState state) {
 	if (mGatheringState.exchange(state) == state)
 		return false;
-	
+
 	std::ostringstream s;
 	s << state;
 	PLOG_INFO << "Changed gathering state to " << s.str();
@@ -1060,9 +1064,9 @@ bool PeerConnection::changeGatheringState(GatheringState state) {
 }
 
 bool PeerConnection::changeSignalingState(SignalingState state) {
-	if (mSignalingState.exchange(state) == state) 
+	if (mSignalingState.exchange(state) == state)
 		return false;
-	
+
 	std::ostringstream s;
 	s << state;
 	PLOG_INFO << "Changed signaling state to " << s.str();
