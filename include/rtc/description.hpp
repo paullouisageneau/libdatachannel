@@ -94,8 +94,7 @@ public:
 	struct Application : public Entry {
 	public:
 		Application(string mid = "data");
-		Application(const Application &other) = default;
-		Application(Application &&other) = default;
+		virtual ~Application() = default;
 
 		string description() const override;
 		Application reciprocate() const;
@@ -121,8 +120,6 @@ public:
 	public:
 		Media(const string &sdp);
 		Media(const string &mline, string mid, Direction dir = Direction::SendOnly);
-		Media(const Media &other) = default;
-		Media(Media &&other) = default;
 		virtual ~Media() = default;
 
 		string description() const override;

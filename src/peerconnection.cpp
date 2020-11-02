@@ -368,19 +368,23 @@ void PeerConnection::onSignalingStateChange(std::function<void(SignalingState st
 }
 
 std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) {
-	if (auto it = mTracks.find(description.mid()); it != mTracks.end())
-		if (auto track = it->second.lock())
-			return track;
-
 #if !RTC_ENABLE_MEDIA
 	if (mTracks.empty()) {
 		PLOG_WARNING << "Tracks will be inative (not compiled with SRTP support)";
 	}
 #endif
-	auto track = std::make_shared<Track>(std::move(description));
-	mTracks.emplace(std::make_pair(track->mid(), track));
 
-	// Renegotiation is needed for the new track
+	std::shared_ptr<Track> track;
+	if (auto it = mTracks.find(description.mid()); it != mTracks.end())
+		if (track = it->second.lock(); track)
+			track->setDescription(std::move(description));
+
+	if (!track) {
+		track = std::make_shared<Track>(std::move(description));
+		mTracks.emplace(std::make_pair(track->mid(), track));
+	}
+
+	// Renegotiation is needed for the new or updated track
 	mNegotiationNeeded = true;
 
 	return track;
@@ -852,8 +856,22 @@ void PeerConnection::processLocalDescription(Description description) {
 		for (int i = 0; i < remote->mediaCount(); ++i)
 			std::visit( // reciprocate each media
 			    rtc::overloaded{
-			        [&](Description::Application *app) {
-				        auto reciprocated = app->reciprocate();
+			        [&](Description::Application *remoteApp) {
+				        std::shared_lock lock(mDataChannelsMutex);
+				        if (!mDataChannels.empty()) {
+					        // Prefer local description
+					        Description::Application app(remoteApp->mid());
+					        app.setSctpPort(DEFAULT_SCTP_PORT);
+					        app.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+
+					        PLOG_DEBUG << "Adding application to local description, mid=\""
+					                   << app.mid() << "\"";
+
+					        description.addMedia(std::move(app));
+					        return;
+				        }
+
+				        auto reciprocated = remoteApp->reciprocate();
 				        reciprocated.hintSctpPort(DEFAULT_SCTP_PORT);
 				        reciprocated.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
 
@@ -862,8 +880,35 @@ void PeerConnection::processLocalDescription(Description description) {
 
 				        description.addMedia(std::move(reciprocated));
 			        },
-			        [&](Description::Media *media) {
-				        auto reciprocated = media->reciprocate();
+			        [&](Description::Media *remoteMedia) {
+				        std::shared_lock lock(mTracksMutex);
+				        if (auto it = mTracks.find(remoteMedia->mid()); it != mTracks.end()) {
+					        // Prefer local description
+					        if (auto track = it->second.lock()) {
+						        auto media = track->description();
+#if !RTC_ENABLE_MEDIA
+						        // No media support, mark as inactive
+						        media.setDirection(Description::Direction::Inactive);
+#endif
+						        PLOG_DEBUG
+						            << "Adding media to local description, mid=\"" << media.mid()
+						            << "\", active=" << std::boolalpha
+						            << (media.direction() != Description::Direction::Inactive);
+
+						        description.addMedia(std::move(media));
+					        } else {
+						        auto reciprocated = remoteMedia->reciprocate();
+						        reciprocated.setDirection(Description::Direction::Inactive);
+
+						        PLOG_DEBUG << "Adding inactive media to local description, mid=\""
+						                   << reciprocated.mid() << "\"";
+
+						        description.addMedia(std::move(reciprocated));
+					        }
+					        return;
+				        }
+
+				        auto reciprocated = remoteMedia->reciprocate();
 #if !RTC_ENABLE_MEDIA
 				        // No media support, mark as inactive
 				        reciprocated.setDirection(Description::Direction::Inactive);
@@ -1051,7 +1096,7 @@ bool PeerConnection::changeState(State state) {
 bool PeerConnection::changeGatheringState(GatheringState state) {
 	if (mGatheringState.exchange(state) == state)
 		return false;
-	
+
 	std::ostringstream s;
 	s << state;
 	PLOG_INFO << "Changed gathering state to " << s.str();
@@ -1060,9 +1105,9 @@ bool PeerConnection::changeGatheringState(GatheringState state) {
 }
 
 bool PeerConnection::changeSignalingState(SignalingState state) {
-	if (mSignalingState.exchange(state) == state) 
+	if (mSignalingState.exchange(state) == state)
 		return false;
-	
+
 	std::ostringstream s;
 	s << state;
 	PLOG_INFO << "Changed signaling state to " << s.str();
