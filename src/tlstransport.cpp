@@ -238,11 +238,9 @@ ssize_t TlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_
 
 int TlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) {
 	TlsTransport *t = static_cast<TlsTransport *>(ptr);
-	if (ms != GNUTLS_INDEFINITE_TIMEOUT)
-		t->mIncomingQueue.wait(milliseconds(ms));
-	else
-		t->mIncomingQueue.wait();
-	return !t->mIncomingQueue.empty() ? 1 : 0;
+	bool notEmpty = t->mIncomingQueue.wait(
+	    ms != GNUTLS_INDEFINITE_TIMEOUT ? std::make_optional(milliseconds(ms)) : nullopt);
+	return notEmpty ? 1 : 0;
 }
 
 #else // USE_GNUTLS==0
@@ -413,7 +411,7 @@ void TlsTransport::runRecvLoop() {
 			if (!next)
 				break;
 
-			message_ptr message = *next;
+			message_ptr message = std::move(*next);
 			if (message->size() > 0)
 				BIO_write(mInBio, message->data(), int(message->size())); // Input
 			else

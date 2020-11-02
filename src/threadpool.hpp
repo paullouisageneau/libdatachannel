@@ -73,8 +73,15 @@ template <class F, class... Args>
 auto ThreadPool::enqueue(F &&f, Args &&... args) -> invoke_future_t<F, Args...> {
 	std::unique_lock lock(mMutex);
 	using R = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
-	auto task = std::make_shared<std::packaged_task<R()>>(
-	    std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+	auto bound = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
+	auto task = std::make_shared<std::packaged_task<R()>>([bound = std::move(bound)]() mutable {
+        try {
+            return bound();
+        } catch (const std::exception &e) {
+            PLOG_WARNING << e.what();
+            throw;
+        }
+    });
 	std::future<R> result = task->get_future();
 
 	mTasks.emplace([task = std::move(task), token = Init::Token()]() { return (*task)(); });

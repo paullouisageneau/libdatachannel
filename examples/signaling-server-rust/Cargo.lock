@@ -348,7 +348,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9f8082297d534141b30c8d39e9b1773713ab50fdbe4ff30f750d063b3bfd701"
 
 [[package]]
-name = "libdatachannel_signaling_example"
+name = "libdatachannel_signaling_server_example"
 version = "0.1.0"
 dependencies = [
  "futures-channel",

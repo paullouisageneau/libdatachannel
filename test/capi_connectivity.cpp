@@ -29,9 +29,12 @@ static void sleep(unsigned int secs) { Sleep(secs * 1000); }
 #include <unistd.h> // for sleep
 #endif
 
+#define BUFFER_SIZE 4096
+
 typedef struct {
 	rtcState state;
 	rtcGatheringState gatheringState;
+	rtcSignalingState signalingState;
 	int pc;
 	int dc;
 	bool connected;
@@ -40,33 +43,39 @@ typedef struct {
 static Peer *peer1 = NULL;
 static Peer *peer2 = NULL;
 
-static void descriptionCallback(const char *sdp, const char *type, void *ptr) {
+static void descriptionCallback(int pc, const char *sdp, const char *type, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	printf("Description %d:\n%s\n", peer == peer1 ? 1 : 2, sdp);
 	Peer *other = peer == peer1 ? peer2 : peer1;
 	rtcSetRemoteDescription(other->pc, sdp, type);
 }
 
-static void candidateCallback(const char *cand, const char *mid, void *ptr) {
+static void candidateCallback(int pc, const char *cand, const char *mid, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	printf("Candidate %d: %s\n", peer == peer1 ? 1 : 2, cand);
 	Peer *other = peer == peer1 ? peer2 : peer1;
 	rtcAddRemoteCandidate(other->pc, cand, mid);
 }
 
-static void stateChangeCallback(rtcState state, void *ptr) {
+static void stateChangeCallback(int pc, rtcState state, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->state = state;
 	printf("State %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
 }
 
-static void gatheringStateCallback(rtcGatheringState state, void *ptr) {
+static void gatheringStateCallback(int pc, rtcGatheringState state, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->gatheringState = state;
 	printf("Gathering state %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
 }
 
-static void openCallback(void *ptr) {
+static void signalingStateCallback(int pc, rtcSignalingState state, void *ptr) {
+	Peer *peer = (Peer *)ptr;
+	peer->signalingState = state;
+	printf("Signaling state %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
+}
+
+static void openCallback(int id, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->connected = true;
 	printf("DataChannel %d: Open\n", peer == peer1 ? 1 : 2);
@@ -75,12 +84,12 @@ static void openCallback(void *ptr) {
 	rtcSendMessage(peer->dc, message, -1); // negative size indicates a null-terminated string
 }
 
-static void closedCallback(void *ptr) {
+static void closedCallback(int id, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->connected = false;
 }
 
-static void messageCallback(const char *message, int size, void *ptr) {
+static void messageCallback(int id, const char *message, int size, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	if (size < 0) { // negative size indicates a null-terminated string
 		printf("Message %d: %s\n", peer == peer1 ? 1 : 2, message);
@@ -89,7 +98,7 @@ static void messageCallback(const char *message, int size, void *ptr) {
 	}
 }
 
-static void dataChannelCallback(int dc, void *ptr) {
+static void dataChannelCallback(int pc, int dc, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->dc = dc;
 	peer->connected = true;
@@ -178,20 +187,81 @@ int test_capi_connectivity_main() {
 		goto error;
 	}
 
+	if (peer1->signalingState != RTC_SIGNALING_STABLE ||
+	    peer2->signalingState != RTC_SIGNALING_STABLE) {
+		fprintf(stderr, "Signaling state is not stable\n");
+		goto error;
+	}
+
 	if (!peer1->connected || !peer2->connected) {
 		fprintf(stderr, "DataChannel is not connected\n");
 		goto error;
 	}
 
-	char buffer[256];
-	if (rtcGetLocalAddress(peer1->pc, buffer, 256) >= 0)
-		printf("Local address 1:  %s\n", buffer);
-	if (rtcGetRemoteAddress(peer1->pc, buffer, 256) >= 0)
-		printf("Remote address 1: %s\n", buffer);
-	if (rtcGetLocalAddress(peer2->pc, buffer, 256) >= 0)
-		printf("Local address 2:  %s\n", buffer);
-	if (rtcGetRemoteAddress(peer2->pc, buffer, 256) >= 0)
-		printf("Remote address 2: %s\n", buffer);
+	char buffer[BUFFER_SIZE];
+	char buffer2[BUFFER_SIZE];
+
+	if (rtcGetLocalDescription(peer1->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetLocalDescription failed\n");
+		goto error;
+	}
+	printf("Local description 1:  %s\n", buffer);
+
+	if (rtcGetRemoteDescription(peer1->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetRemoteDescription failed\n");
+		goto error;
+	}
+	printf("Remote description 1:  %s\n", buffer);
+
+	if (rtcGetLocalDescription(peer2->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetLocalDescription failed\n");
+		goto error;
+	}
+	printf("Local description 2:  %s\n", buffer);
+
+	if (rtcGetRemoteDescription(peer2->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetRemoteDescription failed\n");
+		goto error;
+	}
+	printf("Remote description 2:  %s\n", buffer);
+
+	if (rtcGetLocalAddress(peer1->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetLocalAddress failed\n");
+		goto error;
+	}
+	printf("Local address 1:  %s\n", buffer);
+
+	if (rtcGetRemoteAddress(peer1->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetRemoteAddress failed\n");
+		goto error;
+	}
+	printf("Remote address 1: %s\n", buffer);
+
+	if (rtcGetLocalAddress(peer2->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetLocalAddress failed\n");
+		goto error;
+	}
+	printf("Local address 2:  %s\n", buffer);
+
+	if (rtcGetRemoteAddress(peer2->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetRemoteAddress failed\n");
+		goto error;
+	}
+	printf("Remote address 2: %s\n", buffer);
+
+	if (rtcGetSelectedCandidatePair(peer1->pc, buffer, BUFFER_SIZE, buffer2, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetSelectedCandidatePair failed\n");
+		goto error;
+	}
+	printf("Local candidate 1:  %s\n", buffer);
+	printf("Remote candidate 1: %s\n", buffer2);
+
+	if (rtcGetSelectedCandidatePair(peer2->pc, buffer, BUFFER_SIZE, buffer2, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetSelectedCandidatePair failed\n");
+		goto error;
+	}
+	printf("Local candidate 2:  %s\n", buffer);
+	printf("Remote candidate 2: %s\n", buffer2);
 
 	deletePeer(peer1);
 	sleep(1);

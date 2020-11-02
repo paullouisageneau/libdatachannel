@@ -202,5 +202,6 @@ ws->open("wss://my.websocket/service");
 ## External resources
 - Rust wrapper for libdatachannel: [datachannel-rs](https://github.com/lerouxrgd/datachannel-rs)
 - Node.js wrapper for libdatachannel: [node-datachannel](https://github.com/murat-dogan/node-datachannel)
+- Unity wrapper for Windows 10 and Hololens: [datachannel-unity](https://github.com/hanseuljun/datachannel-unity)
 - WebAssembly wrapper compatible with libdatachannel: [datachannel-wasm](https://github.com/paullouisageneau/datachannel-wasm)
 

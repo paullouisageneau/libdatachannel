@@ -41,13 +41,13 @@ typedef struct {
         bool connected;
 } Peer;
 
-static void dataChannelCallback(int dc, void *ptr);
-static void descriptionCallback(const char *sdp, const char *type, void *ptr);
-static void candidateCallback(const char *cand, const char *mid, void *ptr);
-static void stateChangeCallback(rtcState state, void *ptr);
-static void gatheringStateCallback(rtcGatheringState state, void *ptr);
-static void closedCallback(void *ptr);
-static void messageCallback(const char *message, int size, void *ptr);
+static void dataChannelCallback(int pc, int dc, void *ptr);
+static void descriptionCallback(int pc, const char *sdp, const char *type, void *ptr);
+static void candidateCallback(int pc, const char *cand, const char *mid, void *ptr);
+static void stateChangeCallback(int pc, rtcState state, void *ptr);
+static void gatheringStateCallback(int pc, rtcGatheringState state, void *ptr);
+static void closedCallback(int id, void *ptr);
+static void messageCallback(int id, const char *message, int size, void *ptr);
 static void deletePeer(Peer *peer);
 
 char* state_print(rtcState state);
@@ -194,35 +194,35 @@ int main(int argc, char **argv) {
         return 0;
 }
 
-static void descriptionCallback(const char *sdp, const char *type, void *ptr) {
+static void descriptionCallback(int pc, const char *sdp, const char *type, void *ptr) {
         // Peer *peer = (Peer *)ptr;
         printf("Description %s:\n%s\n", "answerer", sdp);
 }
 
-static void candidateCallback(const char *cand, const char *mid, void *ptr) {
+static void candidateCallback(int pc, const char *cand, const char *mid, void *ptr) {
         // Peer *peer = (Peer *)ptr;
         printf("Candidate %s: %s\n", "answerer", cand);
 
 }
 
-static void stateChangeCallback(rtcState state, void *ptr) {
+static void stateChangeCallback(int pc, rtcState state, void *ptr) {
         Peer *peer = (Peer *)ptr;
         peer->state = state;
         printf("State %s: %s\n", "answerer", state_print(state));
 }
 
-static void gatheringStateCallback(rtcGatheringState state, void *ptr) {
+static void gatheringStateCallback(int pc, rtcGatheringState state, void *ptr) {
         Peer *peer = (Peer *)ptr;
         peer->gatheringState = state;
         printf("Gathering state %s: %s\n", "answerer", rtcGatheringState_print(state));
 }
 
-static void closedCallback(void *ptr) {
+static void closedCallback(int id, void *ptr) {
         Peer *peer = (Peer *)ptr;
         peer->connected = false;
 }
 
-static void messageCallback(const char *message, int size, void *ptr) {
+static void messageCallback(int id, const char *message, int size, void *ptr) {
         if (size < 0) { // negative size indicates a null-terminated string
                 printf("Message %s: %s\n", "answerer", message);
         } else {
@@ -240,7 +240,7 @@ static void deletePeer(Peer *peer) {
         }
 }
 
-static void dataChannelCallback(int dc, void *ptr) {
+static void dataChannelCallback(int pc, int dc, void *ptr) {
         Peer *peer = (Peer *)ptr;
         peer->dc = dc;
         peer->connected = true;

@@ -24,8 +24,11 @@
 
 #if RTC_ENABLE_MEDIA
 
+#ifdef RTC_SRTP_FROM_SOURCE
 #include "srtp.h"
-
+#else
+#include <srtp2/srtp.h>
+#endif
 #include <atomic>
 
 namespace rtc {

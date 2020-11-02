@@ -69,6 +69,10 @@ void test_connectivity() {
 		cout << "Gathering state 1: " << state << endl;
 	});
 
+	pc1->onSignalingStateChange([](PeerConnection::SignalingState state) {
+		cout << "Signaling state 1: " << state << endl;
+	});
+
 	pc2->onLocalDescription([wpc1 = make_weak_ptr(pc1)](Description sdp) {
 		auto pc1 = wpc1.lock();
 		if (!pc1)
@@ -89,6 +93,10 @@ void test_connectivity() {
 
 	pc2->onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "Gathering state 2: " << state << endl;
+	});
+
+	pc2->onSignalingStateChange([](PeerConnection::SignalingState state) {
+		cout << "Signaling state 2: " << state << endl;
 	});
 
 	shared_ptr<DataChannel> dc2;
@@ -125,6 +133,7 @@ void test_connectivity() {
 		}
 	});
 
+	// Wait a bit
 	int attempts = 10;
 	shared_ptr<DataChannel> adc2;
 	while ((!(adc2 = std::atomic_load(&dc2)) || !adc2->isOpen() || !dc1->isOpen()) && attempts--)
@@ -145,6 +154,59 @@ void test_connectivity() {
 		cout << "Local address 2:  " << *addr << endl;
 	if (auto addr = pc2->remoteAddress())
 		cout << "Remote address 2: " << *addr << endl;
+
+	Candidate local, remote;
+	if(pc1->getSelectedCandidatePair(&local, &remote)) {
+		cout << "Local candidate 1:  " << local << endl;
+		cout << "Remote candidate 1: " << remote << endl;
+	}
+	if(pc2->getSelectedCandidatePair(&local, &remote)) {
+		cout << "Local candidate 2:  " << local << endl;
+		cout << "Remote candidate 2: " << remote << endl;
+	}
+
+	// Try to open a second data channel with another label
+	shared_ptr<DataChannel> second2;
+	pc2->onDataChannel([&second2](shared_ptr<DataChannel> dc) {
+		cout << "Second DataChannel 2: Received with label \"" << dc->label() << "\"" << endl;
+		if (dc->label() != "second") {
+			cerr << "Wrong second DataChannel label" << endl;
+			return;
+		}
+
+		dc->onMessage([](variant<binary, string> message) {
+			if (holds_alternative<string>(message)) {
+				cout << "Second Message 2: " << get<string>(message) << endl;
+			}
+		});
+
+		dc->send("Send hello from 2");
+
+		std::atomic_store(&second2, dc);
+	});
+
+	auto second1 = pc1->createDataChannel("second");
+	second1->onOpen([wsecond1 = make_weak_ptr(dc1)]() {
+		auto second1 = wsecond1.lock();
+		if (!second1)
+			return;
+
+		cout << "Second DataChannel 1: Open" << endl;
+		second1->send("Second hello from 1");
+	});
+	dc1->onMessage([](const variant<binary, string> &message) {
+		if (holds_alternative<string>(message)) {
+			cout << "Second Message 1: " << get<string>(message) << endl;
+		}
+	});
+
+	// Wait a bit
+	attempts = 10;
+	shared_ptr<DataChannel> asecond2;
+	while (
+	    (!(asecond2 = std::atomic_load(&second2)) || !asecond2->isOpen() || !second1->isOpen()) &&
+	    attempts--)
+		this_thread::sleep_for(1s);
 
 	// Delay close of peer 2 to check closing works properly
 	pc1->close();

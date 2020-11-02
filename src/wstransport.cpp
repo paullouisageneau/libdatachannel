@@ -58,6 +58,12 @@ WsTransport::WsTransport(std::shared_ptr<Transport> lower, string host, string p
 	onRecv(recvCallback);
 
 	PLOG_DEBUG << "Initializing WebSocket transport";
+
+	if (mHost.empty())
+		throw std::invalid_argument("WebSocket HTTP host cannot be empty");
+
+	if (mPath.empty())
+		throw std::invalid_argument("WebSocket HTTP path cannot be empty");
 }
 
 WsTransport::~WsTransport() { stop(); }
@@ -147,7 +153,7 @@ void WsTransport::close() {
 }
 
 bool WsTransport::sendHttpRequest() {
-	PLOG_DEBUG << "Sending WebSocket HTTP request";
+	PLOG_DEBUG << "Sending WebSocket HTTP request for path " << mPath;
 	changeState(State::Connecting);
 
 	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());

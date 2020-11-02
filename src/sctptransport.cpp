@@ -322,7 +322,7 @@ void SctpTransport::incoming(message_ptr message) {
 bool SctpTransport::trySendQueue() {
 	// Requires mSendMutex to be locked
 	while (auto next = mSendQueue.peek()) {
-		auto message = *next;
+		message_ptr message = std::move(*next);
 		if (!trySendMessage(message))
 			return false;
 		mSendQueue.pop();
@@ -476,8 +476,6 @@ int SctpTransport::handleRecv(struct socket * /*sock*/, union sctp_sockstore /*a
                               const byte *data, size_t len, struct sctp_rcvinfo info, int flags) {
 	try {
 		PLOG_VERBOSE << "Handle recv, len=" << len;
-		if (!len)
-			return 0; // Ignore
 
 		// SCTP_FRAGMENT_INTERLEAVE does not seem to work as expected for messages > 64KB,
 		// therefore partial notifications and messages need to be handled separately.
@@ -497,7 +495,7 @@ int SctpTransport::handleRecv(struct socket * /*sock*/, union sctp_sockstore /*a
 			if (flags & MSG_EOR) {
 				// Message is complete, process it
 				processData(std::move(mPartialMessage), info.rcv_sid,
-				            PayloadId(htonl(info.rcv_ppid)));
+				            PayloadId(ntohl(info.rcv_ppid)));
 				mPartialMessage.clear();
 			}
 		}
@@ -702,8 +700,9 @@ std::optional<milliseconds> SctpTransport::rtt() {
 }
 
 int SctpTransport::RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data,
-                                size_t len, struct sctp_rcvinfo recv_info, int flags, void *ptr) {
-	auto *transport = static_cast<SctpTransport *>(ptr);
+                                size_t len, struct sctp_rcvinfo recv_info, int flags,
+                                void *ulp_info) {
+	auto *transport = static_cast<SctpTransport *>(ulp_info);
 
 	std::shared_lock lock(InstancesMutex);
 	if (Instances.find(transport) == Instances.end()) {
@@ -717,15 +716,8 @@ int SctpTransport::RecvCallback(struct socket *sock, union sctp_sockstore addr, 
 	return ret;
 }
 
-int SctpTransport::SendCallback(struct socket *sock, uint32_t sb_free) {
-	struct sctp_paddrinfo paddrinfo = {};
-	socklen_t len = sizeof(paddrinfo);
-	if (usrsctp_getsockopt(sock, IPPROTO_SCTP, SCTP_GET_PEER_ADDR_INFO, &paddrinfo, &len))
-		return -1;
-
-	auto sconn = reinterpret_cast<struct sockaddr_conn *>(&paddrinfo.spinfo_address);
-	void *ptr = sconn->sconn_addr;
-	auto *transport = static_cast<SctpTransport *>(ptr);
+int SctpTransport::SendCallback(struct socket *, uint32_t sb_free, void *ulp_info) {
+	auto *transport = static_cast<SctpTransport *>(ulp_info);
 
 	std::shared_lock lock(InstancesMutex);
 	if (Instances.find(transport) == Instances.end())

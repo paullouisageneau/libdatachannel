@@ -58,8 +58,32 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 	if (config.enableIceTcp) {
 		PLOG_WARNING << "ICE-TCP is not supported with libjuice";
 	}
+
+	juice_log_level_t level;
+	auto logger = plog::get();
+	switch (logger ? logger->getMaxSeverity() : plog::none) {
+	case plog::none:
+		level = JUICE_LOG_LEVEL_NONE;
+		break;
+	case plog::fatal:
+		level = JUICE_LOG_LEVEL_VERBOSE;
+		break;
+	case plog::error:
+		level = JUICE_LOG_LEVEL_ERROR;
+		break;
+	case plog::warning:
+		level = JUICE_LOG_LEVEL_WARN;
+		break;
+	case plog::info:
+	case plog::debug: // juice debug is output as verbose
+		level = JUICE_LOG_LEVEL_INFO;
+		break;
+	default:
+		level = JUICE_LOG_LEVEL_VERBOSE;
+		break;
+	}
 	juice_set_log_handler(IceTransport::LogCallback);
-	juice_set_log_level(JUICE_LOG_LEVEL_VERBOSE);
+	juice_set_log_level(level);
 
 	juice_config_t jconfig = {};
 	jconfig.cb_state_changed = IceTransport::StateChangeCallback;
@@ -161,6 +185,24 @@ std::optional<string> IceTransport::getRemoteAddress() const {
 		return std::make_optional(string(str));
 	}
 	return nullopt;
+}
+
+bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote) {
+	char sdpLocal[JUICE_MAX_CANDIDATE_SDP_STRING_LEN];
+	char sdpRemote[JUICE_MAX_CANDIDATE_SDP_STRING_LEN];
+	if (juice_get_selected_candidates(mAgent.get(), sdpLocal, JUICE_MAX_CANDIDATE_SDP_STRING_LEN,
+	                                 sdpRemote, JUICE_MAX_CANDIDATE_SDP_STRING_LEN) == 0) {
+		if (local) {
+			*local = Candidate(sdpLocal, mMid);
+			local->resolve(Candidate::ResolveMode::Simple);
+		}
+		if (remote) {
+			*remote = Candidate(sdpRemote, mMid);
+			remote->resolve(Candidate::ResolveMode::Simple);
+		}
+		return true;
+	}
+	return false;
 }
 
 bool IceTransport::send(message_ptr message) {
@@ -357,8 +399,11 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 		hints.ai_protocol = IPPROTO_UDP;
 		hints.ai_flags = AI_ADDRCONFIG;
 		struct addrinfo *result = nullptr;
-		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0)
+		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0) {
+			PLOG_WARNING << "Unable to resolve STUN server address: " << server.hostname << ':'
+			             << server.service;
 			continue;
+		}
 
 		for (auto p = result; p; p = p->ai_next) {
 			if (p->ai_family == AF_INET) {
@@ -400,8 +445,11 @@ IceTransport::IceTransport(const Configuration &config, Description::Role role,
 		    server.relayType == IceServer::RelayType::TurnUdp ? IPPROTO_UDP : IPPROTO_TCP;
 		hints.ai_flags = AI_ADDRCONFIG;
 		struct addrinfo *result = nullptr;
-		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0)
+		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0) {
+			PLOG_WARNING << "Unable to resolve TURN server address: " << server.hostname << ':'
+			             << server.service;
 			continue;
+		}
 
 		for (auto p = result; p; p = p->ai_next) {
 			if (p->ai_family == AF_INET || p->ai_family == AF_INET6) {
@@ -686,56 +734,24 @@ void IceTransport::LogCallback(const gchar * /*logDomain*/, GLogLevelFlags logLe
 	PLOG(severity) << "nice: " << message;
 }
 
-bool IceTransport::getSelectedCandidatePair(CandidateInfo *localInfo, CandidateInfo *remoteInfo) {
-	NiceCandidate *local, *remote;
-	gboolean result = nice_agent_get_selected_pair(mNiceAgent.get(), mStreamId, 1, &local, &remote);
-
-	if (!result)
+bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote) {
+	NiceCandidate *niceLocal, *niceRemote;
+	if(!nice_agent_get_selected_pair(mNiceAgent.get(), mStreamId, 1, &niceLocal, &niceRemote))
 		return false;
 
-	char ipaddr[INET6_ADDRSTRLEN];
-	nice_address_to_string(&local->addr, ipaddr);
-	localInfo->address = std::string(ipaddr);
-	localInfo->port = nice_address_get_port(&local->addr);
-	localInfo->type = IceTransport::NiceTypeToCandidateType(local->type);
-	localInfo->transportType =
-	    IceTransport::NiceTransportTypeToCandidateTransportType(local->transport);
+	gchar *sdpLocal = nice_agent_generate_local_candidate_sdp(mNiceAgent.get(), niceLocal);
+	if(local) *local = Candidate(sdpLocal, mMid);
+	g_free(sdpLocal);
 
-	nice_address_to_string(&remote->addr, ipaddr);
-	remoteInfo->address = std::string(ipaddr);
-	remoteInfo->port = nice_address_get_port(&remote->addr);
-	remoteInfo->type = IceTransport::NiceTypeToCandidateType(remote->type);
-	remoteInfo->transportType =
-	    IceTransport::NiceTransportTypeToCandidateTransportType(remote->transport);
+	gchar *sdpRemote = nice_agent_generate_local_candidate_sdp(mNiceAgent.get(), niceRemote);
+	if(remote) *remote = Candidate(sdpRemote, mMid);
+	g_free(sdpRemote);
 
+	if (local)
+		local->resolve(Candidate::ResolveMode::Simple);
+	if (remote)
+		remote->resolve(Candidate::ResolveMode::Simple);
 	return true;
-}
-
-CandidateType IceTransport::NiceTypeToCandidateType(NiceCandidateType type) {
-	switch (type) {
-	case NiceCandidateType::NICE_CANDIDATE_TYPE_PEER_REFLEXIVE:
-		return CandidateType::PeerReflexive;
-	case NiceCandidateType::NICE_CANDIDATE_TYPE_RELAYED:
-		return CandidateType::Relayed;
-	case NiceCandidateType::NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
-		return CandidateType::ServerReflexive;
-	default:
-		return CandidateType::Host;
-	}
-}
-
-CandidateTransportType
-IceTransport::NiceTransportTypeToCandidateTransportType(NiceCandidateTransport type) {
-	switch (type) {
-	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_ACTIVE:
-		return CandidateTransportType::TcpActive;
-	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_PASSIVE:
-		return CandidateTransportType::TcpPassive;
-	case NiceCandidateTransport::NICE_CANDIDATE_TRANSPORT_TCP_SO:
-		return CandidateTransportType::TcpSo;
-	default:
-		return CandidateTransportType::Udp;
-	}
 }
 
 } // namespace rtc

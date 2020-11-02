@@ -43,44 +43,44 @@ static Peer *peer2 = NULL;
 static const char *mediaDescription = "video 9 UDP/TLS/RTP/SAVPF\r\n"
                                       "a=mid:video\r\n";
 
-static void descriptionCallback(const char *sdp, const char *type, void *ptr) {
+static void descriptionCallback(int pc, const char *sdp, const char *type, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	printf("Description %d:\n%s\n", peer == peer1 ? 1 : 2, sdp);
 	Peer *other = peer == peer1 ? peer2 : peer1;
 	rtcSetRemoteDescription(other->pc, sdp, type);
 }
 
-static void candidateCallback(const char *cand, const char *mid, void *ptr) {
+static void candidateCallback(int pc, const char *cand, const char *mid, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	printf("Candidate %d: %s\n", peer == peer1 ? 1 : 2, cand);
 	Peer *other = peer == peer1 ? peer2 : peer1;
 	rtcAddRemoteCandidate(other->pc, cand, mid);
 }
 
-static void stateChangeCallback(rtcState state, void *ptr) {
+static void stateChangeCallback(int pc, rtcState state, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->state = state;
 	printf("State %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
 }
 
-static void gatheringStateCallback(rtcGatheringState state, void *ptr) {
+static void gatheringStateCallback(int pc, rtcGatheringState state, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->gatheringState = state;
 	printf("Gathering state %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
 }
 
-static void openCallback(void *ptr) {
+static void openCallback(int id, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->connected = true;
 	printf("Track %d: Open\n", peer == peer1 ? 1 : 2);
 }
 
-static void closedCallback(void *ptr) {
+static void closedCallback(int id, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->connected = false;
 }
 
-static void trackCallback(int tr, void *ptr) {
+static void trackCallback(int pc, int tr, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->tr = tr;
 	peer->connected = true;
@@ -156,7 +156,7 @@ int test_capi_track_main() {
 	rtcSetClosedCallback(peer1->tr, closedCallback);
 
 	// Initiate the handshake
-	rtcSetLocalDescription(peer1->pc);
+	rtcSetLocalDescription(peer1->pc, NULL);
 
 	attempts = 10;
 	while ((!peer2->connected || !peer1->connected) && attempts--)

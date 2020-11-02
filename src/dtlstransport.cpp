@@ -258,7 +258,7 @@ ssize_t DtlsTransport::WriteCallback(gnutls_transport_ptr_t ptr, const void *dat
 ssize_t DtlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
 	if (auto next = t->mIncomingQueue.pop()) {
-		auto message = *next;
+		message_ptr message = std::move(*next);
 		ssize_t len = std::min(maxlen, message->size());
 		std::memcpy(data, message->data(), len);
 		gnutls_transport_set_errno(t->mSession, 0);
@@ -271,9 +271,9 @@ ssize_t DtlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size
 
 int DtlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
-	t->mIncomingQueue.wait(ms != GNUTLS_INDEFINITE_TIMEOUT ? std::make_optional(milliseconds(ms))
-	                                                       : nullopt);
-	return !t->mIncomingQueue.empty() ? 1 : 0;
+	bool notEmpty = t->mIncomingQueue.wait(
+	    ms != GNUTLS_INDEFINITE_TIMEOUT ? std::make_optional(milliseconds(ms)) : nullopt);
+	return notEmpty ? 1 : 0;
 }
 
 #else // USE_GNUTLS==0
@@ -435,10 +435,10 @@ void DtlsTransport::runRecvLoop() {
 
 		const size_t bufferSize = maxMtu;
 		byte buffer[bufferSize];
-		while (true) {
+		while (mIncomingQueue.running()) {
 			// Process pending messages
-			while (!mIncomingQueue.empty()) {
-				auto message = *mIncomingQueue.pop();
+			while (auto next = mIncomingQueue.tryPop()) {
+				message_ptr message = std::move(*next);
 				BIO_write(mInBio, message->data(), int(message->size()));
 
 				if (state() == State::Connecting) {
@@ -492,8 +492,7 @@ void DtlsTransport::runRecvLoop() {
 				}
 			}
 
-			if (!mIncomingQueue.wait(duration))
-				break; // queue is stopped
+			mIncomingQueue.wait(duration);
 		}
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "DTLS recv: " << e.what();

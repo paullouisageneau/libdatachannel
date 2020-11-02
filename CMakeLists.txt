@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.7)
 project(libdatachannel
-	DESCRIPTION "WebRTC Data Channels Library"
-	VERSION 0.9.0
+	VERSION 0.9.4
 	LANGUAGES CXX)
+set(PROJECT_DESCRIPTION "WebRTC Data Channels Library")
 
 # Options
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
@@ -11,6 +11,11 @@ option(NO_WEBSOCKET "Disable WebSocket support" OFF)
 option(NO_EXAMPLES "Disable examples" OFF)
 option(NO_TESTS "Disable tests build" OFF)
 option(WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
+option(RSA_KEY_BITS_2048 "Use 2048-bit RSA key instead of 3072-bit" OFF)
+option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
+# Option USE_SRTP defaults to AUTO (enabled if libSRTP is found, else disabled)
+set(USE_SRTP AUTO CACHE STRING "Use libSRTP and enable media support")
+set_property(CACHE USE_SRTP PROPERTY STRINGS AUTO ON OFF)
 
 if(USE_NICE)
 	option(USE_JUICE "Use libjuice" OFF)
@@ -19,9 +24,9 @@ else()
 endif()
 
 if(USE_GNUTLS)
-	option(USE_NETTLE "Use Nettle instead of OpenSSL in libjuice" ON)
+	option(USE_NETTLE "Use Nettle in libjuice" ON)
 else()
-	option(USE_NETTLE "Use Nettle instead of OpenSSL in libjuice" OFF)
+	option(USE_NETTLE "Use Nettle in libjuice" OFF)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -157,16 +162,46 @@ target_link_libraries(datachannel-static PUBLIC Threads::Threads plog::plog)
 target_link_libraries(datachannel-static PRIVATE Usrsctp::UsrsctpStatic)
 
 if(WIN32)
-	target_link_libraries(datachannel PRIVATE wsock32 ws2_32) # winsock2
-	target_link_libraries(datachannel-static PRIVATE wsock32 ws2_32) # winsock2
+	target_link_libraries(datachannel PRIVATE ws2_32) # winsock2
+	target_link_libraries(datachannel-static PRIVATE ws2_32) # winsock2
 endif()
 
-add_subdirectory(deps/libsrtp EXCLUDE_FROM_ALL)
-message(STATUS "LibSRTP found, compiling with media transport")
-target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=1)
-target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=1)
-target_link_libraries(datachannel PRIVATE srtp2)
-target_link_libraries(datachannel-static PRIVATE srtp2)
+if(USE_SRTP STREQUAL "AUTO")
+	find_package(SRTP)
+	if(SRTP_FOUND)
+		message(STATUS "LibSRTP found, compiling with media transport")
+	else()
+		message(STATUS "LibSRTP NOT found, compiling WITHOUT media transport")
+	endif()
+elseif (USE_SRTP STREQUAL "COMPILE")
+	message(STATUS "Compiling LibSRTP from source; compiling with media transport")
+	add_subdirectory(deps/libsrtp EXCLUDE_FROM_ALL)
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=1)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=1)
+	target_compile_definitions(datachannel PUBLIC RTC_SRTP_FROM_SOURCE=1)
+	target_compile_definitions(datachannel-static PUBLIC RTC_SRTP_FROM_SOURCE=1)
+	target_link_libraries(datachannel PRIVATE srtp2)
+	target_link_libraries(datachannel-static PRIVATE srtp2)
+elseif(USE_SRTP)
+	find_package(SRTP REQUIRED)
+endif()
+
+if(USE_SRTP AND SRTP_FOUND)
+	if(NOT TARGET SRTP::SRTP)
+		add_library(SRTP::SRTP UNKNOWN IMPORTED)
+		set_target_properties(SRTP::SRTP PROPERTIES
+			INTERFACE_INCLUDE_DIRECTORIES ${SRTP_INCLUDE_DIRS}
+			IMPORTED_LINK_INTERFACE_LANGUAGES C
+			IMPORTED_LOCATION ${SRTP_LIBRARIES})
+	endif()
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=1)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=1)
+	target_link_libraries(datachannel PRIVATE SRTP::SRTP)
+	target_link_libraries(datachannel-static PRIVATE SRTP::SRTP)
+elseif (NOT USE_SRTP  STREQUAL "COMPILE")
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=0)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=0)
+endif()
 
 if (USE_GNUTLS)
 	find_package(GnuTLS REQUIRED)
@@ -202,6 +237,16 @@ else()
 	target_compile_definitions(datachannel-static PRIVATE USE_NICE=0)
 	target_link_libraries(datachannel PRIVATE LibJuice::LibJuiceStatic)
 	target_link_libraries(datachannel-static PRIVATE LibJuice::LibJuiceStatic)
+endif()
+
+if(RSA_KEY_BITS_2048)
+	target_compile_definitions(datachannel PUBLIC RSA_KEY_BITS_2048)
+	target_compile_definitions(datachannel-static PUBLIC RSA_KEY_BITS_2048)
+endif()
+
+if(CAPI_STDCALL)
+	target_compile_definitions(datachannel PUBLIC CAPI_STDCALL)
+	target_compile_definitions(datachannel-static PUBLIC CAPI_STDCALL)
 endif()
 
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
