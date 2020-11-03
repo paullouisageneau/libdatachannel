@@ -32,6 +32,13 @@ string Track::mid() const { return mMediaDescription.mid(); }
 
 Description::Media Track::description() const { return mMediaDescription; }
 
+void Track::setDescription(Description::Media description) {
+	if(description.mid() != mMediaDescription.mid())
+		throw std::logic_error("Media description mid does not match track mid");
+
+	mMediaDescription = std::move(description);
+}
+
 void Track::close() {
 	mIsClosed = true;
 	resetCallbacks();

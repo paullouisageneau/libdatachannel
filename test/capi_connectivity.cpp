@@ -34,6 +34,7 @@ static void sleep(unsigned int secs) { Sleep(secs * 1000); }
 typedef struct {
 	rtcState state;
 	rtcGatheringState gatheringState;
+	rtcSignalingState signalingState;
 	int pc;
 	int dc;
 	bool connected;
@@ -66,6 +67,12 @@ static void RTC_API gatheringStateCallback(int pc, rtcGatheringState state, void
 	Peer *peer = (Peer *)ptr;
 	peer->gatheringState = state;
 	printf("Gathering state %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
+}
+
+static void RTC_API signalingStateCallback(int pc, rtcSignalingState state, void *ptr) {
+	Peer *peer = (Peer *)ptr;
+	peer->signalingState = state;
+	printf("Signaling state %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
 }
 
 static void RTC_API openCallback(int id, void *ptr) {
@@ -180,6 +187,12 @@ int test_capi_connectivity_main() {
 		goto error;
 	}
 
+	if (peer1->signalingState != RTC_SIGNALING_STABLE ||
+	    peer2->signalingState != RTC_SIGNALING_STABLE) {
+		fprintf(stderr, "Signaling state is not stable\n");
+		goto error;
+	}
+
 	if (!peer1->connected || !peer2->connected) {
 		fprintf(stderr, "DataChannel is not connected\n");
 		goto error;
@@ -236,7 +249,6 @@ int test_capi_connectivity_main() {
 	}
 	printf("Remote address 2: %s\n", buffer);
 
-
 	if (rtcGetSelectedCandidatePair(peer1->pc, buffer, BUFFER_SIZE, buffer2, BUFFER_SIZE) < 0) {
 		fprintf(stderr, "rtcGetSelectedCandidatePair failed\n");
 		goto error;
@@ -250,7 +262,6 @@ int test_capi_connectivity_main() {
 	}
 	printf("Local candidate 2:  %s\n", buffer);
 	printf("Remote candidate 2: %s\n", buffer2);
-
 
 	deletePeer(peer1);
 	sleep(1);

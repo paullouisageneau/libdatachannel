@@ -156,7 +156,7 @@ int test_capi_track_main() {
 	rtcSetClosedCallback(peer1->tr, closedCallback);
 
 	// Initiate the handshake
-	rtcSetLocalDescription(peer1->pc);
+	rtcSetLocalDescription(peer1->pc, NULL);
 
 	attempts = 10;
 	while ((!peer2->connected || !peer1->connected) && attempts--)

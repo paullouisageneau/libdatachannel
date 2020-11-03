@@ -34,8 +34,8 @@ namespace rtc {
 
 class Description {
 public:
-	enum class Type { Unspec = 0, Offer = 1, Answer = 2 };
-	enum class Role { ActPass = 0, Passive = 1, Active = 2 };
+	enum class Type { Unspec, Offer, Answer, Pranswer, Rollback };
+	enum class Role { ActPass, Passive, Active };
 	enum class Direction { SendOnly, RecvOnly, SendRecv, Inactive, Unknown };
 
 	Description(const string &sdp, const string &typeString = "");
@@ -45,10 +45,9 @@ public:
 	Type type() const;
 	string typeString() const;
 	Role role() const;
-	string roleString() const;
 	string bundleMid() const;
-	string iceUfrag() const;
-	string icePwd() const;
+	std::optional<string> iceUfrag() const;
+	std::optional<string> icePwd() const;
 	std::optional<string> fingerprint() const;
 	bool ended() const;
 
@@ -56,6 +55,7 @@ public:
 	void setFingerprint(string fingerprint);
 
 	void addCandidate(Candidate candidate);
+	void addCandidates(std::vector<Candidate> candidates);
 	void endCandidates();
 	std::vector<Candidate> extractCandidates();
 
@@ -94,8 +94,7 @@ public:
 	struct Application : public Entry {
 	public:
 		Application(string mid = "data");
-		Application(const Application &other) = default;
-		Application(Application &&other) = default;
+		virtual ~Application() = default;
 
 		string description() const override;
 		Application reciprocate() const;
@@ -121,8 +120,6 @@ public:
 	public:
 		Media(const string &sdp);
 		Media(const string &mline, string mid, Direction dir = Direction::SendOnly);
-		Media(const Media &other) = default;
-		Media(Media &&other) = default;
 		virtual ~Media() = default;
 
 		string description() const override;
@@ -180,6 +177,7 @@ public:
 
 	bool hasApplication() const;
 	bool hasAudioOrVideo() const;
+	bool hasMid(string_view mid) const;
 
 	int addMedia(Media media);
 	int addMedia(Application application);
@@ -193,6 +191,9 @@ public:
 
 	Application *application();
 
+	static Type stringToType(const string &typeString);
+	static string typeToString(Type type);
+
 private:
 	std::optional<Candidate> defaultCandidate() const;
 	std::shared_ptr<Entry> createEntry(string mline, string mid, Direction dir);
@@ -204,7 +205,7 @@ private:
 	Role mRole;
 	string mUsername;
 	string mSessionId;
-	string mIceUfrag, mIcePwd;
+	std::optional<string> mIceUfrag, mIcePwd;
 	std::optional<string> mFingerprint;
 
 	// Entries
@@ -214,14 +215,12 @@ private:
 	// Candidates
 	std::vector<Candidate> mCandidates;
 	bool mEnded = false;
-
-	static Type stringToType(const string &typeString);
-	static string typeToString(Type type);
-	static string roleToString(Role role);
 };
 
 } // namespace rtc
 
 std::ostream &operator<<(std::ostream &out, const rtc::Description &description);
+std::ostream &operator<<(std::ostream &out, rtc::Description::Type type);
+std::ostream &operator<<(std::ostream &out, rtc::Description::Role role);
 
 #endif

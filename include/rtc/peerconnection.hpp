@@ -67,6 +67,14 @@ public:
 		Complete = RTC_GATHERING_COMPLETE
 	};
 
+	enum class SignalingState : int {
+		Stable = RTC_SIGNALING_STABLE,
+		HaveLocalOffer = RTC_SIGNALING_HAVE_LOCAL_OFFER,
+		HaveRemoteOffer = RTC_SIGNALING_HAVE_REMOTE_OFFER,
+		HaveLocalPranswer = RTC_SIGNALING_HAVE_LOCAL_PRANSWER,
+		HaveRemotePranswer = RTC_SIGNALING_HAVE_REMOTE_PRANSWER,
+	} rtcSignalingState;
+
 	PeerConnection(void);
 	PeerConnection(const Configuration &config);
 	~PeerConnection();
@@ -76,6 +84,7 @@ public:
 	const Configuration *config() const;
 	State state() const;
 	GatheringState gatheringState() const;
+	SignalingState signalingState() const;
 	bool hasLocalDescription() const;
 	bool hasRemoteDescription() const;
 	bool hasMedia() const;
@@ -83,8 +92,9 @@ public:
 	std::optional<Description> remoteDescription() const;
 	std::optional<string> localAddress() const;
 	std::optional<string> remoteAddress() const;
+	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
-	void setLocalDescription();
+	void setLocalDescription(Description::Type type = Description::Type::Unspec);
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
 
@@ -100,6 +110,7 @@ public:
 	void onLocalCandidate(std::function<void(Candidate candidate)> callback);
 	void onStateChange(std::function<void(State state)> callback);
 	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
+	void onSignalingStateChange(std::function<void(SignalingState state)> callback);
 
 	// Stats
 	void clearStats();
@@ -110,9 +121,6 @@ public:
 	// Track media support requires compiling with libSRTP
 	std::shared_ptr<Track> addTrack(Description::Media description);
 	void onTrack(std::function<void(std::shared_ptr<Track> track)> callback);
-
-	// libnice only
-	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
 private:
 	std::shared_ptr<IceTransport> initIceTransport(Description::Role role);
@@ -137,12 +145,16 @@ private:
 	void incomingTrack(Description::Media description);
 	void openTracks();
 
+	void validateRemoteDescription(const Description &description);
 	void processLocalDescription(Description description);
 	void processLocalCandidate(Candidate candidate);
+	void processRemoteDescription(Description description);
+	void processRemoteCandidate(Candidate candidate);
 	void triggerDataChannel(std::weak_ptr<DataChannel> weakDataChannel);
 	void triggerTrack(std::shared_ptr<Track> track);
 	bool changeState(State state);
 	bool changeGatheringState(GatheringState state);
+	bool changeSignalingState(SignalingState state);
 
 	void resetCallbacks();
 
@@ -154,6 +166,7 @@ private:
 	const std::unique_ptr<Processor> mProcessor;
 
 	std::optional<Description> mLocalDescription, mRemoteDescription;
+	std::optional<Description> mCurrentLocalDescription;
 	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
 
 	std::shared_ptr<IceTransport> mIceTransport;
@@ -168,18 +181,22 @@ private:
 
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;
+	std::atomic<SignalingState> mSignalingState;
+	std::atomic<bool> mNegotiationNeeded;
 
 	synchronized_callback<std::shared_ptr<DataChannel>> mDataChannelCallback;
 	synchronized_callback<Description> mLocalDescriptionCallback;
 	synchronized_callback<Candidate> mLocalCandidateCallback;
 	synchronized_callback<State> mStateChangeCallback;
 	synchronized_callback<GatheringState> mGatheringStateChangeCallback;
+	synchronized_callback<SignalingState> mSignalingStateChangeCallback;
 	synchronized_callback<std::shared_ptr<Track>> mTrackCallback;
 };
 
 } // namespace rtc
 
-std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::State &state);
-std::ostream &operator<<(std::ostream &out, const rtc::PeerConnection::GatheringState &state);
+std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::State state);
+std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::GatheringState state);
+std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::SignalingState state);
 
 #endif
