@@ -317,7 +317,7 @@ int rtcCreateDataChannel(int pc, const char *label) {
 int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
                             const rtcReliability *reliability) {
 	int dc = rtcAddDataChannelExt(pc, label, protocol, reliability);
-	rtcSetLocalDescription(pc);
+	rtcSetLocalDescription(pc, NULL);
 	return dc;
 }
 
@@ -468,6 +468,19 @@ int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb)
 	});
 }
 
+int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb) {
+	return WRAP({
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onSignalingStateChange([pc, cb](PeerConnection::SignalingState state) {
+				if (auto ptr = getUserPointer(pc))
+					cb(pc, static_cast<rtcSignalingState>(state), *ptr);
+			});
+		else
+			peerConnection->onGatheringStateChange(nullptr);
+	});
+}
+
 int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
@@ -500,10 +513,11 @@ int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb) {
 	});
 }
 
-int rtcSetLocalDescription(int pc) {
+int rtcSetLocalDescription(int pc, const char *type) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
-		peerConnection->setLocalDescription();
+		peerConnection->setLocalDescription(type ? Description::stringToType(type)
+		                                         : Description::Type::Unspec);
 	});
 }
 
@@ -613,6 +627,37 @@ int rtcGetRemoteAddress(int pc, char *buffer, int size) {
 			std::copy(data, data + size, buffer);
 			buffer[size] = '\0';
 			return int(size + 1);
+		}
+
+		return RTC_ERR_FAILURE;
+	});
+}
+
+int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote, int remoteSize) {
+	return WRAP({
+		auto peerConnection = getPeerConnection(pc);
+
+		if (!local)
+			localSize = 0;
+		if (!remote)
+			remoteSize = 0;
+
+		Candidate localCand;
+		Candidate remoteCand;
+		if (peerConnection->getSelectedCandidatePair(&localCand, &remoteCand)) {
+			if (localSize > 0) {
+				string localSdp = string(localCand);
+				localSize = std::min(localSize - 1, int(localSdp.size()));
+				std::copy(localSdp.begin(), localSdp.begin() + localSize, local);
+				local[localSize] = '\0';
+			}
+			if (remoteSize > 0) {
+				string remoteSdp = string(remoteCand);
+				remoteSize = std::min(remoteSize - 1, int(remoteSdp.size()));
+				std::copy(remoteSdp.begin(), remoteSdp.begin() + remoteSize, remote);
+				remote[remoteSize] = '\0';
+			}
+			return localSize + remoteSize;
 		}
 
 		return RTC_ERR_FAILURE;

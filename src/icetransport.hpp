@@ -63,9 +63,7 @@ public:
 	bool stop() override;
 	bool send(message_ptr message) override; // false if dropped
 
-#if USE_NICE
-	bool getSelectedCandidatePair(CandidateInfo *local, CandidateInfo *remote);
-#endif
+	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
 private:
 	bool outgoing(message_ptr message) override;
@@ -113,9 +111,6 @@ private:
 	static gboolean TimeoutCallback(gpointer userData);
 	static void LogCallback(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message,
 	                        gpointer user_data);
-	static CandidateType NiceTypeToCandidateType(NiceCandidateType type);
-	static CandidateTransportType
-	NiceTransportTypeToCandidateTransportType(NiceCandidateTransport type);
 #endif
 };
 

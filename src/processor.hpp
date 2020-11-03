@@ -45,7 +45,7 @@ public:
 	void join();
 
 	template <class F, class... Args>
-	auto enqueue(F &&f, Args &&... args) -> invoke_future_t<F, Args...>;
+	void enqueue(F &&f, Args &&... args);
 
 protected:
 	void schedule();
@@ -60,31 +60,20 @@ protected:
 	std::condition_variable mCondition;
 };
 
-template <class F, class... Args>
-auto Processor::enqueue(F &&f, Args &&... args) -> invoke_future_t<F, Args...> {
+template <class F, class... Args> void Processor::enqueue(F &&f, Args &&... args) {
 	std::unique_lock lock(mMutex);
-	using R = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
-	auto task = std::make_shared<std::packaged_task<R()>>(
-	    std::bind(std::forward<F>(f), std::forward<Args>(args)...));
-	std::future<R> result = task->get_future();
-
-	auto bundle = [this, task = std::move(task)]() {
-		try {
-			(*task)();
-		} catch (const std::exception &e) {
-			PLOG_WARNING << "Unhandled exception in task: " << e.what();
-		}
-		schedule(); // chain the next task
+	auto bound = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
+	auto task = [this, bound = std::move(bound)]() mutable {
+		scope_guard guard(std::bind(&Processor::schedule, this)); // chain the next task
+		return bound();
 	};
 
 	if (!mPending) {
-		ThreadPool::Instance().enqueue(std::move(bundle));
+		ThreadPool::Instance().enqueue(std::move(task));
 		mPending = true;
 	} else {
-		mTasks.emplace(std::move(bundle));
+		mTasks.emplace(std::move(task));
 	}
-
-	return result;
 }
 
 } // namespace rtc

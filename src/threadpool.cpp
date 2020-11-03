@@ -58,11 +58,7 @@ void ThreadPool::run() {
 
 bool ThreadPool::runOne() {
 	if (auto task = dequeue()) {
-		try {
-			task();
-		} catch (const std::exception &e) {
-			PLOG_WARNING << "Unhandled exception in task: " << e.what();
-		}
+		task();
 		return true;
 	}
 	return false;

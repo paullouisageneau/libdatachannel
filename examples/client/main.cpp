@@ -30,6 +30,8 @@
 #include <memory>
 #include <random>
 #include <thread>
+#include <future>
+#include <stdexcept>
 #include <unordered_map>
 #include "parse_cl.h"
 
@@ -49,25 +51,19 @@ bool echoDataChannelMessages = false;
 
 shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
                                                 weak_ptr<WebSocket> wws, string id);
-void confirmOnStdout(bool echoed, string id, string type, size_t length);
+void printReceived(bool echoed, string id, string type, size_t length);
 string randomId(size_t length);
 
-int main(int argc, char **argv) {
-	Cmdline *params = nullptr;
-	try {
-		params = new Cmdline(argc, argv);
-	} catch (const std::range_error&e) {
-		std::cout<< e.what() << '\n';
-		delete params;
-		return -1;
-	}
+
+int main(int argc, char **argv) try {
+	auto params = std::make_unique<Cmdline>(argc, argv);
 
 	rtc::InitLogger(LogLevel::Debug);
 
 	Configuration config;
 	string stunServer = "";
 	if (params->noStun()) {
-		cout << "No stun server is configured.  Only local hosts and public IP addresses suported." << endl;
+		cout << "No STUN server is configured. Only local hosts and public IP addresses supported." << endl;
 	} else {
 		if (params->stunServer().substr(0,5).compare("stun:") != 0) {
 			stunServer = "stun:";
@@ -86,12 +82,21 @@ int main(int argc, char **argv) {
 
 	auto ws = make_shared<WebSocket>();
 
-	ws->onOpen([]() { cout << "WebSocket connected, signaling ready" << endl; });
+	std::promise<void> wsPromise;
+	auto wsFuture = wsPromise.get_future();
+	
+	ws->onOpen([&wsPromise]() { 
+		cout << "WebSocket connected, signaling ready" << endl;
+		wsPromise.set_value();
+	});
 
+	ws->onError([&wsPromise](string s) { 
+		cout << "WebSocket error" << endl;
+		wsPromise.set_exception(std::make_exception_ptr(std::runtime_error(s)));
+	});
+	
 	ws->onClosed([]() { cout << "WebSocket closed" << endl; });
-
-	ws->onError([](const string &error) { cout << "WebSocket failed: " << error << endl; });
-
+	
 	ws->onMessage([&](variant<binary, string> data) {
 		if (!holds_alternative<string>(data))
 			return;
@@ -136,13 +141,9 @@ int main(int argc, char **argv) {
 		to_string(params->webSocketPort()) + "/" + localId;
 	cout << "Url is " << url << endl;
 	ws->open(url);
-
+	
 	cout << "Waiting for signaling to be connected..." << endl;
-	while (!ws->isOpen()) {
-		if (ws->isClosed())
-			return 1;
-		this_thread::sleep_for(100ms);
-	}
+	wsFuture.get();
 
 	while (true) {
 		string id;
@@ -181,22 +182,25 @@ int main(int argc, char **argv) {
 					dc->send(message);
 					echoed = true;
 				}
-				confirmOnStdout(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
-						get<string>(message).length());
+				printReceived(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
+				      get<string>(message).length());
 			}
 		});
 
 		dataChannelMap.emplace(id, dc);
-
-		this_thread::sleep_for(1s);
 	}
 
 	cout << "Cleaning up..." << endl;
 
 	dataChannelMap.clear();
 	peerConnectionMap.clear();
-	delete params;
 	return 0;
+
+} catch (const std::exception &e) {
+	std::cout << "Error: " << e.what() << std::endl;
+	dataChannelMap.clear();
+	peerConnectionMap.clear();
+	return -1;
 }
 
 // Create and setup a PeerConnection
@@ -244,7 +248,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 					dc->send(message);
 					echoed = true;
 				}
-				confirmOnStdout(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
+				printReceived(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
 						get<string>(message).length());
 			}
 		});
@@ -258,11 +262,12 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 	return pc;
 };
 
-void confirmOnStdout(bool echoed, string id, string type, size_t length) {
+// Helper function to print received pings
+void printReceived(bool echoed, string id, string type, size_t length) {
 	static long count = 0;
 	static long freq = 100;
 	if (!(++count%freq)) {
-		cout << "Received " << count << " pings in total from host " << id << ", most recent of type "
+		cout << "Received " << count << " pings in total from " << id << ", most recent of type "
 		     << type << " and " << (echoed ? "" : "un") << "successfully echoed most recent ping of size "
 		     << length << " back to " << id << endl;
 		if (count >= (freq * 10) && freq < 1000000) {

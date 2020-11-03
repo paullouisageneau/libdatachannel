@@ -26,6 +26,7 @@
 #include <iostream>
 #include <random>
 #include <sstream>
+#include <unordered_map>
 
 using std::shared_ptr;
 using std::size_t;
@@ -74,11 +75,6 @@ Description::Description(const string &sdp, Type type, Role role)
     : mType(Type::Unspec), mRole(role) {
 	hintType(type);
 
-	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
-	std::default_random_engine generator(seed);
-	std::uniform_int_distribution<uint32_t> uniform;
-	mSessionId = std::to_string(uniform(generator));
-
 	int index = -1;
 	std::shared_ptr<Entry> current;
 	std::istringstream ss(sdp);
@@ -89,14 +85,14 @@ Description::Description(const string &sdp, Type type, Role role)
 		if (line.empty())
 			continue;
 
-		// Media description line (aka m-line)
-		if (match_prefix(line, "m=")) {
-			++index;
-			string mline = line.substr(2);
-			current = createEntry(std::move(mline), std::to_string(index), Direction::Unknown);
+		if (match_prefix(line, "m=")) { // Media description line (aka m-line)
+			current = createEntry(line.substr(2), std::to_string(++index), Direction::Unknown);
 
-			// Attribute line
-		} else if (match_prefix(line, "a=")) {
+		} else if (match_prefix(line, "o=")) { // Origin line
+			std::istringstream origin(line.substr(2));
+			origin >> mUsername >> mSessionId;
+
+		} else if (match_prefix(line, "a=")) { // Attribute line
 			string attr = line.substr(2);
 			auto [key, value] = parse_pair(attr);
 
@@ -134,11 +130,15 @@ Description::Description(const string &sdp, Type type, Role role)
 		}
 	}
 
-	if (mIceUfrag.empty())
-		throw std::invalid_argument("Missing ice-ufrag parameter in SDP description");
+	if (mUsername.empty())
+		mUsername = "rtc";
 
-	if (mIcePwd.empty())
-		throw std::invalid_argument("Missing ice-pwd parameter in SDP description");
+	if (mSessionId.empty()) {
+		auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
+		std::default_random_engine generator(seed);
+		std::uniform_int_distribution<uint32_t> uniform;
+		mSessionId = std::to_string(uniform(generator));
+	}
 }
 
 Description::Type Description::type() const { return mType; }
@@ -147,16 +147,14 @@ string Description::typeString() const { return typeToString(mType); }
 
 Description::Role Description::role() const { return mRole; }
 
-string Description::roleString() const { return roleToString(mRole); }
-
 string Description::bundleMid() const {
 	// Get the mid of the first media
 	return !mEntries.empty() ? mEntries[0]->mid() : "0";
 }
 
-string Description::iceUfrag() const { return mIceUfrag; }
+std::optional<string> Description::iceUfrag() const { return mIceUfrag; }
 
-string Description::icePwd() const { return mIcePwd; }
+std::optional<string> Description::icePwd() const { return mIcePwd; }
 
 std::optional<string> Description::fingerprint() const { return mFingerprint; }
 
@@ -178,6 +176,11 @@ void Description::addCandidate(Candidate candidate) {
 	mCandidates.emplace_back(std::move(candidate));
 }
 
+void Description::addCandidates(std::vector<Candidate> candidates) {
+	for(auto candidate : candidates)
+		mCandidates.emplace_back(std::move(candidate));
+}
+
 void Description::endCandidates() { mEnded = true; }
 
 std::vector<Candidate> Description::extractCandidates() {
@@ -194,7 +197,7 @@ string Description::generateSdp(string_view eol) const {
 
 	// Header
 	sdp << "v=0" << eol;
-	sdp << "o=- " << mSessionId << " 0 IN IP4 127.0.0.1" << eol;
+	sdp << "o=" << mUsername << " " << mSessionId << " 0 IN IP4 127.0.0.1" << eol;
 	sdp << "s=-" << eol;
 	sdp << "t=0 0" << eol;
 
@@ -217,20 +220,29 @@ string Description::generateSdp(string_view eol) const {
 
 	// Session-level attributes
 	sdp << "a=msid-semantic:WMS *" << eol;
-	sdp << "a=setup:" << roleToString(mRole) << eol;
-	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
-	sdp << "a=ice-pwd:" << mIcePwd << eol;
+	sdp << "a=setup:" << mRole << eol;
 
+	if (mIceUfrag)
+		sdp << "a=ice-ufrag:" << *mIceUfrag << eol;
+	if (mIcePwd)
+		sdp << "a=ice-pwd:" << *mIcePwd << eol;
 	if (!mEnded)
 		sdp << "a=ice-options:trickle" << eol;
-
 	if (mFingerprint)
 		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
+
+	auto cand = defaultCandidate();
+	const string addr = cand && cand->isResolved()
+	                        ? (string(cand->family() == Candidate::Family::Ipv6 ? "IP6" : "IP4") +
+	                           " " + *cand->address())
+	                        : "IP4 0.0.0.0";
+	const string port = std::to_string(
+	    cand && cand->isResolved() ? *cand->port() : 9); // Port 9 is the discard protocol
 
 	// Entries
 	bool first = true;
 	for (const auto &entry : mEntries) {
-		sdp << entry->generateSdp(eol);
+		sdp << entry->generateSdp(eol, addr, port);
 
 		if (std::exchange(first, false)) {
 			// Candidates
@@ -250,23 +262,32 @@ string Description::generateApplicationSdp(string_view eol) const {
 
 	// Header
 	sdp << "v=0" << eol;
-	sdp << "o=- " << mSessionId << " 0 IN IP4 127.0.0.1" << eol;
+	sdp << "o=" << mUsername << " " << mSessionId << " 0 IN IP4 127.0.0.1" << eol;
 	sdp << "s=-" << eol;
 	sdp << "t=0 0" << eol;
 
+	auto cand = defaultCandidate();
+	const string addr = cand && cand->isResolved()
+	                        ? (string(cand->family() == Candidate::Family::Ipv6 ? "IP6" : "IP4") +
+	                           " " + *cand->address())
+	                        : "IP4 0.0.0.0";
+	const string port = std::to_string(
+	    cand && cand->isResolved() ? *cand->port() : 9); // Port 9 is the discard protocol
+
 	// Application
 	auto app = mApplication ? mApplication : std::make_shared<Application>();
-	sdp << app->generateSdp(eol);
+	sdp << app->generateSdp(eol, addr, port);
 
 	// Session-level attributes
 	sdp << "a=msid-semantic:WMS *" << eol;
-	sdp << "a=setup:" << roleToString(mRole) << eol;
-	sdp << "a=ice-ufrag:" << mIceUfrag << eol;
-	sdp << "a=ice-pwd:" << mIcePwd << eol;
+	sdp << "a=setup:" << mRole << eol;
 
+	if (mIceUfrag)
+		sdp << "a=ice-ufrag:" << *mIceUfrag << eol;
+	if (mIcePwd)
+		sdp << "a=ice-pwd:" << *mIcePwd << eol;
 	if (!mEnded)
 		sdp << "a=ice-options:trickle" << eol;
-
 	if (mFingerprint)
 		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
 
@@ -278,6 +299,21 @@ string Description::generateApplicationSdp(string_view eol) const {
 		sdp << "a=end-of-candidates" << eol;
 
 	return sdp.str();
+}
+
+std::optional<Candidate> Description::defaultCandidate() const {
+	// Return the first host candidate with highest priority, favoring IPv4
+	std::optional<Candidate> result;
+	for (const auto &c : mCandidates) {
+		if (c.type() == Candidate::Type::Host) {
+			if (!result ||
+			    (result->family() == Candidate::Family::Ipv6 &&
+			     c.family() == Candidate::Family::Ipv4) ||
+			    (result->family() == c.family() && result->priority() < c.priority()))
+				result.emplace(c);
+		}
+	}
+	return result;
 }
 
 shared_ptr<Description::Entry> Description::createEntry(string mline, string mid, Direction dir) {
@@ -310,6 +346,14 @@ bool Description::hasApplication() const { return mApplication != nullptr; }
 bool Description::hasAudioOrVideo() const {
 	for (auto entry : mEntries)
 		if (entry != mApplication)
+			return true;
+
+	return false;
+}
+
+bool Description::hasMid(string_view mid) const {
+	for (const auto &entry : mEntries)
+		if (entry->mid() == mid)
 			return true;
 
 	return false;
@@ -390,13 +434,12 @@ Description::Entry::Entry(const string &mline, string mid, Direction dir)
 
 void Description::Entry::setDirection(Direction dir) { mDirection = dir; }
 
-Description::Entry::operator string() const { return generateSdp("\r\n"); }
+Description::Entry::operator string() const { return generateSdp("\r\n", "IP4 0.0.0.0", "9"); }
 
-string Description::Entry::generateSdp(string_view eol) const {
+string Description::Entry::generateSdp(string_view eol, string_view addr, string_view port) const {
 	std::ostringstream sdp;
-	// Port 9 is the discard protocol
-	sdp << "m=" << type() << ' ' << 9 << ' ' << description() << eol;
-	sdp << "c=IN IP4 0.0.0.0" << eol;
+	sdp << "m=" << type() << ' ' << port << ' ' << description() << eol;
+	sdp << "c=IN " << addr << eol;
 	sdp << generateSdpLines(eol);
 
 	return sdp.str();
@@ -515,8 +558,7 @@ Description::Media::Media(const string &sdp) : Entry(sdp, "", Direction::Unknown
 }
 
 Description::Media::Media(const string &mline, string mid, Direction dir)
-    : Entry(mline, std::move(mid), dir) {
-}
+    : Entry(mline, std::move(mid), dir) {}
 
 string Description::Media::description() const {
 	std::ostringstream desc;
@@ -733,33 +775,30 @@ Description::Video::Video(string mid, Direction dir)
     : Media("video 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
 
 Description::Type Description::stringToType(const string &typeString) {
-	if (typeString == "offer")
-		return Type::Offer;
-	else if (typeString == "answer")
-		return Type::Answer;
-	else
-		return Type::Unspec;
+	using TypeMap_t = std::unordered_map<string, Type>;
+	static const TypeMap_t TypeMap = {{"unspec", Type::Unspec},
+	                                  {"offer", Type::Offer},
+	                                  {"answer", Type::Pranswer},
+	                                  {"pranswer", Type::Pranswer},
+	                                  {"rollback", Type::Rollback}};
+	auto it = TypeMap.find(typeString);
+	return it != TypeMap.end() ? it->second : Type::Unspec;
 }
 
 string Description::typeToString(Type type) {
 	switch (type) {
+	case Type::Unspec:
+		return "unspec";
 	case Type::Offer:
 		return "offer";
 	case Type::Answer:
 		return "answer";
+	case Type::Pranswer:
+		return "pranswer";
+	case Type::Rollback:
+		return "rollback";
 	default:
-		return "";
-	}
-}
-
-string Description::roleToString(Role role) {
-	switch (role) {
-	case Role::Active:
-		return "active";
-	case Role::Passive:
-		return "passive";
-	default:
-		return "actpass";
+		return "unknown";
 	}
 }
 
@@ -767,4 +806,26 @@ string Description::roleToString(Role role) {
 
 std::ostream &operator<<(std::ostream &out, const rtc::Description &description) {
 	return out << std::string(description);
+}
+
+std::ostream &operator<<(std::ostream &out, rtc::Description::Type type) {
+	return out << rtc::Description::typeToString(type);
+}
+
+std::ostream &operator<<(std::ostream &out, rtc::Description::Role role) {
+	using Role = rtc::Description::Role;
+	const char *str;
+	// Used for SDP generation, do not change
+	switch (role) {
+	case Role::Active:
+		str = "active";
+		break;
+	case Role::Passive:
+		str = "passive";
+		break;
+	default:
+		str = "actpass";
+		break;
+	}
+	return out << str;
 }

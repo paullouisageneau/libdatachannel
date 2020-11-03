@@ -99,7 +99,11 @@ certificate_ptr make_certificate_impl(string commonName) {
 	unique_ptr<gnutls_x509_crt_t, decltype(&free_crt)> crt(new_crt(), free_crt);
 	unique_ptr<gnutls_x509_privkey_t, decltype(&free_privkey)> privkey(new_privkey(), free_privkey);
 
+#ifdef RSA_KEY_BITS_2048
+	const unsigned int bits = 2048;
+#else
 	const unsigned int bits = gnutls_sec_param_to_pk_bits(GNUTLS_PK_RSA, GNUTLS_SEC_PARAM_HIGH);
+#endif
 	gnutls::check(gnutls_x509_privkey_generate(*privkey, GNUTLS_PK_RSA, bits, 0),
 	              "Unable to generate key pair");
 
@@ -190,7 +194,11 @@ certificate_ptr make_certificate_impl(string commonName) {
 	if (!x509 || !pkey || !rsa || !exponent || !serial_number || !name)
 		throw std::runtime_error("Unable allocate structures for certificate generation");
 
-	const int bits = 4096;
+#ifdef RSA_KEY_BITS_2048
+	const int bits = 2048;
+#else
+	const int bits = 3072;
+#endif
 	const unsigned int e = 65537; // 2^16 + 1
 
 	if (!pkey || !rsa || !exponent || !BN_set_word(exponent.get(), e) ||

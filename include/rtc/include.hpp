@@ -29,7 +29,7 @@
 
 #ifdef _WIN32
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0602
+#define _WIN32_WINNT 0x0602 // Windows 8
 #endif
 #endif
 
@@ -62,7 +62,7 @@ using std::uint8_t;
 const size_t MAX_NUMERICNODE_LEN = 48; // Max IPv6 string representation length
 const size_t MAX_NUMERICSERV_LEN = 6;  // Max port string representation length
 
-const uint16_t DEFAULT_SCTP_PORT = 5000; // SCTP port to use by default
+const uint16_t DEFAULT_SCTP_PORT = 5000;          // SCTP port to use by default
 const size_t DEFAULT_MAX_MESSAGE_SIZE = 65536;    // Remote max message size if not specified in SDP
 const size_t LOCAL_MAX_MESSAGE_SIZE = 256 * 1024; // Local max message size
 
@@ -72,7 +72,7 @@ const int THREADPOOL_SIZE = 4; // Number of threads in the global thread pool
 
 // overloaded helper
 template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-template <class... Ts> overloaded(Ts...)->overloaded<Ts...>;
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 // weak_ptr bind helper
 template <typename F, typename T, typename... Args> auto weak_bind(F &&f, T *t, Args &&... _args) {
@@ -84,6 +84,23 @@ template <typename F, typename T, typename... Args> auto weak_bind(F &&f, T *t, 
 			return static_cast<result_type>(false);
 	};
 }
+
+// scope_guard helper
+class scope_guard {
+public:
+	scope_guard(std::function<void()> func) : function(std::move(func)) {}
+	scope_guard(scope_guard &&other) = delete;
+	scope_guard(const scope_guard &) = delete;
+	void operator=(const scope_guard &) = delete;
+
+	~scope_guard() {
+		if (function)
+			function();
+	}
+
+private:
+	std::function<void()> function;
+};
 
 template <typename... P> class synchronized_callback {
 public:
@@ -127,6 +144,6 @@ private:
 	std::function<void(P...)> callback;
 	mutable std::recursive_mutex mutex;
 };
-}
+} // namespace rtc
 
 #endif
