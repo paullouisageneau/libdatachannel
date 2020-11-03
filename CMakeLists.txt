@@ -261,7 +261,9 @@ if(NOT NO_TESTS)
 	set_target_properties(datachannel-tests PROPERTIES
 		VERSION ${PROJECT_VERSION}
 		CXX_STANDARD 17)
-	set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
+	if(NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore") # Prevent a bug in manifest generation for UWP
+		set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
+	endif()
 	target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	if(WIN32)
 		target_link_libraries(datachannel-tests datachannel-static) # DLL exports only the C API
@@ -274,7 +276,9 @@ if(NOT NO_TESTS)
 	set_target_properties(datachannel-benchmark PROPERTIES
 		VERSION ${PROJECT_VERSION}
 		CXX_STANDARD 17)
-	set_target_properties(datachannel-benchmark PROPERTIES OUTPUT_NAME benchmark)
+	if(NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore") # Prevent a bug in manifest generation for UWP
+		set_target_properties(datachannel-benchmark PROPERTIES OUTPUT_NAME benchmark)
+	endif()
 	target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
 	target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	if(WIN32)
@@ -285,7 +289,7 @@ if(NOT NO_TESTS)
 endif()
 
 # Examples
-if(NOT NO_EXAMPLES)
+if(NOT NO_EXAMPLES AND NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 	set(JSON_BuildTests OFF CACHE INTERNAL "")
 	add_subdirectory(deps/json)
 	add_subdirectory(examples/client)
