@@ -42,7 +42,8 @@ public:
 
 	string mid() const;
 	Description::Media description() const;
-    void replaceSSRC(SSRC oldSSRC, SSRC ssrc, string cname);
+
+	void setDescription(Description::Media description);
 
 	void close(void) override;
 	bool send(message_variant data) override;
