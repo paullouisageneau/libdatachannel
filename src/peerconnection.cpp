@@ -381,6 +381,7 @@ std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) 
 #endif
 	auto track = std::make_shared<Track>(std::move(description));
 	mTracks.emplace(std::make_pair(track->mid(), track));
+    mTrackLines.emplace_back(track);
 
 	// Renegotiation is needed for the new track
 	mNegotiationNeeded = true;
@@ -948,39 +949,41 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 }
 
 void PeerConnection::processLocalDescription(Description description) {
-	if (auto remote = remoteDescription()) {
-		// Reciprocate remote description
-		for (unsigned int i = 0; i < remote->mediaCount(); ++i)
-			std::visit( // reciprocate each media
-			    rtc::overloaded{
-			        [&](Description::Application *app) {
-				        auto reciprocated = app->reciprocate();
-				        reciprocated.hintSctpPort(DEFAULT_SCTP_PORT);
-				        reciprocated.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+	if (mSignalingState == SignalingState::HaveRemoteOffer) {
+        if (auto remote = remoteDescription()) {
+            // Reciprocate remote description
+            for (unsigned int i = 0; i < remote->mediaCount(); ++i)
+                std::visit( // reciprocate each media
+                        rtc::overloaded{
+                                [&](Description::Application *app) {
+                                    auto reciprocated = app->reciprocate();
+                                    reciprocated.hintSctpPort(DEFAULT_SCTP_PORT);
+                                    reciprocated.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
 
-				        PLOG_DEBUG << "Reciprocating application in local description, mid=\""
-				                   << reciprocated.mid() << "\"";
+                                    PLOG_DEBUG << "Reciprocating application in local description, mid=\""
+                                               << reciprocated.mid() << "\"";
 
-				        description.addMedia(std::move(reciprocated));
-			        },
-			        [&](Description::Media *media) {
-				        auto reciprocated = media->reciprocate();
+                                    description.addMedia(std::move(reciprocated));
+                                },
+                                [&](Description::Media *media) {
+                                    auto reciprocated = media->reciprocate();
 #if !RTC_ENABLE_MEDIA
-				        // No media support, mark as inactive
-				        reciprocated.setDirection(Description::Direction::Inactive);
+                                    // No media support, mark as inactive
+                                    reciprocated.setDirection(Description::Direction::Inactive);
 #endif
-				        incomingTrack(reciprocated);
+                                    incomingTrack(reciprocated);
 
-				        PLOG_DEBUG
-				            << "Reciprocating media in local description, mid=\""
-				            << reciprocated.mid() << "\", active=" << std::boolalpha
-				            << (reciprocated.direction() != Description::Direction::Inactive);
+                                    PLOG_DEBUG
+                                                << "Reciprocating media in local description, mid=\""
+                                                << reciprocated.mid() << "\", active=" << std::boolalpha
+                                                << (reciprocated.direction() != Description::Direction::Inactive);
 
-				        description.addMedia(std::move(reciprocated));
-			        },
-			    },
-			    remote->media(i));
-	}
+                                    description.addMedia(std::move(reciprocated));
+                                },
+                        },
+                        remote->media(i));
+        }
+    }
 
 	if (description.type() == Description::Type::Offer) {
 		// This is an offer, add locally created data channels and tracks
@@ -1002,23 +1005,23 @@ void PeerConnection::processLocalDescription(Description description) {
 		// Add media for local tracks
 
 		std::shared_lock lock(mTracksMutex);
-		for (auto it = mTracks.begin(); it != mTracks.end(); ++it) {
-			if (description.hasMid(it->first))
-				continue;
+        for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it) {
+            if (auto track = it->lock()) {
+                if (description.hasMid(track->mid()))
+                    continue;
 
-			if (auto track = it->second.lock()) {
-				auto media = track->description();
+                auto media = track->description();
 #if !RTC_ENABLE_MEDIA
-				// No media support, mark as inactive
-				media.setDirection(Description::Direction::Inactive);
+                // No media support, mark as inactive
+                media.setDirection(Description::Direction::Inactive);
 #endif
-				PLOG_DEBUG << "Adding media to local description, mid=\"" << media.mid()
-				           << "\", active=" << std::boolalpha
-				           << (media.direction() != Description::Direction::Inactive);
+                PLOG_DEBUG << "Adding media to local description, mid=\"" << media.mid()
+                           << "\", active=" << std::boolalpha
+                           << (media.direction() != Description::Direction::Inactive);
 
-				description.addMedia(std::move(media));
-			}
-		}
+                description.addMedia(std::move(media));
+            }
+        }
 	}
 
 	// Set local fingerprint (wait for certificate if necessary)
