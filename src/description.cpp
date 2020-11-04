@@ -651,7 +651,7 @@ void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 void Description::Audio::addAudioCodec(int payloadType, const string &codec) {
     // TODO This 48000/2 should be parameterized
     RTPMap map(std::to_string(payloadType) + ' ' + codec + "/48000/2");
-    map.fmtps.emplace_back("maxaveragebitrate=510000; stereo=1; sprop-stereo=1; useinbandfec=1");
+    map.fmtps.emplace_back("maxaveragebitrate=96000; stereo=1; sprop-stereo=1; useinbandfec=1");
     addRTPMap(map);
 }
 
