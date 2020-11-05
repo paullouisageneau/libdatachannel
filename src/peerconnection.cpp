@@ -670,7 +670,8 @@ void PeerConnection::forwardMedia(message_ptr message) {
 
 	// Browsers like to compound their packets with a random SSRC.
 	// we have to do this monstrosity to distribute the report blocks
-    std::optional<string> mid;
+//    std::optional<string> mid;
+    std::optional<unsigned int> mediaLine;
     if (message->type == Message::Control) {
         unsigned int offset = 0;
         std::vector<SSRC> ssrcsFound;
@@ -683,59 +684,59 @@ void PeerConnection::forwardMedia(message_ptr message) {
                 break;
             } else {
                 if (header->payloadType() == 205 || header->payloadType() == 206) {
-                     auto rtcpfb = (RTCP_FB_HEADER*) header;
-                     auto ssrc = rtcpfb->getPacketSenderSSRC();
-                    mid = getMidFromSSRC(ssrc);
-                    if (mid.has_value() && std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
-                        hasFound = true;
-                        std::shared_lock lock(mTracksMutex); // read-only
-                        if (auto it = mTracks.find(*mid); it != mTracks.end()) {
-                            if (auto track = it->second.lock()) {
+                    auto rtcpfb = (RTCP_FB_HEADER *) header;
+                    auto ssrc = rtcpfb->getPacketSenderSSRC();
+                    if (std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) != ssrcsFound.end()) {
+                        mediaLine = getMLineFromSSRC(ssrc);
+                        if (mediaLine.has_value()) {
+                            hasFound = true;
+                            std::shared_lock lock(mTracksMutex); // read-only
+                            if (auto track = mTrackLines[*mediaLine].lock()) {
                                 track->incoming(message);
                             }
+                            ssrcsFound.emplace_back(ssrc);
                         }
-                        ssrcsFound.emplace_back(ssrc);
                     }
 
                     ssrc = rtcpfb->getMediaSourceSSRC();
-                    mid = getMidFromSSRC(ssrc);
-                    if (mid.has_value() && std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
-                        hasFound = true;
-                        std::shared_lock lock(mTracksMutex); // read-only
-                        if (auto it = mTracks.find(*mid); it != mTracks.end()) {
-                            if (auto track = it->second.lock()) {
+                    if (std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) != ssrcsFound.end()) {
+                        mediaLine = getMLineFromSSRC(ssrc);
+                        if (mediaLine.has_value()) {
+                            hasFound = true;
+                            std::shared_lock lock(mTracksMutex); // read-only
+                            if (auto track = mTrackLines[*mediaLine].lock()) {
                                 track->incoming(message);
                             }
+                            ssrcsFound.emplace_back(ssrc);
                         }
-                        ssrcsFound.emplace_back(ssrc);
                     }
                 }else if (header->payloadType() == 200 || header->payloadType() == 201) {
                     auto rtcpsr = (RTCP_SR*) header;
                     auto ssrc = rtcpsr->senderSSRC();
-                    mid = getMidFromSSRC(ssrc);
-                    if (mid.has_value() && std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
-                        hasFound = true;
-                        std::shared_lock lock(mTracksMutex); // read-only
-                        if (auto it = mTracks.find(*mid); it != mTracks.end()) {
-                            if (auto track = it->second.lock()) {
+                    if (std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) != ssrcsFound.end()) {
+                        mediaLine = getMLineFromSSRC(ssrc);
+                        if (mediaLine.has_value()) {
+                            hasFound = true;
+                            std::shared_lock lock(mTracksMutex); // read-only
+                            if (auto track = mTrackLines[*mediaLine].lock()) {
                                 track->incoming(message);
                             }
+                            ssrcsFound.emplace_back(ssrc);
                         }
-                        ssrcsFound.emplace_back(ssrc);
                     }
                     for (int i = 0; i < rtcpsr->header.reportCount(); i++) {
                         auto block = rtcpsr->getReportBlock(i);
                         ssrc = block->getSSRC();
-                        mid = getMidFromSSRC(ssrc);
-                        if (mid.has_value() && std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
-                            hasFound = true;
-                            std::shared_lock lock(mTracksMutex); // read-only
-                            if (auto it = mTracks.find(*mid); it != mTracks.end()) {
-                                if (auto track = it->second.lock()) {
+                        if (std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) != ssrcsFound.end()) {
+                            mediaLine = getMLineFromSSRC(ssrc);
+                            if (mediaLine.has_value()) {
+                                hasFound = true;
+                                std::shared_lock lock(mTracksMutex); // read-only
+                                if (auto track = mTrackLines[*mediaLine].lock()) {
                                     track->incoming(message);
                                 }
+                                ssrcsFound.emplace_back(ssrc);
                             }
-                            ssrcsFound.emplace_back(ssrc);
                         }
                     }
                 }else {
@@ -751,9 +752,9 @@ void PeerConnection::forwardMedia(message_ptr message) {
     }
 
     unsigned int ssrc = message->stream;
-    mid = getMidFromSSRC(ssrc);
+    mediaLine = getMLineFromSSRC(ssrc);
 
-	if (!mid) {
+	if (!mediaLine) {
 	    /* TODO
 	     *   So the problem is that when stop sending streams, we stop getting report blocks for those streams
 	     *   Therefore when we get compound RTCP packets, they are empty, and we can't forward them.
@@ -765,50 +766,101 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	}
 
 	std::shared_lock lock(mTracksMutex); // read-only
-	if (auto it = mTracks.find(*mid); it != mTracks.end())
-		if (auto track = it->second.lock())
-			track->incoming(message);
+    if (auto track = mTrackLines[*mediaLine].lock()) {
+        track->incoming(message);
+    }
+}
+
+std::optional<unsigned int> PeerConnection::getMLineFromSSRC(SSRC ssrc) {
+    if (auto it = mMLineFromSssrc.find(ssrc); it != mMLineFromSssrc.end()) {
+        return it->second;
+    }else {
+        {
+            std::lock_guard lock(mRemoteDescriptionMutex);
+            if (!mRemoteDescription)
+                return nullopt;
+            for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
+                if (auto found = std::visit(
+                        rtc::overloaded{[&](Description::Application *) -> bool {
+                            return false;
+                        },
+                                        [&](Description::Media *media) -> bool {
+                                            return media->hasSSRC(ssrc);
+                                        }},
+                        mRemoteDescription->media(i))) {
+
+                    mMLineFromSssrc.emplace(ssrc, i);
+                    return i;
+                }
+            }
+        }
+        {
+            std::lock_guard lock(mLocalDescriptionMutex);
+            if (!mLocalDescription)
+                return nullopt;
+            for (unsigned int i = 0; i < mLocalDescription->mediaCount(); ++i) {
+                if (auto found = std::visit(
+                        rtc::overloaded{[&](Description::Application *) -> bool {
+                            return false;
+                        },
+                                        [&](Description::Media *media) -> bool {
+                                            return media->hasSSRC(ssrc);
+                                        }},
+                        mLocalDescription->media(i))) {
+
+                    mMLineFromSssrc.emplace(ssrc, i);
+                    return i;
+                }
+            }
+        }
+    }
+    return std::nullopt;
 }
 
 std::optional<std::string> PeerConnection::getMidFromSSRC(SSRC ssrc) {
     if (auto it = mMidFromSssrc.find(ssrc); it != mMidFromSssrc.end()) {
         return it->second;
     } else {
-        std::lock_guard lock(mLocalDescriptionMutex);
-        if (!mLocalDescription)
-            return nullopt;
+        {
+            std::lock_guard lock(mRemoteDescriptionMutex);
+            if (!mRemoteDescription)
+                return nullopt;
+            for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
+                if (auto found = std::visit(
+                        rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
+                            return std::nullopt;
+                        },
+                                        [&](Description::Media *media) -> std::optional<string> {
+                                            return media->hasSSRC(ssrc)
+                                                   ? std::make_optional(media->mid())
+                                                   : nullopt;
+                                        }},
+                        mRemoteDescription->media(i))) {
 
-        for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
-            if (auto found = std::visit(
-                    rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
-                        return std::nullopt;
-                    },
-                                    [&](Description::Media *media) -> std::optional<string> {
-                                        return media->hasSSRC(ssrc)
-                                               ? std::make_optional(media->mid())
-                                               : nullopt;
-                                    }},
-                    mRemoteDescription->media(i))) {
-
-                mMidFromSssrc.emplace(ssrc, *found);
-                return *found;
+                    mMidFromSssrc.emplace(ssrc, *found);
+                    return *found;
+                }
             }
         }
+        {
+            std::lock_guard lock(mLocalDescriptionMutex);
+            if (!mLocalDescription)
+                return nullopt;
+            for (unsigned int i = 0; i < mLocalDescription->mediaCount(); ++i) {
+                if (auto found = std::visit(
+                        rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
+                            return std::nullopt;
+                        },
+                                        [&](Description::Media *media) -> std::optional<string> {
+                                            return media->hasSSRC(ssrc)
+                                                   ? std::make_optional(media->mid())
+                                                   : nullopt;
+                                        }},
+                        mLocalDescription->media(i))) {
 
-        for (unsigned int i = 0; i < mLocalDescription->mediaCount(); ++i) {
-            if (auto found = std::visit(
-                    rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
-                        return std::nullopt;
-                    },
-                                    [&](Description::Media *media) -> std::optional<string> {
-                                        return media->hasSSRC(ssrc)
-                                               ? std::make_optional(media->mid())
-                                               : nullopt;
-                                    }},
-                    mLocalDescription->media(i))) {
-
-                mMidFromSssrc.emplace(ssrc, *found);
-                return *found;
+                    mMidFromSssrc.emplace(ssrc, *found);
+                    return *found;
+                }
             }
         }
     }

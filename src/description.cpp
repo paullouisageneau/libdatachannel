@@ -517,10 +517,7 @@ void Description::Media::addSSRC(uint32_t ssrc) {
 }
 
 bool Description::Media::hasSSRC(uint32_t ssrc) {
-    for (auto &val : mAttributes) {
-        if (val.find("ssrc:" + std::to_string(ssrc)) != std::string ::npos)
-            return true;
-    }
+    return std::find(mSsrcs.begin(), mSsrcs.end(), ssrc) != mSsrcs.end();
     return false;
 }
 
@@ -782,7 +779,9 @@ void Description::Media::parseSdpLine(string_view line) {
 				it->second.fmtps.emplace_back(value.substr(p + 1));
 			}
 		} else if (key == "rtcp-mux") {
-			// always added
+            // always added
+        }else if (key == "ssrc") {
+		    mSsrcs.emplace_back(std::stoul((std::string)value));
 		} else {
 			Entry::parseSdpLine(line);
 		}

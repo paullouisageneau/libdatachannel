@@ -169,6 +169,7 @@ public:
 		Media::RTPMap &getFormat(const string &fmt);
 
 		std::map<int, RTPMap> mRtpMap;
+		std::vector<uint32_t> mSsrcs;
 
 	public:
         void addRTPMap(const RTPMap& map);
