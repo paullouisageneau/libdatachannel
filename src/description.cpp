@@ -778,7 +778,7 @@ Description::Type Description::stringToType(const string &typeString) {
 	using TypeMap_t = std::unordered_map<string, Type>;
 	static const TypeMap_t TypeMap = {{"unspec", Type::Unspec},
 	                                  {"offer", Type::Offer},
-	                                  {"answer", Type::Pranswer},
+	                                  {"answer", Type::Answer},
 	                                  {"pranswer", Type::Pranswer},
 	                                  {"rollback", Type::Rollback}};
 	auto it = TypeMap.find(typeString);
