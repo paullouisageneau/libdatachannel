@@ -907,6 +907,7 @@ void PeerConnection::processLocalDescription(Description description) {
 					        }
 					        return;
 				        }
+				        lock.unlock(); // we are going to call incomingTrack()
 
 				        auto reciprocated = remoteMedia->reciprocate();
 #if !RTC_ENABLE_MEDIA
