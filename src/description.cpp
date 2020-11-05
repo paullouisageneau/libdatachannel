@@ -66,11 +66,6 @@ template <typename T> T to_integer(string_view s) {
 
 namespace rtc {
 
-Description::Description(const string &sdp, const string &typeString)
-    : Description(sdp, stringToType(typeString)) {}
-
-Description::Description(const string &sdp, Type type) : Description(sdp, type, Role::ActPass) {}
-
 Description::Description(const string &sdp, Type type, Role role)
     : mType(Type::Unspec), mRole(role) {
 	hintType(type);
@@ -141,6 +136,10 @@ Description::Description(const string &sdp, Type type, Role role)
 	}
 }
 
+Description::Description(const string &sdp, string typeString)
+    : Description(sdp, !typeString.empty() ? stringToType(typeString) : Type::Unspec, Role::ActPass) {
+}
+
 Description::Type Description::type() const { return mType; }
 
 string Description::typeString() const { return typeToString(mType); }
@@ -173,12 +172,15 @@ void Description::setFingerprint(string fingerprint) {
 }
 
 void Description::addCandidate(Candidate candidate) {
+	candidate.hintMid(bundleMid());
 	mCandidates.emplace_back(std::move(candidate));
 }
 
 void Description::addCandidates(std::vector<Candidate> candidates) {
-	for(auto candidate : candidates)
+	for(Candidate candidate : candidates) {
+		candidate.hintMid(bundleMid());
 		mCandidates.emplace_back(std::move(candidate));
+	}
 }
 
 void Description::endCandidates() { mEnded = true; }

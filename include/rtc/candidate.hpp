@@ -31,7 +31,11 @@ public:
 	enum class Type { Unknown, Host, ServerReflexive, PeerReflexive, Relayed };
 	enum class TransportType { Unknown, Udp, TcpActive, TcpPassive, TcpSo, TcpUnknown };
 
-	Candidate(string candidate = "", string mid = "");
+	Candidate();
+	Candidate(string candidate);
+	Candidate(string candidate, string mid);
+
+	void hintMid(string mid);
 
 	enum class ResolveMode { Simple, Lookup };
 	bool resolve(ResolveMode mode = ResolveMode::Simple);
@@ -50,7 +54,7 @@ public:
 
 private:
 	string mCandidate;
-	string mMid;
+	std::optional<string> mMid;
 
 	// Extracted on resolution
 	Family mFamily;

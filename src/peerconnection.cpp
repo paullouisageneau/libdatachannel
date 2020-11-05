@@ -1030,9 +1030,12 @@ void PeerConnection::processRemoteDescription(Description description) {
 }
 
 void PeerConnection::processRemoteCandidate(Candidate candidate) {
+	std::lock_guard lock(mRemoteDescriptionMutex);
 	auto iceTransport = std::atomic_load(&mIceTransport);
-	if (!iceTransport)
-		throw std::logic_error("Remote candidate set without remote description");
+	if (!mRemoteDescription || !iceTransport)
+		throw std::logic_error("Got a remote candidate without remote description");
+
+	candidate.hintMid(mRemoteDescription->bundleMid());
 
 	if (candidate.resolve(Candidate::ResolveMode::Simple)) {
 		iceTransport->addRemoteCandidate(candidate);
@@ -1048,13 +1051,7 @@ void PeerConnection::processRemoteCandidate(Candidate candidate) {
 		t.detach();
 	}
 
-	{
-		std::lock_guard lock(mRemoteDescriptionMutex);
-		if (!mRemoteDescription)
-			throw std::logic_error("Got a remote candidate without remote description");
-
-		mRemoteDescription->addCandidate(candidate);
-	}
+	mRemoteDescription->addCandidate(std::move(candidate));
 }
 
 void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
