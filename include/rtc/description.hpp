@@ -38,9 +38,8 @@ public:
 	enum class Role { ActPass, Passive, Active };
 	enum class Direction { SendOnly, RecvOnly, SendRecv, Inactive, Unknown };
 
-	Description(const string &sdp, const string &typeString = "");
-	Description(const string &sdp, Type type);
-	Description(const string &sdp, Type type, Role role);
+	Description(const string &sdp, Type type = Type::Unspec, Role role = Role::ActPass);
+	Description(const string &sdp, string typeString);
 
 	Type type() const;
 	string typeString() const;
