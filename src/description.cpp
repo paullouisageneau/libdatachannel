@@ -499,6 +499,7 @@ void Description::Entry::parseSdpLine(string_view line) {
 
 void Description::Media::addSSRC(uint32_t ssrc, std::string name) {
     mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + name);
+    mSsrcs.emplace_back(ssrc);
 }
 
 void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::string name) {
@@ -518,7 +519,6 @@ void Description::Media::addSSRC(uint32_t ssrc) {
 
 bool Description::Media::hasSSRC(uint32_t ssrc) {
     return std::find(mSsrcs.begin(), mSsrcs.end(), ssrc) != mSsrcs.end();
-    return false;
 }
 
 Description::Application::Application(string mid)
@@ -669,8 +669,9 @@ void Description::Media::removeFormat(const string &fmt) {
 
 void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/90000");
-        map.addFB("nack");
-	    map.addFB("nack pli");
+    map.addFB("nack");
+    map.addFB("nack pli");
+//    map.addFB("nack fir");
 	map.addFB("goog-remb");
 	if (codec == "H264") {
 		// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
@@ -682,7 +683,8 @@ void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 		{
 			RTPMap map(std::to_string(payloadType+1) + ' ' + codec + "/90000");
 			map.addFB("nack");
-			    map.addFB("nack pli");
+            map.addFB("nack pli");
+//            map.addFB("nack fir");
 			map.addFB("goog-remb");
 			addRTPMap(map);
 			}
