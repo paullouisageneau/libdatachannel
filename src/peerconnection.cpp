@@ -780,7 +780,7 @@ std::optional<unsigned int> PeerConnection::getMLineFromSSRC(SSRC ssrc) {
             if (!mRemoteDescription)
                 return nullopt;
             for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
-                if (auto found = std::visit(
+                if (std::visit(
                         rtc::overloaded{[&](Description::Application *) -> bool {
                             return false;
                         },
@@ -799,7 +799,7 @@ std::optional<unsigned int> PeerConnection::getMLineFromSSRC(SSRC ssrc) {
             if (!mLocalDescription)
                 return nullopt;
             for (unsigned int i = 0; i < mLocalDescription->mediaCount(); ++i) {
-                if (auto found = std::visit(
+                if (std::visit(
                         rtc::overloaded{[&](Description::Application *) -> bool {
                             return false;
                         },
