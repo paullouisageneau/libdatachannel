@@ -75,7 +75,7 @@ public:
 		HaveRemotePranswer = RTC_SIGNALING_HAVE_REMOTE_PRANSWER,
 	} rtcSignalingState;
 
-	PeerConnection(void);
+	PeerConnection();
 	PeerConnection(const Configuration &config);
 	~PeerConnection();
 
