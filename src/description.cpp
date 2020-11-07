@@ -471,8 +471,10 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 		break;
 	}
 
-	for (const auto &attr : mAttributes)
-		sdp << "a=" << attr << eol;
+	for (const auto &attr : mAttributes) {
+	    if (attr.find("extmap") == std::string::npos && attr.find("rtcp-rsize") == std::string::npos)
+            sdp << "a=" << attr << eol;
+    }
 
 	return sdp.str();
 }
@@ -746,8 +748,10 @@ string Description::Media::generateSdpLines(string_view eol) const {
 			sdp << '/' << map.encParams;
 		sdp << eol;
 
-		for (const auto &val : map.rtcpFbs)
-			sdp << "a=rtcp-fb:" << map.pt << ' ' << val << eol;
+		for (const auto &val : map.rtcpFbs) {
+		    if (val != "transport-cc" )
+                sdp << "a=rtcp-fb:" << map.pt << ' ' << val << eol;
+        }
 		for (const auto &val : map.fmtps)
 			sdp << "a=fmtp:" << map.pt << ' ' << val << eol;
 	}

@@ -676,7 +676,6 @@ void PeerConnection::forwardMedia(message_ptr message) {
         std::vector<SSRC> ssrcsFound;
         bool hasFound = false;
 
-        PLOG_INFO << "start";
         while ((sizeof(rtc::RTCP_HEADER) + offset) <= message->size()) {
             auto header = (rtc::RTCP_HEADER *) (message->data() + offset);
             if (header->lengthInBytes() > message->size() - offset) {
@@ -955,7 +954,8 @@ void PeerConnection::incomingTrack(Description::Media description) {
 	if (mTracks.find(description.mid()) == mTracks.end()) {
 		auto track = std::make_shared<Track>(std::move(description));
 		mTracks.emplace(std::make_pair(track->mid(), track));
-		triggerTrack(std::move(track));
+        mTrackLines.emplace_back(track);
+		triggerTrack(track);
 	}
 }
 
