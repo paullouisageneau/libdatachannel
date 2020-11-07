@@ -78,8 +78,10 @@ typedef enum { // Don't change, it must match plog severity
 } rtcLogLevel;
 
 #define RTC_ERR_SUCCESS 0
-#define RTC_ERR_INVALID -1 // invalid argument
-#define RTC_ERR_FAILURE -2 // runtime error
+#define RTC_ERR_INVALID -1   // invalid argument
+#define RTC_ERR_FAILURE -2   // runtime error
+#define RTC_ERR_NOT_AVAIL -3 // element not available
+#define RTC_ERR_TOO_SMALL -4 // buffer too small
 
 typedef struct {
 	const char **iceServers;

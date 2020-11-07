@@ -125,9 +125,20 @@ size_t WebSocket::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
 
 std::optional<message_variant> WebSocket::receive() {
 	while (auto next = mRecvQueue.tryPop()) {
-		message_ptr message = std::move(*next);
+		message_ptr message = *next;
 		if (message->type != Message::Control)
 			return to_variant(std::move(*message));
+	}
+	return nullopt;
+}
+
+std::optional<message_variant> WebSocket::peek() {
+	while (auto next = mRecvQueue.peek()) {
+		message_ptr message = *next;
+		if (message->type != Message::Control)
+			return to_variant(std::move(*message));
+
+		mRecvQueue.tryPop();
 	}
 	return nullopt;
 }
