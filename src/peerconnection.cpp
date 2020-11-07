@@ -676,6 +676,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
         std::vector<SSRC> ssrcsFound;
         bool hasFound = false;
 
+        PLOG_INFO << "start";
         while ((sizeof(rtc::RTCP_HEADER) + offset) <= message->size()) {
             auto header = (rtc::RTCP_HEADER *) (message->data() + offset);
             if (header->lengthInBytes() > message->size() - offset) {
@@ -711,7 +712,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
                     }
                 }
             }else if (header->payloadType() == 200 || header->payloadType() == 201) {
-                auto rtcpsr = (RTCP_SR*) header;
+                auto rtcpsr = (RTCP_SR *) header;
                 auto ssrc = rtcpsr->senderSSRC();
                 if (std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
                     mediaLine = getMLineFromSSRC(ssrc);
@@ -739,9 +740,12 @@ void PeerConnection::forwardMedia(message_ptr message) {
                         }
                     }
                 }
-            }else {
-        // This warning is commonly thrown with SDES PT=202
-                // PLOG_WARNING << "Unknown packet type: " << (int) header->payloadType();
+            } else {
+                //PT=202 == SDES
+                //PT=207 == Extended Report
+                if (header->payloadType() != 202 && header->payloadType() != 207) {
+                    PLOG_WARNING << "Unknown packet type: " << (int) header->version() << " " << header->payloadType() << "";
+                }
             }
         }
 
@@ -759,7 +763,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	     *   Therefore, it is expected that we don't know where to forward packets.
 	     *   Is this ideal? No! Do I know how to fix it? No!
 	     */
-		PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
+	//	PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
 		return;
 	}
 

@@ -143,6 +143,7 @@ public:
 
         struct RTPMap {
             RTPMap(string_view mline);
+            RTPMap() {}
 
             void removeFB(const string &string);
             void addFB(const string &string);
@@ -158,6 +159,9 @@ public:
 
             std::vector<string> rtcpFbs;
             std::vector<string> fmtps;
+
+            static int parsePT(string_view view);
+            void setMLine(string_view view);
         };
 
 	private:
