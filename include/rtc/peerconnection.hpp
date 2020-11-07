@@ -135,7 +135,8 @@ private:
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
 
 	std::shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, string label,
-	                                                string protocol, Reliability reliability);
+	                                                string protocol, Reliability reliability,
+	                                                std::optional<unsigned int> stream = nullopt);
 	std::shared_ptr<DataChannel> findDataChannel(uint16_t stream);
 	void iterateDataChannels(std::function<void(std::shared_ptr<DataChannel> channel)> func);
 	void openDataChannels();

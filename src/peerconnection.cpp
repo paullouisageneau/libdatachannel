@@ -735,18 +735,21 @@ void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
 
 shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role role, string label,
                                                            string protocol,
-                                                           Reliability reliability) {
-	// The active side must use streams with even identifiers, whereas the passive side must use
-	// streams with odd identifiers.
-	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09#section-6
+                                                           Reliability reliability,
+                                                           std::optional<unsigned int> stream) {
 	std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
-	unsigned int stream = (role == Description::Role::Active) ? 0 : 1;
-	while (mDataChannels.find(stream) != mDataChannels.end()) {
-		stream += 2;
-		if (stream >= 65535)
-			throw std::runtime_error("Too many DataChannels");
+	if(!stream) {
+		// The active side must use streams with even identifiers, whereas the passive side must use
+		// streams with odd identifiers.
+		// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09#section-6
+		*stream = (role == Description::Role::Active) ? 0 : 1;
+		while (mDataChannels.find(*stream) != mDataChannels.end()) {
+			*stream += 2;
+			if (*stream >= 65535)
+				throw std::runtime_error("Too many DataChannels");
+		}
 	}
-	auto channel = std::make_shared<DataChannel>(shared_from_this(), stream, std::move(label),
+	auto channel = std::make_shared<DataChannel>(shared_from_this(), *stream, std::move(label),
 	                                             std::move(protocol), std::move(reliability));
 	mDataChannels.emplace(std::make_pair(stream, channel));
 	return channel;
