@@ -837,12 +837,12 @@ int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb) {
 	return WRAP({
 		auto channel = getChannel(id);
 		if (cb)
-			channel->onOpen([id, cb]() {
+			channel->onAvailable([id, cb]() {
 				if (auto ptr = getUserPointer(id))
 					cb(id, *ptr);
 			});
 		else
-			channel->onOpen(nullptr);
+			channel->onAvailable(nullptr);
 	});
 }
 
