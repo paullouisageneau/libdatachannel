@@ -123,18 +123,34 @@ bool DataChannel::send(const byte *data, size_t size) {
 
 std::optional<message_variant> DataChannel::receive() {
 	while (auto next = mRecvQueue.tryPop()) {
-		message_ptr message = std::move(*next);
-		if (message->type == Message::Control) {
-			auto raw = reinterpret_cast<const uint8_t *>(message->data());
-			if (!message->empty() && raw[0] == MESSAGE_CLOSE)
-				remoteClose();
-		} else {
+		message_ptr message = *next;
+		if (message->type != Message::Control)
 			return to_variant(std::move(*message));
-		}
+
+		auto raw = reinterpret_cast<const uint8_t *>(message->data());
+		if (!message->empty() && raw[0] == MESSAGE_CLOSE)
+			remoteClose();
 	}
 
 	return nullopt;
 }
+
+std::optional<message_variant> DataChannel::peek() {
+	while (auto next = mRecvQueue.peek()) {
+		message_ptr message = *next;
+		if (message->type != Message::Control)
+			return to_variant(std::move(*message));
+
+		auto raw = reinterpret_cast<const uint8_t *>(message->data());
+		if (!message->empty() && raw[0] == MESSAGE_CLOSE)
+			remoteClose();
+
+		mRecvQueue.tryPop();
+	}
+
+	return nullopt;
+}
+
 
 bool DataChannel::isOpen(void) const { return mIsOpen; }
 

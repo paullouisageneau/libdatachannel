@@ -54,7 +54,8 @@ public:
 
 	// Extended API
 	virtual std::optional<message_variant> receive() = 0; // only if onMessage unset
-	virtual size_t availableAmount() const; // total size available to receive
+	virtual std::optional<message_variant> peek() = 0;    // only if onMessage unset
+	virtual size_t availableAmount() const;               // total size available to receive
 	void onAvailable(std::function<void()> callback);
 
 protected:
@@ -81,4 +82,3 @@ private:
 } // namespace rtc
 
 #endif // RTC_CHANNEL_H
-
