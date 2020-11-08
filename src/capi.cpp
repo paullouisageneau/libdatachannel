@@ -609,9 +609,15 @@ int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote
 		if (!peerConnection->getSelectedCandidatePair(&localCand, &remoteCand))
 			return RTC_ERR_NOT_AVAIL;
 
-		copyAndReturn(string(localCand), local, localSize);
-		copyAndReturn(string(remoteCand), remote, remoteSize);
-		return RTC_ERR_SUCCESS;
+		int localRet = copyAndReturn(string(localCand), local, localSize);
+		if(localRet < 0)
+			return localRet;
+
+		int remoteRet = copyAndReturn(string(remoteCand), remote, remoteSize);
+		if(remoteRet < 0)
+			return remoteRet;
+
+		return std::max(localRet, remoteRet);
 	});
 }
 
