@@ -63,7 +63,7 @@ void test_websocket() {
 		}
 	});
 
-	ws->open("wss://echo.websocket.org/");
+	ws->open("wss://echo.websocket.org:443/");
 
 	int attempts = 10;
 	while ((!ws->isOpen() || !received) && attempts--)
