@@ -770,9 +770,8 @@ std::optional<std::string> PeerConnection::getMidFromSSRC(SSRC ssrc) {
     if (auto it = mMidFromSssrc.find(ssrc); it != mMidFromSssrc.end()) {
         return it->second;
     } else {
-        std::lock_guard lock(mLocalDescriptionMutex);
-        if (!mLocalDescription)
-            return nullopt;
+        std::lock_guard lockA(mRemoteDescriptionMutex);
+        if (mRemoteDescription) {
 
         for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
             if (auto found = std::visit(
@@ -790,7 +789,10 @@ std::optional<std::string> PeerConnection::getMidFromSSRC(SSRC ssrc) {
                 return *found;
             }
         }
+	}
 
+        std::lock_guard lockB(mLocalDescriptionMutex);
+        if (mLocalDescription) {
         for (unsigned int i = 0; i < mLocalDescription->mediaCount(); ++i) {
             if (auto found = std::visit(
                     rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
@@ -807,6 +809,7 @@ std::optional<std::string> PeerConnection::getMidFromSSRC(SSRC ssrc) {
                 return *found;
             }
         }
+	}
     }
     return nullopt;
 }
