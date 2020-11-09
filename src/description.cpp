@@ -816,6 +816,13 @@ std::vector<uint32_t> Description::Media::getSSRCs() {
     return vec;
 }
 
+std::map<int, Description::Media::RTPMap>::iterator Description::Media::beginMaps() {
+    return mRtpMap.begin();
+}
+
+std::map<int, Description::Media::RTPMap>::iterator Description::Media::endMaps() {
+    return mRtpMap.end();
+}
 
 
 Description::Media::RTPMap::RTPMap(string_view mline) {

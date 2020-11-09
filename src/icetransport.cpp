@@ -145,7 +145,10 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {
-	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
+    if (description.role() == Description::Role::ActPass)
+        mRole = Description::Role::Passive;
+    else
+	    mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 	                                                        : Description::Role::Active;
 	mMid = description.bundleMid();
 	if (juice_set_remote_description(mAgent.get(),

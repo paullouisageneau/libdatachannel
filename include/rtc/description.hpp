@@ -163,6 +163,9 @@ public:
             void setMLine(string_view view);
         };
 
+        std::map<int, RTPMap>::iterator beginMaps();
+        std::map<int, RTPMap>::iterator endMaps();
+
 	private:
 		virtual string generateSdpLines(string_view eol) const override;
 

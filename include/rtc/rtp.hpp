@@ -69,7 +69,7 @@ public:
         _seqNumber = htons(newSeqNo);
     }
     inline void setPayloadType(uint8_t newPayloadType) {
-        _payloadType = _payloadType | (0b01111111u & newPayloadType);
+        _payloadType = (_payloadType & 0b10000000u) | (0b01111111u & newPayloadType);
     }
     inline void setSsrc(uint32_t ssrc) {
         _ssrc = htonl(ssrc);
