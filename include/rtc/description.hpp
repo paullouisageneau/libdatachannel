@@ -38,9 +38,8 @@ public:
 	enum class Role { ActPass, Passive, Active };
 	enum class Direction { SendOnly, RecvOnly, SendRecv, Inactive, Unknown };
 
-	Description(const string &sdp, const string &typeString = "");
-	Description(const string &sdp, Type type);
-	Description(const string &sdp, Type type, Role role);
+	Description(const string &sdp, Type type = Type::Unspec, Role role = Role::ActPass);
+	Description(const string &sdp, string typeString);
 
 	Type type() const;
 	string typeString() const;
@@ -95,8 +94,7 @@ public:
 	struct Application : public Entry {
 	public:
 		Application(string mid = "data");
-		Application(const Application &other) = default;
-		Application(Application &&other) = default;
+		virtual ~Application() = default;
 
 		string description() const override;
 		Application reciprocate() const;
@@ -122,8 +120,6 @@ public:
 	public:
 		Media(const string &sdp);
 		Media(const string &mline, string mid, Direction dir = Direction::SendOnly);
-		Media(const Media &other) = default;
-		Media(Media &&other) = default;
 		virtual ~Media() = default;
 
 		string description() const override;
@@ -146,6 +142,7 @@ public:
 
         struct RTPMap {
             RTPMap(string_view mline);
+            RTPMap() {}
 
             void removeFB(const string &string);
             void addFB(const string &string);
@@ -161,7 +158,13 @@ public:
 
             std::vector<string> rtcpFbs;
             std::vector<string> fmtps;
+
+            static int parsePT(string_view view);
+            void setMLine(string_view view);
         };
+
+        std::map<int, RTPMap>::iterator beginMaps();
+        std::map<int, RTPMap>::iterator endMaps();
 
 	private:
 		virtual string generateSdpLines(string_view eol) const override;
@@ -172,6 +175,7 @@ public:
 		Media::RTPMap &getFormat(const string &fmt);
 
 		std::map<int, RTPMap> mRtpMap;
+		std::vector<uint32_t> mSsrcs;
 
 	public:
         void addRTPMap(const RTPMap& map);

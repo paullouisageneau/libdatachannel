@@ -75,7 +75,7 @@ public:
 		HaveRemotePranswer = RTC_SIGNALING_HAVE_REMOTE_PRANSWER,
 	} rtcSignalingState;
 
-	PeerConnection(void);
+	PeerConnection();
 	PeerConnection(const Configuration &config);
 	~PeerConnection();
 
@@ -135,6 +135,7 @@ private:
 	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
     std::optional<std::string> getMidFromSSRC(SSRC ssrc);
+    std::optional<uint32_t> getMLineFromSSRC(SSRC ssrc);
 
 	std::shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, string label,
 	                                                string protocol, Reliability reliability);
@@ -181,7 +182,8 @@ private:
 	std::vector<std::weak_ptr<Track>> mTrackLines;                              // by SDP order
 	std::shared_mutex mDataChannelsMutex, mTracksMutex;
 
-	std::unordered_map<unsigned int, string> mMidFromSssrc; // cache
+	std::unordered_map<uint32_t, string> mMidFromSssrc; // cache
+    std::unordered_map<uint32_t , unsigned int> mMLineFromSssrc; // cache
 
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;

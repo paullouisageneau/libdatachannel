@@ -66,11 +66,6 @@ template <typename T> T to_integer(string_view s) {
 
 namespace rtc {
 
-Description::Description(const string &sdp, const string &typeString)
-    : Description(sdp, stringToType(typeString)) {}
-
-Description::Description(const string &sdp, Type type) : Description(sdp, type, Role::ActPass) {}
-
 Description::Description(const string &sdp, Type type, Role role)
     : mType(Type::Unspec), mRole(role) {
 	hintType(type);
@@ -141,6 +136,10 @@ Description::Description(const string &sdp, Type type, Role role)
 	}
 }
 
+Description::Description(const string &sdp, string typeString)
+    : Description(sdp, !typeString.empty() ? stringToType(typeString) : Type::Unspec, Role::ActPass) {
+}
+
 Description::Type Description::type() const { return mType; }
 
 string Description::typeString() const { return typeToString(mType); }
@@ -173,12 +172,15 @@ void Description::setFingerprint(string fingerprint) {
 }
 
 void Description::addCandidate(Candidate candidate) {
+	candidate.hintMid(bundleMid());
 	mCandidates.emplace_back(std::move(candidate));
 }
 
 void Description::addCandidates(std::vector<Candidate> candidates) {
-	for(auto candidate : candidates)
+	for(Candidate candidate : candidates) {
+		candidate.hintMid(bundleMid());
 		mCandidates.emplace_back(std::move(candidate));
+	}
 }
 
 void Description::endCandidates() { mEnded = true; }
@@ -469,8 +471,10 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 		break;
 	}
 
-	for (const auto &attr : mAttributes)
-		sdp << "a=" << attr << eol;
+	for (const auto &attr : mAttributes) {
+	    if (attr.find("extmap") == std::string::npos && attr.find("rtcp-rsize") == std::string::npos)
+            sdp << "a=" << attr << eol;
+    }
 
 	return sdp.str();
 }
@@ -499,6 +503,7 @@ void Description::Entry::parseSdpLine(string_view line) {
 
 void Description::Media::addSSRC(uint32_t ssrc, std::string name) {
     mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + name);
+    mSsrcs.emplace_back(ssrc);
 }
 
 void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::string name) {
@@ -517,11 +522,7 @@ void Description::Media::addSSRC(uint32_t ssrc) {
 }
 
 bool Description::Media::hasSSRC(uint32_t ssrc) {
-    for (auto &val : mAttributes) {
-        if (val.find("ssrc:" + std::to_string(ssrc)) != std::string ::npos)
-            return true;
-    }
-    return false;
+    return std::find(mSsrcs.begin(), mSsrcs.end(), ssrc) != mSsrcs.end();
 }
 
 Description::Application::Application(string mid)
@@ -672,8 +673,9 @@ void Description::Media::removeFormat(const string &fmt) {
 
 void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/90000");
-        map.addFB("nack");
-	    map.addFB("nack pli");
+    map.addFB("nack");
+    map.addFB("nack pli");
+//    map.addFB("nack fir");
 	map.addFB("goog-remb");
 	if (codec == "H264") {
 		// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
@@ -685,7 +687,8 @@ void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 		{
 			RTPMap map(std::to_string(payloadType+1) + ' ' + codec + "/90000");
 			map.addFB("nack");
-			    map.addFB("nack pli");
+            map.addFB("nack pli");
+//            map.addFB("nack fir");
 			map.addFB("goog-remb");
 			addRTPMap(map);
 			}
@@ -745,8 +748,10 @@ string Description::Media::generateSdpLines(string_view eol) const {
 			sdp << '/' << map.encParams;
 		sdp << eol;
 
-		for (const auto &val : map.rtcpFbs)
-			sdp << "a=rtcp-fb:" << map.pt << ' ' << val << eol;
+		for (const auto &val : map.rtcpFbs) {
+		    if (val != "transport-cc" )
+                sdp << "a=rtcp-fb:" << map.pt << ' ' << val << eol;
+        }
 		for (const auto &val : map.fmtps)
 			sdp << "a=fmtp:" << map.pt << ' ' << val << eol;
 	}
@@ -760,29 +765,32 @@ void Description::Media::parseSdpLine(string_view line) {
 		auto [key, value] = parse_pair(attr);
 
 		if (key == "rtpmap") {
-			Description::Media::RTPMap map(value);
-			int pt = map.pt;
-			mRtpMap.emplace(pt, std::move(map));
+		    auto pt = Description::Media::RTPMap::parsePT(value);
+            auto it = mRtpMap.find(pt);
+            if (it == mRtpMap.end()) {
+                it = mRtpMap.insert(std::make_pair(pt, Description::Media::RTPMap(value))).first;
+            }else {
+                it->second.setMLine(value);
+            }
 		} else if (key == "rtcp-fb") {
 			size_t p = value.find(' ');
 			int pt = to_integer<int>(value.substr(0, p));
 			auto it = mRtpMap.find(pt);
 			if (it == mRtpMap.end()) {
-				PLOG_WARNING << "rtcp-fb applied before the corresponding rtpmap, ignoring";
-			} else {
-				it->second.rtcpFbs.emplace_back(value.substr(p + 1));
-			}
+			    it = mRtpMap.insert(std::make_pair(pt, Description::Media::RTPMap())).first;
+            }
+            it->second.rtcpFbs.emplace_back(value.substr(p + 1));
 		} else if (key == "fmtp") {
 			size_t p = value.find(' ');
 			int pt = to_integer<int>(value.substr(0, p));
 			auto it = mRtpMap.find(pt);
-			if (it == mRtpMap.end()) {
-				PLOG_WARNING << "fmtp applied before the corresponding rtpmap, ignoring";
-			} else {
-				it->second.fmtps.emplace_back(value.substr(p + 1));
-			}
+			if (it == mRtpMap.end())
+                it = mRtpMap.insert(std::make_pair(pt, Description::Media::RTPMap())).first;
+            it->second.fmtps.emplace_back(value.substr(p + 1));
 		} else if (key == "rtcp-mux") {
-			// always added
+            // always added
+        }else if (key == "ssrc") {
+		    mSsrcs.emplace_back(std::stoul((std::string)value));
 		} else {
 			Entry::parseSdpLine(line);
 		}
@@ -808,28 +816,17 @@ std::vector<uint32_t> Description::Media::getSSRCs() {
     return vec;
 }
 
+std::map<int, Description::Media::RTPMap>::iterator Description::Media::beginMaps() {
+    return mRtpMap.begin();
+}
+
+std::map<int, Description::Media::RTPMap>::iterator Description::Media::endMaps() {
+    return mRtpMap.end();
+}
 
 
 Description::Media::RTPMap::RTPMap(string_view mline) {
-	size_t p = mline.find(' ');
-
-	this->pt = to_integer<int>(mline.substr(0, p));
-
-	string_view line = mline.substr(p + 1);
-	size_t spl = line.find('/');
-	this->format = line.substr(0, spl);
-
-	line = line.substr(spl + 1);
-	spl = line.find('/');
-	if (spl == string::npos) {
-		spl = line.find(' ');
-	}
-	if (spl == string::npos)
-		this->clockRate = to_integer<int>(line);
-	else {
-		this->clockRate = to_integer<int>(line.substr(0, spl));
-		this->encParams = line.substr(spl+1);
-	}
+    setMLine(mline);
 }
 
 void Description::Media::RTPMap::removeFB(const string &str) {
@@ -843,6 +840,34 @@ void Description::Media::RTPMap::removeFB(const string &str) {
 }
 
 void Description::Media::RTPMap::addFB(const string &str) { rtcpFbs.emplace_back(str); }
+
+int Description::Media::RTPMap::parsePT(string_view view) {
+    size_t p = view.find(' ');
+
+    return to_integer<int>(view.substr(0, p));
+}
+
+void Description::Media::RTPMap::setMLine(string_view mline) {
+    size_t p = mline.find(' ');
+
+    this->pt = to_integer<int>(mline.substr(0, p));
+
+    string_view line = mline.substr(p + 1);
+    size_t spl = line.find('/');
+    this->format = line.substr(0, spl);
+
+    line = line.substr(spl + 1);
+    spl = line.find('/');
+    if (spl == string::npos) {
+        spl = line.find(' ');
+    }
+    if (spl == string::npos)
+        this->clockRate = to_integer<int>(line);
+    else {
+        this->clockRate = to_integer<int>(line.substr(0, spl));
+        this->encParams = line.substr(spl+1);
+    }
+}
 
 Description::Audio::Audio(string mid, Direction dir)
     : Media("audio 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
@@ -858,7 +883,7 @@ Description::Type Description::stringToType(const string &typeString) {
 	using TypeMap_t = std::unordered_map<string, Type>;
 	static const TypeMap_t TypeMap = {{"unspec", Type::Unspec},
 	                                  {"offer", Type::Offer},
-	                                  {"answer", Type::Pranswer},
+	                                  {"answer", Type::Answer},
 	                                  {"pranswer", Type::Pranswer},
 	                                  {"rollback", Type::Rollback}};
 	auto it = TypeMap.find(typeString);

@@ -528,7 +528,7 @@ int rtcSetRemoteDescription(int pc, const char *sdp, const char *type) {
 		if (!sdp)
 			throw std::invalid_argument("Unexpected null pointer for remote description");
 
-		peerConnection->setRemoteDescription({string(sdp), type ? string(type) : ""});
+		peerConnection->setRemoteDescription({string(sdp), type ? string(type) : "" });
 	});
 }
 

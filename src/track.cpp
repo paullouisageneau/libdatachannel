@@ -32,8 +32,12 @@ string Track::mid() const { return mMediaDescription.mid(); }
 
 Description::Media Track::description() const { return mMediaDescription; }
 
-void Track::replaceSSRC(SSRC oldSSRC, SSRC ssrc, std::string cname) {
-    mMediaDescription.replaceSSRC(oldSSRC, ssrc, cname);
+
+void Track::setDescription(Description::Media description) {
+	if(description.mid() != mMediaDescription.mid())
+		throw std::logic_error("Media description mid does not match track mid");
+
+	mMediaDescription = std::move(description);
 }
 
 void Track::close() {
