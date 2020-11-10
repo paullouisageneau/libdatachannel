@@ -78,6 +78,11 @@ public:
 		virtual void parseSdpLine(string_view line);
 
 
+        std::vector<string>::iterator beginAttributes();
+        std::vector<string>::iterator endAttributes();
+        std::vector<string>::iterator removeAttribute(std::vector<string>::iterator iterator);
+
+
 	protected:
 		Entry(const string &mline, string mid, Direction dir = Direction::Unknown);
 		virtual string generateSdpLines(string_view eol) const;
@@ -165,6 +170,7 @@ public:
 
         std::map<int, RTPMap>::iterator beginMaps();
         std::map<int, RTPMap>::iterator endMaps();
+        std::map<int, RTPMap>::iterator removeMap(std::map<int, RTPMap>::iterator iterator);
 
 	private:
 		virtual string generateSdpLines(string_view eol) const override;

@@ -500,6 +500,15 @@ void Description::Entry::parseSdpLine(string_view line) {
 			mAttributes.emplace_back(line.substr(2));
 	}
 }
+std::vector< string>::iterator Description::Entry::beginAttributes() {
+    return mAttributes.begin();
+}
+std::vector< string>::iterator Description::Entry::endAttributes() {
+    return mAttributes.end();
+}
+std::vector< string>::iterator Description::Entry::removeAttribute(std::vector<string>::iterator it) {
+    return mAttributes.erase(it);
+}
 
 void Description::Media::addSSRC(uint32_t ssrc, std::string name) {
     mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + name);
@@ -824,6 +833,10 @@ std::map<int, Description::Media::RTPMap>::iterator Description::Media::endMaps(
     return mRtpMap.end();
 }
 
+std::map<int, Description::Media::RTPMap>::iterator
+Description::Media::removeMap(std::map<int, Description::Media::RTPMap>::iterator iterator) {
+    return mRtpMap.erase(iterator);
+}
 
 Description::Media::RTPMap::RTPMap(string_view mline) {
     setMLine(mline);
