@@ -1,6 +1,7 @@
 /**
  * Copyright (c) 2019-2020 Paul-Louis Ageneau
  * Copyright (c) 2020 Staz M
+ * Copyright (c) 2020 Filip Klembara (in2core)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -754,7 +755,7 @@ Description::Media::RTPMap::RTPMap(string_view mline) {
 		this->clockRate = to_integer<int>(line);
 	else {
 		this->clockRate = to_integer<int>(line.substr(0, spl));
-		this->encParams = line.substr(spl);
+		this->encParams = line.substr(spl + 1);
 	}
 }
 
