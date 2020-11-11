@@ -35,7 +35,7 @@
 #include <thread>
 
 #if __clang__
-namespace std {
+namespace {
 
 template <typename To, typename From>
 inline std::shared_ptr<To> reinterpret_pointer_cast(std::shared_ptr<From> const & ptr) noexcept {
@@ -43,6 +43,8 @@ inline std::shared_ptr<To> reinterpret_pointer_cast(std::shared_ptr<From> const 
 }
 
 }
+#else
+using std::reinterpret_pointer_cast;
 #endif
 
 namespace rtc {
@@ -819,7 +821,7 @@ void PeerConnection::incomingTrack(Description::Media description) {
 void PeerConnection::openTracks() {
 #if RTC_ENABLE_MEDIA
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
-		auto srtpTransport = std::reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
+		auto srtpTransport = reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
 		std::shared_lock lock(mTracksMutex); // read-only
 		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
 			if (auto track = it->second.lock())
