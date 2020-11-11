@@ -305,14 +305,14 @@ int rtcDeletePeerConnection(int pc) {
 }
 
 int rtcAddDataChannel(int pc, const char *label) {
-	return rtcAddDataChannelExt(pc, label, nullptr, nullptr);
+	return rtcAddDataChannelExt(pc, label, nullptr);
 }
 
-int rtcAddDataChannelExt(int pc, const char *label, const char *protocol,
-                         const rtcReliability *reliability) {
+int rtcAddDataChannelExt(int pc, const char *label, const rtcDataChannelInit *init) {
 	return WRAP({
 		Reliability r = {};
-		if (reliability) {
+		if (init) {
+			auto *reliability = &init->reliability;
 			r.unordered = reliability->unordered;
 			if (reliability->unreliable) {
 				if (reliability->maxPacketLifeTime > 0) {
@@ -326,25 +326,28 @@ int rtcAddDataChannelExt(int pc, const char *label, const char *protocol,
 				r.type = Reliability::Type::Reliable;
 			}
 		}
+
 		auto peerConnection = getPeerConnection(pc);
 		int dc = emplaceDataChannel(peerConnection->addDataChannel(
-		    string(label ? label : ""), {.reliability = std::move(r),
-		                                 .protocol = protocol ? protocol : "",
-		                                 .negociated = false,
-		                                 .id = nullopt}));
+		    string(label ? label : ""),
+		    {.reliability = std::move(r),
+		     .protocol = init && init->protocol ? init->protocol : "",
+		     .negociated = init ? init->negociated : false,
+		     .id = init && init->manualId ? std::make_optional(init->id) : nullopt}));
+
 		if (auto ptr = getUserPointer(pc))
 			rtcSetUserPointer(dc, *ptr);
+
 		return dc;
 	});
 }
 
 int rtcCreateDataChannel(int pc, const char *label) {
-	return rtcCreateDataChannelExt(pc, label, nullptr, nullptr);
+	return rtcCreateDataChannelExt(pc, label, nullptr);
 }
 
-int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
-                            const rtcReliability *reliability) {
-	int dc = rtcAddDataChannelExt(pc, label, protocol, reliability);
+int rtcCreateDataChannelExt(int pc, const char *label, const rtcDataChannelInit *init) {
+	int dc = rtcAddDataChannelExt(pc, label, init);
 	rtcSetLocalDescription(pc, NULL);
 	return dc;
 }
@@ -373,6 +376,7 @@ int rtcAddTrack(int pc, const char *mediaDescriptionSdp) {
 		int tr = emplaceTrack(peerConnection->addTrack(std::move(media)));
 		if (auto ptr = getUserPointer(pc))
 			rtcSetUserPointer(tr, *ptr);
+
 		return tr;
 	});
 }
