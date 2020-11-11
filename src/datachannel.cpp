@@ -81,6 +81,8 @@ DataChannel::DataChannel(weak_ptr<PeerConnection> pc, unsigned int stream, strin
 
 DataChannel::~DataChannel() { close(); }
 
+uint16_t DataChannel::id() const { return uint16_t(mStream); }
+
 unsigned int DataChannel::stream() const { return mStream; }
 
 string DataChannel::label() const { return mLabel; }

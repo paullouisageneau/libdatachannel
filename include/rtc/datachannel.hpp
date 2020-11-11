@@ -42,6 +42,7 @@ public:
 	            string protocol, Reliability reliability);
 	virtual ~DataChannel();
 
+	uint16_t id() const;
 	unsigned int stream() const;
 	string label() const;
 	string protocol() const;
