@@ -81,6 +81,29 @@ $ cd build
 $ make -j2
 ```
 
+#### Apple macOS with XCode project
+
+```bash
+$ cmake -B "$BUILD_DIR" -DUSE_GNUTLS=0 -DUSE_NICE=0 -G Xcode
+```
+
+Xcode project is generated in *build/* directory.
+
+##### Solving **Could NOT find OpenSSL** error
+
+You need to add OpenSSL root directory if your build fails with the following message: 
+
+```
+Could NOT find OpenSSL, try to set the path to OpenSSL root folder in the
+system variable OPENSSL_ROOT_DIR (missing: OPENSSL_CRYPTO_LIBRARY
+OPENSSL_INCLUDE_DIR)
+```
+
+for example:
+```bash
+$ cmake -B build -DUSE_GNUTLS=0 -DUSE_NICE=0 -G Xcode -DOPENSSL_ROOT_DIR=/usr/local/Cellar/openssl\@1.1/1.1.1h/
+```
+
 #### Microsoft Windows with MinGW cross-compilation
 ```bash
 $ cmake -B build -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw/toolchain-x86_64-w64-mingw32.cmake # replace with your toolchain file

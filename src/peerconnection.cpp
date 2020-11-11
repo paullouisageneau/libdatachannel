@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2020 Filip Klembara (in2core)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -32,6 +33,19 @@
 
 #include <iomanip>
 #include <thread>
+
+#if __clang__
+namespace {
+
+template <typename To, typename From>
+inline std::shared_ptr<To> reinterpret_pointer_cast(std::shared_ptr<From> const & ptr) noexcept {
+    return std::shared_ptr<To>(ptr, reinterpret_cast<To *>(ptr.get()));
+}
+
+}
+#else
+using std::reinterpret_pointer_cast;
+#endif
 
 namespace rtc {
 
@@ -807,7 +821,7 @@ void PeerConnection::incomingTrack(Description::Media description) {
 void PeerConnection::openTracks() {
 #if RTC_ENABLE_MEDIA
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
-		auto srtpTransport = std::reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
+		auto srtpTransport = reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
 		std::shared_lock lock(mTracksMutex); // read-only
 		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
 			if (auto track = it->second.lock())
