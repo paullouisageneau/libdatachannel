@@ -328,7 +328,10 @@ int rtcAddDataChannelExt(int pc, const char *label, const char *protocol,
 		}
 		auto peerConnection = getPeerConnection(pc);
 		int dc = emplaceDataChannel(peerConnection->addDataChannel(
-		    string(label ? label : ""), string(protocol ? protocol : ""), r));
+		    string(label ? label : ""), {.reliability = std::move(r),
+		                                 .protocol = protocol ? protocol : "",
+		                                 .negociated = false,
+		                                 .id = nullopt}));
 		if (auto ptr = getUserPointer(pc))
 			rtcSetUserPointer(dc, *ptr);
 		return dc;
@@ -610,11 +613,11 @@ int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote
 			return RTC_ERR_NOT_AVAIL;
 
 		int localRet = copyAndReturn(string(localCand), local, localSize);
-		if(localRet < 0)
+		if (localRet < 0)
 			return localRet;
 
 		int remoteRet = copyAndReturn(string(remoteCand), remote, remoteSize);
-		if(remoteRet < 0)
+		if (remoteRet < 0)
 			return remoteRet;
 
 		return std::max(localRet, remoteRet);
