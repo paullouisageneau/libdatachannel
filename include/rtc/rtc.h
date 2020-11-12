@@ -101,8 +101,8 @@ typedef struct {
 	rtcReliability reliability;
 	const char *protocol; // empty string if NULL
 	bool negotiated;
-	bool manualId;
-	uint16_t id; // ignored if manualId is false
+	bool manualStream;
+	uint16_t stream;      // numeric ID 0-65534, ignored if manualStream is false
 } rtcDataChannelInit;
 
 typedef void(RTC_API *rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
@@ -158,6 +158,7 @@ RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
 RTC_EXPORT int rtcCreateDataChannelExt(int pc, const char *label, const rtcDataChannelInit *init); // returns dc id
 RTC_EXPORT int rtcDeleteDataChannel(int dc);
 
+RTC_EXPORT int rtcGetDataChannelStream(int dc);
 RTC_EXPORT int rtcGetDataChannelLabel(int dc, char *buffer, int size);
 RTC_EXPORT int rtcGetDataChannelProtocol(int dc, char *buffer, int size);
 RTC_EXPORT int rtcGetDataChannelReliability(int dc, rtcReliability *reliability);

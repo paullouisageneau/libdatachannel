@@ -327,7 +327,7 @@ int rtcAddDataChannelExt(int pc, const char *label, const rtcDataChannelInit *in
 			}
 
 			dci.negotiated = init->negotiated;
-			dci.id = init->manualId ? std::make_optional(init->id) : nullopt;
+			dci.id = init->manualStream ? std::make_optional(init->stream) : nullopt;
 			dci.protocol = init->protocol ? init->protocol : "";
 		}
 
@@ -625,6 +625,13 @@ int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote
 			return remoteRet;
 
 		return std::max(localRet, remoteRet);
+	});
+}
+
+int rtcGetDataChannelStream(int dc) {
+	return WRAP({
+		auto dataChannel = getDataChannel(dc);
+		return int(dataChannel->id());
 	});
 }
 
