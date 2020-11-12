@@ -212,10 +212,11 @@ void test_connectivity() {
 		throw runtime_error("Second DataChannel is not open");
 
 	// Try to open a negociated channel
-	auto negociated1 =
-	    pc1->createDataChannel("negociated", {.reliability = {}, .negociated = true, .id = 42});
-	auto negociated2 =
-	    pc2->createDataChannel("negoctated", {.reliability = {}, .negociated = true, .id = 42});
+	DataChannelInit init;
+	init.negociated = true;
+	init.id = 42;
+	auto negociated1 = pc1->createDataChannel("negociated", init);
+	auto negociated2 = pc2->createDataChannel("negoctated", init);
 
 	if (!negociated1->isOpen() || !negociated2->isOpen())
 		throw runtime_error("Negociated DataChannel is not open");

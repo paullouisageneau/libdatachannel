@@ -310,30 +310,30 @@ int rtcAddDataChannel(int pc, const char *label) {
 
 int rtcAddDataChannelExt(int pc, const char *label, const rtcDataChannelInit *init) {
 	return WRAP({
-		Reliability r = {};
+		DataChannelInit dci = {};
 		if (init) {
 			auto *reliability = &init->reliability;
-			r.unordered = reliability->unordered;
+			dci.reliability.unordered = reliability->unordered;
 			if (reliability->unreliable) {
 				if (reliability->maxPacketLifeTime > 0) {
-					r.type = Reliability::Type::Timed;
-					r.rexmit = milliseconds(reliability->maxPacketLifeTime);
+					dci.reliability.type = Reliability::Type::Timed;
+					dci.reliability.rexmit = milliseconds(reliability->maxPacketLifeTime);
 				} else {
-					r.type = Reliability::Type::Rexmit;
-					r.rexmit = int(reliability->maxRetransmits);
+					dci.reliability.type = Reliability::Type::Rexmit;
+					dci.reliability.rexmit = int(reliability->maxRetransmits);
 				}
 			} else {
-				r.type = Reliability::Type::Reliable;
+				dci.reliability.type = Reliability::Type::Reliable;
 			}
+
+			dci.negociated = init->negociated;
+			dci.id = init->manualId ? std::make_optional(init->id) : nullopt;
+			dci.protocol = init->protocol ? init->protocol : "";
 		}
 
 		auto peerConnection = getPeerConnection(pc);
-		int dc = emplaceDataChannel(peerConnection->addDataChannel(
-		    string(label ? label : ""),
-		    {.reliability = std::move(r),
-		     .negociated = init ? init->negociated : false,
-		     .id = init && init->manualId ? std::make_optional(init->id) : nullopt,
-		     .protocol = init && init->protocol ? init->protocol : ""}));
+		int dc = emplaceDataChannel(
+		    peerConnection->addDataChannel(string(label ? label : ""), std::move(dci)));
 
 		if (auto ptr = getUserPointer(pc))
 			rtcSetUserPointer(dc, *ptr);
@@ -649,15 +649,15 @@ int rtcGetDataChannelReliability(int dc, rtcReliability *reliability) {
 		if (!reliability)
 			throw std::invalid_argument("Unexpected null pointer for reliability");
 
-		Reliability r = dataChannel->reliability();
+		Reliability dcr = dataChannel->reliability();
 		std::memset(reliability, 0, sizeof(*reliability));
-		reliability->unordered = r.unordered;
-		if (r.type == Reliability::Type::Timed) {
+		reliability->unordered = dcr.unordered;
+		if (dcr.type == Reliability::Type::Timed) {
 			reliability->unreliable = true;
-			reliability->maxPacketLifeTime = unsigned(std::get<milliseconds>(r.rexmit).count());
-		} else if (r.type == Reliability::Type::Rexmit) {
+			reliability->maxPacketLifeTime = unsigned(std::get<milliseconds>(dcr.rexmit).count());
+		} else if (dcr.type == Reliability::Type::Rexmit) {
 			reliability->unreliable = true;
-			reliability->maxRetransmits = unsigned(std::get<int>(r.rexmit));
+			reliability->maxRetransmits = unsigned(std::get<int>(dcr.rexmit));
 		} else {
 			reliability->unreliable = false;
 		}
