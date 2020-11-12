@@ -59,6 +59,13 @@ std::optional<message_variant> Track::receive() {
 	return nullopt;
 }
 
+std::optional<message_variant> Track::peek() {
+	if (auto next = mRecvQueue.peek())
+		return to_variant(std::move(**next));
+
+	return nullopt;
+}
+
 bool Track::isOpen(void) const {
 #if RTC_ENABLE_MEDIA
 	return !mIsClosed && mDtlsSrtpTransport.lock();

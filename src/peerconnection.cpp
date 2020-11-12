@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2020 Filip Klembara (in2core)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -32,6 +33,19 @@
 
 #include <iomanip>
 #include <thread>
+
+#if __clang__
+namespace {
+
+template <typename To, typename From>
+inline std::shared_ptr<To> reinterpret_pointer_cast(std::shared_ptr<From> const &ptr) noexcept {
+	return std::shared_ptr<To>(ptr, reinterpret_cast<To *>(ptr.get()));
+}
+
+} // namespace
+#else
+using std::reinterpret_pointer_cast;
+#endif
 
 namespace rtc {
 
@@ -312,8 +326,7 @@ std::optional<string> PeerConnection::remoteAddress() const {
 	return iceTransport ? iceTransport->getRemoteAddress() : nullopt;
 }
 
-shared_ptr<DataChannel> PeerConnection::addDataChannel(string label, string protocol,
-                                                       Reliability reliability) {
+shared_ptr<DataChannel> PeerConnection::addDataChannel(string label, DataChannelInit init) {
 	// RFC 5763: The answerer MUST use either a setup attribute value of setup:active or
 	// setup:passive. [...] Thus, setup:active is RECOMMENDED.
 	// See https://tools.ietf.org/html/rfc5763#section-5
@@ -321,8 +334,7 @@ shared_ptr<DataChannel> PeerConnection::addDataChannel(string label, string prot
 	auto iceTransport = std::atomic_load(&mIceTransport);
 	auto role = iceTransport ? iceTransport->role() : Description::Role::Passive;
 
-	auto channel =
-	    emplaceDataChannel(role, std::move(label), std::move(protocol), std::move(reliability));
+	auto channel = emplaceDataChannel(role, std::move(label), std::move(init));
 
 	if (auto transport = std::atomic_load(&mSctpTransport))
 		if (transport->state() == SctpTransport::State::Connected)
@@ -336,9 +348,8 @@ shared_ptr<DataChannel> PeerConnection::addDataChannel(string label, string prot
 	return channel;
 }
 
-shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, string protocol,
-                                                          Reliability reliability) {
-	auto channel = addDataChannel(label, protocol, reliability);
+shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, DataChannelInit init) {
+	auto channel = addDataChannel(std::move(label), std::move(init));
 	setLocalDescription();
 	return channel;
 }
@@ -636,7 +647,8 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		return;
 	}
 
-	auto channel = findDataChannel(uint16_t(message->stream));
+	uint16_t stream = uint16_t(message->stream);
+	auto channel = findDataChannel(stream);
 	if (!channel) {
 		auto iceTransport = std::atomic_load(&mIceTransport);
 		auto sctpTransport = std::atomic_load(&mSctpTransport);
@@ -644,15 +656,15 @@ void PeerConnection::forwardMessage(message_ptr message) {
 			return;
 
 		const byte dataChannelOpenMessage{0x03};
-		unsigned int remoteParity = (iceTransport->role() == Description::Role::Active) ? 1 : 0;
+		uint16_t remoteParity = (iceTransport->role() == Description::Role::Active) ? 1 : 0;
 		if (message->type == Message::Control && *message->data() == dataChannelOpenMessage &&
-		    message->stream % 2 == remoteParity) {
+		    stream % 2 == remoteParity) {
 
-			channel =
-			    std::make_shared<DataChannel>(shared_from_this(), sctpTransport, message->stream);
+			channel = std::make_shared<NegociatedDataChannel>(shared_from_this(), sctpTransport,
+			                                                  message->stream);
 			channel->onOpen(weak_bind(&PeerConnection::triggerDataChannel, this,
 			                          weak_ptr<DataChannel>{channel}));
-			mDataChannels.insert(std::make_pair(message->stream, channel));
+			mDataChannels.emplace(message->stream, channel);
 		} else {
 			// Invalid, close the DataChannel
 			sctpTransport->closeStream(message->stream);
@@ -874,20 +886,33 @@ void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
 }
 
 shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role role, string label,
-                                                           string protocol,
-                                                           Reliability reliability) {
-	// The active side must use streams with even identifiers, whereas the passive side must use
-	// streams with odd identifiers.
-	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09#section-6
+                                                           DataChannelInit init) {
 	std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
-	unsigned int stream = (role == Description::Role::Active) ? 0 : 1;
-	while (mDataChannels.find(stream) != mDataChannels.end()) {
-		stream += 2;
-		if (stream >= 65535)
-			throw std::runtime_error("Too many DataChannels");
+	uint16_t stream;
+	if (init.id) {
+		stream = *init.id;
+		if (stream == 65535)
+			throw std::invalid_argument("Invalid DataChannel id");
+	} else {
+		// The active side must use streams with even identifiers, whereas the passive side must use
+		// streams with odd identifiers.
+		// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09#section-6
+		stream = (role == Description::Role::Active) ? 0 : 1;
+		while (mDataChannels.find(stream) != mDataChannels.end()) {
+			if (stream >= 65535 - 2)
+				throw std::runtime_error("Too many DataChannels");
+
+			stream += 2;
+		}
 	}
-	auto channel = std::make_shared<DataChannel>(shared_from_this(), stream, std::move(label),
-	                                             std::move(protocol), std::move(reliability));
+	// If the DataChannel is user-negotiated, do not negociate it here
+	auto channel =
+	    init.negotiated
+	        ? std::make_shared<DataChannel>(shared_from_this(), stream, std::move(label),
+	                                        std::move(init.protocol), std::move(init.reliability))
+	        : std::make_shared<NegociatedDataChannel>(shared_from_this(), stream, std::move(label),
+	                                                  std::move(init.protocol),
+	                                                  std::move(init.reliability));
 	mDataChannels.emplace(std::make_pair(stream, channel));
 	return channel;
 }
@@ -962,7 +987,7 @@ void PeerConnection::incomingTrack(Description::Media description) {
 void PeerConnection::openTracks() {
 #if RTC_ENABLE_MEDIA
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
-		auto srtpTransport = std::reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
+		auto srtpTransport = reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
 		std::shared_lock lock(mTracksMutex); // read-only
 		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
 			if (auto track = it->second.lock())
