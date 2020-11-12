@@ -61,16 +61,23 @@ Arguments:
 
 ```
 int rtcCreatePeerConnection(const rtcConfiguration *config)
+
+typedef struct {
+	const char **iceServers;
+	int iceServersCount;
+	uint16_t portRangeBegin;
+	uint16_t portRangeEnd;
+} rtcConfiguration;
 ```
 
 Creates a Peer Connection.
 
 Arguments:
 - `config`: the configuration structure, containing:
-  - `const char **iceServers` (optional): an array of pointers on null-terminated ice server URLs (NULL if unused)
-  - `int iceServersCount` (optional): number of URLs in the array pointed by `iceServers` (0 if unused)
-  - `uint16_t portRangeBegin` (optional): first port (included) of the allowed local port range (0 if unused)
-  - `uint16_t portRangeEnd` (optional): last port (included) of the allowed local port (0 if unused)
+  - `iceServers` (optional): an array of pointers on null-terminated ice server URLs (NULL if unused)
+  - `iceServersCount` (optional): number of URLs in the array pointed by `iceServers` (0 if unused)
+  - `portRangeBegin` (optional): first port (included) of the allowed local port range (0 if unused)
+  - `portRangeEnd` (optional): last port (included) of the allowed local port (0 if unused)
 
 Return value: the identifier of the new Peer Connection or a negative error code.
 
@@ -85,11 +92,11 @@ int rtcDeletePeerConnection(int pc)
 Deletes the specified Peer Connection.
 
 Arguments:
-- `pc`: Peer Connection identifier
+- `pc`: the Peer Connection identifier
 
 Return value: `RTC_ERR_SUCCESS` or a negative error code
 
-After this function has been called, `pc` must not be used in a function call anymore. This function will block until all scheduled callbacks from`pc` return (except the one this function might be called in) and no other callback will be called for `pc` after it returns.
+After this function has been called, `pc` must not be used in a function call anymore. This function will block until all scheduled callbacks of `pc` return (except the one this function might be called in) and no other callback will be called for `pc` after it returns.
 
 #### rtcSetXCallback
 
@@ -155,7 +162,7 @@ Calling this function is only necessary after `rtcAddDataChannel*` and `rtcAddTr
 int rtcSetRemoteDescription(int pc, const char *sdp, const char *type)
 ```
 
-Sets the remote description received from the remote peer by the user's method of choice. Following this call, if the remote description is an offer the local description callback will be called with the local answer description.
+Sets the remote description received from the remote peer by the user's method of choice. The remote description may have candidates or not. Following this call, if the remote description is an offer the local description callback will be called with the local answer description.
 
 Arguments:
 - `pc`: the Peer Connection identifier
@@ -172,7 +179,7 @@ Adds a trickled remote candidate received from the remote peer by the user's met
 Arguments:
 - `pc`: the Peer Connection identifier
 - `cand`: a null-terminated SDP string representing the candidate (with or without the `"a="` prefix)
-- `mid`: a null-terminated string representing the mid of the candidate in the remote SDP description
+- `mid` (optional): a null-terminated string representing the mid of the candidate in the remote SDP description or NULL for autodetection
 
 The Peer Connection must have a remote description set.
 
@@ -271,7 +278,22 @@ If `local`, `remote`, or both, are `NULL`, the corresponding candidate is not co
 
 ```
 int rtcAddDataChannel(int pc, const char *label)
-int rtcAddDataChannelExt(int pc, const char *label, const char *protocol, const rtcReliability *reliability)
+int rtcAddDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init)
+
+typedef struct {
+	bool unordered;
+	bool unreliable;
+	unsigned int maxPacketLifeTime;
+	unsigned int maxRetransmits;
+} rtcReliability;
+
+typedef struct {
+	rtcReliability reliability;
+	const char *protocol;
+	bool negotiated;
+	bool manualStream;
+	uint16_t stream;
+} rtcDataChannelInit;
 ```
 
 Adds a Data Channel on a Peer Connection. The Peer Connection does not need to be connected, however, the Data Channel will be open only when the Peer Connection is connected.
@@ -279,14 +301,18 @@ Adds a Data Channel on a Peer Connection. The Peer Connection does not need to b
 Arguments:
 - `pc`: identifier of the PeerConnection on which to add a Data Channel
 - `label`: a user-defined UTF-8 string representing the Data Channel name
-- `protocol`: a user-defined UTF-8 string representing the Data Channel name
-- `reliability`: a structure of reliability settings containing:
-  - `bool unordered`: if `true`, the Data Channel will not enforce message ordering, else it will be ordered
-  - `bool unreliable`: if `true`, the Data Channel will not enforce strict reliability, else it will be reliable
-  - `unsigned int maxPacketLifeTime`: if unreliable, maximum packet life time in milliseconds
-  - `unsigned int maxRetransmits`: if unreliable and maxPacketLifeTime is 0, maximum number of retransmissions (0 means no retransmission)
+- `init`: a structure of initialization settings containing:
+  - `reliability`: a structure of reliability settings containing:
+    - `bool unordered`: if `true`, the Data Channel will not enforce message ordering, else it will be ordered
+    - `bool unreliable`: if `true`, the Data Channel will not enforce strict reliability, else it will be reliable
+    - `unsigned int maxPacketLifeTime`: if unreliable, maximum packet life time in milliseconds
+    - `unsigned int maxRetransmits`: if unreliable and maxPacketLifeTime is 0, maximum number of retransmissions (0 means no retransmission)
+  - `protocol` (optional): a user-defined UTF-8 string representing the Data Channel protocol, empty if NULL
+  - `negociated`: if `true`, the Data Channel is assumed to be negociated by the user and won't be negociated by the WebRTC layer
+  - `manualStream`: if `true`, the Data Channel will use `stream` as stream ID, else an available id is automatically selected
+  - `stream` (0-65534): if `manualStream` is `true`, the Data Channel will use it as stream ID, else it is ignored
 
-`rtcDataChannel` is equivalent to `rtcDataChannelExt` with an empty string as protocol and `reliability` set to ordered and reliable (both flags set to `false`).
+`rtcDataChannel()` is equivalent to `rtcDataChannelEx()` with settings set to ordered, reliable, non-negociated, with automatic stream ID selection (all flags set to `false`), and `protocol` set to an empty string.
 
 Return value: the identifier of the new Data Channel or a negative error code.
 
@@ -296,10 +322,10 @@ The Data Channel must be deleted with `rtcDeleteDataChannel`.
 
 ```
 int rtcCreateDataChannel(int pc, const char *label)
-int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol, const rtcReliability *reliability)
+int rtcCreateDataChannelEx(int pc, const char *label, const char *protocol, const rtcReliability *reliability)
 ```
 
-These functions are respectively equivalent to respectively `rtcAddDataChannel` and `rtcAddDataChannelExt` with the same arguments followed by `rtcSetLocalDescription`.
+These functions are respectively equivalent to respectively `rtcAddDataChannel` and `rtcAddDataChannelEx` with the same arguments followed by `rtcSetLocalDescription`.
 
 Return value: the identifier of the new Data Channel or a negative error code.
 
@@ -317,6 +343,19 @@ Arguments:
 - `dc`: the Data Channel identifier
 
 After this function has been called, `dc` must not be used in a function call anymore. This function will block until all scheduled callbacks of `dc` return (except the one this function might be called in) and no other callback will be called for `dc` after it returns.
+
+#### rtcGetDataChannelStream
+
+```
+int rtcGetDataChannelStream(int dc)
+```
+
+Retrieves the stream ID of the Data Channel.
+
+Arguments:
+- `dc`: the Data Channel identifier
+
+Return value: the stream ID (0-65534) or a negative error code
 
 #### rtcGetDataChannelLabel
 
@@ -395,7 +434,7 @@ Deletes a Track.
 Arguments:
 - `tr`: the Track identifier
 
-After this function has been called, `tr` must not be used in a function call anymore. This function will block until all scheduled callbacks from`tr` return (except the one this function might be called in) and no other callback will be called for `tr` after it returns.
+After this function has been called, `tr` must not be used in a function call anymore. This function will block until all scheduled callbacks of `tr` return (except the one this function might be called in) and no other callback will be called for `tr` after it returns.
 
 #### rtcGetTrackDescription
 
@@ -445,7 +484,7 @@ Arguments:
 
 Return value: the identifier of the new WebSocket or a negative error code
 
-After this function has been called, `ws` must not be used in a function call anymore. This function will block until all scheduled callbacks from`ws` return (except the one this function might be called in) and no other callback will be called for `ws` after it returns.
+After this function has been called, `ws` must not be used in a function call anymore. This function will block until all scheduled callbacks of `ws` return (except the one this function might be called in) and no other callback will be called for `ws` after it returns.
 
 ### Channel (Data Channel, Track, and WebSocket)
 
