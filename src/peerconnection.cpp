@@ -645,7 +645,8 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		return;
 	}
 
-	auto channel = findDataChannel(uint16_t(message->stream));
+	uint16_t stream = uint16_t(message->stream);
+	auto channel = findDataChannel(stream);
 	if (!channel) {
 		auto iceTransport = std::atomic_load(&mIceTransport);
 		auto sctpTransport = std::atomic_load(&mSctpTransport);
@@ -653,9 +654,9 @@ void PeerConnection::forwardMessage(message_ptr message) {
 			return;
 
 		const byte dataChannelOpenMessage{0x03};
-		unsigned int remoteParity = (iceTransport->role() == Description::Role::Active) ? 1 : 0;
+		uint16_t remoteParity = (iceTransport->role() == Description::Role::Active) ? 1 : 0;
 		if (message->type == Message::Control && *message->data() == dataChannelOpenMessage &&
-		    message->stream % 2 == remoteParity) {
+		    stream % 2 == remoteParity) {
 
 			channel = std::make_shared<NegociatedDataChannel>(shared_from_this(), sctpTransport,
 			                                                  message->stream);
@@ -733,18 +734,21 @@ void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
 shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role role, string label,
                                                            DataChannelInit init) {
 	std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
-	unsigned int stream;
+	uint16_t stream;
 	if (init.id) {
 		stream = *init.id;
+		if (stream == 65535)
+			throw std::runtime_error("Invalid DataChannel id");
 	} else {
 		// The active side must use streams with even identifiers, whereas the passive side must use
 		// streams with odd identifiers.
 		// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09#section-6
 		stream = (role == Description::Role::Active) ? 0 : 1;
 		while (mDataChannels.find(stream) != mDataChannels.end()) {
-			stream += 2;
-			if (stream >= 65535)
+			if (stream >= 65535 - 2)
 				throw std::runtime_error("Too many DataChannels");
+
+			stream += 2;
 		}
 	}
 	// If the DataChannel is user-negociated, do not negociate it here

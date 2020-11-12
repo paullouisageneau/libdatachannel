@@ -178,7 +178,7 @@ private:
 	std::shared_ptr<DtlsTransport> mDtlsTransport;
 	std::shared_ptr<SctpTransport> mSctpTransport;
 
-	std::unordered_map<unsigned int, std::weak_ptr<DataChannel>> mDataChannels; // by stream ID
+	std::unordered_map<uint16_t, std::weak_ptr<DataChannel>> mDataChannels;     // by stream ID
 	std::unordered_map<string, std::weak_ptr<Track>> mTracks;                   // by mid
 	std::shared_mutex mDataChannelsMutex, mTracksMutex;
 

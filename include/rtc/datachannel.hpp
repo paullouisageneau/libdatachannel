@@ -38,12 +38,12 @@ class PeerConnection;
 
 class DataChannel : public std::enable_shared_from_this<DataChannel>, public Channel {
 public:
-	DataChannel(std::weak_ptr<PeerConnection> pc, unsigned int stream, string label,
+	DataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream, string label,
 	            string protocol, Reliability reliability);
 	virtual ~DataChannel();
 
+	uint16_t stream() const;
 	uint16_t id() const;
-	unsigned int stream() const;
 	string label() const;
 	string protocol() const;
 	Reliability reliability() const;
@@ -73,7 +73,7 @@ protected:
 	const std::weak_ptr<PeerConnection> mPeerConnection;
 	std::weak_ptr<SctpTransport> mSctpTransport;
 
-	unsigned int mStream;
+	uint16_t mStream;
 	string mLabel;
 	string mProtocol;
 	std::shared_ptr<Reliability> mReliability;
@@ -89,10 +89,10 @@ private:
 
 class NegociatedDataChannel final : public DataChannel {
 public:
-	NegociatedDataChannel(std::weak_ptr<PeerConnection> pc, unsigned int stream, string label,
+	NegociatedDataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream, string label,
 	            string protocol, Reliability reliability);
 	NegociatedDataChannel(std::weak_ptr<PeerConnection> pc, std::weak_ptr<SctpTransport> transport,
-	            unsigned int stream);
+	            uint16_t stream);
 	~NegociatedDataChannel();
 
 private:

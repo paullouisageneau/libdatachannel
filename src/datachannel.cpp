@@ -72,7 +72,7 @@ struct CloseMessage {
 };
 #pragma pack(pop)
 
-DataChannel::DataChannel(weak_ptr<PeerConnection> pc, unsigned int stream, string label,
+DataChannel::DataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label,
                          string protocol, Reliability reliability)
     : mPeerConnection(pc), mStream(stream), mLabel(std::move(label)),
       mProtocol(std::move(protocol)),
@@ -81,9 +81,9 @@ DataChannel::DataChannel(weak_ptr<PeerConnection> pc, unsigned int stream, strin
 
 DataChannel::~DataChannel() { close(); }
 
-uint16_t DataChannel::id() const { return uint16_t(mStream); }
+uint16_t DataChannel::stream() const { return mStream; }
 
-unsigned int DataChannel::stream() const { return mStream; }
+uint16_t DataChannel::id() const { return uint16_t(mStream); }
 
 string DataChannel::label() const { return mLabel; }
 
@@ -230,13 +230,13 @@ void DataChannel::incoming(message_ptr message) {
 	}
 }
 
-NegociatedDataChannel::NegociatedDataChannel(std::weak_ptr<PeerConnection> pc, unsigned int stream,
+NegociatedDataChannel::NegociatedDataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream,
                                              string label, string protocol, Reliability reliability)
     : DataChannel(pc, stream, std::move(label), std::move(protocol), std::move(reliability)) {}
 
 NegociatedDataChannel::NegociatedDataChannel(std::weak_ptr<PeerConnection> pc,
                                              std::weak_ptr<SctpTransport> transport,
-                                             unsigned int stream)
+                                             uint16_t stream)
     : DataChannel(pc, stream, "", "", {}) {
 	mSctpTransport = transport;
 }
