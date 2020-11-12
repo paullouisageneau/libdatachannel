@@ -331,9 +331,9 @@ int rtcAddDataChannelExt(int pc, const char *label, const rtcDataChannelInit *in
 		int dc = emplaceDataChannel(peerConnection->addDataChannel(
 		    string(label ? label : ""),
 		    {.reliability = std::move(r),
-		     .protocol = init && init->protocol ? init->protocol : "",
 		     .negociated = init ? init->negociated : false,
-		     .id = init && init->manualId ? std::make_optional(init->id) : nullopt}));
+		     .id = init && init->manualId ? std::make_optional(init->id) : nullopt,
+		     .protocol = init && init->protocol ? init->protocol : ""}));
 
 		if (auto ptr = getUserPointer(pc))
 			rtcSetUserPointer(dc, *ptr);

@@ -212,10 +212,12 @@ void test_connectivity() {
 		throw runtime_error("Second DataChannel is not open");
 
 	// Try to open a negociated channel
-	auto negociated1 = pc1->createDataChannel("negociated", {.negociated = true, .id = 42});
-	auto negociated2 = pc2->createDataChannel("negoctated", {.negociated = true, .id = 42});
+	auto negociated1 =
+	    pc1->createDataChannel("negociated", {.reliability = {}, .negociated = true, .id = 42});
+	auto negociated2 =
+	    pc2->createDataChannel("negoctated", {.reliability = {}, .negociated = true, .id = 42});
 
-	if(!negociated1->isOpen() || !negociated2->isOpen())
+	if (!negociated1->isOpen() || !negociated2->isOpen())
 		throw runtime_error("Negociated DataChannel is not open");
 
 	std::atomic<bool> received = false;

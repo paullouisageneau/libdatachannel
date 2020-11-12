@@ -52,9 +52,9 @@ using future_certificate_ptr = std::shared_future<certificate_ptr>;
 
 struct DataChannelInit {
 	Reliability reliability = {};
-	string protocol = "";
 	bool negociated = false;
 	std::optional<uint16_t> id = nullopt;
+	string protocol = "";
 };
 
 class PeerConnection final : public std::enable_shared_from_this<PeerConnection> {

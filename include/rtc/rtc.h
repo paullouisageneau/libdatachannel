@@ -106,10 +106,8 @@ typedef struct {
 } rtcDataChannelInit;
 
 typedef void(RTC_API *rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
-typedef void(RTC_API *rtcDescriptionCallbackFunc)(int pc, const char *sdp, const char *type,
-                                                  void *ptr);
-typedef void(RTC_API *rtcCandidateCallbackFunc)(int pc, const char *cand, const char *mid,
-                                                void *ptr);
+typedef void(RTC_API *rtcDescriptionCallbackFunc)(int pc, const char *sdp, const char *type, void *ptr);
+typedef void(RTC_API *rtcCandidateCallbackFunc)(int pc, const char *cand, const char *mid, void *ptr);
 typedef void(RTC_API *rtcStateChangeCallbackFunc)(int pc, rtcState state, void *ptr);
 typedef void(RTC_API *rtcGatheringStateCallbackFunc)(int pc, rtcGatheringState state, void *ptr);
 typedef void(RTC_API *rtcSignalingStateCallbackFunc)(int pc, rtcSignalingState state, void *ptr);
