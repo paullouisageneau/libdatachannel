@@ -156,11 +156,11 @@ void test_connectivity() {
 		cout << "Remote address 2: " << *addr << endl;
 
 	Candidate local, remote;
-	if(pc1->getSelectedCandidatePair(&local, &remote)) {
+	if (pc1->getSelectedCandidatePair(&local, &remote)) {
 		cout << "Local candidate 1:  " << local << endl;
 		cout << "Remote candidate 1: " << remote << endl;
 	}
-	if(pc2->getSelectedCandidatePair(&local, &remote)) {
+	if (pc2->getSelectedCandidatePair(&local, &remote)) {
 		cout << "Local candidate 2:  " << local << endl;
 		cout << "Remote candidate 2: " << remote << endl;
 	}
@@ -207,6 +207,34 @@ void test_connectivity() {
 	    (!(asecond2 = std::atomic_load(&second2)) || !asecond2->isOpen() || !second1->isOpen()) &&
 	    attempts--)
 		this_thread::sleep_for(1s);
+
+	if (!asecond2 || !asecond2->isOpen() || !second1->isOpen())
+		throw runtime_error("Second DataChannel is not open");
+
+	// Try to open a negociated channel
+	auto negociated1 = pc1->createDataChannel("negociated", {.negociated = true, .id = 42});
+	auto negociated2 = pc2->createDataChannel("negoctated", {.negociated = true, .id = 42});
+
+	if(!negociated1->isOpen() || !negociated2->isOpen())
+		throw runtime_error("Negociated DataChannel is not open");
+
+	std::atomic<bool> received = false;
+	negociated2->onMessage([&received](const variant<binary, string> &message) {
+		if (holds_alternative<string>(message)) {
+			cout << "Second Message 2: " << get<string>(message) << endl;
+			received = true;
+		}
+	});
+
+	negociated1->send("Hello from negociated channel");
+
+	// Wait a bit
+	attempts = 5;
+	while (!received && attempts--)
+		this_thread::sleep_for(1s);
+
+	if (!received)
+		throw runtime_error("Negociated DataChannel failed");
 
 	// Delay close of peer 2 to check closing works properly
 	pc1->close();
