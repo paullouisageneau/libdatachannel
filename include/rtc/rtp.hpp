@@ -21,7 +21,11 @@
 #define WEBRTC_SERVER_RTP_HPP
 
 #include <cmath>
-#include <netinet/in.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#else
+#include <arpa/inet.h>
+#endif
 #include <rtc/log.hpp>
 
 #ifndef htonll
