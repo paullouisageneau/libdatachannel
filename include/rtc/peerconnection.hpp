@@ -50,6 +50,13 @@ class SctpTransport;
 using certificate_ptr = std::shared_ptr<Certificate>;
 using future_certificate_ptr = std::shared_future<certificate_ptr>;
 
+struct DataChannelInit {
+	Reliability reliability = {};
+	bool negotiated = false;
+	std::optional<uint16_t> id = nullopt;
+	string protocol = "";
+};
+
 class PeerConnection final : public std::enable_shared_from_this<PeerConnection> {
 public:
 	enum class State : int {
@@ -98,12 +105,10 @@ public:
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
 
-	std::shared_ptr<DataChannel> addDataChannel(string label, string protocol = "",
-	                                            Reliability reliability = {});
+	std::shared_ptr<DataChannel> addDataChannel(string label, DataChannelInit init = {});
 
 	// Equivalent to calling addDataChannel() and setLocalDescription()
-	std::shared_ptr<DataChannel> createDataChannel(string label, string protocol = "",
-	                                               Reliability reliability = {});
+	std::shared_ptr<DataChannel> createDataChannel(string label, DataChannelInit init = {});
 
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
 	void onLocalDescription(std::function<void(Description description)> callback);
@@ -135,7 +140,7 @@ private:
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
 
 	std::shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, string label,
-	                                                string protocol, Reliability reliability);
+	                                                DataChannelInit init);
 	std::shared_ptr<DataChannel> findDataChannel(uint16_t stream);
 	void iterateDataChannels(std::function<void(std::shared_ptr<DataChannel> channel)> func);
 	void openDataChannels();
@@ -173,7 +178,7 @@ private:
 	std::shared_ptr<DtlsTransport> mDtlsTransport;
 	std::shared_ptr<SctpTransport> mSctpTransport;
 
-	std::unordered_map<unsigned int, std::weak_ptr<DataChannel>> mDataChannels; // by stream ID
+	std::unordered_map<uint16_t, std::weak_ptr<DataChannel>> mDataChannels;     // by stream ID
 	std::unordered_map<string, std::weak_ptr<Track>> mTracks;                   // by mid
 	std::shared_mutex mDataChannelsMutex, mTracksMutex;
 

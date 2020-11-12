@@ -97,20 +97,28 @@ typedef struct {
 	unsigned int maxRetransmits;    // ignored if reliable
 } rtcReliability;
 
-typedef void (RTC_API *rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
-typedef void (RTC_API *rtcDescriptionCallbackFunc)(int pc, const char *sdp, const char *type, void *ptr);
-typedef void (RTC_API *rtcCandidateCallbackFunc)(int pc, const char *cand, const char *mid, void *ptr);
-typedef void (RTC_API *rtcStateChangeCallbackFunc)(int pc, rtcState state, void *ptr);
-typedef void (RTC_API *rtcGatheringStateCallbackFunc)(int pc, rtcGatheringState state, void *ptr);
-typedef void (RTC_API *rtcSignalingStateCallbackFunc)(int pc, rtcSignalingState state, void *ptr);
-typedef void (RTC_API *rtcDataChannelCallbackFunc)(int pc, int dc, void *ptr);
-typedef void (RTC_API *rtcTrackCallbackFunc)(int pc, int tr, void *ptr);
-typedef void (RTC_API *rtcOpenCallbackFunc)(int id, void *ptr);
-typedef void (RTC_API *rtcClosedCallbackFunc)(int id, void *ptr);
-typedef void (RTC_API *rtcErrorCallbackFunc)(int id, const char *error, void *ptr);
-typedef void (RTC_API *rtcMessageCallbackFunc)(int id, const char *message, int size, void *ptr);
-typedef void (RTC_API *rtcBufferedAmountLowCallbackFunc)(int id, void *ptr);
-typedef void (RTC_API *rtcAvailableCallbackFunc)(int id, void *ptr);
+typedef struct {
+	rtcReliability reliability;
+	const char *protocol; // empty string if NULL
+	bool negotiated;
+	bool manualId;
+	uint16_t id; // ignored if manualId is false
+} rtcDataChannelInit;
+
+typedef void(RTC_API *rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
+typedef void(RTC_API *rtcDescriptionCallbackFunc)(int pc, const char *sdp, const char *type, void *ptr);
+typedef void(RTC_API *rtcCandidateCallbackFunc)(int pc, const char *cand, const char *mid, void *ptr);
+typedef void(RTC_API *rtcStateChangeCallbackFunc)(int pc, rtcState state, void *ptr);
+typedef void(RTC_API *rtcGatheringStateCallbackFunc)(int pc, rtcGatheringState state, void *ptr);
+typedef void(RTC_API *rtcSignalingStateCallbackFunc)(int pc, rtcSignalingState state, void *ptr);
+typedef void(RTC_API *rtcDataChannelCallbackFunc)(int pc, int dc, void *ptr);
+typedef void(RTC_API *rtcTrackCallbackFunc)(int pc, int tr, void *ptr);
+typedef void(RTC_API *rtcOpenCallbackFunc)(int id, void *ptr);
+typedef void(RTC_API *rtcClosedCallbackFunc)(int id, void *ptr);
+typedef void(RTC_API *rtcErrorCallbackFunc)(int id, const char *error, void *ptr);
+typedef void(RTC_API *rtcMessageCallbackFunc)(int id, const char *message, int size, void *ptr);
+typedef void(RTC_API *rtcBufferedAmountLowCallbackFunc)(int id, void *ptr);
+typedef void(RTC_API *rtcAvailableCallbackFunc)(int id, void *ptr);
 
 // Log
 // NULL cb on the first call will log to stdout
@@ -139,17 +147,18 @@ RTC_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetLocalAddress(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 
-RTC_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote, int remoteSize);
+RTC_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote,
+                                           int remoteSize);
 
 // DataChannel
 RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
 RTC_EXPORT int rtcAddDataChannel(int pc, const char *label); // returns dc id
-RTC_EXPORT int rtcAddDataChannelExt(int pc, const char *label, const char *protocol,
-                                    const rtcReliability *reliability); // returns dc id
+RTC_EXPORT int rtcAddDataChannelExt(int pc, const char *label,
+                                    const rtcDataChannelInit *init); // returns dc id
 // Equivalent to calling rtcAddDataChannel() and rtcSetLocalDescription()
 RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
-RTC_EXPORT int rtcCreateDataChannelExt(int pc, const char *label, const char *protocol,
-                                       const rtcReliability *reliability); // returns dc id
+RTC_EXPORT int rtcCreateDataChannelExt(int pc, const char *label,
+                                       const rtcDataChannelInit *init); // returns dc id
 RTC_EXPORT int rtcDeleteDataChannel(int dc);
 
 RTC_EXPORT int rtcGetDataChannelLabel(int dc, char *buffer, int size);
