@@ -738,7 +738,7 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role rol
 	if (init.id) {
 		stream = *init.id;
 		if (stream == 65535)
-			throw std::runtime_error("Invalid DataChannel id");
+			throw std::invalid_argument("Invalid DataChannel id");
 	} else {
 		// The active side must use streams with even identifiers, whereas the passive side must use
 		// streams with odd identifiers.
