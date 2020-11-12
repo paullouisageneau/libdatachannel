@@ -751,9 +751,9 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role rol
 			stream += 2;
 		}
 	}
-	// If the DataChannel is user-negociated, do not negociate it here
+	// If the DataChannel is user-negotiated, do not negociate it here
 	auto channel =
-	    init.negociated
+	    init.negotiated
 	        ? std::make_shared<DataChannel>(shared_from_this(), stream, std::move(label),
 	                                        std::move(init.protocol), std::move(init.reliability))
 	        : std::make_shared<NegociatedDataChannel>(shared_from_this(), stream, std::move(label),

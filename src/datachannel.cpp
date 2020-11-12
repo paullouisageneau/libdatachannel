@@ -170,7 +170,7 @@ void DataChannel::open(shared_ptr<SctpTransport> transport) {
 }
 
 void DataChannel::processOpenMessage(message_ptr) {
-	PLOG_WARNING << "Received an open message for a user-negociated DataChannel, ignoring";
+	PLOG_WARNING << "Received an open message for a user-negotiated DataChannel, ignoring";
 }
 
 bool DataChannel::outgoing(message_ptr message) {

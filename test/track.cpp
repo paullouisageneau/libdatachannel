@@ -133,7 +133,7 @@ void test_track() {
 		this_thread::sleep_for(1s);
 
 	if (!at2 || !at2->isOpen() || !t1->isOpen())
-		throw runtime_error("Renegociated track is not open");
+		throw runtime_error("Renegotiated track is not open");
 
 	// TODO: Test sending RTP packets in track
 

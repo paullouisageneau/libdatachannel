@@ -211,25 +211,25 @@ void test_connectivity() {
 	if (!asecond2 || !asecond2->isOpen() || !second1->isOpen())
 		throw runtime_error("Second DataChannel is not open");
 
-	// Try to open a negociated channel
+	// Try to open a negotiated channel
 	DataChannelInit init;
-	init.negociated = true;
+	init.negotiated = true;
 	init.id = 42;
-	auto negociated1 = pc1->createDataChannel("negociated", init);
-	auto negociated2 = pc2->createDataChannel("negoctated", init);
+	auto negotiated1 = pc1->createDataChannel("negotiated", init);
+	auto negotiated2 = pc2->createDataChannel("negoctated", init);
 
-	if (!negociated1->isOpen() || !negociated2->isOpen())
+	if (!negotiated1->isOpen() || !negotiated2->isOpen())
 		throw runtime_error("Negociated DataChannel is not open");
 
 	std::atomic<bool> received = false;
-	negociated2->onMessage([&received](const variant<binary, string> &message) {
+	negotiated2->onMessage([&received](const variant<binary, string> &message) {
 		if (holds_alternative<string>(message)) {
 			cout << "Second Message 2: " << get<string>(message) << endl;
 			received = true;
 		}
 	});
 
-	negociated1->send("Hello from negociated channel");
+	negotiated1->send("Hello from negotiated channel");
 
 	// Wait a bit
 	attempts = 5;

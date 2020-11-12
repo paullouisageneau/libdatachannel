@@ -326,7 +326,7 @@ int rtcAddDataChannelExt(int pc, const char *label, const rtcDataChannelInit *in
 				dci.reliability.type = Reliability::Type::Reliable;
 			}
 
-			dci.negociated = init->negociated;
+			dci.negotiated = init->negotiated;
 			dci.id = init->manualId ? std::make_optional(init->id) : nullopt;
 			dci.protocol = init->protocol ? init->protocol : "";
 		}

@@ -100,7 +100,7 @@ typedef struct {
 typedef struct {
 	rtcReliability reliability;
 	const char *protocol; // empty string if NULL
-	bool negociated;
+	bool negotiated;
 	bool manualId;
 	uint16_t id; // ignored if manualId is false
 } rtcDataChannelInit;
