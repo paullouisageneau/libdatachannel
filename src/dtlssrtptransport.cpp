@@ -109,15 +109,31 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 		if (srtp_err_status_t err = srtp_protect_rtcp(mSrtpOut, message->data(), &size)) {
 			if (err == srtp_err_status_replay_fail)
 				throw std::runtime_error("SRTCP packet is a replay");
-			else
-				throw std::runtime_error("SRTCP protect error, status=" +
-				                         to_string(static_cast<int>(err)));
+			else if (err == srtp_err_status_no_ctx) {
+			    auto ssrc = ((RTCP_SR*) message->data())->senderSSRC();
+			    PLOG_INFO << "Adding SSRC to SRTCP: " << ssrc;
+			    addSSRC(ssrc);
+                if ((err = srtp_protect_rtcp(mSrtpOut, message->data(), &size)))
+                    throw std::runtime_error("SRTCP protect error, status=" +
+                                             to_string(static_cast<int>(err)));
+            }else {
+		throw std::runtime_error("SRTCP protect error, status=" +
+					 to_string(static_cast<int>(err)));
+	    }
 		}
 		PLOG_VERBOSE << "Protected SRTCP packet, size=" << size;
 	} else {
 		if (srtp_err_status_t err = srtp_protect(mSrtpOut, message->data(), &size)) {
 			if (err == srtp_err_status_replay_fail)
-				throw std::runtime_error("SRTP packet is a replay");
+				throw std::runtime_error("Outgoing SRTP packet is a replay");
+            else if (err == srtp_err_status_no_ctx) {
+                auto ssrc = ((RTP*) message->data())->ssrc();
+                PLOG_INFO << "Adding SSRC to RTP: " << ssrc;
+                addSSRC(ssrc);
+                if ((err = srtp_protect_rtcp(mSrtpOut, message->data(), &size)))
+                    throw std::runtime_error("SRTCP protect error, status=" +
+                                             to_string(static_cast<int>(err)));
+            }
 			else
 				throw std::runtime_error("SRTP protect error, status=" +
 				                         to_string(static_cast<int>(err)));
@@ -127,7 +143,6 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 
 	message->resize(size);
 	return outgoing(message);
-//	return DtlsTransport::send(message);
 }
 
 void DtlsSrtpTransport::incoming(message_ptr message) {
@@ -174,13 +189,24 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 					PLOG_WARNING << "Incoming SRTCP packet is a replay";
 				else if (err == srtp_err_status_auth_fail)
 					PLOG_WARNING << "Incoming SRTCP packet failed authentication check";
-				else
-					PLOG_WARNING << "SRTCP unprotect error, status=" << err;
-				return;
+                else if (err == srtp_err_status_no_ctx) {
+                    auto ssrc = ((RTCP_SR*) message->data())->senderSSRC();
+                    PLOG_INFO << "Adding SSRC to RTCP: " << ssrc;
+                    addSSRC(ssrc);
+                    if ((err = srtp_unprotect_rtcp(mSrtpIn, message->data(), &size)))
+                        throw std::runtime_error("SRTCP unprotect error, status=" +
+                                                 to_string(static_cast<int>(err)));
+                }
+				else {
+                    PLOG_WARNING << "SRTCP unprotect error, status=" << err << " SSRC="
+                                 << ((RTCP_SR *) message->data())->senderSSRC();
+                }
+                return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTCP packet, size=" << size;
 			message->type = Message::Type::Control;
-			message->stream = to_integer<uint8_t>(*(message->begin() + 1)); // Payload Type
+            auto rtp = (RTCP_SR*) message->data();
+			message->stream = rtp->senderSSRC();
 		} else {
 			PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
 			if (srtp_err_status_t err = srtp_unprotect(mSrtpIn, message->data(), &size)) {
@@ -188,13 +214,22 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 					PLOG_WARNING << "Incoming SRTP packet is a replay";
 				else if (err == srtp_err_status_auth_fail)
 					PLOG_WARNING << "Incoming SRTP packet failed authentication check";
+                else if (err == srtp_err_status_no_ctx) {
+                    auto ssrc = ((RTP*) message->data())->ssrc();
+                    PLOG_INFO << "Adding SSRC to RTP: " << ssrc;
+                    addSSRC(ssrc);
+                    if ((err = srtp_unprotect(mSrtpIn, message->data(), &size)))
+                        throw std::runtime_error("SRTCP unprotect error, status=" +
+                                                 to_string(static_cast<int>(err)));
+                }
 				else
-					PLOG_WARNING << "SRTP unprotect error, status=" << err;
+					PLOG_WARNING << "SRTP unprotect error, status=" << err << " SSRC=" << ((RTP*)message->data())->ssrc();
 				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
 			message->type = Message::Type::Binary;
-			message->stream = value2; // Payload Type
+			auto rtp = (RTP*) message->data();
+			message->stream = rtp->ssrc();
 		}
 
 		message->resize(size);
@@ -208,6 +243,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 void DtlsSrtpTransport::postHandshake() {
 	if (mInitDone)
 		return;
+
+	static_assert(SRTP_AES_ICM_128_KEY_LEN_WSALT == SRTP_AES_128_KEY_LEN + SRTP_SALT_LEN);
 
 	const size_t materialLen = SRTP_AES_ICM_128_KEY_LEN_WSALT * 2;
 	unsigned char material[materialLen];
@@ -257,40 +294,60 @@ void DtlsSrtpTransport::postHandshake() {
 	serverSalt = clientSalt + SRTP_SALT_LEN;
 #endif
 
-	unsigned char clientSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
-	std::memcpy(clientSessionKey, clientKey, SRTP_AES_128_KEY_LEN);
-	std::memcpy(clientSessionKey + SRTP_AES_128_KEY_LEN, clientSalt, SRTP_SALT_LEN);
+	std::memcpy(mClientSessionKey, clientKey, SRTP_AES_128_KEY_LEN);
+	std::memcpy(mClientSessionKey + SRTP_AES_128_KEY_LEN, clientSalt, SRTP_SALT_LEN);
 
-	unsigned char serverSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
-	std::memcpy(serverSessionKey, serverKey, SRTP_AES_128_KEY_LEN);
-	std::memcpy(serverSessionKey + SRTP_AES_128_KEY_LEN, serverSalt, SRTP_SALT_LEN);
+	std::memcpy(mServerSessionKey, serverKey, SRTP_AES_128_KEY_LEN);
+	std::memcpy(mServerSessionKey + SRTP_AES_128_KEY_LEN, serverSalt, SRTP_SALT_LEN);
 
-	srtp_policy_t inbound = {};
-	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtp);
-	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtcp);
-	inbound.ssrc.type = ssrc_any_inbound;
-	inbound.ssrc.value = 0;
-	inbound.key = mIsClient ? serverSessionKey : clientSessionKey;
-	inbound.next = nullptr;
+	// Add SSRC=1 as an inbound because that is what Chrome does.
+    srtp_policy_t inbound = {};
+    srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtp);
+    srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtcp);
+    inbound.ssrc.type = ssrc_specific;
+    inbound.ssrc.value = 1;
+    inbound.key = mIsClient ? mServerSessionKey : mClientSessionKey;
+    inbound.next = nullptr;
 
-	if (srtp_err_status_t err = srtp_add_stream(mSrtpIn, &inbound))
-		throw std::runtime_error("SRTP add inbound stream failed, status=" +
-		                         to_string(static_cast<int>(err)));
-
-	srtp_policy_t outbound = {};
-	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&outbound.rtp);
-	srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&outbound.rtcp);
-	outbound.ssrc.type = ssrc_any_outbound;
-	outbound.ssrc.value = 0;
-	outbound.key = mIsClient ? clientSessionKey : serverSessionKey;
-	outbound.next = nullptr;
-
-	if (srtp_err_status_t err = srtp_add_stream(mSrtpOut, &outbound))
-		throw std::runtime_error("SRTP add outbound stream failed, status=" +
-		                         to_string(static_cast<int>(err)));
+    if (srtp_err_status_t err = srtp_add_stream(mSrtpIn, &inbound)) {
+        throw std::runtime_error("SRTP add inbound stream failed, status=" +
+                                 to_string(static_cast<int>(err)));
+    }
 
 	mInitDone = true;
 }
+
+void DtlsSrtpTransport::addSSRC(uint32_t ssrc) {
+	if (!mInitDone)
+		throw std::logic_error("Attempted to add SSRC before SRTP keying material is derived");
+
+    srtp_policy_t inbound = {};
+    srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtp);
+    srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&inbound.rtcp);
+    inbound.ssrc.type = ssrc_specific;
+    inbound.ssrc.value = ssrc;
+    inbound.key = mIsClient ? mServerSessionKey : mClientSessionKey;
+    inbound.next = nullptr;
+    inbound.allow_repeat_tx = true;
+
+    if (srtp_err_status_t err = srtp_add_stream(mSrtpIn, &inbound))
+        throw std::runtime_error("SRTP add inbound stream failed, status=" +
+                                 to_string(static_cast<int>(err)));
+
+    srtp_policy_t outbound = {};
+    srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&outbound.rtp);
+    srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&outbound.rtcp);
+    outbound.ssrc.type = ssrc_specific;
+    outbound.ssrc.value = ssrc;
+    outbound.key = mIsClient ? mClientSessionKey : mServerSessionKey;
+    outbound.next = nullptr;
+    outbound.allow_repeat_tx = true;
+
+    if (srtp_err_status_t err = srtp_add_stream(mSrtpOut, &outbound))
+        throw std::runtime_error("SRTP add outbound stream failed, status=" +
+                                 to_string(static_cast<int>(err)));
+}
+
 
 } // namespace rtc
 

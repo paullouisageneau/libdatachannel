@@ -24,7 +24,12 @@
 
 #if RTC_ENABLE_MEDIA
 
+#ifdef RTC_SRTP_FROM_SOURCE
+#include "srtp.h"
+#else
 #include <srtp2/srtp.h>
+#endif
+#include <atomic>
 
 namespace rtc {
 
@@ -39,6 +44,7 @@ public:
 	~DtlsSrtpTransport();
 
 	bool sendMedia(message_ptr message);
+	void addSSRC(uint32_t ssrc);
 
 private:
 	void incoming(message_ptr message) override;
@@ -47,7 +53,10 @@ private:
 	message_callback mSrtpRecvCallback;
 
 	srtp_t mSrtpIn, mSrtpOut;
-	bool mInitDone = false;
+
+	std::atomic<bool> mInitDone = false;
+	unsigned char mClientSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
+	unsigned char mServerSessionKey[SRTP_AES_ICM_128_KEY_LEN_WSALT];
 };
 
 } // namespace rtc

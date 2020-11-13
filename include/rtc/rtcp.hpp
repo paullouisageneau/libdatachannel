@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Staz M
+ * Copyright (c) 2020 Staz Modrzynski
  * Copyright (c) 2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
@@ -20,35 +20,69 @@
 #ifndef RTC_RTCP_H
 #define RTC_RTCP_H
 
+#include <utility>
+
 #include "include.hpp"
 #include "log.hpp"
 #include "message.hpp"
+#include "rtp.hpp"
 
 namespace rtc {
 
-typedef uint32_t SSRC;
-
 class RtcpHandler {
+protected:
+    /**
+     * Use this callback when trying to send custom data (such as RTCP) to the client.
+     */
+    synchronized_callback<rtc::message_ptr> outgoingCallback;
 public:
-	virtual void onOutgoing(std::function<void(rtc::message_ptr)> cb) = 0;
-	virtual std::optional<rtc::message_ptr> incoming(rtc::message_ptr ptr) = 0;
+    /**
+     * Called when there is traffic coming from the peer
+     * @param ptr
+     * @return
+     */
+    virtual rtc::message_ptr incoming(rtc::message_ptr ptr) = 0;
+
+    /**
+     * Called when there is traffic that needs to be sent to the peer
+     * @param ptr
+     * @return
+     */
+    virtual rtc::message_ptr outgoing(rtc::message_ptr ptr) = 0;
+
+
+    /**
+     * This callback is used to send traffic back to the peer.
+     * This callback skips calling the track's methods.
+     * @param cb
+     */
+    void onOutgoing(const std::function<void(rtc::message_ptr)>& cb);
+
+    virtual bool requestKeyframe() {return false;}
+
 };
 
-// An RtcpSession can be plugged into a Track to handle the whole RTCP session
-class RtcpSession : public RtcpHandler {
-public:
-	void onOutgoing(std::function<void(rtc::message_ptr)> cb) override;
+class Track;
 
-	std::optional<rtc::message_ptr> incoming(rtc::message_ptr ptr) override;
+// An RtcpSession can be plugged into a Track to handle the whole RTCP session
+class RtcpReceivingSession : public RtcpHandler {
+public:
+
+    rtc::message_ptr incoming(rtc::message_ptr ptr) override;
+    rtc::message_ptr outgoing(rtc::message_ptr ptr) override;
+    bool send(rtc::message_ptr ptr);
+
 	void requestBitrate(unsigned int newBitrate);
 
-private:
+    bool requestKeyframe() override;
+
+protected:
 	void pushREMB(unsigned int bitrate);
 	void pushRR(unsigned int lastSR_delay);
-	void tx(message_ptr msg);
+
+    void pushPLI();
 
 	unsigned int mRequestedBitrate = 0;
-	synchronized_callback<rtc::message_ptr> mTxCallback;
 	SSRC mSsrc = 0;
 	uint32_t mGreatestSeqNo = 0;
 	uint64_t mSyncRTPTS, mSyncNTPTS;

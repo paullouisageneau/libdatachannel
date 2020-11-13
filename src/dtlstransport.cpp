@@ -177,8 +177,8 @@ void DtlsTransport::runRecvLoop() {
 	// Receive loop
 	try {
 		PLOG_INFO << "DTLS handshake finished";
+        postHandshake();
 		changeState(State::Connected);
-		postHandshake();
 
 		const size_t bufferSize = maxMtu;
 		char buffer[bufferSize];
@@ -453,8 +453,8 @@ void DtlsTransport::runRecvLoop() {
 						SSL_set_mtu(mSsl, maxMtu + 1);
 
 						PLOG_INFO << "DTLS handshake finished";
-						changeState(State::Connected);
 						postHandshake();
+						changeState(State::Connected);
 					}
 				} else {
 					ret = SSL_read(mSsl, buffer, bufferSize);

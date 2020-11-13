@@ -102,6 +102,7 @@ public:
 	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
 	void setLocalDescription(Description::Type type = Description::Type::Unspec);
+
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
 
@@ -138,6 +139,8 @@ private:
 	void forwardMessage(message_ptr message);
 	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
+    std::optional<std::string> getMidFromSSRC(SSRC ssrc);
+    std::optional<uint32_t> getMLineFromSSRC(SSRC ssrc);
 
 	std::shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, string label,
 	                                                DataChannelInit init);
@@ -149,6 +152,7 @@ private:
 
 	void incomingTrack(Description::Media description);
 	void openTracks();
+
 
 	void validateRemoteDescription(const Description &description);
 	void processLocalDescription(Description description);
@@ -180,9 +184,11 @@ private:
 
 	std::unordered_map<uint16_t, std::weak_ptr<DataChannel>> mDataChannels;     // by stream ID
 	std::unordered_map<string, std::weak_ptr<Track>> mTracks;                   // by mid
+	std::vector<std::weak_ptr<Track>> mTrackLines;                              // by SDP order
 	std::shared_mutex mDataChannelsMutex, mTracksMutex;
 
-	std::unordered_map<unsigned int, string> mMidFromPayloadType; // cache
+	std::unordered_map<uint32_t, string> mMidFromSssrc; // cache
+    std::unordered_map<uint32_t , unsigned int> mMLineFromSssrc; // cache
 
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;
