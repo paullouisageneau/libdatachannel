@@ -65,7 +65,7 @@ int main() {
 		const rtc::SSRC targetSSRC = 4;
 
 		track->onMessage(
-		    [&receivers](rtc::binary message) {
+		    [&receivers, targetSSRC](rtc::binary message) {
 			    // This is an RTP packet
 			    auto rtp = (rtc::RTP *)message.data();
 			    rtp->setSsrc(targetSSRC);

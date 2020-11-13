@@ -35,7 +35,11 @@ PROFITS, BUSINESS INTERRUPTION, LOSS OF PROGRAMS OR OTHER DATA ON
 YOUR INFORMATION HANDLING SYSTEM OR OTHERWISE, EVEN If WE ARE
 EXPRESSLY ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 */
+
+#ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <malloc.h>
@@ -55,7 +59,7 @@ enum ENUM_ORDERING { REQUIRE_ORDER, PERMUTE, RETURN_IN_ORDER };
 //
 //
 //		Ansi structures and functions follow
-// 
+//
 //
 
 static struct _getopt_data_a
@@ -515,7 +519,7 @@ int _getopt_long_only_r_a (int argc, char *const *argv, const char *options, con
 //
 //
 //	Unicode Structures and Functions
-// 
+//
 //
 
 static struct _getopt_data_w
@@ -690,7 +694,7 @@ int _getopt_internal_r_w (int argc, wchar_t *const *argv, const wchar_t *optstri
 			if (ambig_list != NULL && !exact)
 			{
 				if (print_errors)
-				{						
+				{
 					struct option_list first;
 					first.p = pfound;
 					first.next = ambig_list;
