@@ -153,22 +153,23 @@ Certificate::Certificate(string crt_pem, string key_pem) {
 	mFingerprint = make_fingerprint(mX509.get());
 }
 
-Certificate::Certificate(shared_ptr<X509> x509, shared_ptr<EVP_PKEY> pkey) :
-	mX509(std::move(x509)), mPKey(std::move(pkey))
-{
+Certificate::Certificate(shared_ptr<X509> x509, shared_ptr<EVP_PKEY> pkey)
+    : mX509(std::move(x509)), mPKey(std::move(pkey)) {
 	mFingerprint = make_fingerprint(mX509.get());
 }
 
 string Certificate::fingerprint() const { return mFingerprint; }
 
-std::tuple<X509 *, EVP_PKEY *> Certificate::credentials() const { return {mX509.get(), mPKey.get()}; }
+std::tuple<X509 *, EVP_PKEY *> Certificate::credentials() const {
+	return {mX509.get(), mPKey.get()};
+}
 
 string make_fingerprint(X509 *x509) {
 	const size_t size = 32;
-    unsigned char buffer[size];
-    unsigned int len = size;
-    if (!X509_digest(x509, EVP_sha256(), buffer, &len))
-      throw std::runtime_error("X509 fingerprint error");
+	unsigned char buffer[size];
+	unsigned int len = size;
+	if (!X509_digest(x509, EVP_sha256(), buffer, &len))
+		throw std::runtime_error("X509 fingerprint error");
 
 	std::ostringstream oss;
 	oss << std::hex << std::uppercase << std::setfill('0');
@@ -186,10 +187,10 @@ certificate_ptr make_certificate_impl(string commonName) {
 	shared_ptr<X509> x509(X509_new(), X509_free);
 	shared_ptr<EVP_PKEY> pkey(EVP_PKEY_new(), EVP_PKEY_free);
 
-    unique_ptr<RSA, decltype(&RSA_free)> rsa(RSA_new(), RSA_free);
+	unique_ptr<RSA, decltype(&RSA_free)> rsa(RSA_new(), RSA_free);
 	unique_ptr<BIGNUM, decltype(&BN_free)> exponent(BN_new(), BN_free);
 	unique_ptr<BIGNUM, decltype(&BN_free)> serial_number(BN_new(), BN_free);
-    unique_ptr<X509_NAME, decltype(&X509_NAME_free)> name(X509_NAME_new(), X509_NAME_free);
+	unique_ptr<X509_NAME, decltype(&X509_NAME_free)> name(X509_NAME_new(), X509_NAME_free);
 
 	if (!x509 || !pkey || !rsa || !exponent || !serial_number || !name)
 		throw std::runtime_error("Unable allocate structures for certificate generation");

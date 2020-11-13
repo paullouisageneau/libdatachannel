@@ -2,13 +2,14 @@ cmake_minimum_required(VERSION 3.7)
 
 add_executable(datachannel-sfu-media main.cpp)
 set_target_properties(datachannel-sfu-media PROPERTIES
-        CXX_STANDARD 17
-        OUTPUT_NAME sfu-media)
+		CXX_STANDARD 17
+		OUTPUT_NAME sfu-media)
 
 if(WIN32)
-    target_link_libraries(datachannel-sfu-media datachannel-static) # DLL exports only the C API
+	target_link_libraries(datachannel-sfu-media datachannel-static) # DLL exports only the C API
 else()
-    target_link_libraries(datachannel-sfu-media datachannel)
+	target_link_libraries(datachannel-sfu-media datachannel)
 endif()
 
 target_link_libraries(datachannel-sfu-media datachannel nlohmann_json)
+

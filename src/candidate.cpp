@@ -61,9 +61,8 @@ Candidate::Candidate(string candidate) : Candidate() {
 	mCandidate = std::move(candidate);
 }
 
-Candidate::Candidate(string candidate, string mid)
-    : Candidate(std::move(candidate)) {
-    if(!mid.empty())
+Candidate::Candidate(string candidate, string mid) : Candidate(std::move(candidate)) {
+	if (!mid.empty())
 		mMid.emplace(std::move(mid));
 }
 

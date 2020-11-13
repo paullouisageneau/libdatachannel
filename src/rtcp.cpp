@@ -19,9 +19,9 @@
 
 #include "rtcp.hpp"
 
+#include "track.hpp"
 #include <cmath>
 #include <utility>
-#include "track.hpp"
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -29,12 +29,9 @@
 #include <arpa/inet.h>
 #endif
 
-
 namespace rtc {
 
-rtc::message_ptr RtcpReceivingSession::outgoing(rtc::message_ptr ptr) {
-    return ptr;
-}
+rtc::message_ptr RtcpReceivingSession::outgoing(rtc::message_ptr ptr) { return ptr; }
 
 rtc::message_ptr RtcpReceivingSession::incoming(rtc::message_ptr ptr) {
 	if (ptr->type == rtc::Message::Type::Binary) {
@@ -98,7 +95,7 @@ void RtcpReceivingSession::pushREMB(unsigned int bitrate) {
 	remb->preparePacket(mSsrc, 1, bitrate);
 	remb->setSsrc(0, mSsrc);
 
-    send(msg);
+	send(msg);
 }
 
 void RtcpReceivingSession::pushRR(unsigned int lastSR_delay) {
@@ -109,13 +106,13 @@ void RtcpReceivingSession::pushRR(unsigned int lastSR_delay) {
 	                                     lastSR_delay);
 	rr->log();
 
-    send(msg);
+	send(msg);
 }
 
 bool RtcpReceivingSession::send(message_ptr msg) {
 	try {
-	    outgoingCallback(std::move(msg));
-	    return true;
+		outgoingCallback(std::move(msg));
+		return true;
 	} catch (const std::exception &e) {
 		LOG_DEBUG << "RTCP tx failed: " << e.what();
 	}
@@ -123,19 +120,18 @@ bool RtcpReceivingSession::send(message_ptr msg) {
 }
 
 bool RtcpReceivingSession::requestKeyframe() {
-    pushPLI();
-    return true; // TODO Make this false when it is impossible (i.e. Opus).
+	pushPLI();
+	return true; // TODO Make this false when it is impossible (i.e. Opus).
 }
 
 void RtcpReceivingSession::pushPLI() {
-    auto msg = rtc::make_message(rtc::RTCP_PLI::size(), rtc::Message::Type::Control);
-    auto *pli = (rtc::RTCP_PLI *) msg->data();
-    pli->preparePacket(mSsrc);
-    send(msg);
+	auto msg = rtc::make_message(rtc::RTCP_PLI::size(), rtc::Message::Type::Control);
+	auto *pli = (rtc::RTCP_PLI *)msg->data();
+	pli->preparePacket(mSsrc);
+	send(msg);
 }
 
-void RtcpHandler::onOutgoing(const std::function<void(rtc::message_ptr)>& cb) {
-    this->outgoingCallback = synchronized_callback<rtc::message_ptr>(cb);
+void RtcpHandler::onOutgoing(const std::function<void(rtc::message_ptr)> &cb) {
+	this->outgoingCallback = synchronized_callback<rtc::message_ptr>(cb);
 }
 } // namespace rtc
-

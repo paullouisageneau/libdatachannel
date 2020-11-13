@@ -36,8 +36,7 @@ public:
 	using state_callback = std::function<void(State state)>;
 
 	Transport(std::shared_ptr<Transport> lower = nullptr, state_callback callback = nullptr)
-	    : mLower(std::move(lower)), mStateChangeCallback(std::move(callback)) {
-	}
+	    : mLower(std::move(lower)), mStateChangeCallback(std::move(callback)) {}
 
 	virtual ~Transport() { stop(); }
 

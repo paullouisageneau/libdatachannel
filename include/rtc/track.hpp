@@ -80,10 +80,8 @@ private:
 	std::shared_ptr<RtcpHandler> mRtcpHandler;
 
 	friend class PeerConnection;
-
 };
 
 } // namespace rtc
 
 #endif
-

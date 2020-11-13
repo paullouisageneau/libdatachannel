@@ -177,7 +177,7 @@ void DtlsTransport::runRecvLoop() {
 	// Receive loop
 	try {
 		PLOG_INFO << "DTLS handshake finished";
-        postHandshake();
+		postHandshake();
 		changeState(State::Connected);
 
 		const size_t bufferSize = maxMtu;
@@ -575,4 +575,3 @@ long DtlsTransport::BioMethodCtrl(BIO * /*bio*/, int cmd, long /*num*/, void * /
 #endif
 
 } // namespace rtc
-

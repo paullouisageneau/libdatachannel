@@ -31,35 +31,34 @@ namespace rtc {
 
 class RtcpHandler {
 protected:
-    /**
-     * Use this callback when trying to send custom data (such as RTCP) to the client.
-     */
-    synchronized_callback<rtc::message_ptr> outgoingCallback;
+	/**
+	 * Use this callback when trying to send custom data (such as RTCP) to the client.
+	 */
+	synchronized_callback<rtc::message_ptr> outgoingCallback;
+
 public:
-    /**
-     * Called when there is traffic coming from the peer
-     * @param ptr
-     * @return
-     */
-    virtual rtc::message_ptr incoming(rtc::message_ptr ptr) = 0;
+	/**
+	 * Called when there is traffic coming from the peer
+	 * @param ptr
+	 * @return
+	 */
+	virtual rtc::message_ptr incoming(rtc::message_ptr ptr) = 0;
 
-    /**
-     * Called when there is traffic that needs to be sent to the peer
-     * @param ptr
-     * @return
-     */
-    virtual rtc::message_ptr outgoing(rtc::message_ptr ptr) = 0;
+	/**
+	 * Called when there is traffic that needs to be sent to the peer
+	 * @param ptr
+	 * @return
+	 */
+	virtual rtc::message_ptr outgoing(rtc::message_ptr ptr) = 0;
 
+	/**
+	 * This callback is used to send traffic back to the peer.
+	 * This callback skips calling the track's methods.
+	 * @param cb
+	 */
+	void onOutgoing(const std::function<void(rtc::message_ptr)> &cb);
 
-    /**
-     * This callback is used to send traffic back to the peer.
-     * This callback skips calling the track's methods.
-     * @param cb
-     */
-    void onOutgoing(const std::function<void(rtc::message_ptr)>& cb);
-
-    virtual bool requestKeyframe() {return false;}
-
+	virtual bool requestKeyframe() { return false; }
 };
 
 class Track;
@@ -67,20 +66,19 @@ class Track;
 // An RtcpSession can be plugged into a Track to handle the whole RTCP session
 class RtcpReceivingSession : public RtcpHandler {
 public:
-
-    rtc::message_ptr incoming(rtc::message_ptr ptr) override;
-    rtc::message_ptr outgoing(rtc::message_ptr ptr) override;
-    bool send(rtc::message_ptr ptr);
+	rtc::message_ptr incoming(rtc::message_ptr ptr) override;
+	rtc::message_ptr outgoing(rtc::message_ptr ptr) override;
+	bool send(rtc::message_ptr ptr);
 
 	void requestBitrate(unsigned int newBitrate);
 
-    bool requestKeyframe() override;
+	bool requestKeyframe() override;
 
 protected:
 	void pushREMB(unsigned int bitrate);
 	void pushRR(unsigned int lastSR_delay);
 
-    void pushPLI();
+	void pushPLI();
 
 	unsigned int mRequestedBitrate = 0;
 	SSRC mSsrc = 0;

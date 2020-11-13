@@ -28,7 +28,6 @@ using std::weak_ptr;
 
 namespace rtc {
 
-
 VerifiedTlsTransport::VerifiedTlsTransport(shared_ptr<TcpTransport> lower, string host,
                                            state_callback callback)
     : TlsTransport(std::move(lower), std::move(host), std::move(callback)) {
@@ -48,4 +47,3 @@ VerifiedTlsTransport::~VerifiedTlsTransport() {}
 } // namespace rtc
 
 #endif
-

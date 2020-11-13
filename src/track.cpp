@@ -32,9 +32,8 @@ string Track::mid() const { return mMediaDescription.mid(); }
 
 Description::Media Track::description() const { return mMediaDescription; }
 
-
 void Track::setDescription(Description::Media description) {
-	if(description.mid() != mMediaDescription.mid())
+	if (description.mid() != mMediaDescription.mid())
 		throw std::logic_error("Media description mid does not match track mid");
 
 	mMediaDescription = std::move(description);
@@ -80,9 +79,7 @@ size_t Track::maxMessageSize() const {
 	return 65535 - 12 - 4; // SRTP/UDP
 }
 
-size_t Track::availableAmount() const {
-	return mRecvQueue.amount();
-}
+size_t Track::availableAmount() const { return mRecvQueue.amount(); }
 
 #if RTC_ENABLE_MEDIA
 void Track::open(shared_ptr<DtlsSrtpTransport> transport) {
@@ -93,34 +90,34 @@ void Track::open(shared_ptr<DtlsSrtpTransport> transport) {
 
 bool Track::outgoing(message_ptr message) {
 
-    if (mRtcpHandler) {
-        message = mRtcpHandler->outgoing(message);
-        if (!message)
-            return false;
-    }
+	if (mRtcpHandler) {
+		message = mRtcpHandler->outgoing(message);
+		if (!message)
+			return false;
+	}
 
-    auto direction = mMediaDescription.direction();
-    if ((direction == Description::Direction::RecvOnly ||
-         direction == Description::Direction::Inactive) &&
-        message->type != Message::Control) {
-        PLOG_WARNING << "Track media direction does not allow transmission, dropping";
-        return false;
-    }
+	auto direction = mMediaDescription.direction();
+	if ((direction == Description::Direction::RecvOnly ||
+	     direction == Description::Direction::Inactive) &&
+	    message->type != Message::Control) {
+		PLOG_WARNING << "Track media direction does not allow transmission, dropping";
+		return false;
+	}
 
-    if (mIsClosed)
-        throw std::runtime_error("Track is closed");
+	if (mIsClosed)
+		throw std::runtime_error("Track is closed");
 
-    if (message->size() > maxMessageSize())
-        throw std::runtime_error("Message size exceeds limit");
+	if (message->size() > maxMessageSize())
+		throw std::runtime_error("Message size exceeds limit");
 
 #if RTC_ENABLE_MEDIA
-    auto transport = mDtlsSrtpTransport.lock();
-    if (!transport)
-        throw std::runtime_error("Track transport is not open");
+	auto transport = mDtlsSrtpTransport.lock();
+	if (!transport)
+		throw std::runtime_error("Track transport is not open");
 
-    return transport->sendMedia(message);
+	return transport->sendMedia(message);
 #else
-    PLOG_WARNING << "Ignoring track send (not compiled with SRTP support)";
+	PLOG_WARNING << "Ignoring track send (not compiled with SRTP support)";
 	return false;
 #endif
 }
@@ -130,10 +127,10 @@ void Track::incoming(message_ptr message) {
 		return;
 
 	if (mRtcpHandler) {
-        message = mRtcpHandler->incoming(message);
-        if (!message)
-            return ;
-    }
+		message = mRtcpHandler->incoming(message);
+		if (!message)
+			return;
+	}
 
 	auto direction = mMediaDescription.direction();
 	if ((direction == Description::Direction::SendOnly ||
@@ -154,30 +151,27 @@ void Track::incoming(message_ptr message) {
 void Track::setRtcpHandler(std::shared_ptr<RtcpHandler> handler) {
 	mRtcpHandler = std::move(handler);
 	if (mRtcpHandler) {
-		mRtcpHandler->onOutgoing([&]([[maybe_unused]] const rtc::message_ptr& message) {
-		#if RTC_ENABLE_MEDIA
+		mRtcpHandler->onOutgoing([&]([[maybe_unused]] const rtc::message_ptr &message) {
+#if RTC_ENABLE_MEDIA
 			auto transport = mDtlsSrtpTransport.lock();
 			if (!transport)
-			    throw std::runtime_error("Track transport is not open");
+				throw std::runtime_error("Track transport is not open");
 
 			return transport->sendMedia(message);
-		#else
+#else
 			PLOG_WARNING << "Ignoring track send (not compiled with SRTP support)";
-		    return false;
-		#endif
+			return false;
+#endif
 		});
 	}
 }
 
 bool Track::requestKeyframe() {
-    if (mRtcpHandler)
-        return mRtcpHandler->requestKeyframe();
-    return false;
+	if (mRtcpHandler)
+		return mRtcpHandler->requestKeyframe();
+	return false;
 }
 
-std::shared_ptr<RtcpHandler> Track::getRtcpHandler() {
-    return mRtcpHandler;
-}
+std::shared_ptr<RtcpHandler> Track::getRtcpHandler() { return mRtcpHandler; }
 
 } // namespace rtc
-

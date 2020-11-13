@@ -256,7 +256,8 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 		if (mConfig.disableTlsVerification)
 			transport = std::make_shared<TlsTransport>(lower, mHostname, stateChangeCallback);
 		else
-			transport = std::make_shared<VerifiedTlsTransport>(lower, mHostname, stateChangeCallback);
+			transport =
+			    std::make_shared<VerifiedTlsTransport>(lower, mHostname, stateChangeCallback);
 #endif
 
 		std::atomic_store(&mTlsTransport, transport);

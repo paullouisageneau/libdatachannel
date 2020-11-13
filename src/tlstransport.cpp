@@ -62,10 +62,10 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 		gnutls::check(gnutls_priority_set_direct(mSession, priorities, &err_pos),
 		              "Failed to set TLS priorities");
 
-       	PLOG_VERBOSE << "Server Name Indication: " << mHost;
+		PLOG_VERBOSE << "Server Name Indication: " << mHost;
 		gnutls_server_name_set(mSession, GNUTLS_NAME_DNS, mHost.data(), mHost.size());
 
- 		gnutls_session_set_ptr(mSession, this);
+		gnutls_session_set_ptr(mSession, this);
 		gnutls_transport_set_ptr(mSession, this);
 		gnutls_transport_set_push_function(mSession, WriteCallback);
 		gnutls_transport_set_pull_function(mSession, ReadCallback);
@@ -110,7 +110,7 @@ bool TlsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
-	if(message->size() == 0)
+	if (message->size() == 0)
 		return true;
 
 	ssize_t ret;
@@ -207,10 +207,10 @@ ssize_t TlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_
 	message_ptr &message = t->mIncomingMessage;
 	size_t &position = t->mIncomingMessagePosition;
 
-	if(message && position >= message->size())
+	if (message && position >= message->size())
 		message.reset();
 
-	if(!message) {
+	if (!message) {
 		position = 0;
 		while (auto next = t->mIncomingQueue.pop()) {
 			message = *next;
@@ -221,15 +221,14 @@ ssize_t TlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_
 		}
 	}
 
-	if(message) {
+	if (message) {
 		size_t available = message->size() - position;
 		ssize_t len = std::min(maxlen, available);
 		std::memcpy(data, message->data() + position, len);
-		position+= len;
+		position += len;
 		gnutls_transport_set_errno(t->mSession, 0);
 		return len;
-	}
-	else {
+	} else {
 		// Closed
 		gnutls_transport_set_errno(t->mSession, 0);
 		return 0;
