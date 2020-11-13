@@ -25,8 +25,8 @@
 #include <chrono>
 #include <iostream>
 #include <random>
-//#include <sstream>
-//#include <unordered_map>
+#include <sstream>
+#include <unordered_map>
 
 using std::shared_ptr;
 using std::size_t;
@@ -385,8 +385,8 @@ int Description::addAudio(string mid, Direction dir) {
 	return addMedia(Audio(std::move(mid), dir));
 }
 
-std::variant<Description::Media *, Description::Application *> Description::media(int index) {
-	if (index < 0 || index >= int(mEntries.size()))
+std::variant<Description::Media *, Description::Application *> Description::media(unsigned int index) {
+	if (index >= mEntries.size())
 		throw std::out_of_range("Media index out of range");
 
 	const auto &entry = mEntries[index];
@@ -404,8 +404,8 @@ std::variant<Description::Media *, Description::Application *> Description::medi
 }
 
 std::variant<const Description::Media *, const Description::Application *>
-Description::media(int index) const {
-	if (index < 0 || index >= int(mEntries.size()))
+Description::media(unsigned int index) const {
+	if (index >= mEntries.size())
 		throw std::out_of_range("Media index out of range");
 
 	const auto &entry = mEntries[index];
@@ -422,7 +422,7 @@ Description::media(int index) const {
 	}
 }
 
-size_t Description::mediaCount() const { return mEntries.size(); }
+unsigned int Description::mediaCount() const { return unsigned(mEntries.size()); }
 
 Description::Entry::Entry(const string &mline, string mid, Direction dir)
     : mMid(std::move(mid)), mDirection(dir) {
@@ -691,7 +691,7 @@ void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 		// https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
 		// TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
 		map.fmtps.emplace_back("profile-level-id=4de01f;packetization-mode=1;level-asymmetry-allowed=1");
-		
+
 		// Because certain Android devices don't like me, let us just negotiate some random
 		{
 			RTPMap map(std::to_string(payloadType+1) + ' ' + codec + "/90000");

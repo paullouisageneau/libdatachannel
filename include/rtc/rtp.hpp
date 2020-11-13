@@ -367,7 +367,7 @@ struct RTCP_REMB {
         }
 
         // "length" in packet is one less than the number of 32 bit words in the packet.
-        header.header.setLength((offsetof(RTCP_REMB, ssrc) / sizeof(uint32_t)) - 1 + numSSRC);
+        header.header.setLength(uint16_t((offsetof(RTCP_REMB, ssrc) / sizeof(uint32_t)) - 1 + numSSRC));
 
         this->bitrate = htonl(
                 (numSSRC << (32u - 8u)) | (exp << (32u - 8u - 6u)) | bitrate
@@ -377,7 +377,7 @@ struct RTCP_REMB {
     void setSsrc(int iterator, SSRC newSssrc){
         ssrc[iterator] = htonl(newSssrc);
     }
-    
+
     size_t static inline sizeWithSSRCs(int count) {
         return sizeof(RTCP_REMB) + (count-1)*sizeof(SSRC);
     }

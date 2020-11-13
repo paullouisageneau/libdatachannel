@@ -684,7 +684,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	// we have to do this monstrosity to distribute the report blocks
     std::optional<unsigned int> mediaLine;
     if (message->type == Message::Control) {
-        unsigned int offset = 0;
+        size_t offset = 0;
         std::vector<SSRC> ssrcsFound;
         bool hasFound = false;
 
@@ -1011,7 +1011,7 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 		throw std::invalid_argument("Remote description has no media line");
 
 	int activeMediaCount = 0;
-	for (size_t i = 0; i < description.mediaCount(); ++i)
+	for (unsigned int i = 0; i < description.mediaCount(); ++i)
 		std::visit(rtc::overloaded{[&](const Description::Application *) { ++activeMediaCount; },
 		                           [&](const Description::Media *media) {
 			                           if (media->direction() != Description::Direction::Inactive)
@@ -1034,7 +1034,7 @@ void PeerConnection::processLocalDescription(Description description) {
 
 	if (auto remote = remoteDescription()) {
 		// Reciprocate remote description
-		for (size_t i = 0; i < remote->mediaCount(); ++i)
+		for (unsigned int i = 0; i < remote->mediaCount(); ++i)
 			std::visit( // reciprocate each media
 			    rtc::overloaded{
 			        [&](Description::Application *remoteApp) {

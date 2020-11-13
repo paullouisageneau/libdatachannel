@@ -216,9 +216,9 @@ public:
 	int addVideo(string mid = "video", Direction dir = Direction::SendOnly);
 	int addAudio(string mid = "audio", Direction dir = Direction::SendOnly);
 
-	std::variant<Media *, Application *> media(int index);
-	std::variant<const Media *, const Application *> media(int index) const;
-	size_t mediaCount() const;
+	std::variant<Media *, Application *> media(unsigned int index);
+	std::variant<const Media *, const Application *> media(unsigned int index) const;
+	unsigned int mediaCount() const;
 
 	Application *application();
 
