@@ -152,10 +152,10 @@ RTC_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, c
 // DataChannel
 RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
 RTC_EXPORT int rtcAddDataChannel(int pc, const char *label); // returns dc id
-RTC_EXPORT int rtcAddDataChannelExt(int pc, const char *label, const rtcDataChannelInit *init); // returns dc id
+RTC_EXPORT int rtcAddDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init); // returns dc id
 // Equivalent to calling rtcAddDataChannel() and rtcSetLocalDescription()
 RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
-RTC_EXPORT int rtcCreateDataChannelExt(int pc, const char *label, const rtcDataChannelInit *init); // returns dc id
+RTC_EXPORT int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init); // returns dc id
 RTC_EXPORT int rtcDeleteDataChannel(int dc);
 
 RTC_EXPORT int rtcGetDataChannelStream(int dc);

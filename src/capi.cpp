@@ -305,10 +305,10 @@ int rtcDeletePeerConnection(int pc) {
 }
 
 int rtcAddDataChannel(int pc, const char *label) {
-	return rtcAddDataChannelExt(pc, label, nullptr);
+	return rtcAddDataChannelEx(pc, label, nullptr);
 }
 
-int rtcAddDataChannelExt(int pc, const char *label, const rtcDataChannelInit *init) {
+int rtcAddDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init) {
 	return WRAP({
 		DataChannelInit dci = {};
 		if (init) {
@@ -343,11 +343,11 @@ int rtcAddDataChannelExt(int pc, const char *label, const rtcDataChannelInit *in
 }
 
 int rtcCreateDataChannel(int pc, const char *label) {
-	return rtcCreateDataChannelExt(pc, label, nullptr);
+	return rtcCreateDataChannelEx(pc, label, nullptr);
 }
 
-int rtcCreateDataChannelExt(int pc, const char *label, const rtcDataChannelInit *init) {
-	int dc = rtcAddDataChannelExt(pc, label, init);
+int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init) {
+	int dc = rtcAddDataChannelEx(pc, label, init);
 	rtcSetLocalDescription(pc, NULL);
 	return dc;
 }
