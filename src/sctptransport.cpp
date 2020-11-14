@@ -232,7 +232,7 @@ void SctpTransport::close() {
 
 void SctpTransport::connect() {
 	if (!mSock)
-		return;
+		throw std::logic_error("Attempted SCTP connect with closed socket");
 
 	PLOG_DEBUG << "SCTP connecting";
 	changeState(State::Connecting);
