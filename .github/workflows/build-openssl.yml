@@ -52,6 +52,7 @@ jobs:
     - name: nmake
       run: |
         cd build
+        set CL=/MP
         nmake
     - name: test
       run: build/tests.exe
