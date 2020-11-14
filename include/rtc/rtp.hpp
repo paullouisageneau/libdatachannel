@@ -186,7 +186,7 @@ public:
 	}
 
 	inline void log() const {
-		PLOG_INFO << "RTCP header: "
+		PLOG_VERBOSE << "RTCP header: "
 		          << "version=" << unsigned(version()) << ", padding=" << padding()
 		          << ", reportCount=" << unsigned(reportCount())
 		          << ", payloadType=" << unsigned(payloadType()) << ", length=" << length();
@@ -477,7 +477,7 @@ public:
 
 	size_t normalizePacket(size_t totalSize, SSRC originalSSRC, uint8_t originalPayloadType) {
 		header.setSeqNumber(getOriginalSeqNo());
-		header.setSsrc(originalSSRC); // TODO Endianess
+		header.setSsrc(originalSSRC);
 		header.setPayloadType(originalPayloadType);
 		// TODO, the -12 is the size of the header (which is variable!)
 		memmove(header.getBody(), header.getBody() + sizeof(uint16_t),
@@ -487,5 +487,7 @@ public:
 };
 
 #pragma pack(pop)
-};     // namespace rtc
-#endif // WEBRTC_SERVER_RTP_HPP
+
+}; // namespace rtc
+
+#endif
