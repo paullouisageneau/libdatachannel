@@ -148,7 +148,7 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 
 	struct sctp_paddrparams spp = {};
 #if USE_PMTUD
-	// Enabled SCTP path MTU discovery
+	// Enable SCTP path MTU discovery
 	spp.spp_flags = SPP_PMTUD_ENABLE;
 #else
 	// Fall back to a safe MTU value.
@@ -305,7 +305,7 @@ void SctpTransport::incoming(message_ptr message) {
 	// to be sent on our side (i.e. the local INIT) before proceeding.
 	if (!mWrittenOnce) { // test the atomic boolean is not set first to prevent a lock contention
 		std::unique_lock lock(mWriteMutex);
-		mWrittenCondition.wait(lock, [&]() { return mWrittenOnce || state() != State::Connected; });
+		mWrittenCondition.wait(lock, [&]() { return mWrittenOnce.load(); });
 	}
 
 	if (!message) {
