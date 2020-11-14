@@ -17,16 +17,18 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef WEBRTC_SERVER_RTP_HPP
-#define WEBRTC_SERVER_RTP_HPP
+#ifndef RTC_RTP_HPP
+#define RTC_RTP_HPP
+
+#include <rtc/log.hpp>
 
 #include <cmath>
+
 #ifdef _WIN32
 #include <winsock2.h>
 #else
 #include <arpa/inet.h>
 #endif
-#include <rtc/log.hpp>
 
 #ifndef htonll
 #define htonll(x)                                                                                  \
@@ -37,6 +39,7 @@
 #endif
 
 namespace rtc {
+
 typedef uint32_t SSRC;
 
 #pragma pack(push, 1)
@@ -377,13 +380,9 @@ struct RTCP_PLI {
 
 struct RTCP_FIR_PART {
 	uint32_t ssrc;
-#if __BYTE_ORDER == __BIG_ENDIAN
-	uint32_t seqNo : 8;
-	uint32_t : 24;
-#elif __BYTE_ORDER == __LITTLE_ENDIAN
-	uint32_t : 24;
-	uint32_t seqNo : 8;
-#endif
+	uint8_t seqNo;
+	uint8_t dummy1;
+	uint16_t dummy2;
 };
 
 struct RTCP_FIR {
