@@ -139,8 +139,7 @@ private:
 	void forwardMessage(message_ptr message);
 	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
-	std::optional<std::string> getMidFromSSRC(SSRC ssrc);
-	std::optional<uint32_t> getMLineFromSSRC(SSRC ssrc);
+	std::optional<std::string> getMidFromSsrc(uint32_t ssrc);
 
 	std::shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, string label,
 	                                                DataChannelInit init);
@@ -186,8 +185,7 @@ private:
 	std::vector<std::weak_ptr<Track>> mTrackLines;                          // by SDP order
 	std::shared_mutex mDataChannelsMutex, mTracksMutex;
 
-	std::unordered_map<uint32_t, string> mMidFromSssrc;         // cache
-	std::unordered_map<uint32_t, unsigned int> mMLineFromSssrc; // cache
+	std::unordered_map<uint32_t, string> mMidFromSsrc; // cache
 
 	std::atomic<State> mState;
 	std::atomic<GatheringState> mGatheringState;
