@@ -58,8 +58,11 @@ public:
 	std::optional<message_variant> receive() override;
 	std::optional<message_variant> peek() override;
 
+	bool requestKeyframe();
+
 	// RTCP handler
 	void setRtcpHandler(std::shared_ptr<RtcpHandler> handler);
+	std::shared_ptr<RtcpHandler> getRtcpHandler();
 
 private:
 #if RTC_ENABLE_MEDIA
@@ -82,4 +85,3 @@ private:
 } // namespace rtc
 
 #endif
-

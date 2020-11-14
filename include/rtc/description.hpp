@@ -1,6 +1,6 @@
 /**
  * Copyright (c) 2019-2020 Paul-Louis Ageneau
- * Copyright (c) 2020 Staz M
+ * Copyright (c) 2020 Staz Modrzynski
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -77,6 +77,10 @@ public:
 
 		virtual void parseSdpLine(string_view line);
 
+		std::vector<string>::iterator beginAttributes();
+		std::vector<string>::iterator endAttributes();
+		std::vector<string>::iterator removeAttribute(std::vector<string>::iterator iterator);
+
 	protected:
 		Entry(const string &mline, string mid, Direction dir = Direction::Unknown);
 		virtual string generateSdpLines(string_view eol) const;
@@ -126,10 +130,11 @@ public:
 
 		void removeFormat(const string &fmt);
 
-		void addVideoCodec(int payloadType, const string &codec);
-		void addH264Codec(int payloadType);
-		void addVP8Codec(int payloadType);
-		void addVP9Codec(int payloadType);
+		void addSSRC(uint32_t ssrc, std::string name);
+		void addSSRC(uint32_t ssrc);
+		void replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, string name);
+		bool hasSSRC(uint32_t ssrc);
+		std::vector<uint32_t> getSSRCs();
 
 		void setBitrate(int bitrate);
 		int getBitrate() const;
@@ -138,16 +143,13 @@ public:
 
 		virtual void parseSdpLine(string_view line) override;
 
-	private:
-		virtual string generateSdpLines(string_view eol) const override;
-
-		int mBas = -1;
-
 		struct RTPMap {
 			RTPMap(string_view mline);
+			RTPMap() {}
 
 			void removeFB(const string &string);
 			void addFB(const string &string);
+			void addAttribute(std::string attr) { fmtps.emplace_back(attr); }
 
 			int pt;
 			string format;
@@ -156,22 +158,46 @@ public:
 
 			std::vector<string> rtcpFbs;
 			std::vector<string> fmtps;
+
+			static int parsePT(string_view view);
+			void setMLine(string_view view);
 		};
+
+		std::map<int, RTPMap>::iterator beginMaps();
+		std::map<int, RTPMap>::iterator endMaps();
+		std::map<int, RTPMap>::iterator removeMap(std::map<int, RTPMap>::iterator iterator);
+
+	private:
+		virtual string generateSdpLines(string_view eol) const override;
+
+		int mBas = -1;
 
 		Media::RTPMap &getFormat(int fmt);
 		Media::RTPMap &getFormat(const string &fmt);
 
 		std::map<int, RTPMap> mRtpMap;
+		std::vector<uint32_t> mSsrcs;
+
+	public:
+		void addRTPMap(const RTPMap &map);
 	};
 
 	class Audio : public Media {
 	public:
 		Audio(string mid = "audio", Direction dir = Direction::SendOnly);
+
+		void addAudioCodec(int payloadType, const string &codec);
+		void addOpusCodec(int payloadType);
 	};
 
 	class Video : public Media {
 	public:
 		Video(string mid = "video", Direction dir = Direction::SendOnly);
+
+		void addVideoCodec(int payloadType, const string &codec);
+		void addH264Codec(int payloadType);
+		void addVP8Codec(int payloadType);
+		void addVP9Codec(int payloadType);
 	};
 
 	bool hasApplication() const;
@@ -184,9 +210,9 @@ public:
 	int addVideo(string mid = "video", Direction dir = Direction::SendOnly);
 	int addAudio(string mid = "audio", Direction dir = Direction::SendOnly);
 
-	std::variant<Media *, Application *> media(int index);
-	std::variant<const Media *, const Application *> media(int index) const;
-	int mediaCount() const;
+	std::variant<Media *, Application *> media(unsigned int index);
+	std::variant<const Media *, const Application *> media(unsigned int index) const;
+	unsigned int mediaCount() const;
 
 	Application *application();
 

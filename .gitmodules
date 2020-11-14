@@ -10,3 +10,6 @@
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/nlohmann/json.git
+[submodule "deps/libsrtp"]
+	path = deps/libsrtp
+	url = https://github.com/cisco/libsrtp.git

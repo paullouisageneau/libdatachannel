@@ -27,4 +27,3 @@
 
 // C API
 #include "rtc.h"
-

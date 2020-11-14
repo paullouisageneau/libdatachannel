@@ -393,6 +393,7 @@ std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) 
 	if (!track) {
 		track = std::make_shared<Track>(std::move(description));
 		mTracks.emplace(std::make_pair(track->mid(), track));
+		mTrackLines.emplace_back(track);
 	}
 
 	// Renegotiation is needed for the new or updated track
@@ -677,53 +678,201 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	if (!message)
 		return;
 
-	if (message->type == Message::Type::Control) {
-		std::shared_lock lock(mTracksMutex); // read-only
-		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
-			if (auto track = it->second.lock())
-				return track->incoming(message);
+	// Browsers like to compound their packets with a random SSRC.
+	// we have to do this monstrosity to distribute the report blocks
+	std::optional<unsigned int> mediaLine;
+	if (message->type == Message::Control) {
+		size_t offset = 0;
+		std::vector<SSRC> ssrcsFound;
+		bool hasFound = false;
 
-		PLOG_WARNING << "No track available to receive control, dropping";
-		return;
-	}
-
-	unsigned int payloadType = message->stream;
-	std::optional<string> mid;
-	if (auto it = mMidFromPayloadType.find(payloadType); it != mMidFromPayloadType.end()) {
-		mid = it->second;
-	} else {
-		std::lock_guard lock(mLocalDescriptionMutex);
-		if (!mLocalDescription)
-			return;
-
-		for (int i = 0; i < mLocalDescription->mediaCount(); ++i) {
-			if (auto found = std::visit(
-			        rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
-				                        return std::nullopt;
-			                        },
-			                        [&](Description::Media *media) -> std::optional<string> {
-				                        return media->hasPayloadType(payloadType)
-				                                   ? std::make_optional(media->mid())
-				                                   : nullopt;
-			                        }},
-			        mLocalDescription->media(i))) {
-
-				mMidFromPayloadType.emplace(payloadType, *found);
-				mid = *found;
+		while ((sizeof(rtc::RTCP_HEADER) + offset) <= message->size()) {
+			auto header = (rtc::RTCP_HEADER *)(message->data() + offset);
+			if (header->lengthInBytes() > message->size() - offset) {
+				PLOG_WARNING << "Packet was truncated";
 				break;
 			}
+			offset += header->lengthInBytes();
+			if (header->payloadType() == 205 || header->payloadType() == 206) {
+				auto rtcpfb = (RTCP_FB_HEADER *)header;
+				auto ssrc = rtcpfb->getPacketSenderSSRC();
+				if (std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
+					mediaLine = getMLineFromSSRC(ssrc);
+					if (mediaLine.has_value()) {
+						hasFound = true;
+						std::shared_lock lock(mTracksMutex); // read-only
+						if (auto track = mTrackLines[*mediaLine].lock()) {
+							track->incoming(message);
+						}
+						ssrcsFound.emplace_back(ssrc);
+					}
+				}
+
+				ssrc = rtcpfb->getMediaSourceSSRC();
+				if (std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
+					mediaLine = getMLineFromSSRC(ssrc);
+					if (mediaLine.has_value()) {
+						hasFound = true;
+						std::shared_lock lock(mTracksMutex); // read-only
+						if (auto track = mTrackLines[*mediaLine].lock()) {
+							track->incoming(message);
+						}
+						ssrcsFound.emplace_back(ssrc);
+					}
+				}
+			} else if (header->payloadType() == 200 || header->payloadType() == 201) {
+				auto rtcpsr = (RTCP_SR *)header;
+				auto ssrc = rtcpsr->senderSSRC();
+				if (std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
+					mediaLine = getMLineFromSSRC(ssrc);
+					if (mediaLine.has_value()) {
+						hasFound = true;
+						std::shared_lock lock(mTracksMutex); // read-only
+						if (auto track = mTrackLines[*mediaLine].lock()) {
+							track->incoming(message);
+						}
+						ssrcsFound.emplace_back(ssrc);
+					}
+				}
+				for (int i = 0; i < rtcpsr->header.reportCount(); i++) {
+					auto block = rtcpsr->getReportBlock(i);
+					ssrc = block->getSSRC();
+					if (std::find(ssrcsFound.begin(), ssrcsFound.end(), ssrc) == ssrcsFound.end()) {
+						mediaLine = getMLineFromSSRC(ssrc);
+						if (mediaLine.has_value()) {
+							hasFound = true;
+							std::shared_lock lock(mTracksMutex); // read-only
+							if (auto track = mTrackLines[*mediaLine].lock()) {
+								track->incoming(message);
+							}
+							ssrcsFound.emplace_back(ssrc);
+						}
+					}
+				}
+			} else {
+				// PT=202 == SDES
+				// PT=207 == Extended Report
+				if (header->payloadType() != 202 && header->payloadType() != 207) {
+					PLOG_WARNING << "Unknown packet type: " << (int)header->version() << " "
+					             << header->payloadType() << "";
+				}
+			}
 		}
+
+		if (hasFound)
+			return;
 	}
 
-	if (!mid) {
-		PLOG_WARNING << "Track not found for payload type " << payloadType << ", dropping";
+	unsigned int ssrc = message->stream;
+	mediaLine = getMLineFromSSRC(ssrc);
+
+	if (!mediaLine) {
+		/* TODO
+		 *   So the problem is that when stop sending streams, we stop getting report blocks for
+		 * those streams Therefore when we get compound RTCP packets, they are empty, and we can't
+		 * forward them. Therefore, it is expected that we don't know where to forward packets. Is
+		 * this ideal? No! Do I know how to fix it? No!
+		 */
+		//	PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
 		return;
 	}
 
 	std::shared_lock lock(mTracksMutex); // read-only
-	if (auto it = mTracks.find(*mid); it != mTracks.end())
-		if (auto track = it->second.lock())
-			track->incoming(message);
+	if (auto track = mTrackLines[*mediaLine].lock()) {
+		track->incoming(message);
+	}
+}
+
+std::optional<unsigned int> PeerConnection::getMLineFromSSRC(SSRC ssrc) {
+	if (auto it = mMLineFromSssrc.find(ssrc); it != mMLineFromSssrc.end()) {
+		return it->second;
+	} else {
+		{
+			std::lock_guard lock(mRemoteDescriptionMutex);
+			if (!mRemoteDescription)
+				return nullopt;
+			for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
+				if (std::visit(
+				        rtc::overloaded{[&](Description::Application *) -> bool { return false; },
+				                        [&](Description::Media *media) -> bool {
+					                        return media->hasSSRC(ssrc);
+				                        }},
+				        mRemoteDescription->media(i))) {
+
+					mMLineFromSssrc.emplace(ssrc, i);
+					return i;
+				}
+			}
+		}
+		{
+			std::lock_guard lock(mLocalDescriptionMutex);
+			if (!mLocalDescription)
+				return nullopt;
+			for (unsigned int i = 0; i < mLocalDescription->mediaCount(); ++i) {
+				if (std::visit(
+				        rtc::overloaded{[&](Description::Application *) -> bool { return false; },
+				                        [&](Description::Media *media) -> bool {
+					                        return media->hasSSRC(ssrc);
+				                        }},
+				        mLocalDescription->media(i))) {
+
+					mMLineFromSssrc.emplace(ssrc, i);
+					return i;
+				}
+			}
+		}
+	}
+	return std::nullopt;
+}
+
+std::optional<std::string> PeerConnection::getMidFromSSRC(SSRC ssrc) {
+	if (auto it = mMidFromSssrc.find(ssrc); it != mMidFromSssrc.end()) {
+		return it->second;
+	} else {
+		{
+			std::lock_guard lock(mRemoteDescriptionMutex);
+			if (!mRemoteDescription)
+				return nullopt;
+			for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
+				if (auto found = std::visit(
+				        rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
+					                        return std::nullopt;
+				                        },
+				                        [&](Description::Media *media) -> std::optional<string> {
+					                        return media->hasSSRC(ssrc)
+					                                   ? std::make_optional(media->mid())
+					                                   : nullopt;
+				                        }},
+				        mRemoteDescription->media(i))) {
+
+					mMidFromSssrc.emplace(ssrc, *found);
+					return *found;
+				}
+			}
+		}
+		{
+			std::lock_guard lock(mLocalDescriptionMutex);
+			if (!mLocalDescription)
+				return nullopt;
+			for (unsigned int i = 0; i < mLocalDescription->mediaCount(); ++i) {
+				if (auto found = std::visit(
+				        rtc::overloaded{[&](Description::Application *) -> std::optional<string> {
+					                        return std::nullopt;
+				                        },
+				                        [&](Description::Media *media) -> std::optional<string> {
+					                        return media->hasSSRC(ssrc)
+					                                   ? std::make_optional(media->mid())
+					                                   : nullopt;
+				                        }},
+				        mLocalDescription->media(i))) {
+
+					mMidFromSssrc.emplace(ssrc, *found);
+					return *found;
+				}
+			}
+		}
+	}
+	return nullopt;
 }
 
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
@@ -825,7 +974,8 @@ void PeerConnection::incomingTrack(Description::Media description) {
 	if (mTracks.find(description.mid()) == mTracks.end()) {
 		auto track = std::make_shared<Track>(std::move(description));
 		mTracks.emplace(std::make_pair(track->mid(), track));
-		triggerTrack(std::move(track));
+		mTrackLines.emplace_back(track);
+		triggerTrack(track);
 	}
 }
 
@@ -856,7 +1006,7 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 		throw std::invalid_argument("Remote description has no media line");
 
 	int activeMediaCount = 0;
-	for (int i = 0; i < description.mediaCount(); ++i)
+	for (unsigned int i = 0; i < description.mediaCount(); ++i)
 		std::visit(rtc::overloaded{[&](const Description::Application *) { ++activeMediaCount; },
 		                           [&](const Description::Media *media) {
 			                           if (media->direction() != Description::Direction::Inactive)
@@ -876,9 +1026,10 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 }
 
 void PeerConnection::processLocalDescription(Description description) {
+
 	if (auto remote = remoteDescription()) {
 		// Reciprocate remote description
-		for (int i = 0; i < remote->mediaCount(); ++i)
+		for (unsigned int i = 0; i < remote->mediaCount(); ++i)
 			std::visit( // reciprocate each media
 			    rtc::overloaded{
 			        [&](Description::Application *remoteApp) {
@@ -970,12 +1121,13 @@ void PeerConnection::processLocalDescription(Description description) {
 		}
 
 		// Add media for local tracks
-		std::shared_lock lock(mTracksMutex);
-		for (auto it = mTracks.begin(); it != mTracks.end(); ++it) {
-			if (description.hasMid(it->first))
-				continue;
 
-			if (auto track = it->second.lock()) {
+		std::shared_lock lock(mTracksMutex);
+		for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it) {
+			if (auto track = it->lock()) {
+				if (description.hasMid(track->mid()))
+					continue;
+
 				auto media = track->description();
 #if !RTC_ENABLE_MEDIA
 				// No media support, mark as inactive

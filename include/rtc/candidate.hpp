@@ -72,4 +72,3 @@ std::ostream &operator<<(std::ostream &out, const rtc::Candidate::Type &type);
 std::ostream &operator<<(std::ostream &out, const rtc::Candidate::TransportType &transportType);
 
 #endif
-

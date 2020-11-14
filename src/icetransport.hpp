@@ -20,8 +20,8 @@
 #define RTC_ICE_TRANSPORT_H
 
 #include "candidate.hpp"
-#include "description.hpp"
 #include "configuration.hpp"
+#include "description.hpp"
 #include "include.hpp"
 #include "peerconnection.hpp"
 #include "transport.hpp"

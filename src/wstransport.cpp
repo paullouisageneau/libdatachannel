@@ -17,9 +17,9 @@
  */
 
 #include "wstransport.hpp"
+#include "base64.hpp"
 #include "tcptransport.hpp"
 #include "tlstransport.hpp"
-#include "base64.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 

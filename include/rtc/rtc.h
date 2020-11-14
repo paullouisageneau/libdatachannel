@@ -102,12 +102,14 @@ typedef struct {
 	const char *protocol; // empty string if NULL
 	bool negotiated;
 	bool manualStream;
-	uint16_t stream;      // numeric ID 0-65534, ignored if manualStream is false
+	uint16_t stream; // numeric ID 0-65534, ignored if manualStream is false
 } rtcDataChannelInit;
 
 typedef void(RTC_API *rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
-typedef void(RTC_API *rtcDescriptionCallbackFunc)(int pc, const char *sdp, const char *type, void *ptr);
-typedef void(RTC_API *rtcCandidateCallbackFunc)(int pc, const char *cand, const char *mid, void *ptr);
+typedef void(RTC_API *rtcDescriptionCallbackFunc)(int pc, const char *sdp, const char *type,
+                                                  void *ptr);
+typedef void(RTC_API *rtcCandidateCallbackFunc)(int pc, const char *cand, const char *mid,
+                                                void *ptr);
 typedef void(RTC_API *rtcStateChangeCallbackFunc)(int pc, rtcState state, void *ptr);
 typedef void(RTC_API *rtcGatheringStateCallbackFunc)(int pc, rtcGatheringState state, void *ptr);
 typedef void(RTC_API *rtcSignalingStateCallbackFunc)(int pc, rtcSignalingState state, void *ptr);
@@ -147,15 +149,18 @@ RTC_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetLocalAddress(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 
-RTC_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote, int remoteSize);
+RTC_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote,
+                                           int remoteSize);
 
 // DataChannel
 RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
 RTC_EXPORT int rtcAddDataChannel(int pc, const char *label); // returns dc id
-RTC_EXPORT int rtcAddDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init); // returns dc id
+RTC_EXPORT int rtcAddDataChannelEx(int pc, const char *label,
+                                   const rtcDataChannelInit *init); // returns dc id
 // Equivalent to calling rtcAddDataChannel() and rtcSetLocalDescription()
 RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
-RTC_EXPORT int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init); // returns dc id
+RTC_EXPORT int rtcCreateDataChannelEx(int pc, const char *label,
+                                      const rtcDataChannelInit *init); // returns dc id
 RTC_EXPORT int rtcDeleteDataChannel(int dc);
 
 RTC_EXPORT int rtcGetDataChannelStream(int dc);

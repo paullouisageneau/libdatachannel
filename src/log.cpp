@@ -44,5 +44,4 @@ void InitLogger(plog::Severity severity, plog::IAppender *appender) {
 			logger->addAppender(appender);
 	}
 }
-}
-
+} // namespace rtc

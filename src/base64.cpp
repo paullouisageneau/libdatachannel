@@ -25,8 +25,7 @@ namespace rtc {
 using std::to_integer;
 
 string to_base64(const binary &data) {
-	static const char tab[] =
-	    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	static const char tab[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 	string out;
 	out.reserve(3 * ((data.size() + 3) / 4));

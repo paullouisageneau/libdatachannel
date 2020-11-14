@@ -304,9 +304,7 @@ int rtcDeletePeerConnection(int pc) {
 	});
 }
 
-int rtcAddDataChannel(int pc, const char *label) {
-	return rtcAddDataChannelEx(pc, label, nullptr);
-}
+int rtcAddDataChannel(int pc, const char *label) { return rtcAddDataChannelEx(pc, label, nullptr); }
 
 int rtcAddDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init) {
 	return WRAP({
