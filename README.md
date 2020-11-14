@@ -19,7 +19,7 @@ The WebRTC stack has been tested to be compatible with Firefox and Chromium.
 
 Protocol stack:
 - SCTP-based Data Channels ([draft-ietf-rtcweb-data-channel-13](https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13))
-- SRTP-based Media Transport ([draft-ietf-rtcweb-rtp-usage-26](https://tools.ietf.org/html/draft-ietf-rtcweb-rtp-usage-26)) with [libSRTP](https://github.com/cisco/libsrtp)
+- SRTP-based Media Transport ([draft-ietf-rtcweb-rtp-usage-26](https://tools.ietf.org/html/draft-ietf-rtcweb-rtp-usage-26))
 - DTLS/UDP ([RFC7350](https://tools.ietf.org/html/rfc7350) and [RFC8261](https://tools.ietf.org/html/rfc8261))
 - ICE ([RFC8445](https://tools.ietf.org/html/rfc8445)) with STUN ([RFC5389](https://tools.ietf.org/html/rfc5389))
 
@@ -53,10 +53,11 @@ Dependencies:
 Submodules:
 - libjuice: https://github.com/paullouisageneau/libjuice
 - usrsctp: https://github.com/sctplab/usrsctp
+- libsrtp: https://github.com/cisco/libsrtp
 
 Optional dependencies:
-- libnice: https://nice.freedesktop.org/ (only if selected as ICE backend instead of libjuice)
-- libSRTP: https://github.com/cisco/libsrtp (only necessary for supporting media transport)
+- libnice: https://nice.freedesktop.org/ (if selected as ICE backend instead of libjuice)
+- libsrtp: https://github.com/cisco/libsrtp (if selected instead of the submodule)
 
 ## Building
 
@@ -91,7 +92,7 @@ Xcode project is generated in *build/* directory.
 
 ##### Solving **Could NOT find OpenSSL** error
 
-You need to add OpenSSL root directory if your build fails with the following message: 
+You need to add OpenSSL root directory if your build fails with the following message:
 
 ```
 Could NOT find OpenSSL, try to set the path to OpenSSL root folder in the
