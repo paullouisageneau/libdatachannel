@@ -100,7 +100,7 @@ private:
 
 	std::mutex mWriteMutex;
 	std::condition_variable mWrittenCondition;
-	std::atomic<bool> mWritten = false; // written outside lock
+	std::atomic<bool> mWritten = false;     // written outside lock
 	std::atomic<bool> mWrittenOnce = false; // same
 
 	binary mPartialMessage, mPartialNotification;

@@ -1,6 +1,6 @@
 /*
  * libdatachannel client example
- * Copyright (c) 2020 Staz M
+ * Copyright (c) 2020 Staz Modrzynski
  * Copyright (c) 2020 Paul-Louis Ageneau
  *
  * This program is free software; you can redistribute it and/or
@@ -67,7 +67,7 @@ int main() {
 
 		auto track = pc->addTrack(media);
 
-		auto session = std::make_shared<rtc::RtcpSession>();
+		auto session = std::make_shared<rtc::RtcpReceivingSession>();
 		track->setRtcpHandler(session);
 
 		track->onMessage(

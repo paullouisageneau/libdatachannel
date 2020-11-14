@@ -130,9 +130,7 @@ IceTransport::~IceTransport() {
 	mAgent.reset();
 }
 
-bool IceTransport::stop() {
-	return Transport::stop();
-}
+bool IceTransport::stop() { return Transport::stop(); }
 
 Description::Role IceTransport::role() const { return mRole; }
 
@@ -141,12 +139,14 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 	if (juice_get_local_description(mAgent.get(), sdp, JUICE_MAX_SDP_STRING_LEN) < 0)
 		throw std::runtime_error("Failed to generate local SDP");
 
-	return Description(string(sdp), type, mRole);
+	return Description(string(sdp), type,
+	                   type == Description::Type::Offer ? Description::Role::ActPass : mRole);
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {
 	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 	                                                        : Description::Role::Active;
+
 	mMid = description.bundleMid();
 	if (juice_set_remote_description(mAgent.get(),
 	                                 description.generateApplicationSdp("\r\n").c_str()) < 0)
@@ -191,7 +191,7 @@ bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote)
 	char sdpLocal[JUICE_MAX_CANDIDATE_SDP_STRING_LEN];
 	char sdpRemote[JUICE_MAX_CANDIDATE_SDP_STRING_LEN];
 	if (juice_get_selected_candidates(mAgent.get(), sdpLocal, JUICE_MAX_CANDIDATE_SDP_STRING_LEN,
-	                                 sdpRemote, JUICE_MAX_CANDIDATE_SDP_STRING_LEN) == 0) {
+	                                  sdpRemote, JUICE_MAX_CANDIDATE_SDP_STRING_LEN) == 0) {
 		if (local) {
 			*local = Candidate(sdpLocal, mMid);
 			local->resolve(Candidate::ResolveMode::Simple);
@@ -736,15 +736,17 @@ void IceTransport::LogCallback(const gchar * /*logDomain*/, GLogLevelFlags logLe
 
 bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote) {
 	NiceCandidate *niceLocal, *niceRemote;
-	if(!nice_agent_get_selected_pair(mNiceAgent.get(), mStreamId, 1, &niceLocal, &niceRemote))
+	if (!nice_agent_get_selected_pair(mNiceAgent.get(), mStreamId, 1, &niceLocal, &niceRemote))
 		return false;
 
 	gchar *sdpLocal = nice_agent_generate_local_candidate_sdp(mNiceAgent.get(), niceLocal);
-	if(local) *local = Candidate(sdpLocal, mMid);
+	if (local)
+		*local = Candidate(sdpLocal, mMid);
 	g_free(sdpLocal);
 
 	gchar *sdpRemote = nice_agent_generate_local_candidate_sdp(mNiceAgent.get(), niceRemote);
-	if(remote) *remote = Candidate(sdpRemote, mMid);
+	if (remote)
+		*remote = Candidate(sdpRemote, mMid);
 	g_free(sdpRemote);
 
 	if (local)

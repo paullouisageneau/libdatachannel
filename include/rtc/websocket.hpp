@@ -66,6 +66,7 @@ public:
 
 	// Extended API
 	std::optional<message_variant> receive() override;
+	std::optional<message_variant> peek() override;
 	size_t availableAmount() const override; // total size available to receive
 
 private:

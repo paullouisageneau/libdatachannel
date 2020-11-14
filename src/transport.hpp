@@ -36,8 +36,7 @@ public:
 	using state_callback = std::function<void(State state)>;
 
 	Transport(std::shared_ptr<Transport> lower = nullptr, state_callback callback = nullptr)
-	    : mLower(std::move(lower)), mStateChangeCallback(std::move(callback)) {
-	}
+	    : mLower(std::move(lower)), mStateChangeCallback(std::move(callback)) {}
 
 	virtual ~Transport() { stop(); }
 
@@ -48,15 +47,18 @@ public:
 			return false;
 
 		// We don't want incoming() to be called by the lower layer anymore
-		if (mLower)
+		if (mLower) {
+			PLOG_VERBOSE << "Unregistering incoming callback";
 			mLower->onRecv(nullptr);
-
+		}
 		return true;
 	}
 
 	void registerIncoming() {
-		if (mLower)
+		if (mLower) {
+			PLOG_VERBOSE << "Registering incoming callback";
 			mLower->onRecv(std::bind(&Transport::incoming, this, _1));
+		}
 	}
 
 	void onRecv(message_callback callback) { mRecvCallback = std::move(callback); }

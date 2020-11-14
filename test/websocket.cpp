@@ -20,11 +20,11 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
+#include <atomic>
 #include <chrono>
 #include <iostream>
 #include <memory>
 #include <thread>
-#include <atomic>
 
 using namespace rtc;
 using namespace std;
@@ -56,14 +56,14 @@ void test_websocket() {
 	ws->onMessage([&received, &myMessage](variant<binary, string> message) {
 		if (holds_alternative<string>(message)) {
 			string str = std::move(get<string>(message));
-			if((received = (str == myMessage)))
+			if ((received = (str == myMessage)))
 				cout << "WebSocket: Received expected message" << endl;
 			else
 				cout << "WebSocket: Received UNEXPECTED message" << endl;
 		}
 	});
 
-	ws->open("wss://echo.websocket.org/");
+	ws->open("wss://echo.websocket.org:443/");
 
 	int attempts = 10;
 	while ((!ws->isOpen() || !received) && attempts--)
@@ -72,7 +72,7 @@ void test_websocket() {
 	if (!ws->isOpen())
 		throw runtime_error("WebSocket is not open");
 
-	if(!received)
+	if (!received)
 		throw runtime_error("Expected message not received");
 
 	ws->close();
@@ -86,4 +86,3 @@ void test_websocket() {
 }
 
 #endif
-

@@ -170,4 +170,3 @@ template <typename T> std::optional<T> Queue<T>::popImpl() {
 } // namespace rtc
 
 #endif
-

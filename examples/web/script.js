@@ -55,7 +55,7 @@ function openSignaling(url) {
     const ws = new WebSocket(url);
     ws.onopen = () => resolve(ws);
     ws.onerror = () => reject(new Error('WebSocket error'));
-    ws.onclosed = () => console.error('WebSocket disconnected');
+    ws.onclose = () => console.error('WebSocket disconnected');
     ws.onmessage = (e) => {
       if(typeof(e.data) != 'string') return;
       const message = JSON.parse(e.data);

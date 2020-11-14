@@ -7,15 +7,14 @@ set(PROJECT_DESCRIPTION "WebRTC Data Channels Library")
 # Options
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 option(USE_NICE "Use libnice instead of libjuice" OFF)
+option(USE_SYSTEM_SRTP "Use system libSRTP" OFF)
 option(NO_WEBSOCKET "Disable WebSocket support" OFF)
+option(NO_MEDIA "Disable media transport support" OFF)
 option(NO_EXAMPLES "Disable examples" OFF)
 option(NO_TESTS "Disable tests build" OFF)
 option(WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(RSA_KEY_BITS_2048 "Use 2048-bit RSA key instead of 3072-bit" OFF)
 option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
-# Option USE_SRTP defaults to AUTO (enabled if libSRTP is found, else disabled)
-set(USE_SRTP AUTO CACHE STRING "Use libSRTP and enable media support")
-set_property(CACHE USE_SRTP PROPERTY STRINGS AUTO ON OFF)
 
 if(USE_NICE)
 	option(USE_JUICE "Use libjuice" OFF)
@@ -90,6 +89,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/reliability.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.h
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtp.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/track.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocket.hpp
 )
@@ -166,32 +166,32 @@ if(WIN32)
 	target_link_libraries(datachannel-static PRIVATE ws2_32) # winsock2
 endif()
 
-if(USE_SRTP STREQUAL "AUTO")
-	find_package(SRTP)
-	if(SRTP_FOUND)
-		message(STATUS "LibSRTP found, compiling with media transport")
-	else()
-		message(STATUS "LibSRTP NOT found, compiling WITHOUT media transport")
-	endif()
-elseif(USE_SRTP)
-	find_package(SRTP REQUIRED)
-endif()
-
-if(USE_SRTP AND SRTP_FOUND)
-	if(NOT TARGET SRTP::SRTP)
-		add_library(SRTP::SRTP UNKNOWN IMPORTED)
-		set_target_properties(SRTP::SRTP PROPERTIES
-			INTERFACE_INCLUDE_DIRECTORIES ${SRTP_INCLUDE_DIRS}
-			IMPORTED_LINK_INTERFACE_LANGUAGES C
-			IMPORTED_LOCATION ${SRTP_LIBRARIES})
-	endif()
-	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=1)
-	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=1)
-	target_link_libraries(datachannel PRIVATE SRTP::SRTP)
-	target_link_libraries(datachannel-static PRIVATE SRTP::SRTP)
-else()
+if(NO_MEDIA)
 	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=0)
 	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=0)
+else()
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=1)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=1)
+	if(USE_SYSTEM_SRTP)
+		find_package(SRTP REQUIRED)
+		if(NOT TARGET SRTP::SRTP)
+			add_library(SRTP::SRTP UNKNOWN IMPORTED)
+			set_target_properties(SRTP::SRTP PROPERTIES
+				INTERFACE_INCLUDE_DIRECTORIES ${SRTP_INCLUDE_DIRS}
+				IMPORTED_LINK_INTERFACE_LANGUAGES C
+				IMPORTED_LOCATION ${SRTP_LIBRARIES})
+		endif()
+		target_compile_definitions(datachannel PRIVATE RTC_SYSTEM_SRTP=1)
+		target_compile_definitions(datachannel-static PRIVATE RTC_SYSTEM_SRTP=1)
+		target_link_libraries(datachannel PRIVATE SRTP::SRTP)
+		target_link_libraries(datachannel-static PRIVATE SRTP::SRTP)
+	else()
+		add_subdirectory(deps/libsrtp EXCLUDE_FROM_ALL)
+		target_compile_definitions(datachannel PRIVATE RTC_SYSTEM_SRTP=0)
+		target_compile_definitions(datachannel-static PRIVATE RTC_SYSTEM_SRTP=0)
+		target_link_libraries(datachannel PRIVATE srtp2)
+		target_link_libraries(datachannel-static PRIVATE srtp2)
+	endif()
 endif()
 
 if (USE_GNUTLS)
@@ -300,6 +300,7 @@ if(NOT NO_EXAMPLES AND NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 	add_subdirectory(deps/json)
 	add_subdirectory(examples/client)
 	add_subdirectory(examples/media)
+	add_subdirectory(examples/sfu-media)
 	add_subdirectory(examples/copy-paste)
 	add_subdirectory(examples/copy-paste-capi)
 endif()

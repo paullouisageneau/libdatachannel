@@ -26,13 +26,9 @@ size_t Channel::bufferedAmount() const { return mBufferedAmount; }
 
 size_t Channel::availableAmount() const { return 0; }
 
-void Channel::onOpen(std::function<void()> callback) {
-	mOpenCallback = callback;
-}
+void Channel::onOpen(std::function<void()> callback) { mOpenCallback = callback; }
 
-void Channel::onClosed(std::function<void()> callback) {
-	mClosedCallback = callback;
-}
+void Channel::onClosed(std::function<void()> callback) { mClosedCallback = callback; }
 
 void Channel::onError(std::function<void(string error)> callback) { mErrorCallback = callback; }
 
@@ -57,9 +53,7 @@ void Channel::onBufferedAmountLow(std::function<void()> callback) {
 
 void Channel::setBufferedAmountLowThreshold(size_t amount) { mBufferedAmountLowThreshold = amount; }
 
-void Channel::onAvailable(std::function<void()> callback) {
-	mAvailableCallback = callback;
-}
+void Channel::onAvailable(std::function<void()> callback) { mAvailableCallback = callback; }
 
 void Channel::triggerOpen() { mOpenCallback(); }
 
@@ -96,4 +90,3 @@ void Channel::resetCallbacks() {
 }
 
 } // namespace rtc
-

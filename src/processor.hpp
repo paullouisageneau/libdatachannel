@@ -44,8 +44,7 @@ public:
 
 	void join();
 
-	template <class F, class... Args>
-	void enqueue(F &&f, Args &&... args);
+	template <class F, class... Args> void enqueue(F &&f, Args &&... args);
 
 protected:
 	void schedule();

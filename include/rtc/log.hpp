@@ -49,6 +49,6 @@ enum class LogLevel { // Don't change, it must match plog severity
 
 void InitLogger(LogLevel level);
 void InitLogger(plog::Severity severity, plog::IAppender *appender = nullptr);
-}
+} // namespace rtc
 
 #endif

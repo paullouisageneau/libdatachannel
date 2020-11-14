@@ -36,15 +36,14 @@ namespace rtc {
 class SctpTransport;
 class PeerConnection;
 
-class DataChannel final : public std::enable_shared_from_this<DataChannel>, public Channel {
+class DataChannel : public std::enable_shared_from_this<DataChannel>, public Channel {
 public:
-	DataChannel(std::weak_ptr<PeerConnection> pc, unsigned int stream, string label,
-	            string protocol, Reliability reliability);
-	DataChannel(std::weak_ptr<PeerConnection> pc, std::weak_ptr<SctpTransport> transport,
-	            unsigned int stream);
-	~DataChannel();
+	DataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream, string label, string protocol,
+	            Reliability reliability);
+	virtual ~DataChannel();
 
-	unsigned int stream() const;
+	uint16_t stream() const;
+	uint16_t id() const;
 	string label() const;
 	string protocol() const;
 	Reliability reliability() const;
@@ -62,18 +61,19 @@ public:
 	// Extended API
 	size_t availableAmount() const override;
 	std::optional<message_variant> receive() override;
+	std::optional<message_variant> peek() override;
 
-private:
+protected:
+	virtual void open(std::shared_ptr<SctpTransport> transport);
+	virtual void processOpenMessage(message_ptr message);
 	void remoteClose();
-	void open(std::shared_ptr<SctpTransport> transport);
 	bool outgoing(message_ptr message);
 	void incoming(message_ptr message);
-	void processOpenMessage(message_ptr message);
 
 	const std::weak_ptr<PeerConnection> mPeerConnection;
 	std::weak_ptr<SctpTransport> mSctpTransport;
 
-	unsigned int mStream;
+	uint16_t mStream;
 	string mLabel;
 	string mProtocol;
 	std::shared_ptr<Reliability> mReliability;
@@ -81,7 +81,23 @@ private:
 	std::atomic<bool> mIsOpen = false;
 	std::atomic<bool> mIsClosed = false;
 
+private:
 	Queue<message_ptr> mRecvQueue;
+
+	friend class PeerConnection;
+};
+
+class NegociatedDataChannel final : public DataChannel {
+public:
+	NegociatedDataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream, string label,
+	                      string protocol, Reliability reliability);
+	NegociatedDataChannel(std::weak_ptr<PeerConnection> pc, std::weak_ptr<SctpTransport> transport,
+	                      uint16_t stream);
+	~NegociatedDataChannel();
+
+private:
+	void open(std::shared_ptr<SctpTransport> transport) override;
+	void processOpenMessage(message_ptr message) override;
 
 	friend class PeerConnection;
 };

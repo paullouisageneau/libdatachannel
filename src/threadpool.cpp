@@ -75,4 +75,3 @@ std::function<void()> ThreadPool::dequeue() {
 }
 
 } // namespace rtc
-

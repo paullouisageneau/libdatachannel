@@ -127,4 +127,3 @@ bool check(SSL *ssl, int ret, const string &message) {
 } // namespace rtc::openssl
 
 #endif
-
