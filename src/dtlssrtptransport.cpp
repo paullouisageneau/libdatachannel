@@ -82,7 +82,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 		return false;
 	}
 
-	int size = message->size();
+	int size = int(message->size());
 	PLOG_VERBOSE << "Send size=" << size;
 
 	// The RTP header has a minimum size of 12 bytes
@@ -151,7 +151,7 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 		return;
 	}
 
-	int size = message->size();
+	int size = int(message->size());
 	if (size == 0)
 		return;
 
