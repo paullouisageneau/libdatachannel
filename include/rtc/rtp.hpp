@@ -80,7 +80,7 @@ public:
 	void setTimestamp(uint32_t i) { _timestamp = htonl(i); }
 
 	void log() {
-		PLOG_DEBUG  << "RTP V: " << (int) version()
+		PLOG_VERBOSE  << "RTP V: " << (int) version()
 		            << " P: " << (padding() ? "P" : " ")
 		            << " X: " << (extension() ? "X" : " ")
 		            << " CC: "  << (int) csrcCount()
