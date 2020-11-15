@@ -24,6 +24,7 @@
 #include "processor.hpp"
 #include "queue.hpp"
 #include "transport.hpp"
+#include "processor.hpp"
 
 #include <condition_variable>
 #include <functional>
@@ -72,23 +73,19 @@ private:
 		PPID_BINARY_EMPTY = 57
 	};
 
-	void recv(message_ptr message) override;
-	void changeState(State state) override;
-
 	void connect();
 	void shutdown();
 	void close();
 	void incoming(message_ptr message) override;
 
+	void doRecv();
 	bool trySendQueue();
 	bool trySendMessage(message_ptr message);
 	void updateBufferedAmount(uint16_t streamId, long delta);
 	void sendReset(uint16_t streamId);
 	bool safeFlush();
 
-	int handleRecv(struct socket *sock, union sctp_sockstore addr, const byte *data, size_t len,
-	               struct sctp_rcvinfo recv_info, int flags);
-	int handleSend(size_t free);
+	void handleUpcall();
 	int handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_df);
 
 	void processData(binary &&data, uint16_t streamId, PayloadId ppid);
@@ -98,7 +95,8 @@ private:
 	struct socket *mSock;
 
 	Processor mProcessor;
-	std::mutex mSendMutex;
+	std::mutex mRecvMutex, mSendMutex;
+	std::atomic<bool> mReceiving;
 	Queue<message_ptr> mSendQueue;
 	std::map<uint16_t, size_t> mBufferedAmount;
 	amount_callback mBufferedAmountCallback;
@@ -114,9 +112,7 @@ private:
 	// Stats
 	std::atomic<size_t> mBytesSent = 0, mBytesReceived = 0;
 
-	static int RecvCallback(struct socket *sock, union sctp_sockstore addr, void *data, size_t len,
-	                        struct sctp_rcvinfo recv_info, int flags, void *ulp_info);
-	static int SendCallback(struct socket *sock, uint32_t sb_free, void *ulp_info);
+	static void UpcallCallback(struct socket *sock, void *arg, int flags);
 	static int WriteCallback(void *sctp_ptr, void *data, size_t len, uint8_t tos, uint8_t set_df);
 
 	static std::unordered_set<SctpTransport *> Instances;

@@ -67,14 +67,14 @@ public:
 	virtual bool send(message_ptr message) { return outgoing(message); }
 
 protected:
-	virtual void recv(message_ptr message) {
+	void recv(message_ptr message) {
 		try {
 			mRecvCallback(message);
 		} catch (const std::exception &e) {
 			PLOG_WARNING << e.what();
 		}
 	}
-	virtual void changeState(State state) {
+	void changeState(State state) {
 		try {
 			if (mState.exchange(state) != state)
 				mStateChangeCallback(state);
