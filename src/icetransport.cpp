@@ -46,11 +46,12 @@ using std::chrono::system_clock;
 
 namespace rtc {
 
-IceTransport::IceTransport(const Configuration &config, Description::Role role,
-                           candidate_callback candidateCallback, state_callback stateChangeCallback,
+IceTransport::IceTransport(const Configuration &config, candidate_callback candidateCallback,
+                           state_callback stateChangeCallback,
                            gathering_state_callback gatheringStateChangeCallback)
-    : Transport(nullptr, std::move(stateChangeCallback)), mRole(role), mMid("0"),
-      mGatheringState(GatheringState::New), mCandidateCallback(std::move(candidateCallback)),
+    : Transport(nullptr, std::move(stateChangeCallback)), mRole(Description::Role::ActPass),
+      mMid("0"), mGatheringState(GatheringState::New),
+      mCandidateCallback(std::move(candidateCallback)),
       mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)),
       mAgent(nullptr, nullptr) {
 
@@ -139,13 +140,19 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 	if (juice_get_local_description(mAgent.get(), sdp, JUICE_MAX_SDP_STRING_LEN) < 0)
 		throw std::runtime_error("Failed to generate local SDP");
 
+	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
+	// setup:actpass.
+	// See https://tools.ietf.org/html/rfc5763#section-5
 	return Description(string(sdp), type,
 	                   type == Description::Type::Offer ? Description::Role::ActPass : mRole);
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {
-	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
-	                                                        : Description::Role::Active;
+	if (mRole == Description::Role::ActPass)
+		mRole = description.role() == Description::Role::Active ? Description::Role::Passive
+		                                                        : Description::Role::Active;
+	if (mRole == description.role())
+		throw std::logic_error("Incompatible roles with remote description");
 
 	mMid = description.bundleMid();
 	if (juice_set_remote_description(mAgent.get(),
@@ -316,11 +323,12 @@ void IceTransport::LogCallback(juice_log_level_t level, const char *message) {
 
 namespace rtc {
 
-IceTransport::IceTransport(const Configuration &config, Description::Role role,
-                           candidate_callback candidateCallback, state_callback stateChangeCallback,
+IceTransport::IceTransport(const Configuration &config, candidate_callback candidateCallback,
+                           state_callback stateChangeCallback,
                            gathering_state_callback gatheringStateChangeCallback)
-    : Transport(nullptr, std::move(stateChangeCallback)), mRole(role), mMid("0"),
-      mGatheringState(GatheringState::New), mCandidateCallback(std::move(candidateCallback)),
+    : Transport(nullptr, std::move(stateChangeCallback)), mRole(Description::Role::ActPass),
+      mMid("0"), mGatheringState(GatheringState::New),
+      mCandidateCallback(std::move(candidateCallback)),
       mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)),
       mNiceAgent(nullptr, nullptr), mMainLoop(nullptr, nullptr) {
 
@@ -526,12 +534,21 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 
 	std::unique_ptr<gchar[], void (*)(void *)> sdp(nice_agent_generate_local_sdp(mNiceAgent.get()),
 	                                               g_free);
-	return Description(string(sdp.get()), type, mRole);
+
+	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
+	// setup:actpass.
+	// See https://tools.ietf.org/html/rfc5763#section-5
+	return Description(string(sdp.get()), type,
+	                   type == Description::Type::Offer ? Description::Role::ActPass : mRole);
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {
-	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
-	                                                        : Description::Role::Active;
+	if (mRole == Description::Role::ActPass)
+		mRole = description.role() == Description::Role::Active ? Description::Role::Passive
+		                                                        : Description::Role::Active;
+	if (mRole == description.role())
+		throw std::logic_error("Incompatible roles with remote description");
+
 	mMid = description.bundleMid();
 	mTrickleTimeout = !description.ended() ? 30s : 0s;
 
