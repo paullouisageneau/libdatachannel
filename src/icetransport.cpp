@@ -147,6 +147,8 @@ void IceTransport::setRemoteDescription(const Description &description) {
 	if (mRole == Description::Role::ActPass)
 		mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 		                                                        : Description::Role::Active;
+	if(mRole == description.role())
+		throw std::logic_error("Incompatible roles with remote description");
 
 	mMid = description.bundleMid();
 	if (juice_set_remote_description(mAgent.get(),
@@ -535,6 +537,9 @@ void IceTransport::setRemoteDescription(const Description &description) {
 	if (mRole == Description::Role::ActPass)
 		mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 		                                                        : Description::Role::Active;
+	if(mRole == description.role())
+		throw std::logic_error("Incompatible roles with remote description");
+
 	mMid = description.bundleMid();
 	mTrickleTimeout = !description.ended() ? 30s : 0s;
 
