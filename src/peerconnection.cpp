@@ -187,13 +187,7 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 	}
 	}
 
-	auto iceTransport = std::atomic_load(&mIceTransport);
-	if (!iceTransport) {
-		// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
-		// setup:actpass.
-		// See https://tools.ietf.org/html/rfc5763#section-5
-		iceTransport = initIceTransport(Description::Role::ActPass);
-	}
+	auto iceTransport = initIceTransport();
 
 	Description localDescription = iceTransport->getLocalDescription(type);
 	processLocalDescription(std::move(localDescription));
@@ -273,9 +267,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 	auto remoteCandidates = description.extractCandidates();
 	auto type = description.type();
 
-	auto iceTransport = std::atomic_load(&mIceTransport);
-	if (!iceTransport)
-		iceTransport = initIceTransport(Description::Role::ActPass);
+	auto iceTransport = initIceTransport();
 
 	iceTransport->setRemoteDescription(description);
 	processRemoteDescription(std::move(description));
@@ -405,14 +397,14 @@ void PeerConnection::onTrack(std::function<void(std::shared_ptr<Track>)> callbac
 	mTrackCallback = callback;
 }
 
-shared_ptr<IceTransport> PeerConnection::initIceTransport(Description::Role role) {
+shared_ptr<IceTransport> PeerConnection::initIceTransport() {
 	PLOG_VERBOSE << "Starting ICE transport";
 	try {
 		if (auto transport = std::atomic_load(&mIceTransport))
 			return transport;
 
 		auto transport = std::make_shared<IceTransport>(
-		    mConfig, role, weak_bind(&PeerConnection::processLocalCandidate, this, _1),
+		    mConfig, weak_bind(&PeerConnection::processLocalCandidate, this, _1),
 		    [this, weak_this = weak_from_this()](IceTransport::State state) {
 			    auto shared_this = weak_this.lock();
 			    if (!shared_this)

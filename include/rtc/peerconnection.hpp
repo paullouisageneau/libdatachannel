@@ -129,7 +129,7 @@ public:
 	void onTrack(std::function<void(std::shared_ptr<Track> track)> callback);
 
 private:
-	std::shared_ptr<IceTransport> initIceTransport(Description::Role role);
+	std::shared_ptr<IceTransport> initIceTransport();
 	std::shared_ptr<DtlsTransport> initDtlsTransport();
 	std::shared_ptr<SctpTransport> initSctpTransport();
 	void closeTransports();
