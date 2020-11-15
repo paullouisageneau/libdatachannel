@@ -179,7 +179,7 @@ int test_capi_track_main() {
 
 	// You may call rtcCleanup() when finished to free static resources
 	rtcCleanup();
-	sleep(2);
+	sleep(1);
 
 	printf("Success\n");
 	return 0;

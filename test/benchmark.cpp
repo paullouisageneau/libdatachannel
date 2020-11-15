@@ -169,9 +169,9 @@ size_t benchmark(milliseconds duration) {
 
 	pc1->close();
 	pc2->close();
-	this_thread::sleep_for(1s);
 
 	rtc::Cleanup();
+	this_thread::sleep_for(1s);
 	return goodput;
 }
 

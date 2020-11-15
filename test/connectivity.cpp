@@ -247,7 +247,7 @@ void test_connectivity() {
 
 	// You may call rtc::Cleanup() when finished to free static resources
 	rtc::Cleanup();
-	this_thread::sleep_for(2s);
+	this_thread::sleep_for(1s);
 
 	cout << "Success" << endl;
 }
