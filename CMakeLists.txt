@@ -115,17 +115,15 @@ set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)
 add_subdirectory(deps/plog)
 
 option(sctp_build_programs 0)
+option(sctp_build_shared_lib 0)
 add_subdirectory(deps/usrsctp EXCLUDE_FROM_ALL)
 if (MSYS OR MINGW)
 	target_compile_definitions(usrsctp PUBLIC -DSCTP_STDINT_INCLUDE=<stdint.h>)
-	target_compile_definitions(usrsctp-static PUBLIC -DSCTP_STDINT_INCLUDE=<stdint.h>)
 endif()
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     target_compile_options(usrsctp PRIVATE -Wno-error=format-truncation)
-	target_compile_options(usrsctp-static PRIVATE -Wno-error=format-truncation)
 endif()
 add_library(Usrsctp::Usrsctp ALIAS usrsctp)
-add_library(Usrsctp::UsrsctpStatic ALIAS usrsctp-static)
 
 if (NO_WEBSOCKET)
 	add_library(datachannel SHARED
@@ -156,13 +154,13 @@ target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/includ
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(datachannel PUBLIC Threads::Threads plog::plog)
-target_link_libraries(datachannel PRIVATE Usrsctp::UsrsctpStatic)
+target_link_libraries(datachannel PRIVATE Usrsctp::Usrsctp)
 
 target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(datachannel-static PUBLIC Threads::Threads plog::plog)
-target_link_libraries(datachannel-static PRIVATE Usrsctp::UsrsctpStatic)
+target_link_libraries(datachannel-static PRIVATE Usrsctp::Usrsctp)
 
 if(WIN32)
 	target_link_libraries(datachannel PRIVATE ws2_32) # winsock2

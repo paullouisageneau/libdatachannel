@@ -20,6 +20,8 @@
 
 namespace rtc {
 
+Processor::Processor(size_t limit) : mTasks(limit) {}
+
 Processor::~Processor() { join(); }
 
 void Processor::join() {
@@ -29,15 +31,13 @@ void Processor::join() {
 
 void Processor::schedule() {
 	std::unique_lock lock(mMutex);
-	if (mTasks.empty()) {
+	if (auto next = mTasks.tryPop()) {
+		ThreadPool::Instance().enqueue(std::move(*next));
+	} else {
 		// No more tasks
 		mPending = false;
 		mCondition.notify_all();
-		return;
 	}
-
-	ThreadPool::Instance().enqueue(std::move(mTasks.front()));
-	mTasks.pop();
 }
 
 } // namespace rtc

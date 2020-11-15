@@ -77,7 +77,7 @@ void PeerConnection::close() {
 	mNegotiationNeeded = false;
 
 	// Close data channels asynchronously
-	mProcessor->enqueue(std::bind(&PeerConnection::closeDataChannels, this));
+	mProcessor->enqueue(&PeerConnection::closeDataChannels, this);
 
 	closeTransports();
 }
@@ -490,7 +490,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 				else
 					changeState(State::Connected);
 
-				mProcessor->enqueue(std::bind(&PeerConnection::openTracks, this));
+				mProcessor->enqueue(&PeerConnection::openTracks, this);
 				break;
 			case DtlsTransport::State::Failed:
 				changeState(State::Failed);
@@ -561,16 +561,16 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 			    switch (state) {
 			    case SctpTransport::State::Connected:
 				    changeState(State::Connected);
-				    mProcessor->enqueue(std::bind(&PeerConnection::openDataChannels, this));
+				    mProcessor->enqueue(&PeerConnection::openDataChannels, this);
 				    break;
 			    case SctpTransport::State::Failed:
 				    LOG_WARNING << "SCTP transport failed";
 				    changeState(State::Failed);
-				    mProcessor->enqueue(std::bind(&PeerConnection::remoteCloseDataChannels, this));
+				    mProcessor->enqueue(&PeerConnection::remoteCloseDataChannels, this);
 				    break;
 			    case SctpTransport::State::Disconnected:
 				    changeState(State::Disconnected);
-				    mProcessor->enqueue(std::bind(&PeerConnection::remoteCloseDataChannels, this));
+				    mProcessor->enqueue(&PeerConnection::remoteCloseDataChannels, this);
 				    break;
 			    default:
 				    // Ignore
@@ -1069,19 +1069,17 @@ void PeerConnection::processLocalDescription(Description description) {
 			mCurrentLocalDescription.emplace(std::move(*mLocalDescription));
 		}
 
-		mLocalDescription.emplace(std::move(description));
+		mLocalDescription.emplace(description);
 		mLocalDescription->addCandidates(std::move(existingCandidates));
 	}
 
-	mProcessor->enqueue([this, description = *mLocalDescription]() {
-		PLOG_VERBOSE << "Issuing local description: " << description;
-		mLocalDescriptionCallback(std::move(description));
-	});
+	PLOG_VERBOSE << "Issuing local description: " << description;
+	mProcessor->enqueue(mLocalDescriptionCallback.wrap(), std::move(description));
 
 	// Reciprocated tracks might need to be open
 	if (auto dtlsTransport = std::atomic_load(&mDtlsTransport);
 	    dtlsTransport && dtlsTransport->state() == Transport::State::Connected)
-		mProcessor->enqueue(std::bind(&PeerConnection::openTracks, this));
+		mProcessor->enqueue(&PeerConnection::openTracks, this);
 }
 
 void PeerConnection::processLocalCandidate(Candidate candidate) {
@@ -1092,10 +1090,8 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 	candidate.resolve(Candidate::ResolveMode::Simple); // for proper SDP generation later
 	mLocalDescription->addCandidate(candidate);
 
-	mProcessor->enqueue([this, candidate = std::move(candidate)]() {
-		PLOG_VERBOSE << "Issuing local candidate: " << candidate;
-		mLocalCandidateCallback(std::move(candidate));
-	});
+	PLOG_VERBOSE << "Issuing local candidate: " << candidate;
+	mProcessor->enqueue(mLocalCandidateCallback.wrap(), std::move(candidate));
 }
 
 void PeerConnection::processRemoteDescription(Description description) {
@@ -1150,12 +1146,11 @@ void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 	if (!dataChannel)
 		return;
 
-	mProcessor->enqueue(
-	    [this, dataChannel = std::move(dataChannel)]() { mDataChannelCallback(dataChannel); });
+	mProcessor->enqueue(mDataChannelCallback.wrap(), std::move(dataChannel));
 }
 
 void PeerConnection::triggerTrack(std::shared_ptr<Track> track) {
-	mProcessor->enqueue([this, track = std::move(track)]() { mTrackCallback(track); });
+	mProcessor->enqueue(mTrackCallback.wrap(), std::move(track));
 }
 
 bool PeerConnection::changeState(State state) {
@@ -1177,7 +1172,7 @@ bool PeerConnection::changeState(State state) {
 		// This is the last state change, so we may steal the callback
 		mProcessor->enqueue([cb = std::move(mStateChangeCallback)]() { cb(State::Closed); });
 	else
-		mProcessor->enqueue([this, state]() { mStateChangeCallback(state); });
+		mProcessor->enqueue(mStateChangeCallback.wrap(), state);
 
 	return true;
 }
@@ -1189,7 +1184,7 @@ bool PeerConnection::changeGatheringState(GatheringState state) {
 	std::ostringstream s;
 	s << state;
 	PLOG_INFO << "Changed gathering state to " << s.str();
-	mProcessor->enqueue([this, state] { mGatheringStateChangeCallback(state); });
+	mProcessor->enqueue(mGatheringStateChangeCallback.wrap(), state);
 	return true;
 }
 
@@ -1200,7 +1195,7 @@ bool PeerConnection::changeSignalingState(SignalingState state) {
 	std::ostringstream s;
 	s << state;
 	PLOG_INFO << "Changed signaling state to " << s.str();
-	mProcessor->enqueue([this, state] { mSignalingStateChangeCallback(state); });
+	mProcessor->enqueue(mSignalingStateChangeCallback.wrap(), state);
 	return true;
 }
 

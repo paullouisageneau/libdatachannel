@@ -88,7 +88,7 @@ void SctpTransport::Cleanup() {
 SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
                              message_callback recvCallback, amount_callback bufferedAmountCallback,
                              state_callback stateChangeCallback)
-    : Transport(lower, std::move(stateChangeCallback)), mPort(port),
+    : Transport(lower, std::move(stateChangeCallback)), mPort(port), mProcessor(16),
       mSendQueue(0, message_size_func), mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
 	onRecv(recvCallback);
 
@@ -228,6 +228,16 @@ void SctpTransport::close() {
 		usrsctp_close(mSock);
 		mSock = nullptr;
 	}
+}
+
+void SctpTransport::recv(message_ptr message) {
+	// Delegate to processor to release SCTP thread
+	mProcessor.enqueue([this, message = std::move(message)]() { Transport::recv(message); });
+}
+
+void SctpTransport::changeState(State state) {
+	// Delegate to processor to release SCTP thread
+	mProcessor.enqueue([this, state]() { Transport::changeState(state); });
 }
 
 void SctpTransport::connect() {

@@ -106,7 +106,7 @@ Description::Description(const string &sdp, Type type, Role role)
 					               mFingerprint->begin(),
 					               [](char c) { return char(std::toupper(c)); });
 				} else {
-					PLOG_WARNING << "Unknown SDP fingerprint type: " << value;
+					PLOG_WARNING << "Unknown SDP fingerprint format: " << value;
 				}
 			} else if (key == "ice-ufrag") {
 				mIceUfrag = value;

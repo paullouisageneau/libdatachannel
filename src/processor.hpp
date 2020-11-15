@@ -22,6 +22,7 @@
 #include "include.hpp"
 #include "init.hpp"
 #include "threadpool.hpp"
+#include "queue.hpp"
 
 #include <condition_variable>
 #include <future>
@@ -34,7 +35,7 @@ namespace rtc {
 // Processed tasks in order by delegating them to the thread pool
 class Processor final {
 public:
-	Processor() = default;
+	Processor(size_t limit = 0);
 	~Processor();
 
 	Processor(const Processor &) = delete;
@@ -52,7 +53,7 @@ protected:
 	// Keep an init token
 	const init_token mInitToken = Init::Token();
 
-	std::queue<std::function<void()>> mTasks;
+	Queue<std::function<void()>> mTasks;
 	bool mPending = false; // true iff a task is pending in the thread pool
 
 	mutable std::mutex mMutex;
@@ -71,7 +72,7 @@ template <class F, class... Args> void Processor::enqueue(F &&f, Args &&... args
 		ThreadPool::Instance().enqueue(std::move(task));
 		mPending = true;
 	} else {
-		mTasks.emplace(std::move(task));
+		mTasks.push(std::move(task));
 	}
 }
 
