@@ -57,6 +57,7 @@ public:
 
 	inline uint8_t version() const { return _first >> 6; }
 	inline bool padding() const { return (_first >> 5) & 0x01; }
+	inline bool extension() const { return (_first >> 4) & 0x01; }
 	inline uint8_t csrcCount() const { return _first & 0x0F; }
 	inline uint8_t marker() const { return _payloadType & 0b10000000; }
 	inline uint8_t payloadType() const { return _payloadType & 0b01111111; }
@@ -77,6 +78,17 @@ public:
 	inline void setSsrc(uint32_t ssrc) { _ssrc = htonl(ssrc); }
 
 	void setTimestamp(uint32_t i) { _timestamp = htonl(i); }
+
+	void log() {
+		PLOG_DEBUG  << "RTP V: " << (int) version()
+		            << " P: " << (padding() ? "P" : " ")
+		            << " X: " << (extension() ? "X" : " ")
+		            << " CC: "  << (int) csrcCount()
+		            << " M: " << (marker() ? "M" : " ")
+		            << " PT: " << (int) payloadType()
+		            << " SEQNO: " << seqNumber()
+		            << " TS: " << timestamp();
+	}
 };
 
 struct RTCP_ReportBlock {
