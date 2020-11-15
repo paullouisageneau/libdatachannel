@@ -21,6 +21,7 @@
 
 #include "include.hpp"
 #include "peerconnection.hpp"
+#include "processor.hpp"
 #include "queue.hpp"
 #include "transport.hpp"
 
@@ -35,7 +36,7 @@
 
 namespace rtc {
 
-class SctpTransport : public Transport {
+class SctpTransport final : public Transport {
 public:
 	static void Init();
 	static void Cleanup();
@@ -71,6 +72,9 @@ private:
 		PPID_BINARY_EMPTY = 57
 	};
 
+	void recv(message_ptr message) override;
+	void changeState(State state) override;
+
 	void connect();
 	void shutdown();
 	void close();
@@ -93,6 +97,7 @@ private:
 	const uint16_t mPort;
 	struct socket *mSock;
 
+	Processor mProcessor;
 	std::mutex mSendMutex;
 	Queue<message_ptr> mSendQueue;
 	std::map<uint16_t, size_t> mBufferedAmount;
