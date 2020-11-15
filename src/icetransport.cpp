@@ -144,8 +144,9 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {
-	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
-	                                                        : Description::Role::Active;
+	if (mRole == Description::Role::ActPass)
+		mRole = description.role() == Description::Role::Active ? Description::Role::Passive
+		                                                        : Description::Role::Active;
 
 	mMid = description.bundleMid();
 	if (juice_set_remote_description(mAgent.get(),
@@ -526,12 +527,14 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 
 	std::unique_ptr<gchar[], void (*)(void *)> sdp(nice_agent_generate_local_sdp(mNiceAgent.get()),
 	                                               g_free);
-	return Description(string(sdp.get()), type, mRole);
+	return Description(string(sdp.get()), type,
+	                   type == Description::Type::Offer ? Description::Role::ActPass : mRole);
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {
-	mRole = description.role() == Description::Role::Active ? Description::Role::Passive
-	                                                        : Description::Role::Active;
+	if (mRole == Description::Role::ActPass)
+		mRole = description.role() == Description::Role::Active ? Description::Role::Passive
+		                                                        : Description::Role::Active;
 	mMid = description.bundleMid();
 	mTrickleTimeout = !description.ended() ? 30s : 0s;
 
