@@ -43,39 +43,39 @@ typedef struct {
 static Peer *peer1 = NULL;
 static Peer *peer2 = NULL;
 
-static void descriptionCallback(int pc, const char *sdp, const char *type, void *ptr) {
+static void RTC_API descriptionCallback(int pc, const char *sdp, const char *type, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	printf("Description %d:\n%s\n", peer == peer1 ? 1 : 2, sdp);
 	Peer *other = peer == peer1 ? peer2 : peer1;
 	rtcSetRemoteDescription(other->pc, sdp, type);
 }
 
-static void candidateCallback(int pc, const char *cand, const char *mid, void *ptr) {
+static void RTC_API candidateCallback(int pc, const char *cand, const char *mid, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	printf("Candidate %d: %s\n", peer == peer1 ? 1 : 2, cand);
 	Peer *other = peer == peer1 ? peer2 : peer1;
 	rtcAddRemoteCandidate(other->pc, cand, mid);
 }
 
-static void stateChangeCallback(int pc, rtcState state, void *ptr) {
+static void RTC_API stateChangeCallback(int pc, rtcState state, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->state = state;
 	printf("State %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
 }
 
-static void gatheringStateCallback(int pc, rtcGatheringState state, void *ptr) {
+static void RTC_API gatheringStateCallback(int pc, rtcGatheringState state, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->gatheringState = state;
 	printf("Gathering state %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
 }
 
-static void signalingStateCallback(int pc, rtcSignalingState state, void *ptr) {
+static void RTC_API signalingStateCallback(int pc, rtcSignalingState state, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->signalingState = state;
 	printf("Signaling state %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
 }
 
-static void openCallback(int id, void *ptr) {
+static void RTC_API openCallback(int id, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->connected = true;
 	printf("DataChannel %d: Open\n", peer == peer1 ? 1 : 2);
@@ -84,12 +84,12 @@ static void openCallback(int id, void *ptr) {
 	rtcSendMessage(peer->dc, message, -1); // negative size indicates a null-terminated string
 }
 
-static void closedCallback(int id, void *ptr) {
+static void RTC_API closedCallback(int id, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->connected = false;
 }
 
-static void messageCallback(int id, const char *message, int size, void *ptr) {
+static void RTC_API messageCallback(int id, const char *message, int size, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	if (size < 0) { // negative size indicates a null-terminated string
 		printf("Message %d: %s\n", peer == peer1 ? 1 : 2, message);
@@ -98,7 +98,7 @@ static void messageCallback(int id, const char *message, int size, void *ptr) {
 	}
 }
 
-static void dataChannelCallback(int pc, int dc, void *ptr) {
+static void RTC_API dataChannelCallback(int pc, int dc, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->dc = dc;
 	peer->connected = true;
