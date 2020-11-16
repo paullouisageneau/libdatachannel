@@ -96,7 +96,6 @@ private:
 
 	Processor mProcessor;
 	std::mutex mRecvMutex, mSendMutex;
-	std::atomic<bool> mReceiving;
 	Queue<message_ptr> mSendQueue;
 	std::map<uint16_t, size_t> mBufferedAmount;
 	amount_callback mBufferedAmountCallback;
