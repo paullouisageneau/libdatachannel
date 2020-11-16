@@ -100,14 +100,48 @@ static void RTC_API messageCallback(int id, const char *message, int size, void 
 
 static void RTC_API dataChannelCallback(int pc, int dc, void *ptr) {
 	Peer *peer = (Peer *)ptr;
-	peer->dc = dc;
-	peer->connected = true;
+
+	char label[256];
+	if (rtcGetDataChannelLabel(dc, label, 256) < 0) {
+		fprintf(stderr, "rtcGetDataChannelLabel failed\n");
+		return;
+	}
+
+	char protocol[256];
+	if (rtcGetDataChannelProtocol(dc, protocol, 256) < 0) {
+		fprintf(stderr, "rtcGetDataChannelProtocol failed\n");
+		return;
+	}
+
+	rtcReliability reliability;
+	if (rtcGetDataChannelReliability(dc, &reliability) < 0) {
+		fprintf(stderr, "rtcGetDataChannelReliability failed\n");
+		return;
+	}
+
+	printf("DataChannel %d: Received with label \"%s\" and protocol \"%s\"\n",
+	       peer == peer1 ? 1 : 2, label, protocol);
+
+	if (strcmp(label, "test") != 0) {
+		fprintf(stderr, "Wrong DataChannel label\n");
+		return;
+	}
+
+	if (strcmp(protocol, "protocol") != 0) {
+		fprintf(stderr, "Wrong DataChannel protocol\n");
+		return;
+	}
+
+	if (reliability.unordered == false) {
+		fprintf(stderr, "Wrong DataChannel reliability\n");
+		return;
+	}
+
 	rtcSetClosedCallback(dc, closedCallback);
 	rtcSetMessageCallback(dc, messageCallback);
 
-	char buffer[256];
-	if (rtcGetDataChannelLabel(dc, buffer, 256) >= 0)
-		printf("DataChannel %d: Received with label \"%s\"\n", peer == peer1 ? 1 : 2, buffer);
+	peer->dc = dc;
+	peer->connected = true;
 
 	const char *message = peer == peer1 ? "Hello from 1" : "Hello from 2";
 	rtcSendMessage(peer->dc, message, -1); // negative size indicates a null-terminated string
@@ -173,7 +207,12 @@ int test_capi_connectivity_main() {
 		goto error;
 
 	// Peer 1: Create data channel
-	peer1->dc = rtcCreateDataChannel(peer1->pc, "test");
+	rtcDataChannelInit init;
+	memset(&init, 0, sizeof(init));
+	init.protocol = "protocol";
+	init.reliability.unordered = true;
+
+	peer1->dc = rtcCreateDataChannelEx(peer1->pc, "test", &init);
 	rtcSetOpenCallback(peer1->dc, openCallback);
 	rtcSetClosedCallback(peer1->dc, closedCallback);
 	rtcSetMessageCallback(peer1->dc, messageCallback);
