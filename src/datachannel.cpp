@@ -306,7 +306,7 @@ void NegociatedDataChannel::processOpenMessage(message_ptr message) {
 	mLabel.assign(end, open.labelLength);
 	mProtocol.assign(end + open.labelLength, open.protocolLength);
 
-	mReliability->unordered = (open.reliabilityParameter & 0x80) != 0;
+	mReliability->unordered = (open.channelType & 0x80) != 0;
 	switch (open.channelType & 0x7F) {
 	case CHANNEL_PARTIAL_RELIABLE_REXMIT:
 		mReliability->type = Reliability::Type::Rexmit;
