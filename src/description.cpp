@@ -172,8 +172,8 @@ void Description::setFingerprint(string fingerprint) {
 }
 
 bool Description::hasCandidate(const Candidate &candidate) const {
-	for (const Candidate &existing : mCandidates)
-		if (existing == candidate)
+	for (const Candidate &other : mCandidates)
+		if (candidate == other)
 			return true;
 
 	return false;
@@ -182,7 +182,7 @@ bool Description::hasCandidate(const Candidate &candidate) const {
 void Description::addCandidate(Candidate candidate) {
 	candidate.hintMid(bundleMid());
 
-	for (Candidate &other : mCandidates)
+	for (const Candidate &other : mCandidates)
 		if (candidate == other)
 			return;
 
