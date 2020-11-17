@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <sstream>
 #include <unordered_map>
 
@@ -93,7 +94,7 @@ void Candidate::parse(string candidate) {
 		throw std::invalid_argument("Invalid candidate format");
 
 	std::getline(iss, mTail);
-	while (!mTail.empty() && mTail.front() == ' ')
+	while (!mTail.empty() && std::isspace(mTail.front()))
 		mTail.erase(mTail.begin());
 
 	if (auto it = TypeMap.find(type); it != TypeMap.end())
@@ -187,7 +188,11 @@ string Candidate::candidate() const {
 	else
 		oss << mNode << sp << mService;
 
-	oss << sp << "typ" << sp << mTypeString << sp << mTail;
+	oss << sp << "typ" << sp << mTypeString;
+
+	if (!mTail.empty())
+		oss << sp << mTail;
+
 	return oss.str();
 }
 
