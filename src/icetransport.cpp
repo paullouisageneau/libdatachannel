@@ -564,12 +564,14 @@ bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 		return false;
 
 	// Warning: the candidate string must start with "a=candidate:" and it must not end with a
-	// newline, else libnice will reject it.
+	// newline or whitespace, else libnice will reject it.
 	string sdp(candidate);
 	NiceCandidate *cand =
 	    nice_agent_parse_remote_candidate_sdp(mNiceAgent.get(), mStreamId, sdp.c_str());
-	if (!cand)
+	if (!cand) {
+		PLOG_WARNING << "Rejected ICE candidate: " << sdp;
 		return false;
+	}
 
 	GSList *list = g_slist_append(nullptr, cand);
 	int ret = nice_agent_set_remote_candidates(mNiceAgent.get(), mStreamId, 1, list);
