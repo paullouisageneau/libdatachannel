@@ -40,16 +40,15 @@ public:
 	enum class ResolveMode { Simple, Lookup };
 	bool resolve(ResolveMode mode = ResolveMode::Simple);
 
+	Type type() const;
+	TransportType transportType() const;
+	uint32_t priority() const;
 	string candidate() const;
 	string mid() const;
 	operator string() const;
 
 	bool operator==(const Candidate &other) const;
 	bool operator!=(const Candidate &other) const;
-
-	Type type() const;
-	TransportType transportType() const;
-	uint32_t priority() const;
 
 	bool isResolved() const;
 	Family family() const;

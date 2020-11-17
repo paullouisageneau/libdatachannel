@@ -171,6 +171,12 @@ bool Candidate::resolve(ResolveMode mode) {
 	return mFamily != Family::Unresolved;
 }
 
+Candidate::Type Candidate::type() const { return mType; }
+
+Candidate::TransportType Candidate::transportType() const { return mTransportType; }
+
+uint32_t Candidate::priority() const { return mPriority; }
+
 string Candidate::candidate() const {
 	const char sp{' '};
 	std::ostringstream oss;
@@ -200,12 +206,6 @@ bool Candidate::operator==(const Candidate &other) const {
 bool Candidate::operator!=(const Candidate &other) const {
 	return mFoundation != other.mFoundation;
 }
-
-Candidate::Type Candidate::type() const { return mType; }
-
-Candidate::TransportType Candidate::transportType() const { return mTransportType; }
-
-uint32_t Candidate::priority() const { return mPriority; }
 
 bool Candidate::isResolved() const { return mFamily != Family::Unresolved; }
 
