@@ -266,10 +266,6 @@ void PeerConnection::setRemoteDescription(Description description) {
 	// Candidates will be added at the end, extract them for now
 	auto remoteCandidates = description.extractCandidates();
 	auto type = description.type();
-
-	auto iceTransport = initIceTransport();
-
-	iceTransport->setRemoteDescription(description);
 	processRemoteDescription(std::move(description));
 
 	changeSignalingState(newSignalingState);
@@ -279,8 +275,9 @@ void PeerConnection::setRemoteDescription(Description description) {
 		setLocalDescription(Description::Type::Answer);
 	} else {
 		// This is an answer
+		auto iceTransport = std::atomic_load(&mIceTransport);
 		auto sctpTransport = std::atomic_load(&mSctpTransport);
-		if (!sctpTransport && iceTransport->role() == Description::Role::Active) {
+		if (!sctpTransport && iceTransport && iceTransport->role() == Description::Role::Active) {
 			// Since we assumed passive role during DataChannel creation, we need to shift the
 			// stream numbers by one to shift them from odd to even.
 			std::unique_lock lock(mDataChannelsMutex); // we are going to swap the container
@@ -1095,9 +1092,12 @@ void PeerConnection::processRemoteDescription(Description description) {
 		if (mRemoteDescription)
 			existingCandidates = mRemoteDescription->extractCandidates();
 
-		mRemoteDescription.emplace(std::move(description));
+		mRemoteDescription.emplace(description);
 		mRemoteDescription->addCandidates(std::move(existingCandidates));
 	}
+
+	auto iceTransport = initIceTransport();
+	iceTransport->setRemoteDescription(std::move(description));
 
 	if (description.hasApplication()) {
 		auto dtlsTransport = std::atomic_load(&mDtlsTransport);
@@ -1109,32 +1109,39 @@ void PeerConnection::processRemoteDescription(Description description) {
 }
 
 void PeerConnection::processRemoteCandidate(Candidate candidate) {
-	std::lock_guard lock(mRemoteDescriptionMutex);
 	auto iceTransport = std::atomic_load(&mIceTransport);
-	if (!mRemoteDescription || !iceTransport)
-		throw std::logic_error("Got a remote candidate without remote description");
+	{
+		// Set as remote candidate
+		std::lock_guard lock(mRemoteDescriptionMutex);
+		if (!mRemoteDescription)
+			throw std::logic_error("Got a remote candidate without remote description");
 
-	candidate.hintMid(mRemoteDescription->bundleMid());
+		if (!iceTransport)
+			throw std::logic_error("Got a remote candidate without ICE transport");
 
-	if (mRemoteDescription->hasCandidate(candidate))
-		return; // already in description, ignore
+		candidate.hintMid(mRemoteDescription->bundleMid());
 
-	if (candidate.resolve(Candidate::ResolveMode::Simple)) {
+		if (mRemoteDescription->hasCandidate(candidate))
+			return; // already in description, ignore
+
+		candidate.resolve(Candidate::ResolveMode::Simple);
 		mRemoteDescription->addCandidate(candidate);
+	}
+
+	if (candidate.isResolved()) {
 		iceTransport->addRemoteCandidate(std::move(candidate));
 	} else {
-		mRemoteDescription->addCandidate(candidate); // still add the unresolved candidate
-
-		// OK, we might need a lookup, do it asynchronously
+		// We might need a lookup, do it asynchronously
 		// We don't use the thread pool because we have no control on the timeout
-		weak_ptr<IceTransport> weakIceTransport{iceTransport};
-		std::thread t([weakIceTransport, candidate = std::move(candidate)]() mutable {
-			if (candidate.resolve(Candidate::ResolveMode::Lookup)) {
-				if (auto iceTransport = weakIceTransport.lock())
-					iceTransport->addRemoteCandidate(std::move(candidate));
-			}
-		});
-		t.detach();
+		if (auto iceTransport = std::atomic_load(&mIceTransport)) {
+			weak_ptr<IceTransport> weakIceTransport{iceTransport};
+			std::thread t([weakIceTransport, candidate = std::move(candidate)]() mutable {
+				if (candidate.resolve(Candidate::ResolveMode::Lookup))
+					if (auto iceTransport = weakIceTransport.lock())
+						iceTransport->addRemoteCandidate(std::move(candidate));
+			});
+			t.detach();
+		}
 	}
 }
 
