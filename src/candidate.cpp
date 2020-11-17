@@ -40,9 +40,20 @@ using std::string;
 
 namespace {
 
-inline bool hasprefix(const string &str, const string &prefix) {
+inline bool match_prefix(const string &str, const string &prefix) {
 	return str.size() >= prefix.size() &&
 	       std::mismatch(prefix.begin(), prefix.end(), str.begin()).first == prefix.end();
+}
+
+inline void trim_begin(string &str) {
+	str.erase(str.begin(),
+	          std::find_if(str.begin(), str.end(), [](char c) { return !std::isspace(c); }));
+}
+
+inline void trim_end(string &str) {
+	str.erase(
+	    std::find_if(str.rbegin(), str.rend(), [](char c) { return !std::isspace(c); }).base(),
+	    str.end());
 }
 
 } // namespace
@@ -81,7 +92,7 @@ void Candidate::parse(string candidate) {
 
 	const std::array prefixes{"a=", "candidate:"};
 	for (const string &prefix : prefixes)
-		if (hasprefix(candidate, prefix))
+		if (match_prefix(candidate, prefix))
 			candidate.erase(0, prefix.size());
 
 	PLOG_VERBOSE << "Parsing candidate: " << candidate;
@@ -94,8 +105,8 @@ void Candidate::parse(string candidate) {
 		throw std::invalid_argument("Invalid candidate format");
 
 	std::getline(iss, mTail);
-	while (!mTail.empty() && std::isspace(mTail.front()))
-		mTail.erase(mTail.begin());
+	trim_begin(mTail);
+	trim_end(mTail);
 
 	if (auto it = TypeMap.find(type); it != TypeMap.end())
 		mType = it->second;
