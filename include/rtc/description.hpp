@@ -53,6 +53,7 @@ public:
 	void hintType(Type type);
 	void setFingerprint(string fingerprint);
 
+	bool hasCandidate(const Candidate &candidate) const;
 	void addCandidate(Candidate candidate);
 	void addCandidates(std::vector<Candidate> candidates);
 	void endCandidates();

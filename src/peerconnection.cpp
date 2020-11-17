@@ -1079,7 +1079,7 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 	if (!mLocalDescription)
 		throw std::logic_error("Got a local candidate without local description");
 
-	candidate.resolve(Candidate::ResolveMode::Simple); // for proper SDP generation later
+	candidate.resolve(Candidate::ResolveMode::Simple);
 	mLocalDescription->addCandidate(candidate);
 
 	PLOG_VERBOSE << "Issuing local candidate: " << candidate;
@@ -1116,21 +1116,26 @@ void PeerConnection::processRemoteCandidate(Candidate candidate) {
 
 	candidate.hintMid(mRemoteDescription->bundleMid());
 
+	if (mRemoteDescription->hasCandidate(candidate))
+		return; // already in description, ignore
+
 	if (candidate.resolve(Candidate::ResolveMode::Simple)) {
-		iceTransport->addRemoteCandidate(candidate);
+		mRemoteDescription->addCandidate(candidate);
+		iceTransport->addRemoteCandidate(std::move(candidate));
 	} else {
+		mRemoteDescription->addCandidate(candidate); // still add the unresolved candidate
+
 		// OK, we might need a lookup, do it asynchronously
 		// We don't use the thread pool because we have no control on the timeout
 		weak_ptr<IceTransport> weakIceTransport{iceTransport};
-		std::thread t([weakIceTransport, candidate]() mutable {
-			if (candidate.resolve(Candidate::ResolveMode::Lookup))
+		std::thread t([weakIceTransport, candidate = std::move(candidate)]() mutable {
+			if (candidate.resolve(Candidate::ResolveMode::Lookup)) {
 				if (auto iceTransport = weakIceTransport.lock())
-					iceTransport->addRemoteCandidate(candidate);
+					iceTransport->addRemoteCandidate(std::move(candidate));
+			}
 		});
 		t.detach();
 	}
-
-	mRemoteDescription->addCandidate(std::move(candidate));
 }
 
 void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {

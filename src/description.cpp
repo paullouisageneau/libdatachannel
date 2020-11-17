@@ -171,16 +171,27 @@ void Description::setFingerprint(string fingerprint) {
 	mFingerprint.emplace(std::move(fingerprint));
 }
 
+bool Description::hasCandidate(const Candidate &candidate) const {
+	for (const Candidate &existing : mCandidates)
+		if (existing == candidate)
+			return true;
+
+	return false;
+}
+
 void Description::addCandidate(Candidate candidate) {
 	candidate.hintMid(bundleMid());
+
+	for (Candidate &other : mCandidates)
+		if (candidate == other)
+			return;
+
 	mCandidates.emplace_back(std::move(candidate));
 }
 
 void Description::addCandidates(std::vector<Candidate> candidates) {
-	for (Candidate candidate : candidates) {
-		candidate.hintMid(bundleMid());
-		mCandidates.emplace_back(std::move(candidate));
-	}
+	for (Candidate candidate : candidates)
+		addCandidate(std::move(candidate));
 }
 
 void Description::endCandidates() { mEnded = true; }
