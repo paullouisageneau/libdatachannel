@@ -49,29 +49,23 @@ inline bool hasprefix(const string &str, const string &prefix) {
 namespace rtc {
 
 Candidate::Candidate()
-    : mFamily(Family::Unresolved), mType(Type::Unknown), mTransportType(TransportType::Unknown),
-      mPort(0), mPriority(0) {}
+    : mFoundation("none"), mComponent(0), mPriority(0), mTypeString("unknown"),
+      mTransportString("unknown"), mType(Type::Unknown), mTransportType(TransportType::Unknown),
+      mNode("0.0.0.0"), mService("9"), mFamily(Family::Unresolved), mPort(0) {}
 
 Candidate::Candidate(string candidate) : Candidate() {
-	const std::array prefixes{"a=", "candidate:"};
-	for (const string &prefix : prefixes)
-		if (hasprefix(candidate, prefix))
-			candidate.erase(0, prefix.size());
-
-	mCandidate = std::move(candidate);
+	if (!candidate.empty())
+		parse(std::move(candidate));
 }
 
-Candidate::Candidate(string candidate, string mid) : Candidate(std::move(candidate)) {
+Candidate::Candidate(string candidate, string mid) : Candidate() {
+	if (!candidate.empty())
+		parse(std::move(candidate));
 	if (!mid.empty())
 		mMid.emplace(std::move(mid));
 }
 
-void Candidate::hintMid(string mid) {
-	if (!mMid)
-		mMid.emplace(std::move(mid));
-}
-
-bool Candidate::resolve(ResolveMode mode) {
+void Candidate::parse(string candidate) {
 	using TypeMap_t = std::unordered_map<string, Type>;
 	using TcpTypeMap_t = std::unordered_map<string, TransportType>;
 
@@ -84,99 +78,112 @@ bool Candidate::resolve(ResolveMode mode) {
 	                                        {"passive", TransportType::TcpPassive},
 	                                        {"so", TransportType::TcpSo}};
 
-	if (mFamily != Family::Unresolved)
-		return true;
+	const std::array prefixes{"a=", "candidate:"};
+	for (const string &prefix : prefixes)
+		if (hasprefix(candidate, prefix))
+			candidate.erase(0, prefix.size());
 
-	if (mCandidate.empty())
-		throw std::logic_error("Candidate is empty");
-
-	PLOG_VERBOSE << "Resolving candidate (mode="
-	             << (mode == ResolveMode::Simple ? "simple" : "lookup") << "): " << mCandidate;
+	PLOG_VERBOSE << "Parsing candidate: " << candidate;
 
 	// See RFC 8445 for format
-	std::istringstream iss(mCandidate);
-	int component{0}, priority{0};
-	string foundation, transport, node, service, typ_, type;
-	if (iss >> foundation >> component >> transport >> priority &&
-	    iss >> node >> service >> typ_ >> type && typ_ == "typ") {
+	std::istringstream iss(candidate);
+	string transport, typ_, type;
+	if (!(iss >> mFoundation >> mComponent >> mTransportString >> mPriority &&
+	      iss >> mNode >> mService >> typ_ >> mTypeString && typ_ == "typ"))
+		throw std::invalid_argument("Invalid candidate format");
 
-		string left;
-		std::getline(iss, left);
+	std::getline(iss, mTail);
+	while (!mTail.empty() && mTail.front() == ' ')
+		mTail.erase(mTail.begin());
 
-		if (auto it = TypeMap.find(type); it != TypeMap.end())
-			mType = it->second;
-		else
-			mType = Type::Unknown;
+	if (auto it = TypeMap.find(type); it != TypeMap.end())
+		mType = it->second;
+	else
+		mType = Type::Unknown;
 
-		if (transport == "UDP" || transport == "udp") {
-			mTransportType = TransportType::Udp;
-		} else if (transport == "TCP" || transport == "tcp") {
-			std::istringstream iss(left);
-			string tcptype_, tcptype;
-			if (iss >> tcptype_ >> tcptype && tcptype_ == "tcptype") {
-				if (auto it = TcpTypeMap.find(tcptype); it != TcpTypeMap.end())
-					mTransportType = it->second;
-				else
-					mTransportType = TransportType::TcpUnknown;
-
-			} else {
+	if (transport == "UDP" || transport == "udp") {
+		mTransportType = TransportType::Udp;
+	} else if (transport == "TCP" || transport == "tcp") {
+		// Peek tail to find TCP type
+		std::istringstream iss(mTail);
+		string tcptype_, tcptype;
+		if (iss >> tcptype_ >> tcptype && tcptype_ == "tcptype") {
+			if (auto it = TcpTypeMap.find(tcptype); it != TcpTypeMap.end())
+				mTransportType = it->second;
+			else
 				mTransportType = TransportType::TcpUnknown;
-			}
+
 		} else {
-			mTransportType = TransportType::Unknown;
+			mTransportType = TransportType::TcpUnknown;
 		}
+	} else {
+		mTransportType = TransportType::Unknown;
+	}
+}
 
-		// Try to resolve the node
-		struct addrinfo hints = {};
-		hints.ai_family = AF_UNSPEC;
-		hints.ai_flags = AI_ADDRCONFIG;
-		if (mTransportType == TransportType::Udp) {
-			hints.ai_socktype = SOCK_DGRAM;
-			hints.ai_protocol = IPPROTO_UDP;
-		} else if (mTransportType != TransportType::Unknown) {
-			hints.ai_socktype = SOCK_STREAM;
-			hints.ai_protocol = IPPROTO_TCP;
-		}
+void Candidate::hintMid(string mid) {
+	if (!mMid)
+		mMid.emplace(std::move(mid));
+}
 
-		if (mode == ResolveMode::Simple)
-			hints.ai_flags |= AI_NUMERICHOST;
+bool Candidate::resolve(ResolveMode mode) {
+	PLOG_VERBOSE << "Resolving candidate (mode="
+	             << (mode == ResolveMode::Simple ? "simple" : "lookup") << "): " << mNode << ' '
+	             << mService;
 
-		struct addrinfo *result = nullptr;
-		if (getaddrinfo(node.c_str(), service.c_str(), &hints, &result) == 0) {
-			for (auto p = result; p; p = p->ai_next) {
-				if (p->ai_family == AF_INET || p->ai_family == AF_INET6) {
-					// Rewrite the candidate
-					char nodebuffer[MAX_NUMERICNODE_LEN];
-					char servbuffer[MAX_NUMERICSERV_LEN];
-					if (getnameinfo(p->ai_addr, socklen_t(p->ai_addrlen), nodebuffer,
-					                MAX_NUMERICNODE_LEN, servbuffer, MAX_NUMERICSERV_LEN,
-					                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+	// Try to resolve the node and service
+	struct addrinfo hints = {};
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_flags = AI_ADDRCONFIG;
+	if (mTransportType == TransportType::Udp) {
+		hints.ai_socktype = SOCK_DGRAM;
+		hints.ai_protocol = IPPROTO_UDP;
+	} else if (mTransportType != TransportType::Unknown) {
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_protocol = IPPROTO_TCP;
+	}
 
-						mAddress = nodebuffer;
-						mPort = uint16_t(std::stoul(servbuffer));
-						mFamily = p->ai_family == AF_INET6 ? Family::Ipv6 : Family::Ipv4;
+	if (mode == ResolveMode::Simple)
+		hints.ai_flags |= AI_NUMERICHOST;
 
-						const char sp{' '};
-						std::ostringstream oss;
-						oss << foundation << sp << component << sp << transport << sp << priority;
-						oss << sp << nodebuffer << sp << servbuffer << sp << "typ" << sp << type;
-						oss << left;
-						mCandidate = oss.str();
+	struct addrinfo *result = nullptr;
+	if (getaddrinfo(mNode.c_str(), mService.c_str(), &hints, &result) == 0) {
+		for (auto p = result; p; p = p->ai_next) {
+			if (p->ai_family == AF_INET || p->ai_family == AF_INET6) {
+				char nodebuffer[MAX_NUMERICNODE_LEN];
+				char servbuffer[MAX_NUMERICSERV_LEN];
+				if (getnameinfo(p->ai_addr, socklen_t(p->ai_addrlen), nodebuffer,
+				                MAX_NUMERICNODE_LEN, servbuffer, MAX_NUMERICSERV_LEN,
+				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 
-						PLOG_VERBOSE << "Resolved candidate: " << mCandidate;
-						break;
-					}
+					mAddress = nodebuffer;
+					mPort = uint16_t(std::stoul(servbuffer));
+					mFamily = p->ai_family == AF_INET6 ? Family::Ipv6 : Family::Ipv4;
+					PLOG_VERBOSE << "Resolved candidate: " << mAddress << ' ' << mPort;
+					break;
 				}
 			}
-
-			freeaddrinfo(result);
 		}
+
+		freeaddrinfo(result);
 	}
 
 	return mFamily != Family::Unresolved;
 }
 
-string Candidate::candidate() const { return "candidate:" + mCandidate; }
+string Candidate::candidate() const {
+	const char sp{' '};
+	std::ostringstream oss;
+	oss << "candidate:";
+	oss << mFoundation << sp << mComponent << sp << mTransportString << sp << mPriority << sp;
+	if (isResolved())
+		oss << mAddress << sp << mPort;
+	else
+		oss << mNode << sp << mService;
+
+	oss << sp << "typ" << sp << mTypeString << sp << mTail;
+	return oss.str();
+}
 
 string Candidate::mid() const { return mMid.value_or("0"); }
 
@@ -186,13 +193,23 @@ Candidate::operator string() const {
 	return line.str();
 }
 
-bool Candidate::isResolved() const { return mFamily != Family::Unresolved; }
+bool Candidate::operator==(const Candidate &other) const {
+	return mFoundation == other.mFoundation;
+}
 
-Candidate::Family Candidate::family() const { return mFamily; }
+bool Candidate::operator!=(const Candidate &other) const {
+	return mFoundation != other.mFoundation;
+}
 
 Candidate::Type Candidate::type() const { return mType; }
 
 Candidate::TransportType Candidate::transportType() const { return mTransportType; }
+
+uint32_t Candidate::priority() const { return mPriority; }
+
+bool Candidate::isResolved() const { return mFamily != Family::Unresolved; }
+
+Candidate::Family Candidate::family() const { return mFamily; }
 
 std::optional<string> Candidate::address() const {
 	return isResolved() ? std::make_optional(mAddress) : nullopt;
@@ -200,10 +217,6 @@ std::optional<string> Candidate::address() const {
 
 std::optional<uint16_t> Candidate::port() const {
 	return isResolved() ? std::make_optional(mPort) : nullopt;
-}
-
-std::optional<uint32_t> Candidate::priority() const {
-	return isResolved() ? std::make_optional(mPriority) : nullopt;
 }
 
 } // namespace rtc
@@ -217,11 +230,11 @@ std::ostream &operator<<(std::ostream &out, const rtc::Candidate::Type &type) {
 	case rtc::Candidate::Type::Host:
 		return out << "host";
 	case rtc::Candidate::Type::PeerReflexive:
-		return out << "peer_reflexive";
+		return out << "prflx";
 	case rtc::Candidate::Type::ServerReflexive:
-		return out << "server_reflexive";
+		return out << "srflx";
 	case rtc::Candidate::Type::Relayed:
-		return out << "relayed";
+		return out << "relay";
 	default:
 		return out << "unknown";
 	}

@@ -44,25 +44,35 @@ public:
 	string mid() const;
 	operator string() const;
 
-	bool isResolved() const;
-	Family family() const;
+	bool operator==(const Candidate &other) const;
+	bool operator!=(const Candidate &other) const;
+
 	Type type() const;
 	TransportType transportType() const;
+	uint32_t priority() const;
+
+	bool isResolved() const;
+	Family family() const;
 	std::optional<string> address() const;
 	std::optional<uint16_t> port() const;
-	std::optional<uint32_t> priority() const;
 
 private:
-	string mCandidate;
+	void parse(string candidate);
+
+	string mFoundation;
+	uint32_t mComponent, mPriority;
+	string mTypeString, mTransportString;
+	Type mType;
+	TransportType mTransportType;
+	string mNode, mService;
+	string mTail;
+
 	std::optional<string> mMid;
 
 	// Extracted on resolution
 	Family mFamily;
-	Type mType;
-	TransportType mTransportType;
 	string mAddress;
 	uint16_t mPort;
-	uint32_t mPriority;
 };
 
 } // namespace rtc
