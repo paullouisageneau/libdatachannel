@@ -76,8 +76,8 @@ private:
 
 } // namespace rtc
 
-std::ostream &operator<<(std::ostream &out, const rtc::Candidate &candidate);
-std::ostream &operator<<(std::ostream &out, const rtc::Candidate::Type &type);
-std::ostream &operator<<(std::ostream &out, const rtc::Candidate::TransportType &transportType);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const rtc::Candidate &candidate);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const rtc::Candidate::Type &type);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const rtc::Candidate::TransportType &transportType);
 
 #endif

@@ -37,7 +37,7 @@ namespace rtc {
 template <class F, class... Args>
 using invoke_future_t = std::future<std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>>;
 
-class ThreadPool final {
+class RTC_CPP_EXPORT ThreadPool final {
 public:
 	static ThreadPool &Instance();
 

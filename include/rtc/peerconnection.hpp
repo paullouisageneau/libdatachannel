@@ -50,7 +50,7 @@ class SctpTransport;
 using certificate_ptr = std::shared_ptr<Certificate>;
 using future_certificate_ptr = std::shared_future<certificate_ptr>;
 
-struct DataChannelInit {
+struct RTC_CPP_EXPORT DataChannelInit {
 	Reliability reliability = {};
 	bool negotiated = false;
 	std::optional<uint16_t> id = nullopt;

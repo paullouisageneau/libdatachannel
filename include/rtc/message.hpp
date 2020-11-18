@@ -29,7 +29,7 @@
 
 namespace rtc {
 
-struct Message : binary {
+struct RTC_CPP_EXPORT Message : binary {
 	enum Type { Binary, String, Control, Reset };
 
 	Message(const Message &message) = default;

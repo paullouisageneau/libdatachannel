@@ -32,7 +32,7 @@ namespace rtc {
 
 class TcpTransport;
 
-class TlsTransport : public Transport {
+class RTC_CPP_EXPORT TlsTransport : public Transport {
 public:
 	static void Init();
 	static void Cleanup();

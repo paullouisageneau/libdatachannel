@@ -27,7 +27,7 @@ namespace rtc {
 
 using init_token = std::shared_ptr<void>;
 
-class Init {
+class RTC_CPP_EXPORT Init {
 public:
 	static init_token Token();
 	static void Preload();

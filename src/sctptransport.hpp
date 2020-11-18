@@ -37,7 +37,7 @@
 
 namespace rtc {
 
-class SctpTransport final : public Transport {
+class RTC_CPP_EXPORT SctpTransport final : public Transport {
 public:
 	static void Init();
 	static void Cleanup();
