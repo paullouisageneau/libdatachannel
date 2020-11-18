@@ -25,7 +25,7 @@
 
 namespace rtc {
 
-class Candidate {
+class RTC_CPP_EXPORT Candidate {
 public:
 	enum class Family { Unresolved, Ipv4, Ipv6 };
 	enum class Type { Unknown, Host, ServerReflexive, PeerReflexive, Relayed };

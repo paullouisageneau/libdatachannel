@@ -26,7 +26,7 @@
 
 namespace rtc {
 
-struct IceServer {
+struct RTC_CPP_EXPORT IceServer {
 	enum class Type { Stun, Turn };
 	enum class RelayType { TurnUdp, TurnTcp, TurnTls };
 

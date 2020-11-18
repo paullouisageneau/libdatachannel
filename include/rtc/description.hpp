@@ -32,7 +32,7 @@
 
 namespace rtc {
 
-class Description {
+class RTC_CPP_EXPORT Description {
 public:
 	enum class Type { Unspec, Offer, Answer, Pranswer, Rollback };
 	enum class Role { ActPass, Passive, Active };

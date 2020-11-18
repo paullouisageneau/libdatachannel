@@ -57,7 +57,7 @@ struct DataChannelInit {
 	string protocol = "";
 };
 
-class PeerConnection final : public std::enable_shared_from_this<PeerConnection> {
+class RTC_CPP_EXPORT PeerConnection final : public std::enable_shared_from_this<PeerConnection> {
 public:
 	enum class State : int {
 		New = RTC_NEW,
@@ -203,8 +203,8 @@ private:
 
 } // namespace rtc
 
-std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::State state);
-std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::GatheringState state);
-std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::SignalingState state);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::State state);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::GatheringState state);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::SignalingState state);
 
 #endif
