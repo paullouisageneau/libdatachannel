@@ -163,8 +163,8 @@ target_link_libraries(datachannel-static PUBLIC Threads::Threads plog::plog)
 target_link_libraries(datachannel-static PRIVATE Usrsctp::Usrsctp)
 
 if(WIN32)
-	target_link_libraries(datachannel PRIVATE ws2_32) # winsock2
-	target_link_libraries(datachannel-static PRIVATE ws2_32) # winsock2
+	target_link_libraries(datachannel PUBLIC ws2_32) # winsock2
+	target_link_libraries(datachannel-static PUBLIC ws2_32) # winsock2
 endif()
 
 if(NO_MEDIA)
