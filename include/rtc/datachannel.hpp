@@ -36,7 +36,7 @@ namespace rtc {
 class SctpTransport;
 class PeerConnection;
 
-class DataChannel : public std::enable_shared_from_this<DataChannel>, public Channel {
+class RTC_CPP_EXPORT DataChannel : public std::enable_shared_from_this<DataChannel>, public Channel {
 public:
 	DataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream, string label, string protocol,
 	            Reliability reliability);
@@ -87,7 +87,7 @@ private:
 	friend class PeerConnection;
 };
 
-class NegociatedDataChannel final : public DataChannel {
+class RTC_CPP_EXPORT NegociatedDataChannel final : public DataChannel {
 public:
 	NegociatedDataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream, string label,
 	                      string protocol, Reliability reliability);

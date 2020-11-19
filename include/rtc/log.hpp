@@ -35,6 +35,8 @@
 #pragma warning(pop)
 #endif
 
+#include "include.hpp"
+
 namespace rtc {
 
 enum class LogLevel { // Don't change, it must match plog severity
@@ -47,8 +49,8 @@ enum class LogLevel { // Don't change, it must match plog severity
 	Verbose = 6
 };
 
-void InitLogger(LogLevel level);
-void InitLogger(plog::Severity severity, plog::IAppender *appender = nullptr);
+RTC_CPP_EXPORT void InitLogger(LogLevel level);
+RTC_CPP_EXPORT void InitLogger(plog::Severity severity, plog::IAppender *appender = nullptr);
 } // namespace rtc
 
 #endif

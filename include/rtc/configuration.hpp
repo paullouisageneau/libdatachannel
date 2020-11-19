@@ -26,7 +26,7 @@
 
 namespace rtc {
 
-struct IceServer {
+struct RTC_CPP_EXPORT IceServer {
 	enum class Type { Stun, Turn };
 	enum class RelayType { TurnUdp, TurnTcp, TurnTls };
 
@@ -51,7 +51,7 @@ struct IceServer {
 	RelayType relayType;
 };
 
-struct ProxyServer {
+struct RTC_CPP_EXPORT ProxyServer {
 	enum class Type { None = 0, Socks5, Http, Last = Http };
 
 	ProxyServer(Type type_, string ip_, uint16_t port_, string username_ = "",
@@ -64,7 +64,7 @@ struct ProxyServer {
 	string password;
 };
 
-struct Configuration {
+struct RTC_CPP_EXPORT Configuration {
 	std::vector<IceServer> iceServers;
 	std::optional<ProxyServer> proxyServer;
 	bool enableIceTcp = false;

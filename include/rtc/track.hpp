@@ -35,7 +35,7 @@ namespace rtc {
 class DtlsSrtpTransport;
 #endif
 
-class Track final : public std::enable_shared_from_this<Track>, public Channel {
+class RTC_CPP_EXPORT Track final : public std::enable_shared_from_this<Track>, public Channel {
 public:
 	Track(Description::Media description);
 	~Track() = default;

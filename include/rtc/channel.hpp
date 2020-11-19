@@ -28,7 +28,7 @@
 
 namespace rtc {
 
-class Channel {
+class RTC_CPP_EXPORT Channel {
 public:
 	Channel() = default;
 	virtual ~Channel() = default;
