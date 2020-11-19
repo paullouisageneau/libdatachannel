@@ -272,11 +272,7 @@ if(NOT NO_TESTS)
 		set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
 	endif()
 	target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-	if(WIN32)
-		target_link_libraries(datachannel-tests datachannel-static) # DLL exports only the C API
-	else()
-		target_link_libraries(datachannel-tests datachannel)
-	endif()
+	target_link_libraries(datachannel-tests datachannel)
 
 	# Benchmark
 	add_executable(datachannel-benchmark test/benchmark.cpp)
@@ -288,11 +284,7 @@ if(NOT NO_TESTS)
 	endif()
 	target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
 	target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-	if(WIN32)
-		target_link_libraries(datachannel-benchmark datachannel-static) # DLL exports only the C API
-	else()
-		target_link_libraries(datachannel-benchmark datachannel)
-	endif()
+	target_link_libraries(datachannel-benchmark datachannel)
 endif()
 
 # Examples
