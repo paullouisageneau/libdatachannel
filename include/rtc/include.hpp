@@ -32,6 +32,9 @@
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0602 // Windows 8
 #endif
+#ifdef _MSC_VER
+#pragma warning(disable:4251) // disable "X needs to have dll-interface..."
+#endif
 #else
 #define RTC_CPP_EXPORT
 #endif
