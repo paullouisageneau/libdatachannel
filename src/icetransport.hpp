@@ -38,7 +38,7 @@
 
 namespace rtc {
 
-class RTC_CPP_EXPORT IceTransport : public Transport {
+class IceTransport : public Transport {
 public:
 	enum class GatheringState { New = 0, InProgress = 1, Complete = 2 };
 

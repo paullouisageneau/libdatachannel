@@ -34,7 +34,7 @@
 namespace rtc {
 
 // Utility class to interrupt select()
-class RTC_CPP_EXPORT SelectInterrupter {
+class SelectInterrupter {
 public:
 	SelectInterrupter();
 	~SelectInterrupter();
@@ -51,7 +51,7 @@ private:
 #endif
 };
 
-class RTC_CPP_EXPORT TcpTransport : public Transport {
+class TcpTransport : public Transport {
 public:
 	TcpTransport(const string &hostname, const string &service, state_callback callback);
 	~TcpTransport();

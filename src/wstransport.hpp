@@ -29,7 +29,7 @@ namespace rtc {
 class TcpTransport;
 class TlsTransport;
 
-class RTC_CPP_EXPORT WsTransport : public Transport {
+class WsTransport : public Transport {
 public:
 	WsTransport(std::shared_ptr<Transport> lower, string host, string path,
 	            message_callback recvCallback, state_callback stateCallback);

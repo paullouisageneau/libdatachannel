@@ -27,7 +27,7 @@
 
 namespace rtc {
 
-class RTC_CPP_EXPORT Certificate {
+class Certificate {
 public:
 	Certificate(string crt_pem, string key_pem);
 
@@ -53,17 +53,17 @@ private:
 };
 
 #if USE_GNUTLS
-RTC_CPP_EXPORT string make_fingerprint(gnutls_x509_crt_t crt);
+string make_fingerprint(gnutls_x509_crt_t crt);
 #else
-RTC_CPP_EXPORT string make_fingerprint(X509 *x509);
+string make_fingerprint(X509 *x509);
 #endif
 
 using certificate_ptr = std::shared_ptr<Certificate>;
 using future_certificate_ptr = std::shared_future<certificate_ptr>;
 
-RTC_CPP_EXPORT future_certificate_ptr make_certificate(string commonName = "libdatachannel"); // cached
+future_certificate_ptr make_certificate(string commonName = "libdatachannel"); // cached
 
-RTC_CPP_EXPORT void CleanupCertificateCache();
+void CleanupCertificateCache();
 
 } // namespace rtc
 

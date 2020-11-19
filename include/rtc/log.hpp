@@ -35,11 +35,7 @@
 #pragma warning(pop)
 #endif
 
-#ifdef _WIN32
-#define RTC_CPP_EXPORT __declspec(dllexport)
-#else
-#define RTC_CPP_EXPORT
-#endif
+#include "include.hpp"
 
 namespace rtc {
 

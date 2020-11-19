@@ -33,7 +33,7 @@
 namespace rtc {
 
 // Processed tasks in order by delegating them to the thread pool
-class RTC_CPP_EXPORT Processor final {
+class Processor final {
 public:
 	Processor(size_t limit = 0);
 	~Processor();

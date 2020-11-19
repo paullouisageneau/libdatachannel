@@ -30,7 +30,7 @@ namespace rtc {
 
 using namespace std::placeholders;
 
-class RTC_CPP_EXPORT Transport {
+class Transport {
 public:
 	enum class State { Disconnected, Connecting, Connected, Completed, Failed };
 	using state_callback = std::function<void(State state)>;
