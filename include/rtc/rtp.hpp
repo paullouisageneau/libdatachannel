@@ -20,7 +20,7 @@
 #ifndef RTC_RTP_HPP
 #define RTC_RTP_HPP
 
-#include <rtc/log.hpp>
+#include "log.hpp"
 
 #include <cmath>
 
