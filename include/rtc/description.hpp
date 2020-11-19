@@ -63,7 +63,7 @@ public:
 	string generateSdp(string_view eol) const;
 	string generateApplicationSdp(string_view eol) const;
 
-	class Entry {
+	class RTC_CPP_EXPORT Entry {
 	public:
 		virtual ~Entry() = default;
 
@@ -95,7 +95,7 @@ public:
 		Direction mDirection;
 	};
 
-	struct Application : public Entry {
+	struct RTC_CPP_EXPORT Application : public Entry {
 	public:
 		Application(string mid = "data");
 		virtual ~Application() = default;
@@ -120,7 +120,7 @@ public:
 	};
 
 	// Media (non-data)
-	class Media : public Entry {
+	class RTC_CPP_EXPORT Media : public Entry {
 	public:
 		Media(const string &sdp);
 		Media(const string &mline, string mid, Direction dir = Direction::SendOnly);
@@ -183,7 +183,7 @@ public:
 		void addRTPMap(const RTPMap &map);
 	};
 
-	class Audio : public Media {
+	class RTC_CPP_EXPORT Audio : public Media {
 	public:
 		Audio(string mid = "audio", Direction dir = Direction::SendOnly);
 
@@ -191,7 +191,7 @@ public:
 		void addOpusCodec(int payloadType);
 	};
 
-	class Video : public Media {
+	class RTC_CPP_EXPORT Video : public Media {
 	public:
 		Video(string mid = "video", Direction dir = Direction::SendOnly);
 
