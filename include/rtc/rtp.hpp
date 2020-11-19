@@ -75,7 +75,7 @@ public:
 	inline void setPayloadType(uint8_t newPayloadType) {
 		_payloadType = (_payloadType & 0b10000000u) | (0b01111111u & newPayloadType);
 	}
-	inline void setSsrc(uint32_t ssrc) { _ssrc = htonl(ssrc); }
+	inline void setSsrc(uint32_t in_ssrc) { _ssrc = htonl(in_ssrc); }
 
 	void setTimestamp(uint32_t i) { _timestamp = htonl(i); }
 
@@ -103,13 +103,13 @@ private:
 	uint32_t _delaySinceLastReport;
 
 public:
-	inline void preparePacket(SSRC ssrc, [[maybe_unused]] unsigned int packetsLost,
+	inline void preparePacket(SSRC in_ssrc, [[maybe_unused]] unsigned int packetsLost,
 	                          [[maybe_unused]] unsigned int totalPackets, uint16_t highestSeqNo,
 	                          uint16_t seqNoCycles, uint32_t jitter, uint64_t lastSR_NTP,
 	                          uint64_t lastSR_DELAY) {
 		setSeqNo(highestSeqNo, seqNoCycles);
 		setJitter(jitter);
-		setSSRC(ssrc);
+		setSSRC(in_ssrc);
 
 		// Middle 32 bits of NTP Timestamp
 		//		  this->lastReport = lastSR_NTP >> 16u;
@@ -120,7 +120,7 @@ public:
 		//		  this->delaySinceLastReport = lastSR_DELAY;
 	}
 
-	inline void setSSRC(SSRC ssrc) { this->ssrc = htonl(ssrc); }
+	inline void setSSRC(SSRC in_ssrc) { this->ssrc = htonl(in_ssrc); }
 	inline SSRC getSSRC() const { return ntohl(ssrc); }
 
 	inline void setPacketsLost([[maybe_unused]] unsigned int packetsLost,
@@ -337,7 +337,7 @@ struct RTCP_REMB {
 		return sizeof(uint32_t) * (1 + header.header.length());
 	}
 
-	void preparePacket(SSRC senderSSRC, unsigned int numSSRC, unsigned int bitrate) {
+	void preparePacket(SSRC senderSSRC, unsigned int numSSRC, unsigned int in_bitrate) {
 
 		// Report Count becomes the format here.
 		header.header.prepareHeader(206, 15, 0);
@@ -352,21 +352,21 @@ struct RTCP_REMB {
 		id[2] = 'M';
 		id[3] = 'B';
 
-		setBitrate(numSSRC, bitrate);
+		setBitrate(numSSRC, in_bitrate);
 	}
 
-	void setBitrate(unsigned int numSSRC, unsigned int bitrate) {
+	void setBitrate(unsigned int numSSRC, unsigned int in_bitrate) {
 		unsigned int exp = 0;
-		while (bitrate > pow(2, 18) - 1) {
+		while (in_bitrate > pow(2, 18) - 1) {
 			exp++;
-			bitrate /= 2;
+			in_bitrate /= 2;
 		}
 
 		// "length" in packet is one less than the number of 32 bit words in the packet.
 		header.header.setLength(
 		    uint16_t((offsetof(RTCP_REMB, ssrc) / sizeof(uint32_t)) - 1 + numSSRC));
 
-		this->bitrate = htonl((numSSRC << (32u - 8u)) | (exp << (32u - 8u - 6u)) | bitrate);
+		this->bitrate = htonl((numSSRC << (32u - 8u)) | (exp << (32u - 8u - 6u)) | in_bitrate);
 	}
 
 	void setSsrc(int iterator, SSRC newSssrc) { ssrc[iterator] = htonl(newSssrc); }
@@ -428,7 +428,7 @@ public:
 
 public:
 	void preparePacket(SSRC ssrc, unsigned int discreteSeqNoCount) {
-		header.header.prepareHeader(205, 1, 2 + discreteSeqNoCount);
+		header.header.prepareHeader(205, 1, 2 + static_cast<uint16_t>(discreteSeqNoCount));
 		header.setMediaSourceSSRC(ssrc);
 		header.setPacketSenderSSRC(ssrc);
 	}
