@@ -141,6 +141,8 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	}
 
 	message->resize(size);
+
+	// DSCP is set by Track according to the type
 	return outgoing(message);
 }
 
