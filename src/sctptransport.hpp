@@ -77,6 +77,7 @@ private:
 	void shutdown();
 	void close();
 	void incoming(message_ptr message) override;
+	bool outgoing(message_ptr message) override;
 
 	void doRecv();
 	bool trySendQueue();

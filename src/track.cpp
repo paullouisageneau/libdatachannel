@@ -107,13 +107,17 @@ bool Track::outgoing(message_ptr message) {
 	if (mIsClosed)
 		throw std::runtime_error("Track is closed");
 
-	if (message->size() > maxMessageSize())
-		throw std::runtime_error("Message size exceeds limit");
-
 #if RTC_ENABLE_MEDIA
 	auto transport = mDtlsSrtpTransport.lock();
 	if (!transport)
 		throw std::runtime_error("Track transport is not open");
+
+	// Set recommended medium-priority DSCP value
+	// See https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18
+	if (mMediaDescription.type() == "audio")
+		message->dscp = 46; // EF: Expedited Forwarding
+	else
+		message->dscp = 36; // AF42: Assured Forwarding class 4, medium drop probability
 
 	return transport->sendMedia(message);
 #else

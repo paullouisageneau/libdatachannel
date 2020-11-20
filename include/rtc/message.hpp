@@ -42,7 +42,8 @@ struct RTC_CPP_EXPORT Message : binary {
 	Message(binary &&data, Type type_ = Binary) : binary(std::move(data)), type(type_) {}
 
 	Type type;
-	unsigned int stream = 0;
+	unsigned int stream = 0; // Stream id (SCTP stream or SSRC)
+	int dscp = 0;            // Differentiated Services Code Point
 	std::shared_ptr<Reliability> reliability;
 };
 
