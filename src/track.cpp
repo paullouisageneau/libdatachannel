@@ -149,7 +149,7 @@ bool Track::outgoing(message_ptr message) {
 
 	return transport->sendMedia(message);
 #else
-	PLOG_WARNING << "Ignoring track send (not compiled with SRTP support)";
+	PLOG_WARNING << "Ignoring track send (not compiled with media support)";
 	return false;
 #endif
 }

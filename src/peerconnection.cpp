@@ -369,7 +369,7 @@ void PeerConnection::onSignalingStateChange(std::function<void(SignalingState st
 std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) {
 #if !RTC_ENABLE_MEDIA
 	if (mTracks.empty()) {
-		PLOG_WARNING << "Tracks will be inative (not compiled with SRTP support)";
+		PLOG_WARNING << "Tracks will be inative (not compiled with media support)";
 	}
 #endif
 
@@ -503,7 +503,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 			    lower, certificate, verifierCallback,
 			    std::bind(&PeerConnection::forwardMedia, this, _1), stateChangeCallback);
 #else
-			PLOG_WARNING << "Ignoring media support (not compiled with SRTP support)";
+			PLOG_WARNING << "Ignoring media support (not compiled with media support)";
 #endif
 		}
 
@@ -872,7 +872,7 @@ void PeerConnection::incomingTrack(Description::Media description) {
 	std::unique_lock lock(mTracksMutex); // we are going to emplace
 #if !RTC_ENABLE_MEDIA
 	if (mTracks.empty()) {
-		PLOG_WARNING << "Tracks will be inative (not compiled with SRTP support)";
+		PLOG_WARNING << "Tracks will be inative (not compiled with media support)";
 	}
 #endif
 	if (mTracks.find(description.mid()) == mTracks.end()) {
