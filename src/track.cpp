@@ -67,9 +67,7 @@ bool Track::send(message_variant data) {
 	return outgoing(std::move(message));
 }
 
-bool Track::send(const byte *data, size_t size) {
-	return send(binary(data, data+size));
-}
+bool Track::send(const byte *data, size_t size) { return send(binary(data, data + size)); }
 
 std::optional<message_variant> Track::receive() {
 	if (auto next = mRecvQueue.tryPop())
