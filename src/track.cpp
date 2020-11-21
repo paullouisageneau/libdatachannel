@@ -134,7 +134,7 @@ void Track::incoming(message_ptr message) {
 	triggerAvailable(mRecvQueue.size());
 }
 
-bool Track::outgoing(message_ptr message) {
+bool Track::outgoing([[maybe_unused]] message_ptr message) {
 #if RTC_ENABLE_MEDIA
 	auto transport = mDtlsSrtpTransport.lock();
 	if (!transport)
