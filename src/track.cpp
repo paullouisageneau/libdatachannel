@@ -155,7 +155,7 @@ void Track::incoming(message_ptr message) {
 void Track::setRtcpHandler(std::shared_ptr<RtcpHandler> handler) {
 	mRtcpHandler = std::move(handler);
 	if (mRtcpHandler) {
-		mRtcpHandler->onOutgoing([&]([[maybe_unused]] const rtc::message_ptr &message) {
+		mRtcpHandler->onOutgoing([&]([[maybe_unused]] message_ptr message) {
 #if RTC_ENABLE_MEDIA
 			auto transport = mDtlsSrtpTransport.lock();
 			if (!transport)

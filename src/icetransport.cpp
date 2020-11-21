@@ -223,7 +223,7 @@ bool IceTransport::send(message_ptr message) {
 
 bool IceTransport::outgoing(message_ptr message) {
 	// Explicit Congestion Notification takes the least-significant 2 bits of the DS field
-	int ds = message->dscp << 2;
+	int ds = int(message->dscp << 2);
 	return juice_send_diffserv(mAgent.get(), reinterpret_cast<const char *>(message->data()),
 	                           message->size(), ds) >= 0;
 }
@@ -623,7 +623,7 @@ bool IceTransport::outgoing(message_ptr message) {
 	if (mOutgoingDscp != message->dscp) {
 		mOutgoingDscp = message->dscp;
 		// Explicit Congestion Notification takes the least-significant 2 bits of the DS field
-		int ds = message->dscp << 2;
+		int ds = int(message->dscp << 2);
 		nice_agent_set_stream_tos(mNiceAgent.get(), mStreamId, ds); // ToS is the legacy name for DS
 	}
 	return nice_agent_send(mNiceAgent.get(), mStreamId, 1, message->size(),

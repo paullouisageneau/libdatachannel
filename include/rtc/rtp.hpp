@@ -80,14 +80,10 @@ public:
 	void setTimestamp(uint32_t i) { _timestamp = htonl(i); }
 
 	void log() {
-		PLOG_VERBOSE  << "RTP V: " << (int) version()
-		            << " P: " << (padding() ? "P" : " ")
-		            << " X: " << (extension() ? "X" : " ")
-		            << " CC: "  << (int) csrcCount()
-		            << " M: " << (marker() ? "M" : " ")
-		            << " PT: " << (int) payloadType()
-		            << " SEQNO: " << seqNumber()
-		            << " TS: " << timestamp();
+		PLOG_VERBOSE << "RTP V: " << (int)version() << " P: " << (padding() ? "P" : " ")
+		             << " X: " << (extension() ? "X" : " ") << " CC: " << (int)csrcCount()
+		             << " M: " << (marker() ? "M" : " ") << " PT: " << (int)payloadType()
+		             << " SEQNO: " << seqNumber() << " TS: " << timestamp();
 	}
 };
 
@@ -199,9 +195,9 @@ public:
 
 	inline void log() const {
 		PLOG_VERBOSE << "RTCP header: "
-		          << "version=" << unsigned(version()) << ", padding=" << padding()
-		          << ", reportCount=" << unsigned(reportCount())
-		          << ", payloadType=" << unsigned(payloadType()) << ", length=" << length();
+		             << "version=" << unsigned(version()) << ", padding=" << padding()
+		             << ", reportCount=" << unsigned(reportCount())
+		             << ", payloadType=" << unsigned(payloadType()) << ", length=" << length();
 	}
 };
 
@@ -428,7 +424,7 @@ public:
 
 public:
 	void preparePacket(SSRC ssrc, unsigned int discreteSeqNoCount) {
-		header.header.prepareHeader(205, 1, 2 + static_cast<uint16_t>(discreteSeqNoCount));
+		header.header.prepareHeader(205, 1, 2 + uint16_t(discreteSeqNoCount));
 		header.setMediaSourceSSRC(ssrc);
 		header.setPacketSenderSSRC(ssrc);
 	}
