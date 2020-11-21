@@ -36,6 +36,7 @@
 namespace rtc {
 
 using std::shared_ptr;
+using namespace std::placeholders;
 
 WebSocket::WebSocket(std::optional<Configuration> config)
     : mConfig(config ? std::move(*config) : Configuration()),

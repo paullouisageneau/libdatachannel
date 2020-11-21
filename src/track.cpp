@@ -45,10 +45,30 @@ void Track::close() {
 	setRtcpHandler(nullptr);
 }
 
-bool Track::send(message_variant data) { return outgoing(make_message(std::move(data))); }
+bool Track::send(message_variant data) {
+	if (mIsClosed)
+		throw std::runtime_error("Track is closed");
+
+	auto direction = mMediaDescription.direction();
+	if ((direction == Description::Direction::RecvOnly ||
+	     direction == Description::Direction::Inactive)) {
+		PLOG_WARNING << "Track media direction does not allow transmission, dropping";
+		return false;
+	}
+
+	auto message = make_message(std::move(data));
+
+	if (mRtcpHandler) {
+		message = mRtcpHandler->outgoing(message);
+		if (!message)
+			return false;
+	}
+
+	return outgoing(std::move(message));
+}
 
 bool Track::send(const byte *data, size_t size) {
-	return outgoing(std::make_shared<Message>(data, data + size, Message::Binary));
+	return send(binary(data, data+size));
 }
 
 std::optional<message_variant> Track::receive() {
@@ -88,25 +108,33 @@ void Track::open(shared_ptr<DtlsSrtpTransport> transport) {
 }
 #endif
 
-bool Track::outgoing(message_ptr message) {
-
-	if (mRtcpHandler) {
-		message = mRtcpHandler->outgoing(message);
-		if (!message)
-			return false;
-	}
+void Track::incoming(message_ptr message) {
+	if (!message)
+		return;
 
 	auto direction = mMediaDescription.direction();
-	if ((direction == Description::Direction::RecvOnly ||
+	if ((direction == Description::Direction::SendOnly ||
 	     direction == Description::Direction::Inactive) &&
 	    message->type != Message::Control) {
-		PLOG_WARNING << "Track media direction does not allow transmission, dropping";
-		return false;
+		PLOG_WARNING << "Track media direction does not allow reception, dropping";
+		return;
 	}
 
-	if (mIsClosed)
-		throw std::runtime_error("Track is closed");
+	if (mRtcpHandler) {
+		message = mRtcpHandler->incoming(message);
+		if (!message)
+			return;
+	}
 
+	// Tail drop if queue is full
+	if (mRecvQueue.full())
+		return;
+
+	mRecvQueue.push(message);
+	triggerAvailable(mRecvQueue.size());
+}
+
+bool Track::outgoing(message_ptr message) {
 #if RTC_ENABLE_MEDIA
 	auto transport = mDtlsSrtpTransport.lock();
 	if (!transport)
@@ -126,48 +154,10 @@ bool Track::outgoing(message_ptr message) {
 #endif
 }
 
-void Track::incoming(message_ptr message) {
-	if (!message)
-		return;
-
-	if (mRtcpHandler) {
-		message = mRtcpHandler->incoming(message);
-		if (!message)
-			return;
-	}
-
-	auto direction = mMediaDescription.direction();
-	if ((direction == Description::Direction::SendOnly ||
-	     direction == Description::Direction::Inactive) &&
-	    message->type != Message::Control) {
-		PLOG_WARNING << "Track media direction does not allow reception, dropping";
-		return;
-	}
-
-	// Tail drop if queue is full
-	if (mRecvQueue.full())
-		return;
-
-	mRecvQueue.push(message);
-	triggerAvailable(mRecvQueue.size());
-}
-
 void Track::setRtcpHandler(std::shared_ptr<RtcpHandler> handler) {
 	mRtcpHandler = std::move(handler);
-	if (mRtcpHandler) {
-		mRtcpHandler->onOutgoing([&]([[maybe_unused]] message_ptr message) {
-#if RTC_ENABLE_MEDIA
-			auto transport = mDtlsSrtpTransport.lock();
-			if (!transport)
-				throw std::runtime_error("Track transport is not open");
-
-			return transport->sendMedia(message);
-#else
-			PLOG_WARNING << "Ignoring track send (not compiled with SRTP support)";
-			return false;
-#endif
-		});
-	}
+	if (mRtcpHandler)
+		mRtcpHandler->onOutgoing(std::bind(&Track::outgoing, this, std::placeholders::_1));
 }
 
 bool Track::requestKeyframe() {

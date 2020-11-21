@@ -70,8 +70,8 @@ private:
 	std::weak_ptr<DtlsSrtpTransport> mDtlsSrtpTransport;
 #endif
 
-	bool outgoing(message_ptr message);
 	void incoming(message_ptr message);
+	bool outgoing(message_ptr message);
 
 	Description::Media mMediaDescription;
 	std::atomic<bool> mIsClosed = false;
