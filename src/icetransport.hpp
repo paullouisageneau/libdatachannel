@@ -101,7 +101,7 @@ private:
 	std::thread mMainLoopThread;
 	guint mTimeoutId = 0;
 	std::mutex mOutgoingMutex;
-	int mOutgoingDscp;
+	unsigned int mOutgoingDscp;
 
 	static string AddressToString(const NiceAddress &addr);
 

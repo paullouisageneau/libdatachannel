@@ -145,7 +145,9 @@ void DtlsTransport::incoming(message_ptr message) {
 }
 
 bool DtlsTransport::outgoing(message_ptr message) {
-	message->dscp = mCurrentDscp;
+	if (message->dscp == 0)
+		message->dscp = mCurrentDscp;
+
 	return Transport::outgoing(std::move(message));
 }
 
@@ -427,7 +429,9 @@ void DtlsTransport::incoming(message_ptr message) {
 }
 
 bool DtlsTransport::outgoing(message_ptr message) {
-	message->dscp = mCurrentDscp;
+	if (message->dscp == 0)
+		message->dscp = mCurrentDscp;
+
 	return Transport::outgoing(std::move(message));
 }
 

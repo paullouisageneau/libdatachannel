@@ -142,8 +142,13 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 
 	message->resize(size);
 
-	// DSCP is set by Track according to the type
-	return outgoing(message);
+	if (message->dscp == 0) { // Track might override the value
+		// Set recommended medium-priority DSCP value
+		// See https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18
+		message->dscp = 36; // AF42: Assured Forwarding class 4, medium drop probability
+	}
+
+	return Transport::outgoing(message); // bypass DTLS DSCP marking
 }
 
 void DtlsSrtpTransport::incoming(message_ptr message) {
