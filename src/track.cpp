@@ -125,8 +125,10 @@ void Track::incoming(message_ptr message) {
 	}
 
 	// Tail drop if queue is full
-	if (mRecvQueue.full())
+	if (mRecvQueue.full()) {
+		PLOG_WARNING << "Track incoming queue is full, dropping";
 		return;
+	}
 
 	mRecvQueue.push(message);
 	triggerAvailable(mRecvQueue.size());
