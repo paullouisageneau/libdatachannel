@@ -131,9 +131,8 @@ public:
 
 		void removeFormat(const string &fmt);
 
-		void addSSRC(uint32_t ssrc, std::string name);
-		void addSSRC(uint32_t ssrc);
-		void replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, string name);
+		void addSSRC(uint32_t ssrc, std::optional<std::string> name, std::optional<std::string> msid=std::nullopt);
+		void replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::optional<std::string> name, std::optional<std::string> msid=std::nullopt);
 		bool hasSSRC(uint32_t ssrc);
 		std::vector<uint32_t> getSSRCs();
 
@@ -141,6 +140,8 @@ public:
 		int getBitrate() const;
 
 		bool hasPayloadType(int payloadType) const;
+
+		void addRTXCodec(unsigned int payloadType, unsigned int originalPayloadType, unsigned int clockRate);
 
 		virtual void parseSdpLine(string_view line) override;
 
@@ -181,7 +182,9 @@ public:
 
 	public:
 		void addRTPMap(const RTPMap &map);
-	};
+
+        void removeSSRC(uint32_t oldSSRC);
+    };
 
 	class Audio : public Media {
 	public:
@@ -189,7 +192,9 @@ public:
 
 		void addAudioCodec(int payloadType, const string &codec);
 		void addOpusCodec(int payloadType);
-	};
+
+        void addRTXCodec(unsigned int payloadType, unsigned int originalPayloadType, unsigned int clockRate);
+    };
 
 	class Video : public Media {
 	public:
