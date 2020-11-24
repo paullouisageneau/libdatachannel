@@ -9,14 +9,9 @@ target_compile_definitions(datachannel-client PUBLIC STATIC_GETOPT)
 else()
 add_executable(datachannel-client main.cpp parse_cl.cpp parse_cl.h)
 endif()
+
 set_target_properties(datachannel-client PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME client)
-
-if(WIN32)
-	target_link_libraries(datachannel-client datachannel-static) # DLL exports only the C API
-else()
-	target_link_libraries(datachannel-client datachannel)
-endif()
 target_link_libraries(datachannel-client datachannel nlohmann_json)
 

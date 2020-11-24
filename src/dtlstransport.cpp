@@ -53,7 +53,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
                              verifier_callback verifierCallback, state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mCertificate(certificate),
       mVerifierCallback(std::move(verifierCallback)),
-      mIsClient(lower->role() == Description::Role::Active) {
+      mIsClient(lower->role() == Description::Role::Active), mCurrentDscp(0) {
 
 	PLOG_DEBUG << "Initializing DTLS transport (GnuTLS)";
 
@@ -122,6 +122,7 @@ bool DtlsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
+	mCurrentDscp = message->dscp;
 	ssize_t ret;
 	do {
 		ret = gnutls_record_send(mSession, message->data(), message->size());
@@ -141,6 +142,13 @@ void DtlsTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	mIncomingQueue.push(message);
+}
+
+bool DtlsTransport::outgoing(message_ptr message) {
+	if (message->dscp == 0)
+		message->dscp = mCurrentDscp;
+
+	return Transport::outgoing(std::move(message));
 }
 
 void DtlsTransport::postHandshake() {
@@ -309,7 +317,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
                              verifier_callback verifierCallback, state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mCertificate(certificate),
       mVerifierCallback(std::move(verifierCallback)),
-      mIsClient(lower->role() == Description::Role::Active) {
+      mIsClient(lower->role() == Description::Role::Active), mCurrentDscp(0) {
 	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
 
 	try {
@@ -405,6 +413,7 @@ bool DtlsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
+	mCurrentDscp = message->dscp;
 	int ret = SSL_write(mSsl, message->data(), int(message->size()));
 	return openssl::check(mSsl, ret);
 }
@@ -417,6 +426,13 @@ void DtlsTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	mIncomingQueue.push(message);
+}
+
+bool DtlsTransport::outgoing(message_ptr message) {
+	if (message->dscp == 0)
+		message->dscp = mCurrentDscp;
+
+	return Transport::outgoing(std::move(message));
 }
 
 void DtlsTransport::postHandshake() {

@@ -161,6 +161,7 @@ static Peer *createPeer(const rtcConfiguration *config) {
 	rtcSetLocalCandidateCallback(peer->pc, candidateCallback);
 	rtcSetStateChangeCallback(peer->pc, stateChangeCallback);
 	rtcSetGatheringStateChangeCallback(peer->pc, gatheringStateCallback);
+	rtcSetSignalingStateChangeCallback(peer->pc, signalingStateCallback);
 
 	return peer;
 }

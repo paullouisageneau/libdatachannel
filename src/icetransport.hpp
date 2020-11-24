@@ -35,6 +35,7 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <mutex>
 
 namespace rtc {
 
@@ -99,6 +100,8 @@ private:
 	std::unique_ptr<GMainLoop, void (*)(GMainLoop *)> mMainLoop;
 	std::thread mMainLoopThread;
 	guint mTimeoutId = 0;
+	std::mutex mOutgoingMutex;
+	unsigned int mOutgoingDscp;
 
 	static string AddressToString(const NiceAddress &addr);
 

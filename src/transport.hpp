@@ -28,8 +28,6 @@
 
 namespace rtc {
 
-using namespace std::placeholders;
-
 class Transport {
 public:
 	enum class State { Disconnected, Connecting, Connected, Completed, Failed };
@@ -57,7 +55,7 @@ public:
 	void registerIncoming() {
 		if (mLower) {
 			PLOG_VERBOSE << "Registering incoming callback";
-			mLower->onRecv(std::bind(&Transport::incoming, this, _1));
+			mLower->onRecv(std::bind(&Transport::incoming, this, std::placeholders::_1));
 		}
 	}
 

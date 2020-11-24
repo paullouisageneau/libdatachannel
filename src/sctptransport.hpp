@@ -77,6 +77,7 @@ private:
 	void shutdown();
 	void close();
 	void incoming(message_ptr message) override;
+	bool outgoing(message_ptr message) override;
 
 	void doRecv();
 	bool trySendQueue();
@@ -95,6 +96,7 @@ private:
 	struct socket *mSock;
 
 	Processor mProcessor;
+	std::atomic<int> mPendingRecvCount;
 	std::mutex mRecvMutex, mSendMutex;
 	Queue<message_ptr> mSendQueue;
 	std::map<uint16_t, size_t> mBufferedAmount;

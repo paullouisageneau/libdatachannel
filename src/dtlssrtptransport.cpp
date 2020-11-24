@@ -130,8 +130,8 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 				auto ssrc = ((RTP *)message->data())->ssrc();
 				PLOG_INFO << "Adding SSRC to RTP: " << ssrc;
 				addSSRC(ssrc);
-				if ((err = srtp_protect_rtcp(mSrtpOut, message->data(), &size)))
-					throw std::runtime_error("SRTCP protect error, status=" +
+				if ((err = srtp_protect(mSrtpOut, message->data(), &size)))
+					throw std::runtime_error("SRTP protect error, status=" +
 					                         to_string(static_cast<int>(err)));
 			} else
 				throw std::runtime_error("SRTP protect error, status=" +
@@ -141,7 +141,14 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	}
 
 	message->resize(size);
-	return outgoing(message);
+
+	if (message->dscp == 0) { // Track might override the value
+		// Set recommended medium-priority DSCP value
+		// See https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18
+		message->dscp = 36; // AF42: Assured Forwarding class 4, medium drop probability
+	}
+
+	return Transport::outgoing(message); // bypass DTLS DSCP marking
 }
 
 void DtlsSrtpTransport::incoming(message_ptr message) {
@@ -217,7 +224,7 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 					PLOG_INFO << "Adding SSRC to RTP: " << ssrc;
 					addSSRC(ssrc);
 					if ((err = srtp_unprotect(mSrtpIn, message->data(), &size)))
-						throw std::runtime_error("SRTCP unprotect error, status=" +
+						throw std::runtime_error("SRTP unprotect error, status=" +
 						                         to_string(static_cast<int>(err)));
 				} else
 					PLOG_WARNING << "SRTP unprotect error, status=" << err

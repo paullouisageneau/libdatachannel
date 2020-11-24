@@ -222,8 +222,10 @@ bool IceTransport::send(message_ptr message) {
 }
 
 bool IceTransport::outgoing(message_ptr message) {
-	return juice_send(mAgent.get(), reinterpret_cast<const char *>(message->data()),
-	                  message->size()) >= 0;
+	// Explicit Congestion Notification takes the least-significant 2 bits of the DS field
+	int ds = int(message->dscp << 2);
+	return juice_send_diffserv(mAgent.get(), reinterpret_cast<const char *>(message->data()),
+	                           message->size(), ds) >= 0;
 }
 
 void IceTransport::changeGatheringState(GatheringState state) {
@@ -330,7 +332,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
       mMid("0"), mGatheringState(GatheringState::New),
       mCandidateCallback(std::move(candidateCallback)),
       mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)),
-      mNiceAgent(nullptr, nullptr), mMainLoop(nullptr, nullptr) {
+      mNiceAgent(nullptr, nullptr), mMainLoop(nullptr, nullptr), mOutgoingDscp(0) {
 
 	PLOG_DEBUG << "Initializing ICE transport (libnice)";
 
@@ -617,6 +619,13 @@ bool IceTransport::send(message_ptr message) {
 }
 
 bool IceTransport::outgoing(message_ptr message) {
+	std::lock_guard lock(mOutgoingMutex);
+	if (mOutgoingDscp != message->dscp) {
+		mOutgoingDscp = message->dscp;
+		// Explicit Congestion Notification takes the least-significant 2 bits of the DS field
+		int ds = int(message->dscp << 2);
+		nice_agent_set_stream_tos(mNiceAgent.get(), mStreamId, ds); // ToS is the legacy name for DS
+	}
 	return nice_agent_send(mNiceAgent.get(), mStreamId, 1, message->size(),
 	                       reinterpret_cast<const char *>(message->data())) >= 0;
 }

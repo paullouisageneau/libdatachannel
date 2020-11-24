@@ -32,7 +32,7 @@
 
 namespace rtc {
 
-class Description {
+class RTC_CPP_EXPORT Description {
 public:
 	enum class Type { Unspec, Offer, Answer, Pranswer, Rollback };
 	enum class Role { ActPass, Passive, Active };
@@ -63,7 +63,7 @@ public:
 	string generateSdp(string_view eol) const;
 	string generateApplicationSdp(string_view eol) const;
 
-	class Entry {
+	class RTC_CPP_EXPORT Entry {
 	public:
 		virtual ~Entry() = default;
 
@@ -95,7 +95,7 @@ public:
 		Direction mDirection;
 	};
 
-	struct Application : public Entry {
+	struct RTC_CPP_EXPORT Application : public Entry {
 	public:
 		Application(string mid = "data");
 		virtual ~Application() = default;
@@ -120,7 +120,7 @@ public:
 	};
 
 	// Media (non-data)
-	class Media : public Entry {
+	class RTC_CPP_EXPORT Media : public Entry {
 	public:
 		Media(const string &sdp);
 		Media(const string &mline, string mid, Direction dir = Direction::SendOnly);
@@ -186,7 +186,7 @@ public:
         void removeSSRC(uint32_t oldSSRC);
     };
 
-	class Audio : public Media {
+	class RTC_CPP_EXPORT Audio : public Media {
 	public:
 		Audio(string mid = "audio", Direction dir = Direction::SendOnly);
 
@@ -196,7 +196,7 @@ public:
         void addRTXCodec(unsigned int payloadType, unsigned int originalPayloadType, unsigned int clockRate);
     };
 
-	class Video : public Media {
+	class RTC_CPP_EXPORT Video : public Media {
 	public:
 		Video(string mid = "video", Direction dir = Direction::SendOnly);
 
@@ -250,8 +250,8 @@ private:
 
 } // namespace rtc
 
-std::ostream &operator<<(std::ostream &out, const rtc::Description &description);
-std::ostream &operator<<(std::ostream &out, rtc::Description::Type type);
-std::ostream &operator<<(std::ostream &out, rtc::Description::Role role);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const rtc::Description &description);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::Description::Type type);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::Description::Role role);
 
 #endif

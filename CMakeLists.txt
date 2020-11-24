@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
 project(libdatachannel
-	VERSION 0.10.1
+	VERSION 0.10.3
 	LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "WebRTC Data Channels Library")
 
@@ -36,7 +36,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
 if(WIN32)
 	add_definitions(-DWIN32_LEAN_AND_MEAN)
-	if (MSVC)
+	if(MSVC)
 		add_definitions(-DNOMINMAX)
 		add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 		add_definitions(-D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
@@ -163,8 +163,8 @@ target_link_libraries(datachannel-static PUBLIC Threads::Threads plog::plog)
 target_link_libraries(datachannel-static PRIVATE Usrsctp::Usrsctp)
 
 if(WIN32)
-	target_link_libraries(datachannel PRIVATE ws2_32) # winsock2
-	target_link_libraries(datachannel-static PRIVATE ws2_32) # winsock2
+	target_link_libraries(datachannel PUBLIC ws2_32) # winsock2
+	target_link_libraries(datachannel-static PUBLIC ws2_32) # winsock2
 endif()
 
 if(NO_MEDIA)
@@ -272,11 +272,7 @@ if(NOT NO_TESTS)
 		set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
 	endif()
 	target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-	if(WIN32)
-		target_link_libraries(datachannel-tests datachannel-static) # DLL exports only the C API
-	else()
-		target_link_libraries(datachannel-tests datachannel)
-	endif()
+	target_link_libraries(datachannel-tests datachannel)
 
 	# Benchmark
 	add_executable(datachannel-benchmark test/benchmark.cpp)
@@ -288,11 +284,7 @@ if(NOT NO_TESTS)
 	endif()
 	target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
 	target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-	if(WIN32)
-		target_link_libraries(datachannel-benchmark datachannel-static) # DLL exports only the C API
-	else()
-		target_link_libraries(datachannel-benchmark datachannel)
-	endif()
+	target_link_libraries(datachannel-benchmark datachannel)
 endif()
 
 # Examples

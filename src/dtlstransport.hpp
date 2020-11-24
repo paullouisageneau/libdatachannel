@@ -53,6 +53,7 @@ public:
 
 protected:
 	virtual void incoming(message_ptr message) override;
+	virtual bool outgoing(message_ptr message) override;
 	virtual void postHandshake();
 	void runRecvLoop();
 
@@ -62,6 +63,7 @@ protected:
 
 	Queue<message_ptr> mIncomingQueue;
 	std::thread mRecvThread;
+	std::atomic<unsigned int> mCurrentDscp;
 
 #if USE_GNUTLS
 	gnutls_session_t mSession;

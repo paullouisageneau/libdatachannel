@@ -88,7 +88,7 @@ void SctpTransport::Cleanup() {
 SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
                              message_callback recvCallback, amount_callback bufferedAmountCallback,
                              state_callback stateChangeCallback)
-    : Transport(lower, std::move(stateChangeCallback)), mPort(port),
+    : Transport(lower, std::move(stateChangeCallback)), mPort(port), mPendingRecvCount(0),
       mSendQueue(0, message_size_func), mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
 	onRecv(recvCallback);
 
@@ -325,8 +325,16 @@ void SctpTransport::incoming(message_ptr message) {
 	usrsctp_conninput(this, message->data(), message->size(), 0);
 }
 
+bool SctpTransport::outgoing(message_ptr message) {
+	// Set recommended medium-priority DSCP value
+	// See https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18
+	message->dscp = 10; // AF11: Assured Forwarding class 1, low drop probability
+	return Transport::outgoing(std::move(message));
+}
+
 void SctpTransport::doRecv() {
 	std::lock_guard lock(mRecvMutex);
+	--mPendingRecvCount;
 	try {
 		while (true) {
 			const size_t bufferSize = 65536;
@@ -532,15 +540,17 @@ bool SctpTransport::safeFlush() {
 }
 
 void SctpTransport::handleUpcall() {
-	if(!mSock)
+	if (!mSock)
 		return;
 
 	PLOG_VERBOSE << "Handle upcall";
 
 	int events = usrsctp_get_events(mSock);
 
-	if (events & SCTP_EVENT_READ)
+	if (events & SCTP_EVENT_READ && mPendingRecvCount == 0) {
+		++mPendingRecvCount;
 		mProcessor.enqueue(&SctpTransport::doRecv, this);
+	}
 
 	if (events & SCTP_EVENT_WRITE)
 		mProcessor.enqueue(&SctpTransport::safeFlush, this);
@@ -551,6 +561,7 @@ int SctpTransport::handleWrite(byte *data, size_t len, uint8_t /*tos*/, uint8_t 
 		std::unique_lock lock(mWriteMutex);
 		PLOG_VERBOSE << "Handle write, len=" << len;
 
+		auto message = make_message(data, data + len);
 		if (!outgoing(make_message(data, data + len)))
 			return -1;
 

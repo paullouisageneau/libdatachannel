@@ -29,7 +29,7 @@
 
 namespace rtc {
 
-class RtcpHandler {
+class RTC_CPP_EXPORT RtcpHandler {
 protected:
 	/**
 	 * Use this callback when trying to send custom data (such as RTCP) to the client.
@@ -64,7 +64,7 @@ public:
 class Track;
 
 // An RtcpSession can be plugged into a Track to handle the whole RTCP session
-class RtcpReceivingSession : public RtcpHandler {
+class RTC_CPP_EXPORT RtcpReceivingSession : public RtcpHandler {
 public:
 	rtc::message_ptr incoming(rtc::message_ptr ptr) override;
 	rtc::message_ptr outgoing(rtc::message_ptr ptr) override;
