@@ -702,30 +702,15 @@ void Description::Media::removeFormat(const string &fmt) {
 	}
 }
 
-void Description::Video::addVideoCodec(int payloadType, const string &codec) {
+void Description::Video::addVideoCodec(int payloadType, const string &codec, const std::optional<std::string>& profile) {
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/90000");
 	map.addFB("nack");
 	map.addFB("nack pli");
-	//    map.addFB("nack fir");
+	//    map.addFB("ccm fir");
 	map.addFB("goog-remb");
-	if (codec == "H264") {
-		// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
-		// https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
-		// TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
-		map.fmtps.emplace_back(
-		    "profile-level-id=4de01f;packetization-mode=1;level-asymmetry-allowed=1");
-
-		// Because certain Android devices don't like me, let us just negotiate some random
-//		{
-//			RTPMap map(std::to_string(payloadType + 1) + ' ' + codec + "/90000");
-//			map.addFB("nack");
-//			map.addFB("nack pli");
-//			//            map.addFB("nack fir");
-//			map.addFB("goog-remb");
-//			addRTPMap(map);
-//		}
-	}
-	addRTPMap(map);
+	if (profile)
+	    map.fmtps.emplace_back(*profile);
+    addRTPMap(map);
 
 	//	// RTX Packets
 	/* TODO
@@ -741,10 +726,11 @@ void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 	//    ";rtx-time=3000"); addRTPMap(rtx);
 }
 
-void Description::Audio::addAudioCodec(int payloadType, const string &codec) {
+void Description::Audio::addAudioCodec(int payloadType, const string &codec, const std::optional<std::string>& profile) {
 	// TODO This 48000/2 should be parameterized
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/48000/2");
-	map.fmtps.emplace_back("minptime=10; maxaveragebitrate=96000; stereo=1; sprop-stereo=1; useinbandfec=1");
+	if (profile)
+	    map.fmtps.emplace_back(*profile);
 	addRTPMap(map);
 }
 
