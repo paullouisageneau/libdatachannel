@@ -520,26 +520,26 @@ Description::Entry::removeAttribute(std::vector<string>::iterator it) {
 }
 
 void Description::Media::addSSRC(uint32_t ssrc, std::optional<std::string> name, std::optional<std::string> msid) {
-    if (name)
-        mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + *name);
-    else
-        mAttributes.emplace_back("ssrc:" + std::to_string(ssrc));
+	if (name)
+		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + *name);
+	else
+		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc));
 
-    if (msid)
-        mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " msid:" + *msid + " " + *msid);
+	if (msid)
+		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " msid:" + *msid + " " + *msid);
 
 	mSsrcs.emplace_back(ssrc);
 }
 
 void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t  ssrc, std::optional<std::string> name, std::optional<std::string> msid) {
-    auto it = mAttributes.begin();
-    while (it != mAttributes.end()) {
-        if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
-            it = mAttributes.erase(it);
-        } else
-            it++;
-    }
-    addSSRC(ssrc, std::move(name), std::move(msid));
+	auto it = mAttributes.begin();
+	while (it != mAttributes.end()) {
+		if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
+			it = mAttributes.erase(it);
+		} else
+			it++;
+	}
+	addSSRC(ssrc, std::move(name), std::move(msid));
 }
 
 void Description::Media::removeSSRC(uint32_t oldSSRC) {
@@ -735,7 +735,6 @@ void Description::Audio::addAudioCodec(int payloadType, const string &codec, con
 }
 
 void Description::Media::addRTXCodec(unsigned int payloadType, unsigned int originalPayloadType, unsigned int clockRate) {
-    // TODO This 48000/2 should be parameterized
     RTPMap map(std::to_string(payloadType) + " RTX/" + std::to_string(clockRate));
     map.fmtps.emplace_back("apt=" + std::to_string(originalPayloadType));
     addRTPMap(map);

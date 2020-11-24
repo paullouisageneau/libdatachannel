@@ -183,8 +183,8 @@ public:
 	public:
 		void addRTPMap(const RTPMap &map);
 
-        void removeSSRC(uint32_t oldSSRC);
-    };
+		void removeSSRC(uint32_t oldSSRC);
+	};
 
 	class RTC_CPP_EXPORT Audio : public Media {
 	public:
@@ -193,16 +193,16 @@ public:
 		void addAudioCodec(int payloadType, const string &codec, const std::optional<std::string>& profile=
 		        "minptime=10; maxaveragebitrate=96000; stereo=1; sprop-stereo=1; useinbandfec=1");
 		void addOpusCodec(int payloadType);
-    };
+	};
 
 	class RTC_CPP_EXPORT Video : public Media {
 	public:
 		Video(string mid = "video", Direction dir = Direction::SendOnly);
 
-        // Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
-        // https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
-        // TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
-        void addVideoCodec(int payloadType, const string &codec, const std::optional<std::string>&
+		// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
+		// https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
+		// TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
+		void addVideoCodec(int payloadType, const string &codec, const std::optional<std::string>&
 		        profile="profile-level-id=42e01f;packetization-mode=1;level-asymmetry-allowed=1");
 
 		void addH264Codec(int payloadType);
