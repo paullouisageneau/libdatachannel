@@ -24,6 +24,7 @@
 #if RTC_ENABLE_WEBSOCKET
 
 #include <chrono>
+#include <iterator>
 #include <list>
 #include <map>
 #include <random>
@@ -227,8 +228,14 @@ size_t WsTransport::readHttpResponse(const byte *buffer, size_t size) {
 	}
 
 	auto h = headers.find("upgrade");
-	if (h == headers.end() || h->second != "websocket")
-		throw std::runtime_error("WebSocket update header missing or mismatching");
+	if (h == headers.end())
+		throw std::runtime_error("WebSocket update header missing");
+
+	string upgrade;
+	std::transform(h->second.begin(), h->second.end(), std::back_inserter(upgrade),
+	               [](char c) { return std::tolower(c); });
+	if (upgrade != "websocket")
+		throw std::runtime_error("WebSocket update header mismatching: " + h->second);
 
 	h = headers.find("sec-websocket-accept");
 	if (h == headers.end())
