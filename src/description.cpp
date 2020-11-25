@@ -519,12 +519,19 @@ Description::Entry::removeAttribute(std::vector<string>::iterator it) {
 	return mAttributes.erase(it);
 }
 
-void Description::Media::addSSRC(uint32_t ssrc, std::string name) {
-	mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + name);
+void Description::Media::addSSRC(uint32_t ssrc, std::optional<std::string> name, std::optional<std::string> msid) {
+	if (name)
+		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + *name);
+	else
+		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc));
+
+	if (msid)
+		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " msid:" + *msid + " " + *msid);
+
 	mSsrcs.emplace_back(ssrc);
 }
 
-void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::string name) {
+void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t  ssrc, std::optional<std::string> name, std::optional<std::string> msid) {
 	auto it = mAttributes.begin();
 	while (it != mAttributes.end()) {
 		if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
@@ -532,11 +539,17 @@ void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::strin
 		} else
 			it++;
 	}
-	mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + name);
+	addSSRC(ssrc, std::move(name), std::move(msid));
 }
 
-void Description::Media::addSSRC(uint32_t ssrc) {
-	mAttributes.emplace_back("ssrc:" + std::to_string(ssrc));
+void Description::Media::removeSSRC(uint32_t oldSSRC) {
+    auto it = mAttributes.begin();
+    while (it != mAttributes.end()) {
+        if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
+            it = mAttributes.erase(it);
+        } else
+            it++;
+    }
 }
 
 bool Description::Media::hasSSRC(uint32_t ssrc) {
@@ -689,30 +702,15 @@ void Description::Media::removeFormat(const string &fmt) {
 	}
 }
 
-void Description::Video::addVideoCodec(int payloadType, const string &codec) {
+void Description::Video::addVideoCodec(int payloadType, const string &codec, const std::optional<std::string>& profile) {
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/90000");
 	map.addFB("nack");
 	map.addFB("nack pli");
-	//    map.addFB("nack fir");
+	//    map.addFB("ccm fir");
 	map.addFB("goog-remb");
-	if (codec == "H264") {
-		// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
-		// https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
-		// TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
-		map.fmtps.emplace_back(
-		    "profile-level-id=4de01f;packetization-mode=1;level-asymmetry-allowed=1");
-
-		// Because certain Android devices don't like me, let us just negotiate some random
-		{
-			RTPMap map(std::to_string(payloadType + 1) + ' ' + codec + "/90000");
-			map.addFB("nack");
-			map.addFB("nack pli");
-			//            map.addFB("nack fir");
-			map.addFB("goog-remb");
-			addRTPMap(map);
-		}
-	}
-	addRTPMap(map);
+	if (profile)
+	    map.fmtps.emplace_back(*profile);
+    addRTPMap(map);
 
 	//	// RTX Packets
 	/* TODO
@@ -728,11 +726,18 @@ void Description::Video::addVideoCodec(int payloadType, const string &codec) {
 	//    ";rtx-time=3000"); addRTPMap(rtx);
 }
 
-void Description::Audio::addAudioCodec(int payloadType, const string &codec) {
+void Description::Audio::addAudioCodec(int payloadType, const string &codec, const std::optional<std::string>& profile) {
 	// TODO This 48000/2 should be parameterized
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/48000/2");
-	map.fmtps.emplace_back("maxaveragebitrate=96000; stereo=1; sprop-stereo=1; useinbandfec=1");
+	if (profile)
+	    map.fmtps.emplace_back(*profile);
 	addRTPMap(map);
+}
+
+void Description::Media::addRTXCodec(unsigned int payloadType, unsigned int originalPayloadType, unsigned int clockRate) {
+    RTPMap map(std::to_string(payloadType) + " RTX/" + std::to_string(clockRate));
+    map.fmtps.emplace_back("apt=" + std::to_string(originalPayloadType));
+    addRTPMap(map);
 }
 
 void Description::Video::addH264Codec(int pt) { addVideoCodec(pt, "H264"); }
