@@ -287,8 +287,14 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 		shared_ptr<Transport> lower = std::atomic_load(&mTlsTransport);
 		if (!lower)
 			lower = std::atomic_load(&mTcpTransport);
+
+		auto wsConfig = WsTransport::Configuration();
+		if(mConfig.protocols) {
+			wsConfig.protocols = *mConfig.protocols;
+		}
+
 		auto transport = std::make_shared<WsTransport>(
-			WsTransport::Configuration{{.protocols = mConfig.protocols}},
+			wsConfig,
 		    lower, mHost, mPath, weak_bind(&WebSocket::incoming, this, _1),
 		    [this, weak_this = weak_from_this()](State state) {
 			    auto shared_this = weak_this.lock();
