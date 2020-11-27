@@ -118,6 +118,10 @@ void WebSocket::remoteClose() {
 
 bool WebSocket::send(message_variant data) { return outgoing(make_message(std::move(data))); }
 
+bool WebSocket::send(const byte *data, size_t size) {
+	return outgoing(make_message(data, data + size));
+}
+
 bool WebSocket::isOpen() const { return mState == State::Open; }
 
 bool WebSocket::isClosed() const { return mState == State::Closed; }

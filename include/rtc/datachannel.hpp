@@ -50,7 +50,7 @@ public:
 
 	void close(void) override;
 	bool send(message_variant data) override;
-	bool send(const byte *data, size_t size);
+	bool send(const byte *data, size_t size) override;
 	template <typename Buffer> bool sendBuffer(const Buffer &buf);
 	template <typename Iterator> bool sendBuffer(Iterator first, Iterator last);
 
