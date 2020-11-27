@@ -29,6 +29,7 @@
 #include <map>
 #include <random>
 #include <regex>
+#include <numeric>
 
 #ifdef _WIN32
 #include <winsock2.h>
