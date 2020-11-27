@@ -31,7 +31,11 @@ class TlsTransport;
 
 class WsTransport : public Transport {
 public:
-	WsTransport(std::shared_ptr<Transport> lower, string host, string path,
+	struct Configuration {
+		std::vector<string> protocols;
+	};
+
+	WsTransport(std::optional<Configuration> config, std::shared_ptr<Transport> lower, string host, string path,
 	            message_callback recvCallback, state_callback stateCallback);
 	~WsTransport();
 
@@ -74,6 +78,8 @@ private:
 	binary mBuffer;
 	binary mPartial;
 	Opcode mPartialOpcode;
+
+	const Configuration mConfig;
 };
 
 } // namespace rtc
