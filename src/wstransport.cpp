@@ -29,6 +29,7 @@
 #include <map>
 #include <random>
 #include <regex>
+#include <numeric>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -53,9 +54,9 @@ using std::to_string;
 using random_bytes_engine =
     std::independent_bits_engine<std::default_random_engine, CHAR_BIT, unsigned short>;
 
-WsTransport::WsTransport(std::shared_ptr<Transport> lower, string host, string path,
+WsTransport::WsTransport(std::optional<Configuration> config, std::shared_ptr<Transport> lower, string host, string path,
                          message_callback recvCallback, state_callback stateCallback)
-    : Transport(lower, std::move(stateCallback)), mHost(std::move(host)), mPath(std::move(path)) {
+    : Transport(lower, std::move(stateCallback)), mHost(std::move(host)), mPath(std::move(path)), mConfig(config ? std::move(*config) : Configuration()) {
 	onRecv(recvCallback);
 
 	PLOG_DEBUG << "Initializing WebSocket transport";
@@ -164,6 +165,15 @@ bool WsTransport::sendHttpRequest() {
 	auto k = reinterpret_cast<uint8_t *>(key.data());
 	std::generate(k, k + key.size(), [&]() { return uint8_t(generator()); });
 
+	string appendHeader = "";
+	if(mConfig.protocols.size() > 0) {
+		appendHeader += "Sec-WebSocket-Protocol: " +
+						std::accumulate(mConfig.protocols.begin(), mConfig.protocols.end(), string(), [](const string& a, const string& b) -> string { 
+							return a + (a.length() > 0 ? "," : "") + b; 
+						}) +
+						"\r\n";
+	}
+	
 	const string request = "GET " + mPath +
 	                       " HTTP/1.1\r\n"
 	                       "Host: " +
@@ -174,8 +184,9 @@ bool WsTransport::sendHttpRequest() {
 	                       "Sec-WebSocket-Version: 13\r\n"
 	                       "Sec-WebSocket-Key: " +
 	                       to_base64(key) +
-	                       "\r\n"
-	                       "\r\n";
+	                       "\r\n" +
+						   std::move(appendHeader) +
+						   "\r\n";
 
 	auto data = reinterpret_cast<const byte *>(request.data());
 	auto size = request.size();
