@@ -32,6 +32,15 @@
 
 namespace rtc {
 
+const string DEFAULT_AUDIO_PROFILE =
+    "minptime=10;maxaveragebitrate=96000;stereo=1;sprop-stereo=1;useinbandfec=1";
+
+// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
+// https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
+// TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
+const string DEFAULT_VIDEO_PROFILE =
+    "profile-level-id=42e01f;packetization-mode=1;level-asymmetry-allowed=1";
+
 class RTC_CPP_EXPORT Description {
 public:
 	enum class Type { Unspec, Offer, Answer, Pranswer, Rollback };
@@ -131,8 +140,10 @@ public:
 
 		void removeFormat(const string &fmt);
 
-		void addSSRC(uint32_t ssrc, std::optional<std::string> name, std::optional<std::string> msid=std::nullopt);
-		void replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::optional<std::string> name, std::optional<std::string> msid=std::nullopt);
+		void addSSRC(uint32_t ssrc, std::optional<string> name,
+		             std::optional<string> msid = nullopt);
+		void replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::optional<string> name,
+		                 std::optional<string> msid = nullopt);
 		bool hasSSRC(uint32_t ssrc);
 		std::vector<uint32_t> getSSRCs();
 
@@ -141,7 +152,8 @@ public:
 
 		bool hasPayloadType(int payloadType) const;
 
-		void addRTXCodec(unsigned int payloadType, unsigned int originalPayloadType, unsigned int clockRate);
+		void addRTXCodec(unsigned int payloadType, unsigned int originalPayloadType,
+		                 unsigned int clockRate);
 
 		virtual void parseSdpLine(string_view line) override;
 
@@ -151,7 +163,7 @@ public:
 
 			void removeFB(const string &string);
 			void addFB(const string &string);
-			void addAttribute(std::string attr) { fmtps.emplace_back(attr); }
+			void addAttribute(string attr) { fmtps.emplace_back(std::move(attr)); }
 
 			int pt;
 			string format;
@@ -190,8 +202,9 @@ public:
 	public:
 		Audio(string mid = "audio", Direction dir = Direction::SendOnly);
 
-		void addAudioCodec(int payloadType, const string &codec, const std::optional<std::string>& profile=
-		        "minptime=10; maxaveragebitrate=96000; stereo=1; sprop-stereo=1; useinbandfec=1");
+		void addAudioCodec(int payloadType, string codec,
+		                   std::optional<string> profile = DEFAULT_AUDIO_PROFILE);
+
 		void addOpusCodec(int payloadType);
 	};
 
@@ -199,11 +212,8 @@ public:
 	public:
 		Video(string mid = "video", Direction dir = Direction::SendOnly);
 
-		// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
-		// https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
-		// TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
-		void addVideoCodec(int payloadType, const string &codec, const std::optional<std::string>&
-		        profile="profile-level-id=42e01f;packetization-mode=1;level-asymmetry-allowed=1");
+		void addVideoCodec(int payloadType, string codec,
+		                   std::optional<string> profile = DEFAULT_VIDEO_PROFILE);
 
 		void addH264Codec(int payloadType);
 		void addVP8Codec(int payloadType);

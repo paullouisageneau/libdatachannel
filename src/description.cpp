@@ -29,12 +29,12 @@
 #include <unordered_map>
 
 using std::shared_ptr;
-using std::size_t;
-using std::string;
-using std::string_view;
 using std::chrono::system_clock;
 
 namespace {
+
+using std::string;
+using std::string_view;
 
 inline bool match_prefix(string_view str, string_view prefix) {
 	return str.size() >= prefix.size() &&
@@ -483,8 +483,7 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 	}
 
 	for (const auto &attr : mAttributes) {
-		if (attr.find("extmap") == std::string::npos &&
-		    attr.find("rtcp-rsize") == std::string::npos)
+		if (attr.find("extmap") == string::npos && attr.find("rtcp-rsize") == string::npos)
 			sdp << "a=" << attr << eol;
 	}
 
@@ -519,7 +518,8 @@ Description::Entry::removeAttribute(std::vector<string>::iterator it) {
 	return mAttributes.erase(it);
 }
 
-void Description::Media::addSSRC(uint32_t ssrc, std::optional<std::string> name, std::optional<std::string> msid) {
+void Description::Media::addSSRC(uint32_t ssrc, std::optional<string> name,
+                                 std::optional<string> msid) {
 	if (name)
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + *name);
 	else
@@ -531,7 +531,8 @@ void Description::Media::addSSRC(uint32_t ssrc, std::optional<std::string> name,
 	mSsrcs.emplace_back(ssrc);
 }
 
-void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t  ssrc, std::optional<std::string> name, std::optional<std::string> msid) {
+void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::optional<string> name,
+                                     std::optional<string> msid) {
 	auto it = mAttributes.begin();
 	while (it != mAttributes.end()) {
 		if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
@@ -543,13 +544,13 @@ void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t  ssrc, std::opti
 }
 
 void Description::Media::removeSSRC(uint32_t oldSSRC) {
-    auto it = mAttributes.begin();
-    while (it != mAttributes.end()) {
-        if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
-            it = mAttributes.erase(it);
-        } else
-            it++;
-    }
+	auto it = mAttributes.begin();
+	while (it != mAttributes.end()) {
+		if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
+			it = mAttributes.erase(it);
+		} else
+			it++;
+	}
 }
 
 bool Description::Media::hasSSRC(uint32_t ssrc) {
@@ -702,17 +703,17 @@ void Description::Media::removeFormat(const string &fmt) {
 	}
 }
 
-void Description::Video::addVideoCodec(int payloadType, const string &codec, const std::optional<std::string>& profile) {
+void Description::Video::addVideoCodec(int payloadType, string codec,
+                                       std::optional<string> profile) {
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/90000");
 	map.addFB("nack");
 	map.addFB("nack pli");
 	//    map.addFB("ccm fir");
 	map.addFB("goog-remb");
 	if (profile)
-	    map.fmtps.emplace_back(*profile);
-    addRTPMap(map);
+		map.fmtps.emplace_back(*profile);
+	addRTPMap(map);
 
-	//	// RTX Packets
 	/* TODO
 	 *  TIL that Firefox does not properly support the negotiation of RTX! It works, but doesn't
 	 * negotiate the SSRC so we have no idea what SSRC is RTX going to be. Three solutions: One) we
@@ -720,31 +721,34 @@ void Description::Video::addVideoCodec(int payloadType, const string &codec, con
 	 * rebuild the original packet before we send it distribute it to each track. Three) we complain
 	 * to mozilla. This one probably won't do much.
 	 */
-	//    RTPMap rtx(std::to_string(payloadType+1) + " rtx/90000");
-	//    // TODO rtx-time is how long can a request be stashed for before needing to resend it.
-	//    Needs to be parameterized rtx.addAttribute("apt=" + std::to_string(payloadType) +
-	//    ";rtx-time=3000"); addRTPMap(rtx);
+	// RTX Packets
+	// RTPMap rtx(std::to_string(payloadType+1) + " rtx/90000");
+	// // TODO rtx-time is how long can a request be stashed for before needing to resend it.
+	// Needs to be parameterized rtx.addAttribute("apt=" + std::to_string(payloadType) +
+	// ";rtx-time=3000"); addRTPMap(rtx);
 }
 
-void Description::Audio::addAudioCodec(int payloadType, const string &codec, const std::optional<std::string>& profile) {
+void Description::Audio::addAudioCodec(int payloadType, string codec,
+                                       std::optional<string> profile) {
 	// TODO This 48000/2 should be parameterized
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/48000/2");
 	if (profile)
-	    map.fmtps.emplace_back(*profile);
+		map.fmtps.emplace_back(*profile);
 	addRTPMap(map);
 }
 
-void Description::Media::addRTXCodec(unsigned int payloadType, unsigned int originalPayloadType, unsigned int clockRate) {
-    RTPMap map(std::to_string(payloadType) + " RTX/" + std::to_string(clockRate));
-    map.fmtps.emplace_back("apt=" + std::to_string(originalPayloadType));
-    addRTPMap(map);
+void Description::Media::addRTXCodec(unsigned int payloadType, unsigned int originalPayloadType,
+                                     unsigned int clockRate) {
+	RTPMap map(std::to_string(payloadType) + " RTX/" + std::to_string(clockRate));
+	map.fmtps.emplace_back("apt=" + std::to_string(originalPayloadType));
+	addRTPMap(map);
 }
 
 void Description::Video::addH264Codec(int pt) { addVideoCodec(pt, "H264"); }
 
-void Description::Video::addVP8Codec(int payloadType) { addVideoCodec(payloadType, "VP8"); }
+void Description::Video::addVP8Codec(int payloadType) { addVideoCodec(payloadType, "VP8", nullopt); }
 
-void Description::Video::addVP9Codec(int payloadType) { addVideoCodec(payloadType, "VP9"); }
+void Description::Video::addVP9Codec(int payloadType) { addVideoCodec(payloadType, "VP9", nullopt); }
 
 void Description::Media::setBitrate(int bitrate) { mBas = bitrate; }
 
@@ -813,7 +817,7 @@ void Description::Media::parseSdpLine(string_view line) {
 		} else if (key == "rtcp-mux") {
 			// always added
 		} else if (key == "ssrc") {
-			mSsrcs.emplace_back(std::stoul((std::string)value));
+			mSsrcs.emplace_back(std::stoul(string(value)));
 		} else {
 			Entry::parseSdpLine(line);
 		}
@@ -833,7 +837,7 @@ std::vector<uint32_t> Description::Media::getSSRCs() {
 	for (auto &val : mAttributes) {
 		PLOG_DEBUG << val;
 		if (val.find("ssrc:") == 0) {
-			vec.emplace_back(std::stoul((std::string)val.substr(5, val.find(" "))));
+			vec.emplace_back(std::stoul(string(val.substr(5, val.find(" ")))));
 		}
 	}
 	return vec;
@@ -857,7 +861,7 @@ Description::Media::RTPMap::RTPMap(string_view mline) { setMLine(mline); }
 void Description::Media::RTPMap::removeFB(const string &str) {
 	auto it = rtcpFbs.begin();
 	while (it != rtcpFbs.end()) {
-		if (it->find(str) != std::string::npos) {
+		if (it->find(str) != string::npos) {
 			it = rtcpFbs.erase(it);
 		} else
 			it++;

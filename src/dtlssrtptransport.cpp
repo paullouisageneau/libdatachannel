@@ -110,7 +110,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 			if (err == srtp_err_status_replay_fail)
 				throw std::runtime_error("SRTCP packet is a replay");
 			else if (err == srtp_err_status_no_ctx) {
-				auto ssrc = ((RTCP_SR *)message->data())->senderSSRC();
+				auto ssrc = reinterpret_cast<RTCP_SR *>(message->data())->senderSSRC();
 				PLOG_INFO << "Adding SSRC to SRTCP: " << ssrc;
 				addSSRC(ssrc);
 				if ((err = srtp_protect_rtcp(mSrtpOut, message->data(), &size)))
@@ -127,7 +127,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 			if (err == srtp_err_status_replay_fail)
 				throw std::runtime_error("Outgoing SRTP packet is a replay");
 			else if (err == srtp_err_status_no_ctx) {
-				auto ssrc = ((RTP *)message->data())->ssrc();
+				auto ssrc = reinterpret_cast<RTP *>(message->data())->ssrc();
 				PLOG_INFO << "Adding SSRC to RTP: " << ssrc;
 				addSSRC(ssrc);
 				if ((err = srtp_protect(mSrtpOut, message->data(), &size)))
@@ -196,7 +196,7 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 				else if (err == srtp_err_status_auth_fail)
 					PLOG_WARNING << "Incoming SRTCP packet failed authentication check";
 				else if (err == srtp_err_status_no_ctx) {
-					auto ssrc = ((RTCP_SR *)message->data())->senderSSRC();
+					auto ssrc = reinterpret_cast<RTCP_SR *>(message->data())->senderSSRC();
 					PLOG_INFO << "Adding SSRC to RTCP: " << ssrc;
 					addSSRC(ssrc);
 					if ((err = srtp_unprotect_rtcp(mSrtpIn, message->data(), &size)))
@@ -210,8 +210,7 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 			}
 			PLOG_VERBOSE << "Unprotected SRTCP packet, size=" << size;
 			message->type = Message::Type::Control;
-			auto rtp = (RTCP_SR *)message->data();
-			message->stream = rtp->senderSSRC();
+			message->stream = reinterpret_cast<RTCP_SR *>(message->data())->senderSSRC();
 		} else {
 			PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
 			if (srtp_err_status_t err = srtp_unprotect(mSrtpIn, message->data(), &size)) {
@@ -220,7 +219,7 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 				else if (err == srtp_err_status_auth_fail)
 					PLOG_WARNING << "Incoming SRTP packet failed authentication check";
 				else if (err == srtp_err_status_no_ctx) {
-					auto ssrc = ((RTP *)message->data())->ssrc();
+					auto ssrc = reinterpret_cast<RTP *>(message->data())->ssrc();
 					PLOG_INFO << "Adding SSRC to RTP: " << ssrc;
 					addSSRC(ssrc);
 					if ((err = srtp_unprotect(mSrtpIn, message->data(), &size)))
@@ -228,13 +227,12 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 						                         to_string(static_cast<int>(err)));
 				} else
 					PLOG_WARNING << "SRTP unprotect error, status=" << err
-					             << " SSRC=" << ((RTP *)message->data())->ssrc();
+					             << " SSRC=" << reinterpret_cast<RTP *>(message->data())->ssrc();
 				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
 			message->type = Message::Type::Binary;
-			auto rtp = (RTP *)message->data();
-			message->stream = rtp->ssrc();
+			message->stream = reinterpret_cast<RTP *>(message->data())->ssrc();
 		}
 
 		message->resize(size);

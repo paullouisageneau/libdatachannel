@@ -126,7 +126,7 @@ bool RtcpReceivingSession::requestKeyframe() {
 
 void RtcpReceivingSession::pushPLI() {
 	auto msg = rtc::make_message(rtc::RTCP_PLI::size(), rtc::Message::Type::Control);
-	auto *pli = (rtc::RTCP_PLI *)msg->data();
+	auto *pli = reinterpret_cast<rtc::RTCP_PLI *>(msg->data());
 	pli->preparePacket(mSsrc);
 	send(msg);
 }
