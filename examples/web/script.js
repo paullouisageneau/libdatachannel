@@ -59,6 +59,7 @@ function openSignaling(url) {
     ws.onmessage = (e) => {
       if(typeof(e.data) != 'string') return;
       const message = JSON.parse(e.data);
+      console.log(message);
       const { id, type } = message;
 
       let pc = peerConnectionMap[id];
