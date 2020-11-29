@@ -396,10 +396,11 @@ void PeerConnection::onTrack(std::function<void(std::shared_ptr<Track>)> callbac
 }
 
 shared_ptr<IceTransport> PeerConnection::initIceTransport() {
-	PLOG_VERBOSE << "Starting ICE transport";
 	try {
 		if (auto transport = std::atomic_load(&mIceTransport))
 			return transport;
+
+		PLOG_VERBOSE << "Starting ICE transport";
 
 		auto transport = std::make_shared<IceTransport>(
 		    mConfig, weak_bind(&PeerConnection::processLocalCandidate, this, _1),
@@ -459,10 +460,11 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport() {
 }
 
 shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
-	PLOG_VERBOSE << "Starting DTLS transport";
 	try {
 		if (auto transport = std::atomic_load(&mDtlsTransport))
 			return transport;
+
+		PLOG_VERBOSE << "Starting DTLS transport";
 
 		auto certificate = mCertificate.get();
 		auto lower = std::atomic_load(&mIceTransport);
@@ -530,10 +532,11 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 }
 
 shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
-	PLOG_VERBOSE << "Starting SCTP transport";
 	try {
 		if (auto transport = std::atomic_load(&mSctpTransport))
 			return transport;
+
+		PLOG_VERBOSE << "Starting SCTP transport";
 
 		auto remote = remoteDescription();
 		if (!remote || !remote->application())
