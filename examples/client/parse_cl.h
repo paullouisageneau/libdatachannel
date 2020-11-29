@@ -34,14 +34,12 @@ class Cmdline
 {
 private:
   /* parameters */
-  bool _e;
   bool _n;
   std::string _s;
   int _t;
   std::string _w;
   int _x;
   bool _h;
-  bool _v;
 
   /* other stuff to keep track of */
   std::string _program_name;
@@ -55,20 +53,15 @@ public:
   /* usage function */
   void usage (int status);
 
-  /* version function */
-  void version (int status);
-
   /* return next (non-option) parameter */
   int next_param () { return _optind; }
 
-  bool echoDataChannelMessages () const { return _e; }
   bool noStun () const { return _n; }
   std::string stunServer () const { return _s; }
   int stunPort () const { return _t; }
   std::string webSocketServer () const { return _w; }
   int webSocketPort () const { return _x; }
   bool h () const { return _h; }
-  bool v () const { return _v; }
 };
 
 #endif

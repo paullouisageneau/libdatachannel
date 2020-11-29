@@ -43,47 +43,39 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
 
   static struct option long_options[] =
   {
-    {"echo", no_argument, NULL, 'e'},
     {"noStun", no_argument, NULL, 'n'},
     {"stunServer", required_argument, NULL, 's'},
     {"stunPort", required_argument, NULL, 't'},
     {"webSocketServer", required_argument, NULL, 'w'},
     {"webSocketPort", required_argument, NULL, 'x'},
     {"help", no_argument, NULL, 'h'},
-    {"version", no_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}
   };
 
   _program_name += argv[0];
 
   /* default values */
-  _e = false;
   _n = false;
   _s = "stun.l.google.com";
   _t = 19302;
   _w = "localhost";
   _x = 8000;
   _h = false;
-  _v = false;
 
   optind = 0;
   while ((c = getopt_long (argc, argv, "s:t:w:x:enhv", long_options, &optind)) != - 1)
     {
       switch (c)
         {
-        case 'e': 
-          _e = true;
-          break;
-
-        case 'n': 
+        case 'n':
           _n = true;
           break;
 
-        case 's': 
+        case 's':
           _s = optarg;
           break;
 
-        case 't': 
+        case 't':
           _t = atoi (optarg);
           if (_t < 0)
             {
@@ -99,11 +91,11 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
             }
           break;
 
-        case 'w': 
+        case 'w':
           _w = optarg;
           break;
 
-        case 'x': 
+        case 'x':
           _x = atoi (optarg);
           if (_x < 0)
             {
@@ -119,14 +111,9 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
             }
           break;
 
-        case 'h': 
+        case 'h':
           _h = true;
           this->usage (EXIT_SUCCESS);
-          break;
-
-        case 'v': 
-          _v = true;
-          this->version (EXIT_SUCCESS);
           break;
 
         default:
@@ -155,8 +142,6 @@ void Cmdline::usage (int status)
       std::cout << "\
 usage: " << _program_name << " [ -enstwxhv ] \n\
 libdatachannel client implementing WebRTC Data Channels with WebSocket signaling\n\
-   [ -e ] [ --echo ] (type=FLAG)\n\
-          Echo data channel messages back to sender rather than putting to stdout.\n\
    [ -n ] [ --noStun ] (type=FLAG)\n\
           Do NOT use a stun server (overrides -s and -t).\n\
    [ -s ] [ --stunServer ] (type=STRING, default=stun.l.google.com)\n\
@@ -168,15 +153,8 @@ libdatachannel client implementing WebRTC Data Channels with WebSocket signaling
    [ -x ] [ --webSocketPort ] (type=INTEGER, range=0...65535, default=8000)\n\
           Web socket server port.\n\
    [ -h ] [ --help ] (type=FLAG)\n\
-          Display this help and exit.\n\
-   [ -v ] [ --version ] (type=FLAG)\n\
-          Output version information and exit.\n";
+          Display this help and exit.\n";
     }
   exit (status);
 }
 
-void Cmdline::version (int status)
-{
-  std::cout << _program_name << " v0.5\n";
-  exit (status);
-}

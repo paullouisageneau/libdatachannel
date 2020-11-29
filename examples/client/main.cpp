@@ -23,17 +23,19 @@
 
 #include "rtc/rtc.hpp"
 
+#include "parse_cl.h"
+
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <future>
 #include <iostream>
 #include <memory>
 #include <random>
-#include <thread>
-#include <future>
 #include <stdexcept>
+#include <thread>
 #include <unordered_map>
-#include "parse_cl.h"
+
 
 using namespace rtc;
 using namespace std;
@@ -47,25 +49,23 @@ unordered_map<string, shared_ptr<PeerConnection>> peerConnectionMap;
 unordered_map<string, shared_ptr<DataChannel>> dataChannelMap;
 
 string localId;
-bool echoDataChannelMessages = false;
 
 shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
                                                 weak_ptr<WebSocket> wws, string id);
-void printReceived(bool echoed, string id, string type, size_t length);
 string randomId(size_t length);
-
 
 int main(int argc, char **argv) try {
 	auto params = std::make_unique<Cmdline>(argc, argv);
 
-	rtc::InitLogger(LogLevel::Debug);
+	rtc::InitLogger(LogLevel::Info);
 
 	Configuration config;
 	string stunServer = "";
 	if (params->noStun()) {
-		cout << "No STUN server is configured. Only local hosts and public IP addresses supported." << endl;
+		cout << "No STUN server is configured. Only local hosts and public IP addresses supported."
+		     << endl;
 	} else {
-		if (params->stunServer().substr(0,5).compare("stun:") != 0) {
+		if (params->stunServer().substr(0, 5).compare("stun:") != 0) {
 			stunServer = "stun:";
 		}
 		stunServer += params->stunServer() + ":" + to_string(params->stunPort());
@@ -76,27 +76,23 @@ int main(int argc, char **argv) try {
 	localId = randomId(4);
 	cout << "The local ID is: " << localId << endl;
 
-	echoDataChannelMessages = params->echoDataChannelMessages();
-	cout << "Received data channel messages will be "
-	     << (echoDataChannelMessages ? "echoed back to sender" : "printed to stdout") << endl;
-
 	auto ws = make_shared<WebSocket>();
 
 	std::promise<void> wsPromise;
 	auto wsFuture = wsPromise.get_future();
-	
-	ws->onOpen([&wsPromise]() { 
+
+	ws->onOpen([&wsPromise]() {
 		cout << "WebSocket connected, signaling ready" << endl;
 		wsPromise.set_value();
 	});
 
-	ws->onError([&wsPromise](string s) { 
+	ws->onError([&wsPromise](string s) {
 		cout << "WebSocket error" << endl;
 		wsPromise.set_exception(std::make_exception_ptr(std::runtime_error(s)));
 	});
-	
+
 	ws->onClosed([]() { cout << "WebSocket closed" << endl; });
-	
+
 	ws->onMessage([&](variant<binary, string> data) {
 		if (!holds_alternative<string>(data))
 			return;
@@ -134,14 +130,14 @@ int main(int argc, char **argv) try {
 	});
 
 	string wsPrefix = "";
-	if (params->webSocketServer().substr(0,5).compare("ws://") != 0) {
+	if (params->webSocketServer().substr(0, 5).compare("ws://") != 0) {
 		wsPrefix = "ws://";
 	}
 	const string url = wsPrefix + params->webSocketServer() + ":" +
-		to_string(params->webSocketPort()) + "/" + localId;
+	                   to_string(params->webSocketPort()) + "/" + localId;
 	cout << "Url is " << url << endl;
 	ws->open(url);
-	
+
 	cout << "Waiting for signaling to be connected..." << endl;
 	wsFuture.get();
 
@@ -172,19 +168,11 @@ int main(int argc, char **argv) try {
 		dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
 		dc->onMessage([id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) {
-			static bool firstMessage = true;
-			if (holds_alternative<string>(message) && (!echoDataChannelMessages || firstMessage)) {
+			if (holds_alternative<string>(message))
 				cout << "Message from " << id << " received: " << get<string>(message) << endl;
-				firstMessage = false;
-			} else if (echoDataChannelMessages) {
-				bool echoed = false;
-				if (auto dc = wdc.lock()) {
-					dc->send(message);
-					echoed = true;
-				}
-				printReceived(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
-				      get<string>(message).length());
-			}
+			else
+				cout << "Binary message from " << id
+				     << " received, size=" << get<binary>(message).size() << endl;
 		});
 
 		dataChannelMap.emplace(id, dc);
@@ -238,19 +226,11 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 		dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
 		dc->onMessage([id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) {
-			static bool firstMessage = true;
-			if (holds_alternative<string>(message) && (!echoDataChannelMessages || firstMessage)) {
+			if (holds_alternative<string>(message))
 				cout << "Message from " << id << " received: " << get<string>(message) << endl;
-				firstMessage = false;
-			} else if (echoDataChannelMessages) {
-				bool echoed = false;
-				if (auto dc = wdc.lock()) {
-					dc->send(message);
-					echoed = true;
-				}
-				printReceived(echoed, id, (holds_alternative<string>(message) ? "text" : "binary"),
-						get<string>(message).length());
-			}
+			else
+				cout << "Binary message from " << id
+				     << " received, size=" << get<binary>(message).size() << endl;
 		});
 
 		dc->send("Hello from " + localId);
@@ -261,20 +241,6 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 	peerConnectionMap.emplace(id, pc);
 	return pc;
 };
-
-// Helper function to print received pings
-void printReceived(bool echoed, string id, string type, size_t length) {
-	static long count = 0;
-	static long freq = 100;
-	if (!(++count%freq)) {
-		cout << "Received " << count << " pings in total from " << id << ", most recent of type "
-		     << type << " and " << (echoed ? "" : "un") << "successfully echoed most recent ping of size "
-		     << length << " back to " << id << endl;
-		if (count >= (freq * 10) && freq < 1000000) {
-			freq *= 10;
-		}
-	}
-}
 
 // Helper function to generate a random ID
 string randomId(size_t length) {
