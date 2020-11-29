@@ -227,12 +227,6 @@ int test_capi_connectivity_main() {
 		goto error;
 	}
 
-	if (peer1->signalingState != RTC_SIGNALING_STABLE ||
-	    peer2->signalingState != RTC_SIGNALING_STABLE) {
-		fprintf(stderr, "Signaling state is not stable\n");
-		goto error;
-	}
-
 	if (!peer1->connected || !peer2->connected) {
 		fprintf(stderr, "DataChannel is not connected\n");
 		goto error;

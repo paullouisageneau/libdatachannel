@@ -36,7 +36,6 @@
 #include <thread>
 #include <unordered_map>
 
-
 using namespace rtc;
 using namespace std;
 using namespace std::chrono_literals;
@@ -167,12 +166,12 @@ int main(int argc, char **argv) try {
 
 		dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
-		dc->onMessage([id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) {
-			if (holds_alternative<string>(message))
-				cout << "Message from " << id << " received: " << get<string>(message) << endl;
+		dc->onMessage([id, wdc = make_weak_ptr(dc)](variant<binary, string> data) {
+			if (holds_alternative<string>(data))
+				cout << "Message from " << id << " received: " << get<string>(data) << endl;
 			else
 				cout << "Binary message from " << id
-				     << " received, size=" << get<binary>(message).size() << endl;
+				     << " received, size=" << get<binary>(data).size() << endl;
 		});
 
 		dataChannelMap.emplace(id, dc);
@@ -225,12 +224,12 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 
 		dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
-		dc->onMessage([id, wdc = make_weak_ptr(dc)](const variant<binary, string> &message) {
-			if (holds_alternative<string>(message))
-				cout << "Message from " << id << " received: " << get<string>(message) << endl;
+		dc->onMessage([id, wdc = make_weak_ptr(dc)](variant<binary, string> data) {
+			if (holds_alternative<string>(data))
+				cout << "Message from " << id << " received: " << get<string>(data) << endl;
 			else
 				cout << "Binary message from " << id
-				     << " received, size=" << get<binary>(message).size() << endl;
+				     << " received, size=" << get<binary>(data).size() << endl;
 		});
 
 		dc->send("Hello from " + localId);
