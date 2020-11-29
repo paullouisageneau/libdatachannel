@@ -137,7 +137,7 @@ int main(int argc, char **argv) {
 			size_t candidate_size = 0;
 
 			if (getline(&candidate, &candidate_size, stdin)) {
-				rtcAddRemoteCandidate(peer->pc, candidate, "0");
+				rtcAddRemoteCandidate(peer->pc, candidate, NULL);
 				free(candidate);
 
 			} else {
