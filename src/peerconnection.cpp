@@ -1014,7 +1014,10 @@ void PeerConnection::processLocalDescription(Description description) {
 		if (!description.hasApplication()) {
 			std::shared_lock lock(mDataChannelsMutex);
 			if (!mDataChannels.empty()) {
-				Description::Application app("data");
+				unsigned int m = 0;
+				while (description.hasMid(std::to_string(m)))
+					++m;
+				Description::Application app(std::to_string(m));
 				app.setSctpPort(DEFAULT_SCTP_PORT);
 				app.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
 
