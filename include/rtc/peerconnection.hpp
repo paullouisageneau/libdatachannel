@@ -157,6 +157,8 @@ private:
 	void processLocalCandidate(Candidate candidate);
 	void processRemoteDescription(Description description);
 	void processRemoteCandidate(Candidate candidate);
+	string localBundleMid() const;
+
 	void triggerDataChannel(std::weak_ptr<DataChannel> weakDataChannel);
 	void triggerTrack(std::shared_ptr<Track> track);
 	bool changeState(State state);
