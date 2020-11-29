@@ -168,7 +168,9 @@ bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 	return juice_add_remote_candidate(mAgent.get(), string(candidate).c_str()) >= 0;
 }
 
-void IceTransport::gatherLocalCandidates() {
+void IceTransport::gatherLocalCandidates(string mid) {
+	mMid = std::move(mid);
+
 	// Change state now as candidates calls can be synchronous
 	changeGatheringState(GatheringState::InProgress);
 
@@ -582,7 +584,9 @@ bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 	return ret > 0;
 }
 
-void IceTransport::gatherLocalCandidates() {
+void IceTransport::gatherLocalCandidates(string mid) {
+	mMid = std::move(mid);
+
 	// Change state now as candidates calls can be synchronous
 	changeGatheringState(GatheringState::InProgress);
 

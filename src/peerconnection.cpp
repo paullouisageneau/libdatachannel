@@ -189,13 +189,14 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 
 	auto iceTransport = initIceTransport();
 
-	Description localDescription = iceTransport->getLocalDescription(type);
-	processLocalDescription(std::move(localDescription));
+	Description local = iceTransport->getLocalDescription(type);
+	processLocalDescription(std::move(local));
 
 	changeSignalingState(newSignalingState);
 
-	if (mGatheringState == GatheringState::New)
-		iceTransport->gatherLocalCandidates();
+	if (mGatheringState == GatheringState::New) {
+		iceTransport->gatherLocalCandidates(localBundleMid());
+	}
 }
 
 void PeerConnection::setRemoteDescription(Description description) {
@@ -1143,6 +1144,11 @@ void PeerConnection::processRemoteCandidate(Candidate candidate) {
 			t.detach();
 		}
 	}
+}
+
+string PeerConnection::localBundleMid() const {
+	std::lock_guard lock(mLocalDescriptionMutex);
+	return mLocalDescription ? mLocalDescription->bundleMid() : "0";
 }
 
 void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
