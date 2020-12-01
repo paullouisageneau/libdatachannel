@@ -32,13 +32,13 @@
 
 namespace rtc {
 
-const string DEFAULT_AUDIO_PROFILE =
+const string DEFAULT_OPUS_AUDIO_PROFILE =
     "minptime=10;maxaveragebitrate=96000;stereo=1;sprop-stereo=1;useinbandfec=1";
 
 // Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
 // https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
 // TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
-const string DEFAULT_VIDEO_PROFILE =
+const string DEFAULT_H264_VIDEO_PROFILE =
     "profile-level-id=42e01f;packetization-mode=1;level-asymmetry-allowed=1";
 
 class RTC_CPP_EXPORT Description {
@@ -203,9 +203,9 @@ public:
 		Audio(string mid = "audio", Direction dir = Direction::SendOnly);
 
 		void addAudioCodec(int payloadType, string codec,
-		                   std::optional<string> profile = DEFAULT_AUDIO_PROFILE);
+		                   std::optional<string> profile = std::nullopt);
 
-		void addOpusCodec(int payloadType);
+		void addOpusCodec(int payloadType, std::optional<string> profile = DEFAULT_OPUS_AUDIO_PROFILE);
 	};
 
 	class RTC_CPP_EXPORT Video : public Media {
@@ -213,9 +213,9 @@ public:
 		Video(string mid = "video", Direction dir = Direction::SendOnly);
 
 		void addVideoCodec(int payloadType, string codec,
-		                   std::optional<string> profile = DEFAULT_VIDEO_PROFILE);
+		                   std::optional<string> profile = std::nullopt);
 
-		void addH264Codec(int payloadType);
+		void addH264Codec(int payloadType, std::optional<string> profile = DEFAULT_H264_VIDEO_PROFILE);
 		void addVP8Codec(int payloadType);
 		void addVP9Codec(int payloadType);
 	};
