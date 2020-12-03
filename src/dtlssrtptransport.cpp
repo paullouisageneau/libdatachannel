@@ -228,7 +228,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 				} else
 					PLOG_WARNING << "SRTP unprotect error, status=" << err
 					             << " SSRC=" << reinterpret_cast<RTP *>(message->data())->ssrc();
-				return;
+					if (err)
+						return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
 			message->type = Message::Type::Binary;
