@@ -206,7 +206,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 					PLOG_WARNING << "SRTCP unprotect error, status=" << err
 					             << " SSRC=" << ((RTCP_SR *)message->data())->senderSSRC();
 				}
-				return;
+				if (err)
+					return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTCP packet, size=" << size;
 			message->type = Message::Type::Control;
@@ -225,10 +226,12 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 					if ((err = srtp_unprotect(mSrtpIn, message->data(), &size)))
 						throw std::runtime_error("SRTP unprotect error, status=" +
 						                         to_string(static_cast<int>(err)));
-				} else
+				} else {
 					PLOG_WARNING << "SRTP unprotect error, status=" << err
 					             << " SSRC=" << reinterpret_cast<RTP *>(message->data())->ssrc();
-				return;
+				}
+				if (err)
+					return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
 			message->type = Message::Type::Binary;
