@@ -450,7 +450,7 @@ public:
 	 * @param missingPacket The seq no of the missing packet. This will be added to the queue.
 	 * @return true if the packet has grown, false otherwise.
 	 */
-	bool addMissingPacket(unsigned int *fciCount, uint16_t *fciPID, const uint16_t &missingPacket) {
+	bool addMissingPacket(unsigned int *fciCount, uint16_t *fciPID, uint16_t missingPacket) {
 		if (*fciCount == 0 || missingPacket < *fciPID || missingPacket > (*fciPID + 16)) {
 			parts[*fciCount].pid = htons(missingPacket);
 			parts[*fciCount].blp = 0;
