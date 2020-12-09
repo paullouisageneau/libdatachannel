@@ -45,7 +45,6 @@ public:
 	~DtlsSrtpTransport();
 
 	bool sendMedia(message_ptr message);
-	void addSSRC(uint32_t ssrc);
 
 private:
 	void incoming(message_ptr message) override;
