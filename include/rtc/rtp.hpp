@@ -459,8 +459,9 @@ public:
 			return true;
 		} else {
 			// TODO SPEEED!
-			parts[(*fciCount) - 1].blp = htons(ntohs(parts[(*fciCount) - 1].blp) |
-			                                   (1u << (unsigned int)(missingPacket - *fciPID)));
+			auto blp = ntohs(parts[(*fciCount) - 1].blp);
+			auto newBit = 1u << (unsigned int)(missingPacket - (1 + *fciPID));
+			parts[(*fciCount) - 1].blp = htons(blp | newBit);
 			return false;
 		}
 	}

@@ -74,6 +74,7 @@ DtlsSrtpTransport::~DtlsSrtpTransport() {
 }
 
 bool DtlsSrtpTransport::sendMedia(message_ptr message) {
+	std::lock_guard lock(sendMutex);
 	if (!message)
 		return false;
 
@@ -199,15 +200,11 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 					auto ssrc = reinterpret_cast<RTCP_SR *>(message->data())->senderSSRC();
 					PLOG_INFO << "Adding SSRC to RTCP: " << ssrc;
 					addSSRC(ssrc);
-					if ((err = srtp_unprotect_rtcp(mSrtpIn, message->data(), &size)))
-						throw std::runtime_error("SRTCP unprotect error, status=" +
-						                         to_string(static_cast<int>(err)));
 				} else {
 					PLOG_WARNING << "SRTCP unprotect error, status=" << err
 					             << " SSRC=" << ((RTCP_SR *)message->data())->senderSSRC();
 				}
-				if (err)
-					return;
+				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTCP packet, size=" << size;
 			message->type = Message::Type::Control;
@@ -223,15 +220,11 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 					auto ssrc = reinterpret_cast<RTP *>(message->data())->ssrc();
 					PLOG_INFO << "Adding SSRC to RTP: " << ssrc;
 					addSSRC(ssrc);
-					if ((err = srtp_unprotect(mSrtpIn, message->data(), &size)))
-						throw std::runtime_error("SRTP unprotect error, status=" +
-						                         to_string(static_cast<int>(err)));
 				} else {
 					PLOG_WARNING << "SRTP unprotect error, status=" << err
 					             << " SSRC=" << reinterpret_cast<RTP *>(message->data())->ssrc();
 				}
-				if (err)
-					return;
+				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
 			message->type = Message::Type::Binary;
@@ -313,6 +306,7 @@ void DtlsSrtpTransport::postHandshake() {
 	inbound.ssrc.type = ssrc_specific;
 	inbound.ssrc.value = 1;
 	inbound.key = mIsClient ? mServerSessionKey : mClientSessionKey;
+	inbound.window_size = 1024;
 	inbound.next = nullptr;
 
 	if (srtp_err_status_t err = srtp_add_stream(mSrtpIn, &inbound)) {
@@ -333,6 +327,7 @@ void DtlsSrtpTransport::addSSRC(uint32_t ssrc) {
 	inbound.ssrc.type = ssrc_specific;
 	inbound.ssrc.value = ssrc;
 	inbound.key = mIsClient ? mServerSessionKey : mClientSessionKey;
+	inbound.window_size = 1024;
 	inbound.next = nullptr;
 	inbound.allow_repeat_tx = true;
 
@@ -346,6 +341,7 @@ void DtlsSrtpTransport::addSSRC(uint32_t ssrc) {
 	outbound.ssrc.type = ssrc_specific;
 	outbound.ssrc.value = ssrc;
 	outbound.key = mIsClient ? mClientSessionKey : mServerSessionKey;
+	outbound.window_size = 1024;
 	outbound.next = nullptr;
 	outbound.allow_repeat_tx = true;
 
