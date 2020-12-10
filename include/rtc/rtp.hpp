@@ -1,6 +1,7 @@
 /**
  * Copyright (c) 2020 Staz Modrzynski
  * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2020 Filip Klembara (in2core)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -78,11 +79,16 @@ public:
 		return reinterpret_cast<const char *>(&csrc) + sizeof(SSRC) * csrcCount();
 	}
 
+    inline void preparePacket() {
+        _first |= (1 << 7);
+    }
+
 	inline void setSeqNumber(uint16_t newSeqNo) { _seqNumber = htons(newSeqNo); }
 	inline void setPayloadType(uint8_t newPayloadType) {
 		_payloadType = (_payloadType & 0b10000000u) | (0b01111111u & newPayloadType);
 	}
 	inline void setSsrc(uint32_t in_ssrc) { _ssrc = htonl(in_ssrc); }
+    inline void setMarker(bool marker) { _payloadType = (_payloadType & 0x7F) | (marker << 7); };
 
 	void setTimestamp(uint32_t i) { _timestamp = htonl(i); }
 
@@ -255,6 +261,10 @@ public:
 		return &_reportBlocks + num;
 	}
 
+    [[nodiscard]] static unsigned int size(unsigned int reportCount) {
+        return sizeof(RTCP_HEADER) + 24 + reportCount * sizeof(RTCP_ReportBlock);
+    }
+
 	[[nodiscard]] inline size_t getSize() const {
 		// "length" in packet is one less than the number of 32 bit words in the packet.
 		return sizeof(uint32_t) * (1 + size_t(header.length()));
@@ -266,8 +276,10 @@ public:
 	inline uint32_t octetCount() const { return ntohl(_octetCount); }
 	inline uint32_t senderSSRC() const { return ntohl(_senderSSRC); }
 
-	inline void setNtpTimestamp(uint32_t ts) { _ntpTimestamp = htonll(ts); }
-	inline void setRtpTimestamp(uint32_t ts) { _rtpTimestamp = htonl(ts); }
+	inline void setNtpTimestamp(uint64_t ts) { _ntpTimestamp = htonll(ts); }
+    inline void setRtpTimestamp(uint32_t ts) { _rtpTimestamp = htonl(ts); }
+    inline void setOctetCount(uint32_t ts) { _octetCount = htonl(ts); }
+    inline void setPacketCount(uint32_t ts) { _packetCount = htonl(ts); }
 
 	inline void log() const {
 		header.log();
@@ -280,6 +292,69 @@ public:
 			getReportBlock(i)->log();
 		}
 	}
+};
+
+struct RTCP_SDES_CHUNK {
+private:
+    SSRC _ssrc;
+public:
+    uint8_t type;
+private:
+    uint8_t _length;
+    char _text;
+public:
+    inline SSRC ssrc() const { return ntohl(_ssrc); }
+    inline void setSSRC(SSRC ssrc) { _ssrc = htonl(ssrc); }
+    inline std::string text() const {
+        return std::string(&_text, _length);
+    }
+    inline void setText(std::string text) {
+        _length = text.length();
+        memcpy(&_text, text.data(), _length);
+    }
+
+    inline uint8_t length() {
+        return _length;
+    }
+
+    [[nodiscard]] static unsigned int size(uint8_t textLength) {
+        auto words = uint8_t(std::ceil(double(textLength + 2) / 4)) + 1;
+        return words * 4;
+    }
+};
+
+struct RTCP_SDES {
+    RTCP_HEADER header;
+
+private:
+    RTCP_SDES_CHUNK _chunks;
+
+public:
+    inline void preparePacket(uint8_t chunkCount) {
+        unsigned int chunkSize = 0;
+        for(uint8_t i = 0; i < chunkCount; i++) {
+            auto chunk = getChunk(i);
+            chunkSize += RTCP_SDES_CHUNK::size(chunk->length());
+        }
+        uint16_t length = (sizeof(header) + chunkSize) / 4 - 1;
+        header.prepareHeader(202, chunkCount, length);
+    }
+    inline RTCP_SDES_CHUNK *getChunk(int num) {
+        auto base = &_chunks;
+        while (num-- > 0) {
+            auto chunkSize = RTCP_SDES_CHUNK::size(base->length());
+            base = reinterpret_cast<RTCP_SDES_CHUNK *>(reinterpret_cast<uint8_t *>(base) + chunkSize);
+        }
+        return reinterpret_cast<RTCP_SDES_CHUNK *>(base);
+    }
+
+    [[nodiscard]] static unsigned int size(std::vector<uint8_t> lengths) {
+        unsigned int chunks_size = 0;
+        for (auto length: lengths) {
+            chunks_size += RTCP_SDES_CHUNK::size(length);
+        }
+        return 4 + chunks_size;
+    }
 };
 
 struct RTCP_RR {
