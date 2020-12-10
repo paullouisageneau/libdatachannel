@@ -25,5 +25,13 @@
 #include "peerconnection.hpp"
 #include "websocket.hpp"
 
+#if RTC_ENABLE_MEDIA
+
+// opus/h264 streaming
+#include "opuspacketizationhandler.hpp"
+#include "h264packetizationhandler.hpp"
+
+#endif /* RTC_ENABLE_MEDIA */
+
 // C API
 #include "rtc.h"
