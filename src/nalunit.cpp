@@ -17,6 +17,7 @@
  */
 
 #include "nalunit.hpp"
+#include <cmath>
 
 #if RTC_ENABLE_MEDIA
 
