@@ -17,7 +17,7 @@
  */
 
 #include "helpers.hpp"
-#include <sys/time.h>
+#include <ctime>
 
 using namespace std;
 using namespace rtc;
