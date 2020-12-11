@@ -27,6 +27,7 @@
 #include "h264fileparser.hpp"
 #include "opusfileparser.hpp"
 #include "helpers.hpp"
+#include "ArgParser.hpp"
 
 using namespace rtc;
 using namespace std;
@@ -111,42 +112,36 @@ int main(int argc, char **argv) try {
     bool enableDebugLogs = false;
     bool printHelp = false;
     int c = 0;
-    // parse arguments
-    while ((c = getopt (argc, argv, "a:b:d:p:vh")) != -1) {
-        switch (c) {
-            case 'a':
-                opusSamplesDirectory = string(optarg) + "/";
-                break;
-            case 'b':
-                h264SamplesDirectory = string(optarg) + "/";
-                break;
-            case 'd':
-                ip_address = string(optarg);
-                break;
-            case 'p':
-                port = atoi(optarg);
-                break;
-            case 'v':
-                enableDebugLogs = true;
-                break;
-            case 'h':
-                printHelp = true;
-                break;
-            case '?':
-                if (optopt == 'a' || optopt == 'b' || optopt == 'd' || optopt == 'p') {
-                    string s(1, optopt);
-                    cerr << "Option -" << s <<" requires an argument." << endl;
-                } else if (isprint(optopt)) {
-                    string s(1, optopt);
-                    cerr << "Unknown option `-" << s << "'." << endl;
-                } else {
-                    fprintf(stderr, "Unknown option character `\\x%x'.\n", optopt);
-                }
-                return 1;
-            default:
-                abort();
+    auto parser = ArgParser({{"a", "audio"}, {"b", "video"}, {"d", "ip"}, {"p","port"}}, {{"h", "help"}, {"v", "verbose"}});
+    auto parsingResult = parser.parse(argc, argv, [](string key, string value) {
+        if (key == "audio") {
+            opusSamplesDirectory = value + "/";
+        } else if (key == "video") {
+            h264SamplesDirectory = value + "/";
+        } else if (key == "ip") {
+            ip_address = value;
+        } else if (key == "port") {
+            port = atoi(value.data());
+        } else {
+            cerr << "Invalid option --" << key << " with value " << value << endl;
+            return false;
         }
+        return true;
+    }, [&enableDebugLogs, &printHelp](string flag){
+        if (flag == "verbose") {
+            enableDebugLogs = true;
+        } else if (flag == "help") {
+            printHelp = true;
+        } else {
+            cerr << "Invalid flag --" << flag << endl;
+            return false;
+        }
+        return true;
+    });
+    if (!parsingResult) {
+        return 1;
     }
+
     if (printHelp) {
         cout << "usage: stream-h264 [-a opus_samples_folder] [-b h264_samples_folder] [-d ip_address] [-p port] [-v] [-h]" << endl
         << "Arguments:" << endl

@@ -4,10 +4,10 @@ if(POLICY CMP0079)
 endif()
 
 if(WIN32)
-add_executable(streamer main.cpp dispatchqueue.cpp dispatchqueue.hpp h264fileparser.cpp h264fileparser.hpp helpers.cpp helpers.hpp opusfileparser.cpp opusfileparser.hpp fileparser.cpp fileparser.hpp stream.cpp stream.hpp)
+add_executable(streamer main.cpp dispatchqueue.cpp dispatchqueue.hpp h264fileparser.cpp h264fileparser.hpp helpers.cpp helpers.hpp opusfileparser.cpp opusfileparser.hpp fileparser.cpp fileparser.hpp stream.cpp stream.hpp ArgParser.hpp ArgParser.cpp)
 target_compile_definitions(streamer PUBLIC STATIC_GETOPT)
 else()
-add_executable(streamer main.cpp dispatchqueue.cpp dispatchqueue.hpp h264fileparser.cpp h264fileparser.hpp helpers.cpp helpers.hpp opusfileparser.cpp opusfileparser.hpp fileparser.cpp fileparser.hpp stream.cpp stream.hpp)
+add_executable(streamer main.cpp dispatchqueue.cpp dispatchqueue.hpp h264fileparser.cpp h264fileparser.hpp helpers.cpp helpers.hpp opusfileparser.cpp opusfileparser.hpp fileparser.cpp fileparser.hpp stream.cpp stream.hpp ArgParser.hpp ArgParser.cpp)
 endif()
 set_target_properties(streamer PROPERTIES
 	CXX_STANDARD 17
