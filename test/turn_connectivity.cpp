@@ -33,6 +33,9 @@ void test_turn_connectivity() {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
+	// STUN server example (not necessary, just here for testing)
+	// Please do not use outside of libdatachannel tests
+	config1.iceServers.emplace_back("stun:stun.ageneau.net:3478");
 	// TURN server example
 	// Please do not use outside of libdatachannel tests
 	config1.iceServers.emplace_back("turn:datachannel_test:14018314739877@stun.ageneau.net:3478");
@@ -40,12 +43,12 @@ void test_turn_connectivity() {
 	auto pc1 = std::make_shared<PeerConnection>(config1);
 
 	Configuration config2;
+	// STUN server example (not necessary, just here for testing)
+	// Please do not use outside of libdatachannel tests
+	config1.iceServers.emplace_back("stun:stun.ageneau.net:3478");
 	// TURN server example
 	// Please do not use outside of libdatachannel tests
 	config2.iceServers.emplace_back("turn:datachannel_test:14018314739877@stun.ageneau.net:3478");
-	// Port range example
-	config2.portRangeBegin = 5000;
-	config2.portRangeEnd = 6000;
 
 	auto pc2 = std::make_shared<PeerConnection>(config2);
 
