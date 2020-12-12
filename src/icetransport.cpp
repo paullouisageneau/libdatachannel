@@ -44,6 +44,8 @@ using std::chrono::system_clock;
 
 #if !USE_NICE
 
+#define MAX_TURN_SERVERS_COUNT 2
+
 namespace rtc {
 
 IceTransport::IceTransport(const Configuration &config, candidate_callback candidateCallback,
@@ -98,20 +100,38 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
 	std::shuffle(servers.begin(), servers.end(), std::default_random_engine(seed));
 
-	// Pick a STUN server (TURN support is not implemented in libjuice yet)
+	// Pick a STUN server
 	for (auto &server : servers) {
 		if (!server.hostname.empty() && server.type == IceServer::Type::Stun) {
 			if (server.service.empty())
 				server.service = "3478"; // STUN UDP port
-			PLOG_DEBUG << "Using STUN server \"" << server.hostname << ":" << server.service
-			           << "\"";
-			mStunHostname = server.hostname;
-			mStunService = server.service;
-			jconfig.stun_server_host = mStunHostname.c_str();
-			jconfig.stun_server_port = uint16_t(std::stoul(mStunService));
+			PLOG_INFO << "Using STUN server \"" << server.hostname << ":" << server.service << "\"";
+			jconfig.stun_server_host = server.hostname.c_str();
+			jconfig.stun_server_port = uint16_t(std::stoul(server.service));
 			break;
 		}
 	}
+
+	juice_turn_server_t turn_servers[MAX_TURN_SERVERS_COUNT];
+	std::memset(turn_servers, 0, sizeof(turn_servers));
+
+	// Add TURN servers
+	int k = 0;
+	for (auto &server : servers) {
+		if (!server.hostname.empty() && server.type == IceServer::Type::Turn) {
+			if (server.service.empty())
+				server.service = "3478"; // TURN UDP port
+			PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.service << "\"";
+			turn_servers[k].host = server.hostname.c_str();
+			turn_servers[k].username = server.username.c_str();
+			turn_servers[k].password = server.password.c_str();
+			turn_servers[k].port = uint16_t(std::stoul(server.service));
+			if (++k >= MAX_TURN_SERVERS_COUNT)
+				break;
+		}
+	}
+	jconfig.turn_servers = k > 0 ? turn_servers : nullptr;
+	jconfig.turn_servers_count = k;
 
 	// Port range
 	if (config.portRangeBegin > 1024 ||
@@ -424,8 +444,8 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
 				                servbuffer, MAX_NUMERICNODE_LEN,
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-					PLOG_DEBUG << "Using STUN server \"" << server.hostname << ":" << server.service
-					           << "\"";
+					PLOG_INFO << "Using STUN server \"" << server.hostname << ":" << server.service
+					          << "\"";
 					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server", nodebuffer, nullptr);
 					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server-port",
 					             std::stoul(servbuffer), nullptr);
@@ -470,7 +490,8 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
 				                servbuffer, MAX_NUMERICNODE_LEN,
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-
+					PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.service
+					          << "\"";
 					NiceRelayType niceRelayType;
 					switch (server.relayType) {
 					case IceServer::RelayType::TurnTcp:
