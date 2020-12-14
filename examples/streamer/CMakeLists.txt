@@ -13,10 +13,7 @@ set_target_properties(streamer PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME streamer)
 
-if(WIN32)
-	target_link_libraries(streamer datachannel-static) # DLL exports only the C API
-else()
-	target_link_libraries(streamer datachannel)
-endif()
+target_link_libraries(streamer datachannel)
+
 target_link_libraries(streamer datachannel nlohmann_json)
 
