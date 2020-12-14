@@ -504,7 +504,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 			// DTLS-SRTP
 			transport = std::make_shared<DtlsSrtpTransport>(
 			    lower, certificate, verifierCallback,
-			    std::bind(&PeerConnection::forwardMedia, this, _1), stateChangeCallback);
+			    weak_bind(&PeerConnection::forwardMedia, this, _1), stateChangeCallback);
 #else
 			PLOG_WARNING << "Ignoring media support (not compiled with media support)";
 #endif
@@ -731,7 +731,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 		// PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
 		return;
 	}
-} // namespace rtc
+}
 
 std::optional<std::string> PeerConnection::getMidFromSsrc(uint32_t ssrc) {
 	if (auto it = mMidFromSsrc.find(ssrc); it != mMidFromSsrc.end())
