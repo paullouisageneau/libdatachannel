@@ -28,7 +28,7 @@ namespace rtc {
 #pragma pack(push, 1)
 
 /// Nalu header
-struct NalUnitHeader {
+struct RTC_CPP_EXPORT NalUnitHeader {
     bool forbiddenBit() { return _first >> 7; }
     uint8_t nri() { return _first >> 5 & 0x03; }
     uint8_t unitType() { return _first & 0x1F; }
@@ -41,7 +41,7 @@ private:
 };
 
 /// Nalu fragment header
-struct NalUnitFragmentHeader {
+struct RTC_CPP_EXPORT NalUnitFragmentHeader {
     bool isStart() { return _first >> 7; }
     bool reservedBit6() { return (_first >> 6) & 0x01; }
     bool isEnd() { return (_first >> 5) & 0x01; }
@@ -58,7 +58,7 @@ private:
 #pragma pack(pop)
 
 /// Nal unit
-struct NalUnit: rtc::binary {
+struct RTC_CPP_EXPORT NalUnit: rtc::binary {
     NalUnit(const NalUnit &unit) = default;
     NalUnit(size_t size, bool includingHeader = true): rtc::binary(size + (includingHeader ? 0 : 1)) { }
 
@@ -92,7 +92,7 @@ protected:
 };
 
 /// Nal unit fragment A
-struct NalUnitFragmentA: NalUnit {
+struct RTC_CPP_EXPORT NalUnitFragmentA: NalUnit {
     enum class FragmentType {
         Start,
         Middle,
