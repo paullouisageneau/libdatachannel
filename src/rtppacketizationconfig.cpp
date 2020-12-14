@@ -20,15 +20,14 @@
 
 #include "rtppacketizationconfig.hpp"
 
-using namespace rtc;
-using namespace std;
+namespace rtc {
 
 RTPPacketizationConfig::RTPPacketizationConfig(SSRC ssrc,
                                                string cname,
                                                uint8_t payloadType,
                                                uint32_t clockRate,
-                                               optional<uint16_t> sequenceNumber,
-                                               optional<uint32_t> timestamp): ssrc(ssrc), cname(cname), payloadType(payloadType), clockRate(clockRate) {
+                                               std::optional<uint16_t> sequenceNumber,
+                                               std::optional<uint32_t> timestamp): ssrc(ssrc), cname(cname), payloadType(payloadType), clockRate(clockRate) {
     assert(clockRate > 0);
     srand((unsigned)time(NULL));
     if (sequenceNumber.has_value()) {
@@ -69,5 +68,7 @@ uint32_t RTPPacketizationConfig::getTimestampFromSeconds(double seconds, uint32_
 uint32_t RTPPacketizationConfig::secondsToTimestamp(double seconds) {
     return RTPPacketizationConfig::getTimestampFromSeconds(seconds, clockRate);
 }
+
+} // namespace
 
 #endif /* RTC_ENABLE_MEDIA */

@@ -20,8 +20,7 @@
 
 #include "opusrtppacketizer.hpp"
 
-using namespace std;
-using namespace rtc;
+namespace rtc {
 
 OpusRTPPacketizer::OpusRTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig): RTPPacketizer(rtpConfig) { }
 
@@ -29,5 +28,7 @@ message_ptr OpusRTPPacketizer::packetize(binary payload, bool setMark) {
     assert(!setMark);
     return RTPPacketizer::packetize(payload, false);
 }
+
+} // namespace
 
 #endif /* RTC_ENABLE_MEDIA */

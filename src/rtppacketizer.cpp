@@ -20,10 +20,9 @@
 
 #include "rtppacketizer.hpp"
 
-using namespace std;
-using namespace rtc;
+namespace rtc {
 
-RTPPacketizer::RTPPacketizer(shared_ptr<RTPPacketizationConfig> rtpConfig): rtpConfig(rtpConfig) { }
+RTPPacketizer::RTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig): rtpConfig(rtpConfig) { }
 
 message_ptr RTPPacketizer::packetize(binary payload, bool setMark) {
     auto msg = make_message(rtpHeaderSize + payload.size());
@@ -40,5 +39,7 @@ message_ptr RTPPacketizer::packetize(binary payload, bool setMark) {
     copy(payload.begin(), payload.end(), msg->begin() + rtpHeaderSize);
     return msg;
 }
+
+} // namespace
 
 #endif /* RTC_ENABLE_MEDIA */

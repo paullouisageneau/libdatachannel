@@ -20,9 +20,10 @@
 
 #include "h264rtppacketizer.hpp"
 
-using namespace std;
-using namespace rtc;
+namespace rtc {
 
 H264RTPPacketizer::H264RTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig): RTPPacketizer(rtpConfig) { }
+
+} // namespace
 
 #endif /* RTC_ENABLE_MEDIA */

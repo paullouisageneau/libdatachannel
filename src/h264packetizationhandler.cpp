@@ -20,8 +20,11 @@
 
 #include "h264packetizationhandler.hpp"
 
-using namespace rtc;
-using namespace std;
+namespace rtc {
+
+using std::shared_ptr;
+using std::make_shared;
+using std::function;
 
 typedef enum {
     NUSM_noMatch,
@@ -160,5 +163,7 @@ H264PacketizationHandler::H264PacketizationHandler(Separator separator,
         outgoingCallback(msg);
     };
 }
+
+} // namespace
 
 #endif /* RTC_ENABLE_MEDIA */

@@ -20,7 +20,7 @@
 
 #include "opuspacketizationhandler.hpp"
 
-using namespace rtc;
+namespace rtc {
 
 OpusPacketizationHandler::OpusPacketizationHandler(std::shared_ptr<OpusRTPPacketizer> packetizer): RtcpHandler(), RTCPSenderReportable(packetizer->rtpConfig), packetizer(packetizer) {
     senderReportOutgoingCallback = [this](message_ptr msg) {
@@ -42,5 +42,7 @@ message_ptr OpusPacketizationHandler::outgoing(message_ptr ptr) {
     }
     return ptr;
 }
+
+} // namespace
 
 #endif /* RTC_ENABLE_MEDIA */

@@ -20,8 +20,7 @@
 
 #include "rtcpsenderreportable.hpp"
 
-using namespace rtc;
-using namespace std;
+namespace rtc {
 
 void RTCPSenderReportable::startRecording() {
     _previousReportedTimestamp = rtpConfig->timestamp;
@@ -70,5 +69,7 @@ message_ptr RTCPSenderReportable::getSenderReport(uint32_t timestamp) {
     sdes->preparePacket(1);
     return msg;
 }
+
+} // namespace
 
 #endif /* RTC_ENABLE_MEDIA */

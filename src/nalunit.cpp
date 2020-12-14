@@ -21,8 +21,7 @@
 #include "nalunit.hpp"
 #include <cmath>
 
-using namespace std;
-using namespace rtc;
+namespace rtc {
 
 NalUnitFragmentA::NalUnitFragmentA(FragmentType type, bool forbiddenBit, uint8_t nri, uint8_t unitType, binary data): NalUnit(data.size() + 2) {
     setForbiddenBit(forbiddenBit);
@@ -33,7 +32,7 @@ NalUnitFragmentA::NalUnitFragmentA(FragmentType type, bool forbiddenBit, uint8_t
     copy(data.begin(), data.end(), begin() + 2);
 }
 
-vector<NalUnitFragmentA> NalUnitFragmentA::fragmentsFrom(NalUnit nalu, uint16_t maximumFragmentSize) {
+std::vector<NalUnitFragmentA> NalUnitFragmentA::fragmentsFrom(NalUnit nalu, uint16_t maximumFragmentSize) {
     assert(nalu.size() > maximumFragmentSize);
     if (nalu.size() <= maximumFragmentSize) {
         // we need to change `maximum_fragment_size` to have at least two fragments
@@ -88,7 +87,7 @@ void NalUnitFragmentA::setFragmentType(FragmentType type) {
     }
 }
 
-vector<binary> NalUnits::generateFragments(uint16_t maximumFragmentSize) {
+std::vector<binary> NalUnits::generateFragments(uint16_t maximumFragmentSize) {
     vector<binary> result{};
     for (auto nalu: *this) {
         if (nalu.size() > maximumFragmentSize) {
@@ -100,5 +99,7 @@ vector<binary> NalUnits::generateFragments(uint16_t maximumFragmentSize) {
     }
     return result;
 }
+
+} // namespace
 
 #endif /* RTC_ENABLE_MEDIA */
