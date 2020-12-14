@@ -19,9 +19,9 @@
 #ifndef H264RTPPacketizer_hpp
 #define H264RTPPacketizer_hpp
 
-#include "rtppacketizer.hpp"
-
 #if RTC_ENABLE_MEDIA
+
+#include "rtppacketizer.hpp"
 
 namespace rtc {
 

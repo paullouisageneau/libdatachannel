@@ -16,9 +16,9 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "rtppacketizationconfig.hpp"
-
 #if RTC_ENABLE_MEDIA
+
+#include "rtppacketizationconfig.hpp"
 
 using namespace rtc;
 using namespace std;

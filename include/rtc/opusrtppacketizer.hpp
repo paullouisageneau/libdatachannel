@@ -19,9 +19,9 @@
 #ifndef OpusRTPPacketizer_hpp
 #define OpusRTPPacketizer_hpp
 
-#include "rtppacketizer.hpp"
-
 #if RTC_ENABLE_MEDIA
+
+#include "rtppacketizer.hpp"
 
 namespace rtc {
 

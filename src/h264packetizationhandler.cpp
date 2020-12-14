@@ -16,9 +16,9 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "h264packetizationhandler.hpp"
-
 #if RTC_ENABLE_MEDIA
+
+#include "h264packetizationhandler.hpp"
 
 using namespace rtc;
 using namespace std;

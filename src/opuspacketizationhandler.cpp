@@ -16,9 +16,9 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "opuspacketizationhandler.hpp"
-
 #if RTC_ENABLE_MEDIA
+
+#include "opuspacketizationhandler.hpp"
 
 using namespace rtc;
 

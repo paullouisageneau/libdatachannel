@@ -16,9 +16,9 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "rtcpsenderreportable.hpp"
-
 #if RTC_ENABLE_MEDIA
+
+#include "rtcpsenderreportable.hpp"
 
 using namespace rtc;
 using namespace std;

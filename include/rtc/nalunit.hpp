@@ -19,9 +19,9 @@
 #ifndef NalUnit_hpp
 #define NalUnit_hpp
 
-#include "include.hpp"
-
 #if RTC_ENABLE_MEDIA
+
+#include "include.hpp"
 
 namespace rtc {
 

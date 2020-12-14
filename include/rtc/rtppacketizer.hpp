@@ -19,10 +19,10 @@
 #ifndef RTPPacketizer_hpp
 #define RTPPacketizer_hpp
 
+#if RTC_ENABLE_MEDIA
+
 #include "rtppacketizationconfig.hpp"
 #include "message.hpp"
-
-#if RTC_ENABLE_MEDIA
 
 namespace rtc {
 

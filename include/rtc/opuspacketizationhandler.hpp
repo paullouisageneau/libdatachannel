@@ -19,11 +19,11 @@
 #ifndef OpusPacketizationHandler_hpp
 #define OpusPacketizationHandler_hpp
 
+#if RTC_ENABLE_MEDIA
+
 #include "rtcpsenderreportable.hpp"
 #include "opusrtppacketizer.hpp"
 #include "rtcp.hpp"
-
-#if RTC_ENABLE_MEDIA
 
 namespace rtc {
 

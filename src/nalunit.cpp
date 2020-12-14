@@ -16,10 +16,10 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if RTC_ENABLE_MEDIA
+
 #include "nalunit.hpp"
 #include <cmath>
-
-#if RTC_ENABLE_MEDIA
 
 using namespace std;
 using namespace rtc;

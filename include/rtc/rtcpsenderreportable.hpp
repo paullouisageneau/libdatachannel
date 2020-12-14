@@ -19,10 +19,10 @@
 #ifndef RTCPSenderReporter_hpp
 #define RTCPSenderReporter_hpp
 
+#if RTC_ENABLE_MEDIA
+
 #include "message.hpp"
 #include "rtppacketizationconfig.hpp"
-
-#if RTC_ENABLE_MEDIA
 
 namespace rtc {
 

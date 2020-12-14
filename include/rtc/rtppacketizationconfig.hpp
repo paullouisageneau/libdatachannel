@@ -19,9 +19,9 @@
 #ifndef RTPPacketizationConfig_hpp
 #define RTPPacketizationConfig_hpp
 
-#include "rtp.hpp"
-
 #if RTC_ENABLE_MEDIA
+
+#include "rtp.hpp"
 
 namespace rtc {
 

@@ -19,12 +19,12 @@
 #ifndef H264PacketizationHandler_hpp
 #define H264PacketizationHandler_hpp
 
+#if RTC_ENABLE_MEDIA
+
 #include "rtcp.hpp"
 #include "h264rtppacketizer.hpp"
 #include "rtcpsenderreportable.hpp"
 #include "nalunit.hpp"
-
-#if RTC_ENABLE_MEDIA
 
 namespace rtc {
 
