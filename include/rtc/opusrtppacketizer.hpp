@@ -26,7 +26,7 @@
 namespace rtc {
 
 /// RTP packetizer for opus
-class OpusRTPPacketizer: public rtc::RTPPacketizer {
+class RTC_CPP_EXPORT OpusRTPPacketizer: public rtc::RTPPacketizer {
 
 public:
     /// default clock rate used in opus RTP communication

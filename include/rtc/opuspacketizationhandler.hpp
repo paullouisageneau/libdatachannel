@@ -28,7 +28,7 @@
 namespace rtc {
 
 /// Handler for opus packetization
-class OpusPacketizationHandler: public RtcpHandler, public RTCPSenderReportable {
+class RTC_CPP_EXPORT OpusPacketizationHandler: public RtcpHandler, public RTCPSenderReportable {
     /// RTP packetizer for opus
     const std::shared_ptr<OpusRTPPacketizer> packetizer;
 

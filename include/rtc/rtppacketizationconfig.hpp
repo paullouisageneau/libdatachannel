@@ -26,8 +26,7 @@
 namespace rtc {
 
 /// RTP configuration used in packetization process
-struct RTPPacketizationConfig {
-private:
+class RTC_CPP_EXPORT RTPPacketizationConfig {
     uint32_t _startTimestamp = 0;
     double _startTime_s = 0;
     RTPPacketizationConfig(const RTPPacketizationConfig&) = delete;

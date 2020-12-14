@@ -26,7 +26,7 @@
 namespace rtc {
 
 /// RTP packetization of h264 payload
-class H264RTPPacketizer: public rtc::RTPPacketizer {
+class RTC_CPP_EXPORT H264RTPPacketizer: public rtc::RTPPacketizer {
 
 public:
     /// Default clock rate for H264 in RTP

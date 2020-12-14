@@ -27,7 +27,7 @@
 namespace rtc {
 
 /// Class responsizble for rtp packetization
-class RTPPacketizer {
+class RTC_CPP_EXPORT RTPPacketizer {
     static const auto rtpHeaderSize = 12;
 public:
     // rtp configuration

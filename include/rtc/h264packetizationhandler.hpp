@@ -29,7 +29,7 @@
 namespace rtc {
 
 /// Handler for H264 packetization
-class H264PacketizationHandler: public RtcpHandler, public RTCPSenderReportable {
+class RTC_CPP_EXPORT H264PacketizationHandler: public RtcpHandler, public RTCPSenderReportable {
     /// RTP packetizer for H264
     const std::shared_ptr<H264RTPPacketizer> packetizer;
 

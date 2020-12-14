@@ -27,7 +27,7 @@
 namespace rtc {
 
 /// Class for sending RTCP SR
-class RTCPSenderReportable {
+class RTC_CPP_EXPORT RTCPSenderReportable {
     bool needsToReport = false;
 
     uint32_t packetCount = 0;
