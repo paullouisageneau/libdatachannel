@@ -67,6 +67,8 @@ struct RTC_CPP_EXPORT NalUnit: rtc::binary {
 
     NalUnit(rtc::binary &&data) : rtc::binary(std::move(data)) { }
 
+    NalUnit(): rtc::binary(1) { }
+
     bool forbiddenBit() { return header()->forbiddenBit(); }
     uint8_t nri() { return header()->nri(); }
     uint8_t unitType() { return header()->unitType(); }
