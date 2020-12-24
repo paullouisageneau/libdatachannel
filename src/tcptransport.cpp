@@ -113,7 +113,7 @@ bool TcpTransport::send(message_ptr message) {
 		return false;
 
 	if (!message)
-		return mSendQueue.empty();
+		return trySendQueue();
 
 	PLOG_VERBOSE << "Send size=" << (message ? message->size() : 0);
 	return outgoing(message);
@@ -129,9 +129,8 @@ void TcpTransport::incoming(message_ptr message) {
 
 bool TcpTransport::outgoing(message_ptr message) {
 	// mSockMutex must be locked
-	// If nothing is pending, try to send directly
-	// It's safe because if the queue is empty, the thread is not sending
-	if (mSendQueue.empty() && trySendMessage(message))
+	// Flush the queue, and if nothing is pending, try to send directly
+	if (trySendQueue() && trySendMessage(message))
 		return true;
 
 	mSendQueue.push(message);
