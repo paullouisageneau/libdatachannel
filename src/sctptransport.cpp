@@ -283,12 +283,12 @@ bool SctpTransport::send(message_ptr message) {
 	std::lock_guard lock(mSendMutex);
 
 	if (!message)
-		return mSendQueue.empty();
+		return trySendQueue();
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
-	// If nothing is pending, try to send directly
-	if (mSendQueue.empty() && trySendMessage(message))
+	// Flush the queue, and if nothing is pending, try to send directly
+	if (trySendQueue() && trySendMessage(message))
 		return true;
 
 	mSendQueue.push(message);
