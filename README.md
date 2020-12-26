@@ -73,8 +73,6 @@ $ git submodule update --init --recursive
 
 The CMake library targets `libdatachannel` and `libdatachannel-static` respectively correspond to the shared and static libraries. The default target will build tests and examples. The option `USE_GNUTLS` allows to switch between OpenSSL (default) and GnuTLS, and the option `USE_NICE` allows to switch between libjuice as submodule (default) and libnice.
 
-On Windows, the DLL resulting from the shared library build only exposes the C API, use the static library for the C++ API.
-
 #### POSIX-compliant operating systems (including Linux and Apple macOS)
 ```bash
 $ cmake -B build -DUSE_GNUTLS=1 -DUSE_NICE=0
