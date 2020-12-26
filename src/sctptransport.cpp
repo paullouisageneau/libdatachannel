@@ -336,7 +336,7 @@ void SctpTransport::doRecv() {
 	std::lock_guard lock(mRecvMutex);
 	--mPendingRecvCount;
 	try {
-		while (true) {
+		while (state() != State::Disconnected && state() != State::Failed) {
 			const size_t bufferSize = 65536;
 			byte buffer[bufferSize];
 			socklen_t fromlen = 0;
