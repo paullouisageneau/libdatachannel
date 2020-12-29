@@ -74,7 +74,7 @@ Creates a Peer Connection.
 
 Arguments:
 - `config`: the configuration structure, containing:
-  - `iceServers` (optional): an array of pointers on null-terminated ice server URLs (NULL if unused)
+  - `iceServers` (optional): an array of pointers on null-terminated ice server URIs (NULL if unused)
   - `iceServersCount` (optional): number of URLs in the array pointed by `iceServers` (0 if unused)
   - `portRangeBegin` (optional): first port (included) of the allowed local port range (0 if unused)
   - `portRangeEnd` (optional): last port (included) of the allowed local port (0 if unused)
@@ -82,6 +82,8 @@ Arguments:
 Return value: the identifier of the new Peer Connection or a negative error code.
 
 The Peer Connection must be deleted with `rtcDeletePeerConnection`.
+
+The format of each entry in `iceServers` must match the format `[("stun"|"turn"|"turns") ":"][login ":" password "@"]hostname[":" port]["?transport=" ("udp"|"tcp"|"tls")]`. The default scheme is STUN, the default port is 3478 (5349 over TLS), and the default transport is UDP.  For instance, a STUN server URI could be `mystunserver.org`, and a TURN server URI could be `turn:myuser:12345678@turnserver.org`. Note transports TCP and TLS are only available for a TURN server with libnice as ICE backend and govern only the TURN control connection, meaning relaying is always performed over UDP.
 
 #### rtcDeletePeerConnection
 
