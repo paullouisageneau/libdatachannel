@@ -66,12 +66,26 @@ bool ThreadPool::runOne() {
 
 std::function<void()> ThreadPool::dequeue() {
 	std::unique_lock lock(mMutex);
-	mCondition.wait(lock, [this]() { return !mTasks.empty() || mJoining; });
-	if (mTasks.empty())
-		return nullptr;
-	auto task = std::move(mTasks.front());
-	mTasks.pop();
-	return task;
+	while (true) {
+		if (!mTasks.empty()) {
+			if (mTasks.top().time <= clock::now()) {
+				auto func = std::move(mTasks.top().func);
+				mTasks.pop();
+				return func;
+			}
+
+			if (mJoining)
+				break;
+
+			mCondition.wait_until(lock, mTasks.top().time);
+		} else {
+			if (mJoining)
+				break;
+
+			mCondition.wait(lock);
+		}
+	}
+	return nullptr;
 }
 
 } // namespace rtc
