@@ -24,11 +24,12 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <functional>
 #include <future>
-#include <map>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -71,8 +72,15 @@ protected:
 	std::function<void()> dequeue(); // returns null function if joining
 
 	std::vector<std::thread> mWorkers;
-	std::multimap<clock::time_point, std::function<void()>> mTasks;
 	std::atomic<bool> mJoining = false;
+
+	struct Task {
+		clock::time_point time;
+		std::function<void()> func;
+		bool operator>(const Task &other) const { return time > other.time; }
+		bool operator<(const Task &other) const { return time < other.time; }
+	};
+	std::priority_queue<Task, std::deque<Task>, std::greater<Task>> mTasks;
 
 	mutable std::mutex mMutex, mWorkersMutex;
 	std::condition_variable mCondition;
@@ -105,7 +113,7 @@ auto ThreadPool::schedule(clock::time_point time, F &&f, Args &&...args)
 	});
 	std::future<R> result = task->get_future();
 
-	mTasks.emplace(time, [task = std::move(task), token = Init::Token()]() { return (*task)(); });
+	mTasks.push({time, [task = std::move(task), token = Init::Token()]() { return (*task)(); }});
 	mCondition.notify_one();
 	return result;
 }

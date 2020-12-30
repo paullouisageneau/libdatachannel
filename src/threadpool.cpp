@@ -68,17 +68,16 @@ std::function<void()> ThreadPool::dequeue() {
 	std::unique_lock lock(mMutex);
 	while (true) {
 		if (!mTasks.empty()) {
-			clock::time_point time = mTasks.begin()->first;
-			if (time <= clock::now()) {
-				auto task = std::move(mTasks.begin()->second);
-				mTasks.erase(mTasks.begin());
-				return task;
+			if (mTasks.top().time <= clock::now()) {
+				auto func = std::move(mTasks.top().func);
+				mTasks.pop();
+				return func;
 			}
 
 			if (mJoining)
 				break;
 
-			mCondition.wait_until(lock, time);
+			mCondition.wait_until(lock, mTasks.top().time);
 		} else {
 			if (mJoining)
 				break;
