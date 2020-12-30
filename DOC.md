@@ -2,7 +2,7 @@
 
 ### General considerations
 
-Unlike stated otherwise, functions return `RTC_ERR_SUCCESS`, defined as `0`, on success.
+Unless stated otherwise, functions return `RTC_ERR_SUCCESS`, defined as `0`, on success.
 
 All functions can return the following negative error codes:
 - `RTC_ERR_INVALID`: an invalid argument was provided
@@ -10,7 +10,7 @@ All functions can return the following negative error codes:
 - `RTC_ERR_NOT_AVAIL`: an element is not available at the moment
 - `RTC_ERR_TOO_SMALL`: a user-provided buffer is too small
 
-All functions taking pointers as arguments need the memory to be accessible until the call returns, but it can be safely discarded afterwards.
+All functions taking pointers as arguments (excepted the opaque user pointer) need the memory to be accessible until the call returns, but it can be safely discarded afterwards.
 
 ### Common
 
@@ -26,6 +26,10 @@ Arguments:
 
 `cb` must have the following signature:
 `void myLogCallback(rtcLogLevel level, const char *message)`
+
+Arguments:
+- `level`: the log level for the current message. It will be one of the following: `RTC_LOG_FATAL`, `RTC_LOG_ERROR`, `RTC_LOG_WARNING`, `RTC_LOG_INFO`, `RTC_LOG_DEBUG`, `RTC_LOG_VERBOSE`.
+- `message`: a null-terminated string containing the log message
 
 #### rtcPreload
 
@@ -65,8 +69,11 @@ int rtcCreatePeerConnection(const rtcConfiguration *config)
 typedef struct {
 	const char **iceServers;
 	int iceServersCount;
+	bool enableIceTcp;
+	bool disableAutoNegotiation;
 	uint16_t portRangeBegin;
 	uint16_t portRangeEnd;
+	int mtu;
 } rtcConfiguration;
 ```
 
@@ -76,8 +83,11 @@ Arguments:
 - `config`: the configuration structure, containing:
   - `iceServers` (optional): an array of pointers on null-terminated ice server URIs (NULL if unused)
   - `iceServersCount` (optional): number of URLs in the array pointed by `iceServers` (0 if unused)
+  - `enableIceTcp`: if true, generate TCP candidates for ICE (ignored with libjuice as ICE backend)
+  - `disableAutoNegociation`: if true, the user is responsible for calling `rtcSetLocalDescription` after creating a Data Channel and after setting the remote description
   - `portRangeBegin` (optional): first port (included) of the allowed local port range (0 if unused)
   - `portRangeEnd` (optional): last port (included) of the allowed local port (0 if unused)
+  - `mtu` (optional): manually set the Maximum Transfer Unit (MTU) for the connection (0 if automatic)
 
 Return value: the identifier of the new Peer Connection or a negative error code.
 
@@ -150,13 +160,11 @@ int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb)
 int rtcSetLocalDescription(int pc, const char *type)
 ```
 
-Initiates the handshake process. Following this call, the local description callback will be called with the local description, which must be sent to the remote peer by the user's method of choice.
+Initiates the handshake process. Following this call, the local description callback will be called with the local description, which must be sent to the remote peer by the user's method of choice. Note this call is implicit after `rtcSetRemoteDescription` and `rtcCreateDataChannel` if `disableAutoNegociation` was not set on Peer Connection creation.
 
 Arguments:
 - `pc`: the Peer Connection identifier
 - `type` (optional): type of the description ("offer", "answer", "pranswer", or "rollback") or NULL for autodetection.
-
-Calling this function is only necessary after `rtcAddDataChannel*` and `rtcAddTrack`. You should not call this function after `rtcCreateDataChannel*`, as it is done internally.
 
 #### rtcSetRemoteDescription
 
@@ -164,11 +172,13 @@ Calling this function is only necessary after `rtcAddDataChannel*` and `rtcAddTr
 int rtcSetRemoteDescription(int pc, const char *sdp, const char *type)
 ```
 
-Sets the remote description received from the remote peer by the user's method of choice. The remote description may have candidates or not. Following this call, if the remote description is an offer the local description callback will be called with the local answer description.
+Sets the remote description received from the remote peer by the user's method of choice. The remote description may have candidates or not.
 
 Arguments:
 - `pc`: the Peer Connection identifier
 - `type` (optional): type of the description ("offer", "answer", "pranswer", or "rollback") or NULL for autodetection.
+
+If the remote description is an offer and `disableAutoNegotiation` was not set in `rtcConfiguration`, the library will automatically answer by calling `rtcSetLocalDescription` internally. Otherwise, the user must call it to answer the remote description.
 
 #### rtcAddRemoteCandidate
 
@@ -220,6 +230,41 @@ Arguments:
 Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code
 
 If `buffer` is `NULL`, the description is not copied but the size is still returned.
+
+#### rtcGetLocalDescriptionType
+
+```
+int rtcGetLocalDescriptionType(int pc, char *buffer, int size)
+```
+
+Retrieves the current local description type as string.
+
+Arguments:
+- `pc`: the Peer Connection identifier
+- `buffer`: a user-supplied buffer to store the type
+- `size`: the size of `buffer`
+
+Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code
+
+If `buffer` is `NULL`, the description is not copied but the size is still returned.
+
+#### rtcGetRemoteDescription
+
+```
+int rtcGetRemoteDescriptionType(int pc, char *buffer, int size)
+```
+
+Retrieves the current remote description type as string.
+
+Arguments:
+- `pc`: the Peer Connection identifier
+- `buffer`: a user-supplied buffer to store the type
+- `size`: the size of `buffer`
+
+Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code
+
+If `buffer` is `NULL`, the description is not copied but the size is still returned.
+
 
 #### rtcGetLocalAddress
 
@@ -279,8 +324,8 @@ If `local`, `remote`, or both, are `NULL`, the corresponding candidate is not co
 #### rtcAddDataChannel
 
 ```
-int rtcAddDataChannel(int pc, const char *label)
-int rtcAddDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init)
+int rtcCreateDataChannel(int pc, const char *label)
+int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init)
 
 typedef struct {
 	bool unordered;
@@ -320,18 +365,7 @@ Return value: the identifier of the new Data Channel or a negative error code.
 
 The Data Channel must be deleted with `rtcDeleteDataChannel`.
 
-#### rtcCreateDataChannel
-
-```
-int rtcCreateDataChannel(int pc, const char *label)
-int rtcCreateDataChannelEx(int pc, const char *label, const char *protocol, const rtcReliability *reliability)
-```
-
-These functions are respectively equivalent to respectively `rtcAddDataChannel` and `rtcAddDataChannelEx` with the same arguments followed by `rtcSetLocalDescription`.
-
-Return value: the identifier of the new Data Channel or a negative error code.
-
-The Data Channel must be deleted with `rtcDeleteDataChannel`.
+If `disableAutoNegotiation` was not set in `rtcConfiguration`, the library will automatically initiate the negotiation by calling `rtcSetLocalDescription` internally. Otherwise, the user must call `rtcSetLocalDescription` to initiate the negotiation after creating the first Data Channel.
 
 #### rtcDeleteDataChannel
 
@@ -424,6 +458,8 @@ Arguments:
 Return value: the identifier of the new Track or a negative error code
 
 The new track must be deleted with `rtcDeleteTrack`.
+
+The user must call `rtcSetLocalDescription` to negotiate the track.
 
 #### rtcDeleteTrack
 
