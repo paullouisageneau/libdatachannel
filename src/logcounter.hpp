@@ -36,8 +36,6 @@ public:
 
     LogCounter(plog::Severity severity, const std::string& text, std::chrono::seconds duration=std::chrono::seconds(1));
 
-    ~LogCounter();
-
     LogCounter& operator++(int);
 };
 }

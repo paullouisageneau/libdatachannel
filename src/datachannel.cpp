@@ -172,6 +172,7 @@ void DataChannel::open(shared_ptr<SctpTransport> transport) {
 }
 
 void DataChannel::processOpenMessage(message_ptr) {
+    PLOG_DEBUG << "Received an open message for a user-negotiated DataChannel, ignoring";
     COUNTER_USERNEG_OPEN_MESSAGE++;
 }
 

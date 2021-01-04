@@ -29,7 +29,6 @@ using std::shared_ptr;
 using std::to_integer;
 using std::to_string;
 
-static rtc::LogCounter COUNTER_MEDIA_SENT_EARLY(plog::warning, "Number of RTP packets sent before keys have been derived");
 static rtc::LogCounter COUNTER_MEDIA_TRUNCATED(plog::warning, "Number of truncated SRT(C)P packets received");
 static rtc::LogCounter COUNTER_UNKNOWN_PACKET_TYPE(plog::warning, "Number of RTP packets received with an unknown packet type");
 static rtc::LogCounter COUNTER_SRTCP_REPLAY(plog::warning, "Number of SRTCP replay packets received");
@@ -91,7 +90,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 		return false;
 
 	if (!mInitDone) {
-		COUNTER_MEDIA_SENT_EARLY++;
+        PLOG_ERROR << "SRTP media sent before keys are derived";
 		return false;
 	}
 
@@ -191,13 +190,15 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 		if (value2 >= 64 && value2 <= 95) { // Range 64-95 (inclusive) MUST be RTCP
 			PLOG_VERBOSE << "Incoming SRTCP packet, size=" << size;
 			if (srtp_err_status_t err = srtp_unprotect_rtcp(mSrtpIn, message->data(), &size)) {
-				if (err == srtp_err_status_replay_fail)
-				    COUNTER_SRTCP_REPLAY++;
-				else if (err == srtp_err_status_auth_fail)
+				if (err == srtp_err_status_replay_fail) {
+                    PLOG_VERBOSE << "Incoming SRTCP packet is a replay";
+                    COUNTER_SRTCP_REPLAY++;
+                }else if (err == srtp_err_status_auth_fail) {
+                    PLOG_VERBOSE << "Incoming SRTCP packet failed authentication check";
                     COUNTER_SRTCP_AUTH_FAIL++;
-				else {
-                    COUNTER_SRTCP_FAIL++;
+                }else {
                     PLOG_VERBOSE << "SRTCP unprotect error, status=" << err;
+                    COUNTER_SRTCP_FAIL++;
                 }
 
 				return;
@@ -209,13 +210,15 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 		} else {
 			PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
 			if (srtp_err_status_t err = srtp_unprotect(mSrtpIn, message->data(), &size)) {
-                if (err == srtp_err_status_replay_fail)
+                if (err == srtp_err_status_replay_fail) {
+                    PLOG_VERBOSE << "Incoming SRTP packet is a replay";
                     COUNTER_SRTP_REPLAY++;
-                else if (err == srtp_err_status_auth_fail)
+                } else if (err == srtp_err_status_auth_fail) {
+                    PLOG_VERBOSE << "Incoming SRTP packet failed authentication check";
                     COUNTER_SRTP_AUTH_FAIL++;
-                else {
-                    COUNTER_SRTP_FAIL++;
+                } else {
                     PLOG_VERBOSE << "SRTP unprotect error, status=" << err;
+                    COUNTER_SRTP_FAIL++;
                 }
 				return;
 			}

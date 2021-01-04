@@ -38,9 +38,3 @@ rtc::LogCounter& rtc::LogCounter::operator++(int) {
     }
     return *this;
 }
-
-rtc::LogCounter::~LogCounter() {
-    if (future) {
-        future->wait();
-    }
-}
