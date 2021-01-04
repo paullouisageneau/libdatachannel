@@ -35,7 +35,7 @@
 #include <set>
 #include <thread>
 
-#if __clang__
+#if __clang__ && defined(__APPLE__)
 namespace {
 template <typename To, typename From>
 inline std::shared_ptr<To> reinterpret_pointer_cast(std::shared_ptr<From> const &ptr) noexcept {
