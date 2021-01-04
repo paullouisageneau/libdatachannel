@@ -374,6 +374,17 @@ public:
         header.prepareHeader(202, chunkCount, length);
     }
 
+
+    inline unsigned int chunksCount() {
+        uint16_t chunksSize = 4 * (header.length() + 1) - sizeof(header);
+        unsigned int size = 0;
+        unsigned int i = 0;
+        while (size < chunksSize) {
+            size += getChunk(i++)->getSize();
+        }
+        return i;
+    }
+
     inline RTCP_SDES_CHUNK *getChunk(int num) {
         auto base = &_chunks;
         while (num-- > 0) {

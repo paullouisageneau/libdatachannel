@@ -692,10 +692,15 @@ void PeerConnection::forwardMedia(message_ptr message) {
 				ssrcs.insert(rtcpsr->senderSSRC());
 				for (int i = 0; i < rtcpsr->header.reportCount(); ++i)
 					ssrcs.insert(rtcpsr->getReportBlock(i)->getSSRC());
+            } else if (header->payloadType() == 202) {
+                auto sdes = reinterpret_cast<RTCP_SDES *>(header);
+                for (unsigned int i = 0; i < sdes->chunksCount(); i++) {
+                    auto chunk = sdes->getChunk(i);
+                    ssrcs.insert(chunk->ssrc());
+                }
 			} else {
-				// PT=202 == SDES
 				// PT=207 == Extended Report
-				if (header->payloadType() != 202 && header->payloadType() != 207) {
+				if (header->payloadType() != 207) {
 					PLOG_WARNING << "Unknown packet type: " << (int)header->version() << " "
 					             << header->payloadType() << "";
 				}
