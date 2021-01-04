@@ -22,6 +22,7 @@
 #include "include.hpp"
 #include "processor.hpp"
 #include "threadpool.hpp"
+#include "logcounter.hpp"
 
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
@@ -45,6 +46,11 @@ inline std::shared_ptr<To> reinterpret_pointer_cast(std::shared_ptr<From> const 
 #else
 using std::reinterpret_pointer_cast;
 #endif
+
+static rtc::LogCounter COUNTER_MEDIA_TRUNCATED(plog::warning, "Number of RTP packets truncated over past second");
+static rtc::LogCounter COUNTER_SRTP_DECRYPT_ERROR(plog::warning, "Number of SRTP decryption errors over past second");
+static rtc::LogCounter COUNTER_SRTP_ENCRYPT_ERROR(plog::warning, "Number of SRTP encryption errors over past second");
+static rtc::LogCounter COUNTER_UNKNOWN_PACKET_TYPE(plog::warning, "Number of unknown RTCP packet types over past second");
 
 namespace rtc {
 
@@ -678,7 +684,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 		while ((sizeof(rtc::RTCP_HEADER) + offset) <= message->size()) {
 			auto header = reinterpret_cast<rtc::RTCP_HEADER *>(message->data() + offset);
 			if (header->lengthInBytes() > message->size() - offset) {
-				PLOG_WARNING << "RTCP packet is truncated";
+				COUNTER_MEDIA_TRUNCATED++;
 				break;
 			}
 			offset += header->lengthInBytes();
@@ -696,8 +702,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 				// PT=202 == SDES
 				// PT=207 == Extended Report
 				if (header->payloadType() != 202 && header->payloadType() != 207) {
-					PLOG_WARNING << "Unknown packet type: " << (int)header->version() << " "
-					             << header->payloadType() << "";
+                    COUNTER_UNKNOWN_PACKET_TYPE++;
 				}
 			}
 		}
