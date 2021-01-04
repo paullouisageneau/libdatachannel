@@ -294,17 +294,13 @@ public:
 	}
 };
 
-struct RTCP_SDES_CHUNK {
-private:
-    SSRC _ssrc;
+struct RTCP_SDES_ITEM {
 public:
     uint8_t type;
 private:
     uint8_t _length;
     char _text;
 public:
-    inline SSRC ssrc() const { return ntohl(_ssrc); }
-    inline void setSSRC(SSRC ssrc) { _ssrc = htonl(ssrc); }
     inline std::string text() const {
         return std::string(&_text, _length);
     }
@@ -318,8 +314,46 @@ public:
     }
 
     [[nodiscard]] static unsigned int size(uint8_t textLength) {
-        auto words = uint8_t(std::ceil(double(textLength + 2) / 4)) + 1;
+        return textLength + 2;
+    }
+};
+
+struct RTCP_SDES_CHUNK {
+private:
+    SSRC _ssrc;
+    RTCP_SDES_ITEM _items;
+public:
+    inline SSRC ssrc() const { return ntohl(_ssrc); }
+    inline void setSSRC(SSRC ssrc) { _ssrc = htonl(ssrc); }
+
+    inline RTCP_SDES_ITEM *getItem(int num) {
+        auto base = &_items;
+        while (num-- > 0) {
+            auto itemSize = RTCP_SDES_ITEM::size(base->length());
+            base = reinterpret_cast<RTCP_SDES_ITEM *>(reinterpret_cast<uint8_t *>(base) + itemSize);
+        }
+        return reinterpret_cast<RTCP_SDES_ITEM *>(base);
+    }
+
+    [[nodiscard]] static unsigned int size(std::vector<uint8_t> textLengths) {
+        unsigned int itemsSize = 0;
+        for (auto length: textLengths) {
+            itemsSize += RTCP_SDES_ITEM::size(length);
+        }
+        auto nullTerminatedItemsSize = itemsSize + 1;
+        auto words = uint8_t(std::ceil(double(nullTerminatedItemsSize) / 4)) + 1;
         return words * 4;
+    }
+
+    [[nodiscard]] unsigned int getSize() {
+        std::vector<uint8_t> textLengths{};
+        unsigned int i = 0;
+        auto item = getItem(i);
+        while (item->type != 0) {
+            textLengths.push_back(item->length());
+            item = getItem(++i);
+        }
+        return size(textLengths);
     }
 };
 
@@ -334,21 +368,22 @@ public:
         unsigned int chunkSize = 0;
         for(uint8_t i = 0; i < chunkCount; i++) {
             auto chunk = getChunk(i);
-            chunkSize += RTCP_SDES_CHUNK::size(chunk->length());
+            chunkSize += chunk->getSize();
         }
         uint16_t length = (sizeof(header) + chunkSize) / 4 - 1;
         header.prepareHeader(202, chunkCount, length);
     }
+
     inline RTCP_SDES_CHUNK *getChunk(int num) {
         auto base = &_chunks;
         while (num-- > 0) {
-            auto chunkSize = RTCP_SDES_CHUNK::size(base->length());
+            auto chunkSize = base->getSize();
             base = reinterpret_cast<RTCP_SDES_CHUNK *>(reinterpret_cast<uint8_t *>(base) + chunkSize);
         }
         return reinterpret_cast<RTCP_SDES_CHUNK *>(base);
     }
 
-    [[nodiscard]] static unsigned int size(std::vector<uint8_t> lengths) {
+    [[nodiscard]] static unsigned int size(std::vector<std::vector<uint8_t>> lengths) {
         unsigned int chunks_size = 0;
         for (auto length: lengths) {
             chunks_size += RTCP_SDES_CHUNK::size(length);

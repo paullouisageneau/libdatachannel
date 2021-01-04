@@ -51,7 +51,7 @@ void RTCPSenderReportable::setNeedsToReport() {
 
 message_ptr RTCPSenderReportable::getSenderReport(uint32_t timestamp) {
     auto srSize = RTCP_SR::size(0);
-    auto msg = make_message(srSize + RTCP_SDES::size({uint8_t(rtpConfig->cname.size())}), Message::Type::Control);
+    auto msg = make_message(srSize + RTCP_SDES::size({{uint8_t(rtpConfig->cname.size())}}), Message::Type::Control);
     auto sr = reinterpret_cast<RTCP_SR *>(msg->data());
     auto timestamp_s = rtpConfig->timestampToSeconds(timestamp);
     auto currentTime = timeOffset + timestamp_s;
@@ -64,8 +64,9 @@ message_ptr RTCPSenderReportable::getSenderReport(uint32_t timestamp) {
     auto sdes = reinterpret_cast<RTCP_SDES *>(msg->data() + srSize);
     auto chunk = sdes->getChunk(0);
     chunk->setSSRC(rtpConfig->ssrc);
-    chunk->type = 1;
-    chunk->setText(rtpConfig->cname);
+    auto item = chunk->getItem(0);
+    item->type = 1;
+    item->setText(rtpConfig->cname);
     sdes->preparePacket(1);
     return msg;
 }
