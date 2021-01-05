@@ -425,7 +425,7 @@ public:
                     // chunk is truncated
                     return false;
                 }
-                auto chunk = getChunk(i);
+                auto chunk = getChunk(i++);
                 auto chunkSize = chunk->safelyCountChunkSize(chunksSize - size);
                 if (chunkSize < 0) {
                     // chunk is invalid
