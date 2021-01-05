@@ -19,24 +19,24 @@
 #include "logcounter.hpp"
 
 rtc::LogCounter::LogCounter(plog::Severity severity, const std::string &text, std::chrono::seconds duration) :
-        severity(severity), text(text), duration(duration) {}
+        mSeverity(severity), mText(text), mDuration(duration), mIsValidMutex(std::make_shared<std::mutex>()), mIsValid(std::make_shared<bool>(true)) {}
 
 rtc::LogCounter& rtc::LogCounter::operator++(int) {
-    std::lock_guard lock(mutex);
-    count++;
-    if (count == 1) {
-        ThreadPool::Instance().schedule(duration, [](std::weak_ptr<LogCounter> ptr) {
-            if (auto log = ptr.lock()) {
+    if (mCount++ == 1) {
+        ThreadPool::Instance().schedule(mDuration, [this, isValidMutex = mIsValidMutex, isValid = mIsValid]() {
+            std::lock_guard lock(*isValidMutex);
+            if (*isValid) {
                 int countCopy;
-                {
-                    std::lock_guard lock(log->mutex);
-                    countCopy = log->count;
-                    log->count = 0;
-                }
-                PLOG(log->severity) << log->text << ": " << countCopy << " (over "
-                               << std::chrono::duration_cast<std::chrono::seconds>(log->duration).count() << " seconds)";
+                countCopy = mCount.exchange(0);
+                PLOG(mSeverity) << mText << ": " << countCopy << " (over "
+                               << std::chrono::duration_cast<std::chrono::seconds>(mDuration).count() << " seconds)";
             }
-        }, std::weak_ptr(shared_from_this()));
+        });
     }
     return *this;
+}
+
+rtc::LogCounter::~LogCounter() {
+    std::lock_guard lock(*mIsValidMutex);
+    *mIsValid = false;
 }
