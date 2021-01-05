@@ -31,7 +31,6 @@ private:
 
     int count = 0;
     std::mutex mutex;
-    std::optional<invoke_future_t<void (*)()>> future;
 public:
 
     LogCounter(plog::Severity severity, const std::string& text, std::chrono::seconds duration=std::chrono::seconds(1));
