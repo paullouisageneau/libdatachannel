@@ -694,6 +694,10 @@ void PeerConnection::forwardMedia(message_ptr message) {
 					ssrcs.insert(rtcpsr->getReportBlock(i)->getSSRC());
             } else if (header->payloadType() == 202) {
                 auto sdes = reinterpret_cast<RTCP_SDES *>(header);
+                if (!sdes->isValid()) {
+                    PLOG_WARNING << "RTCP SDES packet is invalid";
+                    continue;
+                }
                 for (unsigned int i = 0; i < sdes->chunksCount(); i++) {
                     auto chunk = sdes->getChunk(i);
                     ssrcs.insert(chunk->ssrc());
