@@ -23,7 +23,7 @@
 #include "include.hpp"
 
 namespace rtc {
-class LogCounter {
+class LogCounter: public std::enable_shared_from_this<LogCounter> {
 private:
     plog::Severity severity;
     std::string text;

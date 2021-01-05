@@ -25,16 +25,19 @@ rtc::LogCounter& rtc::LogCounter::operator++(int) {
     std::lock_guard lock(mutex);
     count++;
     if (!future) {
-        future = ThreadPool::Instance().schedule(duration, [this]() {
-            int countCopy;
-            {
-                std::lock_guard lock(mutex);
-                countCopy = count;
-                count = 0;
-                future = std::nullopt;
+        future = ThreadPool::Instance().schedule(duration, [](std::weak_ptr<LogCounter> ptr) {
+            if (auto log = ptr.lock()) {
+                int countCopy;
+                {
+                    std::lock_guard lock(log->mutex);
+                    countCopy = log->count;
+                    log->count = 0;
+                    log->future = std::nullopt;
+                }
+                PLOG(log->severity) << log->text << ": " << countCopy << " (over "
+                               << std::chrono::duration_cast<std::chrono::seconds>(log->duration).count() << " seconds)";
             }
-            PLOG(severity) << text << ": " << countCopy << " (over " << std::chrono::duration_cast<std::chrono::seconds>(duration).count() << " seconds)";
-        });
+        }, std::weak_ptr(shared_from_this()));
     }
     return *this;
 }
