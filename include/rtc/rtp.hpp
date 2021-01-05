@@ -427,7 +427,7 @@ public:
                 }
                 auto chunk = getChunk(i);
                 auto chunkSize = chunk->safelyCountChunkSize(chunksSize - size);
-                if (chunksSize < 0) {
+                if (chunkSize < 0) {
                     // chunk is invalid
                     return false;
                 }
