@@ -17,6 +17,7 @@
  */
 
 #include "sctptransport.hpp"
+#include "logcounter.hpp"
 
 #include <chrono>
 #include <exception>
@@ -47,6 +48,10 @@ using namespace std::chrono_literals;
 using namespace std::chrono;
 
 using std::shared_ptr;
+
+static rtc::LogCounter COUNTER_UNKNOWN_PPID(plog::warning, "Number of SCTP packets received with an unknown PPID");
+static rtc::LogCounter COUNTER_BAD_NOTIF_LEN(plog::warning, "Number of SCTP packets received with an bad notification length");
+static rtc::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning, "Number of SCTP packets received with a bad status");
 
 namespace rtc {
 
@@ -631,14 +636,15 @@ void SctpTransport::processData(binary &&data, uint16_t sid, PayloadId ppid) {
 
 	default:
 		// Unknown
-		PLOG_WARNING << "Unknown PPID: " << uint32_t(ppid);
+		COUNTER_UNKNOWN_PPID++;
+		PLOG_VERBOSE << "Unknown PPID: " << uint32_t(ppid);
 		return;
 	}
 }
 
 void SctpTransport::processNotification(const union sctp_notification *notify, size_t len) {
 	if (len != size_t(notify->sn_header.sn_length)) {
-		PLOG_WARNING << "Invalid notification length";
+        COUNTER_BAD_NOTIF_LEN++;
 		return;
 	}
 
@@ -738,7 +744,8 @@ std::optional<milliseconds> SctpTransport::rtt() {
 	struct sctp_status status = {};
 	socklen_t len = sizeof(status);
 	if (usrsctp_getsockopt(mSock, IPPROTO_SCTP, SCTP_STATUS, &status, &len)) {
-		PLOG_WARNING << "Could not read SCTP_STATUS";
+		COUNTER_BAD_SCTP_STATUS++;
+
 		return nullopt;
 	}
 	return milliseconds(status.sstat_primary.spinfo_srtt);
