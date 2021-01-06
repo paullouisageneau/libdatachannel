@@ -25,20 +25,19 @@
 namespace rtc {
 class LogCounter {
 private:
-    plog::Severity mSeverity;
-    std::string mText;
-    std::chrono::steady_clock::duration mDuration;
+    struct LogData {
+        plog::Severity mSeverity;
+        std::string mText;
+        std::chrono::steady_clock::duration mDuration;
 
-    std::atomic<int> mCount = 0;
+        std::atomic<int> mCount = 0;
+    };
 
-    std::shared_ptr<std::mutex> mIsValidMutex;
-    std::shared_ptr<bool> mIsValid;
+    std::shared_ptr<LogData> mData;
 
 public:
 
     LogCounter(plog::Severity severity, const std::string& text, std::chrono::seconds duration=std::chrono::seconds(1));
-
-    ~LogCounter();
 
     LogCounter& operator++(int);
 };

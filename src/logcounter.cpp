@@ -18,25 +18,23 @@
 
 #include "logcounter.hpp"
 
-rtc::LogCounter::LogCounter(plog::Severity severity, const std::string &text, std::chrono::seconds duration) :
-        mSeverity(severity), mText(text), mDuration(duration), mIsValidMutex(std::make_shared<std::mutex>()), mIsValid(std::make_shared<bool>(true)) {}
-
-rtc::LogCounter& rtc::LogCounter::operator++(int) {
-    if (mCount++ == 1) {
-        ThreadPool::Instance().schedule(mDuration, [this, isValidMutex = mIsValidMutex, isValid = mIsValid]() {
-            std::lock_guard lock(*isValidMutex);
-            if (*isValid) {
-                int countCopy;
-                countCopy = mCount.exchange(0);
-                PLOG(mSeverity) << mText << ": " << countCopy << " (over "
-                               << std::chrono::duration_cast<std::chrono::seconds>(mDuration).count() << " seconds)";
-            }
-        });
-    }
-    return *this;
+rtc::LogCounter::LogCounter(plog::Severity severity, const std::string &text, std::chrono::seconds duration) {
+    mData = std::make_shared<LogData>();
+    mData->mDuration  =duration;
+    mData->mSeverity = severity;
+    mData->mText = text;
 }
 
-rtc::LogCounter::~LogCounter() {
-    std::lock_guard lock(*mIsValidMutex);
-    *mIsValid = false;
+rtc::LogCounter& rtc::LogCounter::operator++(int) {
+    if (mData->mCount++ == 0) {
+        ThreadPool::Instance().schedule(mData->mDuration, [](std::weak_ptr<LogData> data) {
+            if (auto ptr = data.lock()) {
+                int countCopy;
+                countCopy = ptr->mCount.exchange(0);
+                PLOG(ptr->mSeverity) << ptr->mText << ": " << countCopy << " (over "
+                               << std::chrono::duration_cast<std::chrono::seconds>(ptr->mDuration).count() << " seconds)";
+            }
+        }, mData);
+    }
+    return *this;
 }
