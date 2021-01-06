@@ -114,6 +114,7 @@ public:
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
 	void onLocalDescription(std::function<void(Description description)> callback);
 	void onLocalCandidate(std::function<void(Candidate candidate)> callback);
+	void onFilterLocalCandidate(std::function<bool(const Candidate& candidate)> callback);
 	void onStateChange(std::function<void(State state)> callback);
 	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
 	void onSignalingStateChange(std::function<void(SignalingState state)> callback);
@@ -155,6 +156,7 @@ private:
 	void validateRemoteDescription(const Description &description);
 	void processLocalDescription(Description description);
 	void processLocalCandidate(Candidate candidate);
+	bool filterLocalCandidate(const Candidate& candidate);
 	void processRemoteDescription(Description description);
 	void processRemoteCandidate(Candidate candidate);
 	string localBundleMid() const;
@@ -197,6 +199,7 @@ private:
 	synchronized_callback<std::shared_ptr<DataChannel>> mDataChannelCallback;
 	synchronized_callback<Description> mLocalDescriptionCallback;
 	synchronized_callback<Candidate> mLocalCandidateCallback;
+	std::function<bool(const Candidate&)> mFilterLocalCandidateCallback;
 	synchronized_callback<State> mStateChangeCallback;
 	synchronized_callback<GatheringState> mGatheringStateChangeCallback;
 	synchronized_callback<SignalingState> mSignalingStateChangeCallback;

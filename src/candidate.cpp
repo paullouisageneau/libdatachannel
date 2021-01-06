@@ -108,7 +108,7 @@ void Candidate::parse(string candidate) {
 	trim_begin(mTail);
 	trim_end(mTail);
 
-	if (auto it = TypeMap.find(type); it != TypeMap.end())
+	if (auto it = TypeMap.find(mTypeString); it != TypeMap.end())
 		mType = it->second;
 	else
 		mType = Type::Unknown;

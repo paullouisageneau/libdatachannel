@@ -44,9 +44,10 @@ public:
 	enum class GatheringState { New = 0, InProgress = 1, Complete = 2 };
 
 	using candidate_callback = std::function<void(const Candidate &candidate)>;
+	using filter_candidate_callback = std::function<bool(const Candidate& candidate)>;
 	using gathering_state_callback = std::function<void(GatheringState state)>;
 
-	IceTransport(const Configuration &config, candidate_callback candidateCallback,
+	IceTransport(const Configuration &config, candidate_callback candidateCallback, filter_candidate_callback filterCandidateCallback,
 	             state_callback stateChangeCallback,
 	             gathering_state_callback gatheringStateChangeCallback);
 	~IceTransport();
@@ -73,6 +74,7 @@ private:
 
 	void processStateChange(unsigned int state);
 	void processCandidate(const string &candidate);
+	bool filterCandidate(const string& candidate);
 	void processGatheringDone();
 	void processTimeout();
 
@@ -82,6 +84,7 @@ private:
 	std::atomic<GatheringState> mGatheringState;
 
 	candidate_callback mCandidateCallback;
+	filter_candidate_callback mFilterCandidateCallback;
 	gathering_state_callback mGatheringStateChangeCallback;
 
 #if !USE_NICE
@@ -91,6 +94,7 @@ private:
 	static void CandidateCallback(juice_agent_t *agent, const char *sdp, void *user_ptr);
 	static void GatheringDoneCallback(juice_agent_t *agent, void *user_ptr);
 	static void RecvCallback(juice_agent_t *agent, const char *data, size_t size, void *user_ptr);
+	static bool FilterCandidateCallback(juice_agent_t *agent, const char* candidate, void *user_ptr);
 	static void LogCallback(juice_log_level_t level, const char *message);
 #else
 	uint32_t mStreamId = 0;

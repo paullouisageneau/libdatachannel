@@ -352,7 +352,10 @@ void PeerConnection::onLocalDescription(std::function<void(Description descripti
 }
 
 void PeerConnection::onLocalCandidate(std::function<void(Candidate candidate)> callback) {
-	mLocalCandidateCallback = callback;
+    mLocalCandidateCallback = callback;
+}
+void PeerConnection::onFilterLocalCandidate(std::function<bool(const Candidate& candidate)> callback) {
+    mFilterLocalCandidateCallback = callback;
 }
 
 void PeerConnection::onStateChange(std::function<void(State state)> callback) {
@@ -404,6 +407,7 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport() {
 
 		auto transport = std::make_shared<IceTransport>(
 		    mConfig, weak_bind(&PeerConnection::processLocalCandidate, this, _1),
+            weak_bind(&PeerConnection::filterLocalCandidate, this, _1),
 		    [this, weak_this = weak_from_this()](IceTransport::State state) {
 			    auto shared_this = weak_this.lock();
 			    if (!shared_this)
@@ -1088,6 +1092,12 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 
 	PLOG_VERBOSE << "Issuing local candidate: " << candidate;
 	mProcessor->enqueue(mLocalCandidateCallback.wrap(), std::move(candidate));
+}
+
+bool PeerConnection::filterLocalCandidate(const Candidate& candidate) {
+    if (mFilterLocalCandidateCallback)
+        return mFilterLocalCandidateCallback(candidate);
+    return true;
 }
 
 void PeerConnection::processRemoteDescription(Description description) {

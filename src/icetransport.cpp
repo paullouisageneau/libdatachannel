@@ -48,12 +48,14 @@ using std::chrono::system_clock;
 
 namespace rtc {
 
-IceTransport::IceTransport(const Configuration &config, candidate_callback candidateCallback,
+IceTransport::IceTransport(const Configuration &config,
+                           candidate_callback candidateCallback, filter_candidate_callback filterCandidateCallback,
                            state_callback stateChangeCallback,
                            gathering_state_callback gatheringStateChangeCallback)
     : Transport(nullptr, std::move(stateChangeCallback)), mRole(Description::Role::ActPass),
       mMid("0"), mGatheringState(GatheringState::New),
       mCandidateCallback(std::move(candidateCallback)),
+      mFilterCandidateCallback(std::move(filterCandidateCallback)),
       mGatheringStateChangeCallback(std::move(gatheringStateChangeCallback)),
       mAgent(nullptr, nullptr) {
 
@@ -93,6 +95,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	jconfig.cb_candidate = IceTransport::CandidateCallback;
 	jconfig.cb_gathering_done = IceTransport::GatheringDoneCallback;
 	jconfig.cb_recv = IceTransport::RecvCallback;
+	jconfig.cb_filter_candidate = IceTransport::FilterCandidateCallback;
 	jconfig.user_ptr = this;
 
 	// Randomize servers order
@@ -255,6 +258,15 @@ void IceTransport::changeGatheringState(GatheringState state) {
 		mGatheringStateChangeCallback(mGatheringState);
 }
 
+bool IceTransport::filterCandidate(const std::string& sdp) {
+    Candidate candidate(sdp);
+    if (mFilterCandidateCallback) {
+        auto res = mFilterCandidateCallback(candidate);
+        return res;
+    }
+    return true;
+}
+
 void IceTransport::processStateChange(unsigned int state) {
 	switch (state) {
 	case JUICE_STATE_DISCONNECTED:
@@ -339,6 +351,17 @@ void IceTransport::LogCallback(juice_log_level_t level, const char *message) {
 		break;
 	}
 	PLOG(severity) << "juice: " << message;
+}
+
+bool IceTransport::FilterCandidateCallback(juice_agent_t *, const char* sdp, void *user_ptr) {
+    auto iceTransport = static_cast<rtc::IceTransport *>(user_ptr);
+    try {
+        std::string sdpStr(sdp);
+        return iceTransport->filterCandidate(sdpStr);
+    } catch (const std::exception& e) {
+        PLOG_WARNING << e.what();
+    }
+    return false;
 }
 
 } // namespace rtc
