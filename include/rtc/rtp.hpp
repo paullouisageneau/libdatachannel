@@ -371,7 +371,7 @@ public:
         }
     }
 
-    [[nodiscard]] static unsigned int size(std::vector<uint8_t> textLengths) {
+    [[nodiscard]] static unsigned int size(const std::vector<uint8_t> textLengths) {
         unsigned int itemsSize = 0;
         for (auto length: textLengths) {
             itemsSize += RTCP_SDES_ITEM::size(length);
@@ -464,7 +464,7 @@ public:
         return reinterpret_cast<RTCP_SDES_CHUNK *>(base);
     }
 
-    [[nodiscard]] static unsigned int size(std::vector<std::vector<uint8_t>> lengths) {
+    [[nodiscard]] static unsigned int size(const std::vector<std::vector<uint8_t>> lengths) {
         unsigned int chunks_size = 0;
         for (auto length: lengths) {
             chunks_size += RTCP_SDES_CHUNK::size(length);
