@@ -18,6 +18,7 @@
 
 #include "dtlssrtptransport.hpp"
 #include "tls.hpp"
+#include "logcounter.hpp"
 
 #if RTC_ENABLE_MEDIA
 
@@ -27,6 +28,15 @@
 using std::shared_ptr;
 using std::to_integer;
 using std::to_string;
+
+static rtc::LogCounter COUNTER_MEDIA_TRUNCATED(plog::warning, "Number of truncated SRT(C)P packets received");
+static rtc::LogCounter COUNTER_UNKNOWN_PACKET_TYPE(plog::warning, "Number of RTP packets received with an unknown packet type");
+static rtc::LogCounter COUNTER_SRTCP_REPLAY(plog::warning, "Number of SRTCP replay packets received");
+static rtc::LogCounter COUNTER_SRTCP_AUTH_FAIL(plog::warning, "Number of SRTCP packets received that failed authentication checks");
+static rtc::LogCounter COUNTER_SRTCP_FAIL(plog::warning, "Number of SRTCP packets received that had an unknown libSRTP failure");
+static rtc::LogCounter COUNTER_SRTP_REPLAY(plog::warning, "Number of SRTP replay packets received");
+static rtc::LogCounter COUNTER_SRTP_AUTH_FAIL(plog::warning, "Number of SRTP packets received that failed authentication checks");
+static rtc::LogCounter COUNTER_SRTP_FAIL(plog::warning, "Number of SRTP packets received that had an unknown libSRTP failure");
 
 namespace rtc {
 
@@ -73,13 +83,14 @@ DtlsSrtpTransport::~DtlsSrtpTransport() {
 	srtp_dealloc(mSrtpOut);
 }
 
+
 bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	std::lock_guard lock(sendMutex);
 	if (!message)
 		return false;
 
 	if (!mInitDone) {
-		PLOG_WARNING << "SRTP media sent before keys are derived";
+        PLOG_ERROR << "SRTP media sent before keys are derived";
 		return false;
 	}
 
@@ -137,6 +148,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	return Transport::outgoing(message); // bypass DTLS DSCP marking
 }
 
+
 void DtlsSrtpTransport::incoming(message_ptr message) {
 	if (!mInitDone) {
 		// Bypas
@@ -165,7 +177,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 		// The RTP header has a minimum size of 12 bytes
 		// An RTCP packet can have a minimum size of 8 bytes
 		if (size < 8) {
-			PLOG_WARNING << "Incoming SRTP/SRTCP packet too short, size=" << size;
+            COUNTER_MEDIA_TRUNCATED++;
+			PLOG_VERBOSE << "Incoming SRTP/SRTCP packet too short, size=" << size;
 			return;
 		}
 
@@ -177,12 +190,16 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 		if (value2 >= 64 && value2 <= 95) { // Range 64-95 (inclusive) MUST be RTCP
 			PLOG_VERBOSE << "Incoming SRTCP packet, size=" << size;
 			if (srtp_err_status_t err = srtp_unprotect_rtcp(mSrtpIn, message->data(), &size)) {
-				if (err == srtp_err_status_replay_fail)
-					PLOG_WARNING << "Incoming SRTCP packet is a replay";
-				else if (err == srtp_err_status_auth_fail)
-					PLOG_WARNING << "Incoming SRTCP packet failed authentication check";
-				else
-					PLOG_WARNING << "SRTCP unprotect error, status=" << err;
+				if (err == srtp_err_status_replay_fail) {
+                    PLOG_VERBOSE << "Incoming SRTCP packet is a replay";
+                    COUNTER_SRTCP_REPLAY++;
+                }else if (err == srtp_err_status_auth_fail) {
+                    PLOG_VERBOSE << "Incoming SRTCP packet failed authentication check";
+                    COUNTER_SRTCP_AUTH_FAIL++;
+                }else {
+                    PLOG_VERBOSE << "SRTCP unprotect error, status=" << err;
+                    COUNTER_SRTCP_FAIL++;
+                }
 
 				return;
 			}
@@ -193,13 +210,16 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 		} else {
 			PLOG_VERBOSE << "Incoming SRTP packet, size=" << size;
 			if (srtp_err_status_t err = srtp_unprotect(mSrtpIn, message->data(), &size)) {
-				if (err == srtp_err_status_replay_fail)
-					PLOG_WARNING << "Incoming SRTP packet is a replay";
-				else if (err == srtp_err_status_auth_fail)
-					PLOG_WARNING << "Incoming SRTP packet failed authentication check";
-				else
-					PLOG_WARNING << "SRTP unprotect error, status=" << err;
-
+                if (err == srtp_err_status_replay_fail) {
+                    PLOG_VERBOSE << "Incoming SRTP packet is a replay";
+                    COUNTER_SRTP_REPLAY++;
+                } else if (err == srtp_err_status_auth_fail) {
+                    PLOG_VERBOSE << "Incoming SRTP packet failed authentication check";
+                    COUNTER_SRTP_AUTH_FAIL++;
+                } else {
+                    PLOG_VERBOSE << "SRTP unprotect error, status=" << err;
+                    COUNTER_SRTP_FAIL++;
+                }
 				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
@@ -211,7 +231,8 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 		mSrtpRecvCallback(message);
 
 	} else {
-		PLOG_WARNING << "Unknown packet type, value=" << unsigned(value1) << ", size=" << size;
+	    COUNTER_UNKNOWN_PACKET_TYPE++;
+		PLOG_VERBOSE << "Unknown packet type, value=" << unsigned(value1) << ", size=" << size;
 	}
 }
 
