@@ -22,7 +22,9 @@
 #include "include.hpp"
 #include "init.hpp"
 
+#include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <functional>
 #include <future>
 #include <memory>
@@ -39,6 +41,8 @@ using invoke_future_t = std::future<std::invoke_result_t<std::decay_t<F>, std::d
 
 class ThreadPool final {
 public:
+	using clock = std::chrono::steady_clock;
+
 	static ThreadPool &Instance();
 
 	ThreadPool(const ThreadPool &) = delete;
@@ -53,7 +57,13 @@ public:
 	bool runOne();
 
 	template <class F, class... Args>
-	auto enqueue(F &&f, Args &&... args) -> invoke_future_t<F, Args...>;
+	auto enqueue(F &&f, Args &&...args) -> invoke_future_t<F, Args...>;
+
+	template <class F, class... Args>
+	auto schedule(clock::duration delay, F &&f, Args &&...args) -> invoke_future_t<F, Args...>;
+
+	template <class F, class... Args>
+	auto schedule(clock::time_point time, F &&f, Args &&...args) -> invoke_future_t<F, Args...>;
 
 protected:
 	ThreadPool() = default;
@@ -62,15 +72,34 @@ protected:
 	std::function<void()> dequeue(); // returns null function if joining
 
 	std::vector<std::thread> mWorkers;
-	std::queue<std::function<void()>> mTasks;
 	std::atomic<bool> mJoining = false;
+
+	struct Task {
+		clock::time_point time;
+		std::function<void()> func;
+		bool operator>(const Task &other) const { return time > other.time; }
+		bool operator<(const Task &other) const { return time < other.time; }
+	};
+	std::priority_queue<Task, std::deque<Task>, std::greater<Task>> mTasks;
 
 	mutable std::mutex mMutex, mWorkersMutex;
 	std::condition_variable mCondition;
 };
 
 template <class F, class... Args>
-auto ThreadPool::enqueue(F &&f, Args &&... args) -> invoke_future_t<F, Args...> {
+auto ThreadPool::enqueue(F &&f, Args &&...args) -> invoke_future_t<F, Args...> {
+	return schedule(clock::now(), std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+template <class F, class... Args>
+auto ThreadPool::schedule(clock::duration delay, F &&f, Args &&...args)
+    -> invoke_future_t<F, Args...> {
+	return schedule(clock::now() + delay, std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+template <class F, class... Args>
+auto ThreadPool::schedule(clock::time_point time, F &&f, Args &&...args)
+    -> invoke_future_t<F, Args...> {
 	std::unique_lock lock(mMutex);
 	using R = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
 	auto bound = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
@@ -84,7 +113,7 @@ auto ThreadPool::enqueue(F &&f, Args &&... args) -> invoke_future_t<F, Args...> 
 	});
 	std::future<R> result = task->get_future();
 
-	mTasks.emplace([task = std::move(task), token = Init::Token()]() { return (*task)(); });
+	mTasks.push({time, [task = std::move(task), token = Init::Token()]() { return (*task)(); }});
 	mCondition.notify_one();
 	return result;
 }

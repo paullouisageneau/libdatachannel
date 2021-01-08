@@ -24,6 +24,7 @@ using namespace std;
 using namespace chrono_literals;
 
 void test_connectivity();
+void test_turn_connectivity();
 void test_track();
 void test_capi_connectivity();
 void test_capi_track();
@@ -48,6 +49,15 @@ int main(int argc, char **argv) {
 		cout << "*** Finished WebRTC connectivity test" << endl;
 	} catch (const exception &e) {
 		cerr << "WebRTC connectivity test failed: " << e.what() << endl;
+		return -1;
+	}
+	this_thread::sleep_for(1s);
+	try {
+		cout << endl << "*** Running WebRTC TURN connectivity test..." << endl;
+		test_turn_connectivity();
+		cout << "*** Finished WebRTC TURN connectivity test" << endl;
+	} catch (const exception &e) {
+		cerr << "WebRTC TURN connectivity test failed: " << e.what() << endl;
 		return -1;
 	}
 	this_thread::sleep_for(1s);

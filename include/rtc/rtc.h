@@ -86,6 +86,7 @@ typedef enum { // Don't change, it must match plog severity
 typedef struct {
 	const char **iceServers;
 	int iceServersCount;
+	bool enableIceTcp;
 	uint16_t portRangeBegin;
 	uint16_t portRangeEnd;
 } rtcConfiguration;

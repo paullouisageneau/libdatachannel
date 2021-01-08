@@ -21,7 +21,7 @@ Protocol stack:
 - SCTP-based Data Channels ([draft-ietf-rtcweb-data-channel-13](https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13))
 - SRTP-based Media Transport ([draft-ietf-rtcweb-rtp-usage-26](https://tools.ietf.org/html/draft-ietf-rtcweb-rtp-usage-26))
 - DTLS/UDP ([RFC7350](https://tools.ietf.org/html/rfc7350) and [RFC8261](https://tools.ietf.org/html/rfc8261))
-- ICE ([RFC8445](https://tools.ietf.org/html/rfc8445)) with STUN ([RFC5389](https://tools.ietf.org/html/rfc5389))
+- ICE ([RFC8445](https://tools.ietf.org/html/rfc8445)) with STUN ([RFC8489](https://tools.ietf.org/html/rfc8489)) and its extension TURN ([RFC8656](https://tools.ietf.org/html/rfc8656))
 
 Features:
 - Full IPv6 support
@@ -30,7 +30,6 @@ Features:
 - Multicast DNS candidates ([draft-ietf-rtcweb-mdns-ice-candidates-04](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-04))
 - SRTP and SRTCP key derivation from DTLS ([RFC5764](https://tools.ietf.org/html/rfc5764))
 - Differentiated Services QoS ([draft-ietf-tsvwg-rtcweb-qos-18](https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18))
-- TURN relaying ([RFC5766](https://tools.ietf.org/html/rfc5766)) with [libnice](https://github.com/libnice/libnice) as ICE backend
 
 Note only SDP BUNDLE mode is supported for media multiplexing ([draft-ietf-mmusic-sdp-bundle-negotiation-54](https://tools.ietf.org/html/draft-ietf-mmusic-sdp-bundle-negotiation-54)). The behavior is equivalent to the JSEP bundle-only policy: the library always negociates one unique network component, where SRTP media streams are multiplexed with SRTCP control packets ([RFC5761](https://tools.ietf.org/html/rfc5761)) and SCTP/DTLS data traffic ([RFC5764](https://tools.ietf.org/html/rfc5764)).
 
@@ -73,8 +72,6 @@ $ git submodule update --init --recursive
 ### Building with CMake
 
 The CMake library targets `libdatachannel` and `libdatachannel-static` respectively correspond to the shared and static libraries. The default target will build tests and examples. The option `USE_GNUTLS` allows to switch between OpenSSL (default) and GnuTLS, and the option `USE_NICE` allows to switch between libjuice as submodule (default) and libnice.
-
-On Windows, the DLL resulting from the shared library build only exposes the C API, use the static library for the C++ API.
 
 #### POSIX-compliant operating systems (including Linux and Apple macOS)
 ```bash

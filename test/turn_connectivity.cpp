@@ -29,23 +29,26 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-void test_connectivity() {
+void test_turn_connectivity() {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
-	// STUN server example (not necessary to connect locally)
+	// STUN server example (not necessary, just here for testing)
 	// Please do not use outside of libdatachannel tests
 	config1.iceServers.emplace_back("stun:stun.ageneau.net:3478");
+	// TURN server example
+	// Please do not use outside of libdatachannel tests
+	config1.iceServers.emplace_back("turn:datachannel_test:14018314739877@stun.ageneau.net:3478");
 
 	auto pc1 = std::make_shared<PeerConnection>(config1);
 
 	Configuration config2;
-	// STUN server example (not necessary to connect locally)
+	// STUN server example (not necessary, just here for testing)
 	// Please do not use outside of libdatachannel tests
-	config2.iceServers.emplace_back("stun:stun.ageneau.net:3478");
-	// Port range example
-	config2.portRangeBegin = 5000;
-	config2.portRangeEnd = 6000;
+	config1.iceServers.emplace_back("stun:stun.ageneau.net:3478");
+	// TURN server example
+	// Please do not use outside of libdatachannel tests
+	config2.iceServers.emplace_back("turn:datachannel_test:14018314739877@stun.ageneau.net:3478");
 
 	auto pc2 = std::make_shared<PeerConnection>(config2);
 
@@ -61,8 +64,12 @@ void test_connectivity() {
 		auto pc2 = wpc2.lock();
 		if (!pc2)
 			return;
-		cout << "Candidate 1: " << candidate << endl;
-		pc2->addRemoteCandidate(string(candidate));
+		// For this test, filter out non-relay candidates to force TURN
+		string str(candidate);
+		if(str.find("relay") != string::npos) {
+			cout << "Candidate 1: " << str << endl;
+			pc2->addRemoteCandidate(str);
+		}
 	});
 
 	pc1->onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
@@ -87,8 +94,12 @@ void test_connectivity() {
 		auto pc1 = wpc1.lock();
 		if (!pc1)
 			return;
-		cout << "Candidate 2: " << candidate << endl;
-		pc1->addRemoteCandidate(string(candidate));
+		// For this test, filter out non-relay candidates to force TURN
+		string str(candidate);
+		if(str.find("relay") != string::npos) {
+			cout << "Candidate 1: " << str << endl;
+			pc1->addRemoteCandidate(str);
+		}
 	});
 
 	pc2->onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });

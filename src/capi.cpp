@@ -287,6 +287,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 			c.portRangeEnd = config->portRangeEnd;
 		}
 
+		c.enableIceTcp = config->enableIceTcp;
 		return emplacePeerConnection(std::make_shared<PeerConnection>(c));
 	});
 }

@@ -19,6 +19,10 @@
 #include "track.hpp"
 #include "dtlssrtptransport.hpp"
 #include "include.hpp"
+#include "logcounter.hpp"
+
+static rtc::LogCounter COUNTER_MEDIA_BAD_DIRECTION(plog::warning, "Number of media packets sent in invalid directions");
+static rtc::LogCounter COUNTER_QUEUE_FULL(plog::warning, "Number of media packets dropped due to a full queue");
 
 namespace rtc {
 
@@ -52,7 +56,7 @@ bool Track::send(message_variant data) {
 	auto direction = mMediaDescription.direction();
 	if ((direction == Description::Direction::RecvOnly ||
 	     direction == Description::Direction::Inactive)) {
-		PLOG_WARNING << "Track media direction does not allow transmission, dropping";
+	    COUNTER_MEDIA_BAD_DIRECTION++;
 		return false;
 	}
 
@@ -114,7 +118,7 @@ void Track::incoming(message_ptr message) {
 	if ((direction == Description::Direction::SendOnly ||
 	     direction == Description::Direction::Inactive) &&
 	    message->type != Message::Control) {
-		PLOG_WARNING << "Track media direction does not allow reception, dropping";
+        COUNTER_MEDIA_BAD_DIRECTION++;
 		return;
 	}
 
@@ -126,7 +130,7 @@ void Track::incoming(message_ptr message) {
 
 	// Tail drop if queue is full
 	if (mRecvQueue.full()) {
-		PLOG_WARNING << "Track incoming queue is full, dropping";
+        COUNTER_QUEUE_FULL++;
 		return;
 	}
 
