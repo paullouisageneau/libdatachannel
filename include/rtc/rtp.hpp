@@ -1,6 +1,7 @@
 /**
  * Copyright (c) 2020 Staz Modrzynski
  * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2020 Filip Klembara (in2core)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -78,11 +79,16 @@ public:
 		return reinterpret_cast<const char *>(&csrc) + sizeof(SSRC) * csrcCount();
 	}
 
+    inline void preparePacket() {
+        _first |= (1 << 7);
+    }
+
 	inline void setSeqNumber(uint16_t newSeqNo) { _seqNumber = htons(newSeqNo); }
 	inline void setPayloadType(uint8_t newPayloadType) {
 		_payloadType = (_payloadType & 0b10000000u) | (0b01111111u & newPayloadType);
 	}
 	inline void setSsrc(uint32_t in_ssrc) { _ssrc = htonl(in_ssrc); }
+    inline void setMarker(bool marker) { _payloadType = (_payloadType & 0x7F) | (marker << 7); };
 
 	void setTimestamp(uint32_t i) { _timestamp = htonl(i); }
 
@@ -255,6 +261,10 @@ public:
 		return &_reportBlocks + num;
 	}
 
+    [[nodiscard]] static unsigned int size(unsigned int reportCount) {
+        return sizeof(RTCP_HEADER) + 24 + reportCount * sizeof(RTCP_ReportBlock);
+    }
+
 	[[nodiscard]] inline size_t getSize() const {
 		// "length" in packet is one less than the number of 32 bit words in the packet.
 		return sizeof(uint32_t) * (1 + size_t(header.length()));
@@ -266,8 +276,10 @@ public:
 	inline uint32_t octetCount() const { return ntohl(_octetCount); }
 	inline uint32_t senderSSRC() const { return ntohl(_senderSSRC); }
 
-	inline void setNtpTimestamp(uint32_t ts) { _ntpTimestamp = htonll(ts); }
-	inline void setRtpTimestamp(uint32_t ts) { _rtpTimestamp = htonl(ts); }
+	inline void setNtpTimestamp(uint64_t ts) { _ntpTimestamp = htonll(ts); }
+    inline void setRtpTimestamp(uint32_t ts) { _rtpTimestamp = htonl(ts); }
+    inline void setOctetCount(uint32_t ts) { _octetCount = htonl(ts); }
+    inline void setPacketCount(uint32_t ts) { _packetCount = htonl(ts); }
 
 	inline void log() const {
 		header.log();
@@ -280,6 +292,185 @@ public:
 			getReportBlock(i)->log();
 		}
 	}
+};
+
+struct RTCP_SDES_ITEM {
+public:
+    uint8_t type;
+private:
+    uint8_t _length;
+    char _text;
+public:
+    inline std::string text() const {
+        return std::string(&_text, _length);
+    }
+    inline void setText(std::string text) {
+        _length = text.length();
+        memcpy(&_text, text.data(), _length);
+    }
+
+    inline uint8_t length() {
+        return _length;
+    }
+
+    [[nodiscard]] static unsigned int size(uint8_t textLength) {
+        return textLength + 2;
+    }
+};
+
+struct RTCP_SDES_CHUNK {
+private:
+    SSRC _ssrc;
+    RTCP_SDES_ITEM _items;
+public:
+    inline SSRC ssrc() const { return ntohl(_ssrc); }
+    inline void setSSRC(SSRC ssrc) { _ssrc = htonl(ssrc); }
+
+    /// Get item at given index
+    /// @note All items with index < `num` must be valid, otherwise this function has undefined behaviour (use `safelyCountChunkSize` to check if chunk is valid)
+    /// @param num Index of item to return
+    inline RTCP_SDES_ITEM *getItem(int num) {
+        auto base = &_items;
+        while (num-- > 0) {
+            auto itemSize = RTCP_SDES_ITEM::size(base->length());
+            base = reinterpret_cast<RTCP_SDES_ITEM *>(reinterpret_cast<uint8_t *>(base) + itemSize);
+        }
+        return reinterpret_cast<RTCP_SDES_ITEM *>(base);
+    }
+
+    long safelyCountChunkSize(unsigned int maxChunkSize) {
+        if (maxChunkSize < RTCP_SDES_CHUNK::size({})) {
+            // chunk is truncated
+            return -1;
+        } else {
+            unsigned int size = sizeof(SSRC);
+            unsigned int i = 0;
+            // We can always access first 4 bytes of first item (in case of no items there will be 4 null bytes)
+            auto item = getItem(i);
+            std::vector<uint8_t> textsLength{};
+            while (item->type != 0) {
+                if (size + RTCP_SDES_ITEM::size(0) > maxChunkSize) {
+                    // item is too short
+                    return -1;
+                }
+                auto itemLength = item->length();
+                if (size + RTCP_SDES_ITEM::size(itemLength) >= maxChunkSize) {
+                    // item is too large (it can't be equal to chunk size because after item there must be 1-4 null bytes as padding)
+                    return -1;
+                }
+                textsLength.push_back(itemLength);
+                // safely to access next item
+                item = getItem(++i);
+            }
+            auto realSize = RTCP_SDES_CHUNK::size(textsLength);
+            if (realSize > maxChunkSize) {
+                // Chunk is too large
+                return -1;
+            }
+            return realSize;
+        }
+    }
+
+    [[nodiscard]] static unsigned int size(const std::vector<uint8_t> textLengths) {
+        unsigned int itemsSize = 0;
+        for (auto length: textLengths) {
+            itemsSize += RTCP_SDES_ITEM::size(length);
+        }
+        auto nullTerminatedItemsSize = itemsSize + 1;
+        auto words = uint8_t(std::ceil(double(nullTerminatedItemsSize) / 4)) + 1;
+        return words * 4;
+    }
+
+    /// Get size of chunk
+    /// @note All  items must be valid, otherwise this function has undefined behaviour (use `safelyCountChunkSize` to check if chunk is valid)
+    [[nodiscard]] unsigned int getSize() {
+        std::vector<uint8_t> textLengths{};
+        unsigned int i = 0;
+        auto item = getItem(i);
+        while (item->type != 0) {
+            textLengths.push_back(item->length());
+            item = getItem(++i);
+        }
+        return size(textLengths);
+    }
+};
+
+struct RTCP_SDES {
+    RTCP_HEADER header;
+
+private:
+    RTCP_SDES_CHUNK _chunks;
+
+public:
+    inline void preparePacket(uint8_t chunkCount) {
+        unsigned int chunkSize = 0;
+        for(uint8_t i = 0; i < chunkCount; i++) {
+            auto chunk = getChunk(i);
+            chunkSize += chunk->getSize();
+        }
+        uint16_t length = (sizeof(header) + chunkSize) / 4 - 1;
+        header.prepareHeader(202, chunkCount, length);
+    }
+
+    bool isValid() {
+        auto chunksSize = header.lengthInBytes() - sizeof(header);
+        if (chunksSize == 0) {
+            return true;
+        } else {
+            // there is at least one chunk
+            unsigned int i = 0;
+            unsigned int size = 0;
+            while (size < chunksSize) {
+                if (chunksSize < size + RTCP_SDES_CHUNK::size({})) {
+                    // chunk is truncated
+                    return false;
+                }
+                auto chunk = getChunk(i++);
+                auto chunkSize = chunk->safelyCountChunkSize(chunksSize - size);
+                if (chunkSize < 0) {
+                    // chunk is invalid
+                    return false;
+                }
+                size += chunkSize;
+            }
+            return size == chunksSize;
+        }
+    }
+
+    /// Returns number of chunks in this packet
+    /// @note Returns 0 if packet is invalid
+    inline unsigned int chunksCount() {
+        if (!isValid()) {
+            return 0;
+        }
+        uint16_t chunksSize = 4 * (header.length() + 1) - sizeof(header);
+        unsigned int size = 0;
+        unsigned int i = 0;
+        while (size < chunksSize) {
+            size += getChunk(i++)->getSize();
+        }
+        return i;
+    }
+
+    /// Get chunk at given index
+    /// @note All chunks (and their items) with index < `num` must be valid, otherwise this function has undefined behaviour (use `isValid` to check if chunk is valid)
+    /// @param num Index of chunk to return
+    inline RTCP_SDES_CHUNK *getChunk(int num) {
+        auto base = &_chunks;
+        while (num-- > 0) {
+            auto chunkSize = base->getSize();
+            base = reinterpret_cast<RTCP_SDES_CHUNK *>(reinterpret_cast<uint8_t *>(base) + chunkSize);
+        }
+        return reinterpret_cast<RTCP_SDES_CHUNK *>(base);
+    }
+
+    [[nodiscard]] static unsigned int size(const std::vector<std::vector<uint8_t>> lengths) {
+        unsigned int chunks_size = 0;
+        for (auto length: lengths) {
+            chunks_size += RTCP_SDES_CHUNK::size(length);
+        }
+        return 4 + chunks_size;
+    }
 };
 
 struct RTCP_RR {

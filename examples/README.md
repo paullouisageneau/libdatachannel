@@ -8,6 +8,7 @@ This directory contains different WebRTC clients and compatible WebSocket + JSON
 - [signaling-server-rust](signaling-server-rust) contains a similar signaling server in Rust (see [lerouxrgd/datachannel-rs](https://github.com/lerouxrgd/datachannel-rs) for Rust wrappers)
 
 - [media](media) is a copy/paste demo to send the webcam from your browser into gstreamer.
+- [streamer](streamer) streams h264 and opus samples to web browsers (signaling-server-python is required).
 
 Additionally, it contains two debugging tools for libdatachannel with copy-pasting as signaling:
 - [copy-paste](copy-paste) using the C++ API

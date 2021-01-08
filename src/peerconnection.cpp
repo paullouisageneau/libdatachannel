@@ -36,7 +36,7 @@
 #include <set>
 #include <thread>
 
-#if __clang__
+#if __clang__ && defined(__APPLE__)
 namespace {
 template <typename To, typename From>
 inline std::shared_ptr<To> reinterpret_pointer_cast(std::shared_ptr<From> const &ptr) noexcept {
@@ -698,10 +698,19 @@ void PeerConnection::forwardMedia(message_ptr message) {
 				ssrcs.insert(rtcpsr->senderSSRC());
 				for (int i = 0; i < rtcpsr->header.reportCount(); ++i)
 					ssrcs.insert(rtcpsr->getReportBlock(i)->getSSRC());
+            } else if (header->payloadType() == 202) {
+                auto sdes = reinterpret_cast<RTCP_SDES *>(header);
+                if (!sdes->isValid()) {
+                    PLOG_WARNING << "RTCP SDES packet is invalid";
+                    continue;
+                }
+                for (unsigned int i = 0; i < sdes->chunksCount(); i++) {
+                    auto chunk = sdes->getChunk(i);
+                    ssrcs.insert(chunk->ssrc());
+                }
 			} else {
-				// PT=202 == SDES
 				// PT=207 == Extended Report
-				if (header->payloadType() != 202 && header->payloadType() != 207) {
+				if (header->payloadType() != 207) {
                     COUNTER_UNKNOWN_PACKET_TYPE++;
 				}
 			}

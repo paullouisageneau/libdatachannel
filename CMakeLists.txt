@@ -65,6 +65,14 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/track.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/processor.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizationconfig.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsenderreportable.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/opusrtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/opuspacketizationhandler.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/h264rtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/nalunit.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/h264packetizationhandler.cpp
 )
 
 set(LIBDATACHANNEL_WEBSOCKET_SOURCES
@@ -96,6 +104,14 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtp.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/track.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocket.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizationconfig.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpsenderreportable.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/opusrtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/opuspacketizationhandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/nalunit.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264packetizationhandler.hpp
 )
 
 set(TESTS_SOURCES
@@ -296,6 +312,9 @@ if(NOT NO_EXAMPLES AND NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 	add_subdirectory(examples/client)
 	add_subdirectory(examples/media)
 	add_subdirectory(examples/sfu-media)
+if(NOT NO_MEDIA)
+    add_subdirectory(examples/streamer)
+endif()
 	add_subdirectory(examples/copy-paste)
 	add_subdirectory(examples/copy-paste-capi)
 endif()

@@ -65,16 +65,16 @@ message_ptr make_message(Iterator begin, Iterator end, Message::Type type = Mess
 	return message;
 }
 
-message_ptr make_message(size_t size, Message::Type type = Message::Binary, unsigned int stream = 0,
+RTC_CPP_EXPORT message_ptr make_message(size_t size, Message::Type type = Message::Binary, unsigned int stream = 0,
                          std::shared_ptr<Reliability> reliability = nullptr);
 
-message_ptr make_message(binary &&data, Message::Type type = Message::Binary,
+RTC_CPP_EXPORT message_ptr make_message(binary &&data, Message::Type type = Message::Binary,
                          unsigned int stream = 0,
                          std::shared_ptr<Reliability> reliability = nullptr);
 
-message_ptr make_message(message_variant data);
+RTC_CPP_EXPORT message_ptr make_message(message_variant data);
 
-message_variant to_variant(Message &&message);
+RTC_CPP_EXPORT message_variant to_variant(Message &&message);
 
 } // namespace rtc
 
