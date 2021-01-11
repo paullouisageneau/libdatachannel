@@ -49,9 +49,13 @@ using namespace std::chrono;
 
 using std::shared_ptr;
 
-static rtc::LogCounter COUNTER_UNKNOWN_PPID(plog::warning, "Number of SCTP packets received with an unknown PPID");
-static rtc::LogCounter COUNTER_BAD_NOTIF_LEN(plog::warning, "Number of SCTP packets received with an bad notification length");
-static rtc::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning, "Number of SCTP packets received with a bad status");
+static rtc::LogCounter COUNTER_UNKNOWN_PPID(plog::warning,
+                                            "Number of SCTP packets received with an unknown PPID");
+static rtc::LogCounter
+    COUNTER_BAD_NOTIF_LEN(plog::warning,
+                          "Number of SCTP packets received with an bad notification length");
+static rtc::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning,
+                                               "Number of SCTP packets received with a bad status");
 
 namespace rtc {
 
@@ -644,7 +648,7 @@ void SctpTransport::processData(binary &&data, uint16_t sid, PayloadId ppid) {
 
 void SctpTransport::processNotification(const union sctp_notification *notify, size_t len) {
 	if (len != size_t(notify->sn_header.sn_length)) {
-        COUNTER_BAD_NOTIF_LEN++;
+		COUNTER_BAD_NOTIF_LEN++;
 		return;
 	}
 

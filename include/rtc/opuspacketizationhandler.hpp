@@ -21,31 +21,31 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "rtcpsenderreportable.hpp"
 #include "opusrtppacketizer.hpp"
 #include "rtcp.hpp"
+#include "rtcpsenderreportable.hpp"
 
 namespace rtc {
 
 /// Handler for opus packetization
-class RTC_CPP_EXPORT OpusPacketizationHandler: public RtcpHandler, public RTCPSenderReportable {
-    /// RTP packetizer for opus
-    const std::shared_ptr<OpusRTPPacketizer> packetizer;
+class RTC_CPP_EXPORT OpusPacketizationHandler : public RtcpHandler, public RTCPSenderReportable {
+	/// RTP packetizer for opus
+	const std::shared_ptr<OpusRTPPacketizer> packetizer;
 
 public:
-    /// Construct handler for opus packetization.
-    /// @param packetizer RTP packetizer for opus
-    OpusPacketizationHandler(std::shared_ptr<OpusRTPPacketizer> packetizer);
+	/// Construct handler for opus packetization.
+	/// @param packetizer RTP packetizer for opus
+	OpusPacketizationHandler(std::shared_ptr<OpusRTPPacketizer> packetizer);
 
-    /// Returns message unchanged
-    /// @param ptr message
-    message_ptr incoming(message_ptr ptr) override;
-    /// Returns packetized message if message type is binary
-    /// @param ptr message
-    message_ptr outgoing(message_ptr ptr) override;
+	/// Returns message unchanged
+	/// @param ptr message
+	message_ptr incoming(message_ptr ptr) override;
+	/// Returns packetized message if message type is binary
+	/// @param ptr message
+	message_ptr outgoing(message_ptr ptr) override;
 };
 
-}   // namespace
+} // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */
 

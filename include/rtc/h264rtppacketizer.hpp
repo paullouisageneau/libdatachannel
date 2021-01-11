@@ -26,19 +26,20 @@
 namespace rtc {
 
 /// RTP packetization of h264 payload
-class RTC_CPP_EXPORT H264RTPPacketizer: public rtc::RTPPacketizer {
+class RTC_CPP_EXPORT H264RTPPacketizer : public rtc::RTPPacketizer {
 
 public:
-    /// Default clock rate for H264 in RTP
-    static const auto defaultClockRate = 90 * 1000;
+	/// Default clock rate for H264 in RTP
+	static const auto defaultClockRate = 90 * 1000;
 
-    /// Constructs h264 payload packetizer with given RTP configuration.
-    /// @note RTP configuration is used in packetization process which may change some configuration properties such as sequence number.
-    /// @param rtpConfig  RTP configuration
-    H264RTPPacketizer(std::shared_ptr<rtc::RTPPacketizationConfig> rtpConfig);
+	/// Constructs h264 payload packetizer with given RTP configuration.
+	/// @note RTP configuration is used in packetization process which may change some configuration
+	/// properties such as sequence number.
+	/// @param rtpConfig  RTP configuration
+	H264RTPPacketizer(std::shared_ptr<rtc::RTPPacketizationConfig> rtpConfig);
 };
 
-} // namespace
+} // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */
 

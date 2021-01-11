@@ -28,8 +28,8 @@
 #if RTC_ENABLE_MEDIA
 
 // opus/h264 streaming
-#include "opuspacketizationhandler.hpp"
 #include "h264packetizationhandler.hpp"
+#include "opuspacketizationhandler.hpp"
 
 #endif /* RTC_ENABLE_MEDIA */
 

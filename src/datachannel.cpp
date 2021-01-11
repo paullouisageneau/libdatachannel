@@ -18,9 +18,9 @@
 
 #include "datachannel.hpp"
 #include "include.hpp"
+#include "logcounter.hpp"
 #include "peerconnection.hpp"
 #include "sctptransport.hpp"
-#include "logcounter.hpp"
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -28,7 +28,8 @@
 #include <arpa/inet.h>
 #endif
 
-rtc::LogCounter COUNTER_USERNEG_OPEN_MESSAGE(plog::warning, "Number of open messages for a user-negotiated DataChannel received");
+rtc::LogCounter COUNTER_USERNEG_OPEN_MESSAGE(
+    plog::warning, "Number of open messages for a user-negotiated DataChannel received");
 namespace rtc {
 
 using std::shared_ptr;
@@ -172,8 +173,8 @@ void DataChannel::open(shared_ptr<SctpTransport> transport) {
 }
 
 void DataChannel::processOpenMessage(message_ptr) {
-    PLOG_DEBUG << "Received an open message for a user-negotiated DataChannel, ignoring";
-    COUNTER_USERNEG_OPEN_MESSAGE++;
+	PLOG_DEBUG << "Received an open message for a user-negotiated DataChannel, ignoring";
+	COUNTER_USERNEG_OPEN_MESSAGE++;
 }
 
 bool DataChannel::outgoing(message_ptr message) {

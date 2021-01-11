@@ -21,8 +21,8 @@
 
 #include "include.hpp"
 #include "init.hpp"
-#include "threadpool.hpp"
 #include "queue.hpp"
+#include "threadpool.hpp"
 
 #include <condition_variable>
 #include <future>
@@ -45,7 +45,7 @@ public:
 
 	void join();
 
-	template <class F, class... Args> void enqueue(F &&f, Args &&... args);
+	template <class F, class... Args> void enqueue(F &&f, Args &&...args);
 
 protected:
 	void schedule();
@@ -60,7 +60,7 @@ protected:
 	std::condition_variable mCondition;
 };
 
-template <class F, class... Args> void Processor::enqueue(F &&f, Args &&... args) {
+template <class F, class... Args> void Processor::enqueue(F &&f, Args &&...args) {
 	std::unique_lock lock(mMutex);
 	auto bound = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
 	auto task = [this, bound = std::move(bound)]() mutable {

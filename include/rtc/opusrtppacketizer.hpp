@@ -26,25 +26,26 @@
 namespace rtc {
 
 /// RTP packetizer for opus
-class RTC_CPP_EXPORT OpusRTPPacketizer: public rtc::RTPPacketizer {
+class RTC_CPP_EXPORT OpusRTPPacketizer : public rtc::RTPPacketizer {
 
 public:
-    /// default clock rate used in opus RTP communication
-    static const uint32_t defaultClockRate = 48 * 1000;
+	/// default clock rate used in opus RTP communication
+	static const uint32_t defaultClockRate = 48 * 1000;
 
-    /// Constructs opus packetizer with given RTP configuration.
-    /// @note RTP configuration is used in packetization process which may change some configuration properties such as sequence number.
-    /// @param rtpConfig  RTP configuration
-    OpusRTPPacketizer(std::shared_ptr<rtc::RTPPacketizationConfig> rtpConfig);
+	/// Constructs opus packetizer with given RTP configuration.
+	/// @note RTP configuration is used in packetization process which may change some configuration
+	/// properties such as sequence number.
+	/// @param rtpConfig  RTP configuration
+	OpusRTPPacketizer(std::shared_ptr<rtc::RTPPacketizationConfig> rtpConfig);
 
-    /// Creates RTP packet for given payload based on `rtpConfig`.
-    /// @note This function increase sequence number after packetization.
-    /// @param payload RTP payload
-    /// @param setMark This needs to be `false` for all RTP packets with opus payload
-    rtc::message_ptr packetize(rtc::binary payload, bool setMark) override;
+	/// Creates RTP packet for given payload based on `rtpConfig`.
+	/// @note This function increase sequence number after packetization.
+	/// @param payload RTP payload
+	/// @param setMark This needs to be `false` for all RTP packets with opus payload
+	rtc::message_ptr packetize(rtc::binary payload, bool setMark) override;
 };
 
-} // namespace
+} // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */
 

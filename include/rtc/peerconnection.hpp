@@ -206,7 +206,9 @@ private:
 } // namespace rtc
 
 RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::State state);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::GatheringState state);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::SignalingState state);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out,
+                                        rtc::PeerConnection::GatheringState state);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out,
+                                        rtc::PeerConnection::SignalingState state);
 
 #endif

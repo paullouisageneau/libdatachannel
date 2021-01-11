@@ -21,31 +21,33 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "rtppacketizationconfig.hpp"
 #include "message.hpp"
+#include "rtppacketizationconfig.hpp"
 
 namespace rtc {
 
 /// Class responsizble for rtp packetization
 class RTC_CPP_EXPORT RTPPacketizer {
-    static const auto rtpHeaderSize = 12;
+	static const auto rtpHeaderSize = 12;
+
 public:
-    // rtp configuration
-    const std::shared_ptr<RTPPacketizationConfig> rtpConfig;
+	// rtp configuration
+	const std::shared_ptr<RTPPacketizationConfig> rtpConfig;
 
-    /// Constructs packetizer with given RTP configuration.
-    /// @note RTP configuration is used in packetization process which may change some configuration properties such as sequence number.
-    /// @param rtpConfig  RTP configuration
-    RTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig);
+	/// Constructs packetizer with given RTP configuration.
+	/// @note RTP configuration is used in packetization process which may change some configuration
+	/// properties such as sequence number.
+	/// @param rtpConfig  RTP configuration
+	RTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig);
 
-    /// Creates RTP packet for given payload based on `rtpConfig`.
-    /// @note This function increase sequence number after packetization.
-    /// @param payload RTP payload
-    /// @param setMark Set marker flag in RTP packet if true
-    virtual message_ptr packetize(binary payload, bool setMark);
+	/// Creates RTP packet for given payload based on `rtpConfig`.
+	/// @note This function increase sequence number after packetization.
+	/// @param payload RTP payload
+	/// @param setMark Set marker flag in RTP packet if true
+	virtual message_ptr packetize(binary payload, bool setMark);
 };
 
-}   // namespace
+} // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */
 

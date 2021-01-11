@@ -38,7 +38,8 @@ class TcpTransport;
 class TlsTransport;
 class WsTransport;
 
-class RTC_CPP_EXPORT WebSocket final : public Channel, public std::enable_shared_from_this<WebSocket> {
+class RTC_CPP_EXPORT WebSocket final : public Channel,
+                                       public std::enable_shared_from_this<WebSocket> {
 public:
 	enum class State : int {
 		Connecting = 0,

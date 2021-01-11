@@ -744,11 +744,17 @@ void Description::Media::addRTXCodec(unsigned int payloadType, unsigned int orig
 	addRTPMap(map);
 }
 
-void Description::Video::addH264Codec(int pt, std::optional<string> profile) { addVideoCodec(pt, "H264", profile); }
+void Description::Video::addH264Codec(int pt, std::optional<string> profile) {
+	addVideoCodec(pt, "H264", profile);
+}
 
-void Description::Video::addVP8Codec(int payloadType) { addVideoCodec(payloadType, "VP8", nullopt); }
+void Description::Video::addVP8Codec(int payloadType) {
+	addVideoCodec(payloadType, "VP8", nullopt);
+}
 
-void Description::Video::addVP9Codec(int payloadType) { addVideoCodec(payloadType, "VP9", nullopt); }
+void Description::Video::addVP9Codec(int payloadType) {
+	addVideoCodec(payloadType, "VP9", nullopt);
+}
 
 void Description::Media::setBitrate(int bitrate) { mBas = bitrate; }
 
@@ -901,7 +907,9 @@ void Description::Media::RTPMap::setMLine(string_view mline) {
 Description::Audio::Audio(string mid, Direction dir)
     : Media("audio 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
 
-void Description::Audio::addOpusCodec(int payloadType, std::optional<string> profile) { addAudioCodec(payloadType, "OPUS", profile); }
+void Description::Audio::addOpusCodec(int payloadType, std::optional<string> profile) {
+	addAudioCodec(payloadType, "OPUS", profile);
+}
 
 Description::Video::Video(string mid, Direction dir)
     : Media("video 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}

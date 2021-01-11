@@ -33,7 +33,7 @@
 #define _WIN32_WINNT 0x0602 // Windows 8
 #endif
 #ifdef _MSC_VER
-#pragma warning(disable:4251) // disable "X needs to have dll-interface..."
+#pragma warning(disable : 4251) // disable "X needs to have dll-interface..."
 #endif
 #else
 #define RTC_CPP_EXPORT
@@ -81,8 +81,8 @@ template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 // weak_ptr bind helper
-template <typename F, typename T, typename... Args> auto weak_bind(F &&f, T *t, Args &&... _args) {
-	return [bound = std::bind(f, t, _args...), weak_this = t->weak_from_this()](auto &&... args) {
+template <typename F, typename T, typename... Args> auto weak_bind(F &&f, T *t, Args &&..._args) {
+	return [bound = std::bind(f, t, _args...), weak_this = t->weak_from_this()](auto &&...args) {
 		using result_type = typename decltype(bound)::result_type;
 		if (auto shared_this = weak_this.lock())
 			return bound(args...);

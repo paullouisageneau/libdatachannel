@@ -29,128 +29,127 @@ namespace rtc {
 
 /// Nalu header
 struct RTC_CPP_EXPORT NalUnitHeader {
-    bool forbiddenBit() { return _first >> 7; }
-    uint8_t nri() { return _first >> 5 & 0x03; }
-    uint8_t unitType() { return _first & 0x1F; }
+	bool forbiddenBit() { return _first >> 7; }
+	uint8_t nri() { return _first >> 5 & 0x03; }
+	uint8_t unitType() { return _first & 0x1F; }
 
-    void setForbiddenBit(bool isSet) { _first = (_first & 0x7F) | (isSet << 7); }
-    void setNRI(uint8_t nri) { _first = (_first & 0x9F) | ((nri & 0x03) << 5); }
-    void setUnitType(uint8_t type) { _first = (_first &0xE0) | (type & 0x1F); }
+	void setForbiddenBit(bool isSet) { _first = (_first & 0x7F) | (isSet << 7); }
+	void setNRI(uint8_t nri) { _first = (_first & 0x9F) | ((nri & 0x03) << 5); }
+	void setUnitType(uint8_t type) { _first = (_first & 0xE0) | (type & 0x1F); }
+
 private:
-    uint8_t _first = 0;
+	uint8_t _first = 0;
 };
 
 /// Nalu fragment header
 struct RTC_CPP_EXPORT NalUnitFragmentHeader {
-    bool isStart() { return _first >> 7; }
-    bool reservedBit6() { return (_first >> 6) & 0x01; }
-    bool isEnd() { return (_first >> 5) & 0x01; }
-    uint8_t unitType() { return _first & 0x1F; }
+	bool isStart() { return _first >> 7; }
+	bool reservedBit6() { return (_first >> 6) & 0x01; }
+	bool isEnd() { return (_first >> 5) & 0x01; }
+	uint8_t unitType() { return _first & 0x1F; }
 
-    void setStart(bool isSet) { _first = (_first & 0x7F) | (isSet << 7); }
-    void setEnd(bool isSet) { _first = (_first & 0xDF) | (isSet << 6); }
-    void setReservedBit6(bool isSet) { _first = (_first & 0xBF) | (isSet << 5); }
-    void setUnitType(uint8_t type) { _first = (_first &0xE0) | (type & 0x1F); }
+	void setStart(bool isSet) { _first = (_first & 0x7F) | (isSet << 7); }
+	void setEnd(bool isSet) { _first = (_first & 0xDF) | (isSet << 6); }
+	void setReservedBit6(bool isSet) { _first = (_first & 0xBF) | (isSet << 5); }
+	void setUnitType(uint8_t type) { _first = (_first & 0xE0) | (type & 0x1F); }
+
 private:
-    uint8_t _first = 0;
+	uint8_t _first = 0;
 };
 
 #pragma pack(pop)
 
 /// Nal unit
-struct RTC_CPP_EXPORT NalUnit: rtc::binary {
-    NalUnit(const NalUnit &unit) = default;
-    NalUnit(size_t size, bool includingHeader = true): rtc::binary(size + (includingHeader ? 0 : 1)) { }
+struct RTC_CPP_EXPORT NalUnit : rtc::binary {
+	NalUnit(const NalUnit &unit) = default;
+	NalUnit(size_t size, bool includingHeader = true)
+	    : rtc::binary(size + (includingHeader ? 0 : 1)) {}
 
-    template <typename Iterator>
-    NalUnit(Iterator begin_, Iterator end_): rtc::binary(begin_, end_) { }
+	template <typename Iterator>
+	NalUnit(Iterator begin_, Iterator end_) : rtc::binary(begin_, end_) {}
 
-    NalUnit(rtc::binary &&data) : rtc::binary(std::move(data)) { }
+	NalUnit(rtc::binary &&data) : rtc::binary(std::move(data)) {}
 
-    NalUnit(): rtc::binary(1) { }
+	NalUnit() : rtc::binary(1) {}
 
-    bool forbiddenBit() { return header()->forbiddenBit(); }
-    uint8_t nri() { return header()->nri(); }
-    uint8_t unitType() { return header()->unitType(); }
-    rtc::binary payload() {
-        assert(size() >= 1);
-        return {begin() + 1, end()};
-    }
+	bool forbiddenBit() { return header()->forbiddenBit(); }
+	uint8_t nri() { return header()->nri(); }
+	uint8_t unitType() { return header()->unitType(); }
+	rtc::binary payload() {
+		assert(size() >= 1);
+		return {begin() + 1, end()};
+	}
 
-    void setForbiddenBit(bool isSet) { header()->setForbiddenBit(isSet); }
-    void setNRI(uint8_t nri) { header()->setNRI(nri); }
-    void setUnitType(uint8_t type) { header()->setUnitType(type); }
-    void setPayload(rtc::binary payload) {
-        assert(size() >= 1);
-        erase(begin() + 1, end());
-        insert(end(), payload.begin(), payload.end());
-    }
+	void setForbiddenBit(bool isSet) { header()->setForbiddenBit(isSet); }
+	void setNRI(uint8_t nri) { header()->setNRI(nri); }
+	void setUnitType(uint8_t type) { header()->setUnitType(type); }
+	void setPayload(rtc::binary payload) {
+		assert(size() >= 1);
+		erase(begin() + 1, end());
+		insert(end(), payload.begin(), payload.end());
+	}
 
 protected:
-    NalUnitHeader * header() {
-        assert(size() >= 1);
-        return (NalUnitHeader *) data();
-    }
+	NalUnitHeader *header() {
+		assert(size() >= 1);
+		return (NalUnitHeader *)data();
+	}
 };
 
 /// Nal unit fragment A
-struct RTC_CPP_EXPORT NalUnitFragmentA: NalUnit {
-    enum class FragmentType {
-        Start,
-        Middle,
-        End
-    };
+struct RTC_CPP_EXPORT NalUnitFragmentA : NalUnit {
+	enum class FragmentType { Start, Middle, End };
 
-    NalUnitFragmentA(FragmentType type, bool forbiddenBit, uint8_t nri, uint8_t unitType, rtc::binary data);
+	NalUnitFragmentA(FragmentType type, bool forbiddenBit, uint8_t nri, uint8_t unitType,
+	                 rtc::binary data);
 
-    static std::vector<NalUnitFragmentA> fragmentsFrom(NalUnit nalu, uint16_t maximumFragmentSize);
+	static std::vector<NalUnitFragmentA> fragmentsFrom(NalUnit nalu, uint16_t maximumFragmentSize);
 
-    uint8_t unitType() { return fragmentHeader()->unitType(); }
+	uint8_t unitType() { return fragmentHeader()->unitType(); }
 
-    rtc::binary payload() {
-        assert(size() >= 2);
-        return {begin() + 2, end()};
-    }
+	rtc::binary payload() {
+		assert(size() >= 2);
+		return {begin() + 2, end()};
+	}
 
-    FragmentType type() {
-        if(fragmentHeader()->isStart()) {
-            return FragmentType::Start;
-        } else if(fragmentHeader()->isEnd()) {
-            return FragmentType::End;
-        } else {
-            return FragmentType::Middle;
-        }
-    }
+	FragmentType type() {
+		if (fragmentHeader()->isStart()) {
+			return FragmentType::Start;
+		} else if (fragmentHeader()->isEnd()) {
+			return FragmentType::End;
+		} else {
+			return FragmentType::Middle;
+		}
+	}
 
-    void setUnitType(uint8_t type) { fragmentHeader()->setUnitType(type); }
+	void setUnitType(uint8_t type) { fragmentHeader()->setUnitType(type); }
 
-    void setPayload(rtc::binary payload) {
-        assert(size() >= 2);
-        erase(begin() + 2, end());
-        insert(end(), payload.begin(), payload.end());
-    }
+	void setPayload(rtc::binary payload) {
+		assert(size() >= 2);
+		erase(begin() + 2, end());
+		insert(end(), payload.begin(), payload.end());
+	}
 
-    void setFragmentType(FragmentType type);
+	void setFragmentType(FragmentType type);
 
 protected:
-    NalUnitHeader * fragmentIndicator() {
-        return (NalUnitHeader *) data();
-    }
+	NalUnitHeader *fragmentIndicator() { return (NalUnitHeader *)data(); }
 
-    NalUnitFragmentHeader * fragmentHeader() {
-        return (NalUnitFragmentHeader *) fragmentIndicator() + 1;
-    }
+	NalUnitFragmentHeader *fragmentHeader() {
+		return (NalUnitFragmentHeader *)fragmentIndicator() + 1;
+	}
 
-    const uint8_t nal_type_fu_A = 28;
+	const uint8_t nal_type_fu_A = 28;
 };
 
-class RTC_CPP_EXPORT NalUnits: public std::vector<NalUnit> {
+class RTC_CPP_EXPORT NalUnits : public std::vector<NalUnit> {
 public:
-    static const uint16_t defaultMaximumFragmentSize = 1100;
-    std::vector<rtc::binary> generateFragments(uint16_t maximumFragmentSize = NalUnits::defaultMaximumFragmentSize);
+	static const uint16_t defaultMaximumFragmentSize = 1100;
+	std::vector<rtc::binary>
+	generateFragments(uint16_t maximumFragmentSize = NalUnits::defaultMaximumFragmentSize);
 };
 
-} // namespace
+} // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */
 

@@ -22,13 +22,14 @@
 
 namespace rtc {
 
-OpusRTPPacketizer::OpusRTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig): RTPPacketizer(rtpConfig) { }
+OpusRTPPacketizer::OpusRTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig)
+    : RTPPacketizer(rtpConfig) {}
 
 message_ptr OpusRTPPacketizer::packetize(binary payload, bool setMark) {
-    assert(!setMark);
-    return RTPPacketizer::packetize(payload, false);
+	assert(!setMark);
+	return RTPPacketizer::packetize(payload, false);
 }
 
-} // namespace
+} // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */

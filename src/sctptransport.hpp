@@ -24,7 +24,6 @@
 #include "processor.hpp"
 #include "queue.hpp"
 #include "transport.hpp"
-#include "processor.hpp"
 
 #include <condition_variable>
 #include <functional>

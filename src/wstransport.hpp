@@ -79,7 +79,6 @@ private:
 	binary mBuffer;
 	binary mPartial;
 	Opcode mPartialOpcode;
-
 };
 
 } // namespace rtc

@@ -19,10 +19,10 @@
 
 #include "rtcp.hpp"
 
+#include "logcounter.hpp"
 #include "track.hpp"
 #include <cmath>
 #include <utility>
-#include "logcounter.hpp"
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -33,7 +33,8 @@
 static rtc::LogCounter COUNTER_BAD_RTP_HEADER(plog::warning, "Number of malformed RTP headers");
 static rtc::LogCounter COUNTER_UNKNOWN_PPID(plog::warning, "Number of Unknown PPID messages");
 static rtc::LogCounter COUNTER_BAD_NOTIF_LEN(plog::warning, "Number of Bad-Lengthed notifications");
-static rtc::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning, "Number of unknown SCTP_STATUS errors");
+static rtc::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning,
+                                               "Number of unknown SCTP_STATUS errors");
 
 namespace rtc {
 
@@ -45,19 +46,19 @@ rtc::message_ptr RtcpReceivingSession::incoming(rtc::message_ptr ptr) {
 
 		// https://tools.ietf.org/html/rfc3550#appendix-A.1
 		if (rtp->version() != 2) {
-		    COUNTER_BAD_RTP_HEADER++;
+			COUNTER_BAD_RTP_HEADER++;
 			PLOG_VERBOSE << "RTP packet is not version 2";
 
 			return nullptr;
 		}
 		if (rtp->payloadType() == 201 || rtp->payloadType() == 200) {
-            COUNTER_BAD_RTP_HEADER++;
-            PLOG_VERBOSE << "RTP packet has a payload type indicating RR/SR";
+			COUNTER_BAD_RTP_HEADER++;
+			PLOG_VERBOSE << "RTP packet has a payload type indicating RR/SR";
 
 			return nullptr;
 		}
 
-        // Padding-processing is a user-level thing
+		// Padding-processing is a user-level thing
 
 		mSsrc = rtp->ssrc();
 

@@ -22,53 +22,53 @@
 
 namespace rtc {
 
-RTPPacketizationConfig::RTPPacketizationConfig(SSRC ssrc,
-                                               string cname,
-                                               uint8_t payloadType,
+RTPPacketizationConfig::RTPPacketizationConfig(SSRC ssrc, string cname, uint8_t payloadType,
                                                uint32_t clockRate,
                                                std::optional<uint16_t> sequenceNumber,
-                                               std::optional<uint32_t> timestamp): ssrc(ssrc), cname(cname), payloadType(payloadType), clockRate(clockRate) {
-    assert(clockRate > 0);
-    srand((unsigned)time(NULL));
-    if (sequenceNumber.has_value()) {
-        this->sequenceNumber = sequenceNumber.value();
-    } else {
-        this->sequenceNumber = rand();
-    }
-    if (timestamp.has_value()) {
-        this->timestamp = timestamp.value();
-    } else {
-        this->timestamp = rand();
-    }
-    this->_startTimestamp = this->timestamp;
+                                               std::optional<uint32_t> timestamp)
+    : ssrc(ssrc), cname(cname), payloadType(payloadType), clockRate(clockRate) {
+	assert(clockRate > 0);
+	srand((unsigned)time(NULL));
+	if (sequenceNumber.has_value()) {
+		this->sequenceNumber = sequenceNumber.value();
+	} else {
+		this->sequenceNumber = rand();
+	}
+	if (timestamp.has_value()) {
+		this->timestamp = timestamp.value();
+	} else {
+		this->timestamp = rand();
+	}
+	this->_startTimestamp = this->timestamp;
 }
 
-void RTPPacketizationConfig::setStartTime(double startTime_s, EpochStart epochStart, std::optional<uint32_t> startTimestamp) {
-    this->_startTime_s = startTime_s + static_cast<unsigned long long>(epochStart);
-    if (startTimestamp.has_value()) {
-        this->_startTimestamp = startTimestamp.value();
-        timestamp = this->startTimestamp;
-    } else {
-        this->_startTimestamp = timestamp;
-    }
+void RTPPacketizationConfig::setStartTime(double startTime_s, EpochStart epochStart,
+                                          std::optional<uint32_t> startTimestamp) {
+	this->_startTime_s = startTime_s + static_cast<unsigned long long>(epochStart);
+	if (startTimestamp.has_value()) {
+		this->_startTimestamp = startTimestamp.value();
+		timestamp = this->startTimestamp;
+	} else {
+		this->_startTimestamp = timestamp;
+	}
 }
 
 double RTPPacketizationConfig::getSecondsFromTimestamp(uint32_t timestamp, uint32_t clockRate) {
-    return double(timestamp) / double(clockRate);
+	return double(timestamp) / double(clockRate);
 }
 
 double RTPPacketizationConfig::timestampToSeconds(uint32_t timestamp) {
-    return RTPPacketizationConfig::getSecondsFromTimestamp(timestamp, clockRate);
+	return RTPPacketizationConfig::getSecondsFromTimestamp(timestamp, clockRate);
 }
 
 uint32_t RTPPacketizationConfig::getTimestampFromSeconds(double seconds, uint32_t clockRate) {
-    return uint32_t(seconds * clockRate);
+	return uint32_t(seconds * clockRate);
 }
 
 uint32_t RTPPacketizationConfig::secondsToTimestamp(double seconds) {
-    return RTPPacketizationConfig::getTimestampFromSeconds(seconds, clockRate);
+	return RTPPacketizationConfig::getTimestampFromSeconds(seconds, clockRate);
 }
 
-} // namespace
+} // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */

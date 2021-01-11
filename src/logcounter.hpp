@@ -19,28 +19,28 @@
 #ifndef WEBRTC_SERVER_LOGCOUNTER_HPP
 #define WEBRTC_SERVER_LOGCOUNTER_HPP
 
-#include "threadpool.hpp"
 #include "include.hpp"
+#include "threadpool.hpp"
 
 namespace rtc {
 class LogCounter {
 private:
-    struct LogData {
-        plog::Severity mSeverity;
-        std::string mText;
-        std::chrono::steady_clock::duration mDuration;
+	struct LogData {
+		plog::Severity mSeverity;
+		std::string mText;
+		std::chrono::steady_clock::duration mDuration;
 
-        std::atomic<int> mCount = 0;
-    };
+		std::atomic<int> mCount = 0;
+	};
 
-    std::shared_ptr<LogData> mData;
+	std::shared_ptr<LogData> mData;
 
 public:
+	LogCounter(plog::Severity severity, const std::string &text,
+	           std::chrono::seconds duration = std::chrono::seconds(1));
 
-    LogCounter(plog::Severity severity, const std::string& text, std::chrono::seconds duration=std::chrono::seconds(1));
-
-    LogCounter& operator++(int);
+	LogCounter &operator++(int);
 };
-}
+} // namespace rtc
 
-#endif //WEBRTC_SERVER_LOGCOUNTER_HPP
+#endif // WEBRTC_SERVER_LOGCOUNTER_HPP

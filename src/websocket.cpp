@@ -298,7 +298,7 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 		wsConfig.protocols = mConfig.protocols;
 
 		auto transport = std::make_shared<WsTransport>(
-			lower, wsConfig, weak_bind(&WebSocket::incoming, this, _1),
+		    lower, wsConfig, weak_bind(&WebSocket::incoming, this, _1),
 		    [this, weak_this = weak_from_this()](State state) {
 			    auto shared_this = weak_this.lock();
 			    if (!shared_this)

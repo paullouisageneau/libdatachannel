@@ -22,24 +22,25 @@
 
 namespace rtc {
 
-RTPPacketizer::RTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig): rtpConfig(rtpConfig) { }
+RTPPacketizer::RTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig)
+    : rtpConfig(rtpConfig) {}
 
 message_ptr RTPPacketizer::packetize(binary payload, bool setMark) {
-    auto msg = make_message(rtpHeaderSize + payload.size());
-    auto * rtp = (RTP *)msg->data();
-    rtp->setPayloadType(rtpConfig->payloadType);
-    // increase sequence number
-    rtp->setSeqNumber(rtpConfig->sequenceNumber++);
-    rtp->setTimestamp(rtpConfig->timestamp);
-    rtp->setSsrc(rtpConfig->ssrc);
-    if (setMark) {
-        rtp->setMarker(true);
-    }
-    rtp->preparePacket();
-    copy(payload.begin(), payload.end(), msg->begin() + rtpHeaderSize);
-    return msg;
+	auto msg = make_message(rtpHeaderSize + payload.size());
+	auto *rtp = (RTP *)msg->data();
+	rtp->setPayloadType(rtpConfig->payloadType);
+	// increase sequence number
+	rtp->setSeqNumber(rtpConfig->sequenceNumber++);
+	rtp->setTimestamp(rtpConfig->timestamp);
+	rtp->setSsrc(rtpConfig->ssrc);
+	if (setMark) {
+		rtp->setMarker(true);
+	}
+	rtp->preparePacket();
+	copy(payload.begin(), payload.end(), msg->begin() + rtpHeaderSize);
+	return msg;
 }
 
-} // namespace
+} // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */

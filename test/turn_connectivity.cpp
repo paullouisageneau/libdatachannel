@@ -66,7 +66,7 @@ void test_turn_connectivity() {
 			return;
 		// For this test, filter out non-relay candidates to force TURN
 		string str(candidate);
-		if(str.find("relay") != string::npos) {
+		if (str.find("relay") != string::npos) {
 			cout << "Candidate 1: " << str << endl;
 			pc2->addRemoteCandidate(str);
 		}
@@ -96,7 +96,7 @@ void test_turn_connectivity() {
 			return;
 		// For this test, filter out non-relay candidates to force TURN
 		string str(candidate);
-		if(str.find("relay") != string::npos) {
+		if (str.find("relay") != string::npos) {
 			cout << "Candidate 1: " << str << endl;
 			pc1->addRemoteCandidate(str);
 		}

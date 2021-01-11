@@ -22,8 +22,9 @@
 
 namespace rtc {
 
-H264RTPPacketizer::H264RTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig): RTPPacketizer(rtpConfig) { }
+H264RTPPacketizer::H264RTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig)
+    : RTPPacketizer(rtpConfig) {}
 
-} // namespace
+} // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */

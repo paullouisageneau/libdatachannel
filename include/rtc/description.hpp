@@ -205,7 +205,8 @@ public:
 		void addAudioCodec(int payloadType, string codec,
 		                   std::optional<string> profile = std::nullopt);
 
-		void addOpusCodec(int payloadType, std::optional<string> profile = DEFAULT_OPUS_AUDIO_PROFILE);
+		void addOpusCodec(int payloadType,
+		                  std::optional<string> profile = DEFAULT_OPUS_AUDIO_PROFILE);
 	};
 
 	class RTC_CPP_EXPORT Video : public Media {
@@ -215,7 +216,8 @@ public:
 		void addVideoCodec(int payloadType, string codec,
 		                   std::optional<string> profile = std::nullopt);
 
-		void addH264Codec(int payloadType, std::optional<string> profile = DEFAULT_H264_VIDEO_PROFILE);
+		void addH264Codec(int payloadType,
+		                  std::optional<string> profile = DEFAULT_H264_VIDEO_PROFILE);
 		void addVP8Codec(int payloadType);
 		void addVP9Codec(int payloadType);
 	};

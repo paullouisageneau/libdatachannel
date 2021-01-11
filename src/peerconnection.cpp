@@ -20,9 +20,9 @@
 #include "peerconnection.hpp"
 #include "certificate.hpp"
 #include "include.hpp"
+#include "logcounter.hpp"
 #include "processor.hpp"
 #include "threadpool.hpp"
-#include "logcounter.hpp"
 
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
@@ -47,10 +47,15 @@ inline std::shared_ptr<To> reinterpret_pointer_cast(std::shared_ptr<From> const 
 using std::reinterpret_pointer_cast;
 #endif
 
-static rtc::LogCounter COUNTER_MEDIA_TRUNCATED(plog::warning, "Number of RTP packets truncated over past second");
-static rtc::LogCounter COUNTER_SRTP_DECRYPT_ERROR(plog::warning, "Number of SRTP decryption errors over past second");
-static rtc::LogCounter COUNTER_SRTP_ENCRYPT_ERROR(plog::warning, "Number of SRTP encryption errors over past second");
-static rtc::LogCounter COUNTER_UNKNOWN_PACKET_TYPE(plog::warning, "Number of unknown RTCP packet types over past second");
+static rtc::LogCounter COUNTER_MEDIA_TRUNCATED(plog::warning,
+                                               "Number of RTP packets truncated over past second");
+static rtc::LogCounter
+    COUNTER_SRTP_DECRYPT_ERROR(plog::warning, "Number of SRTP decryption errors over past second");
+static rtc::LogCounter
+    COUNTER_SRTP_ENCRYPT_ERROR(plog::warning, "Number of SRTP encryption errors over past second");
+static rtc::LogCounter
+    COUNTER_UNKNOWN_PACKET_TYPE(plog::warning,
+                                "Number of unknown RTCP packet types over past second");
 
 namespace rtc {
 
@@ -698,20 +703,20 @@ void PeerConnection::forwardMedia(message_ptr message) {
 				ssrcs.insert(rtcpsr->senderSSRC());
 				for (int i = 0; i < rtcpsr->header.reportCount(); ++i)
 					ssrcs.insert(rtcpsr->getReportBlock(i)->getSSRC());
-            } else if (header->payloadType() == 202) {
-                auto sdes = reinterpret_cast<RTCP_SDES *>(header);
-                if (!sdes->isValid()) {
-                    PLOG_WARNING << "RTCP SDES packet is invalid";
-                    continue;
-                }
-                for (unsigned int i = 0; i < sdes->chunksCount(); i++) {
-                    auto chunk = sdes->getChunk(i);
-                    ssrcs.insert(chunk->ssrc());
-                }
+			} else if (header->payloadType() == 202) {
+				auto sdes = reinterpret_cast<RTCP_SDES *>(header);
+				if (!sdes->isValid()) {
+					PLOG_WARNING << "RTCP SDES packet is invalid";
+					continue;
+				}
+				for (unsigned int i = 0; i < sdes->chunksCount(); i++) {
+					auto chunk = sdes->getChunk(i);
+					ssrcs.insert(chunk->ssrc());
+				}
 			} else {
 				// PT=207 == Extended Report
 				if (header->payloadType() != 207) {
-                    COUNTER_UNKNOWN_PACKET_TYPE++;
+					COUNTER_UNKNOWN_PACKET_TYPE++;
 				}
 			}
 		}

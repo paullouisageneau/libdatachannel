@@ -21,51 +21,55 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "rtcp.hpp"
 #include "h264rtppacketizer.hpp"
-#include "rtcpsenderreportable.hpp"
 #include "nalunit.hpp"
+#include "rtcp.hpp"
+#include "rtcpsenderreportable.hpp"
 
 namespace rtc {
 
 /// Handler for H264 packetization
-class RTC_CPP_EXPORT H264PacketizationHandler: public RtcpHandler, public RTCPSenderReportable {
-    /// RTP packetizer for H264
-    const std::shared_ptr<H264RTPPacketizer> packetizer;
+class RTC_CPP_EXPORT H264PacketizationHandler : public RtcpHandler, public RTCPSenderReportable {
+	/// RTP packetizer for H264
+	const std::shared_ptr<H264RTPPacketizer> packetizer;
 
-    const uint16_t maximumFragmentSize;
+	const uint16_t maximumFragmentSize;
 
-    std::shared_ptr<NalUnits> splitMessage(message_ptr message);
+	std::shared_ptr<NalUnits> splitMessage(message_ptr message);
+
 public:
-    /// Nalunit separator
-    enum class Separator {
-        LongStartSequence,  // 0x00, 0x00, 0x00, 0x01
-        ShortStartSequence, // 0x00, 0x00, 0x01
-        StartSequence,      // LongStartSequence or ShortStartSequence
-        Length              // first 4 bytes is nal unit length
-    };
+	/// Nalunit separator
+	enum class Separator {
+		LongStartSequence,  // 0x00, 0x00, 0x00, 0x01
+		ShortStartSequence, // 0x00, 0x00, 0x01
+		StartSequence,      // LongStartSequence or ShortStartSequence
+		Length              // first 4 bytes is nal unit length
+	};
 
-    /// Construct handler for H264 packetization.
-    /// @param separator Nal units separator
-    /// @param packetizer RTP packetizer for h264
-    H264PacketizationHandler(Separator separator, std::shared_ptr<H264RTPPacketizer> packetizer, uint16_t maximumFragmentSize = NalUnits::defaultMaximumFragmentSize);
+	/// Construct handler for H264 packetization.
+	/// @param separator Nal units separator
+	/// @param packetizer RTP packetizer for h264
+	H264PacketizationHandler(Separator separator, std::shared_ptr<H264RTPPacketizer> packetizer,
+	                         uint16_t maximumFragmentSize = NalUnits::defaultMaximumFragmentSize);
 
-    /// Returns message unchanged
-    /// @param ptr message
-    message_ptr incoming(message_ptr ptr) override;
+	/// Returns message unchanged
+	/// @param ptr message
+	message_ptr incoming(message_ptr ptr) override;
 
-    /// Returns packetized message if message type is binary
-    /// @note NAL units in `ptr` message must be separated by `separator` given in constructor
-    /// @note If message generates multiple rtp packets, all but last are send using `outgoingCallback`. It is your responsibility to send last packet.
-    /// @param ptr message containing all NAL units for current timestamp (one sample)
-    /// @return last packet
-    message_ptr outgoing(message_ptr ptr) override;
+	/// Returns packetized message if message type is binary
+	/// @note NAL units in `ptr` message must be separated by `separator` given in constructor
+	/// @note If message generates multiple rtp packets, all but last are send using
+	/// `outgoingCallback`. It is your responsibility to send last packet.
+	/// @param ptr message containing all NAL units for current timestamp (one sample)
+	/// @return last packet
+	message_ptr outgoing(message_ptr ptr) override;
+
 private:
-    /// Separator
-    const Separator separator;
+	/// Separator
+	const Separator separator;
 };
 
-} // namespace
+} // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */
 
