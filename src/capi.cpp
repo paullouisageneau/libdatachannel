@@ -179,16 +179,16 @@ Description::Direction rtcDirectionToDirection(rtcDirection * _direction) {
     Description::Direction direction = Description::Direction::SendOnly;
     if (_direction) {
         switch (*_direction) {
-            case RTC_SENDONLY:
+            case RTC_DIRECTION_SENDONLY:
                 direction = Description::Direction::SendOnly;
                 break;
-            case RTC_RECVONLY:
+            case RTC_DIRECTION_RECVONLY:
                 direction = Description::Direction::RecvOnly;
                 break;
-            case RTC_SENDRECV:
+            case RTC_DIRECTION_SENDRECV:
                 direction = Description::Direction::SendRecv;
                 break;
-            case RTC_INACTIVE:
+            case RTC_DIRECTION_INACTIVE:
                 direction = Description::Direction::Inactive;
                 break;
             default:
