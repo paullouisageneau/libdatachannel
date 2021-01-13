@@ -81,12 +81,12 @@ typedef enum { // Don't change, it must match plog severity
 
 typedef enum {
     // video
-    RTC_H264,
-    RTC_VP8,
-    RTC_VP9,
+    RTC_CODEC_H264,
+    RTC_CODEC_VP8,
+    RTC_CODEC_VP9,
 
     // audio
-    RTC_OPUS
+    RTC_CODEC_OPUS
 } rtcCodec;
 
 typedef enum {

@@ -481,12 +481,12 @@ int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const 
 
         string mid = "video";
         switch (codec) {
-            case RTC_H264:
-            case RTC_VP8:
-            case RTC_VP9:
+            case RTC_CODEC_H264:
+            case RTC_CODEC_VP8:
+            case RTC_CODEC_VP9:
                 mid = "video";
                 break;
-            case RTC_OPUS:
+            case RTC_CODEC_OPUS:
                 mid = "audio";
                 break;
         }
@@ -498,18 +498,18 @@ int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const 
         optional<Description::Media> optDescription = nullopt;
 
         switch (codec) {
-            case RTC_H264:
-            case RTC_VP8:
-            case RTC_VP9: {
+            case RTC_CODEC_H264:
+            case RTC_CODEC_VP8:
+            case RTC_CODEC_VP9: {
                 auto desc = Description::Video(mid, direction);
                 switch (codec) {
-                    case RTC_H264:
+                    case RTC_CODEC_H264:
                         desc.addH264Codec(payloadType);
                         break;
-                    case RTC_VP8:
+                    case RTC_CODEC_VP8:
                         desc.addVP8Codec(payloadType);
                         break;
-                    case RTC_VP9:
+                    case RTC_CODEC_VP9:
                         desc.addVP8Codec(payloadType);
                         break;
                     default:
@@ -518,10 +518,10 @@ int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const 
                 optDescription = desc;
                 break;
             }
-            case RTC_OPUS: {
+            case RTC_CODEC_OPUS: {
                 auto desc = Description::Audio(mid, direction);
                 switch (codec) {
-                    case RTC_OPUS:
+                    case RTC_CODEC_OPUS:
                         desc.addOpusCodec(payloadType);
                         break;
                     default:
