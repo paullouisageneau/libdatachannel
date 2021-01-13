@@ -77,6 +77,28 @@ typedef enum { // Don't change, it must match plog severity
 	RTC_LOG_VERBOSE = 6
 } rtcLogLevel;
 
+#if RTC_ENABLE_MEDIA
+
+typedef enum {
+    // video
+    RTC_H264,
+    RTC_VP8,
+    RTC_VP9,
+
+    // audio
+    RTC_OPUS
+} rtcCodec;
+
+typedef enum {
+    RTC_SENDONLY,
+    RTC_RECVONLY,
+    RTC_SENDRECV,
+    RTC_INACTIVE,
+    RTC_UNKNOWN
+} rtcDirection;
+
+#endif // RTC_ENABLE_MEDIA
+
 #define RTC_ERR_SUCCESS 0
 #define RTC_ERR_INVALID -1   // invalid argument
 #define RTC_ERR_FAILURE -2   // runtime error
@@ -129,6 +151,7 @@ RTC_EXPORT void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb);
 
 // User pointer
 RTC_EXPORT void rtcSetUserPointer(int id, void *ptr);
+RTC_EXPORT void * rtcGetUserPointer(int i);
 
 // PeerConnection
 RTC_EXPORT int rtcCreatePeerConnection(const rtcConfiguration *config); // returns pc id
@@ -175,6 +198,113 @@ RTC_EXPORT int rtcAddTrack(int pc, const char *mediaDescriptionSdp); // returns 
 RTC_EXPORT int rtcDeleteTrack(int tr);
 
 RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
+
+// Media
+#if RTC_ENABLE_MEDIA
+
+/// Add track
+/// @param pc Peer connection id
+/// @param codec Codec
+/// @param payloadType Payload type
+/// @param ssrc SSRC
+/// @param _mid MID (default: video|audio)
+/// @param _direction Direction (default RTC_SENDONLY)
+/// @param _name Name (optional)
+/// @param _msid MSID (optional)
+/// @returns Track id
+RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid, rtcDirection * _direction, const char *_name, const char *_msid);
+
+/// Set H264PacketizationHandler for track
+/// @param tr Track id
+/// @param ssrc SSRC
+/// @param cname CName
+/// @param payloadType Payload Type
+/// @param clockRate Clock rate
+/// @param _sequenceNumber Sequence number (default: pseudo random value)
+/// @param _timestamp Timestamp (default: pseudo random value)
+RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t * _sequenceNumber, uint32_t * _timestamp);
+
+/// Set OpusPacketizationHandler for track
+/// @param tr Track id
+/// @param ssrc SSRC
+/// @param cname CName
+/// @param payloadType Payload Type
+/// @param clockRate Clock rate
+/// @param _sequenceNumber Sequence number (default: pseudo random value)
+/// @param _timestamp Timestamp (default: pseudo random value)
+RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t * _sequenceNumber, uint32_t * _timestamp);
+
+
+/// Set onOpen callback for track with given id
+/// @param id Track identifier
+/// @param cb OnOpen callback
+int rtcSetTrackOpenCallback(int id, rtcOpenCallbackFunc cb);
+
+/// Set onClosed callback for track with given id
+/// @param id Track identifier
+/// @param cb OnClosed callback
+int rtcSetTrackClosedCallback(int id, rtcClosedCallbackFunc cb);
+
+/// Set start time for RTP stream
+/// @param startTime_s Start time in seconds
+/// @param timeIntervalSince1970 Set true if `startTime_s` is time interval since 1970, false if `startTime_s` is time interval since 1900
+/// @param _timestamp Start timestamp (default: current timestamp)
+int rtcSetRTPConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970, const uint32_t * _timestamp);
+
+/// Start stats recording for RTCP Sender Reporter
+/// @param id Track identifier
+int rtcStartRTCPSenderReporterRecording(int id);
+
+
+/// Transform seconds to timestamp using track's clock rate
+/// @param id Track id
+/// @param seconds Seconds
+/// @param timestamp Pointer to result
+int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t * timestamp);
+
+/// Transform timestamp to seconds using track's clock rate
+/// @param id Track id
+/// @param timestamp Timestamp
+/// @param seconds Pointer for result
+int rtcTransformTimestampToSeconds(int id, uint32_t timestamp, double * seconds);
+
+/// Get current timestamp
+/// @param id Track id
+/// @param timestamp Pointer for result
+int rtcGetCurrentTrackTimestamp(int id, uint32_t * timestamp);
+
+/// Get start timestamp for track identified by given id
+/// @param id Track id
+/// @param timestamp Pointer for result
+int rtcGetTrackStartTimestamp(int id, uint32_t * timestamp);
+
+/// Set RTP timestamp for track identified by given id
+/// @param id Track id
+/// @param timestamp New timestamp
+int rtcSetTrackRTPTimestamp(int id, uint32_t timestamp);
+
+/// Get timestamp of previous RTCP SR
+/// @param id Track id
+/// @param timestamp Pointer for result
+int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t * timestamp);
+
+/// Set `NeedsToReport` flag in RTCPSenderReportable handler identified by given track id
+/// @param id Track id
+int rtcSetNeedsToSendRTCPSR(int id);
+
+/// Sends data
+/// @param id Track id
+/// @param data Data buffer
+/// @param size Size
+/// @returns Data size
+int rtcTrackSend(int id, const uint8_t *data, int size);
+
+/// Add callback for received binary data (string data is ignored)
+/// @param tr Track id
+/// @param cb callback
+RTC_EXPORT int rtcSetTrackOnReceiveCallback(int tr, rtcMessageCallbackFunc cb);
+
+#endif // RTC_ENABLE_MEDIA
 
 // WebSocket
 #if RTC_ENABLE_WEBSOCKET
