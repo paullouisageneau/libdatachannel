@@ -235,16 +235,6 @@ RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char 
 RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t * _sequenceNumber, uint32_t * _timestamp);
 
 
-/// Set onOpen callback for track with given id
-/// @param id Track identifier
-/// @param cb OnOpen callback
-int rtcSetTrackOpenCallback(int id, rtcOpenCallbackFunc cb);
-
-/// Set onClosed callback for track with given id
-/// @param id Track identifier
-/// @param cb OnClosed callback
-int rtcSetTrackClosedCallback(int id, rtcClosedCallbackFunc cb);
-
 /// Set start time for RTP stream
 /// @param startTime_s Start time in seconds
 /// @param timeIntervalSince1970 Set true if `startTime_s` is time interval since 1970, false if `startTime_s` is time interval since 1900
@@ -291,18 +281,6 @@ int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t * timestamp);
 /// Set `NeedsToReport` flag in RTCPSenderReportable handler identified by given track id
 /// @param id Track id
 int rtcSetNeedsToSendRTCPSR(int id);
-
-/// Sends data
-/// @param id Track id
-/// @param data Data buffer
-/// @param size Size
-/// @returns Data size
-int rtcTrackSend(int id, const uint8_t *data, int size);
-
-/// Add callback for received binary data (string data is ignored)
-/// @param tr Track id
-/// @param cb callback
-RTC_EXPORT int rtcSetTrackOnReceiveCallback(int tr, rtcMessageCallbackFunc cb);
 
 #endif // RTC_ENABLE_MEDIA
 

@@ -576,52 +576,6 @@ int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, ui
     });
 }
 
-
-int rtcSetTrackOpenCallback(int id, rtcOpenCallbackFunc cb) {
-    return WRAP({
-        auto track = getTrack(id);
-        if(cb) {
-            track->onOpen([id, cb]() {
-                if (auto ptr = getUserPointer(id)) {
-                    cb(id, *ptr);
-                }
-            });
-        } else {
-            track->onOpen(nullptr);
-        }
-    });
-}
-
-int rtcSetTrackClosedCallback(int id, rtcClosedCallbackFunc cb) {
-    return WRAP({
-        auto track = getTrack(id);
-        if (cb) {
-            track->onClosed([id, cb]() {
-                if (auto ptr = getUserPointer(id)) {
-                    cb(id, *ptr);
-                }
-            });
-        } else {
-            track->onClosed(nullptr);
-        }
-    });
-}
-
-int rtcSetTrackOnReceiveCallback(int id, rtcMessageCallbackFunc cb) {
-    return WRAP({
-        auto track = getTrack(id);
-        if (cb) {
-        track->onMessage([id, cb](binary data) {
-            if (auto ptr = getUserPointer(id)) {
-                cb(id, reinterpret_cast<const char *>(data.data()), int(data.size()), *ptr);
-            }
-        }, nullptr);
-        } else {
-            track->onMessage(nullptr);
-        }
-    });
-}
-
 int rtcSetRTPConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970, const uint32_t * _timestamp) {
     return WRAP({
         auto config = getRTPConfig(id);
@@ -690,20 +644,6 @@ int rtcSetNeedsToSendRTCPSR(int id) {
     return WRAP({
         auto sender = getRTCPSender(id);
         sender->setNeedsToReport();
-    });
-}
-
-int rtcTrackSend(int id, const uint8_t *data, int size) {
-    return WRAP({
-        auto track = getTrack(id);
-
-        if (!data && size != 0) {
-            throw std::invalid_argument("Unexpected null pointer for data");
-        }
-
-        auto b = reinterpret_cast<const byte *>(data);
-        track->send(binary(b, b + size));
-        return size;
     });
 }
 
