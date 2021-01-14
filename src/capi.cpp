@@ -358,12 +358,7 @@ void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
 void rtcSetUserPointer(int i, void *ptr) { setUserPointer(i, ptr); }
 
 void * rtcGetUserPointer(int i) {
-    auto userPointer = getUserPointer(i);
-    if (userPointer.has_value()) {
-        return userPointer.value();
-    } else {
-        return NULL;
-    }
+    return getUserPointer(i).value_or(nullptr);
 }
 
 int rtcCreatePeerConnection(const rtcConfiguration *config) {
