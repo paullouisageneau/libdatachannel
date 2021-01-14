@@ -557,7 +557,7 @@ int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, ui
     });
 }
 
-int rtcSetRTPConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970, uint32_t timestamp) {
+int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970, uint32_t timestamp) {
     return WRAP({
         auto config = getRTPConfig(id);
         auto epoch = RTPPacketizationConfig::EpochStart::T1900;
@@ -568,7 +568,7 @@ int rtcSetRTPConfigurationStartTime(int id, double startTime_s, bool timeInterva
     });
 }
 
-int rtcStartRTCPSenderReporterRecording(int id) {
+int rtcStartRtcpSenderReporterRecording(int id) {
     return WRAP({
         auto sender = getRTCPSender(id);
         sender->startRecording();

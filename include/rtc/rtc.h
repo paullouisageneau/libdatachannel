@@ -238,11 +238,11 @@ RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char 
 /// @param startTime_s Start time in seconds
 /// @param timeIntervalSince1970 Set true if `startTime_s` is time interval since 1970, false if `startTime_s` is time interval since 1900
 /// @param _timestamp Start timestamp
-int rtcSetRTPConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970, uint32_t _timestamp);
+int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970, uint32_t _timestamp);
 
 /// Start stats recording for RTCP Sender Reporter
 /// @param id Track identifier
-int rtcStartRTCPSenderReporterRecording(int id);
+int rtcStartRtcpSenderReporterRecording(int id);
 
 
 /// Transform seconds to timestamp using track's clock rate
