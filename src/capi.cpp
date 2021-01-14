@@ -175,43 +175,24 @@ void emplaceRTPConfig(shared_ptr<RTPPacketizationConfig> ptr, int tr) {
     rtpConfigMap.emplace(std::make_pair(tr, ptr));
 }
 
-Description::Direction rtcDirectionToDirection(rtcDirection * _direction) {
-    Description::Direction direction = Description::Direction::SendOnly;
-    if (_direction) {
-        switch (*_direction) {
-            case RTC_DIRECTION_SENDONLY:
-                direction = Description::Direction::SendOnly;
-                break;
-            case RTC_DIRECTION_RECVONLY:
-                direction = Description::Direction::RecvOnly;
-                break;
-            case RTC_DIRECTION_SENDRECV:
-                direction = Description::Direction::SendRecv;
-                break;
-            case RTC_DIRECTION_INACTIVE:
-                direction = Description::Direction::Inactive;
-                break;
-            default:
-                direction = Description::Direction::Unknown;
-                break;
-        }
+Description::Direction rtcDirectionToDirection(rtcDirection direction) {
+    switch (direction) {
+        case RTC_DIRECTION_SENDONLY:
+            return Description::Direction::SendOnly;
+        case RTC_DIRECTION_RECVONLY:
+            return Description::Direction::RecvOnly;
+        case RTC_DIRECTION_SENDRECV:
+            return Description::Direction::SendRecv;
+        case RTC_DIRECTION_INACTIVE:
+            return Description::Direction::Inactive;
+        default:
+            return Description::Direction::Unknown;
     }
-    return direction;
 }
 
-shared_ptr<RTPPacketizationConfig> getNewRTPPacketizationConfig(uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t * _sequenceNumber, uint32_t * _timestamp) {
+shared_ptr<RTPPacketizationConfig> getNewRTPPacketizationConfig(uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t sequenceNumber, uint32_t timestamp) {
     if (!cname) {
         throw std::invalid_argument("Unexpected null pointer for cname");
-    }
-
-    optional<uint16_t> sequenceNumber = nullopt;
-    if (_sequenceNumber) {
-        sequenceNumber = *_sequenceNumber;
-    }
-
-    optional<uint32_t> timestamp = nullopt;
-    if (_timestamp) {
-        timestamp = *_timestamp;
     }
 
     return std::make_shared<RTPPacketizationConfig>(ssrc, cname, payloadType, clockRate, sequenceNumber, timestamp);
@@ -468,7 +449,7 @@ void setSSRC(Description::Media * description, uint32_t ssrc, const char *_name,
     description->addSSRC(ssrc, name, msid);
 }
 
-int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid, rtcDirection * _direction, const char *_name, const char *_msid) {
+int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid, rtcDirection _direction, const char *_name, const char *_msid) {
     return WRAP( {
         auto peerConnection = getPeerConnection(pc);
 
@@ -544,11 +525,11 @@ int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const 
     });
 }
 
-int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t * _sequenceNumber, uint32_t * _timestamp) {
+int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t sequenceNumber, uint32_t timestamp) {
     return WRAP({
         auto track = getTrack(tr);
         // create RTP configuration
-        auto rtpConfig = getNewRTPPacketizationConfig(ssrc, cname, payloadType, clockRate, _sequenceNumber, _timestamp);
+        auto rtpConfig = getNewRTPPacketizationConfig(ssrc, cname, payloadType, clockRate, sequenceNumber, timestamp);
         // create packetizer
         auto packetizer = shared_ptr<H264RTPPacketizer>(new H264RTPPacketizer(rtpConfig));
         // create H264 and RTCP SP handler
@@ -560,11 +541,11 @@ int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char * cname, ui
     });
 }
 
-int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t * _sequenceNumber, uint32_t * _timestamp) {
+int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t sequenceNumber, uint32_t timestamp) {
     return WRAP({
         auto track = getTrack(tr);
         // create RTP configuration
-        auto rtpConfig = getNewRTPPacketizationConfig(ssrc, cname, payloadType, clockRate, _sequenceNumber, _timestamp);
+        auto rtpConfig = getNewRTPPacketizationConfig(ssrc, cname, payloadType, clockRate, sequenceNumber, timestamp);
         // create packetizer
         auto packetizer = shared_ptr<OpusRTPPacketizer>(new OpusRTPPacketizer(rtpConfig));
         // create Opus and RTCP SP handler
@@ -576,13 +557,9 @@ int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, ui
     });
 }
 
-int rtcSetRTPConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970, const uint32_t * _timestamp) {
+int rtcSetRTPConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970, uint32_t timestamp) {
     return WRAP({
         auto config = getRTPConfig(id);
-        optional<uint32_t> timestamp = nullopt;
-        if (_timestamp) {
-            timestamp = *_timestamp;
-        }
         auto epoch = RTPPacketizationConfig::EpochStart::T1900;
         if (timeIntervalSince1970) {
             epoch = RTPPacketizationConfig::EpochStart::T1970;

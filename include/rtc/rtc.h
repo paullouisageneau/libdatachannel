@@ -207,12 +207,12 @@ RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
 /// @param codec Codec
 /// @param payloadType Payload type
 /// @param ssrc SSRC
-/// @param _mid MID (default: video|audio)
-/// @param _direction Direction (default RTC_SENDONLY)
+/// @param _mid MID
+/// @param _direction Direction
 /// @param _name Name (optional)
 /// @param _msid MSID (optional)
 /// @returns Track id
-RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid, rtcDirection * _direction, const char *_name, const char *_msid);
+RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid, rtcDirection direction, const char *_name, const char *_msid);
 
 /// Set H264PacketizationHandler for track
 /// @param tr Track id
@@ -220,9 +220,9 @@ RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t s
 /// @param cname CName
 /// @param payloadType Payload Type
 /// @param clockRate Clock rate
-/// @param _sequenceNumber Sequence number (default: pseudo random value)
-/// @param _timestamp Timestamp (default: pseudo random value)
-RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t * _sequenceNumber, uint32_t * _timestamp);
+/// @param _sequenceNumber Sequence number
+/// @param _timestamp Timestamp
+RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t _sequenceNumber, uint32_t _timestamp);
 
 /// Set OpusPacketizationHandler for track
 /// @param tr Track id
@@ -230,16 +230,15 @@ RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char 
 /// @param cname CName
 /// @param payloadType Payload Type
 /// @param clockRate Clock rate
-/// @param _sequenceNumber Sequence number (default: pseudo random value)
-/// @param _timestamp Timestamp (default: pseudo random value)
-RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t * _sequenceNumber, uint32_t * _timestamp);
-
+/// @param _sequenceNumber Sequence number
+/// @param _timestamp Timestamp
+RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t _sequenceNumber, uint32_t _timestamp);
 
 /// Set start time for RTP stream
 /// @param startTime_s Start time in seconds
 /// @param timeIntervalSince1970 Set true if `startTime_s` is time interval since 1970, false if `startTime_s` is time interval since 1900
-/// @param _timestamp Start timestamp (default: current timestamp)
-int rtcSetRTPConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970, const uint32_t * _timestamp);
+/// @param _timestamp Start timestamp
+int rtcSetRTPConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970, uint32_t _timestamp);
 
 /// Start stats recording for RTCP Sender Reporter
 /// @param id Track identifier
