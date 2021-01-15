@@ -42,9 +42,9 @@
 #endif
 
 using namespace rtc;
+using std::optional;
 using std::shared_ptr;
 using std::string;
-using std::optional;
 using std::chrono::milliseconds;
 
 namespace {
@@ -141,8 +141,8 @@ void eraseTrack(int tr) {
 	if (trackMap.erase(tr) == 0)
 		throw std::invalid_argument("Track ID does not exist");
 #if RTC_ENABLE_MEDIA
-    rtcpSenderMap.erase(tr);
-    rtpConfigMap.erase(tr);
+	rtcpSenderMap.erase(tr);
+	rtpConfigMap.erase(tr);
 #endif
 	userPointerMap.erase(tr);
 }
@@ -150,52 +150,55 @@ void eraseTrack(int tr) {
 #if RTC_ENABLE_MEDIA
 
 shared_ptr<RTCPSenderReportable> getRTCPSender(int id) {
-    std::lock_guard lock(mutex);
-    if (auto it = rtcpSenderMap.find(id); it != rtcpSenderMap.end())
-        return it->second;
-    else
-        throw std::invalid_argument("RTCPSenderReportable ID does not exist");
+	std::lock_guard lock(mutex);
+	if (auto it = rtcpSenderMap.find(id); it != rtcpSenderMap.end())
+		return it->second;
+	else
+		throw std::invalid_argument("RTCPSenderReportable ID does not exist");
 }
 
 void emplaceRTCPSender(shared_ptr<RTCPSenderReportable> ptr, int tr) {
-    std::lock_guard lock(mutex);
-    rtcpSenderMap.emplace(std::make_pair(tr, ptr));
+	std::lock_guard lock(mutex);
+	rtcpSenderMap.emplace(std::make_pair(tr, ptr));
 }
 
 shared_ptr<RTPPacketizationConfig> getRTPConfig(int id) {
-    std::lock_guard lock(mutex);
-    if (auto it = rtpConfigMap.find(id); it != rtpConfigMap.end())
-        return it->second;
-    else
-        throw std::invalid_argument("RTPConfiguration ID does not exist");
+	std::lock_guard lock(mutex);
+	if (auto it = rtpConfigMap.find(id); it != rtpConfigMap.end())
+		return it->second;
+	else
+		throw std::invalid_argument("RTPConfiguration ID does not exist");
 }
 
 void emplaceRTPConfig(shared_ptr<RTPPacketizationConfig> ptr, int tr) {
-    std::lock_guard lock(mutex);
-    rtpConfigMap.emplace(std::make_pair(tr, ptr));
+	std::lock_guard lock(mutex);
+	rtpConfigMap.emplace(std::make_pair(tr, ptr));
 }
 
 Description::Direction rtcDirectionToDirection(rtcDirection direction) {
-    switch (direction) {
-        case RTC_DIRECTION_SENDONLY:
-            return Description::Direction::SendOnly;
-        case RTC_DIRECTION_RECVONLY:
-            return Description::Direction::RecvOnly;
-        case RTC_DIRECTION_SENDRECV:
-            return Description::Direction::SendRecv;
-        case RTC_DIRECTION_INACTIVE:
-            return Description::Direction::Inactive;
-        default:
-            return Description::Direction::Unknown;
-    }
+	switch (direction) {
+	case RTC_DIRECTION_SENDONLY:
+		return Description::Direction::SendOnly;
+	case RTC_DIRECTION_RECVONLY:
+		return Description::Direction::RecvOnly;
+	case RTC_DIRECTION_SENDRECV:
+		return Description::Direction::SendRecv;
+	case RTC_DIRECTION_INACTIVE:
+		return Description::Direction::Inactive;
+	default:
+		return Description::Direction::Unknown;
+	}
 }
 
-shared_ptr<RTPPacketizationConfig> getNewRTPPacketizationConfig(uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t sequenceNumber, uint32_t timestamp) {
-    if (!cname) {
-        throw std::invalid_argument("Unexpected null pointer for cname");
-    }
+shared_ptr<RTPPacketizationConfig>
+getNewRTPPacketizationConfig(uint32_t ssrc, const char *cname, uint8_t payloadType,
+                             uint32_t clockRate, uint16_t sequenceNumber, uint32_t timestamp) {
+	if (!cname) {
+		throw std::invalid_argument("Unexpected null pointer for cname");
+	}
 
-    return std::make_shared<RTPPacketizationConfig>(ssrc, cname, payloadType, clockRate, sequenceNumber, timestamp);
+	return std::make_shared<RTPPacketizationConfig>(ssrc, cname, payloadType, clockRate,
+	                                                sequenceNumber, timestamp);
 }
 
 #endif // RTC_ENABLE_MEDIA
@@ -338,9 +341,7 @@ void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
 
 void rtcSetUserPointer(int i, void *ptr) { setUserPointer(i, ptr); }
 
-void * rtcGetUserPointer(int i) {
-    return getUserPointer(i).value_or(nullptr);
-}
+void *rtcGetUserPointer(int i) { return getUserPointer(i).value_or(nullptr); }
 
 int rtcCreatePeerConnection(const rtcConfiguration *config) {
 	return WRAP({
@@ -361,8 +362,8 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 int rtcDeletePeerConnection(int pc) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
-        peerConnection->onDataChannel(nullptr);
-        peerConnection->onTrack(nullptr);
+		peerConnection->onDataChannel(nullptr);
+		peerConnection->onTrack(nullptr);
 		peerConnection->onLocalDescription(nullptr);
 		peerConnection->onLocalCandidate(nullptr);
 		peerConnection->onStateChange(nullptr);
@@ -434,194 +435,203 @@ int rtcDeleteDataChannel(int dc) {
 
 #if RTC_ENABLE_MEDIA
 
-void setSSRC(Description::Media * description, uint32_t ssrc, const char *_name, const char *_msid) {
+void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid) {
 
-    optional<string> name = nullopt;
-    if (_name) {
-        name = string(_name);
-    }
+	optional<string> name = nullopt;
+	if (_name) {
+		name = string(_name);
+	}
 
-    optional<string> msid = nullopt;
-    if (_msid) {
-        msid = string(_msid);
-    }
+	optional<string> msid = nullopt;
+	if (_msid) {
+		msid = string(_msid);
+	}
 
-    description->addSSRC(ssrc, name, msid);
+	description->addSSRC(ssrc, name, msid);
 }
 
-int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid, rtcDirection _direction, const char *_name, const char *_msid) {
-    return WRAP( {
-        auto peerConnection = getPeerConnection(pc);
+int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid,
+                  rtcDirection _direction, const char *_name, const char *_msid) {
+	return WRAP({
+		auto peerConnection = getPeerConnection(pc);
 
-        auto direction = rtcDirectionToDirection(_direction);
+		auto direction = rtcDirectionToDirection(_direction);
 
-        string mid = "video";
-        switch (codec) {
-            case RTC_CODEC_H264:
-            case RTC_CODEC_VP8:
-            case RTC_CODEC_VP9:
-                mid = "video";
-                break;
-            case RTC_CODEC_OPUS:
-                mid = "audio";
-                break;
-        }
+		string mid = "video";
+		switch (codec) {
+		case RTC_CODEC_H264:
+		case RTC_CODEC_VP8:
+		case RTC_CODEC_VP9:
+			mid = "video";
+			break;
+		case RTC_CODEC_OPUS:
+			mid = "audio";
+			break;
+		}
 
-        if (_mid) {
-            mid = string(_mid);
-        }
+		if (_mid) {
+			mid = string(_mid);
+		}
 
-        optional<Description::Media> optDescription = nullopt;
+		optional<Description::Media> optDescription = nullopt;
 
-        switch (codec) {
-            case RTC_CODEC_H264:
-            case RTC_CODEC_VP8:
-            case RTC_CODEC_VP9: {
-                auto desc = Description::Video(mid, direction);
-                switch (codec) {
-                    case RTC_CODEC_H264:
-                        desc.addH264Codec(payloadType);
-                        break;
-                    case RTC_CODEC_VP8:
-                        desc.addVP8Codec(payloadType);
-                        break;
-                    case RTC_CODEC_VP9:
-                        desc.addVP8Codec(payloadType);
-                        break;
-                    default:
-                        break;
-                }
-                optDescription = desc;
-                break;
-            }
-            case RTC_CODEC_OPUS: {
-                auto desc = Description::Audio(mid, direction);
-                switch (codec) {
-                    case RTC_CODEC_OPUS:
-                        desc.addOpusCodec(payloadType);
-                        break;
-                    default:
-                        break;
-                }
-                optDescription = desc;
-                break;
-            }
-            default:
-                break;
-        }
+		switch (codec) {
+		case RTC_CODEC_H264:
+		case RTC_CODEC_VP8:
+		case RTC_CODEC_VP9: {
+			auto desc = Description::Video(mid, direction);
+			switch (codec) {
+			case RTC_CODEC_H264:
+				desc.addH264Codec(payloadType);
+				break;
+			case RTC_CODEC_VP8:
+				desc.addVP8Codec(payloadType);
+				break;
+			case RTC_CODEC_VP9:
+				desc.addVP8Codec(payloadType);
+				break;
+			default:
+				break;
+			}
+			optDescription = desc;
+			break;
+		}
+		case RTC_CODEC_OPUS: {
+			auto desc = Description::Audio(mid, direction);
+			switch (codec) {
+			case RTC_CODEC_OPUS:
+				desc.addOpusCodec(payloadType);
+				break;
+			default:
+				break;
+			}
+			optDescription = desc;
+			break;
+		}
+		default:
+			break;
+		}
 
-        if (!optDescription.has_value()) {
-            throw std::invalid_argument("Unexpected codec");
-        } else {
-            auto description = optDescription.value();
-            setSSRC(&description, ssrc, _name, _msid);
+		if (!optDescription.has_value()) {
+			throw std::invalid_argument("Unexpected codec");
+		} else {
+			auto description = optDescription.value();
+			setSSRC(&description, ssrc, _name, _msid);
 
-            int tr = emplaceTrack(peerConnection->addTrack(std::move(description)));
-            if (auto ptr = getUserPointer(pc)) {
-                rtcSetUserPointer(tr, *ptr);
-            }
-            return tr;
-        }
-    });
+			int tr = emplaceTrack(peerConnection->addTrack(std::move(description)));
+			if (auto ptr = getUserPointer(pc)) {
+				rtcSetUserPointer(tr, *ptr);
+			}
+			return tr;
+		}
+	});
 }
 
-int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t sequenceNumber, uint32_t timestamp) {
-    return WRAP({
-        auto track = getTrack(tr);
-        // create RTP configuration
-        auto rtpConfig = getNewRTPPacketizationConfig(ssrc, cname, payloadType, clockRate, sequenceNumber, timestamp);
-        // create packetizer
-        auto packetizer = shared_ptr<H264RTPPacketizer>(new H264RTPPacketizer(rtpConfig));
-        // create H264 and RTCP SP handler
-        shared_ptr<H264PacketizationHandler> h264Handler(new H264PacketizationHandler(H264PacketizationHandler::Separator::Length, packetizer));
-        emplaceRTCPSender(h264Handler, tr);
-        emplaceRTPConfig(rtpConfig, tr);
-        // set handler
-        track->setRtcpHandler(h264Handler);
-    });
+int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char *cname, uint8_t payloadType,
+                                   uint32_t clockRate, uint16_t sequenceNumber,
+                                   uint32_t timestamp) {
+	return WRAP({
+		auto track = getTrack(tr);
+		// create RTP configuration
+		auto rtpConfig = getNewRTPPacketizationConfig(ssrc, cname, payloadType, clockRate,
+		                                              sequenceNumber, timestamp);
+		// create packetizer
+		auto packetizer = shared_ptr<H264RTPPacketizer>(new H264RTPPacketizer(rtpConfig));
+		// create H264 and RTCP SP handler
+		shared_ptr<H264PacketizationHandler> h264Handler(
+		    new H264PacketizationHandler(H264PacketizationHandler::Separator::Length, packetizer));
+		emplaceRTCPSender(h264Handler, tr);
+		emplaceRTPConfig(rtpConfig, tr);
+		// set handler
+		track->setRtcpHandler(h264Handler);
+	});
 }
 
-int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t sequenceNumber, uint32_t timestamp) {
-    return WRAP({
-        auto track = getTrack(tr);
-        // create RTP configuration
-        auto rtpConfig = getNewRTPPacketizationConfig(ssrc, cname, payloadType, clockRate, sequenceNumber, timestamp);
-        // create packetizer
-        auto packetizer = shared_ptr<OpusRTPPacketizer>(new OpusRTPPacketizer(rtpConfig));
-        // create Opus and RTCP SP handler
-        shared_ptr<OpusPacketizationHandler> opusHandler(new OpusPacketizationHandler(packetizer));
-        emplaceRTCPSender(opusHandler, tr);
-        emplaceRTPConfig(rtpConfig, tr);
-        // set handler
-        track->setRtcpHandler(opusHandler);
-    });
+int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char *cname, uint8_t payloadType,
+                                   uint32_t clockRate, uint16_t sequenceNumber,
+                                   uint32_t timestamp) {
+	return WRAP({
+		auto track = getTrack(tr);
+		// create RTP configuration
+		auto rtpConfig = getNewRTPPacketizationConfig(ssrc, cname, payloadType, clockRate,
+		                                              sequenceNumber, timestamp);
+		// create packetizer
+		auto packetizer = shared_ptr<OpusRTPPacketizer>(new OpusRTPPacketizer(rtpConfig));
+		// create Opus and RTCP SP handler
+		shared_ptr<OpusPacketizationHandler> opusHandler(new OpusPacketizationHandler(packetizer));
+		emplaceRTCPSender(opusHandler, tr);
+		emplaceRTPConfig(rtpConfig, tr);
+		// set handler
+		track->setRtcpHandler(opusHandler);
+	});
 }
 
-int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970, uint32_t timestamp) {
-    return WRAP({
-        auto config = getRTPConfig(id);
-        auto epoch = RTPPacketizationConfig::EpochStart::T1900;
-        if (timeIntervalSince1970) {
-            epoch = RTPPacketizationConfig::EpochStart::T1970;
-        }
-        config->setStartTime(startTime_s, epoch, timestamp);
-    });
+int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970,
+                                    uint32_t timestamp) {
+	return WRAP({
+		auto config = getRTPConfig(id);
+		auto epoch = RTPPacketizationConfig::EpochStart::T1900;
+		if (timeIntervalSince1970) {
+			epoch = RTPPacketizationConfig::EpochStart::T1970;
+		}
+		config->setStartTime(startTime_s, epoch, timestamp);
+	});
 }
 
 int rtcStartRtcpSenderReporterRecording(int id) {
-    return WRAP({
-        auto sender = getRTCPSender(id);
-        sender->startRecording();
-    });
+	return WRAP({
+		auto sender = getRTCPSender(id);
+		sender->startRecording();
+	});
 }
 
-int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t * timestamp) {
-    return WRAP({
-        auto config = getRTPConfig(id);
-        *timestamp = config->secondsToTimestamp(seconds);
-    });
+int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp) {
+	return WRAP({
+		auto config = getRTPConfig(id);
+		*timestamp = config->secondsToTimestamp(seconds);
+	});
 }
 
-int rtcTransformTimestampToSeconds(int id, uint32_t timestamp, double * seconds) {
-    return WRAP({
-        auto config = getRTPConfig(id);
-        *seconds = config->timestampToSeconds(timestamp);
-    });
+int rtcTransformTimestampToSeconds(int id, uint32_t timestamp, double *seconds) {
+	return WRAP({
+		auto config = getRTPConfig(id);
+		*seconds = config->timestampToSeconds(timestamp);
+	});
 }
 
-int rtcGetCurrentTrackTimestamp(int id, uint32_t * timestamp) {
-    return WRAP({
-        auto config = getRTPConfig(id);
-        *timestamp = config->timestamp;
-    });
+int rtcGetCurrentTrackTimestamp(int id, uint32_t *timestamp) {
+	return WRAP({
+		auto config = getRTPConfig(id);
+		*timestamp = config->timestamp;
+	});
 }
 
-int rtcGetTrackStartTimestamp(int id, uint32_t * timestamp) {
-    return WRAP({
-        auto config = getRTPConfig(id);
-        *timestamp = config->startTimestamp;
-    });
+int rtcGetTrackStartTimestamp(int id, uint32_t *timestamp) {
+	return WRAP({
+		auto config = getRTPConfig(id);
+		*timestamp = config->startTimestamp;
+	});
 }
 
 int rtcSetTrackRTPTimestamp(int id, uint32_t timestamp) {
-    return WRAP({
-        auto config = getRTPConfig(id);
-        config->timestamp = timestamp;
-    });
+	return WRAP({
+		auto config = getRTPConfig(id);
+		config->timestamp = timestamp;
+	});
 }
 
-int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t * timestamp) {
-    return WRAP({
-        auto sender = getRTCPSender(id);
-        *timestamp = sender->previousReportedTimestamp;
-    });
+int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t *timestamp) {
+	return WRAP({
+		auto sender = getRTCPSender(id);
+		*timestamp = sender->previousReportedTimestamp;
+	});
 }
 
 int rtcSetNeedsToSendRTCPSR(int id) {
-    return WRAP({
-        auto sender = getRTCPSender(id);
-        sender->setNeedsToReport();
-    });
+	return WRAP({
+		auto sender = getRTCPSender(id);
+		sender->setNeedsToReport();
+	});
 }
 
 #endif // RTC_ENABLE_MEDIA
