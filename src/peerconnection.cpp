@@ -1137,7 +1137,7 @@ void PeerConnection::processRemoteCandidate(Candidate candidate) {
 	} else {
 		// We might need a lookup, do it asynchronously
 		// We don't use the thread pool because we have no control on the timeout
-		if (auto iceTransport = std::atomic_load(&mIceTransport)) {
+		if ((iceTransport = std::atomic_load(&mIceTransport))) {
 			weak_ptr<IceTransport> weakIceTransport{iceTransport};
 			std::thread t([weakIceTransport, candidate = std::move(candidate)]() mutable {
 				if (candidate.resolve(Candidate::ResolveMode::Lookup))
