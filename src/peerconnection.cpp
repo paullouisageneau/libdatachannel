@@ -649,10 +649,10 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		    stream % 2 == remoteParity) {
 
 			channel = std::make_shared<NegociatedDataChannel>(shared_from_this(), sctpTransport,
-			                                                  message->stream);
+			                                                  stream);
 			channel->onOpen(weak_bind(&PeerConnection::triggerDataChannel, this,
 			                          weak_ptr<DataChannel>{channel}));
-			mDataChannels.emplace(message->stream, channel);
+			mDataChannels.emplace(stream, channel);
 		} else {
 			// Invalid, close the DataChannel
 			sctpTransport->closeStream(message->stream);
