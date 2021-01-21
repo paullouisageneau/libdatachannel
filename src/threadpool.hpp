@@ -66,7 +66,7 @@ public:
 	auto schedule(clock::time_point time, F &&f, Args &&...args) -> invoke_future_t<F, Args...>;
 
 protected:
-	ThreadPool() = default;
+	ThreadPool();
 	~ThreadPool();
 
 	std::function<void()> dequeue(); // returns null function if joining

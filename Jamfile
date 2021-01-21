@@ -15,9 +15,9 @@ lib libdatachannel
 	: # requirements
 	<cxxstd>17
 	<include>./include/rtc
-	<define>USE_NICE=0
 	<define>RTC_ENABLE_MEDIA=0
 	<define>RTC_ENABLE_WEBSOCKET=0
+	<define>USE_NICE=0
 	<toolset>msvc:<define>WIN32_LEAN_AND_MEAN
 	<toolset>msvc:<define>NOMINMAX
 	<toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS
@@ -32,6 +32,8 @@ lib libdatachannel
 	<link>static
 	: # usage requirements
 	<include>./include
+	<define>RTC_ENABLE_MEDIA=0
+	<define>RTC_ENABLE_WEBSOCKET=0
 	<library>/libdatachannel//plog
 	<toolset>gcc:<cxxflags>"-pthread -Wno-pedantic -Wno-unused-parameter -Wno-unused-variable"
 	<toolset>clang:<cxxflags>"-pthread -Wno-pedantic -Wno-unused-parameter -Wno-unused-variable"
@@ -94,7 +96,7 @@ rule make_libusrsctp ( targets * : sources * : properties * )
 }
 actions make_libusrsctp
 {
-    (cd $(CWD)/deps/usrsctp && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(VARIANT) -DCMAKE_C_FLAGS="-fPIC -Wno-unknown-warning-option -Wno-format-truncation" .. && make -j2 usrsctp-static)
+    (cd $(CWD)/deps/usrsctp && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(VARIANT) -DCMAKE_C_FLAGS="-fPIC -Wno-unknown-warning-option -Wno-format-truncation" -Dsctp_build_shared_lib=0 -Dsctp_build_programs=0 .. && make -j2 usrsctp)
     cp $(CWD)/deps/usrsctp/$(BUILD_DIR)/usrsctplib/libusrsctp.a $(<)
 }
 rule make_libusrsctp_msvc ( targets * : sources * : properties * )
@@ -109,7 +111,7 @@ actions make_libusrsctp_msvc
     cd $(CWD)/deps/usrsctp
     mkdir $(BUILD_DIR)
     cd $(BUILD_DIR)
-    cmake -G "Visual Studio 16 2019" ..
+    cmake -G "Visual Studio 16 2019" -Dsctp_build_shared_lib=0 -Dsctp_build_programs=0 ..
     msbuild usrsctplib.sln /property:Configuration=$(VARIANT)
     cd %OLDD%
     cp $(CWD)/deps/usrsctp/$(BUILD_DIR)/usrsctplib/Release/usrsctp.lib $(<)

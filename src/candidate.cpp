@@ -117,9 +117,9 @@ void Candidate::parse(string candidate) {
 		mTransportType = TransportType::Udp;
 	} else if (transport == "TCP" || transport == "tcp") {
 		// Peek tail to find TCP type
-		std::istringstream iss(mTail);
+		std::istringstream tiss(mTail);
 		string tcptype_, tcptype;
-		if (iss >> tcptype_ >> tcptype && tcptype_ == "tcptype") {
+		if (tiss >> tcptype_ >> tcptype && tcptype_ == "tcptype") {
 			if (auto it = TcpTypeMap.find(tcptype); it != TcpTypeMap.end())
 				mTransportType = it->second;
 			else

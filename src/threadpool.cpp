@@ -18,15 +18,26 @@
 
 #include "threadpool.hpp"
 
+#include <cstdlib>
+
+namespace {
+	void joinThreadPoolInstance() {
+		rtc::ThreadPool::Instance().join();
+	}
+}
+
 namespace rtc {
 
 ThreadPool &ThreadPool::Instance() {
-	// Init handles joining on cleanup
 	static ThreadPool *instance = new ThreadPool;
 	return *instance;
 }
 
-ThreadPool::~ThreadPool() { join(); }
+ThreadPool::ThreadPool() {
+	std::atexit(joinThreadPoolInstance);
+}
+
+ThreadPool::~ThreadPool() {}
 
 int ThreadPool::count() const {
 	std::unique_lock lock(mWorkersMutex);
