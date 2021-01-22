@@ -40,7 +40,7 @@ extern "C" {
 #endif
 
 #if RTC_ENABLE_MEDIA
-# define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE ((uint16_t)1400)
+#define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE ((uint16_t)1400)
 #endif
 
 #include <stdbool.h>
