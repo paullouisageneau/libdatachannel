@@ -528,7 +528,7 @@ int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const 
 }
 
 int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char *cname, uint8_t payloadType,
-                                   uint32_t clockRate, uint16_t sequenceNumber,
+                                   uint32_t clockRate, uint16_t maxFragmentSize, uint16_t sequenceNumber,
                                    uint32_t timestamp) {
 	return WRAP({
 		auto track = getTrack(tr);
@@ -539,7 +539,7 @@ int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char *cname, uin
 		auto packetizer = shared_ptr<H264RTPPacketizer>(new H264RTPPacketizer(rtpConfig));
 		// create H264 and RTCP SP handler
 		shared_ptr<H264PacketizationHandler> h264Handler(
-		    new H264PacketizationHandler(H264PacketizationHandler::Separator::Length, packetizer));
+		    new H264PacketizationHandler(H264PacketizationHandler::Separator::Length, packetizer, maxFragmentSize));
 		emplaceRTCPSender(h264Handler, tr);
 		emplaceRTPConfig(rtpConfig, tr);
 		// set handler
