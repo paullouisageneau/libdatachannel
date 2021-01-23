@@ -39,6 +39,10 @@ extern "C" {
 #define RTC_ENABLE_WEBSOCKET 1
 #endif
 
+#if RTC_ENABLE_MEDIA
+#define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE ((uint16_t)1400)
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -220,9 +224,10 @@ RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t s
 /// @param cname CName
 /// @param payloadType Payload Type
 /// @param clockRate Clock rate
-/// @param _sequenceNumber Sequence number
-/// @param _timestamp Timestamp
-RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t _sequenceNumber, uint32_t _timestamp);
+/// @param maxFragmentSize Maximum NALU fragment size
+/// @param sequenceNumber Sequence number
+/// @param timestamp Timestamp
+RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t maxFragmentSize, uint16_t sequenceNumber, uint32_t timestamp);
 
 /// Set OpusPacketizationHandler for track
 /// @param tr Track id
