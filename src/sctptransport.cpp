@@ -25,6 +25,19 @@
 #include <thread>
 #include <vector>
 
+// The IETF draft says:
+// SCTP MUST support performing Path MTU discovery without relying on ICMP or ICMPv6 as specified in
+// [RFC4821] using probing messages specified in [RFC4820]. The initial Path MTU at the IP layer
+// SHOULD NOT exceed 1200 bytes for IPv4 and 1280 for IPv6.
+// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-5
+//
+// However, usrsctp does not implement Path MTU discovery, so we need to disable it for now.
+// See https://github.com/sctplab/usrsctp/issues/205
+#define USE_PMTUD 0
+
+// TODO: When Path MTU discovery is supported, it needs to be enabled with libjuice as ICE backend
+// on all platforms except Mac OS where the Don't Fragment (DF) flag can't be set:
+/*
 #if !USE_NICE
 #ifndef __APPLE__
 // libjuice enables Linux path MTU discovery or sets the DF flag
@@ -34,15 +47,9 @@
 #define USE_PMTUD 0
 #endif
 #else // USE_NICE == 1
-#ifdef __linux__
-// Linux UDP does path MTU discovery by default (setting DF and returning EMSGSIZE)
-// It should be safe to enable discovery for SCTP.
-#define USE_PMTUD 1
-#else
-// Otherwise assume fragmentation
 #define USE_PMTUD 0
 #endif
-#endif
+*/
 
 using namespace std::chrono_literals;
 using namespace std::chrono;
@@ -161,21 +168,32 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 		                         std::to_string(errno));
 
 	struct sctp_paddrparams spp = {};
+	// Enable SCTP heartbeats
+	spp.spp_flags = SPP_HB_ENABLE;
+
+	// RFC 8261 5. DTLS considerations:
+	// If path MTU discovery is performed by the SCTP layer and IPv4 is used as the network-layer
+	// protocol, the DTLS implementation SHOULD allow the DTLS user to enforce that the
+	// corresponding IPv4 packet is sent with the Don't Fragment (DF) bit set. If controlling the DF
+	// bit is not possible (for example, due to implementation restrictions), a safe value for the
+	// path MTU has to be used by the SCTP stack. It is RECOMMENDED that the safe value not exceed
+	// 1200 bytes.
+	// See https://tools.ietf.org/html/rfc8261#section-5
 #if USE_PMTUD
 	// Enable SCTP path MTU discovery
-	spp.spp_flags = SPP_PMTUD_ENABLE;
+	spp.spp_flags |= SPP_PMTUD_ENABLE;
 #else
 	// Fall back to a safe MTU value.
-	spp.spp_flags = SPP_PMTUD_DISABLE;
-	spp.spp_pathmtu = 1200; // Max safe value recommended by RFC 8261
-	                        // See https://tools.ietf.org/html/rfc8261#section-5
+	spp.spp_flags |= SPP_PMTUD_DISABLE;
+	spp.spp_pathmtu = 1200;
 #endif
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &spp, sizeof(spp)))
 		throw std::runtime_error("Could not set socket option SCTP_PEER_ADDR_PARAMS, errno=" +
 		                         std::to_string(errno));
 
 	// The IETF draft recommends the number of streams negotiated during SCTP association to be
-	// 65535. See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.2
+	// 65535.
+	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.2
 	struct sctp_initmsg sinit = {};
 	sinit.sinit_num_ostreams = 65535;
 	sinit.sinit_max_instreams = 65535;
