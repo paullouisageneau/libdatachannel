@@ -64,7 +64,9 @@ bool Track::send(message_variant data) {
 
     std::shared_lock lock(mRtcpHandlerMutex);
     if (mRtcpHandler) {
-		message = mRtcpHandler->outgoing(message);
+        auto copy = mRtcpHandler;
+        lock.unlock();
+		message = copy->outgoing(message);
 		if (!message)
 			return false;
 	}
@@ -125,7 +127,9 @@ void Track::incoming(message_ptr message) {
 
     std::shared_lock lock(mRtcpHandlerMutex);
     if (mRtcpHandler) {
-		message = mRtcpHandler->incoming(message);
+        auto copy = mRtcpHandler;
+        lock.unlock();
+		message = copy->incoming(message);
 		if (!message)
 			return;
 	}
@@ -163,14 +167,20 @@ bool Track::outgoing([[maybe_unused]] message_ptr message) {
 void Track::setRtcpHandler(std::shared_ptr<RtcpHandler> handler) {
     std::unique_lock lock(mRtcpHandlerMutex);
     mRtcpHandler = std::move(handler);
-	if (mRtcpHandler)
-		mRtcpHandler->onOutgoing(std::bind(&Track::outgoing, this, std::placeholders::_1));
+	if (mRtcpHandler) {
+	    auto copy = mRtcpHandler;
+        lock.unlock();
+        copy->onOutgoing(std::bind(&Track::outgoing, this, std::placeholders::_1));
+    }
 }
 
 bool Track::requestKeyframe() {
     std::shared_lock lock(mRtcpHandlerMutex);
-    if (mRtcpHandler)
-		return mRtcpHandler->requestKeyframe();
+    if (mRtcpHandler) {
+        auto copy = mRtcpHandler;
+        lock.unlock();
+        return copy->requestKeyframe();
+    }
 	return false;
 }
 
