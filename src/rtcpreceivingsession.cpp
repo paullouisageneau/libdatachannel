@@ -17,10 +17,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "rtcp.hpp"
+#if RTC_ENABLE_MEDIA
 
+#include "rtcpreceivingsession.hpp"
 #include "logcounter.hpp"
 #include "track.hpp"
+
 #include <cmath>
 #include <utility>
 
@@ -30,18 +32,17 @@
 #include <arpa/inet.h>
 #endif
 
-static rtc::LogCounter COUNTER_BAD_RTP_HEADER(plog::warning, "Number of malformed RTP headers");
-static rtc::LogCounter COUNTER_UNKNOWN_PPID(plog::warning, "Number of Unknown PPID messages");
-static rtc::LogCounter COUNTER_BAD_NOTIF_LEN(plog::warning, "Number of Bad-Lengthed notifications");
-static rtc::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning,
-                                               "Number of unknown SCTP_STATUS errors");
-
 namespace rtc {
 
-rtc::message_ptr RtcpReceivingSession::outgoing(rtc::message_ptr ptr) { return ptr; }
+static LogCounter COUNTER_BAD_RTP_HEADER(plog::warning, "Number of malformed RTP headers");
+static LogCounter COUNTER_UNKNOWN_PPID(plog::warning, "Number of Unknown PPID messages");
+static LogCounter COUNTER_BAD_NOTIF_LEN(plog::warning, "Number of Bad-Lengthed notifications");
+static LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning, "Number of unknown SCTP_STATUS errors");
 
-rtc::message_ptr RtcpReceivingSession::incoming(rtc::message_ptr ptr) {
-	if (ptr->type == rtc::Message::Type::Binary) {
+message_ptr RtcpReceivingSession::outgoing(message_ptr ptr) { return ptr; }
+
+message_ptr RtcpReceivingSession::incoming(message_ptr ptr) {
+	if (ptr->type == Message::Type::Binary) {
 		auto rtp = reinterpret_cast<const RTP *>(ptr->data());
 
 		// https://tools.ietf.org/html/rfc3550#appendix-A.1
@@ -65,7 +66,7 @@ rtc::message_ptr RtcpReceivingSession::incoming(rtc::message_ptr ptr) {
 		return ptr;
 	}
 
-	assert(ptr->type == rtc::Message::Type::Control);
+	assert(ptr->type == Message::Type::Control);
 	auto rr = reinterpret_cast<const RTCP_RR *>(ptr->data());
 	if (rr->header.payloadType() == 201) {
 		// RR
@@ -95,8 +96,7 @@ void RtcpReceivingSession::requestBitrate(unsigned int newBitrate) {
 }
 
 void RtcpReceivingSession::pushREMB(unsigned int bitrate) {
-	rtc::message_ptr msg =
-	    rtc::make_message(RTCP_REMB::sizeWithSSRCs(1), rtc::Message::Type::Control);
+	message_ptr msg = make_message(RTCP_REMB::sizeWithSSRCs(1), Message::Type::Control);
 	auto remb = reinterpret_cast<RTCP_REMB *>(msg->data());
 	remb->preparePacket(mSsrc, 1, bitrate);
 	remb->setSsrc(0, mSsrc);
@@ -105,7 +105,7 @@ void RtcpReceivingSession::pushREMB(unsigned int bitrate) {
 }
 
 void RtcpReceivingSession::pushRR(unsigned int lastSR_delay) {
-	auto msg = rtc::make_message(RTCP_RR::sizeWithReportBlocks(1), rtc::Message::Type::Control);
+	auto msg = make_message(RTCP_RR::sizeWithReportBlocks(1), Message::Type::Control);
 	auto rr = reinterpret_cast<RTCP_RR *>(msg->data());
 	rr->preparePacket(mSsrc, 1);
 	rr->getReportBlock(0)->preparePacket(mSsrc, 0, 0, uint16_t(mGreatestSeqNo), 0, 0, mSyncNTPTS,
@@ -131,13 +131,16 @@ bool RtcpReceivingSession::requestKeyframe() {
 }
 
 void RtcpReceivingSession::pushPLI() {
-	auto msg = rtc::make_message(rtc::RTCP_PLI::size(), rtc::Message::Type::Control);
-	auto *pli = reinterpret_cast<rtc::RTCP_PLI *>(msg->data());
+	auto msg = make_message(RTCP_PLI::size(), Message::Type::Control);
+	auto *pli = reinterpret_cast<RTCP_PLI *>(msg->data());
 	pli->preparePacket(mSsrc);
 	send(msg);
 }
 
-void RtcpHandler::onOutgoing(const std::function<void(rtc::message_ptr)> &cb) {
-	this->outgoingCallback = synchronized_callback<rtc::message_ptr>(cb);
+void RtcpHandler::onOutgoing(const std::function<void(message_ptr)> &cb) {
+	this->outgoingCallback = synchronized_callback<message_ptr>(cb);
 }
+
 } // namespace rtc
+
+#endif // RTC_ENABLE_MEDIA

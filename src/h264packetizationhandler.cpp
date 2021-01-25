@@ -155,9 +155,9 @@ message_ptr H264PacketizationHandler::outgoing(message_ptr ptr) {
 }
 
 H264PacketizationHandler::H264PacketizationHandler(Separator separator,
-                                                   std::shared_ptr<H264RTPPacketizer> packetizer,
+                                                   std::shared_ptr<H264RtpPacketizer> packetizer,
                                                    uint16_t maximumFragmentSize)
-    : RtcpHandler(), rtc::RTCPSenderReportable(packetizer->rtpConfig), packetizer(packetizer),
+    : RtcpHandler(), rtc::RtcpSenderReporter(packetizer->rtpConfig), packetizer(packetizer),
       maximumFragmentSize(maximumFragmentSize), separator(separator) {
 
 	senderReportOutgoingCallback = [this](message_ptr msg) { outgoingCallback(msg); };

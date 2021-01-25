@@ -59,7 +59,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/message.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/peerconnection.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/logcounter.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcp.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpreceivingsession.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/threadpool.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/tls.cpp
@@ -67,7 +67,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/processor.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizationconfig.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsenderreportable.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsenderreporter.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/opusrtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/opuspacketizationhandler.cpp
@@ -92,7 +92,8 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/configuration.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/datachannel.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/description.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcp.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcphandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpreceivingsession.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/include.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/init.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/log.hpp

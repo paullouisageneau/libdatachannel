@@ -18,37 +18,37 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "rtcpsenderreportable.hpp"
+#include "rtcpsenderreporter.hpp"
 
 namespace rtc {
 
-void RTCPSenderReportable::startRecording() {
+void RtcpSenderReporter::startRecording() {
 	_previousReportedTimestamp = rtpConfig->timestamp;
 	timeOffset = rtpConfig->startTime_s - rtpConfig->timestampToSeconds(rtpConfig->timestamp);
 }
 
-void RTCPSenderReportable::sendReport(uint32_t timestamp) {
+void RtcpSenderReporter::sendReport(uint32_t timestamp) {
 	auto sr = getSenderReport(timestamp);
 	_previousReportedTimestamp = timestamp;
 	senderReportOutgoingCallback(move(sr));
 }
 
-void RTCPSenderReportable::addToReport(RTP *rtp, uint32_t rtpSize) {
+void RtcpSenderReporter::addToReport(RTP *rtp, uint32_t rtpSize) {
 	packetCount += 1;
 	assert(!rtp->padding());
 	payloadOctets += rtpSize - rtp->getSize();
 }
 
-RTCPSenderReportable::RTCPSenderReportable(std::shared_ptr<RTPPacketizationConfig> rtpConfig)
+RtcpSenderReporter::RtcpSenderReporter(std::shared_ptr<RtpPacketizationConfig> rtpConfig)
     : rtpConfig(rtpConfig) {}
 
-uint64_t RTCPSenderReportable::secondsToNTP(double seconds) {
+uint64_t RtcpSenderReporter::secondsToNTP(double seconds) {
 	return std::round(seconds * double(uint64_t(1) << 32));
 }
 
-void RTCPSenderReportable::setNeedsToReport() { needsToReport = true; }
+void RtcpSenderReporter::setNeedsToReport() { needsToReport = true; }
 
-message_ptr RTCPSenderReportable::getSenderReport(uint32_t timestamp) {
+message_ptr RtcpSenderReporter::getSenderReport(uint32_t timestamp) {
 	auto srSize = RTCP_SR::size(0);
 	auto msg = make_message(srSize + RTCP_SDES::size({{uint8_t(rtpConfig->cname.size())}}),
 	                        Message::Type::Control);

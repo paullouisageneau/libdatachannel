@@ -53,8 +53,8 @@ std::unordered_map<int, shared_ptr<PeerConnection>> peerConnectionMap;
 std::unordered_map<int, shared_ptr<DataChannel>> dataChannelMap;
 std::unordered_map<int, shared_ptr<Track>> trackMap;
 #if RTC_ENABLE_MEDIA
-std::unordered_map<int, shared_ptr<RTCPSenderReportable>> rtcpSenderMap;
-std::unordered_map<int, shared_ptr<RTPPacketizationConfig>> rtpConfigMap;
+std::unordered_map<int, shared_ptr<RtcpSenderReporter>> rtcpSenderMap;
+std::unordered_map<int, shared_ptr<RtpPacketizationConfig>> rtpConfigMap;
 #endif
 #if RTC_ENABLE_WEBSOCKET
 std::unordered_map<int, shared_ptr<WebSocket>> webSocketMap;
@@ -149,20 +149,20 @@ void eraseTrack(int tr) {
 
 #if RTC_ENABLE_MEDIA
 
-shared_ptr<RTCPSenderReportable> getRTCPSender(int id) {
+shared_ptr<RtcpSenderReporter> getRTCPSender(int id) {
 	std::lock_guard lock(mutex);
 	if (auto it = rtcpSenderMap.find(id); it != rtcpSenderMap.end())
 		return it->second;
 	else
-		throw std::invalid_argument("RTCPSenderReportable ID does not exist");
+		throw std::invalid_argument("RtcpSenderReporter ID does not exist");
 }
 
-void emplaceRTCPSender(shared_ptr<RTCPSenderReportable> ptr, int tr) {
+void emplaceRTCPSender(shared_ptr<RtcpSenderReporter> ptr, int tr) {
 	std::lock_guard lock(mutex);
 	rtcpSenderMap.emplace(std::make_pair(tr, ptr));
 }
 
-shared_ptr<RTPPacketizationConfig> getRTPConfig(int id) {
+shared_ptr<RtpPacketizationConfig> getRTPConfig(int id) {
 	std::lock_guard lock(mutex);
 	if (auto it = rtpConfigMap.find(id); it != rtpConfigMap.end())
 		return it->second;
@@ -170,7 +170,7 @@ shared_ptr<RTPPacketizationConfig> getRTPConfig(int id) {
 		throw std::invalid_argument("RTPConfiguration ID does not exist");
 }
 
-void emplaceRTPConfig(shared_ptr<RTPPacketizationConfig> ptr, int tr) {
+void emplaceRTPConfig(shared_ptr<RtpPacketizationConfig> ptr, int tr) {
 	std::lock_guard lock(mutex);
 	rtpConfigMap.emplace(std::make_pair(tr, ptr));
 }
@@ -190,14 +190,14 @@ Description::Direction rtcDirectionToDirection(rtcDirection direction) {
 	}
 }
 
-shared_ptr<RTPPacketizationConfig>
-getNewRTPPacketizationConfig(uint32_t ssrc, const char *cname, uint8_t payloadType,
+shared_ptr<RtpPacketizationConfig>
+getNewRtpPacketizationConfig(uint32_t ssrc, const char *cname, uint8_t payloadType,
                              uint32_t clockRate, uint16_t sequenceNumber, uint32_t timestamp) {
 	if (!cname) {
 		throw std::invalid_argument("Unexpected null pointer for cname");
 	}
 
-	return std::make_shared<RTPPacketizationConfig>(ssrc, cname, payloadType, clockRate,
+	return std::make_shared<RtpPacketizationConfig>(ssrc, cname, payloadType, clockRate,
 	                                                sequenceNumber, timestamp);
 }
 
@@ -533,10 +533,10 @@ int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char *cname, uin
 	return WRAP({
 		auto track = getTrack(tr);
 		// create RTP configuration
-		auto rtpConfig = getNewRTPPacketizationConfig(ssrc, cname, payloadType, clockRate,
+		auto rtpConfig = getNewRtpPacketizationConfig(ssrc, cname, payloadType, clockRate,
 		                                              sequenceNumber, timestamp);
 		// create packetizer
-		auto packetizer = shared_ptr<H264RTPPacketizer>(new H264RTPPacketizer(rtpConfig));
+		auto packetizer = shared_ptr<H264RtpPacketizer>(new H264RtpPacketizer(rtpConfig));
 		// create H264 and RTCP SP handler
 		shared_ptr<H264PacketizationHandler> h264Handler(
 		    new H264PacketizationHandler(H264PacketizationHandler::Separator::Length, packetizer, maxFragmentSize));
@@ -553,10 +553,10 @@ int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char *cname, uin
 	return WRAP({
 		auto track = getTrack(tr);
 		// create RTP configuration
-		auto rtpConfig = getNewRTPPacketizationConfig(ssrc, cname, payloadType, clockRate,
+		auto rtpConfig = getNewRtpPacketizationConfig(ssrc, cname, payloadType, clockRate,
 		                                              sequenceNumber, timestamp);
 		// create packetizer
-		auto packetizer = shared_ptr<OpusRTPPacketizer>(new OpusRTPPacketizer(rtpConfig));
+		auto packetizer = shared_ptr<OpusRtpPacketizer>(new OpusRtpPacketizer(rtpConfig));
 		// create Opus and RTCP SP handler
 		shared_ptr<OpusPacketizationHandler> opusHandler(new OpusPacketizationHandler(packetizer));
 		emplaceRTCPSender(opusHandler, tr);
@@ -570,9 +570,9 @@ int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeInterva
                                     uint32_t timestamp) {
 	return WRAP({
 		auto config = getRTPConfig(id);
-		auto epoch = RTPPacketizationConfig::EpochStart::T1900;
+		auto epoch = RtpPacketizationConfig::EpochStart::T1900;
 		if (timeIntervalSince1970) {
-			epoch = RTPPacketizationConfig::EpochStart::T1970;
+			epoch = RtpPacketizationConfig::EpochStart::T1970;
 		}
 		config->setStartTime(startTime_s, epoch, timestamp);
 	});

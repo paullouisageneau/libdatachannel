@@ -27,11 +27,14 @@
 
 #if RTC_ENABLE_MEDIA
 
-// opus/h264 streaming
+// RTCP handling
+#include "rtcpreceivingsession.hpp"
+
+// Opus/h264 streaming
 #include "h264packetizationhandler.hpp"
 #include "opuspacketizationhandler.hpp"
 
-#endif /* RTC_ENABLE_MEDIA */
+#endif // RTC_ENABLE_MEDIA
 
 // C API
 #include "rtc.h"

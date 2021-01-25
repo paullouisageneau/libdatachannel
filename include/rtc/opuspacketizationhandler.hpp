@@ -16,26 +16,26 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef OpusPacketizationHandler_hpp
-#define OpusPacketizationHandler_hpp
+#ifndef RTC_OPUS_PACKETIZATION_HANDLER_H
+#define RTC_OPUS_PACKETIZATION_HANDLER_H
 
 #if RTC_ENABLE_MEDIA
 
 #include "opusrtppacketizer.hpp"
-#include "rtcp.hpp"
-#include "rtcpsenderreportable.hpp"
+#include "rtcphandler.hpp"
+#include "rtcpsenderreporter.hpp"
 
 namespace rtc {
 
 /// Handler for opus packetization
-class RTC_CPP_EXPORT OpusPacketizationHandler : public RtcpHandler, public RTCPSenderReportable {
+class RTC_CPP_EXPORT OpusPacketizationHandler : public RtcpHandler, public RtcpSenderReporter {
 	/// RTP packetizer for opus
-	const std::shared_ptr<OpusRTPPacketizer> packetizer;
+	const std::shared_ptr<OpusRtpPacketizer> packetizer;
 
 public:
 	/// Construct handler for opus packetization.
 	/// @param packetizer RTP packetizer for opus
-	OpusPacketizationHandler(std::shared_ptr<OpusRTPPacketizer> packetizer);
+	OpusPacketizationHandler(std::shared_ptr<OpusRtpPacketizer> packetizer);
 
 	/// Returns message unchanged
 	/// @param ptr message
@@ -49,4 +49,4 @@ public:
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* OpusPacketizationHandler_hpp */
+#endif /* RTC_OPUS_PACKETIZATION_HANDLER_H */

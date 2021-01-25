@@ -22,8 +22,8 @@
 
 namespace rtc {
 
-OpusPacketizationHandler::OpusPacketizationHandler(std::shared_ptr<OpusRTPPacketizer> packetizer)
-    : RtcpHandler(), RTCPSenderReportable(packetizer->rtpConfig), packetizer(packetizer) {
+OpusPacketizationHandler::OpusPacketizationHandler(std::shared_ptr<OpusRtpPacketizer> packetizer)
+    : RtcpHandler(), RtcpSenderReporter(packetizer->rtpConfig), packetizer(packetizer) {
 	senderReportOutgoingCallback = [this](message_ptr msg) { outgoingCallback(msg); };
 }
 

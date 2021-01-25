@@ -16,8 +16,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef H264RTPPacketizer_hpp
-#define H264RTPPacketizer_hpp
+#ifndef H264RtpPacketizer_hpp
+#define H264RtpPacketizer_hpp
 
 #if RTC_ENABLE_MEDIA
 
@@ -26,7 +26,7 @@
 namespace rtc {
 
 /// RTP packetization of h264 payload
-class RTC_CPP_EXPORT H264RTPPacketizer : public rtc::RTPPacketizer {
+class RTC_CPP_EXPORT H264RtpPacketizer : public rtc::RtpPacketizer {
 
 public:
 	/// Default clock rate for H264 in RTP
@@ -36,11 +36,11 @@ public:
 	/// @note RTP configuration is used in packetization process which may change some configuration
 	/// properties such as sequence number.
 	/// @param rtpConfig  RTP configuration
-	H264RTPPacketizer(std::shared_ptr<rtc::RTPPacketizationConfig> rtpConfig);
+	H264RtpPacketizer(std::shared_ptr<rtc::RtpPacketizationConfig> rtpConfig);
 };
 
 } // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* H264RTPPacketizer_hpp */
+#endif /* H264RtpPacketizer_hpp */

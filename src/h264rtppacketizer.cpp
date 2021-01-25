@@ -22,8 +22,8 @@
 
 namespace rtc {
 
-H264RTPPacketizer::H264RTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig)
-    : RTPPacketizer(rtpConfig) {}
+H264RtpPacketizer::H264RtpPacketizer(std::shared_ptr<RtpPacketizationConfig> rtpConfig)
+    : RtpPacketizer(rtpConfig) {}
 
 } // namespace rtc
 

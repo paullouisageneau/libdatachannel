@@ -17,58 +17,24 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_RTCP_H
-#define RTC_RTCP_H
+#ifndef RTC_RTCP_RECEIVING_SESSION_H
+#define RTC_RTCP_RECEIVING_SESSION_H
 
-#include <utility>
+#if RTC_ENABLE_MEDIA
 
 #include "include.hpp"
-#include "log.hpp"
+#include "rtcphandler.hpp"
 #include "message.hpp"
 #include "rtp.hpp"
 
 namespace rtc {
 
-class RTC_CPP_EXPORT RtcpHandler {
-protected:
-	/**
-	 * Use this callback when trying to send custom data (such as RTCP) to the client.
-	 */
-	synchronized_callback<rtc::message_ptr> outgoingCallback;
-
-public:
-	/**
-	 * Called when there is traffic coming from the peer
-	 * @param ptr
-	 * @return
-	 */
-	virtual rtc::message_ptr incoming(rtc::message_ptr ptr) = 0;
-
-	/**
-	 * Called when there is traffic that needs to be sent to the peer
-	 * @param ptr
-	 * @return
-	 */
-	virtual rtc::message_ptr outgoing(rtc::message_ptr ptr) = 0;
-
-	/**
-	 * This callback is used to send traffic back to the peer.
-	 * This callback skips calling the track's methods.
-	 * @param cb
-	 */
-	void onOutgoing(const std::function<void(rtc::message_ptr)> &cb);
-
-	virtual bool requestKeyframe() { return false; }
-};
-
-class Track;
-
 // An RtcpSession can be plugged into a Track to handle the whole RTCP session
 class RTC_CPP_EXPORT RtcpReceivingSession : public RtcpHandler {
 public:
-	rtc::message_ptr incoming(rtc::message_ptr ptr) override;
-	rtc::message_ptr outgoing(rtc::message_ptr ptr) override;
-	bool send(rtc::message_ptr ptr);
+	message_ptr incoming(message_ptr ptr) override;
+	message_ptr outgoing(message_ptr ptr) override;
+	bool send(message_ptr ptr);
 
 	void requestBitrate(unsigned int newBitrate);
 
@@ -88,4 +54,6 @@ protected:
 
 } // namespace rtc
 
-#endif // RTC_RTCP_H
+#endif // RTC_ENABLE_MEDIA
+
+#endif // RTC_RTCP_RECEIVING_SESSION_H

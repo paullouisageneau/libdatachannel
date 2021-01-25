@@ -22,12 +22,12 @@
 
 namespace rtc {
 
-OpusRTPPacketizer::OpusRTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig)
-    : RTPPacketizer(rtpConfig) {}
+OpusRtpPacketizer::OpusRtpPacketizer(std::shared_ptr<RtpPacketizationConfig> rtpConfig)
+    : RtpPacketizer(rtpConfig) {}
 
-message_ptr OpusRTPPacketizer::packetize(binary payload, bool setMark) {
+message_ptr OpusRtpPacketizer::packetize(binary payload, bool setMark) {
 	assert(!setMark);
-	return RTPPacketizer::packetize(payload, false);
+	return RtpPacketizer::packetize(payload, false);
 }
 
 } // namespace rtc

@@ -16,8 +16,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef RTPPacketizationConfig_hpp
-#define RTPPacketizationConfig_hpp
+#ifndef RTC_RTP_PACKETIZATION_CONFIG_H
+#define RTC_RTP_PACKETIZATION_CONFIG_H
 
 #if RTC_ENABLE_MEDIA
 
@@ -26,10 +26,10 @@
 namespace rtc {
 
 /// RTP configuration used in packetization process
-class RTC_CPP_EXPORT RTPPacketizationConfig {
+class RTC_CPP_EXPORT RtpPacketizationConfig {
 	uint32_t _startTimestamp = 0;
 	double _startTime_s = 0;
-	RTPPacketizationConfig(const RTPPacketizationConfig &) = delete;
+	RtpPacketizationConfig(const RtpPacketizationConfig &) = delete;
 
 public:
 	const SSRC ssrc;
@@ -65,7 +65,7 @@ public:
 	/// @param sequenceNumber Initial sequence number of RTP packets (random number is choosed if
 	/// nullopt)
 	/// @param timestamp Initial timastamp of RTP packets (random number is choosed if nullopt)
-	RTPPacketizationConfig(SSRC ssrc, std::string cname, uint8_t payloadType, uint32_t clockRate,
+	RtpPacketizationConfig(SSRC ssrc, std::string cname, uint8_t payloadType, uint32_t clockRate,
 	                       std::optional<uint16_t> sequenceNumber = std::nullopt,
 	                       std::optional<uint32_t> timestamp = std::nullopt);
 
@@ -92,4 +92,4 @@ public:
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* RTPPacketizationConfig_hpp */
+#endif /* RTC_RTP_PACKETIZATION_CONFIG_H */

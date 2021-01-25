@@ -1,5 +1,6 @@
 /**
- * Copyright (c) 2021 Staz Modrzynski
+ * Copyright (c) 2020 Staz Modrzynski
+ * Copyright (c) 2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,33 +17,32 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_SERVER_LOGCOUNTER_HPP
-#define RTC_SERVER_LOGCOUNTER_HPP
+#ifndef RTC_RTCP_HANDLER_H
+#define RTC_RTCP_HANDLER_H
 
 #include "include.hpp"
-#include "threadpool.hpp"
+#include "message.hpp"
 
 namespace rtc {
 
-class LogCounter {
-private:
-	struct LogData {
-		plog::Severity mSeverity;
-		std::string mText;
-		std::chrono::steady_clock::duration mDuration;
-
-		std::atomic<int> mCount = 0;
-	};
-
-	std::shared_ptr<LogData> mData;
+class RTC_CPP_EXPORT RtcpHandler {
+protected:
+	// Use this callback when trying to send custom data (such as RTCP) to the client.
+	synchronized_callback<message_ptr> outgoingCallback;
 
 public:
-	LogCounter(plog::Severity severity, const std::string &text,
-	           std::chrono::seconds duration = std::chrono::seconds(1));
+	// Called when there is traffic coming from the peer
+	virtual message_ptr incoming(message_ptr ptr) = 0;
 
-	LogCounter &operator++(int);
+	// Called when there is traffic that needs to be sent to the peer
+	virtual message_ptr outgoing(message_ptr ptr) = 0;
+
+	// This callback is used to send traffic back to the peer.
+	void onOutgoing(const std::function<void(message_ptr)> &cb);
+
+	virtual bool requestKeyframe() { return false; }
 };
 
 } // namespace rtc
 
-#endif // RTC_SERVER_LOGCOUNTER_HPP
+#endif // RTC_RTCP_HANDLER_H
