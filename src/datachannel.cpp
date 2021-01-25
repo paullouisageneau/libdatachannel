@@ -28,9 +28,10 @@
 #include <arpa/inet.h>
 #endif
 
-rtc::LogCounter COUNTER_USERNEG_OPEN_MESSAGE(
-    plog::warning, "Number of open messages for a user-negotiated DataChannel received");
 namespace rtc {
+
+LogCounter COUNTER_USERNEG_OPEN_MESSAGE(
+    plog::warning, "Number of open messages for a user-negotiated DataChannel received");
 
 using std::shared_ptr;
 using std::weak_ptr;

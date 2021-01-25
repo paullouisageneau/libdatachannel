@@ -56,15 +56,15 @@ using namespace std::chrono;
 
 using std::shared_ptr;
 
-static rtc::LogCounter COUNTER_UNKNOWN_PPID(plog::warning,
-                                            "Number of SCTP packets received with an unknown PPID");
-static rtc::LogCounter
+namespace rtc {
+
+static LogCounter COUNTER_UNKNOWN_PPID(plog::warning,
+                                       "Number of SCTP packets received with an unknown PPID");
+static LogCounter
     COUNTER_BAD_NOTIF_LEN(plog::warning,
                           "Number of SCTP packets received with an bad notification length");
-static rtc::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning,
-                                               "Number of SCTP packets received with a bad status");
-
-namespace rtc {
+static LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning,
+                                          "Number of SCTP packets received with a bad status");
 
 std::unordered_set<SctpTransport *> SctpTransport::Instances;
 std::shared_mutex SctpTransport::InstancesMutex;

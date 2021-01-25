@@ -22,6 +22,9 @@
 #include "include.hpp"
 #include "threadpool.hpp"
 
+#include <atomic>
+#include <chrono>
+
 namespace rtc {
 
 class LogCounter {

@@ -76,7 +76,7 @@ NalUnitStartSequenceMatch StartSequenceMatchSucc(NalUnitStartSequenceMatch match
 
 message_ptr H264PacketizationHandler::incoming(message_ptr ptr) { return ptr; }
 
-shared_ptr<NalUnits> H264PacketizationHandler::splitMessage(rtc::message_ptr message) {
+shared_ptr<NalUnits> H264PacketizationHandler::splitMessage(message_ptr message) {
 	auto nalus = make_shared<NalUnits>();
 	if (separator == Separator::Length) {
 		unsigned long long index = 0;
@@ -157,7 +157,7 @@ message_ptr H264PacketizationHandler::outgoing(message_ptr ptr) {
 H264PacketizationHandler::H264PacketizationHandler(Separator separator,
                                                    std::shared_ptr<H264RtpPacketizer> packetizer,
                                                    uint16_t maximumFragmentSize)
-    : RtcpHandler(), rtc::RtcpSenderReporter(packetizer->rtpConfig), packetizer(packetizer),
+    : RtcpHandler(), RtcpSenderReporter(packetizer->rtpConfig), packetizer(packetizer),
       maximumFragmentSize(maximumFragmentSize), separator(separator) {
 
 	senderReportOutgoingCallback = [this](message_ptr msg) { outgoingCallback(msg); };
