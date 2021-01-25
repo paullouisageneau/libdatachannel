@@ -28,6 +28,7 @@
 
 #include <atomic>
 #include <variant>
+#include <shared_mutex>
 
 namespace rtc {
 
@@ -77,6 +78,8 @@ private:
 	std::atomic<bool> mIsClosed = false;
 
 	Queue<message_ptr> mRecvQueue;
+
+	std::shared_mutex mRtcpHandlerMutex;
 	std::shared_ptr<RtcpHandler> mRtcpHandler;
 
 	friend class PeerConnection;
