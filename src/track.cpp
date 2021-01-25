@@ -62,7 +62,7 @@ bool Track::send(message_variant data) {
 
 	auto message = make_message(std::move(data));
 
-    if (auto handler = getRtcpHandler()) {
+	if (auto handler = getRtcpHandler()) {
 		message = handler->outgoing(message);
 		if (!message)
 			return false;
@@ -122,7 +122,7 @@ void Track::incoming(message_ptr message) {
 		return;
 	}
 
-    if (auto handler = getRtcpHandler()) {
+	if (auto handler = getRtcpHandler()) {
 		message = handler->incoming(message);
 		if (!message)
 			return;
@@ -159,25 +159,25 @@ bool Track::outgoing([[maybe_unused]] message_ptr message) {
 }
 
 void Track::setRtcpHandler(std::shared_ptr<RtcpHandler> handler) {
-    std::unique_lock lock(mRtcpHandlerMutex);
-    mRtcpHandler = std::move(handler);
+	std::unique_lock lock(mRtcpHandlerMutex);
+	mRtcpHandler = std::move(handler);
 	if (mRtcpHandler) {
-	    auto copy = mRtcpHandler;
-        lock.unlock();
-        copy->onOutgoing(std::bind(&Track::outgoing, this, std::placeholders::_1));
-    }
+		auto copy = mRtcpHandler;
+		lock.unlock();
+		copy->onOutgoing(std::bind(&Track::outgoing, this, std::placeholders::_1));
+	}
 }
 
 bool Track::requestKeyframe() {
-    if (auto handler = getRtcpHandler()) {
-        return handler->requestKeyframe();
-    }
+	if (auto handler = getRtcpHandler()) {
+		return handler->requestKeyframe();
+	}
 	return false;
 }
 
 std::shared_ptr<RtcpHandler> Track::getRtcpHandler() {
-    std::shared_lock lock(mRtcpHandlerMutex);
-    return mRtcpHandler;
+	std::shared_lock lock(mRtcpHandlerMutex);
+	return mRtcpHandler;
 }
 
 } // namespace rtc
