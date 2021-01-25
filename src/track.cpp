@@ -136,7 +136,7 @@ void Track::incoming(message_ptr message) {
 
 	// Tail drop if queue is full
 	if (mRecvQueue.full()) {
-        COUNTER_QUEUE_FULL++;
+		COUNTER_QUEUE_FULL++;
 		return;
 	}
 
