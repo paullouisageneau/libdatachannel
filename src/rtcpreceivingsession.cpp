@@ -137,10 +137,6 @@ void RtcpReceivingSession::pushPLI() {
 	send(msg);
 }
 
-void RtcpHandler::onOutgoing(const std::function<void(message_ptr)> &cb) {
-	this->outgoingCallback = synchronized_callback<message_ptr>(cb);
-}
-
 } // namespace rtc
 
 #endif // RTC_ENABLE_MEDIA

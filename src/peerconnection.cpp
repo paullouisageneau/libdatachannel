@@ -23,6 +23,7 @@
 #include "logcounter.hpp"
 #include "processor.hpp"
 #include "threadpool.hpp"
+#include "rtp.hpp"
 
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"

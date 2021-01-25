@@ -38,7 +38,9 @@ public:
 	virtual message_ptr outgoing(message_ptr ptr) = 0;
 
 	// This callback is used to send traffic back to the peer.
-	void onOutgoing(const std::function<void(message_ptr)> &cb);
+	void onOutgoing(const std::function<void(message_ptr)> &cb) {
+		this->outgoingCallback = synchronized_callback<message_ptr>(cb);
+	}
 
 	virtual bool requestKeyframe() { return false; }
 };
