@@ -28,6 +28,7 @@
 
 #include <atomic>
 #include <variant>
+#include <shared_mutex>
 
 namespace rtc {
 
