@@ -16,8 +16,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef OpusRTPPacketizer_hpp
-#define OpusRTPPacketizer_hpp
+#ifndef RTC_OPUS_RTP_PACKETIZER_H
+#define RTC_OPUS_RTP_PACKETIZER_H
 
 #if RTC_ENABLE_MEDIA
 
@@ -26,7 +26,7 @@
 namespace rtc {
 
 /// RTP packetizer for opus
-class RTC_CPP_EXPORT OpusRTPPacketizer : public rtc::RTPPacketizer {
+class RTC_CPP_EXPORT OpusRtpPacketizer : public RtpPacketizer {
 
 public:
 	/// default clock rate used in opus RTP communication
@@ -36,17 +36,17 @@ public:
 	/// @note RTP configuration is used in packetization process which may change some configuration
 	/// properties such as sequence number.
 	/// @param rtpConfig  RTP configuration
-	OpusRTPPacketizer(std::shared_ptr<rtc::RTPPacketizationConfig> rtpConfig);
+	OpusRtpPacketizer(std::shared_ptr<RtpPacketizationConfig> rtpConfig);
 
 	/// Creates RTP packet for given payload based on `rtpConfig`.
 	/// @note This function increase sequence number after packetization.
 	/// @param payload RTP payload
 	/// @param setMark This needs to be `false` for all RTP packets with opus payload
-	rtc::message_ptr packetize(rtc::binary payload, bool setMark) override;
+	message_ptr packetize(binary payload, bool setMark) override;
 };
 
 } // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* OpusRTPPacketizer_hpp */
+#endif /* RTC_OPUS_RTP_PACKETIZER_H */

@@ -22,7 +22,7 @@
 
 namespace rtc {
 
-RTPPacketizationConfig::RTPPacketizationConfig(SSRC ssrc, string cname, uint8_t payloadType,
+RtpPacketizationConfig::RtpPacketizationConfig(SSRC ssrc, string cname, uint8_t payloadType,
                                                uint32_t clockRate,
                                                std::optional<uint16_t> sequenceNumber,
                                                std::optional<uint32_t> timestamp)
@@ -42,7 +42,7 @@ RTPPacketizationConfig::RTPPacketizationConfig(SSRC ssrc, string cname, uint8_t 
 	this->_startTimestamp = this->timestamp;
 }
 
-void RTPPacketizationConfig::setStartTime(double startTime_s, EpochStart epochStart,
+void RtpPacketizationConfig::setStartTime(double startTime_s, EpochStart epochStart,
                                           std::optional<uint32_t> startTimestamp) {
 	this->_startTime_s = startTime_s + static_cast<unsigned long long>(epochStart);
 	if (startTimestamp.has_value()) {
@@ -53,20 +53,20 @@ void RTPPacketizationConfig::setStartTime(double startTime_s, EpochStart epochSt
 	}
 }
 
-double RTPPacketizationConfig::getSecondsFromTimestamp(uint32_t timestamp, uint32_t clockRate) {
+double RtpPacketizationConfig::getSecondsFromTimestamp(uint32_t timestamp, uint32_t clockRate) {
 	return double(timestamp) / double(clockRate);
 }
 
-double RTPPacketizationConfig::timestampToSeconds(uint32_t timestamp) {
-	return RTPPacketizationConfig::getSecondsFromTimestamp(timestamp, clockRate);
+double RtpPacketizationConfig::timestampToSeconds(uint32_t timestamp) {
+	return RtpPacketizationConfig::getSecondsFromTimestamp(timestamp, clockRate);
 }
 
-uint32_t RTPPacketizationConfig::getTimestampFromSeconds(double seconds, uint32_t clockRate) {
+uint32_t RtpPacketizationConfig::getTimestampFromSeconds(double seconds, uint32_t clockRate) {
 	return uint32_t(seconds * clockRate);
 }
 
-uint32_t RTPPacketizationConfig::secondsToTimestamp(double seconds) {
-	return RTPPacketizationConfig::getTimestampFromSeconds(seconds, clockRate);
+uint32_t RtpPacketizationConfig::secondsToTimestamp(double seconds) {
+	return RtpPacketizationConfig::getTimestampFromSeconds(seconds, clockRate);
 }
 
 } // namespace rtc

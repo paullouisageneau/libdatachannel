@@ -282,7 +282,7 @@ int rtcSetTrackRTPTimestamp(int id, uint32_t timestamp);
 /// @param timestamp Pointer for result
 int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t * timestamp);
 
-/// Set `NeedsToReport` flag in RTCPSenderReportable handler identified by given track id
+/// Set `NeedsToReport` flag in RtcpSenderReporter handler identified by given track id
 /// @param id Track id
 int rtcSetNeedsToSendRTCPSR(int id);
 

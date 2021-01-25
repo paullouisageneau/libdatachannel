@@ -217,9 +217,9 @@ shared_ptr<ClientTrackData> addVideo(const shared_ptr<PeerConnection> pc, const 
     video.addSSRC(ssrc, cname, msid);
     auto track = pc->addTrack(video);
     // create RTP configuration
-    auto rtpConfig = shared_ptr<RTPPacketizationConfig>(new RTPPacketizationConfig(ssrc, cname, payloadType, H264RTPPacketizer::defaultClockRate));
+    auto rtpConfig = shared_ptr<RtpPacketizationConfig>(new RtpPacketizationConfig(ssrc, cname, payloadType, H264RtpPacketizer::defaultClockRate));
     // create packetizer
-    auto packetizer = shared_ptr<H264RTPPacketizer>(new H264RTPPacketizer(rtpConfig));
+    auto packetizer = shared_ptr<H264RtpPacketizer>(new H264RtpPacketizer(rtpConfig));
     // create H264 and RTCP SP handler
     shared_ptr<H264PacketizationHandler> h264Handler(new H264PacketizationHandler(H264PacketizationHandler::Separator::Length, packetizer));
     // set handler
@@ -235,9 +235,9 @@ shared_ptr<ClientTrackData> addAudio(const shared_ptr<PeerConnection> pc, const 
     audio.addSSRC(ssrc, cname, msid);
     auto track = pc->addTrack(audio);
     // create RTP configuration
-    auto rtpConfig = shared_ptr<RTPPacketizationConfig>(new RTPPacketizationConfig(ssrc, cname, payloadType, OpusRTPPacketizer::defaultClockRate));
+    auto rtpConfig = shared_ptr<RtpPacketizationConfig>(new RtpPacketizationConfig(ssrc, cname, payloadType, OpusRtpPacketizer::defaultClockRate));
     // create packetizer
-    auto packetizer = make_shared<OpusRTPPacketizer>(rtpConfig);
+    auto packetizer = make_shared<OpusRtpPacketizer>(rtpConfig);
     // create opus and RTCP SP handler
     auto opusHandler = make_shared<OpusPacketizationHandler>(packetizer);
     // set handler
@@ -449,8 +449,8 @@ void addToStream(shared_ptr<Client> client, bool isAddingVideo) {
         auto currentTime_s = currentTime_us / (1000 * 1000);
 
         // set start time of stream
-        video->sender->rtpConfig->setStartTime(currentTime_s, RTPPacketizationConfig::EpochStart::T1970);
-        audio->sender->rtpConfig->setStartTime(currentTime_s, RTPPacketizationConfig::EpochStart::T1970);
+        video->sender->rtpConfig->setStartTime(currentTime_s, RtpPacketizationConfig::EpochStart::T1970);
+        audio->sender->rtpConfig->setStartTime(currentTime_s, RtpPacketizationConfig::EpochStart::T1970);
 
         // start stat recording of RTCP SR
         video->sender->startRecording();

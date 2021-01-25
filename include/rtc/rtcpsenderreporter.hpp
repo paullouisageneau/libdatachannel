@@ -16,8 +16,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef RTCPSenderReporter_hpp
-#define RTCPSenderReporter_hpp
+#ifndef RTC_RTCP_SENDER_REPORTABLE_H
+#define RTC_RTCP_SENDER_REPORTABLE_H
 
 #if RTC_ENABLE_MEDIA
 
@@ -27,7 +27,7 @@
 namespace rtc {
 
 /// Class for sending RTCP SR
-class RTC_CPP_EXPORT RTCPSenderReportable {
+class RTC_CPP_EXPORT RtcpSenderReporter {
 	bool needsToReport = false;
 
 	uint32_t packetCount = 0;
@@ -50,9 +50,9 @@ public:
 	const uint32_t &previousReportedTimestamp = _previousReportedTimestamp;
 
 	/// RTP configuration
-	const std::shared_ptr<RTPPacketizationConfig> rtpConfig;
+	const std::shared_ptr<RtpPacketizationConfig> rtpConfig;
 
-	RTCPSenderReportable(std::shared_ptr<RTPPacketizationConfig> rtpConfig);
+	RtcpSenderReporter(std::shared_ptr<RtpPacketizationConfig> rtpConfig);
 
 	/// Set `needsToReport` flag. Sender report will be sent before next RTP packet with same
 	/// timestamp.
@@ -90,4 +90,4 @@ protected:
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* RTCPSenderReporter_hpp */
+#endif /* RTC_RTCP_SENDER_REPORTABLE_H */

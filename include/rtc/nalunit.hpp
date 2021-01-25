@@ -60,22 +60,22 @@ private:
 #pragma pack(pop)
 
 /// Nal unit
-struct RTC_CPP_EXPORT NalUnit : rtc::binary {
+struct RTC_CPP_EXPORT NalUnit : binary {
 	NalUnit(const NalUnit &unit) = default;
 	NalUnit(size_t size, bool includingHeader = true)
-	    : rtc::binary(size + (includingHeader ? 0 : 1)) {}
+	    : binary(size + (includingHeader ? 0 : 1)) {}
 
 	template <typename Iterator>
-	NalUnit(Iterator begin_, Iterator end_) : rtc::binary(begin_, end_) {}
+	NalUnit(Iterator begin_, Iterator end_) : binary(begin_, end_) {}
 
-	NalUnit(rtc::binary &&data) : rtc::binary(std::move(data)) {}
+	NalUnit(binary &&data) : binary(std::move(data)) {}
 
-	NalUnit() : rtc::binary(1) {}
+	NalUnit() : binary(1) {}
 
 	bool forbiddenBit() { return header()->forbiddenBit(); }
 	uint8_t nri() { return header()->nri(); }
 	uint8_t unitType() { return header()->unitType(); }
-	rtc::binary payload() {
+	binary payload() {
 		assert(size() >= 1);
 		return {begin() + 1, end()};
 	}
@@ -83,7 +83,7 @@ struct RTC_CPP_EXPORT NalUnit : rtc::binary {
 	void setForbiddenBit(bool isSet) { header()->setForbiddenBit(isSet); }
 	void setNRI(uint8_t nri) { header()->setNRI(nri); }
 	void setUnitType(uint8_t type) { header()->setUnitType(type); }
-	void setPayload(rtc::binary payload) {
+	void setPayload(binary payload) {
 		assert(size() >= 1);
 		erase(begin() + 1, end());
 		insert(end(), payload.begin(), payload.end());
@@ -101,13 +101,13 @@ struct RTC_CPP_EXPORT NalUnitFragmentA : NalUnit {
 	enum class FragmentType { Start, Middle, End };
 
 	NalUnitFragmentA(FragmentType type, bool forbiddenBit, uint8_t nri, uint8_t unitType,
-	                 rtc::binary data);
+	                 binary data);
 
 	static std::vector<NalUnitFragmentA> fragmentsFrom(NalUnit nalu, uint16_t maximumFragmentSize);
 
 	uint8_t unitType() { return fragmentHeader()->unitType(); }
 
-	rtc::binary payload() {
+	binary payload() {
 		assert(size() >= 2);
 		return {begin() + 2, end()};
 	}
@@ -124,7 +124,7 @@ struct RTC_CPP_EXPORT NalUnitFragmentA : NalUnit {
 
 	void setUnitType(uint8_t type) { fragmentHeader()->setUnitType(type); }
 
-	void setPayload(rtc::binary payload) {
+	void setPayload(binary payload) {
 		assert(size() >= 2);
 		erase(begin() + 2, end());
 		insert(end(), payload.begin(), payload.end());
@@ -145,7 +145,7 @@ protected:
 class RTC_CPP_EXPORT NalUnits : public std::vector<NalUnit> {
 public:
 	static const uint16_t defaultMaximumFragmentSize = 1400;
-	std::vector<rtc::binary>
+	std::vector<binary>
 	generateFragments(uint16_t maximumFragmentSize = NalUnits::defaultMaximumFragmentSize);
 };
 

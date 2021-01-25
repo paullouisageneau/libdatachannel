@@ -29,28 +29,28 @@ using std::shared_ptr;
 using std::to_integer;
 using std::to_string;
 
-static rtc::LogCounter COUNTER_MEDIA_TRUNCATED(plog::warning,
+namespace rtc {
+
+static LogCounter COUNTER_MEDIA_TRUNCATED(plog::warning,
                                                "Number of truncated SRT(C)P packets received");
-static rtc::LogCounter
+static LogCounter
     COUNTER_UNKNOWN_PACKET_TYPE(plog::warning,
                                 "Number of RTP packets received with an unknown packet type");
-static rtc::LogCounter COUNTER_SRTCP_REPLAY(plog::warning,
+static LogCounter COUNTER_SRTCP_REPLAY(plog::warning,
                                             "Number of SRTCP replay packets received");
-static rtc::LogCounter
+static LogCounter
     COUNTER_SRTCP_AUTH_FAIL(plog::warning,
                             "Number of SRTCP packets received that failed authentication checks");
-static rtc::LogCounter
+static LogCounter
     COUNTER_SRTCP_FAIL(plog::warning,
                        "Number of SRTCP packets received that had an unknown libSRTP failure");
-static rtc::LogCounter COUNTER_SRTP_REPLAY(plog::warning, "Number of SRTP replay packets received");
-static rtc::LogCounter
+static LogCounter COUNTER_SRTP_REPLAY(plog::warning, "Number of SRTP replay packets received");
+static LogCounter
     COUNTER_SRTP_AUTH_FAIL(plog::warning,
                            "Number of SRTP packets received that failed authentication checks");
 static rtc::LogCounter
     COUNTER_SRTP_FAIL(plog::warning,
                       "Number of SRTP packets received that had an unknown libSRTP failure");
-
-namespace rtc {
 
 void DtlsSrtpTransport::Init() { srtp_init(); }
 

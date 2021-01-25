@@ -16,13 +16,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef WEBRTC_SERVER_LOGCOUNTER_HPP
-#define WEBRTC_SERVER_LOGCOUNTER_HPP
+#ifndef RTC_SERVER_LOGCOUNTER_HPP
+#define RTC_SERVER_LOGCOUNTER_HPP
 
 #include "include.hpp"
 #include "threadpool.hpp"
 
+#include <atomic>
+#include <chrono>
+
 namespace rtc {
+
 class LogCounter {
 private:
 	struct LogData {
@@ -41,6 +45,7 @@ public:
 
 	LogCounter &operator++(int);
 };
+
 } // namespace rtc
 
-#endif // WEBRTC_SERVER_LOGCOUNTER_HPP
+#endif // RTC_SERVER_LOGCOUNTER_HPP

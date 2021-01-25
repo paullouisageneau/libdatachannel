@@ -16,8 +16,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef RTPPacketizer_hpp
-#define RTPPacketizer_hpp
+#ifndef RTC_RTP_PACKETIZER_H
+#define RTC_RTP_PACKETIZER_H
 
 #if RTC_ENABLE_MEDIA
 
@@ -26,19 +26,19 @@
 
 namespace rtc {
 
-/// Class responsizble for rtp packetization
-class RTC_CPP_EXPORT RTPPacketizer {
+/// Class responsible for RTP packetization
+class RTC_CPP_EXPORT RtpPacketizer {
 	static const auto rtpHeaderSize = 12;
 
 public:
-	// rtp configuration
-	const std::shared_ptr<RTPPacketizationConfig> rtpConfig;
+	// RTP configuration
+	const std::shared_ptr<RtpPacketizationConfig> rtpConfig;
 
 	/// Constructs packetizer with given RTP configuration.
 	/// @note RTP configuration is used in packetization process which may change some configuration
 	/// properties such as sequence number.
 	/// @param rtpConfig  RTP configuration
-	RTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig);
+	RtpPacketizer(std::shared_ptr<RtpPacketizationConfig> rtpConfig);
 
 	/// Creates RTP packet for given payload based on `rtpConfig`.
 	/// @note This function increase sequence number after packetization.
@@ -51,4 +51,4 @@ public:
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* RTPPacketizer_hpp */
+#endif /* RTC_RTP_PACKETIZER_H */

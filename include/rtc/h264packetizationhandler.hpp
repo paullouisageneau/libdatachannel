@@ -16,22 +16,22 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef H264PacketizationHandler_hpp
-#define H264PacketizationHandler_hpp
+#ifndef H264_PACKETIZATION_HANDLER_H
+#define H264_PACKETIZATION_HANDLER_H
 
 #if RTC_ENABLE_MEDIA
 
 #include "h264rtppacketizer.hpp"
 #include "nalunit.hpp"
-#include "rtcp.hpp"
-#include "rtcpsenderreportable.hpp"
+#include "rtcphandler.hpp"
+#include "rtcpsenderreporter.hpp"
 
 namespace rtc {
 
 /// Handler for H264 packetization
-class RTC_CPP_EXPORT H264PacketizationHandler : public RtcpHandler, public RTCPSenderReportable {
+class RTC_CPP_EXPORT H264PacketizationHandler : public RtcpHandler, public RtcpSenderReporter {
 	/// RTP packetizer for H264
-	const std::shared_ptr<H264RTPPacketizer> packetizer;
+	const std::shared_ptr<H264RtpPacketizer> packetizer;
 
 	const uint16_t maximumFragmentSize;
 
@@ -49,7 +49,7 @@ public:
 	/// Construct handler for H264 packetization.
 	/// @param separator Nal units separator
 	/// @param packetizer RTP packetizer for h264
-	H264PacketizationHandler(Separator separator, std::shared_ptr<H264RTPPacketizer> packetizer,
+	H264PacketizationHandler(Separator separator, std::shared_ptr<H264RtpPacketizer> packetizer,
 	                         uint16_t maximumFragmentSize = NalUnits::defaultMaximumFragmentSize);
 
 	/// Returns message unchanged
@@ -73,4 +73,4 @@ private:
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* H264PacketizationHandler_hpp */
+#endif /* H264_PACKETIZATION_HANDLER_H */

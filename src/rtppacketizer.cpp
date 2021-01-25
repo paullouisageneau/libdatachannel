@@ -22,10 +22,10 @@
 
 namespace rtc {
 
-RTPPacketizer::RTPPacketizer(std::shared_ptr<RTPPacketizationConfig> rtpConfig)
+RtpPacketizer::RtpPacketizer(std::shared_ptr<RtpPacketizationConfig> rtpConfig)
     : rtpConfig(rtpConfig) {}
 
-message_ptr RTPPacketizer::packetize(binary payload, bool setMark) {
+message_ptr RtpPacketizer::packetize(binary payload, bool setMark) {
 	auto msg = make_message(rtpHeaderSize + payload.size());
 	auto *rtp = (RTP *)msg->data();
 	rtp->setPayloadType(rtpConfig->payloadType);

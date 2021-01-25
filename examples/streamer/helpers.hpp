@@ -23,9 +23,9 @@
 
 struct ClientTrackData {
     std::shared_ptr<rtc::Track> track;
-    std::shared_ptr<rtc::RTCPSenderReportable> sender;
+    std::shared_ptr<rtc::RtcpSenderReporter> sender;
 
-    ClientTrackData(std::shared_ptr<rtc::Track> track, std::shared_ptr<rtc::RTCPSenderReportable> sender);
+    ClientTrackData(std::shared_ptr<rtc::Track> track, std::shared_ptr<rtc::RtcpSenderReporter> sender);
 };
 
 struct Client {

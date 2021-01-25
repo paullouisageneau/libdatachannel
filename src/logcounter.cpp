@@ -18,15 +18,17 @@
 
 #include "logcounter.hpp"
 
-rtc::LogCounter::LogCounter(plog::Severity severity, const std::string &text,
-                            std::chrono::seconds duration) {
+namespace rtc {
+
+LogCounter::LogCounter(plog::Severity severity, const std::string &text,
+                       std::chrono::seconds duration) {
 	mData = std::make_shared<LogData>();
 	mData->mDuration = duration;
 	mData->mSeverity = severity;
 	mData->mText = text;
 }
 
-rtc::LogCounter &rtc::LogCounter::operator++(int) {
+LogCounter &LogCounter::operator++(int) {
 	if (mData->mCount++ == 0) {
 		ThreadPool::Instance().schedule(
 		    mData->mDuration,
@@ -44,3 +46,5 @@ rtc::LogCounter &rtc::LogCounter::operator++(int) {
 	}
 	return *this;
 }
+
+} // namespace rtc
