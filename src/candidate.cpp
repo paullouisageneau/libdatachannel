@@ -99,7 +99,7 @@ void Candidate::parse(string candidate) {
 
 	// See RFC 8445 for format
 	std::istringstream iss(candidate);
-	string transport, typ_, type;
+	string typ_;
 	if (!(iss >> mFoundation >> mComponent >> mTransportString >> mPriority &&
 	      iss >> mNode >> mService >> typ_ >> mTypeString && typ_ == "typ"))
 		throw std::invalid_argument("Invalid candidate format");
@@ -113,9 +113,9 @@ void Candidate::parse(string candidate) {
 	else
 		mType = Type::Unknown;
 
-	if (transport == "UDP" || transport == "udp") {
+	if (mTransportString == "UDP" || mTransportString == "udp") {
 		mTransportType = TransportType::Udp;
-	} else if (transport == "TCP" || transport == "tcp") {
+	} else if (mTransportString == "TCP" || mTransportString == "tcp") {
 		// Peek tail to find TCP type
 		std::istringstream tiss(mTail);
 		string tcptype_, tcptype;
