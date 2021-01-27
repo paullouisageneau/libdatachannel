@@ -73,6 +73,8 @@ $ git submodule update --init --recursive
 
 The CMake library targets `libdatachannel` and `libdatachannel-static` respectively correspond to the shared and static libraries. The default target will build tests and examples. The option `USE_GNUTLS` allows to switch between OpenSSL (default) and GnuTLS, and the option `USE_NICE` allows to switch between libjuice as submodule (default) and libnice.
 
+If you only need Data Channels, the option `NO_MEDIA` allows to make the library lighter by removing media support. Similarly, `NO_WEBSOCKET` removes WebSocket support.
+
 #### POSIX-compliant operating systems (including Linux and Apple macOS)
 ```bash
 $ cmake -B build -DUSE_GNUTLS=1 -DUSE_NICE=0
@@ -120,6 +122,8 @@ $ nmake
 ### Building directly with Make (Linux only)
 
 The option `USE_GNUTLS` allows to switch between OpenSSL (default) and GnuTLS, and the option `USE_NICE` allows to switch between libjuice as submodule (default) and libnice.
+
+If you only need Data Channels, the option `NO_MEDIA` removes media support. Similarly, `NO_WEBSOCKET` removes WebSocket support.
 
 ```bash
 $ make USE_GNUTLS=1 USE_NICE=0
