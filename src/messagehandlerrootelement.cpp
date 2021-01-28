@@ -1,5 +1,4 @@
-/*
- * libdatachannel client example
+/**
  * Copyright (c) 2020 Filip Klembara (in2core)
  *
  * This program is free software; you can redistribute it and/or
@@ -18,11 +17,26 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "h264packetizationhandler.hpp"
+#include "messagehandlerrootelement.hpp"
 
 namespace rtc {
 
-H264PacketizationHandler::H264PacketizationHandler(std::shared_ptr<H264RtpPacketizer> packetizer): RtcpChainableHandler(packetizer) { }
+message_ptr MessageHandlerRootElement::reduce(ChainedMessagesProduct messages) {
+	if (messages && !messages->empty()) {
+		auto msg_ptr = messages->front();
+		if (msg_ptr) {
+			return make_message(*msg_ptr);
+		} else {
+			return nullptr;
+		}
+	} else {
+		return nullptr;
+	}
+}
+
+ChainedMessagesProduct MessageHandlerRootElement::split(message_ptr message) {
+	return make_chained_messages_product(message);
+}
 
 } // namespace rtc
 

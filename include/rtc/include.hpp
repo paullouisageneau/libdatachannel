@@ -56,6 +56,7 @@ using std::byte;
 using std::string;
 using std::string_view;
 using binary = std::vector<byte>;
+using binary_ptr = std::shared_ptr<binary>;
 
 using std::nullopt;
 

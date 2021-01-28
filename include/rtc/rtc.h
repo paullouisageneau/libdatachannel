@@ -239,6 +239,10 @@ RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char 
 /// @param _timestamp Timestamp
 RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t _sequenceNumber, uint32_t _timestamp);
 
+/// Chain RtcpSRReporter to handler chain for given track
+/// @param tr Track id
+int rtcChainRtcpSRReporter(int tr);
+
 /// Set start time for RTP stream
 /// @param startTime_s Start time in seconds
 /// @param timeIntervalSince1970 Set true if `startTime_s` is time interval since 1970, false if `startTime_s` is time interval since 1900
@@ -248,7 +252,6 @@ int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeInterva
 /// Start stats recording for RTCP Sender Reporter
 /// @param id Track identifier
 int rtcStartRtcpSenderReporterRecording(int id);
-
 
 /// Transform seconds to timestamp using track's clock rate
 /// @param id Track id

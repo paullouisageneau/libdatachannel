@@ -29,6 +29,9 @@
 
 // RTCP handling
 #include "rtcpreceivingsession.hpp"
+#include "rtcpchainablehandler.hpp"
+#include "rtcpsrreporter.hpp"
+#include "rtcpnackresponder.hpp"
 
 // Opus/h264 streaming
 #include "h264packetizationhandler.hpp"

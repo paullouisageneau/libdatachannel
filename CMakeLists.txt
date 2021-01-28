@@ -67,13 +67,16 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/processor.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizationconfig.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsenderreporter.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsrreporter.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/opusrtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/opuspacketizationhandler.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h264rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/nalunit.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h264packetizationhandler.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpchainablehandler.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/messagehandlerelement.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/messagehandlerrootelement.cpp
 )
 
 set(LIBDATACHANNEL_WEBSOCKET_SOURCES
@@ -107,13 +110,16 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/track.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocket.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizationconfig.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpsenderreporter.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpsrreporter.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/opusrtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/opuspacketizationhandler.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/nalunit.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264packetizationhandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpchainablehandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/messagehandlerelement.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/messagehandlerrootelement.hpp
 )
 
 set(TESTS_SOURCES
