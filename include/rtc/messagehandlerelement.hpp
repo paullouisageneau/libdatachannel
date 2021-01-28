@@ -54,7 +54,7 @@ struct RTC_CPP_EXPORT ChainedIncomingProduct {
 
 /// Incoming control messages with response
 struct RTC_CPP_EXPORT ChainedIncomingControlProduct {
-	ChainedIncomingControlProduct(message_ptr incoming, std::optional<ChainedMessagesProduct> outgoing = nullopt);
+	ChainedIncomingControlProduct(message_ptr incoming, std::optional<ChainedOutgoingResponseProduct> outgoing = nullopt);
 	const std::optional<message_ptr> incoming;
 	const std::optional<ChainedOutgoingResponseProduct> outgoing;
 };
@@ -76,31 +76,31 @@ public:
 	std::optional<ChainedOutgoingResponseProduct> processOutgoingResponse(ChainedOutgoingResponseProduct messages);
 
 	// Process incoming and ougoing messages
-	std::optional<message_ptr> processIncomingControl(message_ptr message, std::function<bool (ChainedOutgoingResponseProduct)> send);
-	std::optional<ChainedMessagesProduct> processIncomingBinary(ChainedMessagesProduct messages, std::function<bool (ChainedOutgoingResponseProduct)> send);
-	std::optional<message_ptr> processOutgoingControl(message_ptr message);
-	std::optional<ChainedOutgoingProduct> processOutgoingBinary(ChainedOutgoingProduct product);
+	std::optional<message_ptr> formIncomingControlMessage(message_ptr message, std::function<bool (ChainedOutgoingResponseProduct)> send);
+	std::optional<ChainedMessagesProduct> formIncomingBinaryMessage(ChainedMessagesProduct messages, std::function<bool (ChainedOutgoingResponseProduct)> send);
+	std::optional<message_ptr> formOutgoingControlMessage(message_ptr message);
+	std::optional<ChainedOutgoingProduct> formOutgoingBinaryMessage(ChainedOutgoingProduct product);
 
-	/// Modifies current control message
+	/// Process current control message
 	/// @param messages current message
 	/// @returns Modified message and response
-	virtual ChainedIncomingControlProduct modifyIncomingControl(message_ptr messages);
+	virtual ChainedIncomingControlProduct processIncomingControlMessage(message_ptr messages);
 
-	/// Modifies current control message
+	/// Process current control message
 	/// @param messages current message
 	/// @returns Modified message
-	virtual message_ptr modifyOutgoingControl(message_ptr messages);
+	virtual message_ptr processOutgoingControlMessage(message_ptr messages);
 
-	/// Modifies current binary message
+	/// Process current binary message
 	/// @param messages current message
 	/// @returns Modified message and response
-	virtual ChainedIncomingProduct modifyIncomingBinary(ChainedMessagesProduct messages);
+	virtual ChainedIncomingProduct processIncomingBinaryMessage(ChainedMessagesProduct messages);
 
-	/// Modifies current binary message
+	/// Process current binary message
 	/// @param messages current message
 	/// @param control current control message
 	/// @returns Modified binary message and control message
-	virtual ChainedOutgoingProduct modifyOutgoingBinary(ChainedMessagesProduct messages, std::optional<message_ptr> control);
+	virtual ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control);
 
 	/// Set given element as upstream to this
 	/// @param upstream Upstream element

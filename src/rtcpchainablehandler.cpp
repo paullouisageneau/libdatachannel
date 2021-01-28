@@ -56,7 +56,7 @@ bool RtcpChainableHandler::sendProduct(ChainedOutgoingResponseProduct product) {
 std::optional<message_ptr> RtcpChainableHandler::handleIncomingBinary(message_ptr msg) {
 	assert(msg->type == Message::Binary);
 	auto messages = root->split(msg);
-	auto incoming = leaf->processIncomingBinary(messages, [this](ChainedOutgoingResponseProduct outgoing) {
+	auto incoming = leaf->formIncomingBinaryMessage(messages, [this](ChainedOutgoingResponseProduct outgoing) {
 		return sendProduct(outgoing);
 	});
 	if (incoming.has_value()) {
@@ -68,7 +68,7 @@ std::optional<message_ptr> RtcpChainableHandler::handleIncomingBinary(message_pt
 
 std::optional<message_ptr> RtcpChainableHandler::handleIncomingControl(message_ptr msg) {
 	assert(msg->type == Message::Control);
-	auto incoming = leaf->processIncomingControl(msg, [this](ChainedOutgoingResponseProduct outgoing) {
+	auto incoming = leaf->formIncomingControlMessage(msg, [this](ChainedOutgoingResponseProduct outgoing) {
 		return sendProduct(outgoing);
 	});
 	assert(!incoming.has_value() || incoming.value()->type == Message::Control);
@@ -78,7 +78,7 @@ std::optional<message_ptr> RtcpChainableHandler::handleIncomingControl(message_p
 std::optional<message_ptr> RtcpChainableHandler::handleOutgoingBinary(message_ptr msg) {
 	assert(msg->type == Message::Binary);
 	auto messages = make_chained_messages_product(msg);
-	auto optOutgoing = root->processOutgoingBinary(ChainedOutgoingProduct(messages));
+	auto optOutgoing = root->formOutgoingBinaryMessage(ChainedOutgoingProduct(messages));
 	if (!optOutgoing.has_value()) {
 		LOG_ERROR << "Generating outgoing message failed";
 		return nullopt;
@@ -108,7 +108,7 @@ std::optional<message_ptr> RtcpChainableHandler::handleOutgoingBinary(message_pt
 
 std::optional<message_ptr> RtcpChainableHandler::handleOutgoingControl(message_ptr msg) {
 	assert(msg->type == Message::Control);
-	auto optOutgoing = root->processOutgoingControl(msg);
+	auto optOutgoing = root->formOutgoingControlMessage(msg);
 	assert(!optOutgoing.has_value() || optOutgoing.value()->type == Message::Control);
 	if (!optOutgoing.has_value()) {
 		LOG_ERROR << "Generating outgoing control message failed";

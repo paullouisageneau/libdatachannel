@@ -22,8 +22,7 @@
 namespace rtc {
 
 ChainedMessagesProduct make_chained_messages_product() {
-	std::vector<binary_ptr> msgs = {};
-	return std::make_shared<std::vector<binary_ptr>>(msgs);
+	return std::make_shared<std::vector<binary_ptr>>();
 }
 
 ChainedMessagesProduct make_chained_messages_product(message_ptr msg) {
@@ -40,7 +39,7 @@ ChainedOutgoingResponseProduct::ChainedOutgoingResponseProduct(std::optional<Cha
 ChainedIncomingProduct::ChainedIncomingProduct(std::optional<ChainedMessagesProduct> incoming, std::optional<ChainedMessagesProduct> outgoing)
 : incoming(incoming), outgoing(outgoing) { }
 
-ChainedIncomingControlProduct::ChainedIncomingControlProduct(message_ptr incoming, std::optional<ChainedMessagesProduct> outgoing)
+ChainedIncomingControlProduct::ChainedIncomingControlProduct(message_ptr incoming, std::optional<ChainedOutgoingResponseProduct> outgoing)
 : incoming(incoming), outgoing(outgoing) { }
 
 MessageHandlerElement::MessageHandlerElement() { }
@@ -66,7 +65,7 @@ void MessageHandlerElement::recursiveRemoveChain() {
 std::optional<ChainedOutgoingResponseProduct> MessageHandlerElement::processOutgoingResponse(ChainedOutgoingResponseProduct messages) {
 	if (messages.messages.has_value()) {
 		if (upstream.has_value()) {
-			auto msgs = upstream.value()->processOutgoingBinary(ChainedOutgoingProduct(messages.messages.value(), messages.control));
+			auto msgs = upstream.value()->formOutgoingBinaryMessage(ChainedOutgoingProduct(messages.messages.value(), messages.control));
 			if (msgs.has_value()) {
 				auto messages = msgs.value();
 				return ChainedOutgoingResponseProduct(std::make_optional(messages.messages), messages.control);
@@ -79,7 +78,7 @@ std::optional<ChainedOutgoingResponseProduct> MessageHandlerElement::processOutg
 		}
 	} else if (messages.control.has_value()) {
 		if (upstream.has_value()) {
-			auto control = upstream.value()->processOutgoingControl(messages.control.value());
+			auto control = upstream.value()->formOutgoingControlMessage(messages.control.value());
 			if (control.has_value()) {
 				return ChainedOutgoingResponseProduct(nullopt, control.value());
 			} else {
@@ -108,14 +107,14 @@ void MessageHandlerElement::prepareAndSendResponse(std::optional<ChainedOutgoing
 	}
 }
 
-std::optional<message_ptr> MessageHandlerElement::processIncomingControl(message_ptr message, std::function<bool (ChainedOutgoingResponseProduct)> send) {
+std::optional<message_ptr> MessageHandlerElement::formIncomingControlMessage(message_ptr message, std::function<bool (ChainedOutgoingResponseProduct)> send) {
 	assert(message);
-	auto product = modifyIncomingControl(message);
+	auto product = processIncomingControlMessage(message);
 	prepareAndSendResponse(product.outgoing, send);
 	if (product.incoming.has_value()) {
 		if (downstream.has_value()) {
 			if (product.incoming.value()) {
-				return downstream.value()->processIncomingControl(product.incoming.value(), send);
+				return downstream.value()->formIncomingControlMessage(product.incoming.value(), send);
 			} else {
 				LOG_DEBUG << "Failed to generate incoming message";
 				return nullopt;
@@ -128,14 +127,14 @@ std::optional<message_ptr> MessageHandlerElement::processIncomingControl(message
 	}
 }
 
-std::optional<ChainedMessagesProduct> MessageHandlerElement::processIncomingBinary(ChainedMessagesProduct messages, std::function<bool (ChainedOutgoingResponseProduct)> send) {
+std::optional<ChainedMessagesProduct> MessageHandlerElement::formIncomingBinaryMessage(ChainedMessagesProduct messages, std::function<bool (ChainedOutgoingResponseProduct)> send) {
 	assert(messages && !messages->empty());
-	auto product = modifyIncomingBinary(messages);
+	auto product = processIncomingBinaryMessage(messages);
 	prepareAndSendResponse(product.outgoing, send);
 	if (product.incoming.has_value()) {
 		if (downstream.has_value()) {
 			if (product.incoming.value()) {
-				return downstream.value()->processIncomingBinary(product.incoming.value(), send);
+				return downstream.value()->formIncomingBinaryMessage(product.incoming.value(), send);
 			} else {
 				LOG_ERROR << "Failed to generate incoming message";
 				return nullopt;
@@ -148,24 +147,24 @@ std::optional<ChainedMessagesProduct> MessageHandlerElement::processIncomingBina
 	}
 }
 
-std::optional<message_ptr> MessageHandlerElement::processOutgoingControl(message_ptr message) {
+std::optional<message_ptr> MessageHandlerElement::formOutgoingControlMessage(message_ptr message) {
 	assert(message);
-	auto newMessage = modifyOutgoingControl(message);
+	auto newMessage = processOutgoingControlMessage(message);
 	assert(newMessage);
 	if(!newMessage) {
 		LOG_ERROR << "Failed to generate outgoing message";
 		return nullopt;
 	}
 	if (upstream.has_value()) {
-		return upstream.value()->processOutgoingControl(newMessage);
+		return upstream.value()->formOutgoingControlMessage(newMessage);
 	} else {
 		return newMessage;
 	}
 }
 
-std::optional<ChainedOutgoingProduct> MessageHandlerElement::processOutgoingBinary(ChainedOutgoingProduct product) {
+std::optional<ChainedOutgoingProduct> MessageHandlerElement::formOutgoingBinaryMessage(ChainedOutgoingProduct product) {
 	assert(product.messages && !product.messages->empty());
-	auto newProduct = modifyOutgoingBinary(product.messages, product.control);
+	auto newProduct = processOutgoingBinaryMessage(product.messages, product.control);
 	assert(!product.control.has_value() || newProduct.control.has_value());
 	assert(!newProduct.control.has_value() || newProduct.control.value());
 	assert(newProduct.messages && !newProduct.messages->empty());
@@ -182,25 +181,25 @@ std::optional<ChainedOutgoingProduct> MessageHandlerElement::processOutgoingBina
 		return nullopt;
 	}
 	if (upstream.has_value()) {
-		return upstream.value()->processOutgoingBinary(newProduct);
+		return upstream.value()->formOutgoingBinaryMessage(newProduct);
 	} else {
 		return newProduct;
 	}
 }
 
-ChainedIncomingControlProduct MessageHandlerElement::modifyIncomingControl(message_ptr messages) {
+ChainedIncomingControlProduct MessageHandlerElement::processIncomingControlMessage(message_ptr messages) {
 	return {messages};
 }
 
-message_ptr MessageHandlerElement::modifyOutgoingControl(message_ptr messages) {
+message_ptr MessageHandlerElement::processOutgoingControlMessage(message_ptr messages) {
 	return messages;
 }
 
-ChainedIncomingProduct MessageHandlerElement::modifyIncomingBinary(ChainedMessagesProduct messages) {
+ChainedIncomingProduct MessageHandlerElement::processIncomingBinaryMessage(ChainedMessagesProduct messages) {
 	return {messages};
 }
 
-ChainedOutgoingProduct MessageHandlerElement::modifyOutgoingBinary(ChainedMessagesProduct messages, std::optional<message_ptr> control) {
+ChainedOutgoingProduct MessageHandlerElement::processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) {
 	return {messages, control};
 }
 
