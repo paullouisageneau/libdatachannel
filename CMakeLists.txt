@@ -77,6 +77,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpchainablehandler.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/messagehandlerelement.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/messagehandlerrootelement.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.cpp
 )
 
 set(LIBDATACHANNEL_WEBSOCKET_SOURCES
@@ -120,6 +121,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpchainablehandler.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/messagehandlerelement.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/messagehandlerrootelement.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.hpp
 )
 
 set(TESTS_SOURCES

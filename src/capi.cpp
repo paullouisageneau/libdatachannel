@@ -593,6 +593,14 @@ int rtcChainRtcpSRReporter(int tr) {
 	});
 }
 
+int rtcChainRtcpNackResponder(int tr, unsigned maxStoredPacketsCount) {
+	return WRAP({
+		auto responder = std::make_shared<RtcpNackResponder>(maxStoredPacketsCount);
+		auto chainableHandler = getRTCPChainableHandler(tr);
+		chainableHandler->addToChain(responder);
+	});
+}
+
 int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970,
                                     uint32_t timestamp) {
 	return WRAP({

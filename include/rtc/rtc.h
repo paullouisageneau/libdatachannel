@@ -41,6 +41,7 @@ extern "C" {
 
 #if RTC_ENABLE_MEDIA
 #define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE ((uint16_t)1400)
+#define RTC_DEFAULT_MAXIMUM_PACKET_COUNT_FOR_NACK_CACHE ((unsigned)512)
 #endif
 
 #include <stdbool.h>
@@ -242,6 +243,11 @@ RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char 
 /// Chain RtcpSRReporter to handler chain for given track
 /// @param tr Track id
 int rtcChainRtcpSRReporter(int tr);
+
+/// Chain RtcpNackResponder to handler chain for given track
+/// @param tr Track id
+/// @param maxStoredPacketsCount Maximum stored packet count
+int rtcChainRtcpNackResponder(int tr, unsigned maxStoredPacketsCount);
 
 /// Set start time for RTP stream
 /// @param startTime_s Start time in seconds
