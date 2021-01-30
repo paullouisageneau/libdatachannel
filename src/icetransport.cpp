@@ -402,7 +402,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	if (config.proxyServer.has_value()) {
 		ProxyServer proxyServer = config.proxyServer.value();
 		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-type", proxyServer.type, nullptr);
-		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-ip", proxyServer.ip.c_str(), nullptr);
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-ip", proxyServer.hostname.c_str(), nullptr);
 		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-port", proxyServer.port, nullptr);
 		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-username", proxyServer.username.c_str(),
 		             nullptr);
@@ -422,8 +422,8 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 			continue;
 		if (server.type != IceServer::Type::Stun)
 			continue;
-		if (server.service.empty())
-			server.service = "3478"; // STUN UDP port
+		if (server.port == 0)
+			server.port = 3478; // STUN UDP port
 
 		struct addrinfo hints = {};
 		hints.ai_family = AF_INET; // IPv4
@@ -431,9 +431,10 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 		hints.ai_protocol = IPPROTO_UDP;
 		hints.ai_flags = AI_ADDRCONFIG;
 		struct addrinfo *result = nullptr;
-		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0) {
+		if (getaddrinfo(server.hostname.c_str(), std::to_string(server.port).c_str(), &hints,
+		                &result) != 0) {
 			PLOG_WARNING << "Unable to resolve STUN server address: " << server.hostname << ':'
-			             << server.service;
+			             << server.port;
 			continue;
 		}
 
@@ -444,7 +445,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
 				                servbuffer, MAX_NUMERICNODE_LEN,
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-					PLOG_INFO << "Using STUN server \"" << server.hostname << ":" << server.service
+					PLOG_INFO << "Using STUN server \"" << server.hostname << ":" << server.port
 					          << "\"";
 					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server", nodebuffer, nullptr);
 					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server-port",
@@ -466,8 +467,8 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 			continue;
 		if (server.type != IceServer::Type::Turn)
 			continue;
-		if (server.service.empty())
-			server.service = server.relayType == IceServer::RelayType::TurnTls ? "5349" : "3478";
+		if (server.port == 0)
+			server.port = server.relayType == IceServer::RelayType::TurnTls ? 5349 : 3478;
 
 		struct addrinfo hints = {};
 		hints.ai_family = AF_UNSPEC;
@@ -477,9 +478,10 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 		    server.relayType == IceServer::RelayType::TurnUdp ? IPPROTO_UDP : IPPROTO_TCP;
 		hints.ai_flags = AI_ADDRCONFIG;
 		struct addrinfo *result = nullptr;
-		if (getaddrinfo(server.hostname.c_str(), server.service.c_str(), &hints, &result) != 0) {
+		if (getaddrinfo(server.hostname.c_str(), std::to_string(server.port).c_str(), &hints,
+		                &result) != 0) {
 			PLOG_WARNING << "Unable to resolve TURN server address: " << server.hostname << ':'
-			             << server.service;
+			             << server.port;
 			continue;
 		}
 
@@ -490,7 +492,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
 				                servbuffer, MAX_NUMERICNODE_LEN,
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-					PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.service
+					PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port
 					          << "\"";
 					NiceRelayType niceRelayType;
 					switch (server.relayType) {
