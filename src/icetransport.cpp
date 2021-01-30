@@ -103,11 +103,11 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	// Pick a STUN server
 	for (auto &server : servers) {
 		if (!server.hostname.empty() && server.type == IceServer::Type::Stun) {
-			if (server.service.empty())
-				server.service = "3478"; // STUN UDP port
-			PLOG_INFO << "Using STUN server \"" << server.hostname << ":" << server.service << "\"";
+			if (server.port == 0)
+				server.port = 3478; // STUN UDP port
+			PLOG_INFO << "Using STUN server \"" << server.hostname << ":" << server.port << "\"";
 			jconfig.stun_server_host = server.hostname.c_str();
-			jconfig.stun_server_port = uint16_t(std::stoul(server.service));
+			jconfig.stun_server_port = server.port;
 			break;
 		}
 	}
@@ -119,13 +119,13 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	int k = 0;
 	for (auto &server : servers) {
 		if (!server.hostname.empty() && server.type == IceServer::Type::Turn) {
-			if (server.service.empty())
-				server.service = "3478"; // TURN UDP port
-			PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.service << "\"";
+			if (server.port == 0)
+				server.port = 3478; // TURN UDP port
+			PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port << "\"";
 			turn_servers[k].host = server.hostname.c_str();
 			turn_servers[k].username = server.username.c_str();
 			turn_servers[k].password = server.password.c_str();
-			turn_servers[k].port = uint16_t(std::stoul(server.service));
+			turn_servers[k].port = server.port;
 			if (++k >= MAX_TURN_SERVERS_COUNT)
 				break;
 		}

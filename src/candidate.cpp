@@ -167,9 +167,12 @@ bool Candidate::resolve(ResolveMode mode) {
 				if (getnameinfo(p->ai_addr, socklen_t(p->ai_addrlen), nodebuffer,
 				                MAX_NUMERICNODE_LEN, servbuffer, MAX_NUMERICSERV_LEN,
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-
+					try {
+						mPort = uint16_t(std::stoul(servbuffer));
+					} catch (...) {
+						return false;
+					}
 					mAddress = nodebuffer;
-					mPort = uint16_t(std::stoul(servbuffer));
 					mFamily = p->ai_family == AF_INET6 ? Family::Ipv6 : Family::Ipv4;
 					PLOG_VERBOSE << "Resolved candidate: " << mAddress << ' ' << mPort;
 					break;
