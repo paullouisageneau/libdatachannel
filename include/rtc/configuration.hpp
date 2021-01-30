@@ -44,7 +44,7 @@ struct RTC_CPP_EXPORT IceServer {
 	          RelayType relayType_ = RelayType::TurnUdp);
 
 	string hostname;
-	string service;
+	uint16_t port;
 	Type type;
 	string username;
 	string password;
@@ -54,11 +54,11 @@ struct RTC_CPP_EXPORT IceServer {
 struct RTC_CPP_EXPORT ProxyServer {
 	enum class Type { None = 0, Socks5, Http, Last = Http };
 
-	ProxyServer(Type type_, string ip_, uint16_t port_, string username_ = "",
+	ProxyServer(Type type_, string hostname_, uint16_t port_, string username_ = "",
 	            string password_ = "");
 
 	Type type;
-	string ip;
+	string hostname;
 	uint16_t port;
 	string username;
 	string password;
