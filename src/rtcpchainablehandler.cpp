@@ -21,7 +21,7 @@
 
 namespace rtc {
 
-RtcpChainableHandler::RtcpChainableHandler(std::shared_ptr<MessageHandlerRootElement> root): root(root), leaf(root) { }
+RtcpChainableHandler::RtcpChainableHandler(std::shared_ptr<MessageHandlerRootElement> root): RtcpHandler(), root(root), leaf(root) { }
 
 RtcpChainableHandler::~RtcpChainableHandler() {
 	leaf->recursiveRemoveChain();

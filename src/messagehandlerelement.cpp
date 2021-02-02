@@ -57,6 +57,10 @@ void MessageHandlerElement::removeFromChain() {
 
 void MessageHandlerElement::recursiveRemoveChain() {
 	if (downstream.has_value()) {
+		// `recursiveRemoveChain` removes last strong reference to downstream element
+		// we need to keep strong reference to prevent deallocation of downstream element
+		// during `recursiveRemoveChain`
+		auto strongDownstreamPtr = downstream;
 		downstream.value()->recursiveRemoveChain();
 	}
 	removeFromChain();
