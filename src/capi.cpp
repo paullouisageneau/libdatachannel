@@ -554,9 +554,9 @@ int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char *cname, uin
 		auto rtpConfig = getNewRtpPacketizationConfig(ssrc, cname, payloadType, clockRate,
 													  sequenceNumber, timestamp);
 		// create packetizer
-		auto packetizer = shared_ptr<H264RtpPacketizer>(new H264RtpPacketizer(rtpConfig, maxFragmentSize));
+		auto packetizer = std::make_shared<H264RtpPacketizer>(rtpConfig, maxFragmentSize);
 		// create H264 handler
-		shared_ptr<H264PacketizationHandler> h264Handler(new H264PacketizationHandler(packetizer));
+		auto h264Handler = std::make_shared<H264PacketizationHandler>(packetizer);
 		emplaceRTCPChainableHandler(h264Handler, tr);
 		emplaceRTPConfig(rtpConfig, tr);
 		// set handler
@@ -573,9 +573,9 @@ int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char *cname, uin
 		auto rtpConfig = getNewRtpPacketizationConfig(ssrc, cname, payloadType, clockRate,
 		                                              sequenceNumber, timestamp);
 		// create packetizer
-		auto packetizer = shared_ptr<OpusRtpPacketizer>(new OpusRtpPacketizer(rtpConfig));
+		auto packetizer = std::make_shared<OpusRtpPacketizer>(rtpConfig);
 		// create Opus handler
-		shared_ptr<OpusPacketizationHandler> opusHandler(new OpusPacketizationHandler(packetizer));
+		auto opusHandler = std::make_shared<OpusPacketizationHandler>(packetizer);
         emplaceRTCPChainableHandler(opusHandler, tr);
 		emplaceRTPConfig(rtpConfig, tr);
 		// set handler
