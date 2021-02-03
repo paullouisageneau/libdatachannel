@@ -128,22 +128,22 @@ set(TESTS_SOURCES
 )
 
 set(TESTS_UWP_RESOURCES
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-tests/Logo.png
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-tests/package.appxManifest
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-tests/SmallLogo.png
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-tests/SmallLogo44x44.png
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-tests/SplashScreen.png
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-tests/StoreLogo.png
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-tests/Windows_TemporaryKey.pfx)
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/Logo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/package.appxManifest
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/SmallLogo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/SmallLogo44x44.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/SplashScreen.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/StoreLogo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/Windows_TemporaryKey.pfx)
 
 set(BENCHMARK_UWP_RESOURCES
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-benchmark/Logo.png
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-benchmark/package.appxManifest
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-benchmark/SmallLogo.png
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-benchmark/SmallLogo44x44.png
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-benchmark/SplashScreen.png
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-benchmark/StoreLogo.png
-	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp-benchmark/Windows_TemporaryKey.pfx)
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/Logo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/package.appxManifest
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/SmallLogo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/SmallLogo44x44.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/SplashScreen.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/StoreLogo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/Windows_TemporaryKey.pfx)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
