@@ -96,6 +96,10 @@ std::function<void()> ThreadPool::dequeue() {
 			mCondition.wait(lock);
 		}
 	}
+
+	while (!mTasks.empty())
+		mTasks.pop();
+
 	return nullptr;
 }
 
