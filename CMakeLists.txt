@@ -127,6 +127,16 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
 )
 
+set(TESTS_UWP_RESOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/Logo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/package.appxManifest
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/SmallLogo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/SmallLogo44x44.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/SplashScreen.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/StoreLogo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/Windows_TemporaryKey.pfx
+)
+
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
@@ -284,7 +294,7 @@ endif()
 
 # Tests
 if(NOT NO_TESTS)
-	add_executable(datachannel-tests ${TESTS_SOURCES})
+	add_executable(datachannel-tests ${TESTS_SOURCES} ${TESTS_UWP_RESOURCES})
 	set_target_properties(datachannel-tests PROPERTIES
 		VERSION ${PROJECT_VERSION}
 		CXX_STANDARD 17)
