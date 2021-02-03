@@ -23,7 +23,7 @@
 	<Applications>
 		<Application
 			Id="App"
-			Executable="datachannel-benchmark.exe"
+			Executable="benchmark.exe"
 			EntryPoint="datachannel-benchmark.App"
 			desktop4:Subsystem="console"
 			desktop4:SupportsMultipleInstances="true"

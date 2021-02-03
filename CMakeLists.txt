@@ -311,9 +311,7 @@ if(NOT NO_TESTS)
 	set_target_properties(datachannel-tests PROPERTIES
 		VERSION ${PROJECT_VERSION}
 		CXX_STANDARD 17)
-	if(NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore") # Prevent a bug in manifest generation for UWP
-		set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
-	endif()
+	set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
 	target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_link_libraries(datachannel-tests datachannel)
 
@@ -327,9 +325,7 @@ if(NOT NO_TESTS)
 	set_target_properties(datachannel-benchmark PROPERTIES
 		VERSION ${PROJECT_VERSION}
 		CXX_STANDARD 17)
-	if(NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore") # Prevent a bug in manifest generation for UWP
-		set_target_properties(datachannel-benchmark PROPERTIES OUTPUT_NAME benchmark)
-	endif()
+	set_target_properties(datachannel-benchmark PROPERTIES OUTPUT_NAME benchmark)
 	target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
 	target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_link_libraries(datachannel-benchmark datachannel)

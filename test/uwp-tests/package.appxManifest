@@ -23,7 +23,7 @@
 	<Applications>
 		<Application
 			Id="App"
-			Executable="datachannel-tests.exe"
+			Executable="tests.exe"
 			EntryPoint="datachannel-tests.App"
 			desktop4:Subsystem="console"
 			desktop4:SupportsMultipleInstances="true"
