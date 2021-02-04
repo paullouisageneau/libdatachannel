@@ -54,10 +54,10 @@ protected:
 	const init_token mInitToken = Init::Token();
 
 	Queue<std::function<void()>> mTasks;
-	bool mPending = false; // true iff a task is pending in the thread pool
+	std::optional<std::shared_future<void>> mPending; // future of the pending task
+	unsigned int mCounter = 0; // Number of scheduled tasks
 
 	mutable std::mutex mMutex;
-	std::condition_variable mCondition;
 };
 
 template <class F, class... Args> void Processor::enqueue(F &&f, Args &&...args) {
@@ -65,12 +65,12 @@ template <class F, class... Args> void Processor::enqueue(F &&f, Args &&...args)
 	auto bound = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
 	auto task = [this, bound = std::move(bound)]() mutable {
 		scope_guard guard(std::bind(&Processor::schedule, this)); // chain the next task
-		return bound();
+		bound();
 	};
 
 	if (!mPending) {
-		ThreadPool::Instance().enqueue(std::move(task));
-		mPending = true;
+		mPending = ThreadPool::Instance().enqueue(std::move(task)).share();
+		++mCounter;
 	} else {
 		mTasks.push(std::move(task));
 	}
