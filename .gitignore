@@ -5,7 +5,7 @@ node_modules/
 *.a
 *.so
 compile_commands.json
-tests
+/tests
 .DS_Store
 .idea
 
