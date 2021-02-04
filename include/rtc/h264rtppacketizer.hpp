@@ -16,8 +16,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef H264RtpPacketizer_hpp
-#define H264RtpPacketizer_hpp
+#ifndef H264_RTP_PACKETIZER_H
+#define H264_RTP_PACKETIZER_H
 
 #if RTC_ENABLE_MEDIA
 
@@ -43,4 +43,4 @@ public:
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* H264RtpPacketizer_hpp */
+#endif /* H264_RTP_PACKETIZER_H */

@@ -16,8 +16,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NalUnit_hpp
-#define NalUnit_hpp
+#ifndef NAL_UNIT_H
+#define NAL_UNIT_H
 
 #if RTC_ENABLE_MEDIA
 
@@ -63,7 +63,7 @@ private:
 struct RTC_CPP_EXPORT NalUnit : binary {
 	NalUnit(const NalUnit &unit) = default;
 	NalUnit(size_t size, bool includingHeader = true)
-	    : binary(size + (includingHeader ? 0 : 1)) {}
+		: binary(size + (includingHeader ? 0 : 1)) {}
 
 	template <typename Iterator>
 	NalUnit(Iterator begin_, Iterator end_) : binary(begin_, end_) {}
@@ -153,4 +153,4 @@ public:
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* NalUnit_hpp */
+#endif /* NAL_UNIT_H */
