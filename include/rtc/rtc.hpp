@@ -27,9 +27,9 @@
 
 #if RTC_ENABLE_MEDIA
 
-// RTCP handling
+// Media handling
 #include "rtcpreceivingsession.hpp"
-#include "rtcpchainablehandler.hpp"
+#include "mediachainablehandler.hpp"
 #include "rtcpsrreporter.hpp"
 #include "rtcpnackresponder.hpp"
 

@@ -17,7 +17,7 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "messagehandlerelement.hpp"
+#include "mediahandlerelement.hpp"
 
 namespace rtc {
 
@@ -42,9 +42,9 @@ ChainedIncomingProduct::ChainedIncomingProduct(std::optional<ChainedMessagesProd
 ChainedIncomingControlProduct::ChainedIncomingControlProduct(message_ptr incoming, std::optional<ChainedOutgoingResponseProduct> outgoing)
 : incoming(incoming), outgoing(outgoing) { }
 
-MessageHandlerElement::MessageHandlerElement() { }
+MediaHandlerElement::MediaHandlerElement() { }
 
-void MessageHandlerElement::removeFromChain() {
+void MediaHandlerElement::removeFromChain() {
 	if (upstream.has_value()) {
 		upstream.value()->downstream = downstream;
 	}
@@ -55,7 +55,7 @@ void MessageHandlerElement::removeFromChain() {
 	downstream = nullopt;
 }
 
-void MessageHandlerElement::recursiveRemoveChain() {
+void MediaHandlerElement::recursiveRemoveChain() {
 	if (downstream.has_value()) {
 		// `recursiveRemoveChain` removes last strong reference to downstream element
 		// we need to keep strong reference to prevent deallocation of downstream element
@@ -66,7 +66,7 @@ void MessageHandlerElement::recursiveRemoveChain() {
 	removeFromChain();
 }
 
-std::optional<ChainedOutgoingResponseProduct> MessageHandlerElement::processOutgoingResponse(ChainedOutgoingResponseProduct messages) {
+std::optional<ChainedOutgoingResponseProduct> MediaHandlerElement::processOutgoingResponse(ChainedOutgoingResponseProduct messages) {
 	if (messages.messages.has_value()) {
 		if (upstream.has_value()) {
 			auto msgs = upstream.value()->formOutgoingBinaryMessage(ChainedOutgoingProduct(messages.messages.value(), messages.control));
@@ -97,7 +97,7 @@ std::optional<ChainedOutgoingResponseProduct> MessageHandlerElement::processOutg
 	}
 }
 
-void MessageHandlerElement::prepareAndSendResponse(std::optional<ChainedOutgoingResponseProduct> outgoing, std::function<bool (ChainedOutgoingResponseProduct)> send) {
+void MediaHandlerElement::prepareAndSendResponse(std::optional<ChainedOutgoingResponseProduct> outgoing, std::function<bool (ChainedOutgoingResponseProduct)> send) {
 	if (outgoing.has_value()) {
 		auto message = outgoing.value();
 		auto response = processOutgoingResponse(message);
@@ -111,7 +111,7 @@ void MessageHandlerElement::prepareAndSendResponse(std::optional<ChainedOutgoing
 	}
 }
 
-std::optional<message_ptr> MessageHandlerElement::formIncomingControlMessage(message_ptr message, std::function<bool (ChainedOutgoingResponseProduct)> send) {
+std::optional<message_ptr> MediaHandlerElement::formIncomingControlMessage(message_ptr message, std::function<bool (ChainedOutgoingResponseProduct)> send) {
 	assert(message);
 	auto product = processIncomingControlMessage(message);
 	prepareAndSendResponse(product.outgoing, send);
@@ -131,7 +131,7 @@ std::optional<message_ptr> MessageHandlerElement::formIncomingControlMessage(mes
 	}
 }
 
-std::optional<ChainedMessagesProduct> MessageHandlerElement::formIncomingBinaryMessage(ChainedMessagesProduct messages, std::function<bool (ChainedOutgoingResponseProduct)> send) {
+std::optional<ChainedMessagesProduct> MediaHandlerElement::formIncomingBinaryMessage(ChainedMessagesProduct messages, std::function<bool (ChainedOutgoingResponseProduct)> send) {
 	assert(messages && !messages->empty());
 	auto product = processIncomingBinaryMessage(messages);
 	prepareAndSendResponse(product.outgoing, send);
@@ -151,7 +151,7 @@ std::optional<ChainedMessagesProduct> MessageHandlerElement::formIncomingBinaryM
 	}
 }
 
-std::optional<message_ptr> MessageHandlerElement::formOutgoingControlMessage(message_ptr message) {
+std::optional<message_ptr> MediaHandlerElement::formOutgoingControlMessage(message_ptr message) {
 	assert(message);
 	auto newMessage = processOutgoingControlMessage(message);
 	assert(newMessage);
@@ -166,7 +166,7 @@ std::optional<message_ptr> MessageHandlerElement::formOutgoingControlMessage(mes
 	}
 }
 
-std::optional<ChainedOutgoingProduct> MessageHandlerElement::formOutgoingBinaryMessage(ChainedOutgoingProduct product) {
+std::optional<ChainedOutgoingProduct> MediaHandlerElement::formOutgoingBinaryMessage(ChainedOutgoingProduct product) {
 	assert(product.messages && !product.messages->empty());
 	auto newProduct = processOutgoingBinaryMessage(product.messages, product.control);
 	assert(!product.control.has_value() || newProduct.control.has_value());
@@ -191,23 +191,23 @@ std::optional<ChainedOutgoingProduct> MessageHandlerElement::formOutgoingBinaryM
 	}
 }
 
-ChainedIncomingControlProduct MessageHandlerElement::processIncomingControlMessage(message_ptr messages) {
+ChainedIncomingControlProduct MediaHandlerElement::processIncomingControlMessage(message_ptr messages) {
 	return {messages};
 }
 
-message_ptr MessageHandlerElement::processOutgoingControlMessage(message_ptr messages) {
+message_ptr MediaHandlerElement::processOutgoingControlMessage(message_ptr messages) {
 	return messages;
 }
 
-ChainedIncomingProduct MessageHandlerElement::processIncomingBinaryMessage(ChainedMessagesProduct messages) {
+ChainedIncomingProduct MediaHandlerElement::processIncomingBinaryMessage(ChainedMessagesProduct messages) {
 	return {messages};
 }
 
-ChainedOutgoingProduct MessageHandlerElement::processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) {
+ChainedOutgoingProduct MediaHandlerElement::processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) {
 	return {messages, control};
 }
 
-std::shared_ptr<MessageHandlerElement> MessageHandlerElement::chainWith(std::shared_ptr<MessageHandlerElement> upstream) {
+std::shared_ptr<MediaHandlerElement> MediaHandlerElement::chainWith(std::shared_ptr<MediaHandlerElement> upstream) {
 	assert(this->upstream == nullopt);
 	assert(upstream->downstream == nullopt);
 	this->upstream = upstream;

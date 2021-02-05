@@ -20,14 +20,14 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "messagehandlerelement.hpp"
+#include "mediahandlerelement.hpp"
 
 #include <unordered_map>
 #include <queue>
 
 namespace rtc {
 
-class RTC_CPP_EXPORT RtcpNackResponder: public MessageHandlerElement {
+class RTC_CPP_EXPORT RtcpNackResponder: public MediaHandlerElement {
 
 	/// Packet storage
 	class RTC_CPP_EXPORT Storage {

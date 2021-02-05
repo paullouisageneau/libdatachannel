@@ -17,17 +17,17 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "rtcpchainablehandler.hpp"
+#include "mediachainablehandler.hpp"
 
 namespace rtc {
 
-RtcpChainableHandler::RtcpChainableHandler(std::shared_ptr<MessageHandlerRootElement> root): RtcpHandler(), root(root), leaf(root) { }
+MediaChainableHandler::MediaChainableHandler(std::shared_ptr<MediaHandlerRootElement> root): MediaHandler(), root(root), leaf(root) { }
 
-RtcpChainableHandler::~RtcpChainableHandler() {
+MediaChainableHandler::~MediaChainableHandler() {
 	leaf->recursiveRemoveChain();
 }
 
-bool RtcpChainableHandler::sendProduct(ChainedOutgoingResponseProduct product) {
+bool MediaChainableHandler::sendProduct(ChainedOutgoingResponseProduct product) {
 	bool result = true;
 	if (product.control.has_value()) {
 		auto sendResult = send(product.control.value());
@@ -53,7 +53,7 @@ bool RtcpChainableHandler::sendProduct(ChainedOutgoingResponseProduct product) {
 	return result;
 }
 
-std::optional<message_ptr> RtcpChainableHandler::handleIncomingBinary(message_ptr msg) {
+std::optional<message_ptr> MediaChainableHandler::handleIncomingBinary(message_ptr msg) {
 	assert(msg->type == Message::Binary);
 	auto messages = root->split(msg);
 	auto incoming = leaf->formIncomingBinaryMessage(messages, [this](ChainedOutgoingResponseProduct outgoing) {
@@ -66,7 +66,7 @@ std::optional<message_ptr> RtcpChainableHandler::handleIncomingBinary(message_pt
 	}
 }
 
-std::optional<message_ptr> RtcpChainableHandler::handleIncomingControl(message_ptr msg) {
+std::optional<message_ptr> MediaChainableHandler::handleIncomingControl(message_ptr msg) {
 	assert(msg->type == Message::Control);
 	auto incoming = leaf->formIncomingControlMessage(msg, [this](ChainedOutgoingResponseProduct outgoing) {
 		return sendProduct(outgoing);
@@ -75,7 +75,7 @@ std::optional<message_ptr> RtcpChainableHandler::handleIncomingControl(message_p
 	return incoming;
 }
 
-std::optional<message_ptr> RtcpChainableHandler::handleOutgoingBinary(message_ptr msg) {
+std::optional<message_ptr> MediaChainableHandler::handleOutgoingBinary(message_ptr msg) {
 	assert(msg->type == Message::Binary);
 	auto messages = make_chained_messages_product(msg);
 	auto optOutgoing = root->formOutgoingBinaryMessage(ChainedOutgoingProduct(messages));
@@ -106,7 +106,7 @@ std::optional<message_ptr> RtcpChainableHandler::handleOutgoingBinary(message_pt
 	return make_message(*lastMessage);
 }
 
-std::optional<message_ptr> RtcpChainableHandler::handleOutgoingControl(message_ptr msg) {
+std::optional<message_ptr> MediaChainableHandler::handleOutgoingControl(message_ptr msg) {
 	assert(msg->type == Message::Control);
 	auto optOutgoing = root->formOutgoingControlMessage(msg);
 	assert(!optOutgoing.has_value() || optOutgoing.value()->type == Message::Control);
@@ -117,7 +117,7 @@ std::optional<message_ptr> RtcpChainableHandler::handleOutgoingControl(message_p
 	return optOutgoing.value();
 }
 
-message_ptr RtcpChainableHandler::outgoing(message_ptr ptr) {
+message_ptr MediaChainableHandler::outgoing(message_ptr ptr) {
 	assert(ptr);
 	if (!ptr) {
 		LOG_ERROR << "Outgoing message is nullptr, ignoring";
@@ -132,7 +132,7 @@ message_ptr RtcpChainableHandler::outgoing(message_ptr ptr) {
 	return ptr;
 }
 
-message_ptr RtcpChainableHandler::incoming(message_ptr ptr) {
+message_ptr MediaChainableHandler::incoming(message_ptr ptr) {
 	if (!ptr) {
 		LOG_ERROR << "Incoming message is nullptr, ignoring";
 		return nullptr;
@@ -146,7 +146,7 @@ message_ptr RtcpChainableHandler::incoming(message_ptr ptr) {
 	return ptr;
 }
 
-bool RtcpChainableHandler::send(message_ptr msg) {
+bool MediaChainableHandler::send(message_ptr msg) {
 	try {
 		outgoingCallback(std::move(msg));
 		return true;
@@ -156,7 +156,7 @@ bool RtcpChainableHandler::send(message_ptr msg) {
 	return false;
 }
 
-void RtcpChainableHandler::addToChain(std::shared_ptr<MessageHandlerElement> chainable) {
+void MediaChainableHandler::addToChain(std::shared_ptr<MediaHandlerElement> chainable) {
 	assert(leaf);
 	leaf = leaf->chainWith(chainable);
 }

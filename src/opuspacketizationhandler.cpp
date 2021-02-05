@@ -23,7 +23,7 @@
 namespace rtc {
 
 OpusPacketizationHandler::OpusPacketizationHandler(std::shared_ptr<OpusRtpPacketizer> packetizer)
-: RtcpChainableHandler(packetizer) { }
+: MediaChainableHandler(packetizer) { }
 
 } // namespace rtc
 

@@ -52,7 +52,7 @@ void RtcpSrReporter::addToReport(RTP *rtp, uint32_t rtpSize) {
 }
 
 RtcpSrReporter::RtcpSrReporter(std::shared_ptr<RtpPacketizationConfig> rtpConfig)
-: MessageHandlerElement(), rtpConfig(rtpConfig) {}
+: MediaHandlerElement(), rtpConfig(rtpConfig) {}
 
 uint64_t RtcpSrReporter::secondsToNTP(double seconds) {
 	return std::round(seconds * double(uint64_t(1) << 32));

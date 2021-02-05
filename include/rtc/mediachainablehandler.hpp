@@ -15,19 +15,19 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef RTC_RTCP_CHAINABLE_HANDLER_H
-#define RTC_RTCP_CHAINABLE_HANDLER_H
+#ifndef RTC_MEDIA_CHAINABLE_HANDLER_H
+#define RTC_MEDIA_CHAINABLE_HANDLER_H
 
 #if RTC_ENABLE_MEDIA
 
-#include "rtcphandler.hpp"
-#include "messagehandlerrootelement.hpp"
+#include "mediahandler.hpp"
+#include "mediahandlerrootelement.hpp"
 
 namespace rtc {
 
-class RTC_CPP_EXPORT RtcpChainableHandler : public RtcpHandler {
-	const std::shared_ptr<MessageHandlerRootElement> root;
-	std::shared_ptr<MessageHandlerElement> leaf;
+class RTC_CPP_EXPORT MediaChainableHandler : public MediaHandler {
+	const std::shared_ptr<MediaHandlerRootElement> root;
+	std::shared_ptr<MediaHandlerElement> leaf;
 	std::mutex inoutMutex;
 
 	std::optional<message_ptr> handleIncomingBinary(message_ptr);
@@ -36,8 +36,8 @@ class RTC_CPP_EXPORT RtcpChainableHandler : public RtcpHandler {
 	std::optional<message_ptr> handleOutgoingControl(message_ptr);
 	bool sendProduct(ChainedOutgoingResponseProduct product);
 public:
-	RtcpChainableHandler(std::shared_ptr<MessageHandlerRootElement> root);
-	~RtcpChainableHandler();
+	MediaChainableHandler(std::shared_ptr<MediaHandlerRootElement> root);
+	~MediaChainableHandler();
 	message_ptr incoming(message_ptr ptr) override;
 	message_ptr outgoing(message_ptr ptr) override;
 
@@ -45,11 +45,11 @@ public:
 
 	/// Adds element to chain
 	/// @param chainable Chainable element
-    void addToChain(std::shared_ptr<MessageHandlerElement> chainable);
+    void addToChain(std::shared_ptr<MediaHandlerElement> chainable);
 };
 
 } // namespace rtc
 
 #endif // RTC_ENABLE_MEDIA
 
-#endif // RTC_RTCP_CHAINABLE_HANDLER_H
+#endif // RTC_MEDIA_CHAINABLE_HANDLER_H

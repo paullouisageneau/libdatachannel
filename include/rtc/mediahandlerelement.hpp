@@ -15,8 +15,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef RTC_MESSAGE_HANDLER_ELEMENT_H
-#define RTC_MESSAGE_HANDLER_ELEMENT_H
+#ifndef RTC_MEDIA_HANDLER_ELEMENT_H
+#define RTC_MEDIA_HANDLER_ELEMENT_H
 
 #if RTC_ENABLE_MEDIA
 
@@ -60,15 +60,15 @@ struct RTC_CPP_EXPORT ChainedIncomingControlProduct {
 };
 
 /// Chainable handler
-class RTC_CPP_EXPORT MessageHandlerElement: public std::enable_shared_from_this<MessageHandlerElement> {
-	std::optional<std::shared_ptr<MessageHandlerElement>> upstream = nullopt;
-	std::optional<std::shared_ptr<MessageHandlerElement>> downstream = nullopt;
+class RTC_CPP_EXPORT MediaHandlerElement: public std::enable_shared_from_this<MediaHandlerElement> {
+	std::optional<std::shared_ptr<MediaHandlerElement>> upstream = nullopt;
+	std::optional<std::shared_ptr<MediaHandlerElement>> downstream = nullopt;
 
 	void prepareAndSendResponse(std::optional<ChainedOutgoingResponseProduct> outgoing, std::function<bool (ChainedOutgoingResponseProduct)> send);
 
 	void removeFromChain();
 public:
-	MessageHandlerElement();
+	MediaHandlerElement();
 
 	/// Creates response to incoming message
 	/// @param messages Current repsonse
@@ -105,7 +105,7 @@ public:
 	/// Set given element as upstream to this
 	/// @param upstream Upstream element
 	/// @returns Upstream element
-	std::shared_ptr<MessageHandlerElement> chainWith(std::shared_ptr<MessageHandlerElement> upstream);
+	std::shared_ptr<MediaHandlerElement> chainWith(std::shared_ptr<MediaHandlerElement> upstream);
 
 	/// Remove all downstream elements from chain
 	void recursiveRemoveChain();
@@ -115,4 +115,4 @@ public:
 
 #endif // RTC_ENABLE_MEDIA
 
-#endif // RTC_MESSAGE_HANDLER_ELEMENT_H
+#endif // RTC_MEDIA_HANDLER_ELEMENT_H

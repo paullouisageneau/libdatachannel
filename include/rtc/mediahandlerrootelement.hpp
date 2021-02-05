@@ -15,19 +15,19 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef RTCP_MESSAGE_HANDLER_ROOT_ELEMENT_H
-#define RTCP_MESSAGE_HANDLER_ROOT_ELEMENT_H
+#ifndef RTCP_MEDIA_HANDLER_ROOT_ELEMENT_H
+#define RTCP_MEDIA_HANDLER_ROOT_ELEMENT_H
 
 #if RTC_ENABLE_MEDIA
 
-#include "messagehandlerelement.hpp"
+#include "mediahandlerelement.hpp"
 
 namespace rtc {
 
 /// Chainable message handler
-class RTC_CPP_EXPORT MessageHandlerRootElement : public MessageHandlerElement {
+class RTC_CPP_EXPORT MediaHandlerRootElement : public MediaHandlerElement {
 public:
-	MessageHandlerRootElement() { }
+	MediaHandlerRootElement() { }
 
 	/// Reduce multiple messages into one message
 	/// @param messages Messages to reduce
@@ -42,4 +42,4 @@ public:
 
 #endif // RTC_ENABLE_MEDIA
 
-#endif // RTCP_MESSAGE_HANDLER_ROOT_ELEMENT_H
+#endif // RTCP_MEDIA_HANDLER_ROOT_ELEMENT_H

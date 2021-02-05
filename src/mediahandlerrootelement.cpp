@@ -17,11 +17,11 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "messagehandlerrootelement.hpp"
+#include "mediahandlerrootelement.hpp"
 
 namespace rtc {
 
-message_ptr MessageHandlerRootElement::reduce(ChainedMessagesProduct messages) {
+message_ptr MediaHandlerRootElement::reduce(ChainedMessagesProduct messages) {
 	if (messages && !messages->empty()) {
 		auto msg_ptr = messages->front();
 		if (msg_ptr) {
@@ -34,7 +34,7 @@ message_ptr MessageHandlerRootElement::reduce(ChainedMessagesProduct messages) {
 	}
 }
 
-ChainedMessagesProduct MessageHandlerRootElement::split(message_ptr message) {
+ChainedMessagesProduct MediaHandlerRootElement::split(message_ptr message) {
 	return make_chained_messages_product(message);
 }
 

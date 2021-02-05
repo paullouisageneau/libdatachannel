@@ -133,11 +133,11 @@ shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 
 H264RtpPacketizer::H264RtpPacketizer(std::shared_ptr<RtpPacketizationConfig> rtpConfig,
 									 uint16_t maximumFragmentSize)
-: RtpPacketizer(rtpConfig), MessageHandlerRootElement(), maximumFragmentSize(maximumFragmentSize), separator(Separator::Length) {}
+: RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize), separator(Separator::Length) {}
 
 H264RtpPacketizer::H264RtpPacketizer(H264RtpPacketizer::Separator separator, std::shared_ptr<RtpPacketizationConfig> rtpConfig,
 									 uint16_t maximumFragmentSize)
-: RtpPacketizer(rtpConfig), MessageHandlerRootElement(), maximumFragmentSize(maximumFragmentSize), separator(separator) {}
+: RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize), separator(separator) {}
 
 ChainedOutgoingProduct H264RtpPacketizer::processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) {
 	ChainedMessagesProduct packets = std::make_shared<std::vector<binary_ptr>>();

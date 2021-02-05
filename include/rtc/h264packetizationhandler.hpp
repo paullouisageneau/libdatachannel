@@ -23,12 +23,12 @@
 
 #include "h264rtppacketizer.hpp"
 #include "nalunit.hpp"
-#include "rtcpchainablehandler.hpp"
+#include "mediachainablehandler.hpp"
 
 namespace rtc {
 
 /// Handler for H264 packetization
-class RTC_CPP_EXPORT H264PacketizationHandler : public RtcpChainableHandler {
+class RTC_CPP_EXPORT H264PacketizationHandler : public MediaChainableHandler {
 public:
 	/// Construct handler for H264 packetization.
 	/// @param packetizer RTP packetizer for h264

@@ -66,7 +66,7 @@ void RtcpNackResponder::Storage::store(binary_ptr packet) {
 }
 
 RtcpNackResponder::RtcpNackResponder(unsigned maxStoredPacketCount)
-: MessageHandlerElement(), storage(std::make_shared<Storage>(maxStoredPacketCount)) { }
+: MediaHandlerElement(), storage(std::make_shared<Storage>(maxStoredPacketCount)) { }
 
 ChainedIncomingControlProduct RtcpNackResponder::processIncomingControlMessage(message_ptr message) {
 	std::optional<ChainedOutgoingResponseProduct> optPackets = ChainedOutgoingResponseProduct();

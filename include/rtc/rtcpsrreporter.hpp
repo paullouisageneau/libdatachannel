@@ -22,11 +22,11 @@
 
 #include "message.hpp"
 #include "rtppacketizationconfig.hpp"
-#include "messagehandlerelement.hpp"
+#include "mediahandlerelement.hpp"
 
 namespace rtc {
 
-class RTC_CPP_EXPORT RtcpSrReporter: public MessageHandlerElement {
+class RTC_CPP_EXPORT RtcpSrReporter: public MediaHandlerElement {
 
 	bool needsToReport = false;
 

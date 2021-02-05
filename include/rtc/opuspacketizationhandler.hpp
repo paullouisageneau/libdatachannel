@@ -22,12 +22,12 @@
 #if RTC_ENABLE_MEDIA
 
 #include "opusrtppacketizer.hpp"
-#include "rtcpchainablehandler.hpp"
+#include "mediachainablehandler.hpp"
 
 namespace rtc {
 
 /// Handler for opus packetization
-class RTC_CPP_EXPORT OpusPacketizationHandler : public RtcpChainableHandler {
+class RTC_CPP_EXPORT OpusPacketizationHandler : public MediaChainableHandler {
 
 public:
 	/// Construct handler for opus packetization.
