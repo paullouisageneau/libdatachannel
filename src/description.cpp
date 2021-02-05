@@ -525,20 +525,20 @@ Description::Entry::removeAttribute(std::vector<string>::iterator it) {
 }
 
 void Description::Media::addSSRC(uint32_t ssrc, std::optional<string> name,
-                                 std::optional<string> msid) {
+								 std::optional<string> msid, std::optional<string> trackID) {
 	if (name)
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + *name);
 	else
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc));
 
 	if (msid)
-		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " msid:" + *msid + " " + *msid);
+		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " msid:" + *msid + " " + trackID.value_or(*msid));
 
 	mSsrcs.emplace_back(ssrc);
 }
 
 void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::optional<string> name,
-                                     std::optional<string> msid) {
+									 std::optional<string> msid, std::optional<string> trackID) {
 	auto it = mAttributes.begin();
 	while (it != mAttributes.end()) {
 		if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
@@ -546,7 +546,7 @@ void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::optio
 		} else
 			it++;
 	}
-	addSSRC(ssrc, std::move(name), std::move(msid));
+	addSSRC(ssrc, std::move(name), std::move(msid), std::move(trackID));
 }
 
 void Description::Media::removeSSRC(uint32_t oldSSRC) {

@@ -141,9 +141,9 @@ public:
 		void removeFormat(const string &fmt);
 
 		void addSSRC(uint32_t ssrc, std::optional<string> name,
-		             std::optional<string> msid = nullopt);
+					 std::optional<string> msid = nullopt, std::optional<string> trackID = nullopt);
 		void replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::optional<string> name,
-		                 std::optional<string> msid = nullopt);
+						 std::optional<string> msid = nullopt, std::optional<string> trackID = nullopt);
 		bool hasSSRC(uint32_t ssrc);
 		std::vector<uint32_t> getSSRCs();
 

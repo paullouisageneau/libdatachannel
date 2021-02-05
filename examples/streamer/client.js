@@ -54,12 +54,10 @@ function createPeerConnection() {
 
     // connect audio / video
     pc.addEventListener('track', function (evt) {
-        if (evt.track.kind == 'video') {
-            document.getElementById('media').style.display = 'block';
-            document.getElementById('video').srcObject = evt.streams[0];
-        } else {
-            document.getElementById('audio').srcObject = evt.streams[0];
-        }
+        document.getElementById('media').style.display = 'block';
+        const videoTag = document.getElementById('video');
+        videoTag.srcObject = evt.streams[0];
+        videoTag.play();
     });
 
     let time_start = null;
