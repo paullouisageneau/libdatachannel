@@ -110,7 +110,6 @@ shared_ptr<NalUnits> H264PacketizationHandler::splitMessage(message_ptr message)
 				break;
 			}
 		}
-		index++;
 		unsigned long long naluStartIndex = index;
 
 		while (index < message->size()) {
