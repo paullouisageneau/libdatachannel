@@ -215,8 +215,9 @@ RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
 /// @param _direction Direction
 /// @param _name Name (optional)
 /// @param _msid MSID (optional)
+/// @param _trackID Track ID used in MSID (optional) 
 /// @returns Track id
-RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid, rtcDirection direction, const char *_name, const char *_msid);
+RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid, rtcDirection direction, const char *_name, const char *_msid, const char *_trackID);
 
 /// Set H264PacketizationHandler for track
 /// @param tr Track id
