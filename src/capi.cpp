@@ -54,7 +54,7 @@ std::unordered_map<int, shared_ptr<DataChannel>> dataChannelMap;
 std::unordered_map<int, shared_ptr<Track>> trackMap;
 #if RTC_ENABLE_MEDIA
 std::unordered_map<int, shared_ptr<RtcpChainableHandler>> rtcpChainableHandlerMap;
-std::unordered_map<int, shared_ptr<RtcpSRReporter>> rtcpSenderMap;
+std::unordered_map<int, shared_ptr<RtcpSrReporter>> rtcpSrReporterMap;
 std::unordered_map<int, shared_ptr<RtpPacketizationConfig>> rtpConfigMap;
 #endif
 #if RTC_ENABLE_WEBSOCKET
@@ -142,7 +142,7 @@ void eraseTrack(int tr) {
 	if (trackMap.erase(tr) == 0)
 		throw std::invalid_argument("Track ID does not exist");
 #if RTC_ENABLE_MEDIA
-	rtcpSenderMap.erase(tr);
+	rtcpSrReporterMap.erase(tr);
 	rtcpChainableHandlerMap.erase(tr);
 	rtpConfigMap.erase(tr);
 #endif
@@ -151,18 +151,18 @@ void eraseTrack(int tr) {
 
 #if RTC_ENABLE_MEDIA
 
-shared_ptr<RtcpSRReporter> getRTCPSender(int id) {
+shared_ptr<RtcpSrReporter> getRtcpSrReporter(int id) {
 	std::lock_guard lock(mutex);
-	if (auto it = rtcpSenderMap.find(id); it != rtcpSenderMap.end()) {
+	if (auto it = rtcpSrReporterMap.find(id); it != rtcpSrReporterMap.end()) {
 		return it->second;
 	} else {
 		throw std::invalid_argument("RtcpSRReporter ID does not exist");
 	}
 }
 
-void emplaceRTCPSender(shared_ptr<RtcpSRReporter> ptr, int tr) {
+void emplaceRtcpSrReporter(shared_ptr<RtcpSrReporter> ptr, int tr) {
 	std::lock_guard lock(mutex);
-	rtcpSenderMap.emplace(std::make_pair(tr, ptr));
+	rtcpSrReporterMap.emplace(std::make_pair(tr, ptr));
 }
 
 shared_ptr<RtcpChainableHandler> getRTCPChainableHandler(int id) {
@@ -583,11 +583,11 @@ int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char *cname, uin
 	});
 }
 
-int rtcChainRtcpSRReporter(int tr) {
+int rtcChainRtcpSrReporter(int tr) {
 	return WRAP({
 		auto config = getRTPConfig(tr);
-		auto reporter = std::make_shared<RtcpSRReporter>(config);
-		emplaceRTCPSender(reporter, tr);
+		auto reporter = std::make_shared<RtcpSrReporter>(config);
+		emplaceRtcpSrReporter(reporter, tr);
 		auto chainableHandler = getRTCPChainableHandler(tr);
 		chainableHandler->addToChain(reporter);
 	});
@@ -615,7 +615,7 @@ int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeInterva
 
 int rtcStartRtcpSenderReporterRecording(int id) {
 	return WRAP({
-		auto sender = getRTCPSender(id);
+		auto sender = getRtcpSrReporter(id);
 		sender->startRecording();
 	});
 }
@@ -657,14 +657,14 @@ int rtcSetTrackRTPTimestamp(int id, uint32_t timestamp) {
 
 int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t *timestamp) {
 	return WRAP({
-		auto sender = getRTCPSender(id);
+		auto sender = getRtcpSrReporter(id);
 		*timestamp = sender->previousReportedTimestamp;
 	});
 }
 
-int rtcSetNeedsToSendRTCPSR(int id) {
+int rtcSetNeedsToSendRtcpSr(int id) {
 	return WRAP({
-		auto sender = getRTCPSender(id);
+		auto sender = getRtcpSrReporter(id);
 		sender->setNeedsToReport();
 	});
 }

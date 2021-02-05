@@ -240,9 +240,9 @@ RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char 
 /// @param _timestamp Timestamp
 RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t _sequenceNumber, uint32_t _timestamp);
 
-/// Chain RtcpSRReporter to handler chain for given track
+/// Chain RtcpSrReporter to handler chain for given track
 /// @param tr Track id
-int rtcChainRtcpSRReporter(int tr);
+int rtcChainRtcpSrReporter(int tr);
 
 /// Chain RtcpNackResponder to handler chain for given track
 /// @param tr Track id
@@ -291,9 +291,9 @@ int rtcSetTrackRTPTimestamp(int id, uint32_t timestamp);
 /// @param timestamp Pointer for result
 int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t * timestamp);
 
-/// Set `NeedsToReport` flag in RtcpSenderReporter handler identified by given track id
+/// Set `NeedsToReport` flag in RtcpSrReporter handler identified by given track id
 /// @param id Track id
-int rtcSetNeedsToSendRTCPSR(int id);
+int rtcSetNeedsToSendRtcpSr(int id);
 
 #endif // RTC_ENABLE_MEDIA
 

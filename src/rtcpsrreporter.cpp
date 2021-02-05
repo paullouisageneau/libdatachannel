@@ -21,7 +21,7 @@
 
 namespace rtc {
 
-ChainedOutgoingProduct RtcpSRReporter::processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) {
+ChainedOutgoingProduct RtcpSrReporter::processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) {
 	if (needsToReport) {
 		auto timestamp = rtpConfig->timestamp;
 		auto sr = getSenderReport(timestamp);
@@ -40,27 +40,27 @@ ChainedOutgoingProduct RtcpSRReporter::processOutgoingBinaryMessage(ChainedMessa
 	return {messages, control};
 }
 
-void RtcpSRReporter::startRecording() {
+void RtcpSrReporter::startRecording() {
 	_previousReportedTimestamp = rtpConfig->timestamp;
 	timeOffset = rtpConfig->startTime_s - rtpConfig->timestampToSeconds(rtpConfig->timestamp);
 }
 
-void RtcpSRReporter::addToReport(RTP *rtp, uint32_t rtpSize) {
+void RtcpSrReporter::addToReport(RTP *rtp, uint32_t rtpSize) {
 	packetCount += 1;
 	assert(!rtp->padding());
 	payloadOctets += rtpSize - rtp->getSize();
 }
 
-RtcpSRReporter::RtcpSRReporter(std::shared_ptr<RtpPacketizationConfig> rtpConfig)
+RtcpSrReporter::RtcpSrReporter(std::shared_ptr<RtpPacketizationConfig> rtpConfig)
 : MessageHandlerElement(), rtpConfig(rtpConfig) {}
 
-uint64_t RtcpSRReporter::secondsToNTP(double seconds) {
+uint64_t RtcpSrReporter::secondsToNTP(double seconds) {
 	return std::round(seconds * double(uint64_t(1) << 32));
 }
 
-void RtcpSRReporter::setNeedsToReport() { needsToReport = true; }
+void RtcpSrReporter::setNeedsToReport() { needsToReport = true; }
 
-message_ptr RtcpSRReporter::getSenderReport(uint32_t timestamp) {
+message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
 	auto srSize = RTCP_SR::size(0);
 	auto msg = make_message(srSize + RTCP_SDES::size({{uint8_t(rtpConfig->cname.size())}}),
 							Message::Type::Control);

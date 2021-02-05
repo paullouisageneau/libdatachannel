@@ -223,7 +223,7 @@ shared_ptr<ClientTrackData> addVideo(const shared_ptr<PeerConnection> pc, const 
 	// create H264 handler
 	shared_ptr<H264PacketizationHandler> h264Handler(new H264PacketizationHandler(packetizer));
 	// add RTCP SR handler
-	auto srReporter = make_shared<RtcpSRReporter>(rtpConfig);
+	auto srReporter = make_shared<RtcpSrReporter>(rtpConfig);
 	h264Handler->addToChain(srReporter);
 	// add RTCP NACK handler
 	auto nackResponder = make_shared<RtcpNackResponder>();
@@ -247,7 +247,7 @@ shared_ptr<ClientTrackData> addAudio(const shared_ptr<PeerConnection> pc, const 
 	// create opus handler
     auto opusHandler = make_shared<OpusPacketizationHandler>(packetizer);
 	// add RTCP SR handler
-	auto srReporter = make_shared<RtcpSRReporter>(rtpConfig);
+	auto srReporter = make_shared<RtcpSrReporter>(rtpConfig);
 	opusHandler->addToChain(srReporter);
 	// add RTCP NACK handler
 	auto nackResponder = make_shared<RtcpNackResponder>();
