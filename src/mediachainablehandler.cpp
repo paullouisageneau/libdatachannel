@@ -27,17 +27,18 @@ MediaChainableHandler::~MediaChainableHandler() {
 	leaf->recursiveRemoveChain();
 }
 
-bool MediaChainableHandler::sendProduct(ChainedOutgoingResponseProduct product) {
+bool MediaChainableHandler::sendProduct(ChainedOutgoingProduct product) {
 	bool result = true;
-	if (product.control.has_value()) {
-		auto sendResult = send(product.control.value());
+	if (product.control) {
+		assert(product.control->type == Message::Control);
+		auto sendResult = send(product.control);
 		if(!sendResult) {
 			LOG_DEBUG << "Failed to send control message";
 		}
 		result = result && sendResult;
 	}
-	if (product.messages.has_value()) {
-		auto messages = product.messages.value();
+	if (product.messages) {
+		auto messages = product.messages;
 		for (unsigned i = 0; i < messages->size(); i++) {
 			auto message = messages->at(i);
 			if (!message) {
@@ -53,46 +54,46 @@ bool MediaChainableHandler::sendProduct(ChainedOutgoingResponseProduct product) 
 	return result;
 }
 
-std::optional<message_ptr> MediaChainableHandler::handleIncomingBinary(message_ptr msg) {
+message_ptr MediaChainableHandler::handleIncomingBinary(message_ptr msg) {
 	assert(msg->type == Message::Binary);
 	auto messages = root->split(msg);
-	auto incoming = leaf->formIncomingBinaryMessage(messages, [this](ChainedOutgoingResponseProduct outgoing) {
+	auto incoming = leaf->formIncomingBinaryMessage(messages, [this](ChainedOutgoingProduct outgoing) {
 		return sendProduct(outgoing);
 	});
-	if (incoming.has_value()) {
-		return root->reduce(incoming.value());
+	if (incoming) {
+		return root->reduce(incoming);
 	} else {
-		return nullopt;
+		return nullptr;
 	}
 }
 
-std::optional<message_ptr> MediaChainableHandler::handleIncomingControl(message_ptr msg) {
+message_ptr MediaChainableHandler::handleIncomingControl(message_ptr msg) {
 	assert(msg->type == Message::Control);
-	auto incoming = leaf->formIncomingControlMessage(msg, [this](ChainedOutgoingResponseProduct outgoing) {
+	auto incoming = leaf->formIncomingControlMessage(msg, [this](ChainedOutgoingProduct outgoing) {
 		return sendProduct(outgoing);
 	});
-	assert(!incoming.has_value() || incoming.value()->type == Message::Control);
+	assert(!incoming || incoming->type == Message::Control);
 	return incoming;
 }
 
-std::optional<message_ptr> MediaChainableHandler::handleOutgoingBinary(message_ptr msg) {
+message_ptr MediaChainableHandler::handleOutgoingBinary(message_ptr msg) {
 	assert(msg->type == Message::Binary);
 	auto messages = make_chained_messages_product(msg);
 	auto optOutgoing = root->formOutgoingBinaryMessage(ChainedOutgoingProduct(messages));
 	if (!optOutgoing.has_value()) {
 		LOG_ERROR << "Generating outgoing message failed";
-		return nullopt;
+		return nullptr;
 	}
 	auto outgoing = optOutgoing.value();
-	if (outgoing.control.has_value()) {
-		if(!send(outgoing.control.value())) {
+	if (outgoing.control) {
+		if(!send(outgoing.control)) {
 			LOG_DEBUG << "Failed to send control message";
 		}
 	}
 	auto lastMessage = outgoing.messages->back();
 	if (!lastMessage) {
 		LOG_DEBUG << "Invalid message to send";
-		return nullopt;
+		return nullptr;
 	}
 	for (unsigned i = 0; i < outgoing.messages->size() - 1; i++) {
 		auto message = outgoing.messages->at(i);
@@ -106,15 +107,15 @@ std::optional<message_ptr> MediaChainableHandler::handleOutgoingBinary(message_p
 	return make_message(*lastMessage);
 }
 
-std::optional<message_ptr> MediaChainableHandler::handleOutgoingControl(message_ptr msg) {
+message_ptr MediaChainableHandler::handleOutgoingControl(message_ptr msg) {
 	assert(msg->type == Message::Control);
-	auto optOutgoing = root->formOutgoingControlMessage(msg);
-	assert(!optOutgoing.has_value() || optOutgoing.value()->type == Message::Control);
-	if (!optOutgoing.has_value()) {
+	auto outgoing = root->formOutgoingControlMessage(msg);
+	assert(!outgoing || outgoing->type == Message::Control);
+	if (!outgoing) {
 		LOG_ERROR << "Generating outgoing control message failed";
-		return nullopt;
+		return nullptr;
 	}
-	return optOutgoing.value();
+	return outgoing;
 }
 
 message_ptr MediaChainableHandler::outgoing(message_ptr ptr) {
@@ -125,9 +126,9 @@ message_ptr MediaChainableHandler::outgoing(message_ptr ptr) {
 	}
 	std::lock_guard<std::mutex> guard(inoutMutex);
 	if (ptr->type == Message::Binary) {
-		return handleOutgoingBinary(ptr).value_or(nullptr);
+		return handleOutgoingBinary(ptr);
 	} else if (ptr->type == Message::Control) {
-		return handleOutgoingControl(ptr).value_or(nullptr);
+		return handleOutgoingControl(ptr);
 	}
 	return ptr;
 }
@@ -139,9 +140,9 @@ message_ptr MediaChainableHandler::incoming(message_ptr ptr) {
 	}
 	std::lock_guard<std::mutex> guard(inoutMutex);
 	if (ptr->type == Message::Binary) {
-		return handleIncomingBinary(ptr).value_or(nullptr);
+		return handleIncomingBinary(ptr);
 	} else if (ptr->type == Message::Control) {
-		return handleIncomingControl(ptr).value_or(nullptr);
+		return handleIncomingControl(ptr);
 	}
 	return ptr;
 }

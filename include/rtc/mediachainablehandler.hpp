@@ -30,11 +30,11 @@ class RTC_CPP_EXPORT MediaChainableHandler : public MediaHandler {
 	std::shared_ptr<MediaHandlerElement> leaf;
 	std::mutex inoutMutex;
 
-	std::optional<message_ptr> handleIncomingBinary(message_ptr);
-	std::optional<message_ptr> handleIncomingControl(message_ptr);
-	std::optional<message_ptr> handleOutgoingBinary(message_ptr);
-	std::optional<message_ptr> handleOutgoingControl(message_ptr);
-	bool sendProduct(ChainedOutgoingResponseProduct product);
+	message_ptr handleIncomingBinary(message_ptr);
+	message_ptr handleIncomingControl(message_ptr);
+	message_ptr handleOutgoingBinary(message_ptr);
+	message_ptr handleOutgoingControl(message_ptr);
+	bool sendProduct(ChainedOutgoingProduct product);
 public:
 	MediaChainableHandler(std::shared_ptr<MediaHandlerRootElement> root);
 	~MediaChainableHandler();

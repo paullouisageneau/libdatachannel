@@ -84,7 +84,7 @@ public:
 	/// @param messages RTP packets
 	/// @param control RTCP
 	/// @returns Unchanged RTP and RTCP
-	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) override;
+	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) override;
 };
 
 } // namespace rtc

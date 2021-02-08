@@ -50,7 +50,7 @@ public:
 
 	RtcpSrReporter(std::shared_ptr<RtpPacketizationConfig> rtpConfig);
 
-	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) override;
+	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) override;
 
 	/// Set `needsToReport` flag. Sender report will be sent before next RTP packet with same
 	/// timestamp.

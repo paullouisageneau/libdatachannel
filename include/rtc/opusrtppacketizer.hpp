@@ -48,7 +48,7 @@ public:
 	/// @param messages opus samples
 	/// @param control RTCP
 	/// @returns RTP packets and unchanged `control`
-	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) override;
+	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) override;
 };
 
 } // namespace rtc

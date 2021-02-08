@@ -30,7 +30,7 @@ binary_ptr OpusRtpPacketizer::packetize(binary_ptr payload, bool setMark) {
 	return RtpPacketizer::packetize(payload, false);
 }
 
-ChainedOutgoingProduct OpusRtpPacketizer::processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) {
+ChainedOutgoingProduct OpusRtpPacketizer::processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) {
 	ChainedMessagesProduct packets = make_chained_messages_product();
 	packets->reserve(messages->size());
 	for (auto message: *messages) {

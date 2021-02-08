@@ -69,7 +69,7 @@ RtcpNackResponder::RtcpNackResponder(unsigned maxStoredPacketCount)
 : MediaHandlerElement(), storage(std::make_shared<Storage>(maxStoredPacketCount)) { }
 
 ChainedIncomingControlProduct RtcpNackResponder::processIncomingControlMessage(message_ptr message) {
-	std::optional<ChainedOutgoingResponseProduct> optPackets = ChainedOutgoingResponseProduct();
+	std::optional<ChainedOutgoingProduct> optPackets = ChainedOutgoingProduct(nullptr);
 	auto packets = make_chained_messages_product();
 
 	unsigned int i = 0;
@@ -100,13 +100,13 @@ ChainedIncomingControlProduct RtcpNackResponder::processIncomingControlMessage(m
 	}
 
 	if (!packets->empty()) {
-		return {message, ChainedOutgoingResponseProduct(packets)};
+		return {message, ChainedOutgoingProduct(packets)};
 	} else {
 		return {message, nullopt};
 	}
 }
 
-ChainedOutgoingProduct RtcpNackResponder::processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) {
+ChainedOutgoingProduct RtcpNackResponder::processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) {
 	for (auto message: *messages) {
 		storage->store(message);
 	}

@@ -21,13 +21,12 @@
 
 namespace rtc {
 
-ChainedOutgoingProduct RtcpSrReporter::processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) {
+ChainedOutgoingProduct RtcpSrReporter::processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) {
 	if (needsToReport) {
 		auto timestamp = rtpConfig->timestamp;
 		auto sr = getSenderReport(timestamp);
-		if (control.has_value()) {
-			auto rtcp = control.value();
-			rtcp->insert(rtcp->end(), sr->begin(), sr->end());
+		if (control) {
+			control->insert(control->end(), sr->begin(), sr->end());
 		} else {
 			control = sr;
 		}

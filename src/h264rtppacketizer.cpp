@@ -139,13 +139,13 @@ H264RtpPacketizer::H264RtpPacketizer(H264RtpPacketizer::Separator separator, std
 									 uint16_t maximumFragmentSize)
 : RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize), separator(separator) {}
 
-ChainedOutgoingProduct H264RtpPacketizer::processOutgoingBinaryMessage(ChainedMessagesProduct messages, std::optional<message_ptr> control) {
+ChainedOutgoingProduct H264RtpPacketizer::processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) {
 	ChainedMessagesProduct packets = std::make_shared<std::vector<binary_ptr>>();
 	for (auto message: *messages) {
 		auto nalus = splitMessage(message);
 		auto fragments = nalus->generateFragments(maximumFragmentSize);
 		if (fragments.size() == 0) {
-			return ChainedOutgoingProduct({});
+			return ChainedOutgoingProduct();
 		}
 		unsigned i = 0;
 		for (; i < fragments.size() - 1; i++) {
