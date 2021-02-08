@@ -588,7 +588,6 @@ int SctpTransport::handleWrite(byte *data, size_t len, uint8_t /*tos*/, uint8_t 
 		std::unique_lock lock(mWriteMutex);
 		PLOG_VERBOSE << "Handle write, len=" << len;
 
-		auto message = make_message(data, data + len);
 		if (!outgoing(make_message(data, data + len)))
 			return -1;
 

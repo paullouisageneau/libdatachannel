@@ -16,8 +16,8 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NalUnit_hpp
-#define NalUnit_hpp
+#ifndef NAL_UNIT_H
+#define NAL_UNIT_H
 
 #if RTC_ENABLE_MEDIA
 
@@ -152,4 +152,4 @@ public:
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* NalUnit_hpp */
+#endif /* NAL_UNIT_H */

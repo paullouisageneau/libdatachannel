@@ -100,8 +100,16 @@ auto ThreadPool::schedule(clock::duration delay, F &&f, Args &&...args)
 template <class F, class... Args>
 auto ThreadPool::schedule(clock::time_point time, F &&f, Args &&...args)
     -> invoke_future_t<F, Args...> {
-	std::unique_lock lock(mMutex);
 	using R = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
+	std::unique_lock lock(mMutex);
+	if (mJoining) {
+		std::promise<R> promise;
+		std::future<R> result = promise.get_future();
+		promise.set_exception(std::make_exception_ptr(
+		    std::runtime_error("Scheduled a task while joining the thread pool")));
+		return result;
+	}
+
 	auto bound = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
 	auto task = std::make_shared<std::packaged_task<R()>>([bound = std::move(bound)]() mutable {
 		try {

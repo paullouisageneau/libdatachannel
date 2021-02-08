@@ -453,7 +453,7 @@ int rtcDeleteDataChannel(int dc) {
 
 #if RTC_ENABLE_MEDIA
 
-void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid) {
+void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid, const char *_trackID) {
 
 	optional<string> name = nullopt;
 	if (_name) {
@@ -465,11 +465,16 @@ void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, 
 		msid = string(_msid);
 	}
 
-	description->addSSRC(ssrc, name, msid);
+	optional<string> trackID = nullopt;
+	if (_trackID) {
+		trackID = string(_trackID);
+	}
+
+	description->addSSRC(ssrc, name, msid, trackID);
 }
 
 int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid,
-                  rtcDirection _direction, const char *_name, const char *_msid) {
+				  rtcDirection _direction, const char *_name, const char *_msid, const char *_trackID) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);
 
@@ -534,7 +539,7 @@ int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const 
 			throw std::invalid_argument("Unexpected codec");
 		} else {
 			auto description = optDescription.value();
-			setSSRC(&description, ssrc, _name, _msid);
+			setSSRC(&description, ssrc, _name, _msid, _trackID);
 
 			int tr = emplaceTrack(peerConnection->addTrack(std::move(description)));
 			if (auto ptr = getUserPointer(pc)) {

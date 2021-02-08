@@ -108,7 +108,7 @@ shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 				break;
 			}
 		}
-		index++;
+
 		unsigned long long naluStartIndex = index;
 
 		while (index < message->size()) {

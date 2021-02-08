@@ -59,7 +59,13 @@ inline std::pair<string_view, string_view> parse_pair(string_view attr) {
 }
 
 template <typename T> T to_integer(string_view s) {
-	return std::is_signed<T>::value ? T(std::stol(string(s))) : T(std::stoul(string(s)));
+	const string str(s);
+	try {
+		return std::is_signed<T>::value ? T(std::stol(str)) : T(std::stoul(str));
+	}
+	catch(...) {
+		throw std::invalid_argument("Invalid integer \"" + str + "\" in description");
+	}
 }
 
 } // namespace
@@ -519,20 +525,20 @@ Description::Entry::removeAttribute(std::vector<string>::iterator it) {
 }
 
 void Description::Media::addSSRC(uint32_t ssrc, std::optional<string> name,
-                                 std::optional<string> msid) {
+								 std::optional<string> msid, std::optional<string> trackID) {
 	if (name)
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + *name);
 	else
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc));
 
 	if (msid)
-		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " msid:" + *msid + " " + *msid);
+		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " msid:" + *msid + " " + trackID.value_or(*msid));
 
 	mSsrcs.emplace_back(ssrc);
 }
 
 void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::optional<string> name,
-                                     std::optional<string> msid) {
+									 std::optional<string> msid, std::optional<string> trackID) {
 	auto it = mAttributes.begin();
 	while (it != mAttributes.end()) {
 		if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
@@ -540,7 +546,7 @@ void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::optio
 		} else
 			it++;
 	}
-	addSSRC(ssrc, std::move(name), std::move(msid));
+	addSSRC(ssrc, std::move(name), std::move(msid), std::move(trackID));
 }
 
 void Description::Media::removeSSRC(uint32_t oldSSRC) {
@@ -823,7 +829,7 @@ void Description::Media::parseSdpLine(string_view line) {
 		} else if (key == "rtcp-mux") {
 			// always added
 		} else if (key == "ssrc") {
-			mSsrcs.emplace_back(std::stoul(string(value)));
+			mSsrcs.emplace_back(to_integer<uint32_t>(value));
 		} else {
 			Entry::parseSdpLine(line);
 		}
@@ -843,7 +849,7 @@ std::vector<uint32_t> Description::Media::getSSRCs() {
 	for (auto &val : mAttributes) {
 		PLOG_DEBUG << val;
 		if (val.find("ssrc:") == 0) {
-			vec.emplace_back(std::stoul(string(val.substr(5, val.find(" ")))));
+			vec.emplace_back(to_integer<uint32_t>(val.substr(5, val.find(" "))));
 		}
 	}
 	return vec;
