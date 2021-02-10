@@ -219,13 +219,19 @@ shared_ptr<ClientTrackData> addVideo(const shared_ptr<PeerConnection> pc, const 
     // create RTP configuration
     auto rtpConfig = shared_ptr<RtpPacketizationConfig>(new RtpPacketizationConfig(ssrc, cname, payloadType, H264RtpPacketizer::defaultClockRate));
     // create packetizer
-    auto packetizer = shared_ptr<H264RtpPacketizer>(new H264RtpPacketizer(rtpConfig));
-    // create H264 and RTCP SP handler
-    shared_ptr<H264PacketizationHandler> h264Handler(new H264PacketizationHandler(H264PacketizationHandler::Separator::Length, packetizer));
+	auto packetizer = shared_ptr<H264RtpPacketizer>(new H264RtpPacketizer(H264RtpPacketizer::Separator::Length, rtpConfig));
+	// create H264 handler
+	shared_ptr<H264PacketizationHandler> h264Handler(new H264PacketizationHandler(packetizer));
+	// add RTCP SR handler
+	auto srReporter = make_shared<RtcpSrReporter>(rtpConfig);
+	h264Handler->addToChain(srReporter);
+	// add RTCP NACK handler
+	auto nackResponder = make_shared<RtcpNackResponder>();
+	h264Handler->addToChain(nackResponder);
     // set handler
     track->setRtcpHandler(h264Handler);
     track->onOpen(onOpen);
-    auto trackData = make_shared<ClientTrackData>(track, h264Handler);
+    auto trackData = make_shared<ClientTrackData>(track, srReporter);
     return trackData;
 }
 
@@ -238,12 +244,18 @@ shared_ptr<ClientTrackData> addAudio(const shared_ptr<PeerConnection> pc, const 
     auto rtpConfig = shared_ptr<RtpPacketizationConfig>(new RtpPacketizationConfig(ssrc, cname, payloadType, OpusRtpPacketizer::defaultClockRate));
     // create packetizer
     auto packetizer = make_shared<OpusRtpPacketizer>(rtpConfig);
-    // create opus and RTCP SP handler
+	// create opus handler
     auto opusHandler = make_shared<OpusPacketizationHandler>(packetizer);
+	// add RTCP SR handler
+	auto srReporter = make_shared<RtcpSrReporter>(rtpConfig);
+	opusHandler->addToChain(srReporter);
+	// add RTCP NACK handler
+	auto nackResponder = make_shared<RtcpNackResponder>();
+	opusHandler->addToChain(nackResponder);
     // set handler
     track->setRtcpHandler(opusHandler);
     track->onOpen(onOpen);
-    auto trackData = make_shared<ClientTrackData>(track, opusHandler);
+    auto trackData = make_shared<ClientTrackData>(track, srReporter);
     return trackData;
 }
 

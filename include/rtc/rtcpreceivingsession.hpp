@@ -23,14 +23,14 @@
 #if RTC_ENABLE_MEDIA
 
 #include "include.hpp"
-#include "rtcphandler.hpp"
+#include "mediahandler.hpp"
 #include "message.hpp"
 #include "rtp.hpp"
 
 namespace rtc {
 
 // An RtcpSession can be plugged into a Track to handle the whole RTCP session
-class RTC_CPP_EXPORT RtcpReceivingSession : public RtcpHandler {
+class RTC_CPP_EXPORT RtcpReceivingSession : public MediaHandler {
 public:
 	message_ptr incoming(message_ptr ptr) override;
 	message_ptr outgoing(message_ptr ptr) override;

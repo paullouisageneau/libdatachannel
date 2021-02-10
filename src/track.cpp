@@ -161,7 +161,7 @@ bool Track::outgoing([[maybe_unused]] message_ptr message) {
 #endif
 }
 
-void Track::setRtcpHandler(std::shared_ptr<RtcpHandler> handler) {
+void Track::setRtcpHandler(std::shared_ptr<MediaHandler> handler) {
 	std::unique_lock lock(mRtcpHandlerMutex);
 	mRtcpHandler = std::move(handler);
 	if (mRtcpHandler) {
@@ -178,7 +178,7 @@ bool Track::requestKeyframe() {
 	return false;
 }
 
-std::shared_ptr<RtcpHandler> Track::getRtcpHandler() {
+std::shared_ptr<MediaHandler> Track::getRtcpHandler() {
 	std::shared_lock lock(mRtcpHandlerMutex);
 	return mRtcpHandler;
 }

@@ -1,5 +1,4 @@
-/*
- * libdatachannel streamer example
+/**
  * Copyright (c) 2020 Filip Klembara (in2core)
  *
  * This program is free software; you can redistribute it and/or
@@ -18,40 +17,52 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "rtcpsenderreporter.hpp"
+#include "rtcpsrreporter.hpp"
 
 namespace rtc {
 
-void RtcpSenderReporter::startRecording() {
+ChainedOutgoingProduct RtcpSrReporter::processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) {
+	if (needsToReport) {
+		auto timestamp = rtpConfig->timestamp;
+		auto sr = getSenderReport(timestamp);
+		if (control) {
+			control->insert(control->end(), sr->begin(), sr->end());
+		} else {
+			control = sr;
+		}
+		needsToReport = false;
+	}
+	for (auto message: *messages) {
+		auto rtp = reinterpret_cast<RTP *>(message->data());
+		addToReport(rtp, message->size());
+	}
+	return {messages, control};
+}
+
+void RtcpSrReporter::startRecording() {
 	_previousReportedTimestamp = rtpConfig->timestamp;
 	timeOffset = rtpConfig->startTime_s - rtpConfig->timestampToSeconds(rtpConfig->timestamp);
 }
 
-void RtcpSenderReporter::sendReport(uint32_t timestamp) {
-	auto sr = getSenderReport(timestamp);
-	_previousReportedTimestamp = timestamp;
-	senderReportOutgoingCallback(move(sr));
-}
-
-void RtcpSenderReporter::addToReport(RTP *rtp, uint32_t rtpSize) {
+void RtcpSrReporter::addToReport(RTP *rtp, uint32_t rtpSize) {
 	packetCount += 1;
 	assert(!rtp->padding());
 	payloadOctets += rtpSize - rtp->getSize();
 }
 
-RtcpSenderReporter::RtcpSenderReporter(std::shared_ptr<RtpPacketizationConfig> rtpConfig)
-    : rtpConfig(rtpConfig) {}
+RtcpSrReporter::RtcpSrReporter(std::shared_ptr<RtpPacketizationConfig> rtpConfig)
+: MediaHandlerElement(), rtpConfig(rtpConfig) {}
 
-uint64_t RtcpSenderReporter::secondsToNTP(double seconds) {
+uint64_t RtcpSrReporter::secondsToNTP(double seconds) {
 	return std::round(seconds * double(uint64_t(1) << 32));
 }
 
-void RtcpSenderReporter::setNeedsToReport() { needsToReport = true; }
+void RtcpSrReporter::setNeedsToReport() { needsToReport = true; }
 
-message_ptr RtcpSenderReporter::getSenderReport(uint32_t timestamp) {
+message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
 	auto srSize = RTCP_SR::size(0);
 	auto msg = make_message(srSize + RTCP_SDES::size({{uint8_t(rtpConfig->cname.size())}}),
-	                        Message::Type::Control);
+							Message::Type::Control);
 	auto sr = reinterpret_cast<RTCP_SR *>(msg->data());
 	auto timestamp_s = rtpConfig->timestampToSeconds(timestamp);
 	auto currentTime = timeOffset + timestamp_s;
@@ -68,6 +79,9 @@ message_ptr RtcpSenderReporter::getSenderReport(uint32_t timestamp) {
 	item->type = 1;
 	item->setText(rtpConfig->cname);
 	sdes->preparePacket(1);
+
+	_previousReportedTimestamp = timestamp;
+
 	return msg;
 }
 

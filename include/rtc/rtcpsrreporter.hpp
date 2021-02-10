@@ -1,5 +1,4 @@
-/*
- * libdatachannel streamer example
+/**
  * Copyright (c) 2020 Filip Klembara (in2core)
  *
  * This program is free software; you can redistribute it and/or
@@ -23,11 +22,12 @@
 
 #include "message.hpp"
 #include "rtppacketizationconfig.hpp"
+#include "mediahandlerelement.hpp"
 
 namespace rtc {
 
-/// Class for sending RTCP SR
-class RTC_CPP_EXPORT RtcpSenderReporter {
+class RTC_CPP_EXPORT RtcpSrReporter: public MediaHandlerElement {
+
 	bool needsToReport = false;
 
 	uint32_t packetCount = 0;
@@ -39,10 +39,6 @@ class RTC_CPP_EXPORT RtcpSenderReporter {
 	void addToReport(RTP *rtp, uint32_t rtpSize);
 	message_ptr getSenderReport(uint32_t timestamp);
 
-protected:
-	/// Outgoing callback for sender reports
-	synchronized_callback<message_ptr> senderReportOutgoingCallback;
-
 public:
 	static uint64_t secondsToNTP(double seconds);
 
@@ -52,7 +48,9 @@ public:
 	/// RTP configuration
 	const std::shared_ptr<RtpPacketizationConfig> rtpConfig;
 
-	RtcpSenderReporter(std::shared_ptr<RtpPacketizationConfig> rtpConfig);
+	RtcpSrReporter(std::shared_ptr<RtpPacketizationConfig> rtpConfig);
+
+	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) override;
 
 	/// Set `needsToReport` flag. Sender report will be sent before next RTP packet with same
 	/// timestamp.
@@ -63,27 +61,6 @@ public:
 	/// @note `time_offset = rtpConfig->startTime_s -
 	/// rtpConfig->timestampToSeconds(rtpConfig->timestamp)`
 	void startRecording();
-
-	/// Send RTCP SR with given timestamp
-	/// @param timestamp timestamp of the RTCP SR
-	void sendReport(uint32_t timestamp);
-
-protected:
-	/// Calls given block with function for statistics. Sends RTCP SR packet with current timestamp
-	/// before `block` call if `needs_to_report` flag is true.
-	/// @param block Block of code to run. This block has function for rtp stats recording.
-	template <typename T>
-	T withStatsRecording(std::function<T(std::function<void(message_ptr)>)> block) {
-		if (needsToReport) {
-			sendReport(rtpConfig->timestamp);
-			needsToReport = false;
-		}
-		auto result = block([this](message_ptr _rtp) {
-			auto rtp = reinterpret_cast<RTP *>(_rtp->data());
-			this->addToReport(rtp, _rtp->size());
-		});
-		return result;
-	}
 };
 
 } // namespace rtc

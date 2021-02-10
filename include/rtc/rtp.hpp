@@ -617,8 +617,31 @@ struct RTCP_FIR {
 };
 
 struct RTCP_NACK_PART {
-	uint16_t pid;
-	uint16_t blp;
+	uint16_t _pid;
+	uint16_t _blp;
+
+	uint16_t getPID() { return ntohs(_pid); }
+	uint16_t getBLP() { return ntohs(_blp); }
+
+	void setPID(uint16_t pid) { _pid = htons(pid); }
+	void setBLP(uint16_t blp) { _blp = htons(blp); }
+
+	std::vector<uint16_t> getSequenceNumbers() {
+		std::vector<uint16_t> result{};
+		result.reserve(17);
+		auto pid = getPID();
+		result.push_back(pid);
+		auto bitmask = getBLP();
+		auto i = pid + 1;
+		while (bitmask > 0) {
+			if (bitmask & 0x1) {
+				result.push_back(i);
+			}
+			i += 1;
+			bitmask >>= 1;
+		}
+		return result;
+	}
 };
 
 class RTCP_NACK {
@@ -644,16 +667,16 @@ public:
 	 */
 	bool addMissingPacket(unsigned int *fciCount, uint16_t *fciPID, uint16_t missingPacket) {
 		if (*fciCount == 0 || missingPacket < *fciPID || missingPacket > (*fciPID + 16)) {
-			parts[*fciCount].pid = htons(missingPacket);
-			parts[*fciCount].blp = 0;
+			parts[*fciCount].setPID(missingPacket);
+			parts[*fciCount].setBLP(0);
 			*fciPID = missingPacket;
 			(*fciCount)++;
 			return true;
 		} else {
 			// TODO SPEEED!
-			auto blp = ntohs(parts[(*fciCount) - 1].blp);
+			auto blp = parts[(*fciCount) - 1].getBLP();
 			auto newBit = 1u << (unsigned int)(missingPacket - (1 + *fciPID));
-			parts[(*fciCount) - 1].blp = htons(blp | newBit);
+			parts[(*fciCount) - 1].setBLP(blp | newBit);
 			return false;
 		}
 	}

@@ -17,15 +17,15 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_RTCP_HANDLER_H
-#define RTC_RTCP_HANDLER_H
+#ifndef RTC_MEDIA_HANDLER_H
+#define RTC_MEDIA_HANDLER_H
 
 #include "include.hpp"
 #include "message.hpp"
 
 namespace rtc {
 
-class RTC_CPP_EXPORT RtcpHandler {
+class RTC_CPP_EXPORT MediaHandler {
 protected:
 	// Use this callback when trying to send custom data (such as RTCP) to the client.
 	synchronized_callback<message_ptr> outgoingCallback;
@@ -47,4 +47,4 @@ public:
 
 } // namespace rtc
 
-#endif // RTC_RTCP_HANDLER_H
+#endif // RTC_MEDIA_HANDLER_H

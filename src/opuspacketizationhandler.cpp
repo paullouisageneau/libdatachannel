@@ -23,23 +23,7 @@
 namespace rtc {
 
 OpusPacketizationHandler::OpusPacketizationHandler(std::shared_ptr<OpusRtpPacketizer> packetizer)
-    : RtcpHandler(), RtcpSenderReporter(packetizer->rtpConfig), packetizer(packetizer) {
-	senderReportOutgoingCallback = [this](message_ptr msg) { outgoingCallback(msg); };
-}
-
-message_ptr OpusPacketizationHandler::incoming(message_ptr ptr) { return ptr; }
-
-message_ptr OpusPacketizationHandler::outgoing(message_ptr ptr) {
-	if (ptr->type == Message::Binary) {
-		return withStatsRecording<message_ptr>(
-		    [this, ptr](std::function<void(message_ptr)> addToReport) {
-			    auto rtp = packetizer->packetize(*ptr, false);
-			    addToReport(rtp);
-			    return rtp;
-		    });
-	}
-	return ptr;
-}
+: MediaChainableHandler(packetizer) { }
 
 } // namespace rtc
 

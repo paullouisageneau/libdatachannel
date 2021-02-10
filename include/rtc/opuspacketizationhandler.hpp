@@ -22,27 +22,17 @@
 #if RTC_ENABLE_MEDIA
 
 #include "opusrtppacketizer.hpp"
-#include "rtcphandler.hpp"
-#include "rtcpsenderreporter.hpp"
+#include "mediachainablehandler.hpp"
 
 namespace rtc {
 
 /// Handler for opus packetization
-class RTC_CPP_EXPORT OpusPacketizationHandler : public RtcpHandler, public RtcpSenderReporter {
-	/// RTP packetizer for opus
-	const std::shared_ptr<OpusRtpPacketizer> packetizer;
+class RTC_CPP_EXPORT OpusPacketizationHandler : public MediaChainableHandler {
 
 public:
 	/// Construct handler for opus packetization.
 	/// @param packetizer RTP packetizer for opus
 	OpusPacketizationHandler(std::shared_ptr<OpusRtpPacketizer> packetizer);
-
-	/// Returns message unchanged
-	/// @param ptr message
-	message_ptr incoming(message_ptr ptr) override;
-	/// Returns packetized message if message type is binary
-	/// @param ptr message
-	message_ptr outgoing(message_ptr ptr) override;
 };
 
 } // namespace rtc

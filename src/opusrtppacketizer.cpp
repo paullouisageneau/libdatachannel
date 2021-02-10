@@ -23,11 +23,20 @@
 namespace rtc {
 
 OpusRtpPacketizer::OpusRtpPacketizer(std::shared_ptr<RtpPacketizationConfig> rtpConfig)
-    : RtpPacketizer(rtpConfig) {}
+: RtpPacketizer(rtpConfig), MediaHandlerRootElement() {}
 
-message_ptr OpusRtpPacketizer::packetize(binary payload, bool setMark) {
+binary_ptr OpusRtpPacketizer::packetize(binary_ptr payload, bool setMark) {
 	assert(!setMark);
 	return RtpPacketizer::packetize(payload, false);
+}
+
+ChainedOutgoingProduct OpusRtpPacketizer::processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) {
+	ChainedMessagesProduct packets = make_chained_messages_product();
+	packets->reserve(messages->size());
+	for (auto message: *messages) {
+		packets->push_back(packetize(message, false));
+	}
+	return {packets, control};
 }
 
 } // namespace rtc

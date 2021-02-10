@@ -24,7 +24,7 @@
 #include "include.hpp"
 #include "message.hpp"
 #include "queue.hpp"
-#include "rtcphandler.hpp"
+#include "mediahandler.hpp"
 
 #include <atomic>
 #include <variant>
@@ -62,8 +62,8 @@ public:
 	bool requestKeyframe();
 
 	// RTCP handler
-	void setRtcpHandler(std::shared_ptr<RtcpHandler> handler);
-	std::shared_ptr<RtcpHandler> getRtcpHandler();
+	void setRtcpHandler(std::shared_ptr<MediaHandler> handler);
+	std::shared_ptr<MediaHandler> getRtcpHandler();
 
 private:
 #if RTC_ENABLE_MEDIA
@@ -80,7 +80,7 @@ private:
 	Queue<message_ptr> mRecvQueue;
 
 	std::shared_mutex mRtcpHandlerMutex;
-	std::shared_ptr<RtcpHandler> mRtcpHandler;
+	std::shared_ptr<MediaHandler> mRtcpHandler;
 
 	friend class PeerConnection;
 };

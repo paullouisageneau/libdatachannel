@@ -27,8 +27,11 @@
 
 #if RTC_ENABLE_MEDIA
 
-// RTCP handling
+// Media handling
 #include "rtcpreceivingsession.hpp"
+#include "mediachainablehandler.hpp"
+#include "rtcpsrreporter.hpp"
+#include "rtcpnackresponder.hpp"
 
 // Opus/h264 streaming
 #include "h264packetizationhandler.hpp"

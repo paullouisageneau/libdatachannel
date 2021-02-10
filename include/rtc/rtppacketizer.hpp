@@ -44,7 +44,7 @@ public:
 	/// @note This function increase sequence number after packetization.
 	/// @param payload RTP payload
 	/// @param setMark Set marker flag in RTP packet if true
-	virtual message_ptr packetize(binary payload, bool setMark);
+	virtual std::shared_ptr<binary> packetize(std::shared_ptr<binary> payload, bool setMark);
 };
 
 } // namespace rtc

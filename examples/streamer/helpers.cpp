@@ -60,7 +60,7 @@ int gettimeofday(struct timeval *tv, struct timezone *tz)
 using namespace std;
 using namespace rtc;
 
-ClientTrackData::ClientTrackData(shared_ptr<Track> track, shared_ptr<RtcpSenderReporter> sender) {
+ClientTrackData::ClientTrackData(shared_ptr<Track> track, shared_ptr<RtcpSrReporter> sender) {
     this->track = track;
     this->sender = sender;
 }

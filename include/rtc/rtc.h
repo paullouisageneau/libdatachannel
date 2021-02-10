@@ -41,6 +41,7 @@ extern "C" {
 
 #if RTC_ENABLE_MEDIA
 #define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE ((uint16_t)1400)
+#define RTC_DEFAULT_MAXIMUM_PACKET_COUNT_FOR_NACK_CACHE ((unsigned)512)
 #endif
 
 #include <stdbool.h>
@@ -240,6 +241,15 @@ RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char 
 /// @param _timestamp Timestamp
 RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t _sequenceNumber, uint32_t _timestamp);
 
+/// Chain RtcpSrReporter to handler chain for given track
+/// @param tr Track id
+int rtcChainRtcpSrReporter(int tr);
+
+/// Chain RtcpNackResponder to handler chain for given track
+/// @param tr Track id
+/// @param maxStoredPacketsCount Maximum stored packet count
+int rtcChainRtcpNackResponder(int tr, unsigned maxStoredPacketsCount);
+
 /// Set start time for RTP stream
 /// @param startTime_s Start time in seconds
 /// @param timeIntervalSince1970 Set true if `startTime_s` is time interval since 1970, false if `startTime_s` is time interval since 1900
@@ -249,7 +259,6 @@ int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeInterva
 /// Start stats recording for RTCP Sender Reporter
 /// @param id Track identifier
 int rtcStartRtcpSenderReporterRecording(int id);
-
 
 /// Transform seconds to timestamp using track's clock rate
 /// @param id Track id
@@ -283,9 +292,9 @@ int rtcSetTrackRTPTimestamp(int id, uint32_t timestamp);
 /// @param timestamp Pointer for result
 int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t * timestamp);
 
-/// Set `NeedsToReport` flag in RtcpSenderReporter handler identified by given track id
+/// Set `NeedsToReport` flag in RtcpSrReporter handler identified by given track id
 /// @param id Track id
-int rtcSetNeedsToSendRTCPSR(int id);
+int rtcSetNeedsToSendRtcpSr(int id);
 
 #endif // RTC_ENABLE_MEDIA
 

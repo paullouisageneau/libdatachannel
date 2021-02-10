@@ -22,12 +22,12 @@
 #if RTC_ENABLE_MEDIA
 
 #include "rtppacketizer.hpp"
+#include "mediahandlerrootelement.hpp"
 
 namespace rtc {
 
 /// RTP packetizer for opus
-class RTC_CPP_EXPORT OpusRtpPacketizer : public RtpPacketizer {
-
+class RTC_CPP_EXPORT OpusRtpPacketizer : public RtpPacketizer, public MediaHandlerRootElement {
 public:
 	/// default clock rate used in opus RTP communication
 	static const uint32_t defaultClockRate = 48 * 1000;
@@ -42,7 +42,13 @@ public:
 	/// @note This function increase sequence number after packetization.
 	/// @param payload RTP payload
 	/// @param setMark This needs to be `false` for all RTP packets with opus payload
-	message_ptr packetize(binary payload, bool setMark) override;
+	binary_ptr packetize(binary_ptr payload, bool setMark) override;
+
+	/// Creates RTP packet for given samples (all samples share same RTP timesamp)
+	/// @param messages opus samples
+	/// @param control RTCP
+	/// @returns RTP packets and unchanged `control`
+	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) override;
 };
 
 } // namespace rtc
