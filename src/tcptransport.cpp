@@ -63,7 +63,7 @@ int SelectInterrupter::prepare(fd_set &readfds, [[maybe_unused]] fd_set &writefd
 	return SOCKET_TO_INT(mDummySock) + 1;
 #else
 	char dummy;
-	::read(mPipeIn, &dummy, 1);
+	(void)::read(mPipeIn, &dummy, 1);
 	FD_SET(mPipeIn, &readfds);
 	return mPipeIn + 1;
 #endif
@@ -78,7 +78,7 @@ void SelectInterrupter::interrupt() {
 	}
 #else
 	char dummy = 0;
-	::write(mPipeOut, &dummy, 1);
+	(void)::write(mPipeOut, &dummy, 1);
 #endif
 }
 
