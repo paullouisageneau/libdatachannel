@@ -48,7 +48,7 @@ public:
 		Closed = 3,
 	};
 
-	struct Configuration {
+	struct RTC_CPP_EXPORT Configuration {
 		bool disableTlsVerification = false; // if true, don't verify the TLS certificate
 		std::vector<string> protocols;
 	};
