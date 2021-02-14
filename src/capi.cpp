@@ -895,6 +895,28 @@ int rtcGetRemoteDescription(int pc, char *buffer, int size) {
 	});
 }
 
+int rtcGetLocalDescriptionType(int pc, char *buffer, int size) {
+	return WRAP({
+		auto peerConnection = getPeerConnection(pc);
+
+		if (auto desc = peerConnection->localDescription())
+			return copyAndReturn(desc->typeString(), buffer, size);
+		else
+			return RTC_ERR_NOT_AVAIL;
+	});
+}
+
+int rtcGetRemoteDescriptionType(int pc, char *buffer, int size) {
+	return WRAP({
+		auto peerConnection = getPeerConnection(pc);
+
+		if (auto desc = peerConnection->remoteDescription())
+			return copyAndReturn(desc->typeString(), buffer, size);
+		else
+			return RTC_ERR_NOT_AVAIL;
+	});
+}
+
 int rtcGetLocalAddress(int pc, char *buffer, int size) {
 	return WRAP({
 		auto peerConnection = getPeerConnection(pc);

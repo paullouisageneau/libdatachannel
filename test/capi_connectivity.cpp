@@ -235,35 +235,59 @@ int test_capi_connectivity_main() {
 	char buffer[BUFFER_SIZE];
 	char buffer2[BUFFER_SIZE];
 
+	if (rtcGetLocalDescriptionType(peer1->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetLocalDescriptionType failed\n");
+		goto error;
+	}
+	printf("Local description type 1: %s\n", buffer);
+
 	if (rtcGetLocalDescription(peer1->pc, buffer, BUFFER_SIZE) < 0) {
 		fprintf(stderr, "rtcGetLocalDescription failed\n");
 		goto error;
 	}
-	printf("Local description 1:  %s\n", buffer);
+	printf("Local description 1: %s\n", buffer);
+
+	if (rtcGetRemoteDescriptionType(peer1->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetRemoteDescriptionType failed\n");
+		goto error;
+	}
+	printf("Remote description type 1: %s\n", buffer);
 
 	if (rtcGetRemoteDescription(peer1->pc, buffer, BUFFER_SIZE) < 0) {
 		fprintf(stderr, "rtcGetRemoteDescription failed\n");
 		goto error;
 	}
-	printf("Remote description 1:  %s\n", buffer);
+	printf("Remote description 1: %s\n", buffer);
+
+	if (rtcGetLocalDescriptionType(peer2->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetLocalDescriptionType failed\n");
+		goto error;
+	}
+	printf("Local description type 2: %s\n", buffer);
 
 	if (rtcGetLocalDescription(peer2->pc, buffer, BUFFER_SIZE) < 0) {
 		fprintf(stderr, "rtcGetLocalDescription failed\n");
 		goto error;
 	}
-	printf("Local description 2:  %s\n", buffer);
+	printf("Local description 2: %s\n", buffer);
+
+	if (rtcGetRemoteDescriptionType(peer2->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetRemoteDescriptionType failed\n");
+		goto error;
+	}
+	printf("Remote description type 2: %s\n", buffer);
 
 	if (rtcGetRemoteDescription(peer2->pc, buffer, BUFFER_SIZE) < 0) {
 		fprintf(stderr, "rtcGetRemoteDescription failed\n");
 		goto error;
 	}
-	printf("Remote description 2:  %s\n", buffer);
+	printf("Remote description 2: %s\n", buffer);
 
 	if (rtcGetLocalAddress(peer1->pc, buffer, BUFFER_SIZE) < 0) {
 		fprintf(stderr, "rtcGetLocalAddress failed\n");
 		goto error;
 	}
-	printf("Local address 1:  %s\n", buffer);
+	printf("Local address 1: %s\n", buffer);
 
 	if (rtcGetRemoteAddress(peer1->pc, buffer, BUFFER_SIZE) < 0) {
 		fprintf(stderr, "rtcGetRemoteAddress failed\n");
@@ -275,7 +299,7 @@ int test_capi_connectivity_main() {
 		fprintf(stderr, "rtcGetLocalAddress failed\n");
 		goto error;
 	}
-	printf("Local address 2:  %s\n", buffer);
+	printf("Local address 2: %s\n", buffer);
 
 	if (rtcGetRemoteAddress(peer2->pc, buffer, BUFFER_SIZE) < 0) {
 		fprintf(stderr, "rtcGetRemoteAddress failed\n");
