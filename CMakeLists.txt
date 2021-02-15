@@ -80,6 +80,19 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.cpp
 )
 
+set(LIBDATACHANNEL_PRIVATE_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/src/certificate.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/dtlssrtptransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/dtlstransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/icetransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/logcounter.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/threadpool.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/tls.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/processor.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/transport.hpp
+)
+
 set(LIBDATACHANNEL_WEBSOCKET_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/base64.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/tcptransport.cpp
@@ -87,6 +100,14 @@ set(LIBDATACHANNEL_WEBSOCKET_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/verifiedtlstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/websocket.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/wstransport.cpp
+)
+
+set(LIBDATACHANNEL_WEBSOCKET_PRIVATE_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/src/base64.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/tcptransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/tlstransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/verifiedtlstransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/wstransport.hpp
 )
 
 set(LIBDATACHANNEL_HEADERS
@@ -118,10 +139,10 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/nalunit.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264packetizationhandler.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/mediachainablehandler.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/mediahandlerelement.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/mediahandlerrootelement.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediachainablehandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandlerelement.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandlerrootelement.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
 )
 
 set(TESTS_SOURCES
@@ -173,18 +194,28 @@ add_library(Usrsctp::Usrsctp ALIAS usrsctp)
 
 if (NO_WEBSOCKET)
 	add_library(datachannel SHARED
-		${LIBDATACHANNEL_SOURCES})
+		${LIBDATACHANNEL_SOURCES}
+		${LIBDATACHANNEL_PRIVATE_HEADERS}
+		${LIBDATACHANNEL_HEADERS})
 	add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
-		${LIBDATACHANNEL_SOURCES})
+		${LIBDATACHANNEL_SOURCES}
+		${LIBDATACHANNEL_PRIVATE_HEADERS}
+		${LIBDATACHANNEL_HEADERS})
 	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=0)
 	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=0)
 else()
 	add_library(datachannel SHARED
 		${LIBDATACHANNEL_SOURCES}
-		${LIBDATACHANNEL_WEBSOCKET_SOURCES})
+		${LIBDATACHANNEL_PRIVATE_HEADERS}
+		${LIBDATACHANNEL_WEBSOCKET_SOURCES}
+		${LIBDATACHANNEL_WEBSOCKET_PRIVATE_HEADERS}
+		${LIBDATACHANNEL_HEADERS})
 	add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
 		${LIBDATACHANNEL_SOURCES}
-		${LIBDATACHANNEL_WEBSOCKET_SOURCES})
+		${LIBDATACHANNEL_PRIVATE_HEADERS}
+		${LIBDATACHANNEL_WEBSOCKET_SOURCES}
+		${LIBDATACHANNEL_WEBSOCKET_PRIVATE_HEADERS}
+		${LIBDATACHANNEL_HEADERS})
 	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=1)
 	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=1)
 endif()
