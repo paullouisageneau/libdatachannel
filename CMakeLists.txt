@@ -118,10 +118,10 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/nalunit.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264packetizationhandler.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/mediachainablehandler.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/mediahandlerelement.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/mediahandlerrootelement.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediachainablehandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandlerelement.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandlerrootelement.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
 )
 
 set(TESTS_SOURCES
