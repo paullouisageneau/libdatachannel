@@ -4,10 +4,10 @@ if(POLICY CMP0079)
 endif()
 
 if(WIN32)
-add_executable(datachannel-client main.cpp parse_cl.cpp parse_cl.h getopt.cpp getopt.h)
-target_compile_definitions(datachannel-client PUBLIC STATIC_GETOPT)
+	add_executable(datachannel-client main.cpp parse_cl.cpp parse_cl.h getopt.cpp getopt.h)
+	target_compile_definitions(datachannel-client PUBLIC STATIC_GETOPT)
 else()
-add_executable(datachannel-client main.cpp parse_cl.cpp parse_cl.h)
+	add_executable(datachannel-client main.cpp parse_cl.cpp parse_cl.h)
 endif()
 
 set_target_properties(datachannel-client PROPERTIES
@@ -15,3 +15,10 @@ set_target_properties(datachannel-client PROPERTIES
 	OUTPUT_NAME client)
 target_link_libraries(datachannel-client datachannel nlohmann_json)
 
+if(WIN32)
+	add_custom_command(TARGET datachannel-client POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+		"$<TARGET_FILE_DIR:datachannel>/datachannel.dll"
+		$<TARGET_FILE_DIR:datachannel-client>
+	)
+endif()
