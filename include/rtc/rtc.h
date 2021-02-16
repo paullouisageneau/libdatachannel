@@ -86,20 +86,20 @@ typedef enum { // Don't change, it must match plog severity
 
 typedef enum {
     // video
-    RTC_CODEC_H264,
-    RTC_CODEC_VP8,
-    RTC_CODEC_VP9,
+    RTC_CODEC_H264 = 0,
+    RTC_CODEC_VP8 = 1,
+    RTC_CODEC_VP9 = 2,
 
     // audio
-    RTC_CODEC_OPUS
+    RTC_CODEC_OPUS = 128
 } rtcCodec;
 
 typedef enum {
-    RTC_DIRECTION_UNKNOWN,
-    RTC_DIRECTION_SENDONLY,
-    RTC_DIRECTION_RECVONLY,
-    RTC_DIRECTION_SENDRECV,
-    RTC_DIRECTION_INACTIVE
+    RTC_DIRECTION_UNKNOWN = 0,
+    RTC_DIRECTION_SENDONLY = 1,
+    RTC_DIRECTION_RECVONLY = 2,
+    RTC_DIRECTION_SENDRECV = 3,
+    RTC_DIRECTION_INACTIVE = 4
 } rtcDirection;
 
 #endif // RTC_ENABLE_MEDIA
