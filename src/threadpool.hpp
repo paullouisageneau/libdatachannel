@@ -72,7 +72,8 @@ protected:
 	std::function<void()> dequeue(); // returns null function if joining
 
 	std::vector<std::thread> mWorkers;
-	std::atomic<bool> mJoining = false;
+	int mWaitingWorkers = 0;
+	bool mJoining = false;
 
 	struct Task {
 		clock::time_point time;
@@ -82,8 +83,8 @@ protected:
 	};
 	std::priority_queue<Task, std::deque<Task>, std::greater<Task>> mTasks;
 
+	std::condition_variable mTasksCondition, mWaitingCondition;
 	mutable std::mutex mMutex, mWorkersMutex;
-	std::condition_variable mCondition;
 };
 
 template <class F, class... Args>
@@ -114,7 +115,7 @@ auto ThreadPool::schedule(clock::time_point time, F &&f, Args &&...args)
 	std::future<R> result = task->get_future();
 
 	mTasks.push({time, [task = std::move(task), token = Init::Token()]() { return (*task)(); }});
-	mCondition.notify_one();
+	mTasksCondition.notify_one();
 	return result;
 }
 

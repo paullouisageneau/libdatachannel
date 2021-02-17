@@ -21,10 +21,10 @@
 #include <cstdlib>
 
 namespace {
-	void joinThreadPoolInstance() {
-		rtc::ThreadPool::Instance().join();
-	}
-}
+
+void joinThreadPoolInstance() { rtc::ThreadPool::Instance().join(); }
+
+} // namespace
 
 namespace rtc {
 
@@ -33,9 +33,7 @@ ThreadPool &ThreadPool::Instance() {
 	return *instance;
 }
 
-ThreadPool::ThreadPool() {
-	std::atexit(joinThreadPoolInstance);
-}
+ThreadPool::ThreadPool() { std::atexit(joinThreadPoolInstance); }
 
 ThreadPool::~ThreadPool() {}
 
@@ -45,17 +43,21 @@ int ThreadPool::count() const {
 }
 
 void ThreadPool::spawn(int count) {
-	std::unique_lock lock(mWorkersMutex);
+	std::scoped_lock lock(mMutex, mWorkersMutex);
 	mJoining = false;
 	while (count-- > 0)
 		mWorkers.emplace_back(std::bind(&ThreadPool::run, this));
 }
 
 void ThreadPool::join() {
-	std::unique_lock lock(mWorkersMutex);
-	mJoining = true;
-	mCondition.notify_all();
+	{
+		std::unique_lock lock(mMutex);
+		mWaitingCondition.wait(lock, [&]() { return mWaitingWorkers == int(mWorkers.size()); });
+		mJoining = true;
+		mTasksCondition.notify_all();
+	}
 
+	std::unique_lock lock(mWorkersMutex);
 	for (auto &w : mWorkers)
 		w.join();
 
@@ -77,7 +79,7 @@ bool ThreadPool::runOne() {
 
 std::function<void()> ThreadPool::dequeue() {
 	std::unique_lock lock(mMutex);
-	while (true) {
+	while (!mJoining) {
 		if (!mTasks.empty()) {
 			if (mTasks.top().time <= clock::now()) {
 				auto func = std::move(mTasks.top().func);
@@ -85,16 +87,17 @@ std::function<void()> ThreadPool::dequeue() {
 				return func;
 			}
 
-			if (mJoining)
-				break;
+			++mWaitingWorkers;
+			mWaitingCondition.notify_all();
+			mTasksCondition.wait_until(lock, mTasks.top().time);
 
-			mCondition.wait_until(lock, mTasks.top().time);
 		} else {
-			if (mJoining)
-				break;
-
-			mCondition.wait(lock);
+			++mWaitingWorkers;
+			mWaitingCondition.notify_all();
+			mTasksCondition.wait(lock);
 		}
+
+		--mWaitingWorkers;
 	}
 	return nullptr;
 }
