@@ -25,39 +25,18 @@ Processor::Processor(size_t limit) : mTasks(limit) {}
 Processor::~Processor() { join(); }
 
 void Processor::join() {
-	// We need to detect situations where the thread pool does not execute a pending task at exit
-	std::optional<unsigned int> counter;
-	while (true) {
-		std::shared_future<void> pending;
-		{
-			std::unique_lock lock(mMutex);
-			if (!mPending                               // no pending task
-			    || (counter && *counter == mCounter)) { // or no scheduled task after the last one
-
-				// Processing is stopped, clear everything and return
-				mPending.reset();
-				while (!mTasks.empty())
-					mTasks.pop();
-
-				return;
-			}
-
-			pending = *mPending;
-			counter = mCounter;
-		}
-
-		// Wait for the pending task
-		pending.wait();
-	}
+	std::unique_lock lock(mMutex);
+	mCondition.wait(lock, [this]() { return !mPending && mTasks.empty(); });
 }
 
 void Processor::schedule() {
 	std::unique_lock lock(mMutex);
 	if (auto next = mTasks.tryPop()) {
-		mPending = ThreadPool::Instance().enqueue(std::move(*next)).share();
-		++mCounter;
+		ThreadPool::Instance().enqueue(std::move(*next));
 	} else {
-		mPending.reset(); // No more tasks
+		// No more tasks
+		mPending = false;
+		mCondition.notify_all();
 	}
 }
 

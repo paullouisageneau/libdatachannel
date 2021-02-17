@@ -72,7 +72,8 @@ protected:
 	std::function<void()> dequeue(); // returns null function if joining
 
 	std::vector<std::thread> mWorkers;
-	std::atomic<bool> mJoining = false;
+	int mWaitingWorkers = 0;
+	bool mJoining = false;
 
 	struct Task {
 		clock::time_point time;
@@ -82,8 +83,8 @@ protected:
 	};
 	std::priority_queue<Task, std::deque<Task>, std::greater<Task>> mTasks;
 
+	std::condition_variable mTasksCondition, mWaitingCondition;
 	mutable std::mutex mMutex, mWorkersMutex;
-	std::condition_variable mCondition;
 };
 
 template <class F, class... Args>
@@ -100,16 +101,8 @@ auto ThreadPool::schedule(clock::duration delay, F &&f, Args &&...args)
 template <class F, class... Args>
 auto ThreadPool::schedule(clock::time_point time, F &&f, Args &&...args)
     -> invoke_future_t<F, Args...> {
-	using R = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
 	std::unique_lock lock(mMutex);
-	if (mJoining) {
-		std::promise<R> promise;
-		std::future<R> result = promise.get_future();
-		promise.set_exception(std::make_exception_ptr(
-		    std::runtime_error("Scheduled a task while joining the thread pool")));
-		return result;
-	}
-
+	using R = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
 	auto bound = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
 	auto task = std::make_shared<std::packaged_task<R()>>([bound = std::move(bound)]() mutable {
 		try {
@@ -122,7 +115,7 @@ auto ThreadPool::schedule(clock::time_point time, F &&f, Args &&...args)
 	std::future<R> result = task->get_future();
 
 	mTasks.push({time, [task = std::move(task), token = Init::Token()]() { return (*task)(); }});
-	mCondition.notify_one();
+	mTasksCondition.notify_one();
 	return result;
 }
 
