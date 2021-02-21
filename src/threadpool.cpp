@@ -43,8 +43,7 @@ int ThreadPool::count() const {
 }
 
 void ThreadPool::spawn(int count) {
-	std::scoped_lock lock(mMutex, mWorkersMutex);
-	mJoining = false;
+	std::unique_lock lock(mWorkersMutex);
 	while (count-- > 0)
 		mWorkers.emplace_back(std::bind(&ThreadPool::run, this));
 }
@@ -62,6 +61,8 @@ void ThreadPool::join() {
 		w.join();
 
 	mWorkers.clear();
+
+	mJoining = false;
 }
 
 void ThreadPool::run() {

@@ -73,7 +73,7 @@ protected:
 
 	std::vector<std::thread> mWorkers;
 	int mWaitingWorkers = 0;
-	bool mJoining = false;
+	std::atomic<bool> mJoining = false;
 
 	struct Task {
 		clock::time_point time;
