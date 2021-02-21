@@ -298,13 +298,16 @@ public:
 
 private:
 	uint8_t _length;
-	char _text;
+	char _text[1];
 
 public:
-	inline std::string text() const { return std::string(&_text, _length); }
+	inline std::string text() const { return std::string(_text, _length); }
 	inline void setText(std::string text) {
-		_length = text.length();
-		memcpy(&_text, text.data(), _length);
+		if(text.size() > 0xFF)
+			throw std::invalid_argument("text is too long");
+
+		_length = uint8_t(text.size());
+		memcpy(_text, text.data(), text.size());
 	}
 
 	inline uint8_t length() { return _length; }
@@ -334,12 +337,12 @@ public:
 		return reinterpret_cast<RTCP_SDES_ITEM *>(base);
 	}
 
-	long safelyCountChunkSize(unsigned int maxChunkSize) {
+	long safelyCountChunkSize(size_t maxChunkSize) {
 		if (maxChunkSize < RTCP_SDES_CHUNK::size({})) {
 			// chunk is truncated
 			return -1;
 		} else {
-			unsigned int size = sizeof(SSRC);
+			size_t size = sizeof(SSRC);
 			unsigned int i = 0;
 			// We can always access first 4 bytes of first item (in case of no items there will be 4
 			// null bytes)
@@ -407,7 +410,7 @@ public:
 			auto chunk = getChunk(i);
 			chunkSize += chunk->getSize();
 		}
-		uint16_t length = (sizeof(header) + chunkSize) / 4 - 1;
+		uint16_t length = uint16_t((sizeof(header) + chunkSize) / 4 - 1);
 		header.prepareHeader(202, chunkCount, length);
 	}
 
@@ -629,10 +632,10 @@ struct RTCP_NACK_PART {
 	std::vector<uint16_t> getSequenceNumbers() {
 		std::vector<uint16_t> result{};
 		result.reserve(17);
-		auto pid = getPID();
+		uint16_t pid = getPID();
 		result.push_back(pid);
-		auto bitmask = getBLP();
-		auto i = pid + 1;
+		uint16_t bitmask = getBLP();
+		uint16_t i = pid + 1;
 		while (bitmask > 0) {
 			if (bitmask & 0x1) {
 				result.push_back(i);
@@ -673,9 +676,9 @@ public:
 			(*fciCount)++;
 			return true;
 		} else {
-			// TODO SPEEED!
-			auto blp = parts[(*fciCount) - 1].getBLP();
-			auto newBit = 1u << (unsigned int)(missingPacket - (1 + *fciPID));
+			// TODO SPEED!
+			uint16_t blp = parts[(*fciCount) - 1].getBLP();
+			uint16_t newBit = uint16_t(1u << (missingPacket - (1 + *fciPID)));
 			parts[(*fciCount) - 1].setBLP(blp | newBit);
 			return false;
 		}
