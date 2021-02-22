@@ -667,6 +667,8 @@ void PeerConnection::forwardMessage(message_ptr message) {
 			                                                  stream);
 			channel->onOpen(weak_bind(&PeerConnection::triggerDataChannel, this,
 			                          weak_ptr<DataChannel>{channel}));
+
+			std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
 			mDataChannels.emplace(stream, channel);
 		} else {
 			// Invalid, close the DataChannel
