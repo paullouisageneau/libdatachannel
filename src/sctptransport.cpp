@@ -349,6 +349,10 @@ void SctpTransport::incoming(message_ptr message) {
 	}
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
+
+	// TODO: There seems to be a possible data race between usrsctp_sendv() and usrsctp_conninput()
+	// As a mitigation, lock the send mutex before calling usrsctp_conninput()
+	std::lock_guard lock(mSendMutex);
 	usrsctp_conninput(this, message->data(), message->size(), 0);
 }
 
