@@ -232,7 +232,7 @@ void test_turn_connectivity() {
 	auto negotiated2 = pc2->createDataChannel("negoctated", init);
 
 	if (!negotiated1->isOpen() || !negotiated2->isOpen())
-		throw runtime_error("Negociated DataChannel is not open");
+		throw runtime_error("Negotiated DataChannel is not open");
 
 	std::atomic<bool> received = false;
 	negotiated2->onMessage([&received](const variant<binary, string> &message) {
@@ -250,7 +250,7 @@ void test_turn_connectivity() {
 		this_thread::sleep_for(1s);
 
 	if (!received)
-		throw runtime_error("Negociated DataChannel failed");
+		throw runtime_error("Negotiated DataChannel failed");
 
 	// Delay close of peer 2 to check closing works properly
 	pc1->close();

@@ -235,20 +235,20 @@ void DataChannel::incoming(message_ptr message) {
 	}
 }
 
-NegociatedDataChannel::NegociatedDataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream,
+NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream,
                                              string label, string protocol, Reliability reliability)
     : DataChannel(pc, stream, std::move(label), std::move(protocol), std::move(reliability)) {}
 
-NegociatedDataChannel::NegociatedDataChannel(std::weak_ptr<PeerConnection> pc,
+NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<PeerConnection> pc,
                                              std::weak_ptr<SctpTransport> transport,
                                              uint16_t stream)
     : DataChannel(pc, stream, "", "", {}) {
 	mSctpTransport = transport;
 }
 
-NegociatedDataChannel::~NegociatedDataChannel() {}
+NegotiatedDataChannel::~NegotiatedDataChannel() {}
 
-void NegociatedDataChannel::open(shared_ptr<SctpTransport> transport) {
+void NegotiatedDataChannel::open(shared_ptr<SctpTransport> transport) {
 	mSctpTransport = transport;
 
 	uint8_t channelType;
@@ -290,7 +290,7 @@ void NegociatedDataChannel::open(shared_ptr<SctpTransport> transport) {
 	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
 }
 
-void NegociatedDataChannel::processOpenMessage(message_ptr message) {
+void NegotiatedDataChannel::processOpenMessage(message_ptr message) {
 	auto transport = mSctpTransport.lock();
 	if (!transport)
 		throw std::runtime_error("DataChannel has no transport");

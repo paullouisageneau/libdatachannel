@@ -88,13 +88,13 @@ private:
 	friend class PeerConnection;
 };
 
-class RTC_CPP_EXPORT NegociatedDataChannel final : public DataChannel {
+class RTC_CPP_EXPORT NegotiatedDataChannel final : public DataChannel {
 public:
-	NegociatedDataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream, string label,
+	NegotiatedDataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream, string label,
 	                      string protocol, Reliability reliability);
-	NegociatedDataChannel(std::weak_ptr<PeerConnection> pc, std::weak_ptr<SctpTransport> transport,
+	NegotiatedDataChannel(std::weak_ptr<PeerConnection> pc, std::weak_ptr<SctpTransport> transport,
 	                      uint16_t stream);
-	~NegociatedDataChannel();
+	~NegotiatedDataChannel();
 
 private:
 	void open(std::shared_ptr<SctpTransport> transport) override;
