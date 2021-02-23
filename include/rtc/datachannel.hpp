@@ -30,6 +30,7 @@
 #include <functional>
 #include <type_traits>
 #include <variant>
+#include <shared_mutex>
 
 namespace rtc {
 
@@ -78,6 +79,8 @@ protected:
 	string mLabel;
 	string mProtocol;
 	std::shared_ptr<Reliability> mReliability;
+
+	mutable std::shared_mutex mMutex;
 
 	std::atomic<bool> mIsOpen = false;
 	std::atomic<bool> mIsClosed = false;
