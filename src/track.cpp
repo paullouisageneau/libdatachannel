@@ -35,11 +35,23 @@ using std::weak_ptr;
 Track::Track(Description::Media description)
     : mMediaDescription(std::move(description)), mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
-string Track::mid() const { return mMediaDescription.mid(); }
+string Track::mid() const {
+	std::shared_lock lock(mMutex);
+	return mMediaDescription.mid();
+}
 
-Description::Media Track::description() const { return mMediaDescription; }
+Description::Media Track::description() const {
+	std::shared_lock lock(mMutex);
+	return mMediaDescription;
+}
+
+Description::Direction Track::direction() const {
+	std::shared_lock lock(mMutex);
+	return mMediaDescription.direction();
+}
 
 void Track::setDescription(Description::Media description) {
+	std::unique_lock lock(mMutex);
 	if (description.mid() != mMediaDescription.mid())
 		throw std::logic_error("Media description mid does not match track mid");
 
@@ -48,17 +60,17 @@ void Track::setDescription(Description::Media description) {
 
 void Track::close() {
 	mIsClosed = true;
-	resetCallbacks();
+
 	setRtcpHandler(nullptr);
+	resetCallbacks();
 }
 
 bool Track::send(message_variant data) {
 	if (mIsClosed)
 		throw std::runtime_error("Track is closed");
 
-	auto direction = mMediaDescription.direction();
-	if ((direction == Description::Direction::RecvOnly ||
-	     direction == Description::Direction::Inactive)) {
+	auto dir = direction();
+	if ((dir == Description::Direction::RecvOnly || dir == Description::Direction::Inactive)) {
 		COUNTER_MEDIA_BAD_DIRECTION++;
 		return false;
 	}
@@ -92,6 +104,7 @@ std::optional<message_variant> Track::peek() {
 
 bool Track::isOpen(void) const {
 #if RTC_ENABLE_MEDIA
+	std::shared_lock lock(mMutex);
 	return !mIsClosed && mDtlsSrtpTransport.lock();
 #else
 	return !mIsClosed;
@@ -108,7 +121,11 @@ size_t Track::availableAmount() const { return mRecvQueue.amount(); }
 
 #if RTC_ENABLE_MEDIA
 void Track::open(shared_ptr<DtlsSrtpTransport> transport) {
-	mDtlsSrtpTransport = transport;
+	{
+		std::lock_guard lock(mMutex);
+		mDtlsSrtpTransport = transport;
+	}
+
 	triggerOpen();
 }
 #endif
@@ -117,9 +134,8 @@ void Track::incoming(message_ptr message) {
 	if (!message)
 		return;
 
-	auto direction = mMediaDescription.direction();
-	if ((direction == Description::Direction::SendOnly ||
-	     direction == Description::Direction::Inactive) &&
+	auto dir = direction();
+	if ((dir == Description::Direction::SendOnly || dir == Description::Direction::Inactive) &&
 	    message->type != Message::Control) {
 		COUNTER_MEDIA_BAD_DIRECTION++;
 		return;
@@ -142,17 +158,21 @@ void Track::incoming(message_ptr message) {
 }
 
 bool Track::outgoing([[maybe_unused]] message_ptr message) {
-#if RTC_ENABLE_MEDIA
-	auto transport = mDtlsSrtpTransport.lock();
-	if (!transport)
-		throw std::runtime_error("Track transport is not open");
+#if RTC_ENABLfiE_MEDIA
+	std::shared_ptr<DtlsSrtpTransport> transport;
+	{
+		std::shared_lock lock(mMutex);
+		transport = mDtlsSrtpTransport.lock();
+		if (!transport)
+			throw std::runtime_error("Track is closed");
 
-	// Set recommended medium-priority DSCP value
-	// See https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18
-	if (mMediaDescription.type() == "audio")
-		message->dscp = 46; // EF: Expedited Forwarding
-	else
-		message->dscp = 36; // AF42: Assured Forwarding class 4, medium drop probability
+		// Set recommended medium-priority DSCP value
+		// See https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18
+		if (mMediaDescription.type() == "audio")
+			message->dscp = 46; // EF: Expedited Forwarding
+		else
+			message->dscp = 36; // AF42: Assured Forwarding class 4, medium drop probability
+	}
 
 	return transport->sendMedia(message);
 #else
@@ -162,24 +182,23 @@ bool Track::outgoing([[maybe_unused]] message_ptr message) {
 }
 
 void Track::setRtcpHandler(std::shared_ptr<MediaHandler> handler) {
-	std::unique_lock lock(mRtcpHandlerMutex);
-	mRtcpHandler = std::move(handler);
-	if (mRtcpHandler) {
-		auto copy = mRtcpHandler;
-		lock.unlock();
-		copy->onOutgoing(std::bind(&Track::outgoing, this, std::placeholders::_1));
+	{
+		std::unique_lock lock(mMutex);
+		mRtcpHandler = handler;
 	}
+
+	handler->onOutgoing(std::bind(&Track::outgoing, this, std::placeholders::_1));
 }
 
 bool Track::requestKeyframe() {
-	if (auto handler = getRtcpHandler()) {
+	if (auto handler = getRtcpHandler())
 		return handler->requestKeyframe();
-	}
+
 	return false;
 }
 
 std::shared_ptr<MediaHandler> Track::getRtcpHandler() {
-	std::shared_lock lock(mRtcpHandlerMutex);
+	std::shared_lock lock(mMutex);
 	return mRtcpHandler;
 }
 
