@@ -663,7 +663,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		if (message->type == Message::Control && *message->data() == dataChannelOpenMessage &&
 		    stream % 2 == remoteParity) {
 
-			channel = std::make_shared<NegociatedDataChannel>(shared_from_this(), sctpTransport,
+			channel = std::make_shared<NegotiatedDataChannel>(shared_from_this(), sctpTransport,
 			                                                  stream);
 			channel->onOpen(weak_bind(&PeerConnection::triggerDataChannel, this,
 			                          weak_ptr<DataChannel>{channel}));
@@ -835,7 +835,7 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role rol
 	    init.negotiated
 	        ? std::make_shared<DataChannel>(shared_from_this(), stream, std::move(label),
 	                                        std::move(init.protocol), std::move(init.reliability))
-	        : std::make_shared<NegociatedDataChannel>(shared_from_this(), stream, std::move(label),
+	        : std::make_shared<NegotiatedDataChannel>(shared_from_this(), stream, std::move(label),
 	                                                  std::move(init.protocol),
 	                                                  std::move(init.reliability));
 	mDataChannels.emplace(std::make_pair(stream, channel));

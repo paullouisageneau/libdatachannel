@@ -43,6 +43,7 @@ public:
 
 	string mid() const;
 	Description::Media description() const;
+	Description::Direction direction() const;
 
 	void setDescription(Description::Media description);
 
@@ -75,12 +76,13 @@ private:
 	bool outgoing(message_ptr message);
 
 	Description::Media mMediaDescription;
+	std::shared_ptr<MediaHandler> mRtcpHandler;
+
+	mutable std::shared_mutex mMutex;
+
 	std::atomic<bool> mIsClosed = false;
 
 	Queue<message_ptr> mRecvQueue;
-
-	std::shared_mutex mRtcpHandlerMutex;
-	std::shared_ptr<MediaHandler> mRtcpHandler;
 
 	friend class PeerConnection;
 };
