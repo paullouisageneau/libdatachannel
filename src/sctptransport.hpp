@@ -43,8 +43,9 @@ public:
 
 	using amount_callback = std::function<void(uint16_t streamId, size_t amount)>;
 
-	SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, message_callback recvCallback,
-	              amount_callback bufferedAmountCallback, state_callback stateChangeCallback);
+	SctpTransport(std::shared_ptr<Transport> lower, uint16_t port, std::optional<size_t> mtu,
+	              message_callback recvCallback, amount_callback bufferedAmountCallback,
+	              state_callback stateChangeCallback);
 	~SctpTransport();
 
 	void start() override;

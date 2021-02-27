@@ -77,6 +77,8 @@ const size_t RECV_QUEUE_LIMIT = 1024 * 1024; // Max per-channel queue size
 
 const int THREADPOOL_SIZE = 4; // Number of threads in the global thread pool
 
+const size_t DEFAULT_IPV4_MTU = 1200; // IPv4 safe MTU value recommended by RFC 8261
+
 // overloaded helper
 template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;

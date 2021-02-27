@@ -36,6 +36,8 @@ void test_connectivity() {
 	// STUN server example (not necessary to connect locally)
 	// Please do not use outside of libdatachannel tests
 	config1.iceServers.emplace_back("stun:stun.ageneau.net:3478");
+	// Custom MTU example
+	config1.mtu = 1500;
 
 	auto pc1 = std::make_shared<PeerConnection>(config1);
 
@@ -43,6 +45,8 @@ void test_connectivity() {
 	// STUN server example (not necessary to connect locally)
 	// Please do not use outside of libdatachannel tests
 	config2.iceServers.emplace_back("stun:stun.ageneau.net:3478");
+	// Custom MTU example
+	config2.mtu = 1500;
 	// Port range example
 	config2.portRangeBegin = 5000;
 	config2.portRangeEnd = 6000;

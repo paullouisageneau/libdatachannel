@@ -40,11 +40,13 @@ size_t benchmark(milliseconds duration) {
 
 	Configuration config1;
 	// config1.iceServers.emplace_back("stun:stun.l.google.com:19302");
+	// config1.mtu = 1500;
 
 	auto pc1 = std::make_shared<PeerConnection>(config1);
 
 	Configuration config2;
 	// config2.iceServers.emplace_back("stun:stun.l.google.com:19302");
+	// config2.mtu = 1500;
 
 	auto pc2 = std::make_shared<PeerConnection>(config2);
 

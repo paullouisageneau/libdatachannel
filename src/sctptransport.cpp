@@ -17,6 +17,7 @@
  */
 
 #include "sctptransport.hpp"
+#include "dtlstransport.hpp"
 #include "logcounter.hpp"
 
 #include <chrono>
@@ -27,8 +28,7 @@
 
 // The IETF draft says:
 // SCTP MUST support performing Path MTU discovery without relying on ICMP or ICMPv6 as specified in
-// [RFC4821] using probing messages specified in [RFC4820]. The initial Path MTU at the IP layer
-// SHOULD NOT exceed 1200 bytes for IPv4 and 1280 for IPv6.
+// [RFC4821] using probing messages specified in [RFC4820].
 // See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-5
 //
 // However, usrsctp does not implement Path MTU discovery, so we need to disable it for now.
@@ -53,8 +53,6 @@
 
 using namespace std::chrono_literals;
 using namespace std::chrono;
-
-using std::shared_ptr;
 
 namespace rtc {
 
@@ -102,7 +100,8 @@ void SctpTransport::Cleanup() {
 }
 
 SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
-                             message_callback recvCallback, amount_callback bufferedAmountCallback,
+                             std::optional<size_t> mtu, message_callback recvCallback,
+                             amount_callback bufferedAmountCallback,
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mPort(port), mPendingRecvCount(0),
       mSendQueue(0, message_size_func), mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
@@ -180,13 +179,24 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 	// 1200 bytes.
 	// See https://tools.ietf.org/html/rfc8261#section-5
 #if USE_PMTUD
-	// Enable SCTP path MTU discovery
-	spp.spp_flags |= SPP_PMTUD_ENABLE;
+	if (!mtu.has_value()) {
 #else
-	// Fall back to a safe MTU value.
-	spp.spp_flags |= SPP_PMTUD_DISABLE;
-	spp.spp_pathmtu = 1200;
+	if (false) {
 #endif
+		// Enable SCTP path MTU discovery
+		spp.spp_flags |= SPP_PMTUD_ENABLE;
+		PLOG_VERBOSE << "Path MTU discovery enabled";
+
+	} else {
+		// Fall back to a safe MTU value.
+		spp.spp_flags |= SPP_PMTUD_DISABLE;
+		// The MTU value provided specifies the space available for chunks in the
+		// packet, so we also subtract the SCTP header size.
+		size_t pmtu = mtu.value_or(DEFAULT_IPV4_MTU + 20) - 12 - 37 - 8 - 40; // SCTP/DTLS/UDP/IPv6
+		spp.spp_pathmtu = uint32_t(pmtu);
+		PLOG_VERBOSE << "Path MTU discovery disabled, SCTP MTU set to " << pmtu;
+	}
+
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &spp, sizeof(spp)))
 		throw std::runtime_error("Could not set socket option SCTP_PEER_ADDR_PARAMS, errno=" +
 		                         std::to_string(errno));
