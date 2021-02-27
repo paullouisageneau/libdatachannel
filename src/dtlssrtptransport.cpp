@@ -58,10 +58,11 @@ void DtlsSrtpTransport::Cleanup() { srtp_shutdown(); }
 
 DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
                                      shared_ptr<Certificate> certificate,
+                                     std::optional<size_t> mtu,
                                      verifier_callback verifierCallback,
                                      message_callback srtpRecvCallback,
                                      state_callback stateChangeCallback)
-    : DtlsTransport(lower, certificate, std::move(verifierCallback),
+    : DtlsTransport(lower, certificate, mtu, std::move(verifierCallback),
                     std::move(stateChangeCallback)),
       mSrtpRecvCallback(std::move(srtpRecvCallback)) { // distinct from Transport recv callback
 

@@ -44,7 +44,8 @@ public:
 	using verifier_callback = std::function<bool(const std::string &fingerprint)>;
 
 	DtlsTransport(std::shared_ptr<IceTransport> lower, certificate_ptr certificate,
-	              verifier_callback verifierCallback, state_callback stateChangeCallback);
+	              std::optional<size_t> mtu, verifier_callback verifierCallback,
+	              state_callback stateChangeCallback);
 	~DtlsTransport();
 
 	virtual void start() override;
@@ -57,6 +58,7 @@ protected:
 	virtual void postHandshake();
 	void runRecvLoop();
 
+	const std::optional<size_t> mMtu;
 	const certificate_ptr mCertificate;
 	const verifier_callback mVerifierCallback;
 	const bool mIsClient;

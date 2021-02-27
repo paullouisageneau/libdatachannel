@@ -22,8 +22,8 @@
 #include "include.hpp"
 #include "logcounter.hpp"
 #include "processor.hpp"
-#include "threadpool.hpp"
 #include "rtp.hpp"
+#include "threadpool.hpp"
 
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
@@ -75,6 +75,17 @@ PeerConnection::PeerConnection(const Configuration &config)
 
 	if (config.portRangeEnd && config.portRangeBegin > config.portRangeEnd)
 		throw std::invalid_argument("Invalid port range");
+
+	if (config.mtu) {
+		if (*config.mtu < 576) // Min MTU for IPv4
+			throw std::invalid_argument("Invalid MTU value");
+
+		if (*config.mtu > 1500) { // Standard Ethernet
+			PLOG_WARNING << "MTU set to " << *config.mtu;
+		} else {
+			PLOG_VERBOSE << "MTU set to " << *config.mtu;
+		}
+	}
 }
 
 PeerConnection::~PeerConnection() {
@@ -515,7 +526,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 			// DTLS-SRTP
 			transport = std::make_shared<DtlsSrtpTransport>(
-			    lower, certificate, verifierCallback,
+			    lower, certificate, mConfig.mtu, verifierCallback,
 			    weak_bind(&PeerConnection::forwardMedia, this, _1), stateChangeCallback);
 #else
 			PLOG_WARNING << "Ignoring media support (not compiled with media support)";
@@ -524,8 +535,8 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 		if (!transport) {
 			// DTLS only
-			transport = std::make_shared<DtlsTransport>(lower, certificate, verifierCallback,
-			                                            stateChangeCallback);
+			transport = std::make_shared<DtlsTransport>(lower, certificate, mConfig.mtu,
+			                                            verifierCallback, stateChangeCallback);
 		}
 
 		std::atomic_store(&mDtlsTransport, transport);
@@ -557,7 +568,7 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 		uint16_t sctpPort = remote->application()->sctpPort().value_or(DEFAULT_SCTP_PORT);
 		auto lower = std::atomic_load(&mDtlsTransport);
 		auto transport = std::make_shared<SctpTransport>(
-		    lower, sctpPort, weak_bind(&PeerConnection::forwardMessage, this, _1),
+		    lower, sctpPort, mConfig.mtu, weak_bind(&PeerConnection::forwardMessage, this, _1),
 		    weak_bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
 		    [this, weak_this = weak_from_this()](SctpTransport::State state) {
 			    auto shared_this = weak_this.lock();
@@ -663,8 +674,8 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		if (message->type == Message::Control && *message->data() == dataChannelOpenMessage &&
 		    stream % 2 == remoteParity) {
 
-			channel = std::make_shared<NegotiatedDataChannel>(shared_from_this(), sctpTransport,
-			                                                  stream);
+			channel =
+			    std::make_shared<NegotiatedDataChannel>(shared_from_this(), sctpTransport, stream);
 			channel->onOpen(weak_bind(&PeerConnection::triggerDataChannel, this,
 			                          weak_ptr<DataChannel>{channel}));
 

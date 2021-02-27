@@ -50,8 +50,9 @@ void DtlsTransport::Init() {
 void DtlsTransport::Cleanup() { gnutls_global_deinit(); }
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
-                             verifier_callback verifierCallback, state_callback stateChangeCallback)
-    : Transport(lower, std::move(stateChangeCallback)), mCertificate(certificate),
+                             std::optional<size_t> mtu, verifier_callback verifierCallback,
+                             state_callback stateChangeCallback)
+    : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
       mVerifierCallback(std::move(verifierCallback)),
       mIsClient(lower->role() == Description::Role::Active), mCurrentDscp(0) {
 
@@ -156,11 +157,15 @@ void DtlsTransport::postHandshake() {
 }
 
 void DtlsTransport::runRecvLoop() {
-	const size_t maxMtu = 4096;
+	const size_t bufferSize = 4096;
+
 	// Handshake loop
 	try {
 		changeState(State::Connecting);
-		gnutls_dtls_set_mtu(mSession, 1280 - 40 - 8); // min MTU over UDP/IPv6
+
+		size_t mtu = mMtu.value_or(DEFAULT_IPV4_MTU + 20) - 8 - 40; // UDP/IPv6
+		gnutls_dtls_set_mtu(mSession, static_cast<unsigned int>(mtu));
+		PLOG_VERBOSE << "SSL MTU set to " << mtu;
 
 		int ret;
 		do {
@@ -174,7 +179,7 @@ void DtlsTransport::runRecvLoop() {
 
 		// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
 		// See https://tools.ietf.org/html/rfc8261#section-5
-		gnutls_dtls_set_mtu(mSession, maxMtu + 1);
+		gnutls_dtls_set_mtu(mSession, bufferSize + 1);
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "DTLS handshake: " << e.what();
@@ -188,7 +193,6 @@ void DtlsTransport::runRecvLoop() {
 		postHandshake();
 		changeState(State::Connected);
 
-		const size_t bufferSize = maxMtu;
 		char buffer[bufferSize];
 
 		while (true) {
@@ -314,8 +318,9 @@ void DtlsTransport::Cleanup() {
 }
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
-                             verifier_callback verifierCallback, state_callback stateChangeCallback)
-    : Transport(lower, std::move(stateChangeCallback)), mCertificate(certificate),
+                             std::optional<size_t> mtu, verifier_callback verifierCallback,
+                             state_callback stateChangeCallback)
+    : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
       mVerifierCallback(std::move(verifierCallback)),
       mIsClient(lower->role() == Description::Role::Active), mCurrentDscp(0) {
 	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
@@ -440,16 +445,18 @@ void DtlsTransport::postHandshake() {
 }
 
 void DtlsTransport::runRecvLoop() {
-	const size_t maxMtu = 4096;
+	const size_t bufferSize = 4096;
 	try {
 		changeState(State::Connecting);
-		SSL_set_mtu(mSsl, 1280 - 40 - 8); // min MTU over UDP/IPv6
+
+		size_t mtu = mMtu.value_or(DEFAULT_IPV4_MTU + 20) - 8 - 40; // UDP/IPv6
+		SSL_set_mtu(mSsl, static_cast<unsigned int>(mtu));
+		PLOG_VERBOSE << "SSL MTU set to " << mtu;
 
 		// Initiate the handshake
 		int ret = SSL_do_handshake(mSsl);
 		openssl::check(mSsl, ret, "Handshake failed");
 
-		const size_t bufferSize = maxMtu;
 		byte buffer[bufferSize];
 		while (mIncomingQueue.running()) {
 			// Process pending messages
@@ -466,7 +473,7 @@ void DtlsTransport::runRecvLoop() {
 					if (SSL_is_init_finished(mSsl)) {
 						// RFC 8261: DTLS MUST support sending messages larger than the current path
 						// MTU See https://tools.ietf.org/html/rfc8261#section-5
-						SSL_set_mtu(mSsl, maxMtu + 1);
+						SSL_set_mtu(mSsl, bufferSize + 1);
 
 						PLOG_INFO << "DTLS handshake finished";
 						postHandshake();

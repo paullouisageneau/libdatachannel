@@ -39,9 +39,9 @@ public:
 	static void Init();
 	static void Cleanup();
 
-	DtlsSrtpTransport(std::shared_ptr<IceTransport> lower, std::shared_ptr<Certificate> certificate,
-	                  verifier_callback verifierCallback, message_callback srtpRecvCallback,
-	                  state_callback stateChangeCallback);
+	DtlsSrtpTransport(std::shared_ptr<IceTransport> lower, certificate_ptr certificate,
+	                  std::optional<size_t> mtu, verifier_callback verifierCallback,
+	                  message_callback srtpRecvCallback, state_callback stateChangeCallback);
 	~DtlsSrtpTransport();
 
 	bool sendMedia(message_ptr message);

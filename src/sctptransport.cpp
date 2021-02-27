@@ -17,6 +17,7 @@
  */
 
 #include "sctptransport.hpp"
+#include "dtlstransport.hpp"
 #include "logcounter.hpp"
 
 #include <chrono>
@@ -24,16 +25,6 @@
 #include <iostream>
 #include <thread>
 #include <vector>
-
-// RFC 8261 5. DTLS considerations:
-// If path MTU discovery is performed by the SCTP layer and IPv4 is used as the network-layer
-// protocol, the DTLS implementation SHOULD allow the DTLS user to enforce that the
-// corresponding IPv4 packet is sent with the Don't Fragment (DF) bit set. If controlling the DF
-// bit is not possible (for example, due to implementation restrictions), a safe value for the
-// path MTU has to be used by the SCTP stack. It is RECOMMENDED that the safe value not exceed
-// 1200 bytes.
-// See https://tools.ietf.org/html/rfc8261#section-5
-#define DEFAULT_MTU 1200
 
 // The IETF draft says:
 // SCTP MUST support performing Path MTU discovery without relying on ICMP or ICMPv6 as specified in
@@ -60,11 +51,8 @@
 #endif
 */
 
-
 using namespace std::chrono_literals;
 using namespace std::chrono;
-
-using std::shared_ptr;
 
 namespace rtc {
 
@@ -112,7 +100,8 @@ void SctpTransport::Cleanup() {
 }
 
 SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
-                             message_callback recvCallback, amount_callback bufferedAmountCallback,
+                             std::optional<size_t> mtu, message_callback recvCallback,
+                             amount_callback bufferedAmountCallback,
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mPort(port), mPendingRecvCount(0),
       mSendQueue(0, message_size_func), mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
@@ -180,16 +169,34 @@ SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
 	struct sctp_paddrparams spp = {};
 	// Enable SCTP heartbeats
 	spp.spp_flags = SPP_HB_ENABLE;
+
+	// RFC 8261 5. DTLS considerations:
+	// If path MTU discovery is performed by the SCTP layer and IPv4 is used as the network-layer
+	// protocol, the DTLS implementation SHOULD allow the DTLS user to enforce that the
+	// corresponding IPv4 packet is sent with the Don't Fragment (DF) bit set. If controlling the DF
+	// bit is not possible (for example, due to implementation restrictions), a safe value for the
+	// path MTU has to be used by the SCTP stack. It is RECOMMENDED that the safe value not exceed
+	// 1200 bytes.
+	// See https://tools.ietf.org/html/rfc8261#section-5
 #if USE_PMTUD
-	// Enable SCTP path MTU discovery
-	spp.spp_flags |= SPP_PMTUD_ENABLE;
+	if (!mtu.has_value()) {
 #else
-	// Fall back to a safe MTU value.
-	spp.spp_flags |= SPP_PMTUD_DISABLE;
-	// The MTU value provided specifies the space available for chunks in the
-	// packet, so we also subtract the SCTP header size.
-	spp.spp_pathmtu = DEFAULT_MTU - 12 - 37 - 8 - 20; // SCTP/DTLS/UDP/IPv4
+	if (false) {
 #endif
+		// Enable SCTP path MTU discovery
+		spp.spp_flags |= SPP_PMTUD_ENABLE;
+		PLOG_VERBOSE << "Path MTU discovery enabled";
+
+	} else {
+		// Fall back to a safe MTU value.
+		spp.spp_flags |= SPP_PMTUD_DISABLE;
+		// The MTU value provided specifies the space available for chunks in the
+		// packet, so we also subtract the SCTP header size.
+		size_t pmtu = mtu.value_or(DEFAULT_IPV4_MTU + 20) - 12 - 37 - 8 - 40; // SCTP/DTLS/UDP/IPv6
+		spp.spp_pathmtu = uint32_t(pmtu);
+		PLOG_VERBOSE << "Path MTU discovery disabled, SCTP MTU set to " << pmtu;
+	}
+
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &spp, sizeof(spp)))
 		throw std::runtime_error("Could not set socket option SCTP_PEER_ADDR_PARAMS, errno=" +
 		                         std::to_string(errno));
