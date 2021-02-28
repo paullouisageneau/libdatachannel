@@ -18,6 +18,7 @@
 
 #include "icetransport.hpp"
 #include "configuration.hpp"
+#include "globals.hpp"
 #include "transport.hpp"
 
 #include <iostream>
@@ -39,11 +40,11 @@
 using namespace std::chrono_literals;
 using std::chrono::system_clock;
 
+namespace rtc::impl {
+
 #if !USE_NICE
 
 #define MAX_TURN_SERVERS_COUNT 2
-
-namespace rtc::impl {
 
 IceTransport::IceTransport(const Configuration &config, candidate_callback candidateCallback,
                            state_callback stateChangeCallback,
@@ -338,11 +339,7 @@ void IceTransport::LogCallback(juice_log_level_t level, const char *message) {
 	PLOG(severity) << "juice: " << message;
 }
 
-} // namespace rtc::impl
-
 #else // USE_NICE == 1
-
-namespace rtc {
 
 IceTransport::IceTransport(const Configuration &config, candidate_callback candidateCallback,
                            state_callback stateChangeCallback,
@@ -808,6 +805,6 @@ bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote)
 	return true;
 }
 
-} // namespace rtc
-
 #endif
+
+} // namespace rtc::impl
