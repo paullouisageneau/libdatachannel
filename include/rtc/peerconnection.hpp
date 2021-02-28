@@ -30,26 +30,16 @@
 #include "rtc.hpp"
 #include "track.hpp"
 
-#include <atomic>
 #include <chrono>
 #include <functional>
-#include <future>
-#include <list>
-#include <mutex>
-#include <shared_mutex>
-#include <thread>
-#include <unordered_map>
 
 namespace rtc {
 
-class Certificate;
-class Processor;
-class IceTransport;
-class DtlsTransport;
-class SctpTransport;
+namespace impl {
 
-using certificate_ptr = std::shared_ptr<Certificate>;
-using future_certificate_ptr = std::shared_future<certificate_ptr>;
+struct PeerConnection;
+
+}
 
 struct RTC_CPP_EXPORT DataChannelInit {
 	Reliability reliability = {};
@@ -58,7 +48,7 @@ struct RTC_CPP_EXPORT DataChannelInit {
 	string protocol = "";
 };
 
-class RTC_CPP_EXPORT PeerConnection final : public std::enable_shared_from_this<PeerConnection> {
+class RTC_CPP_EXPORT PeerConnection final : CheshireCat<impl::PeerConnection> {
 public:
 	enum class State : int {
 		New = RTC_NEW,
@@ -84,7 +74,7 @@ public:
 	} rtcSignalingState;
 
 	PeerConnection();
-	PeerConnection(const Configuration &config);
+	PeerConnection(Configuration config);
 	~PeerConnection();
 
 	void close();
@@ -128,80 +118,6 @@ public:
 	// Track media support requires compiling with libSRTP
 	std::shared_ptr<Track> addTrack(Description::Media description);
 	void onTrack(std::function<void(std::shared_ptr<Track> track)> callback);
-
-private:
-	std::shared_ptr<IceTransport> initIceTransport();
-	std::shared_ptr<DtlsTransport> initDtlsTransport();
-	std::shared_ptr<SctpTransport> initSctpTransport();
-	void closeTransports();
-
-	void endLocalCandidates();
-	bool checkFingerprint(const std::string &fingerprint) const;
-	void forwardMessage(message_ptr message);
-	void forwardMedia(message_ptr message);
-	void forwardBufferedAmount(uint16_t stream, size_t amount);
-	std::optional<std::string> getMidFromSsrc(uint32_t ssrc);
-
-	std::shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, string label,
-	                                                DataChannelInit init);
-	std::shared_ptr<DataChannel> findDataChannel(uint16_t stream);
-	void iterateDataChannels(std::function<void(std::shared_ptr<DataChannel> channel)> func);
-	void openDataChannels();
-	void closeDataChannels();
-	void remoteCloseDataChannels();
-
-	void incomingTrack(Description::Media description);
-	void openTracks();
-
-	void validateRemoteDescription(const Description &description);
-	void processLocalDescription(Description description);
-	void processLocalCandidate(Candidate candidate);
-	void processRemoteDescription(Description description);
-	void processRemoteCandidate(Candidate candidate);
-	string localBundleMid() const;
-
-	void triggerDataChannel(std::weak_ptr<DataChannel> weakDataChannel);
-	void triggerTrack(std::shared_ptr<Track> track);
-	bool changeState(State state);
-	bool changeGatheringState(GatheringState state);
-	bool changeSignalingState(SignalingState state);
-
-	void resetCallbacks();
-
-	void outgoingMedia(message_ptr message);
-
-	const init_token mInitToken = Init::Token();
-	const Configuration mConfig;
-	const future_certificate_ptr mCertificate;
-	const std::unique_ptr<Processor> mProcessor;
-
-	std::optional<Description> mLocalDescription, mRemoteDescription;
-	std::optional<Description> mCurrentLocalDescription;
-	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
-
-	std::shared_ptr<IceTransport> mIceTransport;
-	std::shared_ptr<DtlsTransport> mDtlsTransport;
-	std::shared_ptr<SctpTransport> mSctpTransport;
-
-	std::unordered_map<uint16_t, std::weak_ptr<DataChannel>> mDataChannels; // by stream ID
-	std::unordered_map<string, std::weak_ptr<Track>> mTracks;               // by mid
-	std::vector<std::weak_ptr<Track>> mTrackLines;                          // by SDP order
-	std::shared_mutex mDataChannelsMutex, mTracksMutex;
-
-	std::unordered_map<uint32_t, string> mMidFromSsrc; // cache
-
-	std::atomic<State> mState;
-	std::atomic<GatheringState> mGatheringState;
-	std::atomic<SignalingState> mSignalingState;
-	std::atomic<bool> mNegotiationNeeded;
-
-	synchronized_callback<std::shared_ptr<DataChannel>> mDataChannelCallback;
-	synchronized_callback<Description> mLocalDescriptionCallback;
-	synchronized_callback<Candidate> mLocalCandidateCallback;
-	synchronized_callback<State> mStateChangeCallback;
-	synchronized_callback<GatheringState> mGatheringStateChangeCallback;
-	synchronized_callback<SignalingState> mSignalingStateChangeCallback;
-	synchronized_callback<std::shared_ptr<Track>> mTrackCallback;
 };
 
 } // namespace rtc

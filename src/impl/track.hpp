@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2020-2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,57 +16,67 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_TRACK_H
-#define RTC_TRACK_H
+#ifndef RTC_IMPL_TRACK_H
+#define RTC_IMPL_TRACK_H
 
 #include "channel.hpp"
 #include "description.hpp"
 #include "include.hpp"
 #include "mediahandler.hpp"
-#include "message.hpp"
-#include "queue.hpp"
+
+#if RTC_ENABLE_MEDIA
+#include "dtlssrtptransport.hpp"
+#endif
 
 #include <atomic>
 #include <shared_mutex>
 #include <variant>
 
-namespace rtc {
+namespace rtc::impl {
 
-namespace impl {
-
-class Track;
-
-} // namespace impl
-
-class RTC_CPP_EXPORT Track final : private CheshireCat<impl::Track>, public Channel {
+class Track final : public std::enable_shared_from_this<Track>, public Channel {
 public:
-	Track(impl_ptr<impl::Track> impl);
+	Track(Description::Media description);
 	~Track() = default;
+
+	void close();
+	void incoming(message_ptr message);
+	bool outgoing(message_ptr message);
+
+	std::optional<message_variant> receive() override;
+	std::optional<message_variant> peek() override;
+	size_t availableAmount() const override;
+
+	bool isOpen() const;
+	bool isClosed() const;
 
 	string mid() const;
 	Description::Direction direction() const;
 	Description::Media description() const;
-
 	void setDescription(Description::Media description);
 
-	void close(void) override;
-	bool send(message_variant data) override;
-	bool send(const byte *data, size_t size) override;
-
-	bool isOpen(void) const override;
-	bool isClosed(void) const override;
-	size_t maxMessageSize() const override;
-
-	bool requestKeyframe();
-
-	// RTCP handler
-	void setRtcpHandler(std::shared_ptr<MediaHandler> handler);
 	std::shared_ptr<MediaHandler> getRtcpHandler();
+	void setRtcpHandler(shared_ptr<MediaHandler> handler);
+
+#if RTC_ENABLE_MEDIA
+	void open(std::shared_ptr<DtlsSrtpTransport> transport);
+#endif
 
 private:
-	using CheshireCat<impl::Track>::impl;
+#if RTC_ENABLE_MEDIA
+	weak_ptr<DtlsSrtpTransport> mDtlsSrtpTransport;
+#endif
+
+	Description::Media mMediaDescription;
+	shared_ptr<MediaHandler> mRtcpHandler;
+
+	mutable std::shared_mutex mMutex;
+
+	std::atomic<bool> mIsClosed = false;
+
+	Queue<message_ptr> mRecvQueue;
 };
 
-} // namespace rtc
+} // namespace rtc::impl
 
 #endif

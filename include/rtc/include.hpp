@@ -52,13 +52,16 @@
 
 namespace rtc {
 
+using std::nullopt;
 using std::byte;
 using std::string;
 using std::string_view;
+using std::shared_ptr;
+using std::weak_ptr;
+using std::unique_ptr;
+
 using binary = std::vector<byte>;
 using binary_ptr = std::shared_ptr<binary>;
-
-using std::nullopt;
 
 using std::size_t;
 using std::uint16_t;
@@ -111,6 +114,7 @@ private:
 	std::function<void()> function;
 };
 
+// callback with built-in synchronization
 template <typename... Args> class synchronized_callback {
 public:
 	synchronized_callback() = default;
@@ -157,6 +161,25 @@ private:
 	std::function<void(Args...)> callback;
 	mutable std::recursive_mutex mutex;
 };
+
+// pimpl base class
+template<typename T> using impl_ptr = std::shared_ptr<T>;
+template <typename T> class CheshireCat {
+public:
+	CheshireCat(impl_ptr<T> impl) : mImpl(std::move(impl)) {}
+	template <typename... Args>
+	CheshireCat(Args... args) : mImpl(std::make_shared<T>(std::move(args)...)) {}
+
+	virtual ~CheshireCat() = default;
+
+protected:
+	impl_ptr<T> impl() { return mImpl; }
+	impl_ptr<const T> impl() const { return mImpl; }
+
+private:
+	impl_ptr<T> mImpl;
+};
+
 } // namespace rtc
 
 #endif

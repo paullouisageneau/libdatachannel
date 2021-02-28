@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2019-2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,26 +18,34 @@
 
 #include "channel.hpp"
 
+#include "impl/channel.hpp"
+
 namespace rtc {
+
+Channel::~Channel() {
+	impl()->resetCallbacks();
+}
+
+Channel::Channel(impl_ptr<impl::Channel> impl) : CheshireCat<impl::Channel>(std::move(impl)) {}
 
 size_t Channel::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
 
-size_t Channel::bufferedAmount() const { return mBufferedAmount; }
+size_t Channel::bufferedAmount() const { return impl()->bufferedAmount; }
 
-size_t Channel::availableAmount() const { return 0; }
+void Channel::onOpen(std::function<void()> callback) { impl()->openCallback = callback; }
 
-void Channel::onOpen(std::function<void()> callback) { mOpenCallback = callback; }
+void Channel::onClosed(std::function<void()> callback) { impl()->closedCallback = callback; }
 
-void Channel::onClosed(std::function<void()> callback) { mClosedCallback = callback; }
-
-void Channel::onError(std::function<void(string error)> callback) { mErrorCallback = callback; }
+void Channel::onError(std::function<void(string error)> callback) {
+	impl()->errorCallback = callback;
+}
 
 void Channel::onMessage(std::function<void(message_variant data)> callback) {
-	mMessageCallback = callback;
+	impl()->messageCallback = callback;
 
 	// Pass pending messages
 	while (auto message = receive())
-		mMessageCallback(*message);
+		impl()->messageCallback(*message);
 }
 
 void Channel::onMessage(std::function<void(binary data)> binaryCallback,
@@ -48,45 +56,25 @@ void Channel::onMessage(std::function<void(binary data)> binaryCallback,
 }
 
 void Channel::onBufferedAmountLow(std::function<void()> callback) {
-	mBufferedAmountLowCallback = callback;
+	impl()->bufferedAmountLowCallback = callback;
 }
 
-void Channel::setBufferedAmountLowThreshold(size_t amount) { mBufferedAmountLowThreshold = amount; }
-
-void Channel::onAvailable(std::function<void()> callback) { mAvailableCallback = callback; }
-
-void Channel::triggerOpen() { mOpenCallback(); }
-
-void Channel::triggerClosed() { mClosedCallback(); }
-
-void Channel::triggerError(string error) { mErrorCallback(error); }
-
-void Channel::triggerAvailable(size_t count) {
-	if (count == 1)
-		mAvailableCallback();
-
-	while (mMessageCallback && count--) {
-		auto message = receive();
-		if (!message)
-			break;
-		mMessageCallback(*message);
-	}
+void Channel::setBufferedAmountLowThreshold(size_t amount) {
+	impl()->bufferedAmountLowThreshold = amount;
 }
 
-void Channel::triggerBufferedAmount(size_t amount) {
-	size_t previous = mBufferedAmount.exchange(amount);
-	size_t threshold = mBufferedAmountLowThreshold.load();
-	if (previous > threshold && amount <= threshold)
-		mBufferedAmountLowCallback();
+std::optional<message_variant> Channel::receive() {
+	return impl()->receive();
 }
 
-void Channel::resetCallbacks() {
-	mOpenCallback = nullptr;
-	mClosedCallback = nullptr;
-	mErrorCallback = nullptr;
-	mMessageCallback = nullptr;
-	mAvailableCallback = nullptr;
-	mBufferedAmountLowCallback = nullptr;
+std::optional<message_variant> Channel::peek() {
+	return impl()->peek();
 }
+
+size_t Channel::availableAmount() const {
+	return impl()->availableAmount();
+}
+
+void Channel::onAvailable(std::function<void()> callback) { impl()->availableCallback = callback; }
 
 } // namespace rtc
