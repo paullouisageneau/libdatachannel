@@ -22,7 +22,6 @@
 #include "channel.hpp"
 #include "common.hpp"
 #include "message.hpp"
-#include "queue.hpp"
 #include "reliability.hpp"
 
 #include <atomic>

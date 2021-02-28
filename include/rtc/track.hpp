@@ -24,7 +24,6 @@
 #include "common.hpp"
 #include "mediahandler.hpp"
 #include "message.hpp"
-#include "queue.hpp"
 
 #include <atomic>
 #include <shared_mutex>

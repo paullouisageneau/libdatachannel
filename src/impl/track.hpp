@@ -20,9 +20,10 @@
 #define RTC_IMPL_TRACK_H
 
 #include "channel.hpp"
-#include "description.hpp"
 #include "common.hpp"
+#include "description.hpp"
 #include "mediahandler.hpp"
+#include "queue.hpp"
 
 #if RTC_ENABLE_MEDIA
 #include "dtlssrtptransport.hpp"

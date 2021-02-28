@@ -86,7 +86,6 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/log.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/message.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/peerconnection.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/queue.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/reliability.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.h
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.hpp
@@ -137,6 +136,7 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlstransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/icetransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/peerconnection.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/queue.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/logcounter.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sctptransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/threadpool.hpp

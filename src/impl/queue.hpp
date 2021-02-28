@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_QUEUE_H
-#define RTC_QUEUE_H
+#ifndef RTC_IMPL_QUEUE_H
+#define RTC_IMPL_QUEUE_H
 
 #include "common.hpp"
 
@@ -28,7 +28,7 @@
 #include <optional>
 #include <queue>
 
-namespace rtc {
+namespace rtc::impl {
 
 template <typename T> class Queue {
 public:
@@ -167,6 +167,6 @@ template <typename T> std::optional<T> Queue<T>::popImpl() {
 	return element;
 }
 
-} // namespace rtc
+} // namespace rtc::impl
 
 #endif

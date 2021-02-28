@@ -23,9 +23,7 @@
 
 #include "channel.hpp"
 #include "common.hpp"
-#include "init.hpp"
 #include "message.hpp"
-#include "queue.hpp"
 
 namespace rtc {
 
