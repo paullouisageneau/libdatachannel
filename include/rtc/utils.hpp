@@ -41,7 +41,7 @@ template <typename F, typename T, typename... Args> auto weak_bind(F &&f, T *t, 
 }
 
 // scope_guard helper
-class scope_guard {
+class scope_guard final {
 public:
 	scope_guard(std::function<void()> func) : function(std::move(func)) {}
 	scope_guard(scope_guard &&other) = delete;
@@ -58,7 +58,7 @@ private:
 };
 
 // callback with built-in synchronization
-template <typename... Args> class synchronized_callback {
+template <typename... Args> class synchronized_callback final {
 public:
 	synchronized_callback() = default;
 	synchronized_callback(synchronized_callback &&cb) { *this = std::move(cb); }
