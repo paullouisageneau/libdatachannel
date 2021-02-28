@@ -47,7 +47,7 @@ bool Track::isClosed(void) const { return impl()->isClosed(); }
 
 size_t Track::maxMessageSize() const {
 	// TODO
-	return 65535 - 12 - 4; // SRTP/UDP
+	return 65535;
 }
 
 void Track::setRtcpHandler(std::shared_ptr<MediaHandler> handler) {
