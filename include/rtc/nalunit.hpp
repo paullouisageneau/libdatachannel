@@ -21,7 +21,7 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "include.hpp"
+#include "common.hpp"
 
 namespace rtc {
 

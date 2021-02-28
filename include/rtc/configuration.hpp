@@ -19,7 +19,7 @@
 #ifndef RTC_ICE_CONFIGURATION_H
 #define RTC_ICE_CONFIGURATION_H
 
-#include "include.hpp"
+#include "common.hpp"
 #include "message.hpp"
 
 #include <vector>

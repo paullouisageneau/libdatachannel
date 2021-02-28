@@ -21,29 +21,30 @@
 
 #include "channel.hpp"
 #include "description.hpp"
-#include "include.hpp"
-#include "message.hpp"
-#include "queue.hpp"
+#include "common.hpp"
 #include "mediahandler.hpp"
+#include "message.hpp"
 
 #include <atomic>
-#include <variant>
 #include <shared_mutex>
+#include <variant>
 
 namespace rtc {
 
-#if RTC_ENABLE_MEDIA
-class DtlsSrtpTransport;
-#endif
+namespace impl {
 
-class RTC_CPP_EXPORT Track final : public std::enable_shared_from_this<Track>, public Channel {
+class Track;
+
+} // namespace impl
+
+class RTC_CPP_EXPORT Track final : private CheshireCat<impl::Track>, public Channel {
 public:
-	Track(Description::Media description);
+	Track(impl_ptr<impl::Track> impl);
 	~Track() = default;
 
 	string mid() const;
-	Description::Media description() const;
 	Description::Direction direction() const;
+	Description::Media description() const;
 
 	void setDescription(Description::Media description);
 
@@ -55,11 +56,6 @@ public:
 	bool isClosed(void) const override;
 	size_t maxMessageSize() const override;
 
-	// Extended API
-	size_t availableAmount() const override;
-	std::optional<message_variant> receive() override;
-	std::optional<message_variant> peek() override;
-
 	bool requestKeyframe();
 
 	// RTCP handler
@@ -67,24 +63,7 @@ public:
 	std::shared_ptr<MediaHandler> getRtcpHandler();
 
 private:
-#if RTC_ENABLE_MEDIA
-	void open(std::shared_ptr<DtlsSrtpTransport> transport);
-	std::weak_ptr<DtlsSrtpTransport> mDtlsSrtpTransport;
-#endif
-
-	void incoming(message_ptr message);
-	bool outgoing(message_ptr message);
-
-	Description::Media mMediaDescription;
-	std::shared_ptr<MediaHandler> mRtcpHandler;
-
-	mutable std::shared_mutex mMutex;
-
-	std::atomic<bool> mIsClosed = false;
-
-	Queue<message_ptr> mRecvQueue;
-
-	friend class PeerConnection;
+	using CheshireCat<impl::Track>::impl;
 };
 
 } // namespace rtc

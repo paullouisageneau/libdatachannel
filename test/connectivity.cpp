@@ -39,7 +39,7 @@ void test_connectivity() {
 	// Custom MTU example
 	config1.mtu = 1500;
 
-	auto pc1 = std::make_shared<PeerConnection>(config1);
+	PeerConnection pc1(config1);
 
 	Configuration config2;
 	// STUN server example (not necessary to connect locally)
@@ -51,62 +51,50 @@ void test_connectivity() {
 	config2.portRangeBegin = 5000;
 	config2.portRangeEnd = 6000;
 
-	auto pc2 = std::make_shared<PeerConnection>(config2);
+	PeerConnection pc2(config2);
 
-	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](Description sdp) {
-		auto pc2 = wpc2.lock();
-		if (!pc2)
-			return;
+	pc1.onLocalDescription([&pc2](Description sdp) {
 		cout << "Description 1: " << sdp << endl;
-		pc2->setRemoteDescription(string(sdp));
+		pc2.setRemoteDescription(string(sdp));
 	});
 
-	pc1->onLocalCandidate([wpc2 = make_weak_ptr(pc2)](Candidate candidate) {
-		auto pc2 = wpc2.lock();
-		if (!pc2)
-			return;
+	pc1.onLocalCandidate([&pc2](Candidate candidate) {
 		cout << "Candidate 1: " << candidate << endl;
-		pc2->addRemoteCandidate(string(candidate));
+		pc2.addRemoteCandidate(string(candidate));
 	});
 
-	pc1->onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
+	pc1.onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
 
-	pc1->onGatheringStateChange([](PeerConnection::GatheringState state) {
+	pc1.onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "Gathering state 1: " << state << endl;
 	});
 
-	pc1->onSignalingStateChange([](PeerConnection::SignalingState state) {
+	pc1.onSignalingStateChange([](PeerConnection::SignalingState state) {
 		cout << "Signaling state 1: " << state << endl;
 	});
 
-	pc2->onLocalDescription([wpc1 = make_weak_ptr(pc1)](Description sdp) {
-		auto pc1 = wpc1.lock();
-		if (!pc1)
-			return;
+	pc2.onLocalDescription([&pc1](Description sdp) {
 		cout << "Description 2: " << sdp << endl;
-		pc1->setRemoteDescription(string(sdp));
+		pc1.setRemoteDescription(string(sdp));
 	});
 
-	pc2->onLocalCandidate([wpc1 = make_weak_ptr(pc1)](Candidate candidate) {
-		auto pc1 = wpc1.lock();
-		if (!pc1)
-			return;
+	pc2.onLocalCandidate([&pc1](Candidate candidate) {
 		cout << "Candidate 2: " << candidate << endl;
-		pc1->addRemoteCandidate(string(candidate));
+		pc1.addRemoteCandidate(string(candidate));
 	});
 
-	pc2->onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
+	pc2.onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
 
-	pc2->onGatheringStateChange([](PeerConnection::GatheringState state) {
+	pc2.onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "Gathering state 2: " << state << endl;
 	});
 
-	pc2->onSignalingStateChange([](PeerConnection::SignalingState state) {
+	pc2.onSignalingStateChange([](PeerConnection::SignalingState state) {
 		cout << "Signaling state 2: " << state << endl;
 	});
 
 	shared_ptr<DataChannel> dc2;
-	pc2->onDataChannel([&dc2](shared_ptr<DataChannel> dc) {
+	pc2.onDataChannel([&dc2](shared_ptr<DataChannel> dc) {
 		cout << "DataChannel 2: Received with label \"" << dc->label() << "\"" << endl;
 		if (dc->label() != "test") {
 			cerr << "Wrong DataChannel label" << endl;
@@ -124,7 +112,7 @@ void test_connectivity() {
 		std::atomic_store(&dc2, dc);
 	});
 
-	auto dc1 = pc1->createDataChannel("test");
+	auto dc1 = pc1.createDataChannel("test");
 	dc1->onOpen([wdc1 = make_weak_ptr(dc1)]() {
 		auto dc1 = wdc1.lock();
 		if (!dc1)
@@ -145,35 +133,35 @@ void test_connectivity() {
 	while ((!(adc2 = std::atomic_load(&dc2)) || !adc2->isOpen() || !dc1->isOpen()) && attempts--)
 		this_thread::sleep_for(1s);
 
-	if (pc1->state() != PeerConnection::State::Connected &&
-	    pc2->state() != PeerConnection::State::Connected)
+	if (pc1.state() != PeerConnection::State::Connected &&
+	    pc2.state() != PeerConnection::State::Connected)
 		throw runtime_error("PeerConnection is not connected");
 
 	if (!adc2 || !adc2->isOpen() || !dc1->isOpen())
 		throw runtime_error("DataChannel is not open");
 
-	if (auto addr = pc1->localAddress())
+	if (auto addr = pc1.localAddress())
 		cout << "Local address 1:  " << *addr << endl;
-	if (auto addr = pc1->remoteAddress())
+	if (auto addr = pc1.remoteAddress())
 		cout << "Remote address 1: " << *addr << endl;
-	if (auto addr = pc2->localAddress())
+	if (auto addr = pc2.localAddress())
 		cout << "Local address 2:  " << *addr << endl;
-	if (auto addr = pc2->remoteAddress())
+	if (auto addr = pc2.remoteAddress())
 		cout << "Remote address 2: " << *addr << endl;
 
 	Candidate local, remote;
-	if (pc1->getSelectedCandidatePair(&local, &remote)) {
+	if (pc1.getSelectedCandidatePair(&local, &remote)) {
 		cout << "Local candidate 1:  " << local << endl;
 		cout << "Remote candidate 1: " << remote << endl;
 	}
-	if (pc2->getSelectedCandidatePair(&local, &remote)) {
+	if (pc2.getSelectedCandidatePair(&local, &remote)) {
 		cout << "Local candidate 2:  " << local << endl;
 		cout << "Remote candidate 2: " << remote << endl;
 	}
 
 	// Try to open a second data channel with another label
 	shared_ptr<DataChannel> second2;
-	pc2->onDataChannel([&second2](shared_ptr<DataChannel> dc) {
+	pc2.onDataChannel([&second2](shared_ptr<DataChannel> dc) {
 		cout << "Second DataChannel 2: Received with label \"" << dc->label() << "\"" << endl;
 		if (dc->label() != "second") {
 			cerr << "Wrong second DataChannel label" << endl;
@@ -191,7 +179,7 @@ void test_connectivity() {
 		std::atomic_store(&second2, dc);
 	});
 
-	auto second1 = pc1->createDataChannel("second");
+	auto second1 = pc1.createDataChannel("second");
 	second1->onOpen([wsecond1 = make_weak_ptr(dc1)]() {
 		auto second1 = wsecond1.lock();
 		if (!second1)
@@ -221,8 +209,8 @@ void test_connectivity() {
 	DataChannelInit init;
 	init.negotiated = true;
 	init.id = 42;
-	auto negotiated1 = pc1->createDataChannel("negotiated", init);
-	auto negotiated2 = pc2->createDataChannel("negoctated", init);
+	auto negotiated1 = pc1.createDataChannel("negotiated", init);
+	auto negotiated2 = pc2.createDataChannel("negoctated", init);
 
 	if (!negotiated1->isOpen() || !negotiated2->isOpen())
 		throw runtime_error("Negotiated DataChannel is not open");
@@ -246,9 +234,9 @@ void test_connectivity() {
 		throw runtime_error("Negotiated DataChannel failed");
 
 	// Delay close of peer 2 to check closing works properly
-	pc1->close();
+	pc1.close();
 	this_thread::sleep_for(1s);
-	pc2->close();
+	pc2.close();
 	this_thread::sleep_for(1s);
 
 	// You may call rtc::Cleanup() when finished to free static resources

@@ -22,9 +22,6 @@
 
 namespace rtc {
 
-using std::make_shared;
-using std::shared_ptr;
-
 typedef enum {
 	NUSM_noMatch,
 	NUSM_firstZero,
@@ -74,7 +71,7 @@ NalUnitStartSequenceMatch StartSequenceMatchSucc(NalUnitStartSequenceMatch match
 }
 
 shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
-	auto nalus = make_shared<NalUnits>();
+	auto nalus = std::make_shared<NalUnits>();
 	if (separator == Separator::Length) {
 		unsigned long long index = 0;
 		while (index < message->size()) {

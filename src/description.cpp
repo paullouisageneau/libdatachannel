@@ -28,7 +28,6 @@
 #include <sstream>
 #include <unordered_map>
 
-using std::shared_ptr;
 using std::chrono::system_clock;
 
 namespace {

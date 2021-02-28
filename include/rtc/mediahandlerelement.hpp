@@ -20,7 +20,7 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "include.hpp"
+#include "common.hpp"
 #include "message.hpp"
 #include "rtp.hpp"
 

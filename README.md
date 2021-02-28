@@ -145,50 +145,49 @@ Additionnaly, you might want to have a look at the [C API](https://github.com/pa
 rtc::Configuration config;
 config.iceServers.emplace_back("mystunserver.org:3478");
 
-auto pc = make_shared<rtc::PeerConnection>(config);
+rtc::PeerConection pc(config);
 
-pc->onLocalDescription([](rtc::Description sdp) {
+pc.onLocalDescription([](rtc::Description sdp) {
     // Send the SDP to the remote peer
     MY_SEND_DESCRIPTION_TO_REMOTE(string(sdp));
 });
 
-pc->onLocalCandidate([](rtc::Candidate candidate) {
+pc.onLocalCandidate([](rtc::Candidate candidate) {
     // Send the candidate to the remote peer
     MY_SEND_CANDIDATE_TO_REMOTE(candidate.candidate(), candidate.mid());
 });
 
-MY_ON_RECV_DESCRIPTION_FROM_REMOTE([pc](string sdp) {
-    pc->setRemoteDescription(rtc::Description(sdp));
+MY_ON_RECV_DESCRIPTION_FROM_REMOTE([&pc](string sdp) {
+    pc.setRemoteDescription(rtc::Description(sdp));
 });
 
-MY_ON_RECV_CANDIDATE_FROM_REMOTE([pc](string candidate, string mid) {
-    pc->addRemoteCandidate(rtc::Candidate(candidate, mid));
+MY_ON_RECV_CANDIDATE_FROM_REMOTE([&pc](string candidate, string mid) {
+    pc.addRemoteCandidate(rtc::Candidate(candidate, mid));
 });
 ```
 
 ### Observe the PeerConnection state
 
 ```cpp
-pc->onStateChange([](PeerConnection::State state) {
+pc.onStateChange([](PeerConnection::State state) {
     cout << "State: " << state << endl;
 });
 
-pc->onGatheringStateChange([](PeerConnection::GatheringState state) {
+pc.onGatheringStateChange([](PeerConnection::GatheringState state) {
     cout << "Gathering state: " << state << endl;
 });
-
 ```
 
 ### Create a DataChannel
 
 ```cpp
-auto dc = pc->createDataChannel("test");
+auto dc = pc.createDataChannel("test");
 
-dc->onOpen([]() {
+dc.onOpen([]() {
     cout << "Open" << endl;
 });
 
-dc->onMessage([](variant<binary, string> message) {
+dc.onMessage([](variant<binary, string> message) {
     if (holds_alternative<string>(message)) {
         cout << "Received: " << get<string>(message) << endl;
     }
@@ -199,30 +198,28 @@ dc->onMessage([](variant<binary, string> message) {
 
 ```cpp
 shared_ptr<rtc::DataChannel> dc;
-pc->onDataChannel([&dc](shared_ptr<rtc::DataChannel> incoming) {
+pc.onDataChannel([&dc](shared_ptr<rtc::DataChannel> incoming) {
     dc = incoming;
     dc->send("Hello world!");
 });
-
 ```
 
 ### Open a WebSocket
 
 ```cpp
-auto ws = make_shared<rtc::WebSocket>();
+rtc::WebSocket ws;
 
-ws->onOpen([]() {
+ws.onOpen([]() {
 	cout << "WebSocket open" << endl;
 });
 
-ws->onMessage([](variant<binary, string> message) {
+ws.onMessage([](variant<binary, string> message) {
     if (holds_alternative<string>(message)) {
         cout << "WebSocket received: " << get<string>(message) << endl;
     }
 });
 
-ws->open("wss://my.websocket/service");
-
+ws.open("wss://my.websocket/service");
 ```
 
 ## External resources

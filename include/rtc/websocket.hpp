@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2020-2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,24 +22,18 @@
 #if RTC_ENABLE_WEBSOCKET
 
 #include "channel.hpp"
-#include "include.hpp"
-#include "init.hpp"
+#include "common.hpp"
 #include "message.hpp"
-#include "queue.hpp"
-
-#include <atomic>
-#include <optional>
-#include <thread>
-#include <variant>
 
 namespace rtc {
 
-class TcpTransport;
-class TlsTransport;
-class WsTransport;
+namespace impl {
 
-class RTC_CPP_EXPORT WebSocket final : public Channel,
-                                       public std::enable_shared_from_this<WebSocket> {
+struct WebSocket;
+
+}
+
+class RTC_CPP_EXPORT WebSocket final : private CheshireCat<impl::WebSocket>, public Channel {
 public:
 	enum class State : int {
 		Connecting = 0,
@@ -53,49 +47,25 @@ public:
 		std::vector<string> protocols;
 	};
 
-	WebSocket(std::optional<Configuration> config = nullopt);
+	WebSocket();
+	WebSocket(Configuration config);
 	~WebSocket();
 
 	State readyState() const;
+
+	bool isOpen() const override;
+	bool isClosed() const override;
+	size_t maxMessageSize() const override;
 
 	void open(const string &url);
 	void close() override;
 	bool send(const message_variant data) override;
 	bool send(const byte *data, size_t size) override;
 
-	bool isOpen() const override;
-	bool isClosed() const override;
-	size_t maxMessageSize() const override;
-
-	// Extended API
-	std::optional<message_variant> receive() override;
-	std::optional<message_variant> peek() override;
-	size_t availableAmount() const override; // total size available to receive
-
 private:
-	bool changeState(State state);
-	void remoteClose();
-	bool outgoing(message_ptr message);
-	void incoming(message_ptr message);
-
-	std::shared_ptr<TcpTransport> initTcpTransport();
-	std::shared_ptr<TlsTransport> initTlsTransport();
-	std::shared_ptr<WsTransport> initWsTransport();
-	void closeTransports();
-
-	init_token mInitToken = Init::Token();
-
-	std::shared_ptr<TcpTransport> mTcpTransport;
-	std::shared_ptr<TlsTransport> mTlsTransport;
-	std::shared_ptr<WsTransport> mWsTransport;
-	std::recursive_mutex mInitMutex;
-
-	const Configuration mConfig;
-	string mScheme, mHost, mHostname, mService, mPath;
-	std::atomic<State> mState = State::Closed;
-
-	Queue<message_ptr> mRecvQueue;
+	using CheshireCat<impl::WebSocket>::impl;
 };
+
 } // namespace rtc
 
 #endif
