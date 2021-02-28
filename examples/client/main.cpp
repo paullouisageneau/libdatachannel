@@ -54,20 +54,20 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 string randomId(size_t length);
 
 int main(int argc, char **argv) try {
-	auto params = std::make_unique<Cmdline>(argc, argv);
+	Cmdline params(argc, argv);
 
 	rtc::InitLogger(LogLevel::Info);
 
 	Configuration config;
 	string stunServer = "";
-	if (params->noStun()) {
+	if (params.noStun()) {
 		cout << "No STUN server is configured. Only local hosts and public IP addresses supported."
 		     << endl;
 	} else {
-		if (params->stunServer().substr(0, 5).compare("stun:") != 0) {
+		if (params.stunServer().substr(0, 5).compare("stun:") != 0) {
 			stunServer = "stun:";
 		}
-		stunServer += params->stunServer() + ":" + to_string(params->stunPort());
+		stunServer += params.stunServer() + ":" + to_string(params.stunPort());
 		cout << "Stun server is " << stunServer << endl;
 		config.iceServers.emplace_back(stunServer);
 	}
@@ -129,11 +129,11 @@ int main(int argc, char **argv) try {
 	});
 
 	string wsPrefix = "";
-	if (params->webSocketServer().substr(0, 5).compare("ws://") != 0) {
+	if (params.webSocketServer().substr(0, 5).compare("ws://") != 0) {
 		wsPrefix = "ws://";
 	}
-	const string url = wsPrefix + params->webSocketServer() + ":" +
-	                   to_string(params->webSocketPort()) + "/" + localId;
+	const string url = wsPrefix + params.webSocketServer() + ":" +
+	                   to_string(params.webSocketPort()) + "/" + localId;
 	cout << "Url is " << url << endl;
 	ws->open(url);
 
@@ -251,3 +251,4 @@ string randomId(size_t length) {
 	generate(id.begin(), id.end(), [&]() { return characters.at(dist(rng)); });
 	return id;
 }
+
