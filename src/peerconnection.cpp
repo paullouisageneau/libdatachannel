@@ -313,12 +313,6 @@ void PeerConnection::onSignalingStateChange(std::function<void(SignalingState st
 }
 
 std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) {
-#if !RTC_ENABLE_MEDIA
-	if (mTracks.empty()) {
-		PLOG_WARNING << "Tracks will be inative (not compiled with media support)";
-	}
-#endif
-
 	auto trackImpl = impl()->emplaceTrack(std::move(description));
 
 	// Renegotiation is needed for the new or updated track
