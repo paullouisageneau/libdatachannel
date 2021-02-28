@@ -112,8 +112,13 @@ public:
 	CheshireCat(impl_ptr<T> impl) : mImpl(std::move(impl)) {}
 	template <typename... Args>
 	CheshireCat(Args... args) : mImpl(std::make_shared<T>(std::move(args)...)) {}
+	CheshireCat(CheshireCat<T> &&cc) { *this = std::move(cc); }
+	CheshireCat(const CheshireCat<T> &) = delete;
 
 	virtual ~CheshireCat() = default;
+
+	CheshireCat &operator=(CheshireCat<T> &&cc) { mImpl = std::move(cc->mImpl); };
+	CheshireCat &operator=(const CheshireCat<T> &) = delete;
 
 protected:
 	impl_ptr<T> impl() { return mImpl; }
