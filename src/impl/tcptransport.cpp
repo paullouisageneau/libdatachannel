@@ -17,6 +17,7 @@
  */
 
 #include "tcptransport.hpp"
+#include "globals.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 

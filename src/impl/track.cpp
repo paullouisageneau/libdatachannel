@@ -17,6 +17,7 @@
  */
 
 #include "track.hpp"
+#include "globals.hpp"
 #include "logcounter.hpp"
 
 namespace rtc::impl {

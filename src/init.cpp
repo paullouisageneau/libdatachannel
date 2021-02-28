@@ -17,6 +17,7 @@
  */
 
 #include "init.hpp"
+#include "globals.hpp"
 
 #include "impl/certificate.hpp"
 #include "impl/dtlstransport.hpp"

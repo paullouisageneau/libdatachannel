@@ -17,6 +17,7 @@
  */
 
 #include "dtlstransport.hpp"
+#include "globals.hpp"
 #include "icetransport.hpp"
 
 #include <chrono>
@@ -33,11 +34,6 @@
 #endif
 
 using namespace std::chrono;
-
-using std::shared_ptr;
-using std::string;
-using std::unique_ptr;
-using std::weak_ptr;
 
 namespace rtc::impl {
 
@@ -597,4 +593,4 @@ long DtlsTransport::BioMethodCtrl(BIO * /*bio*/, int cmd, long /*num*/, void * /
 
 #endif
 
-} // namespace rtc
+} // namespace rtc::impl

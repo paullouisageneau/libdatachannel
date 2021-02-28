@@ -28,11 +28,6 @@
 
 using namespace std::chrono;
 
-using std::shared_ptr;
-using std::string;
-using std::unique_ptr;
-using std::weak_ptr;
-
 namespace rtc::impl {
 
 #if USE_GNUTLS

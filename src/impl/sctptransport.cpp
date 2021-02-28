@@ -18,6 +18,7 @@
 
 #include "sctptransport.hpp"
 #include "dtlstransport.hpp"
+#include "globals.hpp"
 #include "logcounter.hpp"
 
 #include <chrono>
@@ -808,4 +809,4 @@ int SctpTransport::WriteCallback(void *ptr, void *data, size_t len, uint8_t tos,
 	return transport->handleWrite(static_cast<byte *>(data), len, tos, set_df);
 }
 
-} // namespace rtc
+} // namespace rtc::impl

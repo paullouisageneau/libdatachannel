@@ -17,6 +17,7 @@
  */
 
 #include "datachannel.hpp"
+#include "globals.hpp"
 #include "include.hpp"
 #include "logcounter.hpp"
 #include "peerconnection.hpp"

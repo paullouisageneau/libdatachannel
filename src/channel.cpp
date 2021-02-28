@@ -17,6 +17,7 @@
  */
 
 #include "channel.hpp"
+#include "globals.hpp"
 
 #include "impl/channel.hpp"
 

@@ -20,6 +20,7 @@
 #include "peerconnection.hpp"
 #include "certificate.hpp"
 #include "dtlstransport.hpp"
+#include "globals.hpp"
 #include "icetransport.hpp"
 #include "include.hpp"
 #include "logcounter.hpp"
@@ -63,7 +64,8 @@ static LogCounter
                                 "Number of unknown RTCP packet types over past second");
 
 PeerConnection::PeerConnection(Configuration config_)
-    : config(std::move(config_)), mCertificate(make_certificate()), mProcessor(std::make_unique<Processor>()) {
+    : config(std::move(config_)), mCertificate(make_certificate()),
+      mProcessor(std::make_unique<Processor>()) {
 	PLOG_VERBOSE << "Creating PeerConnection";
 
 	if (config.portRangeEnd && config.portRangeBegin > config.portRangeEnd)
@@ -181,32 +183,32 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		auto certificate = mCertificate.get();
 		auto lower = std::atomic_load(&mIceTransport);
 		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1);
-		auto stateChangeCallback = [this,
-		                            weak_this = weak_from_this()](DtlsTransport::State transportState) {
-			auto shared_this = weak_this.lock();
-			if (!shared_this)
-				return;
+		auto stateChangeCallback =
+		    [this, weak_this = weak_from_this()](DtlsTransport::State transportState) {
+			    auto shared_this = weak_this.lock();
+			    if (!shared_this)
+				    return;
 
-			switch (transportState) {
-			case DtlsTransport::State::Connected:
-				if (auto remote = remoteDescription(); remote && remote->hasApplication())
-					initSctpTransport();
-				else
-					changeState(State::Connected);
+			    switch (transportState) {
+			    case DtlsTransport::State::Connected:
+				    if (auto remote = remoteDescription(); remote && remote->hasApplication())
+					    initSctpTransport();
+				    else
+					    changeState(State::Connected);
 
-				mProcessor->enqueue(&PeerConnection::openTracks, this);
-				break;
-			case DtlsTransport::State::Failed:
-				changeState(State::Failed);
-				break;
-			case DtlsTransport::State::Disconnected:
-				changeState(State::Disconnected);
-				break;
-			default:
-				// Ignore
-				break;
-			}
-		};
+				    mProcessor->enqueue(&PeerConnection::openTracks, this);
+				    break;
+			    case DtlsTransport::State::Failed:
+				    changeState(State::Failed);
+				    break;
+			    case DtlsTransport::State::Disconnected:
+				    changeState(State::Disconnected);
+				    break;
+			    default:
+				    // Ignore
+				    break;
+			    }
+		    };
 
 		shared_ptr<DtlsTransport> transport;
 		if (auto local = localDescription(); local && local->hasAudioOrVideo()) {

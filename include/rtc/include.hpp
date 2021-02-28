@@ -40,6 +40,7 @@
 #endif
 
 #include "log.hpp"
+#include "utils.hpp"
 
 #include <cstddef>
 #include <functional>
@@ -52,13 +53,13 @@
 
 namespace rtc {
 
-using std::nullopt;
 using std::byte;
+using std::nullopt;
+using std::shared_ptr;
 using std::string;
 using std::string_view;
-using std::shared_ptr;
-using std::weak_ptr;
 using std::unique_ptr;
+using std::weak_ptr;
 
 using binary = std::vector<byte>;
 using binary_ptr = std::shared_ptr<binary>;
@@ -68,117 +69,6 @@ using std::uint16_t;
 using std::uint32_t;
 using std::uint64_t;
 using std::uint8_t;
-
-const size_t MAX_NUMERICNODE_LEN = 48; // Max IPv6 string representation length
-const size_t MAX_NUMERICSERV_LEN = 6;  // Max port string representation length
-
-const uint16_t DEFAULT_SCTP_PORT = 5000;          // SCTP port to use by default
-const size_t DEFAULT_MAX_MESSAGE_SIZE = 65536;    // Remote max message size if not specified in SDP
-const size_t LOCAL_MAX_MESSAGE_SIZE = 256 * 1024; // Local max message size
-
-const size_t RECV_QUEUE_LIMIT = 1024 * 1024; // Max per-channel queue size
-
-const int THREADPOOL_SIZE = 4; // Number of threads in the global thread pool
-
-const size_t DEFAULT_IPV4_MTU = 1200; // IPv4 safe MTU value recommended by RFC 8261
-
-// overloaded helper
-template <class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
-
-// weak_ptr bind helper
-template <typename F, typename T, typename... Args> auto weak_bind(F &&f, T *t, Args &&..._args) {
-	return [bound = std::bind(f, t, _args...), weak_this = t->weak_from_this()](auto &&...args) {
-		using result_type = typename decltype(bound)::result_type;
-		if (auto shared_this = weak_this.lock())
-			return bound(args...);
-		else
-			return static_cast<result_type>(false);
-	};
-}
-
-// scope_guard helper
-class scope_guard {
-public:
-	scope_guard(std::function<void()> func) : function(std::move(func)) {}
-	scope_guard(scope_guard &&other) = delete;
-	scope_guard(const scope_guard &) = delete;
-	void operator=(const scope_guard &) = delete;
-
-	~scope_guard() {
-		if (function)
-			function();
-	}
-
-private:
-	std::function<void()> function;
-};
-
-// callback with built-in synchronization
-template <typename... Args> class synchronized_callback {
-public:
-	synchronized_callback() = default;
-	synchronized_callback(synchronized_callback &&cb) { *this = std::move(cb); }
-	synchronized_callback(const synchronized_callback &cb) { *this = cb; }
-	synchronized_callback(std::function<void(Args...)> func) { *this = std::move(func); }
-	~synchronized_callback() { *this = nullptr; }
-
-	synchronized_callback &operator=(synchronized_callback &&cb) {
-		std::scoped_lock lock(mutex, cb.mutex);
-		callback = std::move(cb.callback);
-		cb.callback = nullptr;
-		return *this;
-	}
-
-	synchronized_callback &operator=(const synchronized_callback &cb) {
-		std::scoped_lock lock(mutex, cb.mutex);
-		callback = cb.callback;
-		return *this;
-	}
-
-	synchronized_callback &operator=(std::function<void(Args...)> func) {
-		std::lock_guard lock(mutex);
-		callback = std::move(func);
-		return *this;
-	}
-
-	void operator()(Args... args) const {
-		std::lock_guard lock(mutex);
-		if (callback)
-			callback(std::move(args)...);
-	}
-
-	operator bool() const {
-		std::lock_guard lock(mutex);
-		return callback ? true : false;
-	}
-
-	std::function<void(Args...)> wrap() const {
-		return [this](Args... args) { (*this)(std::move(args)...); };
-	}
-
-private:
-	std::function<void(Args...)> callback;
-	mutable std::recursive_mutex mutex;
-};
-
-// pimpl base class
-template<typename T> using impl_ptr = std::shared_ptr<T>;
-template <typename T> class CheshireCat {
-public:
-	CheshireCat(impl_ptr<T> impl) : mImpl(std::move(impl)) {}
-	template <typename... Args>
-	CheshireCat(Args... args) : mImpl(std::make_shared<T>(std::move(args)...)) {}
-
-	virtual ~CheshireCat() = default;
-
-protected:
-	impl_ptr<T> impl() { return mImpl; }
-	impl_ptr<const T> impl() const { return mImpl; }
-
-private:
-	impl_ptr<T> mImpl;
-};
 
 } // namespace rtc
 

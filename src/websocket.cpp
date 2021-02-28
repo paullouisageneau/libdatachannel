@@ -19,6 +19,7 @@
 #if RTC_ENABLE_WEBSOCKET
 
 #include "websocket.hpp"
+#include "globals.hpp"
 #include "include.hpp"
 
 #include "impl/websocket.hpp"

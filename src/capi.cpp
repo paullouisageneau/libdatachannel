@@ -43,8 +43,6 @@
 
 using namespace rtc;
 using std::optional;
-using std::shared_ptr;
-using std::string;
 using std::chrono::milliseconds;
 
 namespace {

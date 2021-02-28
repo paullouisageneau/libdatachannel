@@ -21,11 +21,6 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
-using std::shared_ptr;
-using std::string;
-using std::unique_ptr;
-using std::weak_ptr;
-
 namespace rtc::impl {
 
 VerifiedTlsTransport::VerifiedTlsTransport(shared_ptr<TcpTransport> lower, string host,
