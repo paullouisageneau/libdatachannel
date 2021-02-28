@@ -19,7 +19,7 @@
 #ifndef RTC_IMPL_CHANNEL_H
 #define RTC_IMPL_CHANNEL_H
 
-#include "include.hpp"
+#include "common.hpp"
 #include "message.hpp"
 
 #include <atomic>

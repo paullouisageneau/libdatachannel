@@ -19,7 +19,7 @@
 #ifndef RTC_GLOBALS_H
 #define RTC_GLOBALS_H
 
-#include "include.hpp"
+#include "common.hpp"
 
 namespace rtc {
 

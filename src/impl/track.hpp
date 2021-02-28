@@ -21,7 +21,7 @@
 
 #include "channel.hpp"
 #include "description.hpp"
-#include "include.hpp"
+#include "common.hpp"
 #include "mediahandler.hpp"
 
 #if RTC_ENABLE_MEDIA

@@ -22,7 +22,7 @@
 #if RTC_ENABLE_WEBSOCKET
 
 #include "channel.hpp"
-#include "include.hpp"
+#include "common.hpp"
 #include "init.hpp"
 #include "message.hpp"
 #include "queue.hpp"

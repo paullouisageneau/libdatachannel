@@ -19,7 +19,7 @@
 #ifndef RTC_MESSAGE_H
 #define RTC_MESSAGE_H
 
-#include "include.hpp"
+#include "common.hpp"
 #include "reliability.hpp"
 
 #include <functional>

@@ -17,7 +17,7 @@
  */
 
 // C++ API
-#include "include.hpp"
+#include "common.hpp"
 #include "init.hpp" // for rtc::Cleanup()
 #include "log.hpp"
 //

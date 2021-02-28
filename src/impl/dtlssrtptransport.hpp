@@ -20,7 +20,7 @@
 #define RTC_IMPL_DTLS_SRTP_TRANSPORT_H
 
 #include "dtlstransport.hpp"
-#include "include.hpp"
+#include "common.hpp"
 
 #if RTC_ENABLE_MEDIA
 

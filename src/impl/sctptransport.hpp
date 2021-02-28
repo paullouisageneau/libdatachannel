@@ -19,7 +19,7 @@
 #ifndef RTC_IMPL_SCTP_TRANSPORT_H
 #define RTC_IMPL_SCTP_TRANSPORT_H
 
-#include "include.hpp"
+#include "common.hpp"
 #include "processor.hpp"
 #include "queue.hpp"
 #include "transport.hpp"

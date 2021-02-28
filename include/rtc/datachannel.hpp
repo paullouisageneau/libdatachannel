@@ -20,7 +20,7 @@
 #define RTC_DATA_CHANNEL_H
 
 #include "channel.hpp"
-#include "include.hpp"
+#include "common.hpp"
 #include "message.hpp"
 #include "queue.hpp"
 #include "reliability.hpp"

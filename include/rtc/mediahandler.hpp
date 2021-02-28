@@ -20,7 +20,7 @@
 #ifndef RTC_MEDIA_HANDLER_H
 #define RTC_MEDIA_HANDLER_H
 
-#include "include.hpp"
+#include "common.hpp"
 #include "message.hpp"
 
 namespace rtc {

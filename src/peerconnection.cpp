@@ -18,7 +18,7 @@
  */
 
 #include "peerconnection.hpp"
-#include "include.hpp"
+#include "common.hpp"
 #include "rtp.hpp"
 
 #include "impl/certificate.hpp"

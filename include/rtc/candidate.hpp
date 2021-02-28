@@ -19,7 +19,7 @@
 #ifndef RTC_CANDIDATE_H
 #define RTC_CANDIDATE_H
 
-#include "include.hpp"
+#include "common.hpp"
 
 #include <string>
 

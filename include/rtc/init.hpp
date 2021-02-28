@@ -19,7 +19,7 @@
 #ifndef RTC_INIT_H
 #define RTC_INIT_H
 
-#include "include.hpp"
+#include "common.hpp"
 
 #include <mutex>
 

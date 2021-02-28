@@ -19,7 +19,7 @@
 #ifndef RTC_IMPL_PROCESSOR_H
 #define RTC_IMPL_PROCESSOR_H
 
-#include "include.hpp"
+#include "common.hpp"
 #include "init.hpp"
 #include "queue.hpp"
 #include "threadpool.hpp"
