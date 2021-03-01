@@ -158,7 +158,7 @@ void Track::incoming(message_ptr message) {
 }
 
 bool Track::outgoing([[maybe_unused]] message_ptr message) {
-#if RTC_ENABLfiE_MEDIA
+#if RTC_ENABLE_MEDIA
 	std::shared_ptr<DtlsSrtpTransport> transport;
 	{
 		std::shared_lock lock(mMutex);
