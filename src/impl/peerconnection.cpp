@@ -393,7 +393,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		    stream % 2 == remoteParity) {
 
 			channel =
-			    std::make_shared<NegotiatedDataChannel>(shared_from_this(), sctpTransport, stream);
+			    std::make_shared<NegotiatedDataChannel>(weak_from_this(), sctpTransport, stream);
 			channel->openCallback = weak_bind(&PeerConnection::triggerDataChannel, this,
 			                                  weak_ptr<DataChannel>{channel});
 
@@ -562,9 +562,9 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role rol
 	// If the DataChannel is user-negotiated, do not negociate it here
 	auto channel =
 	    init.negotiated
-	        ? std::make_shared<DataChannel>(shared_from_this(), stream, std::move(label),
+	        ? std::make_shared<DataChannel>(weak_from_this(), stream, std::move(label),
 	                                        std::move(init.protocol), std::move(init.reliability))
-	        : std::make_shared<NegotiatedDataChannel>(shared_from_this(), stream, std::move(label),
+	        : std::make_shared<NegotiatedDataChannel>(weak_from_this(), stream, std::move(label),
 	                                                  std::move(init.protocol),
 	                                                  std::move(init.reliability));
 	mDataChannels.emplace(std::make_pair(stream, channel));
@@ -647,7 +647,7 @@ shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
 			track->setDescription(std::move(description));
 
 	if (!track) {
-		track = std::make_shared<Track>(shared_from_this(), std::move(description));
+		track = std::make_shared<Track>(weak_from_this(), std::move(description));
 		mTracks.emplace(std::make_pair(track->mid(), track));
 		mTrackLines.emplace_back(track);
 	}
@@ -663,7 +663,7 @@ void PeerConnection::incomingTrack(Description::Media description) {
 	}
 #endif
 	if (mTracks.find(description.mid()) == mTracks.end()) {
-		auto track = std::make_shared<Track>(shared_from_this(), std::move(description));
+		auto track = std::make_shared<Track>(weak_from_this(), std::move(description));
 		mTracks.emplace(std::make_pair(track->mid(), track));
 		mTrackLines.emplace_back(track);
 		triggerTrack(track);
