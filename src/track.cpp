@@ -114,7 +114,7 @@ bool Track::isOpen(void) const {
 bool Track::isClosed(void) const { return mIsClosed; }
 
 size_t Track::maxMessageSize() const {
-	return 65535 - 12 - 4; // SRTP/UDP
+	return DEFAULT_IPV4_MTU - 12 - 8 - 20; // SRTP/UDP/IPv4
 }
 
 size_t Track::availableAmount() const { return mRecvQueue.amount(); }
