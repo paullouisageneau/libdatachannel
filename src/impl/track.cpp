@@ -126,7 +126,7 @@ void Track::incoming(message_ptr message) {
 	triggerAvailable(mRecvQueue.size());
 }
 
-bool Track::outgoing([[maybe_unused]] message_ptr message) {
+bool Track::outgoing(message_ptr message) {
 	if (mIsClosed)
 		throw std::runtime_error("Track is closed");
 
@@ -142,6 +142,10 @@ bool Track::outgoing([[maybe_unused]] message_ptr message) {
 			return false;
 	}
 
+	return transportSend(message);
+}
+
+bool Track::transportSend([[maybe_unused]] message_ptr message) {
 #if RTC_ENABLE_MEDIA
 	std::shared_ptr<DtlsSrtpTransport> transport;
 	{
@@ -171,7 +175,7 @@ void Track::setRtcpHandler(std::shared_ptr<MediaHandler> handler) {
 		mRtcpHandler = handler;
 	}
 
-	handler->onOutgoing(std::bind(&Track::outgoing, this, std::placeholders::_1));
+	handler->onOutgoing(std::bind(&Track::transportSend, this, std::placeholders::_1));
 }
 
 std::shared_ptr<MediaHandler> Track::getRtcpHandler() {

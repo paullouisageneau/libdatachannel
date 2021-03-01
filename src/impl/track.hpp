@@ -64,6 +64,8 @@ public:
 #endif
 
 private:
+	bool transportSend(message_ptr message);
+
 #if RTC_ENABLE_MEDIA
 	weak_ptr<DtlsSrtpTransport> mDtlsSrtpTransport;
 #endif
