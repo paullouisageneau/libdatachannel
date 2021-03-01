@@ -34,7 +34,7 @@ namespace rtc::impl {
 struct PeerConnection;
 
 struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
-	DataChannel(weak_ptr<impl::PeerConnection> pc, uint16_t stream, string label, string protocol,
+	DataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label, string protocol,
 	            Reliability reliability);
 	~DataChannel();
 
@@ -79,13 +79,13 @@ protected:
 };
 
 struct NegotiatedDataChannel final : public DataChannel {
-	NegotiatedDataChannel(weak_ptr<impl::PeerConnection> pc, uint16_t stream, string label,
+	NegotiatedDataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label,
 	                      string protocol, Reliability reliability);
-	NegotiatedDataChannel(weak_ptr<impl::PeerConnection> pc,
-	                      weak_ptr<impl::SctpTransport> transport, uint16_t stream);
+	NegotiatedDataChannel(weak_ptr<PeerConnection> pc,
+	                      weak_ptr<SctpTransport> transport, uint16_t stream);
 	~NegotiatedDataChannel();
 
-	void open(impl_ptr<impl::SctpTransport> transport) override;
+	void open(impl_ptr<SctpTransport> transport) override;
 	void processOpenMessage(message_ptr message) override;
 };
 

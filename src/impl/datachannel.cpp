@@ -255,13 +255,13 @@ void DataChannel::incoming(message_ptr message) {
 	}
 }
 
-NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<impl::PeerConnection> pc,
+NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<PeerConnection> pc,
                                              uint16_t stream, string label, string protocol,
                                              Reliability reliability)
     : DataChannel(pc, stream, std::move(label), std::move(protocol), std::move(reliability)) {}
 
-NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<impl::PeerConnection> pc,
-                                             std::weak_ptr<impl::SctpTransport> transport,
+NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<PeerConnection> pc,
+                                             std::weak_ptr<SctpTransport> transport,
                                              uint16_t stream)
     : DataChannel(pc, stream, "", "", {}) {
 	mSctpTransport = transport;
@@ -269,7 +269,7 @@ NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<impl::PeerConnection>
 
 NegotiatedDataChannel::~NegotiatedDataChannel() {}
 
-void NegotiatedDataChannel::open(shared_ptr<impl::SctpTransport> transport) {
+void NegotiatedDataChannel::open(shared_ptr<SctpTransport> transport) {
 	std::unique_lock lock(mMutex);
 	mSctpTransport = transport;
 

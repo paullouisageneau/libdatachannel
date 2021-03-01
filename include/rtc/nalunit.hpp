@@ -144,7 +144,7 @@ protected:
 
 class RTC_CPP_EXPORT NalUnits : public std::vector<std::shared_ptr<NalUnit>> {
 public:
-	static const uint16_t defaultMaximumFragmentSize = 1400;
+	static const uint16_t defaultMaximumFragmentSize;
 	std::vector<std::shared_ptr<binary>> generateFragments(uint16_t maximumFragmentSize);
 };
 

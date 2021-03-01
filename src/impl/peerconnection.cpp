@@ -19,10 +19,10 @@
 
 #include "peerconnection.hpp"
 #include "certificate.hpp"
+#include "common.hpp"
 #include "dtlstransport.hpp"
 #include "globals.hpp"
 #include "icetransport.hpp"
-#include "common.hpp"
 #include "logcounter.hpp"
 #include "peerconnection.hpp"
 #include "processor.hpp"
@@ -647,7 +647,7 @@ shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
 			track->setDescription(std::move(description));
 
 	if (!track) {
-		track = std::make_shared<Track>(std::move(description));
+		track = std::make_shared<Track>(shared_from_this(), std::move(description));
 		mTracks.emplace(std::make_pair(track->mid(), track));
 		mTrackLines.emplace_back(track);
 	}
@@ -663,7 +663,7 @@ void PeerConnection::incomingTrack(Description::Media description) {
 	}
 #endif
 	if (mTracks.find(description.mid()) == mTracks.end()) {
-		auto track = std::make_shared<Track>(std::move(description));
+		auto track = std::make_shared<Track>(shared_from_this(), std::move(description));
 		mTracks.emplace(std::make_pair(track->mid(), track));
 		mTrackLines.emplace_back(track);
 		triggerTrack(track);

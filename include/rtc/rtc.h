@@ -40,7 +40,7 @@ extern "C" {
 #endif
 
 #if RTC_ENABLE_MEDIA
-#define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE ((uint16_t)1400)
+#define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE ((uint16_t)(1280 - 12 - 8 - 40)) // SRTP/UDP/IPv6
 #define RTC_DEFAULT_MAXIMUM_PACKET_COUNT_FOR_NACK_CACHE ((unsigned)512)
 #endif
 
