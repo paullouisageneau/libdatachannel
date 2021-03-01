@@ -17,6 +17,7 @@
  */
 
 #include "track.hpp"
+#include "globals.hpp"
 
 #include "impl/track.hpp"
 
@@ -46,8 +47,7 @@ bool Track::isOpen(void) const { return impl()->isOpen(); }
 bool Track::isClosed(void) const { return impl()->isClosed(); }
 
 size_t Track::maxMessageSize() const {
-	// TODO
-	return 65535;
+	return DEFAULT_IPV4_MTU - 12 - 8 - 20; // SRTP/UDP/IPv4
 }
 
 void Track::setRtcpHandler(std::shared_ptr<MediaHandler> handler) {
