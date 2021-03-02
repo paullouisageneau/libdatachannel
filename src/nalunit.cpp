@@ -92,8 +92,6 @@ void NalUnitFragmentA::setFragmentType(FragmentType type) {
 	}
 }
 
-const uint16_t NalUnits::defaultMaximumFragmentSize = DEFAULT_MTU - 12 - 8 - 40; // SRTP/UDP/IPv6
-
 std::vector<std::shared_ptr<binary>> NalUnits::generateFragments(uint16_t maximumFragmentSize) {
 	vector<std::shared_ptr<binary>> result{};
 	for (auto nalu : *this) {

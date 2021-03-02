@@ -39,8 +39,14 @@ extern "C" {
 #define RTC_ENABLE_WEBSOCKET 1
 #endif
 
+#ifndef RTC_ENABLE_MEDIA
+#define RTC_ENABLE_MEDIA 1
+#endif
+
+#define RTC_DEFAULT_MTU 1280 // IPv6 minimum guaranteed MTU
+
 #if RTC_ENABLE_MEDIA
-#define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE ((uint16_t)(1280 - 12 - 8 - 40)) // SRTP/UDP/IPv6
+#define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE ((uint16_t)(RTC_DEFAULT_MTU - 12 - 8 - 40)) // SRTP/UDP/IPv6
 #define RTC_DEFAULT_MAXIMUM_PACKET_COUNT_FOR_NACK_CACHE ((unsigned)512)
 #endif
 
@@ -116,13 +122,14 @@ typedef struct {
 	bool enableIceTcp;
 	uint16_t portRangeBegin;
 	uint16_t portRangeEnd;
+	int mtu; // <= 0 means automatic
 } rtcConfiguration;
 
 typedef struct {
 	bool unordered;
 	bool unreliable;
-	unsigned int maxPacketLifeTime; // ignored if reliable
-	unsigned int maxRetransmits;    // ignored if reliable
+	int maxPacketLifeTime; // ignored if reliable
+	int maxRetransmits;    // ignored if reliable
 } rtcReliability;
 
 typedef struct {
