@@ -181,13 +181,17 @@ int test_capi_connectivity_main() {
 
 	rtcInitLogger(RTC_LOG_DEBUG, nullptr);
 
+	// STUN server example (not necessary to connect locally)
+	// Please do not use outside of libdatachannel tests
+	const char *iceServers[1] = {"stun:stun.ageneau.net:3478"};
+
 	// Create peer 1
 	rtcConfiguration config1;
 	memset(&config1, 0, sizeof(config1));
-	// STUN server example
-	// const char *iceServers[1] = {"stun:stun.l.google.com:19302"};
-	// config1.iceServers = iceServers;
-	// config1.iceServersCount = 1;
+	config1.iceServers = iceServers;
+	config1.iceServersCount = 1;
+	// Custom MTU example
+	config1.mtu = 1500;
 
 	peer1 = createPeer(&config1);
 	if (!peer1)
@@ -196,9 +200,12 @@ int test_capi_connectivity_main() {
 	// Create peer 2
 	rtcConfiguration config2;
 	memset(&config2, 0, sizeof(config2));
-	// STUN server example
-	// config2.iceServers = iceServers;
-	// config2.iceServersCount = 1;
+	// STUN server example (not necessary to connect locally)
+	// Please do not use outside of libdatachannel tests
+	config2.iceServers = iceServers;
+	config2.iceServersCount = 1;
+	// Custom MTU example
+	config2.mtu = 1500;
 	// Port range example
 	config2.portRangeBegin = 5000;
 	config2.portRangeEnd = 6000;
