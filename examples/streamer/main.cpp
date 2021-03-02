@@ -316,8 +316,8 @@ shared_ptr<Client> createPeerConnection(const Configuration &config,
         cout << "Audio from " << id << " opened" << endl;
     });
 
-    auto dc = pc->addDataChannel("ping-pong");
-    dc->onOpen([id, wdc = make_weak_ptr(dc)]() {
+	auto dc = pc->createDataChannel("ping-pong");
+	dc->onOpen([id, wdc = make_weak_ptr(dc)]() {
         if (auto dc = wdc.lock()) {
             dc->send("Ping");
         }

@@ -96,12 +96,13 @@ public:
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
 
-	std::shared_ptr<DataChannel> addDataChannel(string label, DataChannelInit init = {});
-
-	// Equivalent to calling addDataChannel() and setLocalDescription()
 	std::shared_ptr<DataChannel> createDataChannel(string label, DataChannelInit init = {});
 
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
+
+	std::shared_ptr<Track> addTrack(Description::Media description);
+	void onTrack(std::function<void(std::shared_ptr<Track> track)> callback);
+
 	void onLocalDescription(std::function<void(Description description)> callback);
 	void onLocalCandidate(std::function<void(Candidate candidate)> callback);
 	void onStateChange(std::function<void(State state)> callback);
@@ -113,10 +114,6 @@ public:
 	size_t bytesSent();
 	size_t bytesReceived();
 	std::optional<std::chrono::milliseconds> rtt();
-
-	// Track media support requires compiling with libSRTP
-	std::shared_ptr<Track> addTrack(Description::Media description);
-	void onTrack(std::function<void(std::shared_ptr<Track> track)> callback);
 };
 
 } // namespace rtc

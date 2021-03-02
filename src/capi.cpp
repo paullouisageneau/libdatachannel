@@ -381,9 +381,11 @@ int rtcDeletePeerConnection(int pc) {
 	});
 }
 
-int rtcAddDataChannel(int pc, const char *label) { return rtcAddDataChannelEx(pc, label, nullptr); }
+int rtcCreateDataChannel(int pc, const char *label) {
+	return rtcCreateDataChannelEx(pc, label, nullptr);
+}
 
-int rtcAddDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init) {
+int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init) {
 	return wrap([&] {
 		DataChannelInit dci = {};
 		if (init) {
@@ -408,23 +410,13 @@ int rtcAddDataChannelEx(int pc, const char *label, const rtcDataChannelInit *ini
 
 		auto peerConnection = getPeerConnection(pc);
 		int dc = emplaceDataChannel(
-		    peerConnection->addDataChannel(string(label ? label : ""), std::move(dci)));
+		    peerConnection->createDataChannel(string(label ? label : ""), std::move(dci)));
 
 		if (auto ptr = getUserPointer(pc))
 			rtcSetUserPointer(dc, *ptr);
 
 		return dc;
 	});
-}
-
-int rtcCreateDataChannel(int pc, const char *label) {
-	return rtcCreateDataChannelEx(pc, label, nullptr);
-}
-
-int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *init) {
-	int dc = rtcAddDataChannelEx(pc, label, init);
-	rtcSetLocalDescription(pc, NULL);
-	return dc;
 }
 
 int rtcDeleteDataChannel(int dc) {
