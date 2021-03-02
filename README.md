@@ -183,11 +183,11 @@ pc.onGatheringStateChange([](PeerConnection::GatheringState state) {
 ```cpp
 auto dc = pc.createDataChannel("test");
 
-dc.onOpen([]() {
+dc->onOpen([]() {
     cout << "Open" << endl;
 });
 
-dc.onMessage([](variant<binary, string> message) {
+dc->onMessage([](variant<binary, string> message) {
     if (holds_alternative<string>(message)) {
         cout << "Received: " << get<string>(message) << endl;
     }
