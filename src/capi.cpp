@@ -353,6 +353,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 			c.iceServers.emplace_back(string(config->iceServers[i]));
 
 		c.enableIceTcp = config->enableIceTcp;
+		c.disableAutoNegotiation = config->disableAutoNegotiation;
 
 		if (config->portRangeBegin > 0 || config->portRangeEnd > 0) {
 			c.portRangeBegin = config->portRangeBegin;

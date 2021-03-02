@@ -232,7 +232,8 @@ void PeerConnection::setRemoteDescription(Description description) {
 
 	if (type == Description::Type::Offer) {
 		// This is an offer, we need to answer
-		setLocalDescription(Description::Type::Answer);
+		if (!impl()->config.disableAutoNegotiation)
+			setLocalDescription(Description::Type::Answer);
 	} else {
 		// This is an answer
 		// Since we assumed passive role during DataChannel creation, we need to shift the
@@ -279,7 +280,8 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, DataChan
 	if (!local || !local->hasApplication())
 		impl()->negotiationNeeded = true;
 
-	setLocalDescription();
+	if (!impl()->config.disableAutoNegotiation)
+		setLocalDescription();
 
 	return channel;
 }
