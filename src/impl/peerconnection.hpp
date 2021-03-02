@@ -19,14 +19,20 @@
 #ifndef RTC_IMPL_PEER_CONNECTION_H
 #define RTC_IMPL_PEER_CONNECTION_H
 
+#include "common.hpp"
 #include "datachannel.hpp"
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
-#include "common.hpp"
 #include "sctptransport.hpp"
 #include "track.hpp"
 
 #include "rtc/peerconnection.hpp"
+
+#include <mutex>
+#include <optional>
+#include <shared_mutex>
+#include <unordered_map>
+#include <vector>
 
 namespace rtc::impl {
 
@@ -43,12 +49,12 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	std::optional<Description> localDescription() const;
 	std::optional<Description> remoteDescription() const;
 
-	std::shared_ptr<IceTransport> initIceTransport();
-	std::shared_ptr<DtlsTransport> initDtlsTransport();
-	std::shared_ptr<SctpTransport> initSctpTransport();
-	std::shared_ptr<IceTransport> getIceTransport() const;
-	std::shared_ptr<DtlsTransport> getDtlsTransport() const;
-	std::shared_ptr<SctpTransport> getSctpTransport() const;
+	shared_ptr<IceTransport> initIceTransport();
+	shared_ptr<DtlsTransport> initDtlsTransport();
+	shared_ptr<SctpTransport> initSctpTransport();
+	shared_ptr<IceTransport> getIceTransport() const;
+	shared_ptr<DtlsTransport> getDtlsTransport() const;
+	shared_ptr<SctpTransport> getSctpTransport() const;
 	void closeTransports();
 
 	void endLocalCandidates();
@@ -63,7 +69,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	                                           DataChannelInit init);
 	shared_ptr<DataChannel> findDataChannel(uint16_t stream);
 	void shiftDataChannels();
-	void iterateDataChannels(std::function<void(std::shared_ptr<DataChannel> channel)> func);
+	void iterateDataChannels(std::function<void(shared_ptr<DataChannel> channel)> func);
 	void openDataChannels();
 	void closeDataChannels();
 	void remoteCloseDataChannels();
@@ -80,7 +86,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	string localBundleMid() const;
 
 	void triggerDataChannel(std::weak_ptr<DataChannel> weakDataChannel);
-	void triggerTrack(std::shared_ptr<Track> track);
+	void triggerTrack(shared_ptr<Track> track);
 	bool changeState(State newState);
 	bool changeGatheringState(GatheringState newState);
 	bool changeSignalingState(SignalingState newState);
@@ -95,26 +101,26 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	std::atomic<SignalingState> signalingState = SignalingState::Stable;
 	std::atomic<bool> negotiationNeeded = false;
 
-	synchronized_callback<std::shared_ptr<rtc::DataChannel>> dataChannelCallback;
+	synchronized_callback<shared_ptr<rtc::DataChannel>> dataChannelCallback;
 	synchronized_callback<Description> localDescriptionCallback;
 	synchronized_callback<Candidate> localCandidateCallback;
 	synchronized_callback<State> stateChangeCallback;
 	synchronized_callback<GatheringState> gatheringStateChangeCallback;
 	synchronized_callback<SignalingState> signalingStateChangeCallback;
-	synchronized_callback<std::shared_ptr<rtc::Track>> trackCallback;
+	synchronized_callback<shared_ptr<rtc::Track>> trackCallback;
 
 private:
 	const init_token mInitToken = Init::Token();
 	const future_certificate_ptr mCertificate;
-	const std::unique_ptr<Processor> mProcessor;
+	const unique_ptr<Processor> mProcessor;
 
 	std::optional<Description> mLocalDescription, mRemoteDescription;
 	std::optional<Description> mCurrentLocalDescription;
 	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
 
-	std::shared_ptr<IceTransport> mIceTransport;
-	std::shared_ptr<DtlsTransport> mDtlsTransport;
-	std::shared_ptr<SctpTransport> mSctpTransport;
+	shared_ptr<IceTransport> mIceTransport;
+	shared_ptr<DtlsTransport> mDtlsTransport;
+	shared_ptr<SctpTransport> mSctpTransport;
 
 	std::unordered_map<uint16_t, std::weak_ptr<DataChannel>> mDataChannels; // by stream ID
 	std::unordered_map<string, std::weak_ptr<Track>> mTracks;               // by mid

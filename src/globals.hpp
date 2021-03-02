@@ -34,7 +34,7 @@ const size_t RECV_QUEUE_LIMIT = 1024 * 1024; // Max per-channel queue size
 
 const int THREADPOOL_SIZE = 4; // Number of threads in the global thread pool (>= 2)
 
-const size_t DEFAULT_IPV4_MTU = 1200; // IPv4 safe MTU value recommended by RFC 8261
+const size_t DEFAULT_MTU = RTC_DEFAULT_MTU; // defined in rtc.h
 
 } // namespace rtc
 

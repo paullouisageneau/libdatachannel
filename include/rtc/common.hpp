@@ -19,12 +19,12 @@
 #ifndef RTC_COMMON_H
 #define RTC_COMMON_H
 
-#ifndef RTC_ENABLE_MEDIA
-#define RTC_ENABLE_MEDIA 1
-#endif
-
 #ifndef RTC_ENABLE_WEBSOCKET
 #define RTC_ENABLE_WEBSOCKET 1
+#endif
+
+#ifndef RTC_ENABLE_MEDIA
+#define RTC_ENABLE_MEDIA 1
 #endif
 
 #ifdef _WIN32
@@ -38,6 +38,8 @@
 #else
 #define RTC_CPP_EXPORT
 #endif
+
+#include "rtc.h" // for C API defines
 
 #include "log.hpp"
 #include "utils.hpp"

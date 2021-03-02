@@ -17,8 +17,8 @@
  */
 
 #include "datachannel.hpp"
-#include "globals.hpp"
 #include "common.hpp"
+#include "globals.hpp"
 #include "logcounter.hpp"
 #include "peerconnection.hpp"
 #include "sctptransport.hpp"
@@ -255,13 +255,12 @@ void DataChannel::incoming(message_ptr message) {
 	}
 }
 
-NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<impl::PeerConnection> pc,
-                                             uint16_t stream, string label, string protocol,
-                                             Reliability reliability)
+NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream,
+                                             string label, string protocol, Reliability reliability)
     : DataChannel(pc, stream, std::move(label), std::move(protocol), std::move(reliability)) {}
 
-NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<impl::PeerConnection> pc,
-                                             std::weak_ptr<impl::SctpTransport> transport,
+NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<PeerConnection> pc,
+                                             std::weak_ptr<SctpTransport> transport,
                                              uint16_t stream)
     : DataChannel(pc, stream, "", "", {}) {
 	mSctpTransport = transport;
@@ -269,7 +268,7 @@ NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<impl::PeerConnection>
 
 NegotiatedDataChannel::~NegotiatedDataChannel() {}
 
-void NegotiatedDataChannel::open(shared_ptr<impl::SctpTransport> transport) {
+void NegotiatedDataChannel::open(shared_ptr<SctpTransport> transport) {
 	std::unique_lock lock(mMutex);
 	mSctpTransport = transport;
 
@@ -278,7 +277,7 @@ void NegotiatedDataChannel::open(shared_ptr<impl::SctpTransport> transport) {
 	switch (mReliability->type) {
 	case Reliability::Type::Rexmit:
 		channelType = CHANNEL_PARTIAL_RELIABLE_REXMIT;
-		reliabilityParameter = uint32_t(std::get<int>(mReliability->rexmit));
+		reliabilityParameter = uint32_t(std::max(std::get<int>(mReliability->rexmit), 0));
 		break;
 
 	case Reliability::Type::Timed:

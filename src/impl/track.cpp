@@ -19,6 +19,7 @@
 #include "track.hpp"
 #include "globals.hpp"
 #include "logcounter.hpp"
+#include "peerconnection.hpp"
 
 namespace rtc::impl {
 
@@ -27,8 +28,9 @@ static LogCounter COUNTER_MEDIA_BAD_DIRECTION(plog::warning,
 static LogCounter COUNTER_QUEUE_FULL(plog::warning,
                                      "Number of media packets dropped due to a full queue");
 
-Track::Track(Description::Media description)
-    : mMediaDescription(std::move(description)), mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
+Track::Track(weak_ptr<PeerConnection> pc, Description::Media description)
+    : mPeerConnection(pc), mMediaDescription(std::move(description)),
+      mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
 string Track::mid() const {
 	std::shared_lock lock(mMutex);
@@ -74,6 +76,8 @@ std::optional<message_variant> Track::peek() {
 	return nullopt;
 }
 
+size_t Track::availableAmount() const { return mRecvQueue.amount(); }
+
 bool Track::isOpen(void) const {
 #if RTC_ENABLE_MEDIA
 	std::shared_lock lock(mMutex);
@@ -85,7 +89,13 @@ bool Track::isOpen(void) const {
 
 bool Track::isClosed(void) const { return mIsClosed; }
 
-size_t Track::availableAmount() const { return mRecvQueue.amount(); }
+size_t Track::maxMessageSize() const {
+	std::optional<size_t> mtu;
+	if (auto pc = mPeerConnection.lock())
+		mtu = pc->config.mtu;
+
+	return mtu.value_or(DEFAULT_MTU) - 12 - 8 - 40; // SRTP/UDP/IPv6
+}
 
 #if RTC_ENABLE_MEDIA
 void Track::open(shared_ptr<DtlsSrtpTransport> transport) {

@@ -16,16 +16,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "common.hpp"
-
 #include "rtc.h"
 
-#include "datachannel.hpp"
-#include "log.hpp"
-#include "peerconnection.hpp"
-#if RTC_ENABLE_WEBSOCKET
-#include "websocket.hpp"
-#endif
+#include "rtc.hpp"
 
 #include "plog/Formatters/FuncMessageFormatter.h"
 
@@ -359,12 +352,16 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 		for (int i = 0; i < config->iceServersCount; ++i)
 			c.iceServers.emplace_back(string(config->iceServers[i]));
 
-		if (config->portRangeBegin || config->portRangeEnd) {
+		c.enableIceTcp = config->enableIceTcp;
+
+		if (config->portRangeBegin > 0 || config->portRangeEnd > 0) {
 			c.portRangeBegin = config->portRangeBegin;
 			c.portRangeEnd = config->portRangeEnd;
 		}
 
-		c.enableIceTcp = config->enableIceTcp;
+		if(config->mtu > 0)
+			c.mtu = size_t(config->mtu);
+
 		return emplacePeerConnection(std::make_shared<PeerConnection>(c));
 	});
 }
@@ -398,7 +395,7 @@ int rtcAddDataChannelEx(int pc, const char *label, const rtcDataChannelInit *ini
 					dci.reliability.rexmit = milliseconds(reliability->maxPacketLifeTime);
 				} else {
 					dci.reliability.type = Reliability::Type::Rexmit;
-					dci.reliability.rexmit = int(reliability->maxRetransmits);
+					dci.reliability.rexmit = reliability->maxRetransmits;
 				}
 			} else {
 				dci.reliability.type = Reliability::Type::Reliable;
@@ -447,7 +444,8 @@ int rtcDeleteDataChannel(int dc) {
 
 #if RTC_ENABLE_MEDIA
 
-void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid, const char *_trackID) {
+void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid,
+             const char *_trackID) {
 
 	optional<string> name = nullopt;
 	if (_name) {
@@ -468,7 +466,8 @@ void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, 
 }
 
 int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid,
-				  rtcDirection _direction, const char *_name, const char *_msid, const char *_trackID) {
+                  rtcDirection _direction, const char *_name, const char *_msid,
+                  const char *_trackID) {
 	return wrap([&] {
 		auto peerConnection = getPeerConnection(pc);
 
@@ -545,13 +544,13 @@ int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const 
 }
 
 int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char *cname, uint8_t payloadType,
-                                   uint32_t clockRate, uint16_t maxFragmentSize, uint16_t sequenceNumber,
-                                   uint32_t timestamp) {
+                                   uint32_t clockRate, uint16_t maxFragmentSize,
+                                   uint16_t sequenceNumber, uint32_t timestamp) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		// create RTP configuration
 		auto rtpConfig = getNewRtpPacketizationConfig(ssrc, cname, payloadType, clockRate,
-													  sequenceNumber, timestamp);
+		                                              sequenceNumber, timestamp);
 		// create packetizer
 		auto packetizer = std::make_shared<H264RtpPacketizer>(rtpConfig, maxFragmentSize);
 		// create H264 handler
@@ -576,7 +575,7 @@ int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char *cname, uin
 		auto packetizer = std::make_shared<OpusRtpPacketizer>(rtpConfig);
 		// create Opus handler
 		auto opusHandler = std::make_shared<OpusPacketizationHandler>(packetizer);
-        emplaceMediaChainableHandler(opusHandler, tr);
+		emplaceMediaChainableHandler(opusHandler, tr);
 		emplaceRTPConfig(rtpConfig, tr);
 		// set handler
 		track->setRtcpHandler(opusHandler);
@@ -674,7 +673,7 @@ int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t *timestamp) {
 }
 
 int rtcSetNeedsToSendRtcpSr(int id) {
-	return wrap([id]{
+	return wrap([id] {
 		auto sender = getRtcpSrReporter(id);
 		sender->setNeedsToReport();
 		return RTC_ERR_SUCCESS;
@@ -1012,10 +1011,10 @@ int rtcGetDataChannelReliability(int dc, rtcReliability *reliability) {
 		reliability->unordered = dcr.unordered;
 		if (dcr.type == Reliability::Type::Timed) {
 			reliability->unreliable = true;
-			reliability->maxPacketLifeTime = unsigned(std::get<milliseconds>(dcr.rexmit).count());
+			reliability->maxPacketLifeTime = int(std::get<milliseconds>(dcr.rexmit).count());
 		} else if (dcr.type == Reliability::Type::Rexmit) {
 			reliability->unreliable = true;
-			reliability->maxRetransmits = unsigned(std::get<int>(dcr.rexmit));
+			reliability->maxRetransmits = std::get<int>(dcr.rexmit);
 		} else {
 			reliability->unreliable = false;
 		}

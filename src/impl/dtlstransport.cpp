@@ -159,7 +159,7 @@ void DtlsTransport::runRecvLoop() {
 	try {
 		changeState(State::Connecting);
 
-		size_t mtu = mMtu.value_or(DEFAULT_IPV4_MTU + 20) - 8 - 40; // UDP/IPv6
+		size_t mtu = mMtu.value_or(DEFAULT_MTU) - 8 - 40; // UDP/IPv6
 		gnutls_dtls_set_mtu(mSession, static_cast<unsigned int>(mtu));
 		PLOG_VERBOSE << "SSL MTU set to " << mtu;
 
@@ -445,7 +445,7 @@ void DtlsTransport::runRecvLoop() {
 	try {
 		changeState(State::Connecting);
 
-		size_t mtu = mMtu.value_or(DEFAULT_IPV4_MTU + 20) - 8 - 40; // UDP/IPv6
+		size_t mtu = mMtu.value_or(DEFAULT_MTU) - 8 - 40; // UDP/IPv6
 		SSL_set_mtu(mSsl, static_cast<unsigned int>(mtu));
 		PLOG_VERBOSE << "SSL MTU set to " << mtu;
 

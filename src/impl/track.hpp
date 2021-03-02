@@ -35,9 +35,11 @@
 
 namespace rtc::impl {
 
+struct PeerConnection;
+
 class Track final : public std::enable_shared_from_this<Track>, public Channel {
 public:
-	Track(Description::Media description);
+	Track(weak_ptr<PeerConnection> pc, Description::Media description);
 	~Track() = default;
 
 	void close();
@@ -50,6 +52,7 @@ public:
 
 	bool isOpen() const;
 	bool isClosed() const;
+	size_t maxMessageSize() const;
 
 	string mid() const;
 	Description::Direction direction() const;
@@ -66,6 +69,7 @@ public:
 private:
 	bool transportSend(message_ptr message);
 
+	const weak_ptr<PeerConnection> mPeerConnection;
 #if RTC_ENABLE_MEDIA
 	weak_ptr<DtlsSrtpTransport> mDtlsSrtpTransport;
 #endif
