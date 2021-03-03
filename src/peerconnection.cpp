@@ -40,17 +40,6 @@
 
 using namespace std::placeholders;
 
-#if __clang__ && defined(__APPLE__)
-namespace {
-template <typename To, typename From>
-inline shared_ptr<To> reinterpret_pointer_cast(shared_ptr<From> const &ptr) noexcept {
-	return shared_ptr<To>(ptr, reinterpret_cast<To *>(ptr.get()));
-}
-} // namespace
-#else
-using std::reinterpret_pointer_cast;
-#endif
-
 namespace rtc {
 
 PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
