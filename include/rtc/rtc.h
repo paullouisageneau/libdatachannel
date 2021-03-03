@@ -120,6 +120,7 @@ typedef struct {
 	const char **iceServers;
 	int iceServersCount;
 	bool enableIceTcp;
+	bool disableAutoNegotiation;
 	uint16_t portRangeBegin;
 	uint16_t portRangeEnd;
 	int mtu; // <= 0 means automatic
@@ -193,10 +194,6 @@ RTC_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, c
 
 // DataChannel
 RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
-RTC_EXPORT int rtcAddDataChannel(int pc, const char *label); // returns dc id
-RTC_EXPORT int rtcAddDataChannelEx(int pc, const char *label,
-                                   const rtcDataChannelInit *init); // returns dc id
-// Equivalent to calling rtcAddDataChannel() and rtcSetLocalDescription()
 RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
 RTC_EXPORT int rtcCreateDataChannelEx(int pc, const char *label,
                                       const rtcDataChannelInit *init); // returns dc id
