@@ -58,8 +58,8 @@ public:
 	Description::Media description() const;
 	void setDescription(Description::Media description);
 
-	shared_ptr<MediaHandler> getRtcpHandler();
-	void setRtcpHandler(shared_ptr<MediaHandler> handler);
+	shared_ptr<MediaHandler> getMediaHandler();
+	void setMediaHandler(shared_ptr<MediaHandler> handler);
 
 #if RTC_ENABLE_MEDIA
 	void open(shared_ptr<DtlsSrtpTransport> transport);
@@ -74,7 +74,7 @@ private:
 #endif
 
 	Description::Media mMediaDescription;
-	shared_ptr<MediaHandler> mRtcpHandler;
+	shared_ptr<MediaHandler> mMediaHandler;
 
 	mutable std::shared_mutex mMutex;
 

@@ -230,7 +230,7 @@ shared_ptr<ClientTrackData> addVideo(const shared_ptr<PeerConnection> pc, const 
     auto nackResponder = make_shared<RtcpNackResponder>();
     h264Handler->addToChain(nackResponder);
     // set handler
-    track->setRtcpHandler(h264Handler);
+    track->setMediaHandler(h264Handler);
     track->onOpen(onOpen);
     auto trackData = make_shared<ClientTrackData>(track, srReporter);
     return trackData;
@@ -254,7 +254,7 @@ shared_ptr<ClientTrackData> addAudio(const shared_ptr<PeerConnection> pc, const 
     auto nackResponder = make_shared<RtcpNackResponder>();
     opusHandler->addToChain(nackResponder);
     // set handler
-    track->setRtcpHandler(opusHandler);
+    track->setMediaHandler(opusHandler);
     track->onOpen(onOpen);
     auto trackData = make_shared<ClientTrackData>(track, srReporter);
     return trackData;

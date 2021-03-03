@@ -50,17 +50,17 @@ size_t Track::maxMessageSize() const {
 	return impl()->maxMessageSize();
 }
 
-void Track::setRtcpHandler(shared_ptr<MediaHandler> handler) {
-	impl()->setRtcpHandler(std::move(handler));
+void Track::setMediaHandler(shared_ptr<MediaHandler> handler) {
+	impl()->setMediaHandler(std::move(handler));
 }
 
 bool Track::requestKeyframe() {
-	if (auto handler = impl()->getRtcpHandler())
+	if (auto handler = impl()->getMediaHandler())
 		return handler->requestKeyframe();
 
 	return false;
 }
 
-shared_ptr<MediaHandler> Track::getRtcpHandler() { return impl()->getRtcpHandler(); }
+shared_ptr<MediaHandler> Track::getMediaHandler() { return impl()->getMediaHandler(); }
 
 } // namespace rtc

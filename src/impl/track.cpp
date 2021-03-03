@@ -58,7 +58,7 @@ void Track::setDescription(Description::Media description) {
 void Track::close() {
 	mIsClosed = true;
 
-	setRtcpHandler(nullptr);
+	setMediaHandler(nullptr);
 	resetCallbacks();
 }
 
@@ -120,7 +120,7 @@ void Track::incoming(message_ptr message) {
 		return;
 	}
 
-	if (auto handler = getRtcpHandler()) {
+	if (auto handler = getMediaHandler()) {
 		message = handler->incoming(message);
 		if (!message)
 			return;
@@ -146,7 +146,7 @@ bool Track::outgoing(message_ptr message) {
 		return false;
 	}
 
-	if (auto handler = getRtcpHandler()) {
+	if (auto handler = getMediaHandler()) {
 		message = handler->outgoing(message);
 		if (!message)
 			return false;
@@ -179,18 +179,18 @@ bool Track::transportSend([[maybe_unused]] message_ptr message) {
 #endif
 }
 
-void Track::setRtcpHandler(shared_ptr<MediaHandler> handler) {
+void Track::setMediaHandler(shared_ptr<MediaHandler> handler) {
 	{
 		std::unique_lock lock(mMutex);
-		mRtcpHandler = handler;
+		mMediaHandler = handler;
 	}
 
 	handler->onOutgoing(std::bind(&Track::transportSend, this, std::placeholders::_1));
 }
 
-shared_ptr<MediaHandler> Track::getRtcpHandler() {
+shared_ptr<MediaHandler> Track::getMediaHandler() {
 	std::shared_lock lock(mMutex);
-	return mRtcpHandler;
+	return mMediaHandler;
 }
 
 } // namespace rtc::impl

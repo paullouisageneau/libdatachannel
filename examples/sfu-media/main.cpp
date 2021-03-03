@@ -60,7 +60,7 @@ int main() {
 		pc->setLocalDescription();
 
 		auto session = std::make_shared<rtc::RtcpReceivingSession>();
-		track->setRtcpHandler(session);
+		track->setMediaHandler(session);
 
 		const rtc::SSRC targetSSRC = 4;
 

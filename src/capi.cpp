@@ -550,7 +550,7 @@ int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char *cname, uin
 		emplaceMediaChainableHandler(h264Handler, tr);
 		emplaceRTPConfig(rtpConfig, tr);
 		// set handler
-		track->setRtcpHandler(h264Handler);
+		track->setMediaHandler(h264Handler);
 		return RTC_ERR_SUCCESS;
 	});
 }
@@ -570,7 +570,7 @@ int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char *cname, uin
 		emplaceMediaChainableHandler(opusHandler, tr);
 		emplaceRTPConfig(rtpConfig, tr);
 		// set handler
-		track->setRtcpHandler(opusHandler);
+		track->setMediaHandler(opusHandler);
 		return RTC_ERR_SUCCESS;
 	});
 }

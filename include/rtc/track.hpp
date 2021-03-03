@@ -20,8 +20,8 @@
 #define RTC_TRACK_H
 
 #include "channel.hpp"
-#include "description.hpp"
 #include "common.hpp"
+#include "description.hpp"
 #include "mediahandler.hpp"
 #include "message.hpp"
 
@@ -57,9 +57,12 @@ public:
 
 	bool requestKeyframe();
 
-	// RTCP handler
-	void setRtcpHandler(shared_ptr<MediaHandler> handler);
-	shared_ptr<MediaHandler> getRtcpHandler();
+	void setMediaHandler(shared_ptr<MediaHandler> handler);
+	shared_ptr<MediaHandler> getMediaHandler();
+
+	// Deprecated, use setMediaHandler() and getMediaHandler()
+	inline void setRtcpHandler(shared_ptr<MediaHandler> handler) { setMediaHandler(handler); }
+	inline shared_ptr<MediaHandler> getRtcpHandler() { return getMediaHandler(); }
 
 private:
 	using CheshireCat<impl::Track>::impl;
