@@ -533,13 +533,16 @@ void SctpTransport::updateBufferedAmount(uint16_t streamId, long delta) {
 	else
 		it->second = amount;
 
-	mSendMutex.unlock();
+	// Synchronously call the buffered amount callback
+	triggerBufferedAmount(streamId, amount);
+}
+
+void SctpTransport::triggerBufferedAmount(uint16_t streamId, size_t amount) {
 	try {
 		mBufferedAmountCallback(streamId, amount);
 	} catch (const std::exception &e) {
-		PLOG_DEBUG << "SCTP buffered amount callback: " << e.what();
+		PLOG_WARNING << "SCTP buffered amount callback: " << e.what();
 	}
-	mSendMutex.lock();
 }
 
 void SctpTransport::sendReset(uint16_t streamId) {
