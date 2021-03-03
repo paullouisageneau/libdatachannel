@@ -27,7 +27,7 @@ namespace rtc::impl {
 
 class VerifiedTlsTransport final : public TlsTransport {
 public:
-	VerifiedTlsTransport(std::shared_ptr<TcpTransport> lower, string host, state_callback callback);
+	VerifiedTlsTransport(shared_ptr<TcpTransport> lower, string host, state_callback callback);
 	~VerifiedTlsTransport();
 };
 

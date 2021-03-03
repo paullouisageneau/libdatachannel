@@ -58,8 +58,8 @@ public:
 	bool addRemoteCandidate(const Candidate &candidate);
 	void gatherLocalCandidates(string mid);
 
-	std::optional<string> getLocalAddress() const;
-	std::optional<string> getRemoteAddress() const;
+	optional<string> getLocalAddress() const;
+	optional<string> getRemoteAddress() const;
 
 	bool stop() override;
 	bool send(message_ptr message) override; // false if dropped
@@ -85,7 +85,7 @@ private:
 	gathering_state_callback mGatheringStateChangeCallback;
 
 #if !USE_NICE
-	std::unique_ptr<juice_agent_t, void (*)(juice_agent_t *)> mAgent;
+	unique_ptr<juice_agent_t, void (*)(juice_agent_t *)> mAgent;
 
 	static void StateChangeCallback(juice_agent_t *agent, juice_state_t state, void *user_ptr);
 	static void CandidateCallback(juice_agent_t *agent, const char *sdp, void *user_ptr);
@@ -94,8 +94,8 @@ private:
 	static void LogCallback(juice_log_level_t level, const char *message);
 #else
 	uint32_t mStreamId = 0;
-	std::unique_ptr<NiceAgent, void (*)(gpointer)> mNiceAgent;
-	std::unique_ptr<GMainLoop, void (*)(GMainLoop *)> mMainLoop;
+	unique_ptr<NiceAgent, void (*)(gpointer)> mNiceAgent;
+	unique_ptr<GMainLoop, void (*)(GMainLoop *)> mMainLoop;
 	std::thread mMainLoopThread;
 	guint mTimeoutId = 0;
 	std::mutex mOutgoingMutex;

@@ -128,11 +128,11 @@ shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 	return nalus;
 }
 
-H264RtpPacketizer::H264RtpPacketizer(std::shared_ptr<RtpPacketizationConfig> rtpConfig,
+H264RtpPacketizer::H264RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig,
 									 uint16_t maximumFragmentSize)
 : RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize), separator(Separator::Length) {}
 
-H264RtpPacketizer::H264RtpPacketizer(H264RtpPacketizer::Separator separator, std::shared_ptr<RtpPacketizationConfig> rtpConfig,
+H264RtpPacketizer::H264RtpPacketizer(H264RtpPacketizer::Separator separator, shared_ptr<RtpPacketizationConfig> rtpConfig,
 									 uint16_t maximumFragmentSize)
 : RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize), separator(separator) {}
 

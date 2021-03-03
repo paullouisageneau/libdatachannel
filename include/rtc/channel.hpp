@@ -24,7 +24,6 @@
 
 #include <atomic>
 #include <functional>
-#include <variant>
 
 namespace rtc {
 
@@ -57,8 +56,8 @@ public:
 	void setBufferedAmountLowThreshold(size_t amount);
 
 	// Extended API
-	std::optional<message_variant> receive(); // only if onMessage unset
-	std::optional<message_variant> peek();    // only if onMessage unset
+	optional<message_variant> receive(); // only if onMessage unset
+	optional<message_variant> peek();    // only if onMessage unset
 	size_t availableAmount() const;           // total size available to receive
 	void onAvailable(std::function<void()> callback);
 

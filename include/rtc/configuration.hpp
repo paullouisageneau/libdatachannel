@@ -66,12 +66,12 @@ struct RTC_CPP_EXPORT ProxyServer {
 
 struct RTC_CPP_EXPORT Configuration {
 	std::vector<IceServer> iceServers;
-	std::optional<ProxyServer> proxyServer;
+	optional<ProxyServer> proxyServer;
 	bool enableIceTcp = false;
 	bool disableAutoNegotiation = false;
 	uint16_t portRangeBegin = 1024;
 	uint16_t portRangeEnd = 65535;
-	std::optional<size_t> mtu;
+	optional<size_t> mtu;
 };
 
 } // namespace rtc

@@ -100,8 +100,8 @@ void SctpTransport::Cleanup() {
 		std::this_thread::sleep_for(100ms);
 }
 
-SctpTransport::SctpTransport(std::shared_ptr<Transport> lower, uint16_t port,
-                             std::optional<size_t> mtu, message_callback recvCallback,
+SctpTransport::SctpTransport(shared_ptr<Transport> lower, uint16_t port,
+                             optional<size_t> mtu, message_callback recvCallback,
                              amount_callback bufferedAmountCallback,
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mPort(port), mPendingRecvCount(0),
@@ -773,7 +773,7 @@ size_t SctpTransport::bytesSent() { return mBytesSent; }
 
 size_t SctpTransport::bytesReceived() { return mBytesReceived; }
 
-std::optional<milliseconds> SctpTransport::rtt() {
+optional<milliseconds> SctpTransport::rtt() {
 	if (!mSock || state() != State::Connected)
 		return nullopt;
 

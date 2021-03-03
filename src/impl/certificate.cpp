@@ -53,7 +53,7 @@ Certificate::Certificate(string crt_pem, string key_pem)
 		gnutls_free(crt_list);
 	};
 
-	std::unique_ptr<gnutls_x509_crt_t, decltype(free_crt_list)> crt_list(new_crt_list(),
+	unique_ptr<gnutls_x509_crt_t, decltype(free_crt_list)> crt_list(new_crt_list(),
 	                                                                     free_crt_list);
 
 	mFingerprint = make_fingerprint(*crt_list);

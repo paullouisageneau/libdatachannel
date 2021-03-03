@@ -37,7 +37,7 @@ public:
 		std::vector<string> protocols;
 	};
 
-	WsTransport(std::shared_ptr<Transport> lower, Configuration config,
+	WsTransport(shared_ptr<Transport> lower, Configuration config,
 	            message_callback recvCallback, state_callback stateCallback);
 	~WsTransport();
 

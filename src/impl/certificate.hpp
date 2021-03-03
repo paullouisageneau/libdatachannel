@@ -35,7 +35,7 @@ public:
 	Certificate(gnutls_x509_crt_t crt, gnutls_x509_privkey_t privkey);
 	gnutls_certificate_credentials_t credentials() const;
 #else
-	Certificate(std::shared_ptr<X509> x509, std::shared_ptr<EVP_PKEY> pkey);
+	Certificate(shared_ptr<X509> x509, shared_ptr<EVP_PKEY> pkey);
 	std::tuple<X509 *, EVP_PKEY *> credentials() const;
 #endif
 
@@ -43,10 +43,10 @@ public:
 
 private:
 #if USE_GNUTLS
-	std::shared_ptr<gnutls_certificate_credentials_t> mCredentials;
+	shared_ptr<gnutls_certificate_credentials_t> mCredentials;
 #else
-	std::shared_ptr<X509> mX509;
-	std::shared_ptr<EVP_PKEY> mPKey;
+	shared_ptr<X509> mX509;
+	shared_ptr<EVP_PKEY> mPKey;
 #endif
 
 	string mFingerprint;
@@ -58,7 +58,7 @@ string make_fingerprint(gnutls_x509_crt_t crt);
 string make_fingerprint(X509 *x509);
 #endif
 
-using certificate_ptr = std::shared_ptr<Certificate>;
+using certificate_ptr = shared_ptr<Certificate>;
 using future_certificate_ptr = std::shared_future<certificate_ptr>;
 
 future_certificate_ptr make_certificate(string commonName = "libdatachannel"); // cached

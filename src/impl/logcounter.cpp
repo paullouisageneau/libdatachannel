@@ -32,7 +32,7 @@ LogCounter &LogCounter::operator++(int) {
 	if (mData->mCount++ == 0) {
 		ThreadPool::Instance().schedule(
 		    mData->mDuration,
-		    [](std::weak_ptr<LogData> data) {
+		    [](weak_ptr<LogData> data) {
 			    if (auto ptr = data.lock()) {
 				    int countCopy;
 				    countCopy = ptr->mCount.exchange(0);

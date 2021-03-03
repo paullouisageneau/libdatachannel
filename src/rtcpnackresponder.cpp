@@ -21,7 +21,7 @@
 
 namespace rtc {
 
-RtcpNackResponder::Storage::Element::Element(binary_ptr packet, uint16_t sequenceNumber, std::shared_ptr<Element> next)
+RtcpNackResponder::Storage::Element::Element(binary_ptr packet, uint16_t sequenceNumber, shared_ptr<Element> next)
 : packet(packet), sequenceNumber(sequenceNumber), next(next) { }
 
 unsigned RtcpNackResponder::Storage::size() { return storage.size(); }
@@ -31,7 +31,7 @@ RtcpNackResponder::Storage::Storage(unsigned _maximumSize): maximumSize(_maximum
 	storage.reserve(maximumSize);
 }
 
-std::optional<binary_ptr> RtcpNackResponder::Storage::get(uint16_t sequenceNumber) {
+optional<binary_ptr> RtcpNackResponder::Storage::get(uint16_t sequenceNumber) {
 	auto position = storage.find(sequenceNumber);
 	return position != storage.end() ? std::make_optional(storage.at(sequenceNumber)->packet) : nullopt;
 }
@@ -69,7 +69,7 @@ RtcpNackResponder::RtcpNackResponder(unsigned maxStoredPacketCount)
 : MediaHandlerElement(), storage(std::make_shared<Storage>(maxStoredPacketCount)) { }
 
 ChainedIncomingControlProduct RtcpNackResponder::processIncomingControlMessage(message_ptr message) {
-	std::optional<ChainedOutgoingProduct> optPackets = ChainedOutgoingProduct(nullptr);
+	optional<ChainedOutgoingProduct> optPackets = ChainedOutgoingProduct(nullptr);
 	auto packets = make_chained_messages_product();
 
 	unsigned int i = 0;

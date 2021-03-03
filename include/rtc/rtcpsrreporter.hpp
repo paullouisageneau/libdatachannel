@@ -46,9 +46,9 @@ public:
 	const uint32_t &previousReportedTimestamp = _previousReportedTimestamp;
 
 	/// RTP configuration
-	const std::shared_ptr<RtpPacketizationConfig> rtpConfig;
+	const shared_ptr<RtpPacketizationConfig> rtpConfig;
 
-	RtcpSrReporter(std::shared_ptr<RtpPacketizationConfig> rtpConfig);
+	RtcpSrReporter(shared_ptr<RtpPacketizationConfig> rtpConfig);
 
 	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) override;
 

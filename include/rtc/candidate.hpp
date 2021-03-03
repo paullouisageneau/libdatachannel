@@ -52,8 +52,8 @@ public:
 
 	bool isResolved() const;
 	Family family() const;
-	std::optional<string> address() const;
-	std::optional<uint16_t> port() const;
+	optional<string> address() const;
+	optional<uint16_t> port() const;
 
 private:
 	void parse(string candidate);
@@ -66,7 +66,7 @@ private:
 	string mNode, mService;
 	string mTail;
 
-	std::optional<string> mMid;
+	optional<string> mMid;
 
 	// Extracted on resolution
 	Family mFamily;

@@ -101,8 +101,8 @@ struct RTC_CPP_EXPORT NalUnitFragmentA : NalUnit {
 	NalUnitFragmentA(FragmentType type, bool forbiddenBit, uint8_t nri, uint8_t unitType,
 	                 binary data);
 
-	static std::vector<std::shared_ptr<NalUnitFragmentA>>
-	fragmentsFrom(std::shared_ptr<NalUnit> nalu, uint16_t maximumFragmentSize);
+	static std::vector<shared_ptr<NalUnitFragmentA>>
+	fragmentsFrom(shared_ptr<NalUnit> nalu, uint16_t maximumFragmentSize);
 
 	uint8_t unitType() { return fragmentHeader()->unitType(); }
 
@@ -141,11 +141,11 @@ protected:
 	const uint8_t nal_type_fu_A = 28;
 };
 
-class RTC_CPP_EXPORT NalUnits : public std::vector<std::shared_ptr<NalUnit>> {
+class RTC_CPP_EXPORT NalUnits : public std::vector<shared_ptr<NalUnit>> {
 public:
 	static const uint16_t defaultMaximumFragmentSize =
 	    uint16_t(RTC_DEFAULT_MTU - 12 - 8 - 40); // SRTP/UDP/IPv6
-	std::vector<std::shared_ptr<binary>> generateFragments(uint16_t maximumFragmentSize);
+	std::vector<shared_ptr<binary>> generateFragments(uint16_t maximumFragmentSize);
 };
 
 } // namespace rtc

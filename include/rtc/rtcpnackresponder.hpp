@@ -34,21 +34,21 @@ class RTC_CPP_EXPORT RtcpNackResponder: public MediaHandlerElement {
 		
 		/// Packet storage element
 		struct RTC_CPP_EXPORT Element {
-			Element(binary_ptr packet, uint16_t sequenceNumber, std::shared_ptr<Element> next = nullptr);
+			Element(binary_ptr packet, uint16_t sequenceNumber, shared_ptr<Element> next = nullptr);
 			const binary_ptr packet;
 			const uint16_t sequenceNumber;
 			/// Pointer to newer element
-			std::shared_ptr<Element> next = nullptr;
+			shared_ptr<Element> next = nullptr;
 		};
 
 	private:
 		/// Oldest packet in storage
-		std::shared_ptr<Element> oldest = nullptr;
+		shared_ptr<Element> oldest = nullptr;
 		/// Newest packet in storage
-		std::shared_ptr<Element> newest = nullptr;
+		shared_ptr<Element> newest = nullptr;
 
 		/// Inner storage
-		std::unordered_map<uint16_t, std::shared_ptr<Element>> storage{};
+		std::unordered_map<uint16_t, shared_ptr<Element>> storage{};
 
 		/// Maximum storage size
 		const unsigned maximumSize;
@@ -62,14 +62,14 @@ class RTC_CPP_EXPORT RtcpNackResponder: public MediaHandlerElement {
 		Storage(unsigned _maximumSize);
 
 		/// Returns packet with given sequence number
-		std::optional<binary_ptr> get(uint16_t sequenceNumber);
+		optional<binary_ptr> get(uint16_t sequenceNumber);
 
 		/// Stores packet
 		/// @param packet Packet
 		void store(binary_ptr packet);
 	};
 
-	const std::shared_ptr<Storage> storage;
+	const shared_ptr<Storage> storage;
 	std::mutex reportMutex;
 
 public:

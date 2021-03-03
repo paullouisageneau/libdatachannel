@@ -21,7 +21,7 @@
 
 namespace rtc {
 
-MediaChainableHandler::MediaChainableHandler(std::shared_ptr<MediaHandlerRootElement> root): MediaHandler(), root(root), leaf(root) { }
+MediaChainableHandler::MediaChainableHandler(shared_ptr<MediaHandlerRootElement> root): MediaHandler(), root(root), leaf(root) { }
 
 MediaChainableHandler::~MediaChainableHandler() {
 	leaf->recursiveRemoveChain();
@@ -157,7 +157,7 @@ bool MediaChainableHandler::send(message_ptr msg) {
 	return false;
 }
 
-void MediaChainableHandler::addToChain(std::shared_ptr<MediaHandlerElement> chainable) {
+void MediaChainableHandler::addToChain(shared_ptr<MediaHandlerElement> chainable) {
 	assert(leaf);
 	leaf = leaf->chainWith(chainable);
 }

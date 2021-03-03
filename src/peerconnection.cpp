@@ -43,8 +43,8 @@ using namespace std::placeholders;
 #if __clang__ && defined(__APPLE__)
 namespace {
 template <typename To, typename From>
-inline std::shared_ptr<To> reinterpret_pointer_cast(std::shared_ptr<From> const &ptr) noexcept {
-	return std::shared_ptr<To>(ptr, reinterpret_cast<To *>(ptr.get()));
+inline shared_ptr<To> reinterpret_pointer_cast(shared_ptr<From> const &ptr) noexcept {
+	return shared_ptr<To>(ptr, reinterpret_cast<To *>(ptr.get()));
 }
 } // namespace
 #else
@@ -74,11 +74,11 @@ PeerConnection::SignalingState PeerConnection::signalingState() const {
 	return impl()->signalingState;
 }
 
-std::optional<Description> PeerConnection::localDescription() const {
+optional<Description> PeerConnection::localDescription() const {
 	return impl()->localDescription();
 }
 
-std::optional<Description> PeerConnection::remoteDescription() const {
+optional<Description> PeerConnection::remoteDescription() const {
 	return impl()->remoteDescription();
 }
 
@@ -250,12 +250,12 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 	impl()->processRemoteCandidate(std::move(candidate));
 }
 
-std::optional<string> PeerConnection::localAddress() const {
+optional<string> PeerConnection::localAddress() const {
 	auto iceTransport = impl()->getIceTransport();
 	return iceTransport ? iceTransport->getLocalAddress() : nullopt;
 }
 
-std::optional<string> PeerConnection::remoteAddress() const {
+optional<string> PeerConnection::remoteAddress() const {
 	auto iceTransport = impl()->getIceTransport();
 	return iceTransport ? iceTransport->getRemoteAddress() : nullopt;
 }
@@ -345,7 +345,7 @@ size_t PeerConnection::bytesReceived() {
 	return sctpTransport ? sctpTransport->bytesReceived() : 0;
 }
 
-std::optional<std::chrono::milliseconds> PeerConnection::rtt() {
+optional<std::chrono::milliseconds> PeerConnection::rtt() {
 	auto sctpTransport = impl()->getSctpTransport();
 	return sctpTransport ? sctpTransport->rtt() : nullopt;
 }

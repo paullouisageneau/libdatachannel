@@ -46,7 +46,7 @@ void DtlsTransport::Init() {
 void DtlsTransport::Cleanup() { gnutls_global_deinit(); }
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
-                             std::optional<size_t> mtu, verifier_callback verifierCallback,
+                             optional<size_t> mtu, verifier_callback verifierCallback,
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
       mVerifierCallback(std::move(verifierCallback)),
@@ -314,7 +314,7 @@ void DtlsTransport::Cleanup() {
 }
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
-                             std::optional<size_t> mtu, verifier_callback verifierCallback,
+                             optional<size_t> mtu, verifier_callback verifierCallback,
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
       mVerifierCallback(std::move(verifierCallback)),
@@ -486,7 +486,7 @@ void DtlsTransport::runRecvLoop() {
 			}
 
 			// No more messages pending, retransmit and rearm timeout if connecting
-			std::optional<milliseconds> duration;
+			optional<milliseconds> duration;
 			if (state() == State::Connecting) {
 				// Warning: This function breaks the usual return value convention
 				ret = DTLSv1_handle_timeout(mSsl);

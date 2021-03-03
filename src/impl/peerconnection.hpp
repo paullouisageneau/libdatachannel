@@ -29,7 +29,6 @@
 #include "rtc/peerconnection.hpp"
 
 #include <mutex>
-#include <optional>
 #include <shared_mutex>
 #include <unordered_map>
 #include <vector>
@@ -46,8 +45,8 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	void close();
 
-	std::optional<Description> localDescription() const;
-	std::optional<Description> remoteDescription() const;
+	optional<Description> localDescription() const;
+	optional<Description> remoteDescription() const;
 
 	shared_ptr<IceTransport> initIceTransport();
 	shared_ptr<DtlsTransport> initDtlsTransport();
@@ -63,7 +62,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void forwardMessage(message_ptr message);
 	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
-	std::optional<string> getMidFromSsrc(uint32_t ssrc);
+	optional<string> getMidFromSsrc(uint32_t ssrc);
 
 	shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, string label,
 	                                           DataChannelInit init);
@@ -85,7 +84,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void processRemoteCandidate(Candidate candidate);
 	string localBundleMid() const;
 
-	void triggerDataChannel(std::weak_ptr<DataChannel> weakDataChannel);
+	void triggerDataChannel(weak_ptr<DataChannel> weakDataChannel);
 	void triggerTrack(shared_ptr<Track> track);
 	bool changeState(State newState);
 	bool changeGatheringState(GatheringState newState);
@@ -114,17 +113,17 @@ private:
 	const future_certificate_ptr mCertificate;
 	const unique_ptr<Processor> mProcessor;
 
-	std::optional<Description> mLocalDescription, mRemoteDescription;
-	std::optional<Description> mCurrentLocalDescription;
+	optional<Description> mLocalDescription, mRemoteDescription;
+	optional<Description> mCurrentLocalDescription;
 	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
 
 	shared_ptr<IceTransport> mIceTransport;
 	shared_ptr<DtlsTransport> mDtlsTransport;
 	shared_ptr<SctpTransport> mSctpTransport;
 
-	std::unordered_map<uint16_t, std::weak_ptr<DataChannel>> mDataChannels; // by stream ID
-	std::unordered_map<string, std::weak_ptr<Track>> mTracks;               // by mid
-	std::vector<std::weak_ptr<Track>> mTrackLines;                          // by SDP order
+	std::unordered_map<uint16_t, weak_ptr<DataChannel>> mDataChannels; // by stream ID
+	std::unordered_map<string, weak_ptr<Track>> mTracks;               // by mid
+	std::vector<weak_ptr<Track>> mTrackLines;                          // by SDP order
 	std::shared_mutex mDataChannelsMutex, mTracksMutex;
 
 	std::unordered_map<uint32_t, string> mMidFromSsrc; // cache

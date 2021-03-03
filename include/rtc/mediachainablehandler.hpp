@@ -26,8 +26,8 @@
 namespace rtc {
 
 class RTC_CPP_EXPORT MediaChainableHandler : public MediaHandler {
-	const std::shared_ptr<MediaHandlerRootElement> root;
-	std::shared_ptr<MediaHandlerElement> leaf;
+	const shared_ptr<MediaHandlerRootElement> root;
+	shared_ptr<MediaHandlerElement> leaf;
 	std::mutex inoutMutex;
 
 	message_ptr handleIncomingBinary(message_ptr);
@@ -36,7 +36,7 @@ class RTC_CPP_EXPORT MediaChainableHandler : public MediaHandler {
 	message_ptr handleOutgoingControl(message_ptr);
 	bool sendProduct(ChainedOutgoingProduct product);
 public:
-	MediaChainableHandler(std::shared_ptr<MediaHandlerRootElement> root);
+	MediaChainableHandler(shared_ptr<MediaHandlerRootElement> root);
 	~MediaChainableHandler();
 	message_ptr incoming(message_ptr ptr) override;
 	message_ptr outgoing(message_ptr ptr) override;
@@ -45,7 +45,7 @@ public:
 
 	/// Adds element to chain
 	/// @param chainable Chainable element
-    void addToChain(std::shared_ptr<MediaHandlerElement> chainable);
+    void addToChain(shared_ptr<MediaHandlerElement> chainable);
 };
 
 } // namespace rtc

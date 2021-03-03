@@ -35,7 +35,6 @@
 #endif
 
 using namespace rtc;
-using std::optional;
 using std::chrono::milliseconds;
 
 namespace {
@@ -55,7 +54,7 @@ std::unordered_map<int, void *> userPointerMap;
 std::mutex mutex;
 int lastId = 0;
 
-std::optional<void *> getUserPointer(int id) {
+optional<void *> getUserPointer(int id) {
 	std::lock_guard lock(mutex);
 	auto it = userPointerMap.find(id);
 	return it != userPointerMap.end() ? std::make_optional(it->second) : nullopt;
@@ -328,7 +327,7 @@ private:
 } // namespace
 
 void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
-	static std::optional<plogAppender> appender;
+	static optional<plogAppender> appender;
 	const auto severity = static_cast<plog::Severity>(level);
 	std::lock_guard lock(mutex);
 	if (appender) {
@@ -821,7 +820,7 @@ int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb) {
 	return wrap([&] {
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
-			peerConnection->onDataChannel([pc, cb](std::shared_ptr<DataChannel> dataChannel) {
+			peerConnection->onDataChannel([pc, cb](shared_ptr<DataChannel> dataChannel) {
 				int dc = emplaceDataChannel(dataChannel);
 				if (auto ptr = getUserPointer(pc)) {
 					rtcSetUserPointer(dc, *ptr);
@@ -838,7 +837,7 @@ int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb) {
 	return wrap([&] {
 		auto peerConnection = getPeerConnection(pc);
 		if (cb)
-			peerConnection->onTrack([pc, cb](std::shared_ptr<Track> track) {
+			peerConnection->onTrack([pc, cb](shared_ptr<Track> track) {
 				int tr = emplaceTrack(track);
 				if (auto ptr = getUserPointer(pc)) {
 					rtcSetUserPointer(tr, *ptr);

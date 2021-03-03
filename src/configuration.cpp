@@ -32,7 +32,7 @@ IceServer::IceServer(const string &url) {
 	if (!std::regex_match(url, m, r) || m[10].length() == 0)
 		throw std::invalid_argument("Invalid ICE server URL: " + url);
 
-	std::vector<std::optional<string>> opt(m.size());
+	std::vector<optional<string>> opt(m.size());
 	std::transform(m.begin(), m.end(), opt.begin(), [](const auto &sm) {
 		return sm.length() > 0 ? std::make_optional(string(sm)) : nullopt;
 	});

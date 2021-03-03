@@ -25,7 +25,6 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
-#include <optional>
 #include <queue>
 
 namespace rtc::impl {
@@ -44,15 +43,15 @@ public:
 	size_t size() const;   // elements
 	size_t amount() const; // amount
 	void push(T element);
-	std::optional<T> pop();
-	std::optional<T> tryPop();
-	std::optional<T> peek();
-	std::optional<T> exchange(T element);
-	bool wait(const std::optional<std::chrono::milliseconds> &duration = nullopt);
+	optional<T> pop();
+	optional<T> tryPop();
+	optional<T> peek();
+	optional<T> exchange(T element);
+	bool wait(const optional<std::chrono::milliseconds> &duration = nullopt);
 
 private:
 	void pushImpl(T element);
-	std::optional<T> popImpl();
+	optional<T> popImpl();
 
 	const size_t mLimit;
 	size_t mAmount;
@@ -112,23 +111,23 @@ template <typename T> void Queue<T>::push(T element) {
 	pushImpl(std::move(element));
 }
 
-template <typename T> std::optional<T> Queue<T>::pop() {
+template <typename T> optional<T> Queue<T>::pop() {
 	std::unique_lock lock(mMutex);
 	mPopCondition.wait(lock, [this]() { return !mQueue.empty() || mStopping; });
 	return popImpl();
 }
 
-template <typename T> std::optional<T> Queue<T>::tryPop() {
+template <typename T> optional<T> Queue<T>::tryPop() {
 	std::unique_lock lock(mMutex);
 	return popImpl();
 }
 
-template <typename T> std::optional<T> Queue<T>::peek() {
+template <typename T> optional<T> Queue<T>::peek() {
 	std::unique_lock lock(mMutex);
 	return !mQueue.empty() ? std::make_optional(mQueue.front()) : nullopt;
 }
 
-template <typename T> std::optional<T> Queue<T>::exchange(T element) {
+template <typename T> optional<T> Queue<T>::exchange(T element) {
 	std::unique_lock lock(mMutex);
 	if (mQueue.empty())
 		return nullopt;
@@ -138,7 +137,7 @@ template <typename T> std::optional<T> Queue<T>::exchange(T element) {
 }
 
 template <typename T>
-bool Queue<T>::wait(const std::optional<std::chrono::milliseconds> &duration) {
+bool Queue<T>::wait(const optional<std::chrono::milliseconds> &duration) {
 	std::unique_lock lock(mMutex);
 	if (duration)
 		mPopCondition.wait_for(lock, *duration, [this]() { return !mQueue.empty() || mStopping; });
@@ -157,12 +156,12 @@ template <typename T> void Queue<T>::pushImpl(T element) {
 	mPopCondition.notify_one();
 }
 
-template <typename T> std::optional<T> Queue<T>::popImpl() {
+template <typename T> optional<T> Queue<T>::popImpl() {
 	if (mQueue.empty())
 		return nullopt;
 
 	mAmount -= mAmountFunction(mQueue.front());
-	std::optional<T> element{std::move(mQueue.front())};
+	optional<T> element{std::move(mQueue.front())};
 	mQueue.pop();
 	return element;
 }

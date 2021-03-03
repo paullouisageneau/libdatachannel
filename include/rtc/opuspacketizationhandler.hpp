@@ -32,7 +32,7 @@ class RTC_CPP_EXPORT OpusPacketizationHandler : public MediaChainableHandler {
 public:
 	/// Construct handler for opus packetization.
 	/// @param packetizer RTP packetizer for opus
-	OpusPacketizationHandler(std::shared_ptr<OpusRtpPacketizer> packetizer);
+	OpusPacketizationHandler(shared_ptr<OpusRtpPacketizer> packetizer);
 };
 
 } // namespace rtc

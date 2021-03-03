@@ -76,7 +76,7 @@ Description::Description(const string &sdp, Type type, Role role)
 	hintType(type);
 
 	int index = -1;
-	std::shared_ptr<Entry> current;
+	shared_ptr<Entry> current;
 	std::istringstream ss(sdp);
 	while (ss) {
 		string line;
@@ -156,11 +156,11 @@ string Description::bundleMid() const {
 	return !mEntries.empty() ? mEntries[0]->mid() : "0";
 }
 
-std::optional<string> Description::iceUfrag() const { return mIceUfrag; }
+optional<string> Description::iceUfrag() const { return mIceUfrag; }
 
-std::optional<string> Description::icePwd() const { return mIcePwd; }
+optional<string> Description::icePwd() const { return mIcePwd; }
 
-std::optional<string> Description::fingerprint() const { return mFingerprint; }
+optional<string> Description::fingerprint() const { return mFingerprint; }
 
 bool Description::ended() const { return mEnded; }
 
@@ -319,9 +319,9 @@ string Description::generateApplicationSdp(string_view eol) const {
 	return sdp.str();
 }
 
-std::optional<Candidate> Description::defaultCandidate() const {
+optional<Candidate> Description::defaultCandidate() const {
 	// Return the first host candidate with highest priority, favoring IPv4
-	std::optional<Candidate> result;
+	optional<Candidate> result;
 	for (const auto &c : mCandidates) {
 		if (c.type() == Candidate::Type::Host) {
 			if (!result ||
@@ -401,7 +401,7 @@ int Description::addAudio(string mid, Direction dir) {
 	return addMedia(Audio(std::move(mid), dir));
 }
 
-std::variant<Description::Media *, Description::Application *>
+variant<Description::Media *, Description::Application *>
 Description::media(unsigned int index) {
 	if (index >= mEntries.size())
 		throw std::out_of_range("Media index out of range");
@@ -420,7 +420,7 @@ Description::media(unsigned int index) {
 	}
 }
 
-std::variant<const Description::Media *, const Description::Application *>
+variant<const Description::Media *, const Description::Application *>
 Description::media(unsigned int index) const {
 	if (index >= mEntries.size())
 		throw std::out_of_range("Media index out of range");
@@ -523,8 +523,8 @@ Description::Entry::removeAttribute(std::vector<string>::iterator it) {
 	return mAttributes.erase(it);
 }
 
-void Description::Media::addSSRC(uint32_t ssrc, std::optional<string> name,
-								 std::optional<string> msid, std::optional<string> trackID) {
+void Description::Media::addSSRC(uint32_t ssrc, optional<string> name,
+								 optional<string> msid, optional<string> trackID) {
 	if (name)
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + *name);
 	else
@@ -536,8 +536,8 @@ void Description::Media::addSSRC(uint32_t ssrc, std::optional<string> name,
 	mSsrcs.emplace_back(ssrc);
 }
 
-void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, std::optional<string> name,
-									 std::optional<string> msid, std::optional<string> trackID) {
+void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, optional<string> name,
+									 optional<string> msid, optional<string> trackID) {
 	auto it = mAttributes.begin();
 	while (it != mAttributes.end()) {
 		if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
@@ -709,7 +709,7 @@ void Description::Media::removeFormat(const string &fmt) {
 }
 
 void Description::Video::addVideoCodec(int payloadType, string codec,
-                                       std::optional<string> profile) {
+                                       optional<string> profile) {
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/90000");
 	map.addFB("nack");
 	map.addFB("nack pli");
@@ -734,7 +734,7 @@ void Description::Video::addVideoCodec(int payloadType, string codec,
 }
 
 void Description::Audio::addAudioCodec(int payloadType, string codec,
-                                       std::optional<string> profile) {
+                                       optional<string> profile) {
 	// TODO This 48000/2 should be parameterized
 	RTPMap map(std::to_string(payloadType) + ' ' + codec + "/48000/2");
 	if (profile)
@@ -749,7 +749,7 @@ void Description::Media::addRTXCodec(unsigned int payloadType, unsigned int orig
 	addRTPMap(map);
 }
 
-void Description::Video::addH264Codec(int pt, std::optional<string> profile) {
+void Description::Video::addH264Codec(int pt, optional<string> profile) {
 	addVideoCodec(pt, "H264", profile);
 }
 
@@ -912,7 +912,7 @@ void Description::Media::RTPMap::setMLine(string_view mline) {
 Description::Audio::Audio(string mid, Direction dir)
     : Media("audio 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
 
-void Description::Audio::addOpusCodec(int payloadType, std::optional<string> profile) {
+void Description::Audio::addOpusCodec(int payloadType, optional<string> profile) {
 	addAudioCodec(payloadType, "OPUS", profile);
 }
 

@@ -29,7 +29,6 @@
 #include <functional>
 #include <shared_mutex>
 #include <type_traits>
-#include <variant>
 #include <shared_mutex>
 
 namespace rtc {

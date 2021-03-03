@@ -24,13 +24,12 @@
 
 #include <atomic>
 #include <functional>
-#include <variant>
 
 namespace rtc::impl {
 
 struct Channel {
-	virtual std::optional<message_variant> receive() = 0;
-	virtual std::optional<message_variant> peek() = 0;
+	virtual optional<message_variant> receive() = 0;
+	virtual optional<message_variant> peek() = 0;
 	virtual size_t availableAmount() const = 0;
 
 	virtual void triggerOpen();

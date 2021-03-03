@@ -50,7 +50,7 @@ void RtcpSrReporter::addToReport(RTP *rtp, uint32_t rtpSize) {
 	payloadOctets += rtpSize - rtp->getSize();
 }
 
-RtcpSrReporter::RtcpSrReporter(std::shared_ptr<RtpPacketizationConfig> rtpConfig)
+RtcpSrReporter::RtcpSrReporter(shared_ptr<RtpPacketizationConfig> rtpConfig)
 : MediaHandlerElement(), rtpConfig(rtpConfig) {}
 
 uint64_t RtcpSrReporter::secondsToNTP(double seconds) {

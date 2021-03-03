@@ -31,7 +31,6 @@
 
 #include <atomic>
 #include <shared_mutex>
-#include <variant>
 
 namespace rtc::impl {
 
@@ -46,8 +45,8 @@ public:
 	void incoming(message_ptr message);
 	bool outgoing(message_ptr message);
 
-	std::optional<message_variant> receive() override;
-	std::optional<message_variant> peek() override;
+	optional<message_variant> receive() override;
+	optional<message_variant> peek() override;
 	size_t availableAmount() const override;
 
 	bool isOpen() const;
@@ -59,11 +58,11 @@ public:
 	Description::Media description() const;
 	void setDescription(Description::Media description);
 
-	std::shared_ptr<MediaHandler> getRtcpHandler();
+	shared_ptr<MediaHandler> getRtcpHandler();
 	void setRtcpHandler(shared_ptr<MediaHandler> handler);
 
 #if RTC_ENABLE_MEDIA
-	void open(std::shared_ptr<DtlsSrtpTransport> transport);
+	void open(shared_ptr<DtlsSrtpTransport> transport);
 #endif
 
 private:

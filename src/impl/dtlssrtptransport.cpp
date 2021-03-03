@@ -56,9 +56,9 @@ void DtlsSrtpTransport::Init() { srtp_init(); }
 
 void DtlsSrtpTransport::Cleanup() { srtp_shutdown(); }
 
-DtlsSrtpTransport::DtlsSrtpTransport(std::shared_ptr<IceTransport> lower,
+DtlsSrtpTransport::DtlsSrtpTransport(shared_ptr<IceTransport> lower,
                                      shared_ptr<Certificate> certificate,
-                                     std::optional<size_t> mtu,
+                                     optional<size_t> mtu,
                                      verifier_callback verifierCallback,
                                      message_callback srtpRecvCallback,
                                      state_callback stateChangeCallback)

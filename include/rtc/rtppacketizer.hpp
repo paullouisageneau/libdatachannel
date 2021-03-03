@@ -32,19 +32,19 @@ class RTC_CPP_EXPORT RtpPacketizer {
 
 public:
 	// RTP configuration
-	const std::shared_ptr<RtpPacketizationConfig> rtpConfig;
+	const shared_ptr<RtpPacketizationConfig> rtpConfig;
 
 	/// Constructs packetizer with given RTP configuration.
 	/// @note RTP configuration is used in packetization process which may change some configuration
 	/// properties such as sequence number.
 	/// @param rtpConfig  RTP configuration
-	RtpPacketizer(std::shared_ptr<RtpPacketizationConfig> rtpConfig);
+	RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig);
 
 	/// Creates RTP packet for given payload based on `rtpConfig`.
 	/// @note This function increase sequence number after packetization.
 	/// @param payload RTP payload
 	/// @param setMark Set marker flag in RTP packet if true
-	virtual std::shared_ptr<binary> packetize(std::shared_ptr<binary> payload, bool setMark);
+	virtual shared_ptr<binary> packetize(shared_ptr<binary> payload, bool setMark);
 };
 
 } // namespace rtc

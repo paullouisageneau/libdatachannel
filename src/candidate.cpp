@@ -233,11 +233,11 @@ bool Candidate::isResolved() const { return mFamily != Family::Unresolved; }
 
 Candidate::Family Candidate::family() const { return mFamily; }
 
-std::optional<string> Candidate::address() const {
+optional<string> Candidate::address() const {
 	return isResolved() ? std::make_optional(mAddress) : nullopt;
 }
 
-std::optional<uint16_t> Candidate::port() const {
+optional<uint16_t> Candidate::port() const {
 	return isResolved() ? std::make_optional(mPort) : nullopt;
 }
 

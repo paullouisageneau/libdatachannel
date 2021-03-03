@@ -37,7 +37,7 @@ private:
 		std::atomic<int> mCount = 0;
 	};
 
-	std::shared_ptr<LogData> mData;
+	shared_ptr<LogData> mData;
 
 public:
 	LogCounter(plog::Severity severity, const std::string &text,

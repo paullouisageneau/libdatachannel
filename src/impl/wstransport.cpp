@@ -54,7 +54,7 @@ using std::to_string;
 using random_bytes_engine =
     std::independent_bits_engine<std::default_random_engine, CHAR_BIT, unsigned short>;
 
-WsTransport::WsTransport(std::shared_ptr<Transport> lower, Configuration config,
+WsTransport::WsTransport(shared_ptr<Transport> lower, Configuration config,
                          message_callback recvCallback, state_callback stateCallback)
     : Transport(lower, std::move(stateCallback)), mConfig(std::move(config)) {
 	onRecv(recvCallback);

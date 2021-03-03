@@ -21,7 +21,7 @@
 namespace rtc {
 
 message_ptr make_message(size_t size, Message::Type type, unsigned int stream,
-                         std::shared_ptr<Reliability> reliability) {
+                         shared_ptr<Reliability> reliability) {
 	auto message = std::make_shared<Message>(size, type);
 	message->stream = stream;
 	message->reliability = reliability;
@@ -29,7 +29,7 @@ message_ptr make_message(size_t size, Message::Type type, unsigned int stream,
 }
 
 message_ptr make_message(binary &&data, Message::Type type, unsigned int stream,
-                         std::shared_ptr<Reliability> reliability) {
+                         shared_ptr<Reliability> reliability) {
 	auto message = std::make_shared<Message>(std::move(data), type);
 	message->stream = stream;
 	message->reliability = reliability;

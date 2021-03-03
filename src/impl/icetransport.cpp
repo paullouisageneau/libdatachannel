@@ -197,7 +197,7 @@ void IceTransport::gatherLocalCandidates(string mid) {
 	}
 }
 
-std::optional<string> IceTransport::getLocalAddress() const {
+optional<string> IceTransport::getLocalAddress() const {
 	char str[JUICE_MAX_ADDRESS_STRING_LEN];
 	if (juice_get_selected_addresses(mAgent.get(), str, JUICE_MAX_ADDRESS_STRING_LEN, NULL, 0) ==
 	    0) {
@@ -205,7 +205,7 @@ std::optional<string> IceTransport::getLocalAddress() const {
 	}
 	return nullopt;
 }
-std::optional<string> IceTransport::getRemoteAddress() const {
+optional<string> IceTransport::getRemoteAddress() const {
 	char str[JUICE_MAX_ADDRESS_STRING_LEN];
 	if (juice_get_selected_addresses(mAgent.get(), NULL, 0, str, JUICE_MAX_ADDRESS_STRING_LEN) ==
 	    0) {
@@ -553,7 +553,7 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 	g_object_set(G_OBJECT(mNiceAgent.get()), "controlling-mode",
 	             type == Description::Type::Offer ? TRUE : FALSE, nullptr);
 
-	std::unique_ptr<gchar[], void (*)(void *)> sdp(nice_agent_generate_local_sdp(mNiceAgent.get()),
+	unique_ptr<gchar[], void (*)(void *)> sdp(nice_agent_generate_local_sdp(mNiceAgent.get()),
 	                                               g_free);
 
 	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
@@ -612,7 +612,7 @@ void IceTransport::gatherLocalCandidates(string mid) {
 	}
 }
 
-std::optional<string> IceTransport::getLocalAddress() const {
+optional<string> IceTransport::getLocalAddress() const {
 	NiceCandidate *local = nullptr;
 	NiceCandidate *remote = nullptr;
 	if (nice_agent_get_selected_pair(mNiceAgent.get(), mStreamId, 1, &local, &remote)) {
@@ -621,7 +621,7 @@ std::optional<string> IceTransport::getLocalAddress() const {
 	return nullopt;
 }
 
-std::optional<string> IceTransport::getRemoteAddress() const {
+optional<string> IceTransport::getRemoteAddress() const {
 	NiceCandidate *local = nullptr;
 	NiceCandidate *remote = nullptr;
 	if (nice_agent_get_selected_pair(mNiceAgent.get(), mStreamId, 1, &local, &remote)) {

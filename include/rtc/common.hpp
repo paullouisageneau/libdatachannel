@@ -49,6 +49,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <variant>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -57,10 +58,12 @@ namespace rtc {
 
 using std::byte;
 using std::nullopt;
+using std::optional;
 using std::shared_ptr;
 using std::string;
 using std::string_view;
 using std::unique_ptr;
+using std::variant;
 using std::weak_ptr;
 
 using binary = std::vector<byte>;

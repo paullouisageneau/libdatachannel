@@ -33,9 +33,7 @@
 #include "rtc/websocket.hpp"
 
 #include <atomic>
-#include <optional>
 #include <thread>
-#include <variant>
 
 namespace rtc::impl {
 
@@ -51,8 +49,8 @@ struct WebSocket final : public Channel, public std::enable_shared_from_this<Web
 	bool outgoing(message_ptr message);
 	void incoming(message_ptr message);
 
-	std::optional<message_variant> receive() override;
-	std::optional<message_variant> peek() override;
+	optional<message_variant> receive() override;
+	optional<message_variant> peek() override;
 	size_t availableAmount() const override;
 
 	bool isOpen() const;
@@ -62,12 +60,12 @@ struct WebSocket final : public Channel, public std::enable_shared_from_this<Web
 	bool changeState(State state);
 	void remoteClose();
 
-	std::shared_ptr<TcpTransport> initTcpTransport();
-	std::shared_ptr<TlsTransport> initTlsTransport();
-	std::shared_ptr<WsTransport> initWsTransport();
-	std::shared_ptr<TcpTransport> getTcpTransport() const;
-	std::shared_ptr<TlsTransport> getTlsTransport() const;
-	std::shared_ptr<WsTransport> getWsTransport() const;
+	shared_ptr<TcpTransport> initTcpTransport();
+	shared_ptr<TlsTransport> initTlsTransport();
+	shared_ptr<WsTransport> initWsTransport();
+	shared_ptr<TcpTransport> getTcpTransport() const;
+	shared_ptr<TlsTransport> getTlsTransport() const;
+	shared_ptr<WsTransport> getWsTransport() const;
 
 	void closeTransports();
 
@@ -77,9 +75,9 @@ struct WebSocket final : public Channel, public std::enable_shared_from_this<Web
 private:
 	const init_token mInitToken = Init::Token();
 
-	std::shared_ptr<TcpTransport> mTcpTransport;
-	std::shared_ptr<TlsTransport> mTlsTransport;
-	std::shared_ptr<WsTransport> mWsTransport;
+	shared_ptr<TcpTransport> mTcpTransport;
+	shared_ptr<TlsTransport> mTlsTransport;
+	shared_ptr<WsTransport> mWsTransport;
 
 	string mScheme, mHost, mHostname, mService, mPath;
 

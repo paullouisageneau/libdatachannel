@@ -51,7 +51,7 @@ void Channel::onMessage(std::function<void(message_variant data)> callback) {
 
 void Channel::onMessage(std::function<void(binary data)> binaryCallback,
                         std::function<void(string data)> stringCallback) {
-	onMessage([binaryCallback, stringCallback](std::variant<binary, string> data) {
+	onMessage([binaryCallback, stringCallback](variant<binary, string> data) {
 		std::visit(overloaded{binaryCallback, stringCallback}, std::move(data));
 	});
 }
@@ -64,11 +64,11 @@ void Channel::setBufferedAmountLowThreshold(size_t amount) {
 	impl()->bufferedAmountLowThreshold = amount;
 }
 
-std::optional<message_variant> Channel::receive() {
+optional<message_variant> Channel::receive() {
 	return impl()->receive();
 }
 
-std::optional<message_variant> Channel::peek() {
+optional<message_variant> Channel::peek() {
 	return impl()->peek();
 }
 

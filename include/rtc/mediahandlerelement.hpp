@@ -26,7 +26,7 @@
 
 namespace rtc {
 
-using ChainedMessagesProduct = std::shared_ptr<std::vector<binary_ptr>>;
+using ChainedMessagesProduct = shared_ptr<std::vector<binary_ptr>>;
 
 RTC_CPP_EXPORT ChainedMessagesProduct make_chained_messages_product();
 RTC_CPP_EXPORT ChainedMessagesProduct make_chained_messages_product(message_ptr msg);
@@ -47,17 +47,17 @@ struct RTC_CPP_EXPORT ChainedIncomingProduct {
 
 /// Incoming control messages with response
 struct RTC_CPP_EXPORT ChainedIncomingControlProduct {
-	ChainedIncomingControlProduct(message_ptr incoming, std::optional<ChainedOutgoingProduct> outgoing = nullopt);
+	ChainedIncomingControlProduct(message_ptr incoming, optional<ChainedOutgoingProduct> outgoing = nullopt);
 	const message_ptr incoming;
-	const std::optional<ChainedOutgoingProduct> outgoing;
+	const optional<ChainedOutgoingProduct> outgoing;
 };
 
 /// Chainable handler
 class RTC_CPP_EXPORT MediaHandlerElement: public std::enable_shared_from_this<MediaHandlerElement> {
-	std::shared_ptr<MediaHandlerElement> upstream = nullptr;
-	std::shared_ptr<MediaHandlerElement> downstream = nullptr;
+	shared_ptr<MediaHandlerElement> upstream = nullptr;
+	shared_ptr<MediaHandlerElement> downstream = nullptr;
 
-	void prepareAndSendResponse(std::optional<ChainedOutgoingProduct> outgoing, std::function<bool (ChainedOutgoingProduct)> send);
+	void prepareAndSendResponse(optional<ChainedOutgoingProduct> outgoing, std::function<bool (ChainedOutgoingProduct)> send);
 
 	void removeFromChain();
 public:
@@ -66,13 +66,13 @@ public:
 	/// Creates response to incoming message
 	/// @param messages Current repsonse
 	/// @returns New response
-	std::optional<ChainedOutgoingProduct> processOutgoingResponse(ChainedOutgoingProduct messages);
+	optional<ChainedOutgoingProduct> processOutgoingResponse(ChainedOutgoingProduct messages);
 
 	// Process incoming and ougoing messages
 	message_ptr formIncomingControlMessage(message_ptr message, std::function<bool (ChainedOutgoingProduct)> send);
 	ChainedMessagesProduct formIncomingBinaryMessage(ChainedMessagesProduct messages, std::function<bool (ChainedOutgoingProduct)> send);
 	message_ptr formOutgoingControlMessage(message_ptr message);
-	std::optional<ChainedOutgoingProduct> formOutgoingBinaryMessage(ChainedOutgoingProduct product);
+	optional<ChainedOutgoingProduct> formOutgoingBinaryMessage(ChainedOutgoingProduct product);
 
 	/// Process current control message
 	/// @param messages current message
@@ -98,7 +98,7 @@ public:
 	/// Set given element as upstream to this
 	/// @param upstream Upstream element
 	/// @returns Upstream element
-	std::shared_ptr<MediaHandlerElement> chainWith(std::shared_ptr<MediaHandlerElement> upstream);
+	shared_ptr<MediaHandlerElement> chainWith(shared_ptr<MediaHandlerElement> upstream);
 
 	/// Remove all downstream elements from chain
 	void recursiveRemoveChain();

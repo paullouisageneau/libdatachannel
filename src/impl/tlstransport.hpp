@@ -37,7 +37,7 @@ public:
 	static void Init();
 	static void Cleanup();
 
-	TlsTransport(std::shared_ptr<TcpTransport> lower, string host, state_callback callback);
+	TlsTransport(shared_ptr<TcpTransport> lower, string host, state_callback callback);
 	virtual ~TlsTransport();
 
 	void start() override;

@@ -90,8 +90,8 @@ void doCleanup() {
 
 } // namespace
 
-std::weak_ptr<void> Init::Weak;
-std::shared_ptr<void> *Init::Global = nullptr;
+weak_ptr<void> Init::Weak;
+shared_ptr<void> *Init::Global = nullptr;
 bool Init::Initialized = false;
 std::recursive_mutex Init::Mutex;
 

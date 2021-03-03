@@ -36,7 +36,7 @@ public:
 	/// @note RTP configuration is used in packetization process which may change some configuration
 	/// properties such as sequence number.
 	/// @param rtpConfig  RTP configuration
-	OpusRtpPacketizer(std::shared_ptr<RtpPacketizationConfig> rtpConfig);
+	OpusRtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig);
 
 	/// Creates RTP packet for given payload based on `rtpConfig`.
 	/// @note This function increase sequence number after packetization.

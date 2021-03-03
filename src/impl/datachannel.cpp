@@ -88,7 +88,7 @@ DataChannel::DataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string la
 DataChannel::~DataChannel() { close(); }
 
 void DataChannel::close() {
-	std::shared_ptr<SctpTransport> transport;
+	shared_ptr<SctpTransport> transport;
 	{
 		std::shared_lock lock(mMutex);
 		transport = mSctpTransport.lock();
@@ -108,7 +108,7 @@ void DataChannel::remoteClose() {
 	mIsOpen = false;
 }
 
-std::optional<message_variant> DataChannel::receive() {
+optional<message_variant> DataChannel::receive() {
 	while (auto next = mRecvQueue.tryPop()) {
 		message_ptr message = *next;
 		if (message->type != Message::Control)
@@ -122,7 +122,7 @@ std::optional<message_variant> DataChannel::receive() {
 	return nullopt;
 }
 
-std::optional<message_variant> DataChannel::peek() {
+optional<message_variant> DataChannel::peek() {
 	while (auto next = mRecvQueue.peek()) {
 		message_ptr message = *next;
 		if (message->type != Message::Control)
@@ -196,7 +196,7 @@ void DataChannel::processOpenMessage(message_ptr) {
 }
 
 bool DataChannel::outgoing(message_ptr message) {
-	std::shared_ptr<SctpTransport> transport;
+	shared_ptr<SctpTransport> transport;
 	{
 		std::shared_lock lock(mMutex);
 		transport = mSctpTransport.lock();
@@ -255,12 +255,12 @@ void DataChannel::incoming(message_ptr message) {
 	}
 }
 
-NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<PeerConnection> pc, uint16_t stream,
+NegotiatedDataChannel::NegotiatedDataChannel(weak_ptr<PeerConnection> pc, uint16_t stream,
                                              string label, string protocol, Reliability reliability)
     : DataChannel(pc, stream, std::move(label), std::move(protocol), std::move(reliability)) {}
 
-NegotiatedDataChannel::NegotiatedDataChannel(std::weak_ptr<PeerConnection> pc,
-                                             std::weak_ptr<SctpTransport> transport,
+NegotiatedDataChannel::NegotiatedDataChannel(weak_ptr<PeerConnection> pc,
+                                             weak_ptr<SctpTransport> transport,
                                              uint16_t stream)
     : DataChannel(pc, stream, "", "", {}) {
 	mSctpTransport = transport;

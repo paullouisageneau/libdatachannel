@@ -25,7 +25,7 @@
 
 namespace rtc {
 
-using init_token = std::shared_ptr<void>;
+using init_token = shared_ptr<void>;
 
 class RTC_CPP_EXPORT Init {
 public:
@@ -38,8 +38,8 @@ public:
 private:
 	Init();
 
-	static std::weak_ptr<void> Weak;
-	static std::shared_ptr<void> *Global;
+	static weak_ptr<void> Weak;
+	static shared_ptr<void> *Global;
 	static bool Initialized;
 	static std::recursive_mutex Mutex;
 };

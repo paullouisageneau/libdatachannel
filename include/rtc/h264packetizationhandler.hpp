@@ -32,7 +32,7 @@ class RTC_CPP_EXPORT H264PacketizationHandler : public MediaChainableHandler {
 public:
 	/// Construct handler for H264 packetization.
 	/// @param packetizer RTP packetizer for h264
-	H264PacketizationHandler(std::shared_ptr<H264RtpPacketizer> packetizer);
+	H264PacketizationHandler(shared_ptr<H264RtpPacketizer> packetizer);
 };
 
 } // namespace rtc

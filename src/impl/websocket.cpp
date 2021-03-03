@@ -119,7 +119,7 @@ bool WebSocket::isClosed() const { return state == State::Closed; }
 
 size_t WebSocket::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
 
-std::optional<message_variant> WebSocket::receive() {
+optional<message_variant> WebSocket::receive() {
 	while (auto next = mRecvQueue.tryPop()) {
 		message_ptr message = *next;
 		if (message->type != Message::Control)
@@ -128,7 +128,7 @@ std::optional<message_variant> WebSocket::receive() {
 	return nullopt;
 }
 
-std::optional<message_variant> WebSocket::peek() {
+optional<message_variant> WebSocket::peek() {
 	while (auto next = mRecvQueue.peek()) {
 		message_ptr message = *next;
 		if (message->type != Message::Control)
@@ -325,15 +325,15 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 	}
 }
 
-std::shared_ptr<TcpTransport> WebSocket::getTcpTransport() const {
+shared_ptr<TcpTransport> WebSocket::getTcpTransport() const {
 	return std::atomic_load(&mTcpTransport);
 }
 
-std::shared_ptr<TlsTransport> WebSocket::getTlsTransport() const {
+shared_ptr<TlsTransport> WebSocket::getTlsTransport() const {
 	return std::atomic_load(&mTlsTransport);
 }
 
-std::shared_ptr<WsTransport> WebSocket::getWsTransport() const {
+shared_ptr<WsTransport> WebSocket::getWsTransport() const {
 	return std::atomic_load(&mWsTransport);
 }
 

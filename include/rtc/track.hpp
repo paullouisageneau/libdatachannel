@@ -27,7 +27,6 @@
 
 #include <atomic>
 #include <shared_mutex>
-#include <variant>
 
 namespace rtc {
 
@@ -59,8 +58,8 @@ public:
 	bool requestKeyframe();
 
 	// RTCP handler
-	void setRtcpHandler(std::shared_ptr<MediaHandler> handler);
-	std::shared_ptr<MediaHandler> getRtcpHandler();
+	void setRtcpHandler(shared_ptr<MediaHandler> handler);
+	shared_ptr<MediaHandler> getRtcpHandler();
 
 private:
 	using CheshireCat<impl::Track>::impl;

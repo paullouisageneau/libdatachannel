@@ -43,8 +43,8 @@ struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
 	bool outgoing(message_ptr message);
 	void incoming(message_ptr message);
 
-	std::optional<message_variant> receive() override;
-	std::optional<message_variant> peek() override;
+	optional<message_variant> receive() override;
+	optional<message_variant> peek() override;
 	size_t availableAmount() const override;
 
 	uint16_t stream() const;
