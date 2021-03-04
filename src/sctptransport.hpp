@@ -83,6 +83,7 @@ private:
 	bool trySendQueue();
 	bool trySendMessage(message_ptr message);
 	void updateBufferedAmount(uint16_t streamId, long delta);
+	void triggerBufferedAmount(uint16_t streamId, size_t amount);
 	void sendReset(uint16_t streamId);
 	bool safeFlush();
 
@@ -97,7 +98,8 @@ private:
 
 	Processor mProcessor;
 	std::atomic<int> mPendingRecvCount;
-	std::mutex mRecvMutex, mSendMutex;
+	std::mutex mRecvMutex;
+	std::recursive_mutex mSendMutex; // buffered amount callback is synchronous
 	Queue<message_ptr> mSendQueue;
 	std::map<uint16_t, size_t> mBufferedAmount;
 	amount_callback mBufferedAmountCallback;
