@@ -72,7 +72,7 @@ protected:
 	std::function<void()> dequeue(); // returns null function if joining
 
 	std::vector<std::thread> mWorkers;
-	int mWaitingWorkers = 0;
+	int mBusyWorkers = 0;
 	std::atomic<bool> mJoining = false;
 
 	struct Task {
