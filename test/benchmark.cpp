@@ -127,8 +127,12 @@ size_t benchmark(milliseconds duration) {
 		openTime = steady_clock::now();
 
 		cout << "DataChannel open, sending data..." << endl;
-		while (dc1->bufferedAmount() == 0) {
-			dc1->send(messageData);
+		try {
+			while (dc1->bufferedAmount() == 0) {
+				dc1->send(messageData);
+			}
+		} catch (const std::exception &e) {
+			std::cout << "Send failed: " << e.what() << std::endl;
 		}
 
 		// When sent data is buffered in the DataChannel,
@@ -141,8 +145,12 @@ size_t benchmark(milliseconds duration) {
 			return;
 
 		// Continue sending
-		while (dc1->bufferedAmount() == 0) {
-			dc1->send(messageData);
+		try {
+			while (dc1->isOpen() && dc1->bufferedAmount() == 0) {
+				dc1->send(messageData);
+			}
+		} catch (const std::exception &e) {
+			std::cout << "Send failed: " << e.what() << std::endl;
 		}
 	});
 
