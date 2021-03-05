@@ -87,9 +87,6 @@ void SctpTransport::Init() {
 	// Enable Partial Reliability Extension (RFC 3758)
 	usrsctp_sysctl_set_sctp_pr_enable(1);
 
-	// Enable Non-Renegable Selective Acknowledgments (NR-SACKs)
-	usrsctp_sysctl_set_sctp_nrsack_enable(1);
-
 	// Increase the initial window size to 10 MTUs (RFC 6928)
 	usrsctp_sysctl_set_sctp_initial_cwnd(10);
 
