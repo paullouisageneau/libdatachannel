@@ -50,8 +50,8 @@ public:
 	void start() override;
 	bool stop() override;
 	bool send(message_ptr message) override; // false if buffered
+	bool flush();
 	void closeStream(unsigned int stream);
-	void flush();
 
 	// Stats
 	void clearStats();
@@ -79,12 +79,12 @@ private:
 	bool outgoing(message_ptr message) override;
 
 	void doRecv();
+	void doFlush();
 	bool trySendQueue();
 	bool trySendMessage(message_ptr message);
 	void updateBufferedAmount(uint16_t streamId, long delta);
 	void triggerBufferedAmount(uint16_t streamId, size_t amount);
 	void sendReset(uint16_t streamId);
-	bool safeFlush();
 
 	void handleUpcall();
 	int handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_df);
@@ -96,7 +96,8 @@ private:
 	struct socket *mSock;
 
 	Processor mProcessor;
-	std::atomic<int> mPendingRecvCount;
+	std::atomic<int> mPendingRecvCount = 0;
+	std::atomic<int> mPendingFlushCount = 0;
 	std::mutex mRecvMutex;
 	std::recursive_mutex mSendMutex; // buffered amount callback is synchronous
 	Queue<message_ptr> mSendQueue;

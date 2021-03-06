@@ -85,8 +85,8 @@ void SctpTransport::Init() {
 	// Change congestion control from the default TCP Reno (RFC 2581) to H-TCP
 	usrsctp_sysctl_set_sctp_default_cc_module(SCTP_CC_HTCP);
 
-	// Enable Non-Renegable Selective Acknowledgments (NR-SACKs)
-	usrsctp_sysctl_set_sctp_nrsack_enable(1);
+	// Enable Partial Reliability Extension (RFC 3758)
+	usrsctp_sysctl_set_sctp_pr_enable(1);
 
 	// Increase the initial window size to 10 MTUs (RFC 6928)
 	usrsctp_sysctl_set_sctp_initial_cwnd(10);
@@ -104,7 +104,7 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, uint16_t port,
                              optional<size_t> mtu, message_callback recvCallback,
                              amount_callback bufferedAmountCallback,
                              state_callback stateChangeCallback)
-    : Transport(lower, std::move(stateChangeCallback)), mPort(port), mPendingRecvCount(0),
+    : Transport(lower, std::move(stateChangeCallback)), mPort(port),
       mSendQueue(0, message_size_func), mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
 	onRecv(recvCallback);
 
@@ -260,7 +260,7 @@ bool SctpTransport::stop() {
 		return false;
 
 	mSendQueue.stop();
-	safeFlush();
+	flush();
 	shutdown();
 	onRecv(nullptr);
 	return true;
@@ -334,13 +334,20 @@ bool SctpTransport::send(message_ptr message) {
 	return false;
 }
 
-void SctpTransport::closeStream(unsigned int stream) {
-	send(make_message(0, Message::Reset, uint16_t(stream)));
+bool SctpTransport::flush() {
+	try {
+		std::lock_guard lock(mSendMutex);
+		trySendQueue();
+		return true;
+
+	} catch (const std::exception &e) {
+		PLOG_WARNING << "SCTP flush: " << e.what();
+		return false;
+	}
 }
 
-void SctpTransport::flush() {
-	std::lock_guard lock(mSendMutex);
-	trySendQueue();
+void SctpTransport::closeStream(unsigned int stream) {
+	send(make_message(0, Message::Reset, uint16_t(stream)));
 }
 
 void SctpTransport::incoming(message_ptr message) {
@@ -423,6 +430,16 @@ void SctpTransport::doRecv() {
 				}
 			}
 		}
+	} catch (const std::exception &e) {
+		PLOG_WARNING << e.what();
+	}
+}
+
+void SctpTransport::doFlush() {
+	std::lock_guard lock(mSendMutex);
+	--mPendingFlushCount;
+	try {
+		trySendQueue();
 	} catch (const std::exception &e) {
 		PLOG_WARNING << e.what();
 	}
@@ -573,17 +590,6 @@ void SctpTransport::sendReset(uint16_t streamId) {
 	}
 }
 
-bool SctpTransport::safeFlush() {
-	try {
-		flush();
-		return true;
-
-	} catch (const std::exception &e) {
-		PLOG_WARNING << "SCTP flush: " << e.what();
-		return false;
-	}
-}
-
 void SctpTransport::handleUpcall() {
 	if (!mSock)
 		return;
@@ -597,8 +603,10 @@ void SctpTransport::handleUpcall() {
 		mProcessor.enqueue(&SctpTransport::doRecv, this);
 	}
 
-	if (events & SCTP_EVENT_WRITE)
-		mProcessor.enqueue(&SctpTransport::safeFlush, this);
+	if (events & SCTP_EVENT_WRITE && mPendingFlushCount == 0) {
+		++mPendingFlushCount;
+		mProcessor.enqueue(&SctpTransport::doFlush, this);
+	}
 }
 
 int SctpTransport::handleWrite(byte *data, size_t len, uint8_t /*tos*/, uint8_t /*set_df*/) {
@@ -713,7 +721,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 		PLOG_VERBOSE << "SCTP dry event";
 		// It should not be necessary since the send callback should have been called already,
 		// but to be sure, let's try to send now.
-		safeFlush();
+		flush();
 		break;
 	}
 

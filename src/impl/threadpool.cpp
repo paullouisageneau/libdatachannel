@@ -51,7 +51,7 @@ void ThreadPool::spawn(int count) {
 void ThreadPool::join() {
 	{
 		std::unique_lock lock(mMutex);
-		mWaitingCondition.wait(lock, [&]() { return mWaitingWorkers == int(mWorkers.size()); });
+		mWaitingCondition.wait(lock, [&]() { return mBusyWorkers == 0; });
 		mJoining = true;
 		mTasksCondition.notify_all();
 	}
@@ -66,6 +66,8 @@ void ThreadPool::join() {
 }
 
 void ThreadPool::run() {
+	++mBusyWorkers;
+	scope_guard([&]() { --mBusyWorkers; });
 	while (runOne()) {
 	}
 }
@@ -81,24 +83,23 @@ bool ThreadPool::runOne() {
 std::function<void()> ThreadPool::dequeue() {
 	std::unique_lock lock(mMutex);
 	while (!mJoining) {
+		std::optional<clock::time_point> time;
 		if (!mTasks.empty()) {
-			if (mTasks.top().time <= clock::now()) {
+			time = mTasks.top().time;
+			if (*time <= clock::now()) {
 				auto func = std::move(mTasks.top().func);
 				mTasks.pop();
 				return func;
 			}
-
-			++mWaitingWorkers;
-			mWaitingCondition.notify_all();
-			mTasksCondition.wait_until(lock, mTasks.top().time);
-
-		} else {
-			++mWaitingWorkers;
-			mWaitingCondition.notify_all();
-			mTasksCondition.wait(lock);
 		}
 
-		--mWaitingWorkers;
+		--mBusyWorkers;
+		scope_guard([&]() { ++mBusyWorkers; });
+		mWaitingCondition.notify_all();
+		if(time)
+			mTasksCondition.wait_until(lock, *time);
+		else
+			mTasksCondition.wait(lock);
 	}
 	return nullptr;
 }
