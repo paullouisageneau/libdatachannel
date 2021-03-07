@@ -81,8 +81,8 @@ void SctpTransport::Init() {
 
 	usrsctp_sysctl_set_sctp_max_chunks_on_queue(10 * 1024);
 
-	// Change congestion control from the default TCP Reno (RFC 2581) to H-TCP
-	usrsctp_sysctl_set_sctp_default_cc_module(SCTP_CC_HTCP);
+	// Change congestion control from the default TCP Reno (RFC 2581) to HSTCP
+	usrsctp_sysctl_set_sctp_default_cc_module(SCTP_CC_HSTCP);
 
 	// Enable Partial Reliability Extension (RFC 3758)
 	usrsctp_sysctl_set_sctp_pr_enable(1);
