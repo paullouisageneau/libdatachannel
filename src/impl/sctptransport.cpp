@@ -82,10 +82,9 @@ void SctpTransport::Init() {
 
 	usrsctp_sysctl_set_sctp_max_chunks_on_queue(10 * 1024);
 
-	// Use default congestion control same as WebRTC
-	// SCTP_CC_HTCP mode is problematic
+	// Use default congestion control (RFC 4960)
 	// See https://github.com/paullouisageneau/libdatachannel/issues/354
-	// usrsctp_sysctl_set_sctp_default_cc_module(SCTP_CC_HTCP);
+	usrsctp_sysctl_set_sctp_default_cc_module(0);
 
 	// Enable Partial Reliability Extension (RFC 3758)
 	usrsctp_sysctl_set_sctp_pr_enable(1);
