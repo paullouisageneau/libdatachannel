@@ -37,17 +37,6 @@
 #include <set>
 #include <thread>
 
-#if __clang__ && defined(__APPLE__)
-namespace {
-template <typename To, typename From>
-inline std::shared_ptr<To> reinterpret_pointer_cast(std::shared_ptr<From> const &ptr) noexcept {
-	return std::shared_ptr<To>(ptr, reinterpret_cast<To *>(ptr.get()));
-}
-} // namespace
-#else
-using std::reinterpret_pointer_cast;
-#endif
-
 static rtc::LogCounter COUNTER_MEDIA_TRUNCATED(plog::warning,
                                                "Number of RTP packets truncated over past second");
 static rtc::LogCounter
@@ -701,7 +690,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 		std::set<uint32_t> ssrcs;
 		size_t offset = 0;
 		while ((sizeof(rtc::RTCP_HEADER) + offset) <= message->size()) {
-			auto header = reinterpret_cast<rtc::RTCP_HEADER *>(message->data() + offset);
+			auto header = reinterpret_cast<RTCP_HEADER *>(message->data() + offset);
 			if (header->lengthInBytes() > message->size() - offset) {
 				COUNTER_MEDIA_TRUNCATED++;
 				break;
@@ -923,12 +912,13 @@ void PeerConnection::incomingTrack(Description::Media description) {
 void PeerConnection::openTracks() {
 #if RTC_ENABLE_MEDIA
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
-		auto srtpTransport = reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
-		std::shared_lock lock(mTracksMutex); // read-only
-		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
-			if (auto track = it->second.lock())
-				if (!track->isOpen())
-					track->open(srtpTransport);
+		if (auto srtpTransport = std::dynamic_pointer_cast<DtlsSrtpTransport>(transport)) {
+			std::shared_lock lock(mTracksMutex); // read-only
+			for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
+				if (auto track = it->second.lock())
+					if (!track->isOpen())
+						track->open(srtpTransport);
+		}
 	}
 #endif
 }
