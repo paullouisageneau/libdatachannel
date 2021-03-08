@@ -333,10 +333,6 @@ int test_capi_connectivity_main() {
 	deletePeer(peer2);
 	sleep(1);
 
-	// You may call rtcCleanup() when finished to free static resources
-	rtcCleanup();
-	sleep(1);
-
 	printf("Success\n");
 	return 0;
 

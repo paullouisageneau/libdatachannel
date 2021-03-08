@@ -40,17 +40,6 @@
 
 using namespace std::placeholders;
 
-#if __clang__ && defined(__APPLE__)
-namespace {
-template <typename To, typename From>
-inline std::shared_ptr<To> reinterpret_pointer_cast(std::shared_ptr<From> const &ptr) noexcept {
-	return std::shared_ptr<To>(ptr, reinterpret_cast<To *>(ptr.get()));
-}
-} // namespace
-#else
-using std::reinterpret_pointer_cast;
-#endif
-
 namespace rtc::impl {
 
 static LogCounter COUNTER_MEDIA_TRUNCATED(plog::warning,
@@ -673,7 +662,7 @@ void PeerConnection::incomingTrack(Description::Media description) {
 void PeerConnection::openTracks() {
 #if RTC_ENABLE_MEDIA
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
-		auto srtpTransport = reinterpret_pointer_cast<DtlsSrtpTransport>(transport);
+		auto srtpTransport = std::dynamic_pointer_cast<DtlsSrtpTransport>(transport);
 		std::shared_lock lock(mTracksMutex); // read-only
 		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
 			if (auto track = it->second.lock())
