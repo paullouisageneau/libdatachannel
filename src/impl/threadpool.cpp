@@ -67,7 +67,7 @@ void ThreadPool::join() {
 
 void ThreadPool::run() {
 	++mBusyWorkers;
-	scope_guard([&]() { --mBusyWorkers; });
+	scope_guard guard([&]() { --mBusyWorkers; });
 	while (runOne()) {
 	}
 }
@@ -94,7 +94,7 @@ std::function<void()> ThreadPool::dequeue() {
 		}
 
 		--mBusyWorkers;
-		scope_guard([&]() { ++mBusyWorkers; });
+		scope_guard guard([&]() { ++mBusyWorkers; });
 		mWaitingCondition.notify_all();
 		if(time)
 			mTasksCondition.wait_until(lock, *time);
