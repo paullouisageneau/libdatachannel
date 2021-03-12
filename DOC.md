@@ -1,6 +1,6 @@
 # libdatachannel - C API Documentation
 
-The following details the C API of libdatachannel. The C API is available by including the rtc/rtc.h header.
+The following details the C API of libdatachannel. The C API is available by including the `rtc/rtc.h` header.
 
 ### General considerations
 
@@ -357,11 +357,11 @@ Arguments:
     - `unsigned int maxPacketLifeTime`: if unreliable, maximum packet life time in milliseconds
     - `unsigned int maxRetransmits`: if unreliable and maxPacketLifeTime is 0, maximum number of retransmissions (0 means no retransmission)
   - `protocol` (optional): a user-defined UTF-8 string representing the Data Channel protocol, empty if NULL
-  - `negociated`: if `true`, the Data Channel is assumed to be negociated by the user and won't be negociated by the WebRTC layer
+  - `negotiated`: if `true`, the Data Channel is assumed to be negotiated by the user and won't be negotiated by the WebRTC layer
   - `manualStream`: if `true`, the Data Channel will use `stream` as stream ID, else an available id is automatically selected
   - `stream` (0-65534): if `manualStream` is `true`, the Data Channel will use it as stream ID, else it is ignored
 
-`rtcDataChannel()` is equivalent to `rtcDataChannelEx()` with settings set to ordered, reliable, non-negociated, with automatic stream ID selection (all flags set to `false`), and `protocol` set to an empty string.
+`rtcDataChannel()` is equivalent to `rtcDataChannelEx()` with settings set to ordered, reliable, non-negotiated, with automatic stream ID selection (all flags set to `false`), and `protocol` set to an empty string.
 
 Return value: the identifier of the new Data Channel or a negative error code.
 
