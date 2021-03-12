@@ -49,6 +49,7 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
     {"webSocketServer", required_argument, NULL, 'w'},
     {"webSocketPort", required_argument, NULL, 'x'},
     {"durationInSec",required_argument,NULL,'d'},
+    {"noSend", no_argument, NULL, 'o'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}
   };
@@ -63,9 +64,10 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
   _x = 8000;
   _h = false;
   _d = 300;
+  _o = false;
 
   optind = 0;
-  while ((c = getopt_long (argc, argv, "s:t:w:x:d:enhv", long_options, &optind)) != - 1)
+  while ((c = getopt_long (argc, argv, "s:t:w:x:d:enhvo", long_options, &optind)) != - 1)
     {
       switch (c)
         {
@@ -123,6 +125,10 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
             }
           break;
 
+        case 'o':
+          _o = true;
+          break;
+
         case 'h':
           _h = true;
           this->usage (EXIT_SUCCESS);
@@ -166,6 +172,8 @@ libdatachannel client implementing WebRTC Data Channels with WebSocket signaling
           Web socket server port.\n\
    [ -d ] [ --durationInSec ] (type=INTEGER, range>=0...INT32_MAX, 0:infinite(INT32_MAX), Valid only for offering client, default=300)\n\
           Benchmark duration in seconds.\n\
+   [ -n ] [ --noSend ] (type=FLAG)\n\
+          Do NOT send message (Only Receive, for one-way testing purposes).\n\
    [ -h ] [ --help ] (type=FLAG)\n\
           Display this help and exit.\n";
     }

@@ -57,6 +57,7 @@ string randomId(size_t length);
 const size_t messageSize = 65535;
 binary messageData(messageSize);
 atomic<size_t> receivedSize = 0, sentSize = 0;
+bool noSend = false;
 
 int main(int argc, char **argv) try {
 	Cmdline params(argc, argv);
@@ -65,6 +66,11 @@ int main(int argc, char **argv) try {
 
 	// Benchmark - construct message to send
 	fill(messageData.begin(), messageData.end(), std::byte(0xFF));
+
+	// No Send option
+	noSend = params.noSend();
+	if (noSend)
+		cout << "Not Sending data. (One way benchmark)." << endl;
 
 	Configuration config;
 	string stunServer = "";
@@ -171,6 +177,8 @@ int main(int argc, char **argv) try {
 
 	dc->onOpen([id, wdc = make_weak_ptr(dc)]() {
 		cout << "DataChannel from " << id << " open" << endl;
+		if (noSend)
+			return;
 		if (auto dcLocked = wdc.lock()) {
 			cout << "Starting benchmark test. Sending data..." << endl;
 			try {
@@ -185,6 +193,9 @@ int main(int argc, char **argv) try {
 	});
 
 	dc->onBufferedAmountLow([wdc = make_weak_ptr(dc)]() {
+		if (noSend)
+			return;
+
 		auto dcLocked = wdc.lock();
 		if (!dcLocked)
 			return;
@@ -277,20 +288,26 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 		cout << "DataChannel from " << id << " received with label \"" << dc->label() << "\""
 		     << endl;
 
-		cout << "Starting benchmark test. Sending data..." << endl;
 		cout << "###########################################" << endl;
 		cout << "### Check other peer's screen for stats ###" << endl;
 		cout << "###########################################" << endl;
-		try {
-			while (dc->bufferedAmount() == 0) {
-				dc->send(messageData);
-				sentSize += messageData.size();
+
+		if (!noSend) {
+			cout << "Starting benchmark test. Sending data ..." << endl;
+			try {
+				while (dc->bufferedAmount() == 0) {
+					dc->send(messageData);
+					sentSize += messageData.size();
+				}
+			} catch (const std::exception &e) {
+				std::cout << "Send failed: " << e.what() << std::endl;
 			}
-		} catch (const std::exception &e) {
-			std::cout << "Send failed: " << e.what() << std::endl;
 		}
 
 		dc->onBufferedAmountLow([wdc = make_weak_ptr(dc)]() {
+			if (noSend)
+				return;
+
 			auto dcLocked = wdc.lock();
 			if (!dcLocked)
 				return;
