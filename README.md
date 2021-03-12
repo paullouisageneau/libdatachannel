@@ -157,3 +157,7 @@ ws.open("wss://my.websocket/service");
 - Unity wrapper for Windows 10 and Hololens: [datachannel-unity](https://github.com/hanseuljun/datachannel-unity)
 - WebAssembly wrapper compatible with libdatachannel: [datachannel-wasm](https://github.com/paullouisageneau/datachannel-wasm)
 
+## Thanks
+
+Thanks to [Streamr](https://streamr.network/) for sponsoring this work!
+
