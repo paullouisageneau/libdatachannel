@@ -1,5 +1,7 @@
 # libdatachannel - C API Documentation
 
+The following details the C API of libdatachannel. The C API is available by including the rtc/rtc.h header.
+
 ### General considerations
 
 Unless stated otherwise, functions return `RTC_ERR_SUCCESS`, defined as `0`, on success.
