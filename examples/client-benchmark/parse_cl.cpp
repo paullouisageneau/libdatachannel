@@ -48,6 +48,7 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
     {"stunPort", required_argument, NULL, 't'},
     {"webSocketServer", required_argument, NULL, 'w'},
     {"webSocketPort", required_argument, NULL, 'x'},
+    {"durationInSec",required_argument,NULL,'d'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}
   };
@@ -61,9 +62,10 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
   _w = "localhost";
   _x = 8000;
   _h = false;
+  _d = 300;
 
   optind = 0;
-  while ((c = getopt_long (argc, argv, "s:t:w:x:enhv", long_options, &optind)) != - 1)
+  while ((c = getopt_long (argc, argv, "s:t:w:x:d:enhv", long_options, &optind)) != - 1)
     {
       switch (c)
         {
@@ -111,6 +113,16 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
             }
           break;
 
+        case 'd':
+          _d = atoi (optarg);
+          if (_d < 0)
+            {
+              std::string err;
+              err += "parameter range error: d must be >= 0";
+              throw (std::range_error(err));
+            }
+          break;
+
         case 'h':
           _h = true;
           this->usage (EXIT_SUCCESS);
@@ -152,6 +164,8 @@ libdatachannel client implementing WebRTC Data Channels with WebSocket signaling
           Web socket server URL or IP address.\n\
    [ -x ] [ --webSocketPort ] (type=INTEGER, range=0...65535, default=8000)\n\
           Web socket server port.\n\
+   [ -d ] [ --durationInSec ] (type=INTEGER, range>=0...INT32_MAX, 0:infinite(INT32_MAX), Valid only for offering client, default=300)\n\
+          Benchmark duration in seconds.\n\
    [ -h ] [ --help ] (type=FLAG)\n\
           Display this help and exit.\n";
     }

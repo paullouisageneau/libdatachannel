@@ -1,7 +1,7 @@
 /*
  * libdatachannel client-benchmark example
  * Copyright (c) 2019-2020 Paul-Louis Ageneau
- * Copyright (c) 2019 Murat Dogan
+ * Copyright (c) 2019-2021 Murat Dogan
  * Copyright (c) 2020 Will Munn
  * Copyright (c) 2020 Nico Chatzi
  * Copyright (c) 2020 Lara Mackey
@@ -157,7 +157,7 @@ int main(int argc, char **argv) try {
 		return 0;
 	}
 	if (id == localId) {
-		cout << "Invalid remote ID (This is my local ID). Exiting...";
+		cout << "Invalid remote ID (This is my local ID). Exiting..." << endl;
 		return 0;
 	}
 
@@ -209,9 +209,12 @@ int main(int argc, char **argv) try {
 
 	dataChannelMap.emplace(id, dc);
 
-	const int duration = 20;
+	const int duration = params.durationInSec() > 0 ? params.durationInSec() : INT32_MAX;
+	cout << "Becnhmark will run for " << duration << " seconds" << endl;
+
 	int printStatCounter = 0;
-	for (int i = 0; i < duration; ++i) {
+
+	for (int i = 1; i <= duration; ++i) {
 		this_thread::sleep_for(1000ms);
 		cout << "#" << i << " Received: " << receivedSize.load() / 1024 << " KB/s"
 		     << "   Sent: " << sentSize.load() / 1024 << " KB/s"
@@ -275,7 +278,9 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 		     << endl;
 
 		cout << "Starting benchmark test. Sending data..." << endl;
+		cout << "###########################################" << endl;
 		cout << "### Check other peer's screen for stats ###" << endl;
+		cout << "###########################################" << endl;
 		try {
 			while (dc->bufferedAmount() == 0) {
 				dc->send(messageData);
