@@ -21,45 +21,10 @@ const fs = require('fs');
 const http = require('http');
 const websocket = require('websocket');
 
-const staticFiles = {
-  '/index.html': 'text/html',
-  '/style.css': 'text/css',
-  '/script.js': 'text/javascript',
-};
-
 const clients = {};
 
 const httpServer = http.createServer((req, res) => {
   console.log(`${req.method.toUpperCase()} ${req.url}`);
-
-  const respond = (code, data, contentType = 'text/plain') => {
-    res.writeHead(code, {
-      'Content-Type': contentType,
-      'Access-Control-Allow-Origin': '*',
-    });
-    res.end(data);
-  };
-
-  if(req.method != 'GET') {
-    respond(405, 'Method not allowed');
-    return;
-  }
-
-  const url = req.url == '/' ? '/index.html' : req.url;
-  const contentType = staticFiles[url];
-  if(!contentType) {
-    respond(404, 'Not found');
-    return;
-  }
-
-  fs.readFile(__dirname + url, (err, data) => {
-    if(err) {
-      respond(500, 'Missing file');
-      return;
-    }
-
-    respond(200, data, contentType);
-  });
 });
 
 const wsServer = new websocket.server({ httpServer });
