@@ -1,6 +1,6 @@
 version: 2
 updates:
   - package-ecosystem: "npm"
-    directory: "examples/web"
+    directory: "examples/signaling-server-nodejs"
     schedule:
       interval: "weekly"
