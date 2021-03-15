@@ -690,6 +690,10 @@ public:
 		return totalSize - (getBody() - reinterpret_cast<char *>(this));
 	}
 
+	[[nodiscard]] size_t getSize()  const{
+		return header.getSize() + sizeof(uint16_t);
+	}
+
 	[[nodiscard]] RTP &getHeader() { return header; }
 
 	size_t normalizePacket(size_t totalSize, SSRC originalSSRC, uint8_t originalPayloadType) {
@@ -697,9 +701,8 @@ public:
 		header.setSsrc(originalSSRC);
 		header.setPayloadType(originalPayloadType);
 		// TODO, the -12 is the size of the header (which is variable!)
-		memmove(header.getBody(), header.getBody() + sizeof(uint16_t),
-		        totalSize - 12 - sizeof(uint16_t));
-		return totalSize - sizeof(uint16_t);
+		memmove(header.getBody(), getBody(), totalSize - getSize());
+		return totalSize - getSize();
 	}
 };
 
