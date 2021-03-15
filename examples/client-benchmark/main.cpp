@@ -227,10 +227,9 @@ int main(int argc, char **argv) try {
 
 	for (int i = 1; i <= duration; ++i) {
 		this_thread::sleep_for(1000ms);
-		cout << "#" << i << " Received: " << receivedSize.load() / 1024 << " KB/s"
-		     << "   Sent: " << sentSize.load() / 1024 << " KB/s"
+		cout << "#" << i << " Received: " << receivedSize.exchange(0) / 1024 << " KB/s"
+		     << "   Sent: " << sentSize.exchange(0) / 1024 << " KB/s"
 		     << "   BufferSize: " << dc->bufferedAmount() << endl;
-		receivedSize = sentSize = 0;
 		printStatCounter++;
 
 		if (printStatCounter % 5 == 0) {
