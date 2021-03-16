@@ -696,13 +696,16 @@ public:
 
 	[[nodiscard]] RTP &getHeader() { return header; }
 
+	/*
+	 * Returns the new size of the packet
+	 */
 	size_t normalizePacket(size_t totalSize, SSRC originalSSRC, uint8_t originalPayloadType) {
 		header.setSeqNumber(getOriginalSeqNo());
 		header.setSsrc(originalSSRC);
 		header.setPayloadType(originalPayloadType);
 		// TODO, the -12 is the size of the header (which is variable!)
 		memmove(header.getBody(), getBody(), totalSize - getSize());
-		return totalSize - getSize();
+		return totalSize - 2;
 	}
 };
 
