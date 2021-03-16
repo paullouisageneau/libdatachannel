@@ -840,14 +840,6 @@ void Description::Media::addRTPMap(const Description::Media::RTPMap &map) {
 
 std::vector<uint32_t> Description::Media::getSSRCs() {
 	return mSsrcs;
-	std::vector<uint32_t> vec;
-	for (auto &val : mAttributes) {
-		PLOG_DEBUG << val;
-		if (val.find("ssrc:") == 0) {
-			vec.emplace_back(std::stoul(string(val.substr(5, val.find(" ")))));
-		}
-	}
-	return vec;
 }
 
 std::map<int, Description::Media::RTPMap>::iterator Description::Media::beginMaps() {
