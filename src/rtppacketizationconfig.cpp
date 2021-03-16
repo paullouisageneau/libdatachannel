@@ -24,8 +24,8 @@ namespace rtc {
 
 RtpPacketizationConfig::RtpPacketizationConfig(SSRC ssrc, string cname, uint8_t payloadType,
                                                uint32_t clockRate,
-                                               std::optional<uint16_t> sequenceNumber,
-                                               std::optional<uint32_t> timestamp)
+                                               optional<uint16_t> sequenceNumber,
+                                               optional<uint32_t> timestamp)
     : ssrc(ssrc), cname(cname), payloadType(payloadType), clockRate(clockRate) {
 	assert(clockRate > 0);
 	srand((unsigned)time(NULL));
@@ -43,7 +43,7 @@ RtpPacketizationConfig::RtpPacketizationConfig(SSRC ssrc, string cname, uint8_t 
 }
 
 void RtpPacketizationConfig::setStartTime(double startTime_s, EpochStart epochStart,
-                                          std::optional<uint32_t> startTimestamp) {
+                                          optional<uint32_t> startTimestamp) {
 	this->_startTime_s = startTime_s + static_cast<unsigned long long>(epochStart);
 	if (startTimestamp.has_value()) {
 		this->_startTimestamp = startTimestamp.value();

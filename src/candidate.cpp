@@ -17,6 +17,7 @@
  */
 
 #include "candidate.hpp"
+#include "globals.hpp"
 
 #include <algorithm>
 #include <array>
@@ -99,7 +100,7 @@ void Candidate::parse(string candidate) {
 
 	// See RFC 8445 for format
 	std::istringstream iss(candidate);
-	string transport, typ_, type;
+	string typ_;
 	if (!(iss >> mFoundation >> mComponent >> mTransportString >> mPriority &&
 	      iss >> mNode >> mService >> typ_ >> mTypeString && typ_ == "typ"))
 		throw std::invalid_argument("Invalid candidate format");
@@ -108,14 +109,14 @@ void Candidate::parse(string candidate) {
 	trim_begin(mTail);
 	trim_end(mTail);
 
-	if (auto it = TypeMap.find(type); it != TypeMap.end())
+	if (auto it = TypeMap.find(mTypeString); it != TypeMap.end())
 		mType = it->second;
 	else
 		mType = Type::Unknown;
 
-	if (transport == "UDP" || transport == "udp") {
+	if (mTransportString == "UDP" || mTransportString == "udp") {
 		mTransportType = TransportType::Udp;
-	} else if (transport == "TCP" || transport == "tcp") {
+	} else if (mTransportString == "TCP" || mTransportString == "tcp") {
 		// Peek tail to find TCP type
 		std::istringstream tiss(mTail);
 		string tcptype_, tcptype;
@@ -167,9 +168,12 @@ bool Candidate::resolve(ResolveMode mode) {
 				if (getnameinfo(p->ai_addr, socklen_t(p->ai_addrlen), nodebuffer,
 				                MAX_NUMERICNODE_LEN, servbuffer, MAX_NUMERICSERV_LEN,
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-
+					try {
+						mPort = uint16_t(std::stoul(servbuffer));
+					} catch (...) {
+						return false;
+					}
 					mAddress = nodebuffer;
-					mPort = uint16_t(std::stoul(servbuffer));
 					mFamily = p->ai_family == AF_INET6 ? Family::Ipv6 : Family::Ipv4;
 					PLOG_VERBOSE << "Resolved candidate: " << mAddress << ' ' << mPort;
 					break;
@@ -216,7 +220,9 @@ Candidate::operator string() const {
 }
 
 bool Candidate::operator==(const Candidate &other) const {
-	return mFoundation == other.mFoundation;
+	return (mFoundation == other.mFoundation &&
+	        mService == other.mService &&
+	        mNode == other.mNode);
 }
 
 bool Candidate::operator!=(const Candidate &other) const {
@@ -227,11 +233,11 @@ bool Candidate::isResolved() const { return mFamily != Family::Unresolved; }
 
 Candidate::Family Candidate::family() const { return mFamily; }
 
-std::optional<string> Candidate::address() const {
+optional<string> Candidate::address() const {
 	return isResolved() ? std::make_optional(mAddress) : nullopt;
 }
 
-std::optional<uint16_t> Candidate::port() const {
+optional<uint16_t> Candidate::port() const {
 	return isResolved() ? std::make_optional(mPort) : nullopt;
 }
 

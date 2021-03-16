@@ -23,50 +23,16 @@
 
 #include "h264rtppacketizer.hpp"
 #include "nalunit.hpp"
-#include "rtcphandler.hpp"
-#include "rtcpsenderreporter.hpp"
+#include "mediachainablehandler.hpp"
 
 namespace rtc {
 
 /// Handler for H264 packetization
-class RTC_CPP_EXPORT H264PacketizationHandler : public RtcpHandler, public RtcpSenderReporter {
-	/// RTP packetizer for H264
-	const std::shared_ptr<H264RtpPacketizer> packetizer;
-
-	const uint16_t maximumFragmentSize;
-
-	std::shared_ptr<NalUnits> splitMessage(message_ptr message);
-
+class RTC_CPP_EXPORT H264PacketizationHandler : public MediaChainableHandler {
 public:
-	/// Nalunit separator
-	enum class Separator {
-		LongStartSequence,  // 0x00, 0x00, 0x00, 0x01
-		ShortStartSequence, // 0x00, 0x00, 0x01
-		StartSequence,      // LongStartSequence or ShortStartSequence
-		Length              // first 4 bytes is nal unit length
-	};
-
 	/// Construct handler for H264 packetization.
-	/// @param separator Nal units separator
 	/// @param packetizer RTP packetizer for h264
-	H264PacketizationHandler(Separator separator, std::shared_ptr<H264RtpPacketizer> packetizer,
-	                         uint16_t maximumFragmentSize = NalUnits::defaultMaximumFragmentSize);
-
-	/// Returns message unchanged
-	/// @param ptr message
-	message_ptr incoming(message_ptr ptr) override;
-
-	/// Returns packetized message if message type is binary
-	/// @note NAL units in `ptr` message must be separated by `separator` given in constructor
-	/// @note If message generates multiple rtp packets, all but last are send using
-	/// `outgoingCallback`. It is your responsibility to send last packet.
-	/// @param ptr message containing all NAL units for current timestamp (one sample)
-	/// @return last packet
-	message_ptr outgoing(message_ptr ptr) override;
-
-private:
-	/// Separator
-	const Separator separator;
+	H264PacketizationHandler(shared_ptr<H264RtpPacketizer> packetizer);
 };
 
 } // namespace rtc

@@ -17,26 +17,25 @@
  */
 
 #include "init.hpp"
+#include "globals.hpp"
 
-#include "certificate.hpp"
-#include "dtlstransport.hpp"
-#include "sctptransport.hpp"
-#include "threadpool.hpp"
-#include "tls.hpp"
+#include "impl/certificate.hpp"
+#include "impl/dtlstransport.hpp"
+#include "impl/sctptransport.hpp"
+#include "impl/threadpool.hpp"
+#include "impl/tls.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
-#include "tlstransport.hpp"
+#include "impl/tlstransport.hpp"
 #endif
 
 #if RTC_ENABLE_MEDIA
-#include "dtlssrtptransport.hpp"
+#include "impl/dtlssrtptransport.hpp"
 #endif
 
 #ifdef _WIN32
 #include <winsock2.h>
 #endif
-
-using std::shared_ptr;
 
 namespace rtc {
 
@@ -51,7 +50,7 @@ void doInit() {
 		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
 #endif
 
-	ThreadPool::Instance().spawn(THREADPOOL_SIZE);
+	impl::ThreadPool::Instance().spawn(THREADPOOL_SIZE);
 
 #if USE_GNUTLS
 	// Nothing to do
@@ -59,29 +58,29 @@ void doInit() {
 	openssl::init();
 #endif
 
-	SctpTransport::Init();
-	DtlsTransport::Init();
+	impl::SctpTransport::Init();
+	impl::DtlsTransport::Init();
 #if RTC_ENABLE_WEBSOCKET
-	TlsTransport::Init();
+	impl::TlsTransport::Init();
 #endif
 #if RTC_ENABLE_MEDIA
-	DtlsSrtpTransport::Init();
+	impl::DtlsSrtpTransport::Init();
 #endif
 }
 
 void doCleanup() {
 	PLOG_DEBUG << "Global cleanup";
 
-	ThreadPool::Instance().join();
-	CleanupCertificateCache();
+	impl::ThreadPool::Instance().join();
+	impl::CleanupCertificateCache();
 
-	SctpTransport::Cleanup();
-	DtlsTransport::Cleanup();
+	impl::SctpTransport::Cleanup();
+	impl::DtlsTransport::Cleanup();
 #if RTC_ENABLE_WEBSOCKET
-	TlsTransport::Cleanup();
+	impl::TlsTransport::Cleanup();
 #endif
 #if RTC_ENABLE_MEDIA
-	DtlsSrtpTransport::Cleanup();
+	impl::DtlsSrtpTransport::Cleanup();
 #endif
 
 #ifdef _WIN32
@@ -91,8 +90,8 @@ void doCleanup() {
 
 } // namespace
 
-std::weak_ptr<void> Init::Weak;
-std::shared_ptr<void> *Init::Global = nullptr;
+weak_ptr<void> Init::Weak;
+shared_ptr<void> *Init::Global = nullptr;
 bool Init::Initialized = false;
 std::recursive_mutex Init::Mutex;
 
@@ -114,7 +113,7 @@ void Init::Preload() {
 		Global = new shared_ptr<void>(token);
 
 	PLOG_DEBUG << "Preloading certificate";
-	make_certificate().wait();
+	impl::make_certificate().wait();
 }
 
 void Init::Cleanup() {

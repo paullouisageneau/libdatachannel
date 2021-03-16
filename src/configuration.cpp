@@ -32,7 +32,7 @@ IceServer::IceServer(const string &url) {
 	if (!std::regex_match(url, m, r) || m[10].length() == 0)
 		throw std::invalid_argument("Invalid ICE server URL: " + url);
 
-	std::vector<std::optional<string>> opt(m.size());
+	std::vector<optional<string>> opt(m.size());
 	std::transform(m.begin(), m.end(), opt.begin(), [](const auto &sm) {
 		return sm.length() > 0 ? std::make_optional(string(sm)) : nullopt;
 	});
@@ -60,32 +60,51 @@ IceServer::IceServer(const string &url) {
 
 	username = opt[6].value_or("");
 	password = opt[8].value_or("");
-	hostname = opt[10].value();
-	service = opt[12].value_or(relayType == RelayType::TurnTls ? "5349" : "3478");
 
+	hostname = opt[10].value();
 	while (!hostname.empty() && hostname.front() == '[')
 		hostname.erase(hostname.begin());
 	while (!hostname.empty() && hostname.back() == ']')
 		hostname.pop_back();
+
+	string service = opt[12].value_or(relayType == RelayType::TurnTls ? "5349" : "3478");
+	try {
+		port = uint16_t(std::stoul(service));
+	} catch (...) {
+		throw std::invalid_argument("Invalid ICE server port in URL: " + service);
+	}
 }
 
 IceServer::IceServer(string hostname_, uint16_t port_)
-    : IceServer(std::move(hostname_), std::to_string(port_)) {}
+    : hostname(std::move(hostname_)), port(port_), type(Type::Stun) {}
 
 IceServer::IceServer(string hostname_, string service_)
-    : hostname(std::move(hostname_)), service(std::move(service_)), type(Type::Stun) {}
+    : hostname(std::move(hostname_)), type(Type::Stun) {
+	try {
+		port = uint16_t(std::stoul(service_));
+	} catch (...) {
+		throw std::invalid_argument("Invalid ICE server port: " + service_);
+	}
+}
 
 IceServer::IceServer(string hostname_, uint16_t port_, string username_, string password_,
                      RelayType relayType_)
-    : IceServer(hostname_, std::to_string(port_), std::move(username_), std::move(password_),
-                relayType_) {}
+    : hostname(std::move(hostname_)), port(port_), type(Type::Turn), username(std::move(username_)),
+      password(std::move(password_)), relayType(relayType_) {}
 
 IceServer::IceServer(string hostname_, string service_, string username_, string password_,
                      RelayType relayType_)
-    : hostname(std::move(hostname_)), service(std::move(service_)), type(Type::Turn),
-      username(std::move(username_)), password(std::move(password_)), relayType(relayType_) {}
+    : hostname(std::move(hostname_)), type(Type::Turn), username(std::move(username_)),
+      password(std::move(password_)), relayType(relayType_) {
+	try {
+		port = uint16_t(std::stoul(service_));
+	} catch (...) {
+		throw std::invalid_argument("Invalid ICE server port: " + service_);
+	}
+}
 
-ProxyServer::ProxyServer(Type type_, string ip_, uint16_t port_, string username_, string password_)
-    : type(type_), ip(ip_), port(port_), username(username_), password(password_) {}
+ProxyServer::ProxyServer(Type type_, string hostname_, uint16_t port_, string username_,
+                         string password_)
+    : type(type_), hostname(hostname_), port(port_), username(username_), password(password_) {}
 
 } // namespace rtc

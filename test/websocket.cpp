@@ -36,24 +36,20 @@ void test_websocket() {
 
 	const string myMessage = "Hello world from libdatachannel";
 
-	auto ws = std::make_shared<WebSocket>();
+	WebSocket ws;
 
 	// Certificate verification can be disabled
-	// auto ws = std::make_shared<WebSocket>(WebSocket::Configuration{.disableTlsVerification =
-	// true});
+	// WebSocket ws(WebSocket::Configuration{.disableTlsVerification = true});
 
-	ws->onOpen([wws = make_weak_ptr(ws), &myMessage]() {
-		auto ws = wws.lock();
-		if (!ws)
-			return;
+	ws.onOpen([&ws, &myMessage]() {
 		cout << "WebSocket: Open" << endl;
-		ws->send(myMessage);
+		ws.send(myMessage);
 	});
 
-	ws->onClosed([]() { cout << "WebSocket: Closed" << endl; });
+	ws.onClosed([]() { cout << "WebSocket: Closed" << endl; });
 
 	std::atomic<bool> received = false;
-	ws->onMessage([&received, &myMessage](variant<binary, string> message) {
+	ws.onMessage([&received, &myMessage](variant<binary, string> message) {
 		if (holds_alternative<string>(message)) {
 			string str = std::move(get<string>(message));
 			if ((received = (str == myMessage)))
@@ -63,23 +59,19 @@ void test_websocket() {
 		}
 	});
 
-	ws->open("wss://echo.websocket.org:443/");
+	ws.open("wss://echo.websocket.org:443/");
 
 	int attempts = 10;
-	while ((!ws->isOpen() || !received) && attempts--)
+	while ((!ws.isOpen() || !received) && attempts--)
 		this_thread::sleep_for(1s);
 
-	if (!ws->isOpen())
+	if (!ws.isOpen())
 		throw runtime_error("WebSocket is not open");
 
 	if (!received)
 		throw runtime_error("Expected message not received");
 
-	ws->close();
-	this_thread::sleep_for(1s);
-
-	// You may call rtc::Cleanup() when finished to free static resources
-	rtc::Cleanup();
+	ws.close();
 	this_thread::sleep_for(1s);
 
 	cout << "Success" << endl;

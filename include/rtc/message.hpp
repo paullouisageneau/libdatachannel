@@ -19,13 +19,10 @@
 #ifndef RTC_MESSAGE_H
 #define RTC_MESSAGE_H
 
-#include "include.hpp"
+#include "common.hpp"
 #include "reliability.hpp"
 
 #include <functional>
-#include <memory>
-#include <optional>
-#include <variant>
 
 namespace rtc {
 
@@ -44,12 +41,12 @@ struct RTC_CPP_EXPORT Message : binary {
 	Type type;
 	unsigned int stream = 0; // Stream id (SCTP stream or SSRC)
 	unsigned int dscp = 0;   // Differentiated Services Code Point
-	std::shared_ptr<Reliability> reliability;
+	shared_ptr<Reliability> reliability;
 };
 
-using message_ptr = std::shared_ptr<Message>;
+using message_ptr = shared_ptr<Message>;
 using message_callback = std::function<void(message_ptr message)>;
-using message_variant = std::variant<binary, string>;
+using message_variant = variant<binary, string>;
 
 inline size_t message_size_func(const message_ptr &m) {
 	return m->type == Message::Binary || m->type == Message::String ? m->size() : 0;
@@ -58,7 +55,7 @@ inline size_t message_size_func(const message_ptr &m) {
 template <typename Iterator>
 message_ptr make_message(Iterator begin, Iterator end, Message::Type type = Message::Binary,
                          unsigned int stream = 0,
-                         std::shared_ptr<Reliability> reliability = nullptr) {
+                         shared_ptr<Reliability> reliability = nullptr) {
 	auto message = std::make_shared<Message>(begin, end, type);
 	message->stream = stream;
 	message->reliability = reliability;
@@ -67,11 +64,11 @@ message_ptr make_message(Iterator begin, Iterator end, Message::Type type = Mess
 
 RTC_CPP_EXPORT message_ptr make_message(size_t size, Message::Type type = Message::Binary,
                                         unsigned int stream = 0,
-                                        std::shared_ptr<Reliability> reliability = nullptr);
+                                        shared_ptr<Reliability> reliability = nullptr);
 
 RTC_CPP_EXPORT message_ptr make_message(binary &&data, Message::Type type = Message::Binary,
                                         unsigned int stream = 0,
-                                        std::shared_ptr<Reliability> reliability = nullptr);
+                                        shared_ptr<Reliability> reliability = nullptr);
 
 RTC_CPP_EXPORT message_ptr make_message(message_variant data);
 

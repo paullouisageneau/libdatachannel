@@ -16,19 +16,32 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+// C API
+#include "rtc.h"
+
 // C++ API
-#include "include.hpp"
+#include "common.hpp"
 #include "init.hpp" // for rtc::Cleanup()
 #include "log.hpp"
 //
 #include "datachannel.hpp"
+#include "track.hpp"
 #include "peerconnection.hpp"
+
+#if RTC_ENABLE_WEBSOCKET
+
+// WebSocket
 #include "websocket.hpp"
+
+#endif // RTC_ENABLE_WEBSOCKET
 
 #if RTC_ENABLE_MEDIA
 
-// RTCP handling
+// Media handling
 #include "rtcpreceivingsession.hpp"
+#include "mediachainablehandler.hpp"
+#include "rtcpsrreporter.hpp"
+#include "rtcpnackresponder.hpp"
 
 // Opus/h264 streaming
 #include "h264packetizationhandler.hpp"
@@ -36,5 +49,3 @@
 
 #endif // RTC_ENABLE_MEDIA
 
-// C API
-#include "rtc.h"

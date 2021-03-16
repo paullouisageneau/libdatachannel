@@ -1,0 +1,23 @@
+{
+  "name": "libdatachannel-signaling-server",
+  "version": "0.1.0",
+  "description": "Signaling server example for libdatachannel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node signaling-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paullouisageneau/libdatachannel.git"
+  },
+  "author": "Paul-Louis Ageneau",
+  "license": "GPL-2.0",
+  "bugs": {
+    "url": "https://github.com/paullouisageneau/libdatachannel/issues"
+  },
+  "homepage": "https://github.com/paullouisageneau/libdatachannel#readme",
+  "dependencies": {
+    "websocket": "^1.0.33"
+  }
+}

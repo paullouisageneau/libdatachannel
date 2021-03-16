@@ -10,6 +10,7 @@ LDFLAGS=-pthread
 LIBS=
 LOCALLIBS=libusrsctp.a
 USRSCTP_DIR=deps/usrsctp
+SRTP_DIR=deps/libsrtp
 JUICE_DIR=deps/libjuice
 PLOG_DIR=deps/plog
 
@@ -38,14 +39,21 @@ ifneq ($(USE_GNUTLS), 0)
 endif
 endif
 
-USE_SRTP ?= 0
-ifneq ($(USE_SRTP), 0)
+NO_MEDIA ?= 0
+USE_SYSTEM_SRTP ?= 0
+ifeq ($(NO_MEDIA), 0)
         CPPFLAGS+=-DRTC_ENABLE_MEDIA=1
+ifneq ($(USE_SYSTEM_SRTP), 0)
+        CPPFLAGS+=-DRTC_SYSTEM_SRTP=1
         LIBS+=srtp
+else
+        CPPFLAGS+=-DRTC_SYSTEM_SRTP=0
+		INCLUDES+=-I$(SRTP_DIR)/include
+        LOCALLIBS+=libsrtp2.a
+endif
 else
         CPPFLAGS+=-DRTC_ENABLE_MEDIA=0
 endif
-
 
 NO_WEBSOCKET ?= 0
 ifeq ($(NO_WEBSOCKET), 0)
@@ -54,8 +62,8 @@ else
         CPPFLAGS+=-DRTC_ENABLE_WEBSOCKET=0
 endif
 
-INCLUDES+=$(shell pkg-config --cflags $(LIBS))
-LDLIBS+=$(LOCALLIBS) $(shell pkg-config --libs $(LIBS))
+INCLUDES+=$(if $(LIBS),$(shell pkg-config --cflags $(LIBS)),)
+LDLIBS+=$(LOCALLIBS) $(if $(LIBS),$(shell pkg-config --libs $(LIBS)),)
 
 SRCS=$(shell printf "%s " src/*.cpp)
 OBJS=$(subst .cpp,.o,$(SRCS))
@@ -73,7 +81,7 @@ test/%.o: test/%.cpp
 
 -include $(subst .cpp,.d,$(SRCS))
 
-$(NAME).a: $(OBJS)
+$(NAME).a: $(LOCALLIBS) $(OBJS)
 	$(AR) crf $@ $(OBJS)
 
 $(NAME).so: $(LOCALLIBS) $(OBJS)
@@ -97,14 +105,21 @@ dist-clean: clean
 	-$(RM) src/*~
 	-$(RM) test/*~
 	-cd $(USRSCTP_DIR) && make clean
+	-cd $(SRTP_DIR) && make clean
 	-cd $(JUICE_DIR) && make clean
 
 libusrsctp.a:
 	cd $(USRSCTP_DIR) && \
 		./bootstrap && \
-		./configure --enable-static --disable-debug CFLAGS="$(CPPFLAGS) -Wno-error=format-truncation" && \
+		./configure --enable-static --disable-debug CFLAGS="-fPIC" && \
 		make
 	cp $(USRSCTP_DIR)/usrsctplib/.libs/libusrsctp.a .
+
+libsrtp2.a:
+	cd $(SRTP_DIR) && \
+		./configure && \
+		make
+	cp $(SRTP_DIR)/libsrtp2.a .
 
 libjuice.a:
 ifneq ($(USE_GNUTLS), 0)

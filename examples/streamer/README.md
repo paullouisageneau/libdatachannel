@@ -2,19 +2,19 @@
 
 This example streams H264 and opus<sup id="a1">[1](#f1)</sup> samples to the connected browser client.
 
-## Starting signaling server
+## Start a signaling server
 
 ```sh
 $ python3 ../signaling-server-python/signaling-server.py
 ```
 
-## Starting php
+## Start a web server
 
 ```sh
-$ php -S 127.0.0.1:8080
+$ python3 -m http.server --bind 127.0.0.1 8080
 ```
 
-Now you can open demo at [127.0.0.1:8080](127.0.0.1:8080).
+Now you can open the demo at [http://127.0.0.1:8080](http://127.0.0.1:8080).
 
 ## Arguments
 

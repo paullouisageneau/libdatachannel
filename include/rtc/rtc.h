@@ -39,8 +39,15 @@ extern "C" {
 #define RTC_ENABLE_WEBSOCKET 1
 #endif
 
+#ifndef RTC_ENABLE_MEDIA
+#define RTC_ENABLE_MEDIA 1
+#endif
+
+#define RTC_DEFAULT_MTU 1280 // IPv6 minimum guaranteed MTU
+
 #if RTC_ENABLE_MEDIA
-#define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE ((uint16_t)1400)
+#define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE ((uint16_t)(RTC_DEFAULT_MTU - 12 - 8 - 40)) // SRTP/UDP/IPv6
+#define RTC_DEFAULT_MAXIMUM_PACKET_COUNT_FOR_NACK_CACHE ((unsigned)512)
 #endif
 
 #include <stdbool.h>
@@ -85,20 +92,20 @@ typedef enum { // Don't change, it must match plog severity
 
 typedef enum {
     // video
-    RTC_CODEC_H264,
-    RTC_CODEC_VP8,
-    RTC_CODEC_VP9,
+    RTC_CODEC_H264 = 0,
+    RTC_CODEC_VP8 = 1,
+    RTC_CODEC_VP9 = 2,
 
     // audio
-    RTC_CODEC_OPUS
+    RTC_CODEC_OPUS = 128
 } rtcCodec;
 
 typedef enum {
-    RTC_DIRECTION_UNKNOWN,
-    RTC_DIRECTION_SENDONLY,
-    RTC_DIRECTION_RECVONLY,
-    RTC_DIRECTION_SENDRECV,
-    RTC_DIRECTION_INACTIVE
+    RTC_DIRECTION_UNKNOWN = 0,
+    RTC_DIRECTION_SENDONLY = 1,
+    RTC_DIRECTION_RECVONLY = 2,
+    RTC_DIRECTION_SENDRECV = 3,
+    RTC_DIRECTION_INACTIVE = 4
 } rtcDirection;
 
 #endif // RTC_ENABLE_MEDIA
@@ -113,15 +120,17 @@ typedef struct {
 	const char **iceServers;
 	int iceServersCount;
 	bool enableIceTcp;
+	bool disableAutoNegotiation;
 	uint16_t portRangeBegin;
 	uint16_t portRangeEnd;
+	int mtu; // <= 0 means automatic
 } rtcConfiguration;
 
 typedef struct {
 	bool unordered;
 	bool unreliable;
-	unsigned int maxPacketLifeTime; // ignored if reliable
-	unsigned int maxRetransmits;    // ignored if reliable
+	int maxPacketLifeTime; // ignored if reliable
+	int maxRetransmits;    // ignored if reliable
 } rtcReliability;
 
 typedef struct {
@@ -174,6 +183,9 @@ RTC_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
 RTC_EXPORT int rtcGetLocalDescription(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);
 
+RTC_EXPORT int rtcGetLocalDescriptionType(int pc, char *buffer, int size);
+RTC_EXPORT int rtcGetRemoteDescriptionType(int pc, char *buffer, int size);
+
 RTC_EXPORT int rtcGetLocalAddress(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 
@@ -182,10 +194,6 @@ RTC_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, c
 
 // DataChannel
 RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
-RTC_EXPORT int rtcAddDataChannel(int pc, const char *label); // returns dc id
-RTC_EXPORT int rtcAddDataChannelEx(int pc, const char *label,
-                                   const rtcDataChannelInit *init); // returns dc id
-// Equivalent to calling rtcAddDataChannel() and rtcSetLocalDescription()
 RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
 RTC_EXPORT int rtcCreateDataChannelEx(int pc, const char *label,
                                       const rtcDataChannelInit *init); // returns dc id
@@ -215,8 +223,9 @@ RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
 /// @param _direction Direction
 /// @param _name Name (optional)
 /// @param _msid MSID (optional)
+/// @param _trackID Track ID used in MSID (optional)
 /// @returns Track id
-RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid, rtcDirection direction, const char *_name, const char *_msid);
+RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid, rtcDirection direction, const char *_name, const char *_msid, const char *_trackID);
 
 /// Set H264PacketizationHandler for track
 /// @param tr Track id
@@ -239,6 +248,15 @@ RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char 
 /// @param _timestamp Timestamp
 RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t _sequenceNumber, uint32_t _timestamp);
 
+/// Chain RtcpSrReporter to handler chain for given track
+/// @param tr Track id
+int rtcChainRtcpSrReporter(int tr);
+
+/// Chain RtcpNackResponder to handler chain for given track
+/// @param tr Track id
+/// @param maxStoredPacketsCount Maximum stored packet count
+int rtcChainRtcpNackResponder(int tr, unsigned maxStoredPacketsCount);
+
 /// Set start time for RTP stream
 /// @param startTime_s Start time in seconds
 /// @param timeIntervalSince1970 Set true if `startTime_s` is time interval since 1970, false if `startTime_s` is time interval since 1900
@@ -248,7 +266,6 @@ int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeInterva
 /// Start stats recording for RTCP Sender Reporter
 /// @param id Track identifier
 int rtcStartRtcpSenderReporterRecording(int id);
-
 
 /// Transform seconds to timestamp using track's clock rate
 /// @param id Track id
@@ -282,9 +299,9 @@ int rtcSetTrackRTPTimestamp(int id, uint32_t timestamp);
 /// @param timestamp Pointer for result
 int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t * timestamp);
 
-/// Set `NeedsToReport` flag in RtcpSenderReporter handler identified by given track id
+/// Set `NeedsToReport` flag in RtcpSrReporter handler identified by given track id
 /// @param id Track id
-int rtcSetNeedsToSendRTCPSR(int id);
+int rtcSetNeedsToSendRtcpSr(int id);
 
 #endif // RTC_ENABLE_MEDIA
 

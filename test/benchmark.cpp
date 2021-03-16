@@ -40,53 +40,43 @@ size_t benchmark(milliseconds duration) {
 
 	Configuration config1;
 	// config1.iceServers.emplace_back("stun:stun.l.google.com:19302");
+	// config1.mtu = 1500;
 
-	auto pc1 = std::make_shared<PeerConnection>(config1);
+	PeerConnection pc1(config1);
 
 	Configuration config2;
 	// config2.iceServers.emplace_back("stun:stun.l.google.com:19302");
+	// config2.mtu = 1500;
 
-	auto pc2 = std::make_shared<PeerConnection>(config2);
+	PeerConnection pc2(config2);
 
-	pc1->onLocalDescription([wpc2 = make_weak_ptr(pc2)](Description sdp) {
-		auto pc2 = wpc2.lock();
-		if (!pc2)
-			return;
+	pc1.onLocalDescription([&pc2](Description sdp) {
 		cout << "Description 1: " << sdp << endl;
-		pc2->setRemoteDescription(std::move(sdp));
+		pc2.setRemoteDescription(std::move(sdp));
 	});
 
-	pc1->onLocalCandidate([wpc2 = make_weak_ptr(pc2)](Candidate candidate) {
-		auto pc2 = wpc2.lock();
-		if (!pc2)
-			return;
+	pc1.onLocalCandidate([&pc2](Candidate candidate) {
 		cout << "Candidate 1: " << candidate << endl;
-		pc2->addRemoteCandidate(std::move(candidate));
+		pc2.addRemoteCandidate(std::move(candidate));
 	});
 
-	pc1->onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
-	pc1->onGatheringStateChange([](PeerConnection::GatheringState state) {
+	pc1.onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
+	pc1.onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "Gathering state 1: " << state << endl;
 	});
 
-	pc2->onLocalDescription([wpc1 = make_weak_ptr(pc1)](Description sdp) {
-		auto pc1 = wpc1.lock();
-		if (!pc1)
-			return;
+	pc2.onLocalDescription([&pc1](Description sdp) {
 		cout << "Description 2: " << sdp << endl;
-		pc1->setRemoteDescription(std::move(sdp));
+		pc1.setRemoteDescription(std::move(sdp));
 	});
 
-	pc2->onLocalCandidate([wpc1 = make_weak_ptr(pc1)](Candidate candidate) {
-		auto pc1 = wpc1.lock();
-		if (!pc1)
-			return;
+	pc2.onLocalCandidate([&pc1](Candidate candidate) {
 		cout << "Candidate 2: " << candidate << endl;
-		pc1->addRemoteCandidate(std::move(candidate));
+		pc1.addRemoteCandidate(std::move(candidate));
 	});
 
-	pc2->onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
-	pc2->onGatheringStateChange([](PeerConnection::GatheringState state) {
+	pc2.onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
+	pc2.onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "Gathering state 2: " << state << endl;
 	});
 
@@ -99,7 +89,7 @@ size_t benchmark(milliseconds duration) {
 	steady_clock::time_point startTime, openTime, receivedTime, endTime;
 
 	shared_ptr<DataChannel> dc2;
-	pc2->onDataChannel([&dc2, &receivedSize, &receivedTime](shared_ptr<DataChannel> dc) {
+	pc2.onDataChannel([&dc2, &receivedSize, &receivedTime](shared_ptr<DataChannel> dc) {
 		dc->onMessage([&receivedTime, &receivedSize](variant<binary, string> message) {
 			if (holds_alternative<binary>(message)) {
 				const auto &bin = get<binary>(message);
@@ -115,7 +105,7 @@ size_t benchmark(milliseconds duration) {
 	});
 
 	startTime = steady_clock::now();
-	auto dc1 = pc1->createDataChannel("benchmark");
+	auto dc1 = pc1.createDataChannel("benchmark");
 
 	dc1->onOpen([wdc1 = make_weak_ptr(dc1), &messageData, &openTime]() {
 		auto dc1 = wdc1.lock();
@@ -125,8 +115,12 @@ size_t benchmark(milliseconds duration) {
 		openTime = steady_clock::now();
 
 		cout << "DataChannel open, sending data..." << endl;
-		while (dc1->bufferedAmount() == 0) {
-			dc1->send(messageData);
+		try {
+			while (dc1->bufferedAmount() == 0) {
+				dc1->send(messageData);
+			}
+		} catch (const std::exception &e) {
+			std::cout << "Send failed: " << e.what() << std::endl;
 		}
 
 		// When sent data is buffered in the DataChannel,
@@ -139,8 +133,12 @@ size_t benchmark(milliseconds duration) {
 			return;
 
 		// Continue sending
-		while (dc1->bufferedAmount() == 0) {
-			dc1->send(messageData);
+		try {
+			while (dc1->isOpen() && dc1->bufferedAmount() == 0) {
+				dc1->send(messageData);
+			}
+		} catch (const std::exception &e) {
+			std::cout << "Send failed: " << e.what() << std::endl;
 		}
 	});
 
@@ -167,8 +165,8 @@ size_t benchmark(milliseconds duration) {
 	cout << "Goodput: " << goodput * 0.001 << " MB/s"
 	     << " (" << goodput * 0.001 * 8 << " Mbit/s)" << endl;
 
-	pc1->close();
-	pc2->close();
+	pc1.close();
+	pc2.close();
 
 	rtc::Cleanup();
 	this_thread::sleep_for(1s);

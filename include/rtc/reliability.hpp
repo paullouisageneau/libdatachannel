@@ -19,10 +19,9 @@
 #ifndef RTC_RELIABILITY_H
 #define RTC_RELIABILITY_H
 
-#include "include.hpp"
+#include "common.hpp"
 
 #include <chrono>
-#include <variant>
 
 namespace rtc {
 
@@ -31,7 +30,7 @@ struct Reliability {
 
 	Type type = Type::Reliable;
 	bool unordered = false;
-	std::variant<int, std::chrono::milliseconds> rexmit = 0;
+	variant<int, std::chrono::milliseconds> rexmit = 0;
 };
 
 } // namespace rtc

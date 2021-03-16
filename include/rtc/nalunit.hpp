@@ -16,12 +16,12 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NalUnit_hpp
-#define NalUnit_hpp
+#ifndef NAL_UNIT_H
+#define NAL_UNIT_H
 
 #if RTC_ENABLE_MEDIA
 
-#include "include.hpp"
+#include "common.hpp"
 
 namespace rtc {
 
@@ -62,11 +62,9 @@ private:
 /// Nal unit
 struct RTC_CPP_EXPORT NalUnit : binary {
 	NalUnit(const NalUnit &unit) = default;
-	NalUnit(size_t size, bool includingHeader = true)
-	    : binary(size + (includingHeader ? 0 : 1)) {}
+	NalUnit(size_t size, bool includingHeader = true) : binary(size + (includingHeader ? 0 : 1)) {}
 
-	template <typename Iterator>
-	NalUnit(Iterator begin_, Iterator end_) : binary(begin_, end_) {}
+	template <typename Iterator> NalUnit(Iterator begin_, Iterator end_) : binary(begin_, end_) {}
 
 	NalUnit(binary &&data) : binary(std::move(data)) {}
 
@@ -103,7 +101,8 @@ struct RTC_CPP_EXPORT NalUnitFragmentA : NalUnit {
 	NalUnitFragmentA(FragmentType type, bool forbiddenBit, uint8_t nri, uint8_t unitType,
 	                 binary data);
 
-	static std::vector<NalUnitFragmentA> fragmentsFrom(NalUnit nalu, uint16_t maximumFragmentSize);
+	static std::vector<shared_ptr<NalUnitFragmentA>>
+	fragmentsFrom(shared_ptr<NalUnit> nalu, uint16_t maximumFragmentSize);
 
 	uint8_t unitType() { return fragmentHeader()->unitType(); }
 
@@ -142,15 +141,15 @@ protected:
 	const uint8_t nal_type_fu_A = 28;
 };
 
-class RTC_CPP_EXPORT NalUnits : public std::vector<NalUnit> {
+class RTC_CPP_EXPORT NalUnits : public std::vector<shared_ptr<NalUnit>> {
 public:
-	static const uint16_t defaultMaximumFragmentSize = 1400;
-	std::vector<binary>
-	generateFragments(uint16_t maximumFragmentSize = NalUnits::defaultMaximumFragmentSize);
+	static const uint16_t defaultMaximumFragmentSize =
+	    uint16_t(RTC_DEFAULT_MTU - 12 - 8 - 40); // SRTP/UDP/IPv6
+	std::vector<shared_ptr<binary>> generateFragments(uint16_t maximumFragmentSize);
 };
 
 } // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* NalUnit_hpp */
+#endif /* NAL_UNIT_H */

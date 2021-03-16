@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2019-2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,19 +19,21 @@
 #ifndef RTC_CHANNEL_H
 #define RTC_CHANNEL_H
 
-#include "include.hpp"
+#include "common.hpp"
 #include "message.hpp"
 
 #include <atomic>
 #include <functional>
-#include <variant>
 
 namespace rtc {
 
-class RTC_CPP_EXPORT Channel {
+namespace impl {
+struct Channel;
+}
+
+class RTC_CPP_EXPORT Channel : private CheshireCat<impl::Channel> {
 public:
-	Channel() = default;
-	virtual ~Channel() = default;
+	virtual ~Channel();
 
 	virtual void close() = 0;
 	virtual bool send(message_variant data) = 0; // returns false if buffered
@@ -54,30 +56,13 @@ public:
 	void setBufferedAmountLowThreshold(size_t amount);
 
 	// Extended API
-	virtual std::optional<message_variant> receive() = 0; // only if onMessage unset
-	virtual std::optional<message_variant> peek() = 0;    // only if onMessage unset
-	virtual size_t availableAmount() const;               // total size available to receive
+	optional<message_variant> receive(); // only if onMessage unset
+	optional<message_variant> peek();    // only if onMessage unset
+	size_t availableAmount() const;           // total size available to receive
 	void onAvailable(std::function<void()> callback);
 
 protected:
-	virtual void triggerOpen();
-	virtual void triggerClosed();
-	virtual void triggerError(string error);
-	virtual void triggerAvailable(size_t count);
-	virtual void triggerBufferedAmount(size_t amount);
-
-	void resetCallbacks();
-
-private:
-	synchronized_callback<> mOpenCallback;
-	synchronized_callback<> mClosedCallback;
-	synchronized_callback<string> mErrorCallback;
-	synchronized_callback<message_variant> mMessageCallback;
-	synchronized_callback<> mAvailableCallback;
-	synchronized_callback<> mBufferedAmountLowCallback;
-
-	std::atomic<size_t> mBufferedAmount = 0;
-	std::atomic<size_t> mBufferedAmountLowThreshold = 0;
+	Channel(impl_ptr<impl::Channel> impl);
 };
 
 } // namespace rtc

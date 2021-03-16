@@ -55,7 +55,7 @@ public:
 	/// @param startTimestamp Corresponding timestamp for given start time (current timestamp will
 	/// be used if value is nullopt)
 	void setStartTime(double startTime_s, EpochStart epochStart,
-	                  std::optional<uint32_t> startTimestamp = std::nullopt);
+	                  optional<uint32_t> startTimestamp = std::nullopt);
 
 	/// Construct RTP configuration used in packetization process
 	/// @param ssrc SSRC of source
@@ -66,8 +66,8 @@ public:
 	/// nullopt)
 	/// @param timestamp Initial timastamp of RTP packets (random number is choosed if nullopt)
 	RtpPacketizationConfig(SSRC ssrc, std::string cname, uint8_t payloadType, uint32_t clockRate,
-	                       std::optional<uint16_t> sequenceNumber = std::nullopt,
-	                       std::optional<uint32_t> timestamp = std::nullopt);
+	                       optional<uint16_t> sequenceNumber = std::nullopt,
+	                       optional<uint32_t> timestamp = std::nullopt);
 
 	/// Convert timestamp to seconds
 	/// @param timestamp Timestamp

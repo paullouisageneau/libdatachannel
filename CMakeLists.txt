@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
 project(libdatachannel
-	VERSION 0.10.5
+	VERSION 0.11.10
 	LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "WebRTC Data Channels Library")
 
@@ -46,43 +46,30 @@ endif()
 
 set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/candidate.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/certificate.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/channel.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/configuration.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/datachannel.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/dtlssrtptransport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/dtlstransport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/icetransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/init.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/log.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/message.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/peerconnection.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/logcounter.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpreceivingsession.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/sctptransport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/threadpool.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/tls.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/track.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/processor.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/websocket.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizationconfig.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsenderreporter.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsrreporter.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/opusrtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/opuspacketizationhandler.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h264rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/nalunit.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h264packetizationhandler.cpp
-)
-
-set(LIBDATACHANNEL_WEBSOCKET_SOURCES
-	${CMAKE_CURRENT_SOURCE_DIR}/src/base64.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/tcptransport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/tlstransport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/verifiedtlstransport.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/websocket.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/wstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/mediachainablehandler.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/mediahandlerelement.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/mediahandlerrootelement.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
 )
 
 set(LIBDATACHANNEL_HEADERS
@@ -92,14 +79,13 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/configuration.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/datachannel.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/description.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcphandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandler.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpreceivingsession.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/include.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/common.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/init.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/log.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/message.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/peerconnection.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/queue.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/reliability.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.h
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.hpp
@@ -107,13 +93,62 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/track.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocket.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizationconfig.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpsenderreportable.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpsrreporter.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/opusrtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/opuspacketizationhandler.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/nalunit.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264packetizationhandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediachainablehandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandlerelement.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandlerrootelement.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
+)
+
+set(LIBDATACHANNEL_IMPL_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/certificate.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/channel.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/datachannel.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlssrtptransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/icetransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/peerconnection.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/logcounter.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sctptransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/threadpool.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tls.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/track.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/base64.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcptransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tlstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/verifiedtlstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocket.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wstransport.cpp
+)
+
+set(LIBDATACHANNEL_IMPL_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/certificate.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/channel.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/datachannel.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlssrtptransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlstransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/icetransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/peerconnection.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/queue.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/logcounter.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sctptransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/threadpool.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tls.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/track.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/base64.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcptransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tlstransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/verifiedtlstransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocket.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wstransport.hpp
 )
 
 set(TESTS_SOURCES
@@ -125,6 +160,26 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_track.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/websocket.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
+)
+
+set(TESTS_UWP_RESOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/Logo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/package.appxManifest
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/SmallLogo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/SmallLogo44x44.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/SplashScreen.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/StoreLogo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/Windows_TemporaryKey.pfx
+)
+
+set(BENCHMARK_UWP_RESOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/Logo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/package.appxManifest
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/SmallLogo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/SmallLogo44x44.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/SplashScreen.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/StoreLogo.png
+	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/Windows_TemporaryKey.pfx
 )
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -145,23 +200,16 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 endif()
 add_library(Usrsctp::Usrsctp ALIAS usrsctp)
 
-if (NO_WEBSOCKET)
-	add_library(datachannel SHARED
-		${LIBDATACHANNEL_SOURCES})
-	add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
-		${LIBDATACHANNEL_SOURCES})
-	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=0)
-	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=0)
-else()
-	add_library(datachannel SHARED
-		${LIBDATACHANNEL_SOURCES}
-		${LIBDATACHANNEL_WEBSOCKET_SOURCES})
-	add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
-		${LIBDATACHANNEL_SOURCES}
-		${LIBDATACHANNEL_WEBSOCKET_SOURCES})
-	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=1)
-	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=1)
-endif()
+add_library(datachannel SHARED
+	${LIBDATACHANNEL_SOURCES}
+	${LIBDATACHANNEL_HEADERS}
+	${LIBDATACHANNEL_IMPL_SOURCES}
+	${LIBDATACHANNEL_IMPL_HEADERS})
+add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
+	${LIBDATACHANNEL_SOURCES}
+	${LIBDATACHANNEL_HEADERS}
+	${LIBDATACHANNEL_IMPL_SOURCES}
+	${LIBDATACHANNEL_IMPL_HEADERS})
 
 set_target_properties(datachannel PROPERTIES
 	VERSION ${PROJECT_VERSION}
@@ -185,6 +233,14 @@ target_link_libraries(datachannel-static PRIVATE Usrsctp::Usrsctp)
 if(WIN32)
 	target_link_libraries(datachannel PUBLIC ws2_32) # winsock2
 	target_link_libraries(datachannel-static PUBLIC ws2_32) # winsock2
+endif()
+
+if (NO_WEBSOCKET)
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=0)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=0)
+else()
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=1)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=1)
 endif()
 
 if(NO_MEDIA)
@@ -284,24 +340,30 @@ endif()
 
 # Tests
 if(NOT NO_TESTS)
-	add_executable(datachannel-tests ${TESTS_SOURCES})
+	if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+		# Add resource files needed for UWP apps.
+		add_executable(datachannel-tests ${TESTS_SOURCES} ${TESTS_UWP_RESOURCES})
+	else()
+		add_executable(datachannel-tests ${TESTS_SOURCES})
+	endif()
 	set_target_properties(datachannel-tests PROPERTIES
 		VERSION ${PROJECT_VERSION}
 		CXX_STANDARD 17)
-	if(NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore") # Prevent a bug in manifest generation for UWP
-		set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
-	endif()
+	set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
 	target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_link_libraries(datachannel-tests datachannel)
 
 	# Benchmark
-	add_executable(datachannel-benchmark test/benchmark.cpp)
+	if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+		# Add resource files needed for UWP apps.
+		add_executable(datachannel-benchmark test/benchmark.cpp ${BENCHMARK_UWP_RESOURCES})
+	else()
+		add_executable(datachannel-benchmark test/benchmark.cpp)
+	endif()
 	set_target_properties(datachannel-benchmark PROPERTIES
 		VERSION ${PROJECT_VERSION}
 		CXX_STANDARD 17)
-	if(NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore") # Prevent a bug in manifest generation for UWP
-		set_target_properties(datachannel-benchmark PROPERTIES OUTPUT_NAME benchmark)
-	endif()
+	set_target_properties(datachannel-benchmark PROPERTIES OUTPUT_NAME benchmark)
 	target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
 	target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_link_libraries(datachannel-benchmark datachannel)
