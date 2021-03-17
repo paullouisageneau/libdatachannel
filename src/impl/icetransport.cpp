@@ -437,7 +437,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 				char nodebuffer[MAX_NUMERICNODE_LEN];
 				char servbuffer[MAX_NUMERICSERV_LEN];
 				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
-				                servbuffer, MAX_NUMERICNODE_LEN,
+				                servbuffer, MAX_NUMERICSERV_LEN,
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 					PLOG_INFO << "Using STUN server \"" << server.hostname << ":" << server.port
 					          << "\"";
@@ -484,7 +484,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 				char nodebuffer[MAX_NUMERICNODE_LEN];
 				char servbuffer[MAX_NUMERICSERV_LEN];
 				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
-				                servbuffer, MAX_NUMERICNODE_LEN,
+				                servbuffer, MAX_NUMERICSERV_LEN,
 				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 					PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port
 					          << "\"";
