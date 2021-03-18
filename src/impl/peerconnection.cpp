@@ -355,10 +355,14 @@ void PeerConnection::rollbackLocalDescription() {
 
 bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
 	std::lock_guard lock(mRemoteDescriptionMutex);
-	if (auto expectedFingerprint =
-	        mRemoteDescription ? mRemoteDescription->fingerprint() : nullopt) {
-		return *expectedFingerprint == fingerprint;
+	auto expectedFingerprint = mRemoteDescription ? mRemoteDescription->fingerprint() : nullopt;
+	if (expectedFingerprint && *expectedFingerprint == fingerprint) {
+		PLOG_VERBOSE << "Valid fingerprint \"" << fingerprint << "\"";
+		return true;
 	}
+
+	PLOG_ERROR << "Invalid fingerprint \"" << fingerprint << "\", expected \""
+	           << expectedFingerprint.value_or("[none]") << "\"";
 	return false;
 }
 
@@ -482,16 +486,16 @@ optional<std::string> PeerConnection::getMidFromSsrc(uint32_t ssrc) {
 		if (!mRemoteDescription)
 			return nullopt;
 		for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
-			if (auto found = std::visit(
-			        rtc::overloaded{[&](Description::Application *) -> optional<string> {
-				                        return std::nullopt;
-			                        },
-			                        [&](Description::Media *media) -> optional<string> {
-				                        return media->hasSSRC(ssrc)
-				                                   ? std::make_optional(media->mid())
-				                                   : nullopt;
-			                        }},
-			        mRemoteDescription->media(i))) {
+			if (auto found =
+			        std::visit(rtc::overloaded{[&](Description::Application *) -> optional<string> {
+				                                   return std::nullopt;
+			                                   },
+			                                   [&](Description::Media *media) -> optional<string> {
+				                                   return media->hasSSRC(ssrc)
+				                                              ? std::make_optional(media->mid())
+				                                              : nullopt;
+			                                   }},
+			                   mRemoteDescription->media(i))) {
 
 				mMidFromSsrc.emplace(ssrc, *found);
 				return *found;
@@ -503,16 +507,16 @@ optional<std::string> PeerConnection::getMidFromSsrc(uint32_t ssrc) {
 		if (!mLocalDescription)
 			return nullopt;
 		for (unsigned int i = 0; i < mLocalDescription->mediaCount(); ++i) {
-			if (auto found = std::visit(
-			        rtc::overloaded{[&](Description::Application *) -> optional<string> {
-				                        return std::nullopt;
-			                        },
-			                        [&](Description::Media *media) -> optional<string> {
-				                        return media->hasSSRC(ssrc)
-				                                   ? std::make_optional(media->mid())
-				                                   : nullopt;
-			                        }},
-			        mLocalDescription->media(i))) {
+			if (auto found =
+			        std::visit(rtc::overloaded{[&](Description::Application *) -> optional<string> {
+				                                   return std::nullopt;
+			                                   },
+			                                   [&](Description::Media *media) -> optional<string> {
+				                                   return media->hasSSRC(ssrc)
+				                                              ? std::make_optional(media->mid())
+				                                              : nullopt;
+			                                   }},
+			                   mLocalDescription->media(i))) {
 
 				mMidFromSsrc.emplace(ssrc, *found);
 				return *found;
@@ -680,7 +684,7 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 		throw std::invalid_argument("Remote description has no ICE password");
 
 	if (!description.fingerprint())
-		throw std::invalid_argument("Remote description has no fingerprint");
+		throw std::invalid_argument("Remote description has no valid fingerprint");
 
 	if (description.mediaCount() == 0)
 		throw std::invalid_argument("Remote description has no media line");
