@@ -50,6 +50,9 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
     {"webSocketPort", required_argument, NULL, 'x'},
     {"durationInSec",required_argument,NULL,'d'},
     {"noSend", no_argument, NULL, 'o'},
+    {"enableThroughputSet", no_argument, NULL, 'p'},
+    {"throughtputSetAsKB",required_argument,NULL,'r'},
+    {"bufferSet",required_argument,NULL,'b'},
     {"help", no_argument, NULL, 'h'},
     {NULL, 0, NULL, 0}
   };
@@ -65,9 +68,12 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
   _h = false;
   _d = 300;
   _o = false;
+  _p = false;
+  _r = 300;
+  _b = 10;
 
   optind = 0;
-  while ((c = getopt_long (argc, argv, "s:t:w:x:d:enhvo", long_options, &optind)) != - 1)
+  while ((c = getopt_long (argc, argv, "s:t:w:x:d:r:b:enhvop", long_options, &optind)) != - 1)
     {
       switch (c)
         {
@@ -129,6 +135,30 @@ Cmdline::Cmdline (int argc, char *argv[]) // ISO C++17 not allowed: throw (std::
           _o = true;
           break;
 
+        case 'p':
+          _p = true;
+          break;
+
+        case 'r':
+          _r = atoi (optarg);
+          if (_r <= 0)
+            {
+              std::string err;
+              err += "parameter range error: r must be > 0";
+              throw (std::range_error(err));
+            }
+          break;
+
+        case 'b':
+          _b = atoi (optarg);
+          if (_b <= 0)
+            {
+              std::string err;
+              err += "parameter range error: b must be > 0";
+              throw (std::range_error(err));
+            }
+          break;
+
         case 'h':
           _h = true;
           this->usage (EXIT_SUCCESS);
@@ -174,6 +204,12 @@ libdatachannel client implementing WebRTC Data Channels with WebSocket signaling
           Benchmark duration in seconds.\n\
    [ -n ] [ --noSend ] (type=FLAG)\n\
           Do NOT send message (Only Receive, for one-way testing purposes).\n\
+   [ -p ] [ --enableThroughputSet ] (type=FLAG)\n\
+          Send a constant data per second (KB). See throughtputSetAsKB and bufferSet params.\n\
+   [ -r ] [ --throughtputSetAsKB ] (type=INTEGER, range>0...INT_MAX, default=300)\n\
+          Send constant data per second (KB).\n\
+   [ -b ] [ --bufferSet ] (type=INTEGER, range>0...INT_MAX, default=10)\n\
+          Set internal buffer as bufferSet*throughtputSetAsKB/100.\n\
    [ -h ] [ --help ] (type=FLAG)\n\
           Display this help and exit.\n";
     }

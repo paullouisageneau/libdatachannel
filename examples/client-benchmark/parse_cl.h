@@ -42,6 +42,9 @@ private:
   bool _h;
   int _d;
   bool _o;
+  bool _p;
+  int _r;
+  int _b;
 
   /* other stuff to keep track of */
   std::string _program_name;
@@ -66,6 +69,9 @@ public:
   bool h () const { return _h; }
   int durationInSec () const { return _d; }
   bool noSend () const { return _o; }
+  bool enableThroughputSet () const { return _p; }
+  int throughtputSetAsKB() const { return _r;}
+  int bufferSet() const { return _b;}
 };
 
 #endif
