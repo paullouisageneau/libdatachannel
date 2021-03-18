@@ -28,6 +28,8 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <future>
 #include <iostream>
 #include <memory>
@@ -39,6 +41,10 @@
 using namespace rtc;
 using namespace std;
 using namespace std::chrono_literals;
+
+using chrono::duration_cast;
+using chrono::milliseconds;
+using chrono::steady_clock;
 
 using json = nlohmann::json;
 
@@ -224,20 +230,24 @@ int main(int argc, char **argv) try {
 	cout << "Becnhmark will run for " << duration << " seconds" << endl;
 
 	int printStatCounter = 0;
-
+	steady_clock::time_point startTime = steady_clock::now();
 	for (int i = 1; i <= duration; ++i) {
 		this_thread::sleep_for(1000ms);
-		cout << "#" << i << " Received: " << receivedSize.exchange(0) / 1024 << " KB/s"
-		     << "   Sent: " << sentSize.exchange(0) / 1024 << " KB/s"
+		unsigned long _receivedSize = receivedSize.exchange(0);
+		unsigned long _sentSize = sentSize.exchange(0);
+		float timePassedAsSec = ((steady_clock::now() - startTime).count()) / (1000.0 * 1000.0); // sec
+		startTime = steady_clock::now();
+
+		cout << "#" << i << " Received: " << static_cast<int>(_receivedSize / timePassedAsSec) << " KB/s"
+		     << "   Sent: " << static_cast<int>(_sentSize / timePassedAsSec) << " KB/s"
 		     << "   BufferSize: " << dc->bufferedAmount() << endl;
 		printStatCounter++;
 
 		if (printStatCounter % 5 == 0) {
 			cout << "Stats# "
-			     << "Received Total: " << pc->bytesReceived() / (1024 * 1024) << " MB"
-			     << "   Sent Total: " << pc->bytesSent() / (1024 * 1024) << " MB"
+			     << "Received Total: " << pc->bytesReceived() / (1000 * 1000) << " MB"
+			     << "   Sent Total: " << pc->bytesSent() / (1000 * 1000) << " MB"
 			     << "   RTT: " << pc->rtt().value_or(0ms).count() << " ms" << endl;
-			// cout << "Selected Candidates# " << endl;
 			cout << endl;
 		}
 	}
