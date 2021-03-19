@@ -69,9 +69,9 @@ public:
   bool h () const { return _h; }
   int durationInSec () const { return _d; }
   bool noSend () const { return _o; }
+  int bufferSize() const { return _b;}
   bool enableThroughputSet () const { return _p; }
-  int throughtputSetAsKB() const { return _r;}
-  int bufferSet() const { return _b;}
+  int throughtputSetAsKB() const { return _r;}  
 };
 
 #endif
