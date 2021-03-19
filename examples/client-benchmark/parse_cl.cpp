@@ -67,7 +67,7 @@ Cmdline::Cmdline(int argc, char *argv[]) // ISO C++17 not allowed: throw (std::s
 	_o = false;
 	_p = false;
 	_r = 300;
-	_b = 3000;
+	_b = 0;
 
 	optind = 0;
 	while ((c = getopt_long(argc, argv, "s:t:w:x:d:r:b:enhvop", long_options, &optind)) != -1) {
