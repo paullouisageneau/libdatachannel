@@ -191,6 +191,7 @@ add_subdirectory(deps/plog)
 
 option(sctp_build_programs 0)
 option(sctp_build_shared_lib 0)
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 add_subdirectory(deps/usrsctp EXCLUDE_FROM_ALL)
 if (MSYS OR MINGW)
 	target_compile_definitions(usrsctp PUBLIC -DSCTP_STDINT_INCLUDE=<stdint.h>)
