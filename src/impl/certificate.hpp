@@ -62,7 +62,7 @@ string make_fingerprint(X509 *x509);
 using certificate_ptr = shared_ptr<Certificate>;
 using future_certificate_ptr = std::shared_future<certificate_ptr>;
 
-future_certificate_ptr make_certificate(CertificateType type = CertificateType::Ecdsa);
+future_certificate_ptr make_certificate(CertificateType type = CertificateType::Default);
 
 } // namespace rtc::impl
 

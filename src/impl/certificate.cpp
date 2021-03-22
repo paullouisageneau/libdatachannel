@@ -102,6 +102,7 @@ certificate_ptr make_certificate_impl(CertificateType type) {
 	// All implementations MUST support DTLS 1.2 with the TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 	// cipher suite and the P-256 curve
 	// See https://tools.ietf.org/html/rfc8827#section-6.5
+	case CertificateType::Default:
 	case CertificateType::Ecdsa: {
 		gnutls::check(gnutls_x509_privkey_generate(*privkey, GNUTLS_PK_ECDSA,
 		                                           GNUTLS_CURVE_TO_BITS(GNUTLS_ECC_CURVE_SECP256R1),
@@ -206,6 +207,7 @@ certificate_ptr make_certificate_impl(CertificateType type) {
 	// All implementations MUST support DTLS 1.2 with the TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 	// cipher suite and the P-256 curve
 	// See https://tools.ietf.org/html/rfc8827#section-6.5
+	case CertificateType::Default:
 	case CertificateType::Ecdsa: {
 		PLOG_VERBOSE << "Generating ECDSA P-256 key pair";
 

@@ -64,7 +64,11 @@ struct RTC_CPP_EXPORT ProxyServer {
 	string password;
 };
 
-enum class CertificateType { Ecdsa = 0, Rsa };
+enum class CertificateType {
+	Default = RTC_CERTIFICATE_DEFAULT, // ECDSA
+	Ecdsa = RTC_CERTIFICATE_ECDSA,
+	Rsa = RTC_CERTIFICATE_RSA
+};
 
 struct RTC_CPP_EXPORT Configuration {
 	// ICE settings
