@@ -14,7 +14,7 @@ SRTP_DIR=deps/libsrtp
 JUICE_DIR=deps/libjuice
 PLOG_DIR=deps/plog
 
-INCLUDES=-Iinclude/rtc -I$(PLOG_DIR)/include -I$(USRSCTP_DIR)/usrsctplib
+INCLUDES=-Isrc -Iinclude/rtc -Iinclude -I$(PLOG_DIR)/include -I$(USRSCTP_DIR)/usrsctplib
 LDLIBS=
 
 USE_GNUTLS ?= 0
@@ -65,7 +65,7 @@ endif
 INCLUDES+=$(if $(LIBS),$(shell pkg-config --cflags $(LIBS)),)
 LDLIBS+=$(LOCALLIBS) $(if $(LIBS),$(shell pkg-config --libs $(LIBS)),)
 
-SRCS=$(shell printf "%s " src/*.cpp)
+SRCS=$(shell printf "%s " src/*.cpp src/impl/*.cpp)
 OBJS=$(subst .cpp,.o,$(SRCS))
 
 TEST_SRCS=$(shell printf "%s " test/*.cpp)
