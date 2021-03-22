@@ -28,6 +28,8 @@
 
 namespace rtc::impl {
 
+const string COMMON_NAME = "libdatachannel";
+
 #if USE_GNUTLS
 
 Certificate::Certificate(string crt_pem, string key_pem)
@@ -53,8 +55,7 @@ Certificate::Certificate(string crt_pem, string key_pem)
 		gnutls_free(crt_list);
 	};
 
-	unique_ptr<gnutls_x509_crt_t, decltype(free_crt_list)> crt_list(new_crt_list(),
-	                                                                     free_crt_list);
+	unique_ptr<gnutls_x509_crt_t, decltype(free_crt_list)> crt_list(new_crt_list(), free_crt_list);
 
 	mFingerprint = make_fingerprint(*crt_list);
 }
@@ -90,18 +91,35 @@ string make_fingerprint(gnutls_x509_crt_t crt) {
 
 namespace {
 
-certificate_ptr make_certificate_impl(string commonName) {
+certificate_ptr make_certificate_impl(CertificateType type) {
+	PLOG_DEBUG << "Generating certificate (GnuTLS)";
+
 	using namespace gnutls;
 	unique_ptr<gnutls_x509_crt_t, decltype(&free_crt)> crt(new_crt(), free_crt);
 	unique_ptr<gnutls_x509_privkey_t, decltype(&free_privkey)> privkey(new_privkey(), free_privkey);
 
-#ifdef RSA_KEY_BITS_2048
-	const unsigned int bits = 2048;
-#else
-	const unsigned int bits = gnutls_sec_param_to_pk_bits(GNUTLS_PK_RSA, GNUTLS_SEC_PARAM_HIGH);
-#endif
-	gnutls::check(gnutls_x509_privkey_generate(*privkey, GNUTLS_PK_RSA, bits, 0),
-	              "Unable to generate key pair");
+	switch (type) {
+	// RFC 8827 WebRTC Security Architecture 6.5. Communications Security
+	// All implementations MUST support DTLS 1.2 with the TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+	// cipher suite and the P-256 curve
+	// See https://tools.ietf.org/html/rfc8827#section-6.5
+	case CertificateType::Default:
+	case CertificateType::Ecdsa: {
+		gnutls::check(gnutls_x509_privkey_generate(*privkey, GNUTLS_PK_ECDSA,
+		                                           GNUTLS_CURVE_TO_BITS(GNUTLS_ECC_CURVE_SECP256R1),
+		                                           0),
+		              "Unable to generate ECDSA P-256 key pair");
+		break;
+	}
+	case CertificateType::Rsa: {
+		const unsigned int bits = 2048;
+		gnutls::check(gnutls_x509_privkey_generate(*privkey, GNUTLS_PK_RSA, bits, 0),
+		              "Unable to generate RSA key pair");
+		break;
+	}
+	default:
+		throw std::invalid_argument("Unknown certificate type");
+	}
 
 	using namespace std::chrono;
 	auto now = time_point_cast<seconds>(system_clock::now());
@@ -109,8 +127,8 @@ certificate_ptr make_certificate_impl(string commonName) {
 	gnutls_x509_crt_set_expiration_time(*crt, (now + hours(24 * 365)).time_since_epoch().count());
 	gnutls_x509_crt_set_version(*crt, 1);
 	gnutls_x509_crt_set_key(*crt, *privkey);
-	gnutls_x509_crt_set_dn_by_oid(*crt, GNUTLS_OID_X520_COMMON_NAME, 0, commonName.data(),
-	                              commonName.size());
+	gnutls_x509_crt_set_dn_by_oid(*crt, GNUTLS_OID_X520_COMMON_NAME, 0, COMMON_NAME.data(),
+	                              COMMON_NAME.size());
 
 	const size_t serialSize = 16;
 	char serial[serialSize];
@@ -175,37 +193,71 @@ string make_fingerprint(X509 *x509) {
 
 namespace {
 
-certificate_ptr make_certificate_impl(string commonName) {
+certificate_ptr make_certificate_impl(CertificateType type) {
+	PLOG_DEBUG << "Generating certificate (OpenSSL)";
+
 	shared_ptr<X509> x509(X509_new(), X509_free);
 	shared_ptr<EVP_PKEY> pkey(EVP_PKEY_new(), EVP_PKEY_free);
-
-	unique_ptr<RSA, decltype(&RSA_free)> rsa(RSA_new(), RSA_free);
-	unique_ptr<BIGNUM, decltype(&BN_free)> exponent(BN_new(), BN_free);
 	unique_ptr<BIGNUM, decltype(&BN_free)> serial_number(BN_new(), BN_free);
 	unique_ptr<X509_NAME, decltype(&X509_NAME_free)> name(X509_NAME_new(), X509_NAME_free);
+	if (!x509 || !pkey || !serial_number || !name)
+		throw std::runtime_error("Unable to allocate structures for certificate generation");
 
-	if (!x509 || !pkey || !rsa || !exponent || !serial_number || !name)
-		throw std::runtime_error("Unable allocate structures for certificate generation");
+	switch (type) {
+	// RFC 8827 WebRTC Security Architecture 6.5. Communications Security
+	// All implementations MUST support DTLS 1.2 with the TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+	// cipher suite and the P-256 curve
+	// See https://tools.ietf.org/html/rfc8827#section-6.5
+	case CertificateType::Default:
+	case CertificateType::Ecdsa: {
+		PLOG_VERBOSE << "Generating ECDSA P-256 key pair";
 
-#ifdef RSA_KEY_BITS_2048
-	const int bits = 2048;
-#else
-	const int bits = 3072;
-#endif
-	const unsigned int e = 65537; // 2^16 + 1
+		unique_ptr<EC_KEY, decltype(&EC_KEY_free)> ecc(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1),
+		                                               EC_KEY_free);
+		if (!ecc)
+			throw std::runtime_error("Unable to allocate structure for ECDSA P-256 key pair");
 
-	if (!pkey || !rsa || !exponent || !BN_set_word(exponent.get(), e) ||
-	    !RSA_generate_key_ex(rsa.get(), bits, exponent.get(), NULL) ||
-	    !EVP_PKEY_assign_RSA(pkey.get(), rsa.release())) // the key will be freed when pkey is freed
-		throw std::runtime_error("Unable to generate key pair");
+		EC_KEY_set_asn1_flag(ecc.get(), OPENSSL_EC_NAMED_CURVE); // Set ASN1 OID
+		if (!EC_KEY_generate_key(ecc.get()) ||
+		    !EVP_PKEY_assign_EC_KEY(pkey.get(),
+		                            ecc.release())) // the key will be freed when pkey is freed
+			throw std::runtime_error("Unable to generate ECDSA P-256 key pair");
+
+		break;
+	}
+	case CertificateType::Rsa: {
+		PLOG_VERBOSE << "Generating RSA key pair";
+
+		const int bits = 2048;
+		const unsigned int e = 65537; // 2^16 + 1
+
+		unique_ptr<RSA, decltype(&RSA_free)> rsa(RSA_new(), RSA_free);
+		unique_ptr<BIGNUM, decltype(&BN_free)> exponent(BN_new(), BN_free);
+		if (!rsa || !exponent)
+			throw std::runtime_error("Unable to allocate structures for RSA key pair");
+
+		if (!BN_set_word(exponent.get(), e) ||
+		    !RSA_generate_key_ex(rsa.get(), bits, exponent.get(), NULL) ||
+		    !EVP_PKEY_assign_RSA(pkey.get(),
+		                         rsa.release())) // the key will be freed when pkey is freed
+			throw std::runtime_error("Unable to generate RSA key pair");
+
+		break;
+	}
+	default:
+		throw std::invalid_argument("Unknown certificate type");
+	}
 
 	const size_t serialSize = 16;
 	auto *commonNameBytes =
-	    reinterpret_cast<unsigned char *>(const_cast<char *>(commonName.c_str()));
+	    reinterpret_cast<unsigned char *>(const_cast<char *>(COMMON_NAME.c_str()));
+
+	if (!X509_set_pubkey(x509.get(), pkey.get()))
+		throw std::runtime_error("Unable to set certificate public key");
 
 	if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 3600 * -1) ||
 	    !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 3600 * 24 * 365) ||
-	    !X509_set_version(x509.get(), 1) || !X509_set_pubkey(x509.get(), pkey.get()) ||
+	    !X509_set_version(x509.get(), 1) ||
 	    !BN_pseudo_rand(serial_number.get(), serialSize, 0, 0) ||
 	    !BN_to_ASN1_INTEGER(serial_number.get(), X509_get_serialNumber(x509.get())) ||
 	    !X509_NAME_add_entry_by_NID(name.get(), NID_commonName, MBSTRING_UTF8, commonNameBytes, -1,
@@ -226,28 +278,8 @@ certificate_ptr make_certificate_impl(string commonName) {
 
 // Common for GnuTLS and OpenSSL
 
-namespace {
-
-static std::unordered_map<string, future_certificate_ptr> CertificateCache;
-static std::mutex CertificateCacheMutex;
-
-} // namespace
-
-future_certificate_ptr make_certificate(string commonName) {
-	std::lock_guard lock(CertificateCacheMutex);
-
-	if (auto it = CertificateCache.find(commonName); it != CertificateCache.end())
-		return it->second;
-
-	auto future = ThreadPool::Instance().enqueue(make_certificate_impl, commonName);
-	auto shared = future.share();
-	CertificateCache.emplace(std::move(commonName), shared);
-	return shared;
-}
-
-void CleanupCertificateCache() {
-	std::lock_guard lock(CertificateCacheMutex);
-	CertificateCache.clear();
+future_certificate_ptr make_certificate(CertificateType type) {
+	return ThreadPool::Instance().enqueue(make_certificate_impl, type);
 }
 
 } // namespace rtc::impl

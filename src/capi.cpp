@@ -351,6 +351,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 		for (int i = 0; i < config->iceServersCount; ++i)
 			c.iceServers.emplace_back(string(config->iceServers[i]));
 
+		c.certificateType = static_cast<CertificateType>(config->certificateType);
 		c.enableIceTcp = config->enableIceTcp;
 		c.disableAutoNegotiation = config->disableAutoNegotiation;
 

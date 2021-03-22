@@ -119,9 +119,10 @@ bool DtlsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
-	mCurrentDscp = message->dscp;
 	ssize_t ret;
 	do {
+		std::lock_guard lock(mSendMutex);
+		mCurrentDscp = message->dscp;
 		ret = gnutls_record_send(mSession, message->data(), message->size());
 	} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
 
@@ -196,6 +197,17 @@ void DtlsTransport::runRecvLoop() {
 			do {
 				ret = gnutls_record_recv(mSession, buffer, bufferSize);
 			} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
+
+			// RFC 8827: Implementations MUST NOT implement DTLS renegotiation and MUST reject it
+			// with a "no_renegotiation" alert if offered.
+			// See https://tools.ietf.org/html/rfc8827#section-6.5
+			if (ret == GNUTLS_E_REHANDSHAKE) {
+				do {
+					std::lock_guard lock(mSendMutex);
+					ret = gnutls_alert_send(mSession, GNUTLS_AL_WARNING, GNUTLS_A_NO_RENEGOTIATION);
+				} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
+				continue;
+			}
 
 			// Consider premature termination as remote closing
 			if (ret == GNUTLS_E_PREMATURE_TERMINATION) {
@@ -332,7 +344,10 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 		// RFC 8261: SCTP performs segmentation and reassembly based on the path MTU.
 		// Therefore, the DTLS layer MUST NOT use any compression algorithm.
 		// See https://tools.ietf.org/html/rfc8261#section-5
-		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_QUERY_MTU);
+		// RFC 8827: Implementations MUST NOT implement DTLS renegotiation
+		// See https://tools.ietf.org/html/rfc8827#section-6.5
+		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_QUERY_MTU |
+		                              SSL_OP_NO_RENEGOTIATION);
 		SSL_CTX_set_min_proto_version(mCtx, DTLS1_VERSION);
 		SSL_CTX_set_read_ahead(mCtx, 1);
 		SSL_CTX_set_quiet_shutdown(mCtx, 1);

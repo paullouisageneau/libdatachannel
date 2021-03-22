@@ -72,7 +72,6 @@ void doCleanup() {
 	PLOG_DEBUG << "Global cleanup";
 
 	impl::ThreadPool::Instance().join();
-	impl::CleanupCertificateCache();
 
 	impl::SctpTransport::Cleanup();
 	impl::DtlsTransport::Cleanup();
@@ -111,9 +110,6 @@ void Init::Preload() {
 	auto token = Token();
 	if (!Global)
 		Global = new shared_ptr<void>(token);
-
-	PLOG_DEBUG << "Preloading certificate";
-	impl::make_certificate().wait();
 }
 
 void Init::Cleanup() {

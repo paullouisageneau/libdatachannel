@@ -88,6 +88,12 @@ typedef enum { // Don't change, it must match plog severity
 	RTC_LOG_VERBOSE = 6
 } rtcLogLevel;
 
+typedef enum {
+	RTC_CERTIFICATE_DEFAULT = 0,
+	RTC_CERTIFICATE_ECDSA = 1,
+	RTC_CERTIFICATE_RSA = 2,
+} rtcCertificateType;
+
 #if RTC_ENABLE_MEDIA
 
 typedef enum {
@@ -119,6 +125,7 @@ typedef enum {
 typedef struct {
 	const char **iceServers;
 	int iceServersCount;
+	rtcCertificateType certificateType;
 	bool enableIceTcp;
 	bool disableAutoNegotiation;
 	uint16_t portRangeBegin;

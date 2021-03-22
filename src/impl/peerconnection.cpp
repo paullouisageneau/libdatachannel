@@ -53,7 +53,7 @@ static LogCounter
                                 "Number of unknown RTCP packet types over past second");
 
 PeerConnection::PeerConnection(Configuration config_)
-    : config(std::move(config_)), mCertificate(make_certificate()),
+    : config(std::move(config_)), mCertificate(make_certificate(config.certificateType)),
       mProcessor(std::make_unique<Processor>()) {
 	PLOG_VERBOSE << "Creating PeerConnection";
 
