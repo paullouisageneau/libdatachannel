@@ -68,6 +68,7 @@ protected:
 
 #if USE_GNUTLS
 	gnutls_session_t mSession;
+	std::mutex mSendMutex;
 
 	static int CertificateCallback(gnutls_session_t session);
 	static ssize_t WriteCallback(gnutls_transport_ptr_t ptr, const void *data, size_t len);
