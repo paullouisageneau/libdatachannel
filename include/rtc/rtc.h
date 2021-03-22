@@ -89,7 +89,7 @@ typedef enum { // Don't change, it must match plog severity
 } rtcLogLevel;
 
 typedef enum {
-	RTC_CERTIFICATE_DEFAULT = 0,
+	RTC_CERTIFICATE_DEFAULT = 0, // ECDSA
 	RTC_CERTIFICATE_ECDSA = 1,
 	RTC_CERTIFICATE_RSA = 2,
 } rtcCertificateType;

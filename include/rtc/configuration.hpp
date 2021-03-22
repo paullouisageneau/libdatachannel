@@ -76,7 +76,7 @@ struct RTC_CPP_EXPORT Configuration {
 	optional<ProxyServer> proxyServer; // libnice only
 
 	// Options
-	CertificateType certificateType = CertificateType::Ecdsa;
+	CertificateType certificateType = CertificateType::Default;
 	bool enableIceTcp = false;
 	bool disableAutoNegotiation = false;
 
