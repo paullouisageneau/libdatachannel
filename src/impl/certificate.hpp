@@ -21,6 +21,7 @@
 
 #include "common.hpp"
 #include "tls.hpp"
+#include "configuration.hpp" // for CertificateType
 
 #include <future>
 #include <tuple>
@@ -61,9 +62,7 @@ string make_fingerprint(X509 *x509);
 using certificate_ptr = shared_ptr<Certificate>;
 using future_certificate_ptr = std::shared_future<certificate_ptr>;
 
-future_certificate_ptr make_certificate(string commonName = "libdatachannel"); // cached
-
-void CleanupCertificateCache();
+future_certificate_ptr make_certificate(CertificateType type = CertificateType::Ecdsa);
 
 } // namespace rtc::impl
 

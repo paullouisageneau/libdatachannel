@@ -64,13 +64,23 @@ struct RTC_CPP_EXPORT ProxyServer {
 	string password;
 };
 
+enum class CertificateType { Ecdsa = 0, Rsa };
+
 struct RTC_CPP_EXPORT Configuration {
+	// ICE settings
 	std::vector<IceServer> iceServers;
-	optional<ProxyServer> proxyServer;
+	optional<ProxyServer> proxyServer; // libnice only
+
+	// Options
+	CertificateType certificateType = CertificateType::Ecdsa;
 	bool enableIceTcp = false;
 	bool disableAutoNegotiation = false;
+
+	// Port range
 	uint16_t portRangeBegin = 1024;
 	uint16_t portRangeEnd = 65535;
+
+	// MTU
 	optional<size_t> mtu;
 };
 
