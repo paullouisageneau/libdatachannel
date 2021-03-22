@@ -94,6 +94,7 @@ namespace {
 certificate_ptr make_certificate_impl(CertificateType type) {
 	PLOG_DEBUG << "Generating certificate (GnuTLS)";
 
+	using namespace gnutls;
 	unique_ptr<gnutls_x509_crt_t, decltype(&free_crt)> crt(new_crt(), free_crt);
 	unique_ptr<gnutls_x509_privkey_t, decltype(&free_privkey)> privkey(new_privkey(), free_privkey);
 

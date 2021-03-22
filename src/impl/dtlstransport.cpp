@@ -204,7 +204,7 @@ void DtlsTransport::runRecvLoop() {
 			if (ret == GNUTLS_E_REHANDSHAKE) {
 				do {
 					std::lock_guard lock(mSendMutex);
-					ret = gnutls_alert_send(mSession, GNUTLS_AL_WARNING, GNUTLS_A_NO_RENEGOTIATION)
+					ret = gnutls_alert_send(mSession, GNUTLS_AL_WARNING, GNUTLS_A_NO_RENEGOTIATION);
 				} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
 				continue;
 			}
