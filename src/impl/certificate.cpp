@@ -110,7 +110,7 @@ certificate_ptr make_certificate_impl(CertificateType type) {
 		break;
 	}
 	case CertificateType::Rsa: {
-		const unsigned int bits = gnutls_sec_param_to_pk_bits(GNUTLS_PK_RSA, GNUTLS_SEC_PARAM_HIGH);
+		const unsigned int bits = 2048;
 		gnutls::check(gnutls_x509_privkey_generate(*privkey, GNUTLS_PK_RSA, bits, 0),
 		              "Unable to generate RSA key pair");
 		break;
@@ -225,7 +225,7 @@ certificate_ptr make_certificate_impl(CertificateType type) {
 	case CertificateType::Rsa: {
 		PLOG_VERBOSE << "Generating RSA key pair";
 
-		const int bits = 3072;
+		const int bits = 2048;
 		const unsigned int e = 65537; // 2^16 + 1
 
 		unique_ptr<RSA, decltype(&RSA_free)> rsa(RSA_new(), RSA_free);
