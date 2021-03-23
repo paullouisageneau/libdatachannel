@@ -365,7 +365,7 @@ if(NOT NO_TESTS)
 endif()
 
 # Examples
-if(NOT NO_EXAMPLES AND NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+if(NOT NO_EXAMPLES)
 	set(JSON_BuildTests OFF CACHE INTERNAL "")
 	add_subdirectory(deps/json)
 	add_subdirectory(examples/client)
