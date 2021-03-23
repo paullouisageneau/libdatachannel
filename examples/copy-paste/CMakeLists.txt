@@ -1,5 +1,15 @@
 cmake_minimum_required(VERSION 3.7)
 
+set(OFFERER_UWP_RESOURCES
+	uwp/offerer/Logo.png
+	uwp/offerer/package.appxManifest
+	uwp/offerer/SmallLogo.png
+	uwp/offerer/SmallLogo44x44.png
+	uwp/offerer/SplashScreen.png
+	uwp/offerer/StoreLogo.png
+	uwp/offerer/Windows_TemporaryKey.pfx
+)
+
 set(ANSWERER_UWP_RESOURCES
 	uwp/answerer/Logo.png
 	uwp/answerer/package.appxManifest
@@ -10,16 +20,20 @@ set(ANSWERER_UWP_RESOURCES
 	uwp/answerer/Windows_TemporaryKey.pfx
 )
 
-add_executable(datachannel-copy-paste-offerer offerer.cpp)
+if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+	add_executable(datachannel-copy-paste-offerer offerer.cpp ${OFFERER_UWP_RESOURCES})
+else()
+	add_executable(datachannel-copy-paste-offerer offerer.cpp)
+endif()
 set_target_properties(datachannel-copy-paste-offerer PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME offerer)
 target_link_libraries(datachannel-copy-paste-offerer datachannel)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
-  add_executable(datachannel-copy-paste-answerer answerer.cpp ${ANSWERER_UWP_RESOURCES})
+	add_executable(datachannel-copy-paste-answerer answerer.cpp ${ANSWERER_UWP_RESOURCES})
 else()
-  add_executable(datachannel-copy-paste-answerer answerer.cpp)
+	add_executable(datachannel-copy-paste-answerer answerer.cpp)
 endif()
 set_target_properties(datachannel-copy-paste-answerer PROPERTIES
 	CXX_STANDARD 17
