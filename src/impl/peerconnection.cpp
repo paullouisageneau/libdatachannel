@@ -541,9 +541,11 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role rol
 		if (stream == 65535)
 			throw std::invalid_argument("Invalid DataChannel id");
 	} else {
-		// The active side must use streams with even identifiers, whereas the passive side must use
-		// streams with odd identifiers.
-		// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-protocol-09#section-6
+		// RFC 8832: The peer that initiates opening a data channel selects a stream identifier for
+		// which the corresponding incoming and outgoing streams are unused.  If the side is acting
+		// as the DTLS client, it MUST choose an even stream identifier; if the side is acting as
+		// the DTLS server, it MUST choose an odd one.
+		// See https://tools.ietf.org/html/rfc8832#section-6
 		stream = (role == Description::Role::Active) ? 0 : 1;
 		while (mDataChannels.find(stream) != mDataChannels.end()) {
 			if (stream >= 65535 - 2)
