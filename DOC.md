@@ -71,6 +71,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config)
 typedef struct {
 	const char **iceServers;
 	int iceServersCount;
+	rtcCertificateType certificateType;
 	bool enableIceTcp;
 	bool disableAutoNegotiation;
 	uint16_t portRangeBegin;
@@ -85,6 +86,7 @@ Arguments:
 - `config`: the configuration structure, containing:
   - `iceServers` (optional): an array of pointers on null-terminated ice server URIs (NULL if unused)
   - `iceServersCount` (optional): number of URLs in the array pointed by `iceServers` (0 if unused)
+  - `certificateType` (optional): certificate type, either `RTC_CERTIFICATE_ECDSA` or `RTC_CERTIFICATE_RSA` (0 or `RTC_CERTIFICATE_DEFAULT` if default)
   - `enableIceTcp`: if true, generate TCP candidates for ICE (ignored with libjuice as ICE backend)
   - `disableAutoNegociation`: if true, the user is responsible for calling `rtcSetLocalDescription` after creating a Data Channel and after setting the remote description
   - `portRangeBegin` (optional): first port (included) of the allowed local port range (0 if unused)
