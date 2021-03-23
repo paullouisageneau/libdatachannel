@@ -1,6 +1,6 @@
 [submodule "deps/plog"]
 	path = deps/plog
-	url = https://github.com/paullouisageneau/plog
+	url = https://github.com/SergiusTheBest/plog.git
 [submodule "usrsctp"]
 	path = deps/usrsctp
 	url = https://github.com/sctplab/usrsctp.git
