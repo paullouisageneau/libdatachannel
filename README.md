@@ -1,6 +1,6 @@
 # libdatachannel - C/C++ WebRTC Data Channels
 
-libdatachannel is a standalone implementation of WebRTC Data Channels, WebRTC Media Transport, and WebSockets in C++17 with C bindings for POSIX platforms (including GNU/Linux, Android, and Apple macOS) and Microsoft Windows. It aims at being both straightforward and lightweight with a minimum of external dependencies, to enable direct connectivity between native applications and web browsers without the pain of importing the bloated [Google reference library](https://webrtc.googlesource.com/src/). The interface consists of somewhat simplified versions of the JavaScript WebRTC and WebSocket APIs present in browsers, in order to ease the design of cross-environment applications.
+libdatachannel is a standalone implementation of WebRTC Data Channels, WebRTC Media Transport, and WebSockets in C++17 with C bindings for POSIX platforms (including GNU/Linux, Android, and Apple macOS) and Microsoft Windows. It aims at being both straightforward and lightweight with a minimum of external dependencies, to enable direct connectivity between native applications and web browsers without the pain of importing Google's bloated [reference library](https://webrtc.googlesource.com/src/). The interface consists of somewhat simplified versions of the JavaScript WebRTC and WebSocket APIs present in browsers, in order to ease the design of cross-environment applications.
 It can be compiled with multiple backends:
 - The security layer can be provided through [OpenSSL](https://www.openssl.org/) or [GnuTLS](https://www.gnutls.org/).
 - The connectivity for WebRTC can be provided through my ad-hoc ICE library [libjuice](https://github.com/paullouisageneau/libjuice) as submodule or through [libnice](https://github.com/libnice/libnice).
@@ -31,7 +31,7 @@ Features:
 - Multicast DNS candidates ([draft-ietf-rtcweb-mdns-ice-candidates-04](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-04))
 - Differentiated Services QoS ([draft-ietf-tsvwg-rtcweb-qos-18](https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18))
 
-Note only SDP BUNDLE mode is supported for media multiplexing ([RFC8843](https://tools.ietf.org/html/rfc8843)). The behavior is equivalent to the JSEP bundle-only policy: the library always negociates one unique network component, where SRTP media streams are multiplexed with SRTCP control packets ([RFC5761](https://tools.ietf.org/html/rfc5761)) and SCTP/DTLS data traffic ([RFC5764](https://tools.ietf.org/html/rfc5764)).
+Note only SDP BUNDLE mode is supported for media multiplexing ([RFC8843](https://tools.ietf.org/html/rfc8843)). The behavior is equivalent to the JSEP bundle-only policy: the library always negociates one unique network component, where SRTP media streams are multiplexed with SRTCP control packets ([RFC5761](https://tools.ietf.org/html/rfc5761)) and SCTP/DTLS data traffic ([RFC8261](https://tools.ietf.org/html/rfc8261).
 
 ### WebSocket
 
