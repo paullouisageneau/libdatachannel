@@ -27,10 +27,9 @@
 #include <thread>
 #include <vector>
 
-// The IETF draft says:
-// SCTP MUST support performing Path MTU discovery without relying on ICMP or ICMPv6 as specified in
-// [RFC4821] using probing messages specified in [RFC4820].
-// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-5
+// RFC 8831: SCTP MUST support performing Path MTU discovery without relying on ICMP or ICMPv6 as
+// specified in [RFC4821] by using probing messages specified in [RFC4820].
+// See https://tools.ietf.org/html/rfc8831#section-5
 //
 // However, usrsctp does not implement Path MTU discovery, so we need to disable it for now.
 // See https://github.com/sctplab/usrsctp/issues/205
@@ -101,9 +100,8 @@ void SctpTransport::Cleanup() {
 		std::this_thread::sleep_for(100ms);
 }
 
-SctpTransport::SctpTransport(shared_ptr<Transport> lower, uint16_t port,
-                             optional<size_t> mtu, message_callback recvCallback,
-                             amount_callback bufferedAmountCallback,
+SctpTransport::SctpTransport(shared_ptr<Transport> lower, uint16_t port, optional<size_t> mtu,
+                             message_callback recvCallback, amount_callback bufferedAmountCallback,
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mPort(port),
       mSendQueue(0, message_size_func), mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
@@ -161,8 +159,9 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, uint16_t port,
 		throw std::runtime_error("Could not subscribe to event SCTP_STREAM_RESET_EVENT, errno=" +
 		                         std::to_string(errno));
 
-	// The sender SHOULD disable the Nagle algorithm (see RFC1122) to minimize the latency.
-	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.6
+	// RFC 8831 6.6. Transferring User Data on a Data Channel
+	// The sender SHOULD disable the Nagle algorithm (see [RFC1122) to minimize the latency
+	// See https://tools.ietf.org/html/rfc8831#section-6.6
 	int nodelay = 1;
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_NODELAY, &nodelay, sizeof(nodelay)))
 		throw std::runtime_error("Could not set socket option SCTP_NODELAY, errno=" +
@@ -203,9 +202,10 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, uint16_t port,
 		throw std::runtime_error("Could not set socket option SCTP_PEER_ADDR_PARAMS, errno=" +
 		                         std::to_string(errno));
 
-	// The IETF draft recommends the number of streams negotiated during SCTP association to be
-	// 65535.
-	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.2
+	// RFC 8831 6.2. SCTP Association Management
+	// The number of streams negotiated during SCTP association setup SHOULD be 65535, which is the
+	// maximum number of streams that can be negotiated during the association setup.
+	// See https://tools.ietf.org/html/rfc8831#section-6.2
 	struct sctp_initmsg sinit = {};
 	sinit.sinit_num_ostreams = 65535;
 	sinit.sinit_max_instreams = 65535;
@@ -213,7 +213,7 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, uint16_t port,
 		throw std::runtime_error("Could not set socket option SCTP_INITMSG, errno=" +
 		                         std::to_string(errno));
 
-	// Prevent fragmented interleave of messages (i.e. level 0), see RFC 6458 8.1.20.
+	// Prevent fragmented interleave of messages (i.e. level 0), see RFC 6458 section 8.1.20.
 	// Unless the user has set the fragmentation interleave level to 0, notifications
 	// may also be interleaved with partially delivered messages.
 	int level = 0;
@@ -293,9 +293,9 @@ void SctpTransport::connect() {
 	if (usrsctp_bind(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn)))
 		throw std::runtime_error("Could not bind usrsctp socket, errno=" + std::to_string(errno));
 
-	// According to the IETF draft, both endpoints must initiate the SCTP association, in a
+	// According to RFC 8841, both endpoints must initiate the SCTP association, in a
 	// simultaneous-open manner, irrelevent to the SDP setup role.
-	// See https://tools.ietf.org/html/draft-ietf-mmusic-sctp-sdp-26#section-9.3
+	// See https://tools.ietf.org/html/rfc8841#section-9.3
 	int ret = usrsctp_connect(mSock, reinterpret_cast<struct sockaddr *>(&sconn), sizeof(sconn));
 	if (ret && errno != EINPROGRESS)
 		throw std::runtime_error("Connection attempt failed, errno=" + std::to_string(errno));
@@ -632,9 +632,11 @@ int SctpTransport::handleWrite(byte *data, size_t len, uint8_t /*tos*/, uint8_t 
 void SctpTransport::processData(binary &&data, uint16_t sid, PayloadId ppid) {
 	PLOG_VERBOSE << "Process data, size=" << data.size();
 
-	// The usage of the PPIDs "WebRTC String Partial" and "WebRTC Binary Partial" is deprecated.
-	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-6.6
-	// We handle them at reception for compatibility reasons but should never send them.
+	// RFC 8831: The usage of the PPIDs "WebRTC String Partial" and "WebRTC Binary Partial" is
+	// deprecated. They were used for a PPID-based fragmentation and reassembly of user messages
+	// belonging to reliable and ordered data channels.
+	// See https://tools.ietf.org/html/rfc8831#section-6.6
+	// We handle those PPIDs at reception for compatibility reasons but shall never send them.
 	switch (ppid) {
 	case PPID_CONTROL:
 		recv(make_message(std::move(data), Message::Control, sid));

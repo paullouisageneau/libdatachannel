@@ -16,21 +16,22 @@ The library implements the following communication protocols:
 The WebRTC stack has been tested to be compatible with Firefox and Chromium.
 
 Protocol stack:
-- SCTP-based Data Channels ([draft-ietf-rtcweb-data-channel-13](https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13))
-- SRTP-based Media Transport ([draft-ietf-rtcweb-rtp-usage-26](https://tools.ietf.org/html/draft-ietf-rtcweb-rtp-usage-26))
+- SCTP-based Data Channels ([RFC8831](https://tools.ietf.org/html/rfc8831))
+- SRTP-based Media Transport ([RFC8834](https://tools.ietf.org/html/rfc8834))
 - DTLS/UDP ([RFC7350](https://tools.ietf.org/html/rfc7350) and [RFC8261](https://tools.ietf.org/html/rfc8261))
 - ICE ([RFC8445](https://tools.ietf.org/html/rfc8445)) with STUN ([RFC8489](https://tools.ietf.org/html/rfc8489)) and its extension TURN ([RFC8656](https://tools.ietf.org/html/rfc8656))
 
 Features:
-- Full IPv6 support
-- Trickle ICE ([draft-ietf-ice-trickle-21](https://tools.ietf.org/html/draft-ietf-ice-trickle-21))
-- JSEP compatible ([draft-ietf-rtcweb-jsep-26](https://tools.ietf.org/html/draft-ietf-rtcweb-jsep-26))
-- Multicast DNS candidates ([draft-ietf-rtcweb-mdns-ice-candidates-04](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-04))
+- Full IPv6 support (as mandated by [RFC8835](https://tools.ietf.org/html/rfc8835))
+- Trickle ICE ([RFC8838](https://tools.ietf.org/html/rfc8838))
+- JSEP-compatible session establishment with SDP ([RFC8829](https://tools.ietf.org/html/rfc8829))
+- SCTP over DTLS with SDP offer/answer ([RFC8841](https://tools.ietf.org/html/rfc8841))
 - DTLS with ECDSA or RSA keys ([RFC8824](https://tools.ietf.org/html/rfc8827))
 - SRTP and SRTCP key derivation from DTLS ([RFC5764](https://tools.ietf.org/html/rfc5764))
+- Multicast DNS candidates ([draft-ietf-rtcweb-mdns-ice-candidates-04](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-04))
 - Differentiated Services QoS ([draft-ietf-tsvwg-rtcweb-qos-18](https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18))
 
-Note only SDP BUNDLE mode is supported for media multiplexing ([draft-ietf-mmusic-sdp-bundle-negotiation-54](https://tools.ietf.org/html/draft-ietf-mmusic-sdp-bundle-negotiation-54)). The behavior is equivalent to the JSEP bundle-only policy: the library always negociates one unique network component, where SRTP media streams are multiplexed with SRTCP control packets ([RFC5761](https://tools.ietf.org/html/rfc5761)) and SCTP/DTLS data traffic ([RFC5764](https://tools.ietf.org/html/rfc5764)).
+Note only SDP BUNDLE mode is supported for media multiplexing ([RFC8843](https://tools.ietf.org/html/rfc8843)). The behavior is equivalent to the JSEP bundle-only policy: the library always negociates one unique network component, where SRTP media streams are multiplexed with SRTCP control packets ([RFC5761](https://tools.ietf.org/html/rfc5761)) and SCTP/DTLS data traffic ([RFC5764](https://tools.ietf.org/html/rfc5764)).
 
 ### WebSocket
 
@@ -99,12 +100,12 @@ MY_ON_RECV_CANDIDATE_FROM_REMOTE([&pc](string candidate, string mid) {
 ### Observe the PeerConnection state
 
 ```cpp
-pc.onStateChange([](PeerConnection::State state) {
-    cout << "State: " << state << endl;
+pc.onStateChange([](rtc::PeerConnection::State state) {
+    std::cout << "State: " << state << std::endl;
 });
 
-pc.onGatheringStateChange([](PeerConnection::GatheringState state) {
-    cout << "Gathering state: " << state << endl;
+pc.onGatheringStateChange([](rtc::PeerConnection::GatheringState state) {
+    std::cout << "Gathering state: " << state << std::endl;
 });
 ```
 
@@ -114,12 +115,12 @@ pc.onGatheringStateChange([](PeerConnection::GatheringState state) {
 auto dc = pc.createDataChannel("test");
 
 dc->onOpen([]() {
-    cout << "Open" << endl;
+    std::cout << "Open" << std::endl;
 });
 
-dc->onMessage([](variant<binary, string> message) {
-    if (holds_alternative<string>(message)) {
-        cout << "Received: " << get<string>(message) << endl;
+dc->onMessage([](std::variant<binary, string> message) {
+    if (std::holds_alternative<string>(message)) {
+        std::cout << "Received: " << get<string>(message) << std::endl;
     }
 });
 ```
@@ -127,8 +128,8 @@ dc->onMessage([](variant<binary, string> message) {
 ### Receive a DataChannel
 
 ```cpp
-shared_ptr<rtc::DataChannel> dc;
-pc.onDataChannel([&dc](shared_ptr<rtc::DataChannel> incoming) {
+std::shared_ptr<rtc::DataChannel> dc;
+pc.onDataChannel([&dc](std::shared_ptr<rtc::DataChannel> incoming) {
     dc = incoming;
     dc->send("Hello world!");
 });
@@ -140,12 +141,12 @@ pc.onDataChannel([&dc](shared_ptr<rtc::DataChannel> incoming) {
 rtc::WebSocket ws;
 
 ws.onOpen([]() {
-	cout << "WebSocket open" << endl;
+    std::cout << "WebSocket open" << std::endl;
 });
 
-ws.onMessage([](variant<binary, string> message) {
-    if (holds_alternative<string>(message)) {
-        cout << "WebSocket received: " << get<string>(message) << endl;
+ws.onMessage([](std::variant<binary, string> message) {
+    if (std::holds_alternative<string>(message)) {
+        std::cout << "WebSocket received: " << std::get<string>(message) << endl;
     }
 });
 
