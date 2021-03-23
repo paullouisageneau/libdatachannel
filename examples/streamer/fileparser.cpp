@@ -28,7 +28,7 @@ FileParser::FileParser(string directory, string extension, uint32_t samplesPerSe
 }
 
 void FileParser::start() {
-    sampleTime_us = -sampleDuration_us;
+	sampleTime_us = -sampleDuration_us;
     loadNextSample();
 }
 

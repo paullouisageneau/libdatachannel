@@ -3,7 +3,7 @@ if(POLICY CMP0079)
 	cmake_policy(SET CMP0079 NEW)
 endif()
 
-add_executable(streamer
+set(STREAMER_SOURCES
 	main.cpp
 	dispatchqueue.cpp
 	dispatchqueue.hpp
@@ -20,6 +20,22 @@ add_executable(streamer
 	ArgParser.cpp
 	ArgParser.hpp
 )
+
+set(STREAMER_UWP_RESOURCES
+	uwp/Logo.png
+	uwp/package.appxManifest
+	uwp/SmallLogo.png
+	uwp/SmallLogo44x44.png
+	uwp/SplashScreen.png
+	uwp/StoreLogo.png
+	uwp/Windows_TemporaryKey.pfx
+)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+	add_executable(streamer ${STREAMER_SOURCES} ${STREAMER_UWP_RESOURCES})
+else()
+	add_executable(streamer ${STREAMER_SOURCES})
+endif()
 
 if(WIN32)
 	target_compile_definitions(streamer PUBLIC STATIC_GETOPT)
