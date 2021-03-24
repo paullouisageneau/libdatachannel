@@ -42,8 +42,6 @@ using namespace rtc;
 using namespace std;
 using namespace std::chrono_literals;
 
-using chrono::duration_cast;
-using chrono::microseconds;
 using chrono::milliseconds;
 using chrono::steady_clock;
 
@@ -262,13 +260,13 @@ int main(int argc, char **argv) try {
 		printCounter++;
 
 		if (enableThroughputSet) {
-			float dataCountMultiplier =
-			    duration_cast<microseconds>((steady_clock::now() - stepTime)).count() /
-			    (1000.0 * stepDurationInMs);
+			const double elapsedTimeInMs =
+			    std::chrono::duration<double>(steady_clock::now() - stepTime).count() * 1000.0;
 
 			stepTime = steady_clock::now();
 
-			int byteToSendThisLoop = static_cast<int>(byteToSendOnEveryLoop * dataCountMultiplier);
+			int byteToSendThisLoop =
+			    static_cast<int>(byteToSendOnEveryLoop * (elapsedTimeInMs / stepDurationInMs));
 
 			binary tempMessageData(byteToSendThisLoop);
 			fill(tempMessageData.begin(), tempMessageData.end(), std::byte(0xFF));
@@ -282,15 +280,14 @@ int main(int argc, char **argv) try {
 		if (printCounter >= STEP_COUNT_FOR_1_SEC) {
 			unsigned long _receivedSize = receivedSize.exchange(0);
 			unsigned long _sentSize = sentSize.exchange(0);
-			float dataCountMultiplier =
-			    duration_cast<milliseconds>((steady_clock::now() - printTime)).count() /
-			    (1000.0); // sec
+			const double elapsedTimeInSec =
+			    std::chrono::duration<double>(steady_clock::now() - printTime).count();
 			printTime = steady_clock::now();
 
 			cout << "#" << i / STEP_COUNT_FOR_1_SEC
-			     << " Received: " << static_cast<int>(_receivedSize / (dataCountMultiplier * 1000))
+			     << " Received: " << static_cast<int>(_receivedSize / (elapsedTimeInSec * 1000))
 			     << " KB/s"
-			     << "   Sent: " << static_cast<int>(_sentSize / (dataCountMultiplier * 1000))
+			     << "   Sent: " << static_cast<int>(_sentSize / (elapsedTimeInSec * 1000))
 			     << " KB/s"
 			     << "   BufferSize: " << dc->bufferedAmount() << endl;
 			printStatCounter++;
@@ -388,14 +385,14 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 						break;
 
 					try {
-						float dataCountMultiplier =
-						    duration_cast<microseconds>((steady_clock::now() - stepTime)).count() /
-						    (1000.0 * stepDurationInMs);
+						const double elapsedTimeInMs =
+						    std::chrono::duration<double>(steady_clock::now() - stepTime).count() *
+						    1000.0;
 
 						stepTime = steady_clock::now();
 
-						int byteToSendThisLoop =
-						    static_cast<int>(byteToSendOnEveryLoop * dataCountMultiplier);
+						int byteToSendThisLoop = static_cast<int>(
+						    byteToSendOnEveryLoop * (elapsedTimeInMs / stepDurationInMs));
 
 						binary tempMessageData(byteToSendThisLoop);
 						fill(tempMessageData.begin(), tempMessageData.end(), std::byte(0xFF));
