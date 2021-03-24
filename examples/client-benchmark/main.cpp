@@ -260,13 +260,13 @@ int main(int argc, char **argv) try {
 		printCounter++;
 
 		if (enableThroughputSet) {
-			const double elapsedTimeInMs =
-			    std::chrono::duration<double>(steady_clock::now() - stepTime).count() * 1000.0;
+			const double elapsedTimeInSecs =
+			    std::chrono::duration<double>(steady_clock::now() - stepTime).count();
 
 			stepTime = steady_clock::now();
 
-			int byteToSendThisLoop =
-			    static_cast<int>(byteToSendOnEveryLoop * (elapsedTimeInMs / stepDurationInMs));
+			int byteToSendThisLoop = static_cast<int>(
+			    byteToSendOnEveryLoop * ((elapsedTimeInSecs * 1000.0) / stepDurationInMs));
 
 			binary tempMessageData(byteToSendThisLoop);
 			fill(tempMessageData.begin(), tempMessageData.end(), std::byte(0xFF));
@@ -280,14 +280,14 @@ int main(int argc, char **argv) try {
 		if (printCounter >= STEP_COUNT_FOR_1_SEC) {
 			unsigned long _receivedSize = receivedSize.exchange(0);
 			unsigned long _sentSize = sentSize.exchange(0);
-			const double elapsedTimeInSec =
+			const double elapsedTimeInSecs =
 			    std::chrono::duration<double>(steady_clock::now() - printTime).count();
 			printTime = steady_clock::now();
 
 			cout << "#" << i / STEP_COUNT_FOR_1_SEC
-			     << " Received: " << static_cast<int>(_receivedSize / (elapsedTimeInSec * 1000))
+			     << " Received: " << static_cast<int>(_receivedSize / (elapsedTimeInSecs * 1000))
 			     << " KB/s"
-			     << "   Sent: " << static_cast<int>(_sentSize / (elapsedTimeInSec * 1000))
+			     << "   Sent: " << static_cast<int>(_sentSize / (elapsedTimeInSecs * 1000))
 			     << " KB/s"
 			     << "   BufferSize: " << dc->bufferedAmount() << endl;
 			printStatCounter++;
@@ -385,14 +385,14 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 						break;
 
 					try {
-						const double elapsedTimeInMs =
-						    std::chrono::duration<double>(steady_clock::now() - stepTime).count() *
-						    1000.0;
+						const double elapsedTimeInSecs =
+						    std::chrono::duration<double>(steady_clock::now() - stepTime).count();
 
 						stepTime = steady_clock::now();
 
-						int byteToSendThisLoop = static_cast<int>(
-						    byteToSendOnEveryLoop * (elapsedTimeInMs / stepDurationInMs));
+						int byteToSendThisLoop =
+						    static_cast<int>(byteToSendOnEveryLoop *
+						                     ((elapsedTimeInSecs * 1000.0) / stepDurationInMs));
 
 						binary tempMessageData(byteToSendThisLoop);
 						fill(tempMessageData.begin(), tempMessageData.end(), std::byte(0xFF));
