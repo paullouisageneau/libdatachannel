@@ -69,6 +69,11 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		gnutls::check(gnutls_priority_set_direct(mSession, priorities, &err_pos),
 		              "Failed to set TLS priorities");
 
+		// RFC 8827: The DTLS-SRTP protection profile SRTP_AES128_CM_HMAC_SHA1_80 MUST be supported
+		// See https://tools.ietf.org/html/rfc8827#section-6.5
+		gnutls::check(gnutls_srtp_set_profile(mSession, GNUTLS_SRTP_AES128_CM_HMAC_SHA1_80),
+		              "Failed to set SRTP profile");
+
 		gnutls::check(gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, creds));
 
 		gnutls_dtls_set_timeouts(mSession,
@@ -338,9 +343,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 		if (!mCtx)
 			throw std::runtime_error("Failed to create SSL context");
 
-		openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
-		               "Failed to set SSL priorities");
-
 		// RFC 8261: SCTP performs segmentation and reassembly based on the path MTU.
 		// Therefore, the DTLS layer MUST NOT use any compression algorithm.
 		// See https://tools.ietf.org/html/rfc8261#section-5
@@ -348,13 +350,18 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 		// See https://tools.ietf.org/html/rfc8827#section-6.5
 		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_QUERY_MTU |
 		                              SSL_OP_NO_RENEGOTIATION);
+
 		SSL_CTX_set_min_proto_version(mCtx, DTLS1_VERSION);
 		SSL_CTX_set_read_ahead(mCtx, 1);
 		SSL_CTX_set_quiet_shutdown(mCtx, 1);
 		SSL_CTX_set_info_callback(mCtx, InfoCallback);
+
 		SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
 		                   CertificateCallback);
 		SSL_CTX_set_verify_depth(mCtx, 1);
+
+		openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
+		               "Failed to set SSL priorities");
 
 		auto [x509, pkey] = mCertificate->credentials();
 		SSL_CTX_use_certificate(mCtx, x509);
@@ -386,6 +393,13 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certific
 		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
 		SSL_set_options(mSsl, SSL_OP_SINGLE_ECDH_USE);
 		SSL_set_tmp_ecdh(mSsl, ecdh.get());
+
+		// RFC 8827: The DTLS-SRTP protection profile SRTP_AES128_CM_HMAC_SHA1_80 MUST be supported
+		// See https://tools.ietf.org/html/rfc8827#section-6.5 Warning:
+		// SSL_set_tlsext_use_srtp() returns 0 on success and 1 on error
+		if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"))
+			throw std::runtime_error("Failed to set SRTP profile: " +
+			                         openssl::error_string(ERR_get_error()));
 
 	} catch (...) {
 		if (mSsl)
