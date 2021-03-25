@@ -1,8 +1,8 @@
 # libdatachannel - client-benchmark
 
 This directory contains a native client to open Data Channels with WebSocket signaling using libdatachannel and benchmark functionalities. It offers two functionalities;
-- Benchmark: Bi-directional data transfer benchmark
-- Constant Throughput Set: Send desired amount of data per second.
+- Benchmark: Bi-directional data transfer benchmark (Also supports One-Way testing)
+- Constant Throughput Set: Send desired amount of data per second
 
 ## Start Signaling Server
 - Start one of the signaling server from the examples folder. For example start  `signaling-server-nodejs` like;
@@ -16,9 +16,9 @@ Start 2 applications by using example calls below. Than copy one of the client's
 
 ## Usage Examples
 
-### Benchmark for 300 seconds, send buffer 10000 byte
+### Benchmark for 300 seconds
 
-> `./client-benchmark -d 300 -b 10000` 
+> `./client-benchmark -d 300` 
 
 Example Output (Offering Peer's Output);
 ```bash
@@ -82,13 +82,13 @@ Stats# Received Total: 353 MB   Sent Total: 422 MB   RTT: 15 ms
 Stats# Received Total: 482 MB   Sent Total: 682 MB   RTT: 13 ms
 ```
 
-### Benchmark for 300 seconds, send buffer 10000 byte (Only Send, One Way)
+### Benchmark for 300 seconds (Only Send, One Way)
 
 Start first peer as;
-> `./client-benchmark -d 300 -b 10000 -o` 
+> `./client-benchmark -d 300 -o` 
 
 Start second peer as;
-> `./client-benchmark -d 300 -b 10000` 
+> `./client-benchmark -d 300` 
 
 Example Output (Offering Peer's Output);
 ```bash
