@@ -1,55 +1,20 @@
 # libdatachannel - C/C++ WebRTC Data Channels
 
-libdatachannel is a standalone implementation of WebRTC Data Channels, WebRTC Media Transport, and WebSockets in C++17 with C bindings for POSIX platforms (including GNU/Linux, Android, and Apple macOS) and Microsoft Windows. It aims at being both straightforward and lightweight with a minimum of external dependencies, to enable direct connectivity between native applications and web browsers without the pain of importing Google's bloated [reference library](https://webrtc.googlesource.com/src/). The interface consists of somewhat simplified versions of the JavaScript WebRTC and WebSocket APIs present in browsers, in order to ease the design of cross-environment applications.
+libdatachannel is a standalone implementation of WebRTC Data Channels, WebRTC Media Transport, and WebSockets in C++17 with C bindings for POSIX platforms (including GNU/Linux, Android, and Apple macOS) and Microsoft Windows.
+
+The library aims at being both straightforward and lightweight with a minimum of external dependencies, to enable direct connectivity between native applications and web browsers without the pain of importing Google's bloated [reference library](https://webrtc.googlesource.com/src/). The interface consists of somewhat simplified versions of the JavaScript WebRTC and WebSocket APIs present in browsers, in order to ease the design of cross-environment applications.
+
 It can be compiled with multiple backends:
 - The security layer can be provided through [OpenSSL](https://www.openssl.org/) or [GnuTLS](https://www.gnutls.org/).
 - The connectivity for WebRTC can be provided through my ad-hoc ICE library [libjuice](https://github.com/paullouisageneau/libjuice) as submodule or through [libnice](https://github.com/libnice/libnice).
 
+The WebRTC stack is fully compatible with Firefox and Chromium, see [Compatibility](#Compatibility) below.
+
 Licensed under LGPLv2, see [LICENSE](https://github.com/paullouisageneau/libdatachannel/blob/master/LICENSE).
-
-## Compatibility
-
-The library implements the following communication protocols:
-
-### WebRTC Data Channels and Media Transport
-
-The WebRTC stack has been tested to be compatible with Firefox and Chromium.
-
-Protocol stack:
-- SCTP-based Data Channels ([RFC8831](https://tools.ietf.org/html/rfc8831))
-- SRTP-based Media Transport ([RFC8834](https://tools.ietf.org/html/rfc8834))
-- DTLS/UDP ([RFC7350](https://tools.ietf.org/html/rfc7350) and [RFC8261](https://tools.ietf.org/html/rfc8261))
-- ICE ([RFC8445](https://tools.ietf.org/html/rfc8445)) with STUN ([RFC8489](https://tools.ietf.org/html/rfc8489)) and its extension TURN ([RFC8656](https://tools.ietf.org/html/rfc8656))
-
-Features:
-- Full IPv6 support (as mandated by [RFC8835](https://tools.ietf.org/html/rfc8835))
-- Trickle ICE ([RFC8838](https://tools.ietf.org/html/rfc8838))
-- JSEP-compatible session establishment with SDP ([RFC8829](https://tools.ietf.org/html/rfc8829))
-- SCTP over DTLS with SDP offer/answer ([RFC8841](https://tools.ietf.org/html/rfc8841))
-- DTLS with ECDSA or RSA keys ([RFC8824](https://tools.ietf.org/html/rfc8827))
-- SRTP and SRTCP key derivation from DTLS ([RFC5764](https://tools.ietf.org/html/rfc5764))
-- Multicast DNS candidates ([draft-ietf-rtcweb-mdns-ice-candidates-04](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-04))
-- Differentiated Services QoS ([draft-ietf-tsvwg-rtcweb-qos-18](https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18))
-
-Note only SDP BUNDLE mode is supported for media multiplexing ([RFC8843](https://tools.ietf.org/html/rfc8843)). The behavior is equivalent to the JSEP bundle-only policy: the library always negociates one unique network component, where SRTP media streams are multiplexed with SRTCP control packets ([RFC5761](https://tools.ietf.org/html/rfc5761)) and SCTP/DTLS data traffic ([RFC8261](https://tools.ietf.org/html/rfc8261).
-
-### WebSocket
-
-WebSocket is the protocol of choice for WebRTC signaling. The support is optional and can be disabled at compile time.
-
-Protocol stack:
-- WebSocket protocol ([RFC6455](https://tools.ietf.org/html/rfc6455)), client-side only
-- HTTP over TLS ([RFC2818](https://tools.ietf.org/html/rfc2818))
-
-Features:
-- IPv6 and IPv4/IPv6 dual-stack support
-- Keepalive with ping/pong
 
 ## Dependencies
 
-Only [GnuTLS](https://www.gnutls.org/) or [OpenSSL](https://www.openssl.org/) are necessary.
-
-Optionally, [libnice](https://nice.freedesktop.org/) can be selected as an alternative ICE backend instead of libjuice.
+Only [GnuTLS](https://www.gnutls.org/) or [OpenSSL](https://www.openssl.org/) are necessary. Optionally, [libnice](https://nice.freedesktop.org/) can be selected as an alternative ICE backend instead of libjuice.
 
 Submodules:
 - libjuice: https://github.com/paullouisageneau/libjuice
@@ -152,6 +117,42 @@ ws.onMessage([](std::variant<binary, string> message) {
 
 ws.open("wss://my.websocket/service");
 ```
+
+## Compatibility
+
+The library implements the following communication protocols:
+
+### WebRTC Data Channels and Media Transport
+
+Protocol stack:
+- SCTP-based Data Channels ([RFC8831](https://tools.ietf.org/html/rfc8831))
+- SRTP-based Media Transport ([RFC8834](https://tools.ietf.org/html/rfc8834))
+- DTLS/UDP ([RFC7350](https://tools.ietf.org/html/rfc7350) and [RFC8261](https://tools.ietf.org/html/rfc8261))
+- ICE ([RFC8445](https://tools.ietf.org/html/rfc8445)) with STUN ([RFC8489](https://tools.ietf.org/html/rfc8489)) and its extension TURN ([RFC8656](https://tools.ietf.org/html/rfc8656))
+
+Features:
+- Full IPv6 support (as mandated by [RFC8835](https://tools.ietf.org/html/rfc8835))
+- Trickle ICE ([RFC8838](https://tools.ietf.org/html/rfc8838))
+- JSEP-compatible session establishment with SDP ([RFC8829](https://tools.ietf.org/html/rfc8829))
+- SCTP over DTLS with SDP offer/answer ([RFC8841](https://tools.ietf.org/html/rfc8841))
+- DTLS with ECDSA or RSA keys ([RFC8824](https://tools.ietf.org/html/rfc8827))
+- SRTP and SRTCP key derivation from DTLS ([RFC5764](https://tools.ietf.org/html/rfc5764))
+- Multicast DNS candidates ([draft-ietf-rtcweb-mdns-ice-candidates-04](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-04))
+- Differentiated Services QoS ([draft-ietf-tsvwg-rtcweb-qos-18](https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18))
+
+Note only SDP BUNDLE mode is supported for media multiplexing ([RFC8843](https://tools.ietf.org/html/rfc8843)). The behavior is equivalent to the JSEP bundle-only policy: the library always negociates one unique network component, where SRTP media streams are multiplexed with SRTCP control packets ([RFC5761](https://tools.ietf.org/html/rfc5761)) and SCTP/DTLS data traffic ([RFC8261](https://tools.ietf.org/html/rfc8261)).
+
+### WebSocket
+
+WebSocket is the protocol of choice for WebRTC signaling. The support is optional and can be disabled at compile time.
+
+Protocol stack:
+- WebSocket protocol ([RFC6455](https://tools.ietf.org/html/rfc6455)), client-side only
+- HTTP over TLS ([RFC2818](https://tools.ietf.org/html/rfc2818))
+
+Features:
+- IPv6 and IPv4/IPv6 dual-stack support
+- Keepalive with ping/pong
 
 ## External resources
 - Rust wrapper for libdatachannel: [datachannel-rs](https://github.com/lerouxrgd/datachannel-rs)
