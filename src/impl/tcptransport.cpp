@@ -64,7 +64,9 @@ int SelectInterrupter::prepare(fd_set &readfds, [[maybe_unused]] fd_set &writefd
 	return SOCKET_TO_INT(mDummySock) + 1;
 #else
 	char dummy;
-	(void)::read(mPipeIn, &dummy, 1);
+	if (::read(mPipeIn, &dummy, 1) < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+		PLOG_WARNING << "Reading from interrupter pipe failed, errno=" << errno;
+	}
 	FD_SET(mPipeIn, &readfds);
 	return mPipeIn + 1;
 #endif
@@ -79,7 +81,9 @@ void SelectInterrupter::interrupt() {
 	}
 #else
 	char dummy = 0;
-	(void)::write(mPipeOut, &dummy, 1);
+	if (::write(mPipeOut, &dummy, 1) < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+		PLOG_WARNING << "Writing to interrupter pipe failed, errno=" << errno;
+	}
 #endif
 }
 
