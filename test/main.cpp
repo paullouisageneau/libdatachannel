@@ -89,8 +89,6 @@ int main(int argc, char **argv) {
 	}
 #endif
 #if RTC_ENABLE_WEBSOCKET
-// TODO: Disabled because echo.websocket.org is down
-/*
 	this_thread::sleep_for(1s);
 	try {
 		cout << endl << "*** Running WebSocket test..." << endl;
@@ -100,7 +98,6 @@ int main(int argc, char **argv) {
 		cerr << "WebSocket test failed: " << e.what() << endl;
 		return -1;
 	}
-*/
 #endif
 	this_thread::sleep_for(1s);
 	try {
