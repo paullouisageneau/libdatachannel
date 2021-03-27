@@ -103,6 +103,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandlerelement.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandlerrootelement.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/utils.hpp
 )
 
 set(LIBDATACHANNEL_IMPL_SOURCES
