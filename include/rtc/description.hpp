@@ -233,6 +233,7 @@ public:
 	variant<const Media *, const Application *> media(unsigned int index) const;
 	unsigned int mediaCount() const;
 
+	const Application *application() const;
 	Application *application();
 
 	static Type stringToType(const string &typeString);

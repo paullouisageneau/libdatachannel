@@ -38,6 +38,8 @@ void test_connectivity() {
 	config1.iceServers.emplace_back("stun:stun.ageneau.net:3478");
 	// Custom MTU example
 	config1.mtu = 1500;
+	// Custom max message size
+	config1.maxMessageSize = 1048576;
 
 	PeerConnection pc1(config1);
 
@@ -47,6 +49,8 @@ void test_connectivity() {
 	config2.iceServers.emplace_back("stun:stun.ageneau.net:3478");
 	// Custom MTU example
 	config2.mtu = 1500;
+	// Custom max message size
+	config2.maxMessageSize = 1048576;
 	// Port range example
 	config2.portRangeBegin = 5000;
 	config2.portRangeEnd = 6000;
@@ -139,6 +143,9 @@ void test_connectivity() {
 
 	if (!adc2 || !adc2->isOpen() || !dc1->isOpen())
 		throw runtime_error("DataChannel is not open");
+
+	if (dc1->maxMessageSize() != 1048576 || dc2->maxMessageSize() != 1048576)
+		throw runtime_error("DataChannel max message size is incorrect");
 
 	if (auto addr = pc1.localAddress())
 		cout << "Local address 1:  " << *addr << endl;

@@ -360,8 +360,11 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 			c.portRangeEnd = config->portRangeEnd;
 		}
 
-		if(config->mtu > 0)
+		if (config->mtu > 0)
 			c.mtu = size_t(config->mtu);
+
+		if (config->maxMessageSize)
+			c.maxMessageSize = size_t(config->maxMessageSize);
 
 		return emplacePeerConnection(std::make_shared<PeerConnection>(c));
 	});
