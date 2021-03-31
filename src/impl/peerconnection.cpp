@@ -732,6 +732,9 @@ void PeerConnection::processLocalDescription(Description description) {
 	const size_t localSctpPort = DEFAULT_SCTP_PORT;
 	const size_t localMaxMessageSize = config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE);
 
+	// Clean up the application entry the ICE transport might have added already (libnice)
+	description.clearMedia();
+
 	if (auto remote = remoteDescription()) {
 		// Reciprocate remote description
 		for (unsigned int i = 0; i < remote->mediaCount(); ++i)

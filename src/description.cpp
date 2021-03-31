@@ -426,6 +426,11 @@ int Description::addAudio(string mid, Direction dir) {
 	return addMedia(Audio(std::move(mid), dir));
 }
 
+void Description::clearMedia() {
+	mEntries.clear();
+	mApplication.reset();
+}
+
 variant<Description::Media *, Description::Application *> Description::media(unsigned int index) {
 	if (index >= mEntries.size())
 		throw std::out_of_range("Media index out of range");

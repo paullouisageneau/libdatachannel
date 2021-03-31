@@ -228,6 +228,7 @@ public:
 	int addApplication(string mid = "data");
 	int addVideo(string mid = "video", Direction dir = Direction::SendOnly);
 	int addAudio(string mid = "audio", Direction dir = Direction::SendOnly);
+	void clearMedia();
 
 	variant<Media *, Application *> media(unsigned int index);
 	variant<const Media *, const Application *> media(unsigned int index) const;
