@@ -92,6 +92,7 @@ Arguments:
   - `portRangeBegin` (optional): first port (included) of the allowed local port range (0 if unused)
   - `portRangeEnd` (optional): last port (included) of the allowed local port (0 if unused)
   - `mtu` (optional): manually set the Maximum Transfer Unit (MTU) for the connection (0 if automatic)
+  - `maxMessageSize` (optional): manually set the local maximum message size for Data Channels (0 if default)
 
 Return value: the identifier of the new Peer Connection or a negative error code.
 

@@ -23,6 +23,7 @@
 #include "processor.hpp"
 #include "queue.hpp"
 #include "transport.hpp"
+#include "configuration.hpp"
 
 #include <condition_variable>
 #include <functional>
@@ -42,7 +43,7 @@ public:
 
 	using amount_callback = std::function<void(uint16_t streamId, size_t amount)>;
 
-	SctpTransport(shared_ptr<Transport> lower, uint16_t port, optional<size_t> mtu,
+	SctpTransport(shared_ptr<Transport> lower, const Configuration &config, uint16_t port,
 	              message_callback recvCallback, amount_callback bufferedAmountCallback,
 	              state_callback stateChangeCallback);
 	~SctpTransport();

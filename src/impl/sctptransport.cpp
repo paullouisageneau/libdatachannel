@@ -100,8 +100,9 @@ void SctpTransport::Cleanup() {
 		std::this_thread::sleep_for(100ms);
 }
 
-SctpTransport::SctpTransport(shared_ptr<Transport> lower, uint16_t port, optional<size_t> mtu,
-                             message_callback recvCallback, amount_callback bufferedAmountCallback,
+SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &config,
+                             uint16_t port, message_callback recvCallback,
+                             amount_callback bufferedAmountCallback,
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mPort(port),
       mSendQueue(0, message_size_func), mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
@@ -180,7 +181,7 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, uint16_t port, optiona
 	// 1200 bytes.
 	// See https://tools.ietf.org/html/rfc8261#section-5
 #if USE_PMTUD
-	if (!mtu.has_value()) {
+	if (!config.mtu.has_value()) {
 #else
 	if (false) {
 #endif
@@ -193,7 +194,7 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, uint16_t port, optiona
 		spp.spp_flags |= SPP_PMTUD_DISABLE;
 		// The MTU value provided specifies the space available for chunks in the
 		// packet, so we also subtract the SCTP header size.
-		size_t pmtu = mtu.value_or(DEFAULT_MTU) - 12 - 37 - 8 - 40; // SCTP/DTLS/UDP/IPv6
+		size_t pmtu = config.mtu.value_or(DEFAULT_MTU) - 12 - 37 - 8 - 40; // SCTP/DTLS/UDP/IPv6
 		spp.spp_pathmtu = uint32_t(pmtu);
 		PLOG_VERBOSE << "Path MTU discovery disabled, SCTP MTU set to " << pmtu;
 	}
@@ -222,9 +223,13 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, uint16_t port, optiona
 		                         std::to_string(errno));
 
 	// The default send and receive window size of usrsctp is 256KiB, which is too small for
-	// realistic RTTs, therefore we increase it to 1MiB for better performance.
+	// realistic RTTs, therefore we increase it to at least 1MiB for better performance.
 	// See https://bugzilla.mozilla.org/show_bug.cgi?id=1051685
-	int bufferSize = 1024 * 1024;
+	const size_t minBufferSize = 1024 * 1024;
+
+	// Ensure the buffer is also large enough to accomodate the largest messages
+	const size_t maxMessageSize = config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE);
+	const int bufferSize = int(std::max(minBufferSize, maxMessageSize * 2)); // usrsctp reads as int
 	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize)))
 		throw std::runtime_error("Could not set SCTP recv buffer size, errno=" +
 		                         std::to_string(errno));

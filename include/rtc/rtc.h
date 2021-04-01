@@ -131,6 +131,7 @@ typedef struct {
 	uint16_t portRangeBegin;
 	uint16_t portRangeEnd;
 	int mtu; // <= 0 means automatic
+	int maxMessageSize; // <= 0 means default
 } rtcConfiguration;
 
 typedef struct {

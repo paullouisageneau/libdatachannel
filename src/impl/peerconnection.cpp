@@ -98,6 +98,23 @@ optional<Description> PeerConnection::remoteDescription() const {
 	return mRemoteDescription;
 }
 
+size_t PeerConnection::remoteMaxMessageSize() const {
+	const size_t localMax = config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE);
+
+	size_t remoteMax = DEFAULT_MAX_MESSAGE_SIZE;
+	std::lock_guard lock(mRemoteDescriptionMutex);
+	if (mRemoteDescription)
+		if (auto *application = mRemoteDescription->application())
+			if (auto max = application->maxMessageSize()) {
+				// RFC 8841: If the SDP "max-message-size" attribute contains a maximum message
+				// size value of zero, it indicates that the SCTP endpoint will handle messages
+				// of any size, subject to memory capacity, etc.
+				remoteMax = *max > 0 ? *max : std::numeric_limits<size_t>::max();
+			}
+
+	return std::min(remoteMax, localMax);
+}
+
 shared_ptr<IceTransport> PeerConnection::initIceTransport() {
 	try {
 		if (auto transport = std::atomic_load(&mIceTransport))
@@ -248,7 +265,7 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 		uint16_t sctpPort = remote->application()->sctpPort().value_or(DEFAULT_SCTP_PORT);
 		auto lower = std::atomic_load(&mDtlsTransport);
 		auto transport = std::make_shared<SctpTransport>(
-		    lower, sctpPort, config.mtu, weak_bind(&PeerConnection::forwardMessage, this, _1),
+		    lower, config, sctpPort, weak_bind(&PeerConnection::forwardMessage, this, _1),
 		    weak_bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
 		    [this, weak_this = weak_from_this()](SctpTransport::State transportState) {
 			    auto shared_this = weak_this.lock();
@@ -712,6 +729,11 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 }
 
 void PeerConnection::processLocalDescription(Description description) {
+	const size_t localSctpPort = DEFAULT_SCTP_PORT;
+	const size_t localMaxMessageSize = config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE);
+
+	// Clean up the application entry the ICE transport might have added already (libnice)
+	description.clearMedia();
 
 	if (auto remote = remoteDescription()) {
 		// Reciprocate remote description
@@ -723,8 +745,8 @@ void PeerConnection::processLocalDescription(Description description) {
 				        if (!mDataChannels.empty()) {
 					        // Prefer local description
 					        Description::Application app(remoteApp->mid());
-					        app.setSctpPort(DEFAULT_SCTP_PORT);
-					        app.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+					        app.setSctpPort(localSctpPort);
+					        app.setMaxMessageSize(localMaxMessageSize);
 
 					        PLOG_DEBUG << "Adding application to local description, mid=\""
 					                   << app.mid() << "\"";
@@ -734,8 +756,8 @@ void PeerConnection::processLocalDescription(Description description) {
 				        }
 
 				        auto reciprocated = remoteApp->reciprocate();
-				        reciprocated.hintSctpPort(DEFAULT_SCTP_PORT);
-				        reciprocated.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+				        reciprocated.hintSctpPort(localSctpPort);
+				        reciprocated.setMaxMessageSize(localMaxMessageSize);
 
 				        PLOG_DEBUG << "Reciprocating application in local description, mid=\""
 				                   << reciprocated.mid() << "\"";
@@ -799,8 +821,8 @@ void PeerConnection::processLocalDescription(Description description) {
 				while (description.hasMid(std::to_string(m)))
 					++m;
 				Description::Application app(std::to_string(m));
-				app.setSctpPort(DEFAULT_SCTP_PORT);
-				app.setMaxMessageSize(LOCAL_MAX_MESSAGE_SIZE);
+				app.setSctpPort(localSctpPort);
+				app.setMaxMessageSize(localMaxMessageSize);
 
 				PLOG_DEBUG << "Adding application to local description, mid=\"" << app.mid()
 				           << "\"";

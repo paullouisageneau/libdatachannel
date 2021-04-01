@@ -86,6 +86,9 @@ struct RTC_CPP_EXPORT Configuration {
 
 	// MTU
 	optional<size_t> mtu;
+
+	// Local max message size at reception
+	optional<size_t> maxMessageSize;
 };
 
 } // namespace rtc

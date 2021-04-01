@@ -47,6 +47,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	optional<Description> localDescription() const;
 	optional<Description> remoteDescription() const;
+	size_t remoteMaxMessageSize() const;
 
 	shared_ptr<IceTransport> initIceTransport();
 	shared_ptr<DtlsTransport> initDtlsTransport();

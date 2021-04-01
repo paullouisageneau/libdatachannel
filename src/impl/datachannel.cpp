@@ -165,14 +165,8 @@ bool DataChannel::isOpen(void) const { return mIsOpen; }
 bool DataChannel::isClosed(void) const { return mIsClosed; }
 
 size_t DataChannel::maxMessageSize() const {
-	size_t remoteMax = DEFAULT_MAX_MESSAGE_SIZE;
-	if (auto pc = mPeerConnection.lock())
-		if (auto description = pc->remoteDescription())
-			if (auto *application = description->application())
-				if (auto maxMessageSize = application->maxMessageSize())
-					remoteMax = *maxMessageSize > 0 ? *maxMessageSize : LOCAL_MAX_MESSAGE_SIZE;
-
-	return std::min(remoteMax, LOCAL_MAX_MESSAGE_SIZE);
+	auto pc = mPeerConnection.lock();
+	return pc ? pc->remoteMaxMessageSize() : DEFAULT_MAX_MESSAGE_SIZE;
 }
 
 void DataChannel::shiftStream() {
@@ -260,8 +254,7 @@ NegotiatedDataChannel::NegotiatedDataChannel(weak_ptr<PeerConnection> pc, uint16
     : DataChannel(pc, stream, std::move(label), std::move(protocol), std::move(reliability)) {}
 
 NegotiatedDataChannel::NegotiatedDataChannel(weak_ptr<PeerConnection> pc,
-                                             weak_ptr<SctpTransport> transport,
-                                             uint16_t stream)
+                                             weak_ptr<SctpTransport> transport, uint16_t stream)
     : DataChannel(pc, stream, "", "", {}) {
 	mSctpTransport = transport;
 }
