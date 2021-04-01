@@ -36,10 +36,9 @@ void test_websocket() {
 
 	const string myMessage = "Hello world from libdatachannel";
 
-	WebSocket ws;
-
-	// Certificate verification can be disabled
-	// WebSocket ws(WebSocket::Configuration{.disableTlsVerification = true});
+	WebSocket::Configuration config;
+	config.disableTlsVerification = true;
+	WebSocket ws(std::move(config));
 
 	ws.onOpen([&ws, &myMessage]() {
 		cout << "WebSocket: Open" << endl;
