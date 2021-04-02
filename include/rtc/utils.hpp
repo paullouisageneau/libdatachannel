@@ -85,10 +85,13 @@ public:
 		return *this;
 	}
 
-	void operator()(Args... args) const {
+	bool operator()(Args... args) const {
 		std::lock_guard lock(mutex);
-		if (callback)
-			callback(std::move(args)...);
+		if (!callback)
+			return false;
+
+		callback(std::move(args)...);
+		return true;
 	}
 
 	operator bool() const {

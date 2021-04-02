@@ -730,7 +730,8 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 
 void PeerConnection::processLocalDescription(Description description) {
 	const size_t localSctpPort = DEFAULT_SCTP_PORT;
-	const size_t localMaxMessageSize = config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE);
+	const size_t localMaxMessageSize =
+	    config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE);
 
 	// Clean up the application entry the ICE transport might have added already (libnice)
 	description.clearMedia();
@@ -959,15 +960,31 @@ string PeerConnection::localBundleMid() const {
 
 void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 	auto dataChannel = weakDataChannel.lock();
-	if (!dataChannel)
-		return;
+	if (dataChannel)
+		mPendingDataChannels.push(std::move(dataChannel));
 
-	mProcessor->enqueue(dataChannelCallback.wrap(),
-	                    std::make_shared<rtc::DataChannel>(std::move(dataChannel)));
+	while (dataChannelCallback) {
+		auto next = mPendingDataChannels.tryPop();
+		if (!next)
+			break;
+
+		mProcessor->enqueue(dataChannelCallback.wrap(),
+		                    std::make_shared<rtc::DataChannel>(std::move(*next)));
+	}
 }
 
-void PeerConnection::triggerTrack(shared_ptr<Track> track) {
-	mProcessor->enqueue(trackCallback.wrap(), std::make_shared<rtc::Track>(std::move(track)));
+void PeerConnection::triggerTrack(weak_ptr<Track> weakTrack) {
+	auto track = weakTrack.lock();
+	if (track)
+		mPendingTracks.push(std::move(track));
+
+	while (trackCallback) {
+		auto next = mPendingTracks.tryPop();
+		if (!next)
+			break;
+
+		mProcessor->enqueue(trackCallback.wrap(), std::make_shared<rtc::Track>(std::move(*next)));
+	}
 }
 
 bool PeerConnection::changeState(State newState) {
