@@ -85,8 +85,9 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void processRemoteCandidate(Candidate candidate);
 	string localBundleMid() const;
 
-	void triggerDataChannel(weak_ptr<DataChannel> weakDataChannel);
-	void triggerTrack(shared_ptr<Track> track);
+	void triggerDataChannel(weak_ptr<DataChannel> weakDataChannel = {});
+	void triggerTrack(weak_ptr<Track> weakTrack = {});
+
 	bool changeState(State newState);
 	bool changeGatheringState(GatheringState newState);
 	bool changeSignalingState(SignalingState newState);
@@ -126,6 +127,9 @@ private:
 	std::unordered_map<string, weak_ptr<Track>> mTracks;               // by mid
 	std::vector<weak_ptr<Track>> mTrackLines;                          // by SDP order
 	std::shared_mutex mDataChannelsMutex, mTracksMutex;
+
+	Queue<shared_ptr<DataChannel>> mPendingDataChannels;
+	Queue<shared_ptr<Track>> mPendingTracks;
 
 	std::unordered_map<uint32_t, string> mMidFromSsrc; // cache
 };
