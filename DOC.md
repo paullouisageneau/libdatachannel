@@ -88,7 +88,7 @@ Arguments:
   - `iceServersCount` (optional): number of URLs in the array pointed by `iceServers` (0 if unused)
   - `certificateType` (optional): certificate type, either `RTC_CERTIFICATE_ECDSA` or `RTC_CERTIFICATE_RSA` (0 or `RTC_CERTIFICATE_DEFAULT` if default)
   - `enableIceTcp`: if true, generate TCP candidates for ICE (ignored with libjuice as ICE backend)
-  - `disableAutoNegociation`: if true, the user is responsible for calling `rtcSetLocalDescription` after creating a Data Channel and after setting the remote description
+  - `disableAutoNegotiation`: if true, the user is responsible for calling `rtcSetLocalDescription` after creating a Data Channel and after setting the remote description
   - `portRangeBegin` (optional): first port (included) of the allowed local port range (0 if unused)
   - `portRangeEnd` (optional): last port (included) of the allowed local port (0 if unused)
   - `mtu` (optional): manually set the Maximum Transfer Unit (MTU) for the connection (0 if automatic)
@@ -165,7 +165,7 @@ int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb)
 int rtcSetLocalDescription(int pc, const char *type)
 ```
 
-Initiates the handshake process. Following this call, the local description callback will be called with the local description, which must be sent to the remote peer by the user's method of choice. Note this call is implicit after `rtcSetRemoteDescription` and `rtcCreateDataChannel` if `disableAutoNegociation` was not set on Peer Connection creation.
+Initiates the handshake process. Following this call, the local description callback will be called with the local description, which must be sent to the remote peer by the user's method of choice. Note this call is implicit after `rtcSetRemoteDescription` and `rtcCreateDataChannel` if `disableAutoNegotiation` was not set on Peer Connection creation.
 
 Arguments:
 - `pc`: the Peer Connection identifier
@@ -326,7 +326,7 @@ If `local`, `remote`, or both, are `NULL`, the corresponding candidate is not co
 
 ### Data Channel
 
-#### rtcAddDataChannel
+#### rtcCreateDataChannel
 
 ```
 int rtcCreateDataChannel(int pc, const char *label)
