@@ -65,8 +65,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
 	optional<string> getMidFromSsrc(uint32_t ssrc);
 
-	shared_ptr<DataChannel> emplaceDataChannel(Description::Role role, string label,
-	                                           DataChannelInit init);
+	shared_ptr<DataChannel> emplaceDataChannel(string label, DataChannelInit init);
 	shared_ptr<DataChannel> findDataChannel(uint16_t stream);
 	void shiftDataChannels();
 	void iterateDataChannels(std::function<void(shared_ptr<DataChannel> channel)> func);

@@ -262,6 +262,9 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 		if (!remote || !remote->application())
 			throw std::logic_error("Starting SCTP transport without application description");
 
+		// This is the last occasion to ensure the stream numbers are coherent with the role
+		shiftDataChannels();
+
 		uint16_t sctpPort = remote->application()->sctpPort().value_or(DEFAULT_SCTP_PORT);
 		auto lower = std::atomic_load(&mDtlsTransport);
 		auto transport = std::make_shared<SctpTransport>(
@@ -549,8 +552,7 @@ void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
 		channel->triggerBufferedAmount(amount);
 }
 
-shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role role, string label,
-                                                           DataChannelInit init) {
+shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(string label, DataChannelInit init) {
 	std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
 	uint16_t stream;
 	if (init.id) {
@@ -558,6 +560,13 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(Description::Role rol
 		if (stream == 65535)
 			throw std::invalid_argument("Invalid DataChannel id");
 	} else {
+		// RFC 5763: The answerer MUST use either a setup attribute value of setup:active or
+		// setup:passive. [...] Thus, setup:active is RECOMMENDED.
+		// See https://tools.ietf.org/html/rfc5763#section-5
+		// Therefore, we assume passive role if we are the offerer.
+		auto iceTransport = getIceTransport();
+		auto role = iceTransport ? iceTransport->role() : Description::Role::Passive;
+
 		// RFC 8832: The peer that initiates opening a data channel selects a stream identifier for
 		// which the corresponding incoming and outgoing streams are unused.  If the side is acting
 		// as the DTLS client, it MUST choose an even stream identifier; if the side is acting as
@@ -906,6 +915,10 @@ void PeerConnection::processRemoteDescription(Description description) {
 
 	auto iceTransport = initIceTransport();
 	iceTransport->setRemoteDescription(std::move(description));
+
+	// Since we assumed passive role during DataChannel creation, we might need to shift the stream
+	// numbers from odd to even.
+	shiftDataChannels();
 
 	if (description.hasApplication()) {
 		auto dtlsTransport = std::atomic_load(&mDtlsTransport);
