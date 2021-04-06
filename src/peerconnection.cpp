@@ -223,11 +223,6 @@ void PeerConnection::setRemoteDescription(Description description) {
 		// This is an offer, we need to answer
 		if (!impl()->config.disableAutoNegotiation)
 			setLocalDescription(Description::Type::Answer);
-	} else {
-		// This is an answer
-		// Since we assumed passive role during DataChannel creation, we need to shift the
-		// stream numbers by one to shift them from odd to even.
-		impl()->shiftDataChannels();
 	}
 
 	for (const auto &candidate : remoteCandidates)
@@ -250,14 +245,7 @@ optional<string> PeerConnection::remoteAddress() const {
 }
 
 shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, DataChannelInit init) {
-	// RFC 5763: The answerer MUST use either a setup attribute value of setup:active or
-	// setup:passive. [...] Thus, setup:active is RECOMMENDED.
-	// See https://tools.ietf.org/html/rfc5763#section-5
-	// Therefore, we assume passive role when we are the offerer.
-	auto iceTransport = impl()->getIceTransport();
-	auto role = iceTransport ? iceTransport->role() : Description::Role::Passive;
-
-	auto channelImpl = impl()->emplaceDataChannel(role, std::move(label), std::move(init));
+	auto channelImpl = impl()->emplaceDataChannel(std::move(label), std::move(init));
 	auto channel = std::make_shared<DataChannel>(channelImpl);
 
 	if (auto transport = impl()->getSctpTransport())
