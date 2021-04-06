@@ -2,7 +2,7 @@
 
 libdatachannel is a standalone implementation of WebRTC Data Channels, WebRTC Media Transport, and WebSockets in C++17 with C bindings for POSIX platforms (including GNU/Linux, Android, and Apple macOS) and Microsoft Windows.
 
-The library aims at being both straightforward and lightweight with a minimum of external dependencies, to enable direct connectivity between native applications and web browsers without the pain of importing Google's bloated [reference library](https://webrtc.googlesource.com/src/). The interface consists of somewhat simplified versions of the JavaScript WebRTC and WebSocket APIs present in browsers, in order to ease the design of cross-environment applications.
+The library aims at being both straightforward and lightweight with minimal external dependencies, to enable direct connectivity between native applications and web browsers without the pain of importing Google's bloated [reference library](https://webrtc.googlesource.com/src/). The interface consists of somewhat simplified versions of the JavaScript WebRTC and WebSocket APIs present in browsers, in order to ease the design of cross-environment applications.
 
 It can be compiled with multiple backends:
 - The security layer can be provided through [OpenSSL](https://www.openssl.org/) or [GnuTLS](https://www.gnutls.org/).
@@ -19,7 +19,7 @@ Only [GnuTLS](https://www.gnutls.org/) or [OpenSSL](https://www.openssl.org/) ar
 Submodules:
 - libjuice: https://github.com/paullouisageneau/libjuice
 - usrsctp: https://github.com/sctplab/usrsctp
-- libsrtp: https://github.com/cisco/libsrtp
+- libsrtp: https://github.com/cisco/libsrtp (if compiled with media support)
 
 ## Building
 
@@ -123,6 +123,8 @@ ws.open("wss://my.websocket/service");
 The library implements the following communication protocols:
 
 ### WebRTC Data Channels and Media Transport
+
+The library implements WebRTC Peer Connections with both Data Channels and Media Transport. Media transport is optional and can be disabled at compile time.
 
 Protocol stack:
 - SCTP-based Data Channels ([RFC8831](https://tools.ietf.org/html/rfc8831))
