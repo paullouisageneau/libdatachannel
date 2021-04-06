@@ -170,6 +170,7 @@ size_t DataChannel::maxMessageSize() const {
 }
 
 void DataChannel::shiftStream() {
+	std::shared_lock lock(mMutex);
 	if (mStream % 2 == 1)
 		mStream -= 1;
 }
