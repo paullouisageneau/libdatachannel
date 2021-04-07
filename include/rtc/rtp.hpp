@@ -33,7 +33,7 @@
 
 #ifndef htonll
 #define htonll(x)                                                                                  \
-	((uint64_t)htonl(((uint64_t)(x)&0xFFFFFFFF) << 32) | (uint64_t)htonl((uint64_t)(x) >> 32))
+	((uint64_t)(((uint64_t)htonl((uint32_t)(x))) << 32) | (uint64_t)htonl((uint32_t)((x) >> 32)))
 #endif
 #ifndef ntohll
 #define ntohll(x) htonll(x)
