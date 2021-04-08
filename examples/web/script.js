@@ -118,7 +118,7 @@ function createPeerConnection(ws, id) {
   pc.onconnectionstatechange = () => console.log(`Connection state: ${pc.connectionState}`);
   pc.onicegatheringstatechange = () => console.log(`Gathering state: ${pc.iceGatheringState}`);
   pc.onicecandidate = (e) => {
-    if (e.candidate) {
+    if (e.candidate && e.candidate.candidate) {
       // Send candidate
       sendLocalCandidate(ws, id, e.candidate);
     }
