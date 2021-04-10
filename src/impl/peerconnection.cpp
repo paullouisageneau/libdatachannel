@@ -189,7 +189,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		auto certificate = mCertificate.get();
 		auto lower = std::atomic_load(&mIceTransport);
 		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1);
-		auto stateChangeCallback =
+		auto dtlsStateChangeCallback =
 		    [this, weak_this = weak_from_this()](DtlsTransport::State transportState) {
 			    auto shared_this = weak_this.lock();
 			    if (!shared_this)
@@ -224,7 +224,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 			// DTLS-SRTP
 			transport = std::make_shared<DtlsSrtpTransport>(
 			    lower, certificate, config.mtu, verifierCallback,
-			    weak_bind(&PeerConnection::forwardMedia, this, _1), stateChangeCallback);
+			    weak_bind(&PeerConnection::forwardMedia, this, _1), dtlsStateChangeCallback);
 #else
 			PLOG_WARNING << "Ignoring media support (not compiled with media support)";
 #endif
@@ -233,7 +233,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		if (!transport) {
 			// DTLS only
 			transport = std::make_shared<DtlsTransport>(lower, certificate, config.mtu,
-			                                            verifierCallback, stateChangeCallback);
+			                                            verifierCallback, dtlsStateChangeCallback);
 		}
 
 		std::atomic_store(&mDtlsTransport, transport);
@@ -738,7 +738,7 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 }
 
 void PeerConnection::processLocalDescription(Description description) {
-	const size_t localSctpPort = DEFAULT_SCTP_PORT;
+	const uint16_t localSctpPort = DEFAULT_SCTP_PORT;
 	const size_t localMaxMessageSize =
 	    config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE);
 
