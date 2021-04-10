@@ -300,3 +300,164 @@ Stats# Received Total: 81 MB   Sent Total: 81 MB   RTT: 0 ms
       TOTL Received: 8001 KB/s   Sent: 8002 KB/s
 Stats# Received Total: 122 MB   Sent Total: 122 MB   RTT: 0 ms
 ```
+
+### Constant Throughput Set 8000 byte, for 300 seconds, send buffer 10000 byte, 5 Data Channel
+
+> `./client-benchmark -p -d 300 -r 8000 -b 10000 -c 5` 
+
+Example Output (Offering Peer's Output);
+```bash
+Stun server is stun:stun.l.google.com:19302
+The local ID is: QZ46
+Url is ws://localhost:8000/QZ46
+Waiting for signaling to be connected...
+2021-04-10 19:57:28.562 INFO  [17117] [rtc::impl::TcpTransport::connect@163] Connected to localhost:8000
+2021-04-10 19:57:28.562 INFO  [17117] [rtc::impl::TcpTransport::runLoop@331] TCP connected
+2021-04-10 19:57:28.563 INFO  [17117] [rtc::impl::WsTransport::incoming@118] WebSocket open
+WebSocket connected, signaling ready
+Enter a remote ID to send an offer:
+lTZA
+Offering to lTZA
+Creating DataChannel with label "DC-1"
+2021-04-10 19:57:37.371 INFO  [17110] [rtc::impl::IceTransport::IceTransport@106] Using STUN server "stun.l.google.com:19302"
+2021-04-10 19:57:37.372 INFO  [17110] [rtc::impl::PeerConnection::changeSignalingState@1044] Changed signaling state to new
+2021-04-10 19:57:37.373 INFO  [17110] [rtc::impl::PeerConnection::changeGatheringState@1033] Changed gathering state to in-progress
+2021-04-10 19:57:37.373 INFO  [17110] [rtc::impl::IceTransport::LogCallback@339] juice: agent.c:787: Changing state to gathering
+Gathering State: in-progress
+Creating DataChannel with label "DC-2"
+2021-04-10 19:57:37.373 INFO  [17119] [rtc::impl::IceTransport::LogCallback@339] juice: agent.c:787: Changing state to connecting
+Creating DataChannel with label "DC-3"
+2021-04-10 19:57:37.374 INFO  [17119] [rtc::impl::PeerConnection::changeState@1016] Changed state to connecting
+Creating DataChannel with label "DC-4"
+Creating DataChannel with label "DC-5"
+State: Benchmark will run for connecting300 seconds
+
+2021-04-10 19:57:37.376 INFO  [17119] [rtc::impl::IceTransport::LogCallback@339] juice: agent.c:610: Using STUN server stun.l.google.com:19302
+2021-04-10 19:57:37.378 INFO  [17117] [rtc::impl::PeerConnection::changeSignalingState@1044] Changed signaling state to connecting
+2021-04-10 19:57:37.423 INFO  [17119] [rtc::impl::IceTransport::LogCallback@339] juice: agent.c:1328: STUN server binding successful
+2021-04-10 19:57:37.476 INFO  [17119] [rtc::impl::IceTransport::LogCallback@339] juice: agent.c:787: Changing state to connected
+2021-04-10 19:57:37.478 INFO  [17119] [rtc::impl::IceTransport::LogCallback@339] juice: agent.c:787: Changing state to completed
+2021-04-10 19:57:38.383 INFO  [17122] [rtc::impl::DtlsTransport::runRecvLoop@503] DTLS handshake finished
+2021-04-10 19:57:38.392 INFO  [17113] [rtc::impl::SctpTransport::processNotification@713] SCTP connected
+2021-04-10 19:57:38.392 INFO  [17113] [rtc::impl::PeerConnection::changeState@1016] Changed state to connected
+State: connected
+DataChannel from lTZA open
+DataChannel from lTZA open
+#DataChannel from lTZA open
+DataChannel from lTZA open
+1
+      DC-5 Received: 0 KB/s   Sent: 79 KB/s   BufferSize: 0
+      DC-3 Received: 0 KB/s   Sent: 0 KB/s   BufferSize: 0
+      DC-4 Received: 0 KB/s   Sent: 79 KB/s   BufferSize: 0
+      DC-2 Received: 0 KB/s   Sent: 0 KB/s   BufferSize: 0
+      DC-1 Received: 0 KB/s   Sent: 0 KB/s   BufferSize: 0
+      TOTL Received: 0 KB/s   Sent: 158 KB/s
+DataChannel from lTZA open
+#2
+      DC-5 Received: 7960 KB/s   Sent: 8000 KB/s   BufferSize: 0
+      DC-3 Received: 7804 KB/s   Sent: 8000 KB/s   BufferSize: 0
+      DC-4 Received: 7883 KB/s   Sent: 8000 KB/s   BufferSize: 0
+      DC-2 Received: 7882 KB/s   Sent: 8000 KB/s   BufferSize: 0
+      DC-1 Received: 7804 KB/s   Sent: 8000 KB/s   BufferSize: 0
+      TOTL Received: 39333 KB/s   Sent: 40000 KB/s
+#3
+      DC-5 Received: 7966 KB/s   Sent: 7996 KB/s   BufferSize: 81504
+      DC-3 Received: 8047 KB/s   Sent: 7996 KB/s   BufferSize: 81504
+      DC-4 Received: 7958 KB/s   Sent: 7996 KB/s   BufferSize: 81504
+      DC-2 Received: 7958 KB/s   Sent: 7996 KB/s   BufferSize: 81504
+      DC-1 Received: 8067 KB/s   Sent: 7996 KB/s   BufferSize: 163597
+      TOTL Received: 39996 KB/s   Sent: 39980 KB/s
+2021-04-10 19:57:40.926 INFO  [17119] [rtc::impl::IceTransport::LogCallback@339] juice: agent.c:843: STUN server binding failed (timeout)
+2021-04-10 19:57:40.926 INFO  [17119] [rtc::impl::IceTransport::LogCallback@339] juice: agent.c:2206: Candidate gathering done
+2021-04-10 19:57:40.926 INFO  [17119] [rtc::impl::PeerConnection::changeGatheringState@1033] Changed gathering state to complete
+Gathering State: complete
+#4
+      DC-5 Received: 7970 KB/s   Sent: 8002 KB/s   BufferSize: 0
+      DC-3 Received: 7957 KB/s   Sent: 8002 KB/s   BufferSize: 0
+      DC-4 Received: 7910 KB/s   Sent: 8002 KB/s   BufferSize: 0
+      DC-2 Received: 7967 KB/s   Sent: 8002 KB/s   BufferSize: 0
+      DC-1 Received: 7957 KB/s   Sent: 8002 KB/s   BufferSize: 0
+      TOTL Received: 39761 KB/s   Sent: 40010 KB/s
+#5
+      DC-5 Received: 7996 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      DC-3 Received: 8006 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      DC-4 Received: 8078 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      DC-2 Received: 8015 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      DC-1 Received: 7928 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      TOTL Received: 40023 KB/s   Sent: 39995 KB/s
+Stats# Received Total: 165 MB   Sent Total: 166 MB   RTT: 1 ms
+
+#6
+      DC-5 Received: 7968 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      DC-3 Received: 7962 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      DC-4 Received: 7965 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      DC-2 Received: 7970 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      DC-1 Received: 8044 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      TOTL Received: 39909 KB/s   Sent: 39995 KB/s
+#7
+      DC-5 Received: 6658 KB/s   Sent: 8001 KB/s   BufferSize: 82228
+      DC-3 Received: 6584 KB/s   Sent: 8001 KB/s   BufferSize: 163596
+      DC-4 Received: 6572 KB/s   Sent: 8001 KB/s   BufferSize: 163596
+      DC-2 Received: 6571 KB/s   Sent: 8001 KB/s   BufferSize: 163596
+      DC-1 Received: 6492 KB/s   Sent: 8001 KB/s   BufferSize: 163596
+      TOTL Received: 32877 KB/s   Sent: 40005 KB/s
+#8
+      DC-5 Received: 5773 KB/s   Sent: 7997 KB/s   BufferSize: 0
+      DC-3 Received: 6555 KB/s   Sent: 7997 KB/s   BufferSize: 0
+      DC-4 Received: 6164 KB/s   Sent: 7997 KB/s   BufferSize: 0
+      DC-2 Received: 6241 KB/s   Sent: 7997 KB/s   BufferSize: 0
+      DC-1 Received: 5454 KB/s   Sent: 7997 KB/s   BufferSize: 0
+      TOTL Received: 30187 KB/s   Sent: 39985 KB/s
+#9
+      DC-5 Received: 7442 KB/s   Sent: 8002 KB/s   BufferSize: 326921
+      DC-3 Received: 7580 KB/s   Sent: 8002 KB/s   BufferSize: 326921
+      DC-4 Received: 7363 KB/s   Sent: 8002 KB/s   BufferSize: 326921
+      DC-2 Received: 7524 KB/s   Sent: 8002 KB/s   BufferSize: 326921
+      DC-1 Received: 7362 KB/s   Sent: 8002 KB/s   BufferSize: 408769
+      TOTL Received: 37271 KB/s   Sent: 40010 KB/s
+#10
+      DC-5 Received: 6134 KB/s   Sent: 7999 KB/s   BufferSize: 244963
+      DC-3 Received: 8032 KB/s   Sent: 7999 KB/s   BufferSize: 326286
+      DC-4 Received: 5897 KB/s   Sent: 7999 KB/s   BufferSize: 326286
+      DC-2 Received: 5657 KB/s   Sent: 7999 KB/s   BufferSize: 326286
+      DC-1 Received: 5581 KB/s   Sent: 7999 KB/s   BufferSize: 326286
+      TOTL Received: 31301 KB/s   Sent: 39995 KB/s
+Stats# Received Total: 343 MB   Sent Total: 372 MB   RTT: 16 ms
+
+#11
+      DC-5 Received: 6117 KB/s   Sent: 7998 KB/s   BufferSize: 570756
+      DC-3 Received: 6594 KB/s   Sent: 7998 KB/s   BufferSize: 570756
+      DC-4 Received: 6354 KB/s   Sent: 7998 KB/s   BufferSize: 570756
+      DC-2 Received: 6116 KB/s   Sent: 7998 KB/s   BufferSize: 570756
+      DC-1 Received: 5959 KB/s   Sent: 7998 KB/s   BufferSize: 570756
+      TOTL Received: 31140 KB/s   Sent: 39990 KB/s
+#12
+      DC-5 Received: 6840 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      DC-3 Received: 7468 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      DC-4 Received: 7472 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      DC-2 Received: 7473 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      DC-1 Received: 7236 KB/s   Sent: 7999 KB/s   BufferSize: 0
+      TOTL Received: 36489 KB/s   Sent: 39995 KB/s
+#13
+      DC-5 Received: 8105 KB/s   Sent: 7989 KB/s   BufferSize: 0
+      DC-3 Received: 8020 KB/s   Sent: 7989 KB/s   BufferSize: 0
+      DC-4 Received: 8097 KB/s   Sent: 7989 KB/s   BufferSize: 0
+      DC-2 Received: 8106 KB/s   Sent: 7989 KB/s   BufferSize: 0
+      DC-1 Received: 8018 KB/s   Sent: 7989 KB/s   BufferSize: 0
+      TOTL Received: 40346 KB/s   Sent: 39945 KB/s
+#14
+      DC-5 Received: 8042 KB/s   Sent: 8007 KB/s   BufferSize: 0
+      DC-3 Received: 8029 KB/s   Sent: 8007 KB/s   BufferSize: 0
+      DC-4 Received: 8038 KB/s   Sent: 8007 KB/s   BufferSize: 0
+      DC-2 Received: 8035 KB/s   Sent: 8007 KB/s   BufferSize: 0
+      DC-1 Received: 8036 KB/s   Sent: 8007 KB/s   BufferSize: 0
+      TOTL Received: 40180 KB/s   Sent: 40035 KB/s
+#15
+      DC-5 Received: 7981 KB/s   Sent: 8001 KB/s   BufferSize: 0
+      DC-3 Received: 7987 KB/s   Sent: 8001 KB/s   BufferSize: 0
+      DC-4 Received: 7980 KB/s   Sent: 8001 KB/s   BufferSize: 0
+      DC-2 Received: 7974 KB/s   Sent: 8001 KB/s   BufferSize: 0
+      DC-1 Received: 7972 KB/s   Sent: 8001 KB/s   BufferSize: 82497
+      TOTL Received: 39894 KB/s   Sent: 40005 KB/s
+Stats# Received Total: 538 MB   Sent Total: 581 MB   RTT: 3 ms
+```
