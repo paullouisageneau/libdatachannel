@@ -12,9 +12,12 @@ feature.compose <gnutls>on
 lib libdatachannel
 	: # sources
 	[ glob ./src/*.cpp ]
+	[ glob ./src/impl/*.cpp ]
 	: # requirements
 	<cxxstd>17
+	<include>./include
 	<include>./include/rtc
+	<include>./src
 	<define>RTC_ENABLE_MEDIA=0
 	<define>RTC_ENABLE_WEBSOCKET=0
 	<define>USE_NICE=0
