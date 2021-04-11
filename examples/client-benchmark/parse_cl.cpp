@@ -51,6 +51,7 @@ Cmdline::Cmdline(int argc, char *argv[]) // ISO C++17 not allowed: throw (std::s
 	                                       {"enableThroughputSet", no_argument, NULL, 'p'},
 	                                       {"throughtputSetAsKB", required_argument, NULL, 'r'},
 	                                       {"bufferSize", required_argument, NULL, 'b'},
+										   {"dataChannelCount", required_argument, NULL, 'c'},
 	                                       {"help", no_argument, NULL, 'h'},
 	                                       {NULL, 0, NULL, 0}};
 
@@ -68,9 +69,10 @@ Cmdline::Cmdline(int argc, char *argv[]) // ISO C++17 not allowed: throw (std::s
 	_p = false;
 	_r = 300;
 	_b = 0;
+	_c = 1;
 
 	optind = 0;
-	while ((c = getopt_long(argc, argv, "s:t:w:x:d:r:b:enhvop", long_options, &optind)) != -1) {
+	while ((c = getopt_long(argc, argv, "s:t:w:x:d:r:b:c:enhvop", long_options, &optind)) != -1) {
 		switch (c) {
 		case 'n':
 			_n = true;
@@ -147,6 +149,15 @@ Cmdline::Cmdline(int argc, char *argv[]) // ISO C++17 not allowed: throw (std::s
 			}
 			break;
 
+		case 'c':
+			_c = atoi(optarg);
+			if (_c <= 0) {
+				std::string err;
+				err += "parameter range error: c must be > 0";
+				throw(std::range_error(err));
+			}
+			break;
+
 		case 'h':
 			_h = true;
 			this->usage(EXIT_SUCCESS);
@@ -196,6 +207,8 @@ libdatachannel client implementing WebRTC Data Channels with WebSocket signaling
           Send a constant data per second (KB). See throughtputSetAsKB params.\n\
    [ -r ] [ --throughtputSetAsKB ] (type=INTEGER, range>0...INT_MAX, default=300)\n\
           Send constant data per second (KB).\n\
+   [ -c ] [ --dataChannelCount ] (type=INTEGER, range>0...INT_MAX, default=1)\n\
+          Dat Channel count to create.\n\
    [ -h ] [ --help ] (type=FLAG)\n\
           Display this help and exit.\n";
 	}

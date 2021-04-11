@@ -45,6 +45,7 @@ private:
   bool _p;
   int _r;
   int _b;
+  int _c;
 
   /* other stuff to keep track of */
   std::string _program_name;
@@ -69,9 +70,10 @@ public:
   bool h () const { return _h; }
   int durationInSec () const { return _d; }
   bool noSend () const { return _o; }
-  int bufferSize() const { return _b;}
+  int bufferSize() const { return _b; }
   bool enableThroughputSet () const { return _p; }
-  int throughtputSetAsKB() const { return _r;}  
+  int throughtputSetAsKB() const { return _r; }  
+  int dataChannelCount() const { return _c; }
 };
 
 #endif
