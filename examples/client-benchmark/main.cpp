@@ -64,7 +64,6 @@ const size_t messageSize = 65535;
 binary messageData(messageSize);
 unordered_map<string, atomic<size_t>> receivedSizeMap;
 unordered_map<string, atomic<size_t>> sentSizeMap;
-// atomic<size_t> receivedSize = 0, sentSize = 0;
 bool noSend = false;
 
 // Benchmark - enableThroughputSet params
@@ -213,7 +212,7 @@ int main(int argc, char **argv) try {
 				try {
 					while (dcLocked->bufferedAmount() <= bufferSize) {
 						dcLocked->send(messageData);
-						sentSizeMap[label] += messageData.size();
+						sentSizeMap[label] = sentSizeMap.at(label) + messageData.size();
 					}
 				} catch (const std::exception &e) {
 					std::cout << "Send failed: " << e.what() << std::endl;
@@ -236,7 +235,7 @@ int main(int argc, char **argv) try {
 			try {
 				while (dcLocked->isOpen() && dcLocked->bufferedAmount() <= bufferSize) {
 					dcLocked->send(messageData);
-					sentSizeMap[label] += messageData.size();
+					sentSizeMap[label] = sentSizeMap.at(label) + messageData.size();
 				}
 			} catch (const std::exception &e) {
 				std::cout << "Send failed: " << e.what() << std::endl;
@@ -247,7 +246,7 @@ int main(int argc, char **argv) try {
 
 		dc->onMessage([id, wdc = make_weak_ptr(dc), label](variant<binary, string> data) {
 			if (holds_alternative<binary>(data))
-				receivedSizeMap[label] += get<binary>(data).size();
+				receivedSizeMap[label] = receivedSizeMap.at(label) + get<binary>(data).size();
 		});
 
 		dataChannelMap.emplace(label, dc);
@@ -281,7 +280,7 @@ int main(int argc, char **argv) try {
 			for (const auto &[label, dc] : dataChannelMap) {
 				if (dc->isOpen() && dc->bufferedAmount() <= bufferSize * byteToSendOnEveryLoop) {
 					dc->send(tempMessageData);
-					sentSizeMap[label] += tempMessageData.size();
+					sentSizeMap[label] = sentSizeMap.at(label) + tempMessageData.size();
 				}
 			}
 		}
@@ -388,7 +387,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 			try {
 				while (dc->bufferedAmount() <= bufferSize) {
 					dc->send(messageData);
-					sentSizeMap[label] += messageData.size();
+					sentSizeMap[label] = sentSizeMap.at(label) + messageData.size();
 				}
 			} catch (const std::exception &e) {
 				std::cout << "Send failed: " << e.what() << std::endl;
@@ -427,7 +426,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 
 						if (dcLocked->bufferedAmount() <= bufferSize) {
 							dcLocked->send(tempMessageData);
-							sentSizeMap[label] += tempMessageData.size();
+							sentSizeMap[label] = sentSizeMap.at(label) + tempMessageData.size();
 						}
 					} catch (const std::exception &e) {
 						std::cout << "Send failed: " << e.what() << std::endl;
@@ -452,7 +451,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 			try {
 				while (dcLocked->isOpen() && dcLocked->bufferedAmount() <= bufferSize) {
 					dcLocked->send(messageData);
-					sentSizeMap[label] += messageData.size();
+					sentSizeMap[label] = sentSizeMap.at(label) + messageData.size();
 				}
 			} catch (const std::exception &e) {
 				std::cout << "Send failed: " << e.what() << std::endl;
@@ -463,7 +462,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 
 		dc->onMessage([id, wdc = make_weak_ptr(dc), label](variant<binary, string> data) {
 			if (holds_alternative<binary>(data))
-				receivedSizeMap[label] += get<binary>(data).size();
+				receivedSizeMap[label] = receivedSizeMap.at(label) + get<binary>(data).size();
 		});
 
 		dataChannelMap.emplace(label, dc);
