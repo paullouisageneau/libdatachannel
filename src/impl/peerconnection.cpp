@@ -21,7 +21,7 @@
 #include "certificate.hpp"
 #include "common.hpp"
 #include "dtlstransport.hpp"
-#include "globals.hpp"
+#include "internals.hpp"
 #include "icetransport.hpp"
 #include "logcounter.hpp"
 #include "peerconnection.hpp"

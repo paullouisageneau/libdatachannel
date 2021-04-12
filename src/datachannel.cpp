@@ -17,11 +17,11 @@
  */
 
 #include "datachannel.hpp"
-#include "globals.hpp"
 #include "common.hpp"
 #include "peerconnection.hpp"
 
 #include "impl/datachannel.hpp"
+#include "impl/internals.hpp"
 #include "impl/peerconnection.hpp"
 
 #ifdef _WIN32

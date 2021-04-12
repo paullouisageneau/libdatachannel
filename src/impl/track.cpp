@@ -17,7 +17,7 @@
  */
 
 #include "track.hpp"
-#include "globals.hpp"
+#include "internals.hpp"
 #include "logcounter.hpp"
 #include "peerconnection.hpp"
 

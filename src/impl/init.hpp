@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019-2021 Paul-Louis Ageneau
+ * Copyright (c) 2020 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,26 +16,37 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_GLOBALS_H
-#define RTC_GLOBALS_H
+#ifndef RTC_IMPL_INIT_H
+#define RTC_IMPL_INIT_H
 
 #include "common.hpp"
+#include "global.hpp" // for SctpSettings
+
+#include <chrono>
+#include <mutex>
 
 namespace rtc {
 
-const size_t MAX_NUMERICNODE_LEN = 48; // Max IPv6 string representation length
-const size_t MAX_NUMERICSERV_LEN = 6;  // Max port string representation length
+using init_token = shared_ptr<void>;
 
-const uint16_t DEFAULT_SCTP_PORT = 5000;                  // SCTP port to use by default
+class Init {
+public:
+	static init_token Token();
+	static void Preload();
+	static void Cleanup();
+	static void SetSctpSettings(SctpSettings s);
 
-const size_t DEFAULT_LOCAL_MAX_MESSAGE_SIZE = 256 * 1024; // Default local max message size
-const size_t DEFAULT_MAX_MESSAGE_SIZE = 65536; // Remote max message size if not specified in SDP
+	~Init();
 
-const size_t RECV_QUEUE_LIMIT = 1024 * 1024; // Max per-channel queue size
+private:
+	Init();
 
-const int THREADPOOL_SIZE = 4; // Number of threads in the global thread pool (>= 2)
-
-const size_t DEFAULT_MTU = RTC_DEFAULT_MTU; // defined in rtc.h
+	static weak_ptr<void> Weak;
+	static shared_ptr<void> *Global;
+	static bool Initialized;
+	static SctpSettings CurrentSctpSettings;
+	static std::recursive_mutex Mutex;
+};
 
 } // namespace rtc
 

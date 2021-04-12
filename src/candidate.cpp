@@ -17,7 +17,8 @@
  */
 
 #include "candidate.hpp"
-#include "globals.hpp"
+
+#include "impl/internals.hpp"
 
 #include <algorithm>
 #include <array>

@@ -17,8 +17,8 @@
  */
 
 #include "track.hpp"
-#include "globals.hpp"
 
+#include "impl/internals.hpp"
 #include "impl/track.hpp"
 
 namespace rtc {
@@ -46,9 +46,7 @@ bool Track::isOpen(void) const { return impl()->isOpen(); }
 
 bool Track::isClosed(void) const { return impl()->isClosed(); }
 
-size_t Track::maxMessageSize() const {
-	return impl()->maxMessageSize();
-}
+size_t Track::maxMessageSize() const { return impl()->maxMessageSize(); }
 
 void Track::setMediaHandler(shared_ptr<MediaHandler> handler) {
 	impl()->setMediaHandler(std::move(handler));

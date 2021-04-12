@@ -17,8 +17,8 @@
  */
 
 #include "channel.hpp"
-#include "globals.hpp"
 
+#include "impl/internals.hpp"
 #include "impl/channel.hpp"
 
 namespace rtc {

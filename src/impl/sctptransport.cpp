@@ -18,7 +18,7 @@
 
 #include "sctptransport.hpp"
 #include "dtlstransport.hpp"
-#include "globals.hpp"
+#include "internals.hpp"
 #include "logcounter.hpp"
 
 #include <chrono>

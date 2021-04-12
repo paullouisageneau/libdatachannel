@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2020-2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,17 +16,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_INIT_H
-#define RTC_INIT_H
+#ifndef RTC_GLOBAL_H
+#define RTC_GLOBAL_H
 
 #include "common.hpp"
 
 #include <chrono>
-#include <mutex>
 
 namespace rtc {
 
-using init_token = shared_ptr<void>;
+RTC_EXPORT void Preload();
+RTC_EXPORT void Cleanup();
 
 struct SctpSettings {
 	optional<size_t> recvBufferSize;
@@ -37,28 +37,7 @@ struct SctpSettings {
 	optional<std::chrono::milliseconds> delayedSackTime;
 };
 
-class RTC_CPP_EXPORT Init {
-public:
-	static init_token Token();
-	static void Preload();
-	static void Cleanup();
-	static void SetSctpSettings(SctpSettings s);
-
-	~Init();
-
-private:
-	Init();
-
-	static weak_ptr<void> Weak;
-	static shared_ptr<void> *Global;
-	static bool Initialized;
-	static SctpSettings CurrentSctpSettings;
-	static std::recursive_mutex Mutex;
-};
-
-inline void Preload() { Init::Preload(); }
-inline void Cleanup() { Init::Cleanup(); }
-inline void SetSctpSettings(SctpSettings s) { Init::SetSctpSettings(std::move(s)); }
+RTC_EXPORT void SetSctpSettings(SctpSettings s);
 
 } // namespace rtc
 

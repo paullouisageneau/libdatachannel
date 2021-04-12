@@ -17,7 +17,7 @@
  */
 
 #include "init.hpp"
-#include "globals.hpp"
+#include "internals.hpp"
 
 #include "impl/certificate.hpp"
 #include "impl/dtlstransport.hpp"
@@ -42,7 +42,6 @@ namespace rtc {
 namespace {
 
 void doInit() {
-	PLOG_DEBUG << "Global initialization";
 
 #ifdef _WIN32
 	WSADATA wsaData;
@@ -69,8 +68,6 @@ void doInit() {
 }
 
 void doCleanup() {
-	PLOG_DEBUG << "Global cleanup";
-
 	impl::ThreadPool::Instance().join();
 
 	impl::SctpTransport::Cleanup();
@@ -129,6 +126,7 @@ void Init::SetSctpSettings(SctpSettings s) {
 Init::Init() {
 	// Mutex is locked by Token() here
 	if (!std::exchange(Initialized, true)) {
+		PLOG_DEBUG << "Global initialization";
 		doInit();
 		impl::SctpTransport::SetSettings(CurrentSctpSettings);
 	}
@@ -140,8 +138,11 @@ Init::~Init() {
 		std::unique_lock lock(Mutex);
 		if (Global)
 			return;
-		if (std::exchange(Initialized, false))
+
+		if (std::exchange(Initialized, false)) {
+			PLOG_DEBUG << "Global cleanup";
 			doCleanup();
+		}
 	});
 	t.detach();
 }
