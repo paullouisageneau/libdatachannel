@@ -21,17 +21,28 @@
 
 #include "common.hpp"
 
+#include <chrono>
 #include <mutex>
 
 namespace rtc {
 
 using init_token = shared_ptr<void>;
 
+struct SctpSettings {
+	optional<size_t> recvBufferSize;
+	optional<size_t> sendBufferSize;
+	optional<size_t> maxChunksOnQueue;
+	optional<size_t> initialCongestionWindow;
+	optional<unsigned int> congestionControlModule;
+	optional<std::chrono::milliseconds> delayedSackTime;
+};
+
 class RTC_CPP_EXPORT Init {
 public:
 	static init_token Token();
 	static void Preload();
 	static void Cleanup();
+	static void SetSctpSettings(SctpSettings s);
 
 	~Init();
 
@@ -41,11 +52,13 @@ private:
 	static weak_ptr<void> Weak;
 	static shared_ptr<void> *Global;
 	static bool Initialized;
+	static SctpSettings CurrentSctpSettings;
 	static std::recursive_mutex Mutex;
 };
 
 inline void Preload() { Init::Preload(); }
 inline void Cleanup() { Init::Cleanup(); }
+inline void SetSctpSettings(SctpSettings s) { Init::SetSctpSettings(std::move(s)); }
 
 } // namespace rtc
 

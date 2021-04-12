@@ -70,6 +70,7 @@ using binary = std::vector<byte>;
 using binary_ptr = std::shared_ptr<binary>;
 
 using std::size_t;
+using std::ptrdiff_t;
 using std::uint16_t;
 using std::uint32_t;
 using std::uint64_t;

@@ -92,6 +92,7 @@ void doCleanup() {
 weak_ptr<void> Init::Weak;
 shared_ptr<void> *Init::Global = nullptr;
 bool Init::Initialized = false;
+SctpSettings Init::CurrentSctpSettings = {};
 std::recursive_mutex Init::Mutex;
 
 init_token Init::Token() {
@@ -118,10 +119,19 @@ void Init::Cleanup() {
 	Global = nullptr;
 }
 
+void Init::SetSctpSettings(SctpSettings s) {
+	auto token = Token();
+	std::unique_lock lock(Mutex);
+	impl::SctpTransport::SetSettings(s);
+	CurrentSctpSettings = std::move(s); // store for next init
+}
+
 Init::Init() {
 	// Mutex is locked by Token() here
-	if (!std::exchange(Initialized, true))
+	if (!std::exchange(Initialized, true)) {
 		doInit();
+		impl::SctpTransport::SetSettings(CurrentSctpSettings);
+	}
 }
 
 Init::~Init() {
