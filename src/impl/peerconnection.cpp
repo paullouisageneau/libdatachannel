@@ -976,14 +976,7 @@ void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 	if (dataChannel)
 		mPendingDataChannels.push(std::move(dataChannel));
 
-	while (dataChannelCallback) {
-		auto next = mPendingDataChannels.tryPop();
-		if (!next)
-			break;
-
-		mProcessor->enqueue(dataChannelCallback.wrap(),
-		                    std::make_shared<rtc::DataChannel>(std::move(*next)));
-	}
+	triggerPendingDataChannels();
 }
 
 void PeerConnection::triggerTrack(weak_ptr<Track> weakTrack) {
@@ -991,13 +984,37 @@ void PeerConnection::triggerTrack(weak_ptr<Track> weakTrack) {
 	if (track)
 		mPendingTracks.push(std::move(track));
 
+	triggerPendingTracks();
+}
+
+void PeerConnection::triggerPendingDataChannels() {
+	while (dataChannelCallback) {
+		auto next = mPendingDataChannels.tryPop();
+		if (!next)
+			break;
+
+		auto impl = std::move(*next);
+		dataChannelCallback(std::make_shared<rtc::DataChannel>(impl));
+	}
+}
+
+void PeerConnection::triggerPendingTracks() {
 	while (trackCallback) {
 		auto next = mPendingTracks.tryPop();
 		if (!next)
 			break;
 
-		mProcessor->enqueue(trackCallback.wrap(), std::make_shared<rtc::Track>(std::move(*next)));
+		auto impl = std::move(*next);
+		trackCallback(std::make_shared<rtc::Track>(std::move(impl)));
 	}
+}
+
+void PeerConnection::flushPendingDataChannels() {
+	mProcessor->enqueue(std::bind(&PeerConnection::triggerPendingDataChannels, this));
+}
+
+void PeerConnection::flushPendingTracks() {
+	mProcessor->enqueue(std::bind(&PeerConnection::triggerPendingTracks, this));
 }
 
 bool PeerConnection::changeState(State newState) {
