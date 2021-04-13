@@ -258,8 +258,8 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 		                         std::to_string(errno));
 	int sndBuf = 0;
 	socklen_t sndBufLen = sizeof(sndBuf);
-	if (usrsctp_getsockopt(mSock, SOL_SOCKET, SO_SNDBUF, &rcvBuf, &sndBufLen))
-		throw std::runtime_error("Could not get SCTP recv buffer size, errno=" +
+	if (usrsctp_getsockopt(mSock, SOL_SOCKET, SO_SNDBUF, &sndBuf, &sndBufLen))
+		throw std::runtime_error("Could not get SCTP send buffer size, errno=" +
 		                         std::to_string(errno));
 
 	// Ensure the buffer is also large enough to accomodate the largest messages
