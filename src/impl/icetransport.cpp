@@ -18,7 +18,7 @@
 
 #include "icetransport.hpp"
 #include "configuration.hpp"
-#include "globals.hpp"
+#include "internals.hpp"
 #include "transport.hpp"
 
 #include <iostream>

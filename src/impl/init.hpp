@@ -16,22 +16,25 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_INIT_H
-#define RTC_INIT_H
+#ifndef RTC_IMPL_INIT_H
+#define RTC_IMPL_INIT_H
 
 #include "common.hpp"
+#include "global.hpp" // for SctpSettings
 
+#include <chrono>
 #include <mutex>
 
 namespace rtc {
 
 using init_token = shared_ptr<void>;
 
-class RTC_CPP_EXPORT Init {
+class Init {
 public:
 	static init_token Token();
 	static void Preload();
 	static void Cleanup();
+	static void SetSctpSettings(SctpSettings s);
 
 	~Init();
 
@@ -41,11 +44,9 @@ private:
 	static weak_ptr<void> Weak;
 	static shared_ptr<void> *Global;
 	static bool Initialized;
+	static SctpSettings CurrentSctpSettings;
 	static std::recursive_mutex Mutex;
 };
-
-inline void Preload() { Init::Preload(); }
-inline void Cleanup() { Init::Cleanup(); }
 
 } // namespace rtc
 

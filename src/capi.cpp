@@ -715,6 +715,33 @@ int rtcGetTrackDescription(int tr, char *buffer, int size) {
 	});
 }
 
+int rtcSetSctpSettings(const rtcSctpSettings *settings) {
+	return wrap([&] {
+		SctpSettings s = {};
+
+		if (settings->recvBufferSize > 0)
+			s.recvBufferSize = size_t(settings->recvBufferSize);
+
+		if (settings->sendBufferSize > 0)
+			s.sendBufferSize = size_t(settings->sendBufferSize);
+
+		if (settings->maxChunksOnQueue > 0)
+			s.maxChunksOnQueue = size_t(settings->maxChunksOnQueue);
+
+		if (settings->initialCongestionWindow > 0)
+			s.initialCongestionWindow = size_t(settings->initialCongestionWindow);
+
+		if (settings->congestionControlModule >= 0)
+			s.congestionControlModule = unsigned(settings->congestionControlModule);
+
+		if (settings->delayedSackTimeMs > 0)
+			s.delayedSackTime = std::chrono::milliseconds(settings->delayedSackTimeMs);
+
+		SetSctpSettings(std::move(s));
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 #if RTC_ENABLE_WEBSOCKET
 int rtcCreateWebSocket(const char *url) {
 	return wrap([&] {

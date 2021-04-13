@@ -46,7 +46,8 @@ extern "C" {
 #define RTC_DEFAULT_MTU 1280 // IPv6 minimum guaranteed MTU
 
 #if RTC_ENABLE_MEDIA
-#define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE ((uint16_t)(RTC_DEFAULT_MTU - 12 - 8 - 40)) // SRTP/UDP/IPv6
+#define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE                                                          \
+	((uint16_t)(RTC_DEFAULT_MTU - 12 - 8 - 40)) // SRTP/UDP/IPv6
 #define RTC_DEFAULT_MAXIMUM_PACKET_COUNT_FOR_NACK_CACHE ((unsigned)512)
 #endif
 
@@ -97,21 +98,21 @@ typedef enum {
 #if RTC_ENABLE_MEDIA
 
 typedef enum {
-    // video
-    RTC_CODEC_H264 = 0,
-    RTC_CODEC_VP8 = 1,
-    RTC_CODEC_VP9 = 2,
+	// video
+	RTC_CODEC_H264 = 0,
+	RTC_CODEC_VP8 = 1,
+	RTC_CODEC_VP9 = 2,
 
-    // audio
-    RTC_CODEC_OPUS = 128
+	// audio
+	RTC_CODEC_OPUS = 128
 } rtcCodec;
 
 typedef enum {
-    RTC_DIRECTION_UNKNOWN = 0,
-    RTC_DIRECTION_SENDONLY = 1,
-    RTC_DIRECTION_RECVONLY = 2,
-    RTC_DIRECTION_SENDRECV = 3,
-    RTC_DIRECTION_INACTIVE = 4
+	RTC_DIRECTION_UNKNOWN = 0,
+	RTC_DIRECTION_SENDONLY = 1,
+	RTC_DIRECTION_RECVONLY = 2,
+	RTC_DIRECTION_SENDRECV = 3,
+	RTC_DIRECTION_INACTIVE = 4
 } rtcDirection;
 
 #endif // RTC_ENABLE_MEDIA
@@ -130,7 +131,7 @@ typedef struct {
 	bool disableAutoNegotiation;
 	uint16_t portRangeBegin;
 	uint16_t portRangeEnd;
-	int mtu; // <= 0 means automatic
+	int mtu;            // <= 0 means automatic
 	int maxMessageSize; // <= 0 means default
 } rtcConfiguration;
 
@@ -172,7 +173,7 @@ RTC_EXPORT void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb);
 
 // User pointer
 RTC_EXPORT void rtcSetUserPointer(int id, void *ptr);
-RTC_EXPORT void * rtcGetUserPointer(int i);
+RTC_EXPORT void *rtcGetUserPointer(int i);
 
 // PeerConnection
 RTC_EXPORT int rtcCreatePeerConnection(const rtcConfiguration *config); // returns pc id
@@ -219,6 +220,19 @@ RTC_EXPORT int rtcDeleteTrack(int tr);
 
 RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
 
+// SCTP settings
+typedef struct {
+	int recvBufferSize;          // <= 0 means optimized default
+	int sendBufferSize;          // <= 0 means optimized default
+	int maxChunksOnQueue;        // <= 0 means optimized default
+	int initialCongestionWindow; // <= 0 means optimized default
+	int congestionControlModule; // <= 0 means default (0: RFC2581, 1: HSTCP, 2: H-TCP, 3: RTCC)
+	int delayedSackTimeMs;       // <= 0 means optimized default
+} rtcSctpSettings;
+
+// Note: SCTP settings apply to newly-created PeerConnections only
+RTC_EXPORT int rtcSetSctpSettings(const rtcSctpSettings *settings);
+
 // Media
 #if RTC_ENABLE_MEDIA
 
@@ -233,7 +247,9 @@ RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
 /// @param _msid MSID (optional)
 /// @param _trackID Track ID used in MSID (optional)
 /// @returns Track id
-RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc, const char *_mid, rtcDirection direction, const char *_name, const char *_msid, const char *_trackID);
+RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc,
+                             const char *_mid, rtcDirection direction, const char *_name,
+                             const char *_msid, const char *_trackID);
 
 /// Set H264PacketizationHandler for track
 /// @param tr Track id
@@ -244,7 +260,10 @@ RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t s
 /// @param maxFragmentSize Maximum NALU fragment size
 /// @param sequenceNumber Sequence number
 /// @param timestamp Timestamp
-RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t maxFragmentSize, uint16_t sequenceNumber, uint32_t timestamp);
+RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char *cname,
+                                              uint8_t payloadType, uint32_t clockRate,
+                                              uint16_t maxFragmentSize, uint16_t sequenceNumber,
+                                              uint32_t timestamp);
 
 /// Set OpusPacketizationHandler for track
 /// @param tr Track id
@@ -254,7 +273,9 @@ RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char 
 /// @param clockRate Clock rate
 /// @param _sequenceNumber Sequence number
 /// @param _timestamp Timestamp
-RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char * cname, uint8_t payloadType, uint32_t clockRate, uint16_t _sequenceNumber, uint32_t _timestamp);
+RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char *cname,
+                                              uint8_t payloadType, uint32_t clockRate,
+                                              uint16_t _sequenceNumber, uint32_t _timestamp);
 
 /// Chain RtcpSrReporter to handler chain for given track
 /// @param tr Track id
@@ -267,9 +288,11 @@ int rtcChainRtcpNackResponder(int tr, unsigned maxStoredPacketsCount);
 
 /// Set start time for RTP stream
 /// @param startTime_s Start time in seconds
-/// @param timeIntervalSince1970 Set true if `startTime_s` is time interval since 1970, false if `startTime_s` is time interval since 1900
+/// @param timeIntervalSince1970 Set true if `startTime_s` is time interval since 1970, false if
+/// `startTime_s` is time interval since 1900
 /// @param _timestamp Start timestamp
-int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970, uint32_t _timestamp);
+int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970,
+                                    uint32_t _timestamp);
 
 /// Start stats recording for RTCP Sender Reporter
 /// @param id Track identifier
@@ -279,23 +302,23 @@ int rtcStartRtcpSenderReporterRecording(int id);
 /// @param id Track id
 /// @param seconds Seconds
 /// @param timestamp Pointer to result
-int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t * timestamp);
+int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp);
 
 /// Transform timestamp to seconds using track's clock rate
 /// @param id Track id
 /// @param timestamp Timestamp
 /// @param seconds Pointer for result
-int rtcTransformTimestampToSeconds(int id, uint32_t timestamp, double * seconds);
+int rtcTransformTimestampToSeconds(int id, uint32_t timestamp, double *seconds);
 
 /// Get current timestamp
 /// @param id Track id
 /// @param timestamp Pointer for result
-int rtcGetCurrentTrackTimestamp(int id, uint32_t * timestamp);
+int rtcGetCurrentTrackTimestamp(int id, uint32_t *timestamp);
 
 /// Get start timestamp for track identified by given id
 /// @param id Track id
 /// @param timestamp Pointer for result
-int rtcGetTrackStartTimestamp(int id, uint32_t * timestamp);
+int rtcGetTrackStartTimestamp(int id, uint32_t *timestamp);
 
 /// Set RTP timestamp for track identified by given id
 /// @param id Track id
@@ -305,7 +328,7 @@ int rtcSetTrackRTPTimestamp(int id, uint32_t timestamp);
 /// Get timestamp of previous RTCP SR
 /// @param id Track id
 /// @param timestamp Pointer for result
-int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t * timestamp);
+int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t *timestamp);
 
 /// Set `NeedsToReport` flag in RtcpSrReporter handler identified by given track id
 /// @param id Track id

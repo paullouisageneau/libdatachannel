@@ -19,7 +19,8 @@
 #if RTC_ENABLE_MEDIA
 
 #include "nalunit.hpp"
-#include "globals.hpp"
+
+#include "impl/internals.hpp"
 
 #include <cmath>
 

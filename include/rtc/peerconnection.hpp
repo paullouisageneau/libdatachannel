@@ -24,7 +24,6 @@
 #include "datachannel.hpp"
 #include "description.hpp"
 #include "common.hpp"
-#include "init.hpp"
 #include "message.hpp"
 #include "reliability.hpp"
 #include "track.hpp"

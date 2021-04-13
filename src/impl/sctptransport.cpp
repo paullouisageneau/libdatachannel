@@ -18,12 +18,13 @@
 
 #include "sctptransport.hpp"
 #include "dtlstransport.hpp"
-#include "globals.hpp"
+#include "internals.hpp"
 #include "logcounter.hpp"
 
 #include <chrono>
 #include <exception>
 #include <iostream>
+#include <limits>
 #include <thread>
 #include <vector>
 
@@ -54,6 +55,26 @@
 using namespace std::chrono_literals;
 using namespace std::chrono;
 
+namespace {
+
+template <typename T> uint16_t to_uint16(T i) {
+	if (i >= 0 && static_cast<typename std::make_unsigned<T>::type>(i) <=
+	                  std::numeric_limits<uint16_t>::max())
+		return static_cast<uint16_t>(i);
+	else
+		throw std::invalid_argument("Integer out of range");
+}
+
+template <typename T> uint32_t to_uint32(T i) {
+	if (i >= 0 && static_cast<typename std::make_unsigned<T>::type>(i) <=
+	                  std::numeric_limits<uint32_t>::max())
+		return static_cast<uint32_t>(i);
+	else
+		throw std::invalid_argument("Integer out of range");
+}
+
+} // namespace
+
 namespace rtc::impl {
 
 static LogCounter COUNTER_UNKNOWN_PPID(plog::warning,
@@ -69,7 +90,8 @@ std::shared_mutex SctpTransport::InstancesMutex;
 
 void SctpTransport::Init() {
 	usrsctp_init(0, &SctpTransport::WriteCallback, nullptr);
-	usrsctp_sysctl_set_sctp_ecn_enable(0);
+	usrsctp_sysctl_set_sctp_pr_enable(1);  // Enable Partial Reliability Extension (RFC 3758)
+	usrsctp_sysctl_set_sctp_ecn_enable(0); // Disable Explicit Congestion Notification
 	usrsctp_sysctl_set_sctp_init_rtx_max_default(5);
 	usrsctp_sysctl_set_sctp_path_rtx_max_default(5);
 	usrsctp_sysctl_set_sctp_assoc_rtx_max_default(5);              // single path
@@ -78,21 +100,28 @@ void SctpTransport::Init() {
 	usrsctp_sysctl_set_sctp_rto_initial_default(1 * 1000);         // ms
 	usrsctp_sysctl_set_sctp_init_rto_max_default(10 * 1000);       // ms
 	usrsctp_sysctl_set_sctp_heartbeat_interval_default(10 * 1000); // ms
+}
 
-	usrsctp_sysctl_set_sctp_max_chunks_on_queue(10 * 1024);
+void SctpTransport::SetSettings(const SctpSettings &s) {
+	// The send and receive window size of usrsctp is 256KiB, which is too small for realistic RTTs,
+	// therefore we increase it to 1MiB by default for better performance.
+	// See https://bugzilla.mozilla.org/show_bug.cgi?id=1051685
+	usrsctp_sysctl_set_sctp_recvspace(to_uint32(s.recvBufferSize.value_or(1024 * 1024)));
+	usrsctp_sysctl_set_sctp_sendspace(to_uint32(s.sendBufferSize.value_or(1024 * 1024)));
 
-	// Use default congestion control (RFC 4960)
+	// Increase maximum chunks number on queue to 10K by default
+	usrsctp_sysctl_set_sctp_max_chunks_on_queue(to_uint32(s.maxChunksOnQueue.value_or(10 * 1024)));
+
+	// Increase initial congestion window size to 10 MTUs (RFC 6928) by default
+	usrsctp_sysctl_set_sctp_initial_cwnd(to_uint32(s.initialCongestionWindow.value_or(10)));
+
+	// Use standard SCTP congestion control (RFC 4960) by default
 	// See https://github.com/paullouisageneau/libdatachannel/issues/354
-	usrsctp_sysctl_set_sctp_default_cc_module(0);
+	usrsctp_sysctl_set_sctp_default_cc_module(to_uint32(s.congestionControlModule.value_or(0)));
 
-	// Enable Partial Reliability Extension (RFC 3758)
-	usrsctp_sysctl_set_sctp_pr_enable(1);
-
-	// Increase the initial window size to 10 MTUs (RFC 6928)
-	usrsctp_sysctl_set_sctp_initial_cwnd(10);
-
-	// Reduce SACK delay from the default 200ms to 20ms
-	usrsctp_sysctl_set_sctp_delayed_sack_time_default(20); // ms
+	// Reduce SACK delay to 20ms by default
+	usrsctp_sysctl_set_sctp_delayed_sack_time_default(
+	    to_uint32(s.delayedSackTime.value_or(20ms).count()));
 }
 
 void SctpTransport::Cleanup() {
@@ -195,7 +224,7 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 		// The MTU value provided specifies the space available for chunks in the
 		// packet, so we also subtract the SCTP header size.
 		size_t pmtu = config.mtu.value_or(DEFAULT_MTU) - 12 - 37 - 8 - 40; // SCTP/DTLS/UDP/IPv6
-		spp.spp_pathmtu = uint32_t(pmtu);
+		spp.spp_pathmtu = to_uint32(pmtu);
 		PLOG_VERBOSE << "Path MTU discovery disabled, SCTP MTU set to " << pmtu;
 	}
 
@@ -222,18 +251,28 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 		throw std::runtime_error("Could not disable SCTP fragmented interleave, errno=" +
 		                         std::to_string(errno));
 
-	// The default send and receive window size of usrsctp is 256KiB, which is too small for
-	// realistic RTTs, therefore we increase it to at least 1MiB for better performance.
-	// See https://bugzilla.mozilla.org/show_bug.cgi?id=1051685
-	const size_t minBufferSize = 1024 * 1024;
+	int rcvBuf = 0;
+	socklen_t rcvBufLen = sizeof(rcvBuf);
+	if (usrsctp_getsockopt(mSock, SOL_SOCKET, SO_RCVBUF, &rcvBuf, &rcvBufLen))
+		throw std::runtime_error("Could not get SCTP recv buffer size, errno=" +
+		                         std::to_string(errno));
+	int sndBuf = 0;
+	socklen_t sndBufLen = sizeof(sndBuf);
+	if (usrsctp_getsockopt(mSock, SOL_SOCKET, SO_SNDBUF, &sndBuf, &sndBufLen))
+		throw std::runtime_error("Could not get SCTP send buffer size, errno=" +
+		                         std::to_string(errno));
 
 	// Ensure the buffer is also large enough to accomodate the largest messages
 	const size_t maxMessageSize = config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE);
-	const int bufferSize = int(std::max(minBufferSize, maxMessageSize * 2)); // usrsctp reads as int
-	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize)))
+	const int minBuf = int(std::min(maxMessageSize, size_t(std::numeric_limits<int>::max())));
+	rcvBuf = std::max(rcvBuf, minBuf);
+	sndBuf = std::max(sndBuf, minBuf);
+
+	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_RCVBUF, &rcvBuf, sizeof(rcvBuf)))
 		throw std::runtime_error("Could not set SCTP recv buffer size, errno=" +
 		                         std::to_string(errno));
-	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_SNDBUF, &bufferSize, sizeof(bufferSize)))
+
+	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_SNDBUF, &sndBuf, sizeof(sndBuf)))
 		throw std::runtime_error("Could not set SCTP send buffer size, errno=" +
 		                         std::to_string(errno));
 }
@@ -336,7 +375,7 @@ bool SctpTransport::send(message_ptr message) {
 		return true;
 
 	mSendQueue.push(message);
-	updateBufferedAmount(uint16_t(message->stream), long(message_size_func(message)));
+	updateBufferedAmount(to_uint16(message->stream), ptrdiff_t(message_size_func(message)));
 	return false;
 }
 
@@ -353,7 +392,7 @@ bool SctpTransport::flush() {
 }
 
 void SctpTransport::closeStream(unsigned int stream) {
-	send(make_message(0, Message::Reset, uint16_t(stream)));
+	send(make_message(0, Message::Reset, to_uint16(stream)));
 }
 
 void SctpTransport::incoming(message_ptr message) {
@@ -458,7 +497,7 @@ bool SctpTransport::trySendQueue() {
 		if (!trySendMessage(message))
 			return false;
 		mSendQueue.pop();
-		updateBufferedAmount(uint16_t(message->stream), -long(message_size_func(message)));
+		updateBufferedAmount(to_uint16(message->stream), -ptrdiff_t(message_size_func(message)));
 	}
 	return true;
 }
@@ -511,12 +550,12 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 	case Reliability::Type::Rexmit:
 		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
 		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
-		spa.sendv_prinfo.pr_value = uint32_t(std::get<int>(reliability.rexmit));
+		spa.sendv_prinfo.pr_value = to_uint32(std::get<int>(reliability.rexmit));
 		break;
 	case Reliability::Type::Timed:
 		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
 		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_TTL;
-		spa.sendv_prinfo.pr_value = uint32_t(std::get<milliseconds>(reliability.rexmit).count());
+		spa.sendv_prinfo.pr_value = to_uint32(std::get<milliseconds>(reliability.rexmit).count());
 		break;
 	default:
 		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_NONE;
@@ -548,10 +587,10 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 	return true;
 }
 
-void SctpTransport::updateBufferedAmount(uint16_t streamId, long delta) {
+void SctpTransport::updateBufferedAmount(uint16_t streamId, ptrdiff_t delta) {
 	// Requires mSendMutex to be locked
 	auto it = mBufferedAmount.insert(std::make_pair(streamId, 0)).first;
-	size_t amount = size_t(std::max(long(it->second) + delta, long(0)));
+	size_t amount = size_t(std::max(ptrdiff_t(it->second) + delta, ptrdiff_t(0)));
 	if (amount == 0)
 		mBufferedAmount.erase(it);
 	else

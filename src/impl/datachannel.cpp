@@ -18,7 +18,7 @@
 
 #include "datachannel.hpp"
 #include "common.hpp"
-#include "globals.hpp"
+#include "internals.hpp"
 #include "logcounter.hpp"
 #include "peerconnection.hpp"
 #include "sctptransport.hpp"

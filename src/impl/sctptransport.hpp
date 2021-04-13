@@ -39,6 +39,7 @@ namespace rtc::impl {
 class SctpTransport final : public Transport {
 public:
 	static void Init();
+	static void SetSettings(const SctpSettings &s);
 	static void Cleanup();
 
 	using amount_callback = std::function<void(uint16_t streamId, size_t amount)>;
@@ -83,7 +84,7 @@ private:
 	void doFlush();
 	bool trySendQueue();
 	bool trySendMessage(message_ptr message);
-	void updateBufferedAmount(uint16_t streamId, long delta);
+	void updateBufferedAmount(uint16_t streamId, ptrdiff_t delta);
 	void triggerBufferedAmount(uint16_t streamId, size_t amount);
 	void sendReset(uint16_t streamId);
 

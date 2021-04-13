@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2020-2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,35 +16,29 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-// C API
-#include "rtc.h"
+#ifndef RTC_GLOBAL_H
+#define RTC_GLOBAL_H
 
-// C++ API
 #include "common.hpp"
-#include "global.hpp"
-#include "log.hpp"
-//
-#include "datachannel.hpp"
-#include "peerconnection.hpp"
-#include "track.hpp"
 
-#if RTC_ENABLE_WEBSOCKET
+#include <chrono>
 
-// WebSocket
-#include "websocket.hpp"
+namespace rtc {
 
-#endif // RTC_ENABLE_WEBSOCKET
+RTC_EXPORT void Preload();
+RTC_EXPORT void Cleanup();
 
-#if RTC_ENABLE_MEDIA
+struct SctpSettings {
+	optional<size_t> recvBufferSize;
+	optional<size_t> sendBufferSize;
+	optional<size_t> maxChunksOnQueue;
+	optional<size_t> initialCongestionWindow;
+	optional<unsigned int> congestionControlModule;
+	optional<std::chrono::milliseconds> delayedSackTime;
+};
 
-// Media handling
-#include "mediachainablehandler.hpp"
-#include "rtcpnackresponder.hpp"
-#include "rtcpreceivingsession.hpp"
-#include "rtcpsrreporter.hpp"
+RTC_EXPORT void SetSctpSettings(SctpSettings s);
 
-// Opus/h264 streaming
-#include "h264packetizationhandler.hpp"
-#include "opuspacketizationhandler.hpp"
+} // namespace rtc
 
-#endif // RTC_ENABLE_MEDIA
+#endif

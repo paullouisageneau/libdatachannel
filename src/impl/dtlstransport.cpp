@@ -17,7 +17,7 @@
  */
 
 #include "dtlstransport.hpp"
-#include "globals.hpp"
+#include "internals.hpp"
 #include "icetransport.hpp"
 
 #include <chrono>
