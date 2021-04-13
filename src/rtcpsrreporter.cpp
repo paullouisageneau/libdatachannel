@@ -20,6 +20,9 @@
 
 #include "rtcpsrreporter.hpp"
 
+#include <cmath>
+#include <cassert>
+
 namespace rtc {
 
 ChainedOutgoingProduct RtcpSrReporter::processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) {
@@ -61,8 +64,8 @@ uint64_t RtcpSrReporter::secondsToNTP(double seconds) {
 void RtcpSrReporter::setNeedsToReport() { needsToReport = true; }
 
 message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
-	auto srSize = RTCP_SR::size(0);
-	auto msg = make_message(srSize + RTCP_SDES::size({{uint8_t(rtpConfig->cname.size())}}),
+	auto srSize = RTCP_SR::Size(0);
+	auto msg = make_message(srSize + RTCP_SDES::Size({{uint8_t(rtpConfig->cname.size())}}),
 							Message::Type::Control);
 	auto sr = reinterpret_cast<RTCP_SR *>(msg->data());
 	auto timestamp_s = rtpConfig->timestampToSeconds(timestamp);

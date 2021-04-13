@@ -16,12 +16,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef NAL_UNIT_H
-#define NAL_UNIT_H
+#ifndef RTC_NAL_UNIT_H
+#define RTC_NAL_UNIT_H
 
 #if RTC_ENABLE_MEDIA
 
 #include "common.hpp"
+
+#include <cassert>
 
 namespace rtc {
 
@@ -29,6 +31,8 @@ namespace rtc {
 
 /// Nalu header
 struct RTC_CPP_EXPORT NalUnitHeader {
+	uint8_t _first = 0;
+
 	bool forbiddenBit() { return _first >> 7; }
 	uint8_t nri() { return _first >> 5 & 0x03; }
 	uint8_t unitType() { return _first & 0x1F; }
@@ -36,13 +40,12 @@ struct RTC_CPP_EXPORT NalUnitHeader {
 	void setForbiddenBit(bool isSet) { _first = (_first & 0x7F) | (isSet << 7); }
 	void setNRI(uint8_t nri) { _first = (_first & 0x9F) | ((nri & 0x03) << 5); }
 	void setUnitType(uint8_t type) { _first = (_first & 0xE0) | (type & 0x1F); }
-
-private:
-	uint8_t _first = 0;
 };
 
 /// Nalu fragment header
 struct RTC_CPP_EXPORT NalUnitFragmentHeader {
+	uint8_t _first = 0;
+
 	bool isStart() { return _first >> 7; }
 	bool reservedBit6() { return (_first >> 6) & 0x01; }
 	bool isEnd() { return (_first >> 5) & 0x01; }
@@ -52,9 +55,6 @@ struct RTC_CPP_EXPORT NalUnitFragmentHeader {
 	void setEnd(bool isSet) { _first = (_first & 0xDF) | (isSet << 6); }
 	void setReservedBit6(bool isSet) { _first = (_first & 0xBF) | (isSet << 5); }
 	void setUnitType(uint8_t type) { _first = (_first & 0xE0) | (type & 0x1F); }
-
-private:
-	uint8_t _first = 0;
 };
 
 #pragma pack(pop)
@@ -152,4 +152,4 @@ public:
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* NAL_UNIT_H */
+#endif /* RTC_NAL_UNIT_H */

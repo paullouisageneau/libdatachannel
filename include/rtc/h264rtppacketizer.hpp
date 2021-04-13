@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef H264_RTP_PACKETIZER_H
-#define H264_RTP_PACKETIZER_H
+#ifndef RTC_H264_RTP_PACKETIZER_H
+#define RTC_H264_RTP_PACKETIZER_H
 
 #if RTC_ENABLE_MEDIA
 
@@ -64,4 +64,4 @@ private:
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* H264_RTP_PACKETIZER_H */
+#endif /* RTC_H264_RTP_PACKETIZER_H */

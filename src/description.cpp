@@ -19,6 +19,8 @@
 
 #include "description.hpp"
 
+#include "impl/internals.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cctype>

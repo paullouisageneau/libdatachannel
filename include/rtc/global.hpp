@@ -25,6 +25,23 @@
 
 namespace rtc {
 
+enum class LogLevel { // Don't change, it must match plog severity
+	None = 0,
+	Fatal = 1,
+	Error = 2,
+	Warning = 3,
+	Info = 4,
+	Debug = 5,
+	Verbose = 6
+};
+
+typedef std::function<void(LogLevel level, string message)> LogCallback;
+
+RTC_CPP_EXPORT void InitLogger(LogLevel level, LogCallback callback = nullptr);
+#ifdef PLOG
+RTC_CPP_EXPORT void InitLogger(plog::Severity severity, plog::IAppender *appender = nullptr);
+#endif
+
 RTC_EXPORT void Preload();
 RTC_EXPORT void Cleanup();
 

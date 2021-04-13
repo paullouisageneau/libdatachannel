@@ -17,10 +17,9 @@
  */
 
 #include "rtc.h"
-
 #include "rtc.hpp"
 
-#include "plog/Formatters/FuncMessageFormatter.h"
+#include "impl/internals.hpp"
 
 #include <chrono>
 #include <exception>
@@ -28,11 +27,6 @@
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
-
-#ifdef _WIN32
-#include <codecvt>
-#include <locale>
-#endif
 
 using namespace rtc;
 using std::chrono::milliseconds;
@@ -287,58 +281,16 @@ int copyAndReturn(binary b, char *buffer, int size) {
 	return int(b.size());
 }
 
-class plogAppender : public plog::IAppender {
-public:
-	plogAppender(rtcLogCallbackFunc cb = nullptr) { setCallback(cb); }
-
-	plogAppender(plogAppender &&appender) : callback(nullptr) {
-		std::lock_guard lock(appender.callbackMutex);
-		std::swap(appender.callback, callback);
-	}
-
-	void setCallback(rtcLogCallbackFunc cb) {
-		std::lock_guard lock(callbackMutex);
-		callback = cb;
-	}
-
-	void write(const plog::Record &record) override {
-		plog::Severity severity = record.getSeverity();
-		auto formatted = plog::FuncMessageFormatter::format(record);
-		formatted.pop_back(); // remove newline
-#ifdef _WIN32
-		using convert_type = std::codecvt_utf8<wchar_t>;
-		std::wstring_convert<convert_type, wchar_t> converter;
-		std::string str = converter.to_bytes(formatted);
-#else
-		std::string str = formatted;
-#endif
-		std::lock_guard lock(callbackMutex);
-		if (callback)
-			callback(static_cast<rtcLogLevel>(record.getSeverity()), str.c_str());
-		else
-			std::cout << plog::severityToString(severity) << " " << str << std::endl;
-	}
-
-private:
-	rtcLogCallbackFunc callback;
-	std::mutex callbackMutex;
-};
-
 } // namespace
 
 void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
-	static optional<plogAppender> appender;
-	const auto severity = static_cast<plog::Severity>(level);
-	std::lock_guard lock(mutex);
-	if (appender) {
-		appender->setCallback(cb);
-		InitLogger(severity, nullptr); // change the severity
-	} else if (cb) {
-		appender.emplace(plogAppender(cb));
-		InitLogger(severity, &appender.value());
-	} else {
-		InitLogger(severity, nullptr); // log to stdout
-	}
+	LogCallback callback = nullptr;
+	if (cb)
+		callback = [cb](LogLevel level, string message) {
+			cb(static_cast<rtcLogLevel>(level), message.c_str());
+		};
+
+	InitLogger(static_cast<LogLevel>(level), callback);
 }
 
 void rtcSetUserPointer(int i, void *ptr) { setUserPointer(i, ptr); }
@@ -590,7 +542,7 @@ int rtcChainRtcpSrReporter(int tr) {
 	});
 }
 
-int rtcChainRtcpNackResponder(int tr, unsigned maxStoredPacketsCount) {
+int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount) {
 	return wrap([tr, maxStoredPacketsCount] {
 		auto responder = std::make_shared<RtcpNackResponder>(maxStoredPacketsCount);
 		auto chainableHandler = getMediaChainableHandler(tr);

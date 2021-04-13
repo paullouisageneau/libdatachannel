@@ -20,6 +20,10 @@
 
 #include "rtcpnackresponder.hpp"
 
+#include "impl/internals.hpp"
+
+#include <cassert>
+
 namespace rtc {
 
 RtcpNackResponder::Storage::Element::Element(binary_ptr packet, uint16_t sequenceNumber, shared_ptr<Element> next)

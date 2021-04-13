@@ -19,7 +19,7 @@
 #include "stream.hpp"
 #include "helpers.hpp"
 
-#if _WIN32
+#ifdef _WIN32
 // taken from https://stackoverflow.com/questions/5801813/c-usleep-is-obsolete-workarounds-for-windows-mingw
 #include <windows.h>
 
@@ -35,6 +35,8 @@ void usleep(__int64 usec)
     WaitForSingleObject(timer, INFINITE);
     CloseHandle(timer);
 }
+#else
+#include <unistd.h>
 #endif
 
 void StreamSource::stop() {

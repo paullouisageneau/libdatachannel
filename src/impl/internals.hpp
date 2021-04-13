@@ -21,6 +21,22 @@
 
 #include "common.hpp"
 
+// Disable warnings before including plog
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wall"
+#elif defined(_MSC_VER)
+#pragma warning(push, 0)
+#endif
+
+#include "plog/Log.h"
+
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
 namespace rtc {
 
 const size_t MAX_NUMERICNODE_LEN = 48; // Max IPv6 string representation length

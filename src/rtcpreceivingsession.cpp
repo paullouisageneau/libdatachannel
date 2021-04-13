@@ -97,7 +97,7 @@ void RtcpReceivingSession::requestBitrate(unsigned int newBitrate) {
 }
 
 void RtcpReceivingSession::pushREMB(unsigned int bitrate) {
-	message_ptr msg = make_message(RTCP_REMB::sizeWithSSRCs(1), Message::Type::Control);
+	message_ptr msg = make_message(RTCP_REMB::SizeWithSSRCs(1), Message::Type::Control);
 	auto remb = reinterpret_cast<RTCP_REMB *>(msg->data());
 	remb->preparePacket(mSsrc, 1, bitrate);
 	remb->setSsrc(0, mSsrc);
@@ -106,7 +106,7 @@ void RtcpReceivingSession::pushREMB(unsigned int bitrate) {
 }
 
 void RtcpReceivingSession::pushRR(unsigned int lastSR_delay) {
-	auto msg = make_message(RTCP_RR::sizeWithReportBlocks(1), Message::Type::Control);
+	auto msg = make_message(RTCP_RR::SizeWithReportBlocks(1), Message::Type::Control);
 	auto rr = reinterpret_cast<RTCP_RR *>(msg->data());
 	rr->preparePacket(mSsrc, 1);
 	rr->getReportBlock(0)->preparePacket(mSsrc, 0, 0, uint16_t(mGreatestSeqNo), 0, 0, mSyncNTPTS,
@@ -132,7 +132,7 @@ bool RtcpReceivingSession::requestKeyframe() {
 }
 
 void RtcpReceivingSession::pushPLI() {
-	auto msg = make_message(RTCP_PLI::size(), Message::Type::Control);
+	auto msg = make_message(RTCP_PLI::Size(), Message::Type::Control);
 	auto *pli = reinterpret_cast<RTCP_PLI *>(msg->data());
 	pli->preparePacket(mSsrc);
 	send(msg);

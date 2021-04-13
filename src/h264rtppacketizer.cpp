@@ -20,6 +20,16 @@
 
 #include "h264rtppacketizer.hpp"
 
+#include "impl/internals.hpp"
+
+#include <cassert>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#else
+#include <arpa/inet.h>
+#endif
+
 namespace rtc {
 
 typedef enum {

@@ -20,6 +20,7 @@
 #define RTC_IMPL_TRANSPORT_H
 
 #include "common.hpp"
+#include "internals.hpp"
 #include "message.hpp"
 
 #include <atomic>

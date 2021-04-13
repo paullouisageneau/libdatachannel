@@ -18,6 +18,8 @@
 
 #include "tls.hpp"
 
+#include "internals.hpp"
+
 #if USE_GNUTLS
 
 namespace rtc::gnutls {
