@@ -17,7 +17,6 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-const fs = require('fs');
 const http = require('http');
 const websocket = require('websocket');
 
