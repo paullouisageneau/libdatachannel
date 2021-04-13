@@ -28,7 +28,7 @@
 namespace rtc {
 
 /// Handler for H264 packetization
-class RTC_CPP_EXPORT H264PacketizationHandler : public MediaChainableHandler {
+class RTC_CPP_EXPORT H264PacketizationHandler final : public MediaChainableHandler {
 public:
 	/// Construct handler for H264 packetization.
 	/// @param packetizer RTP packetizer for h264

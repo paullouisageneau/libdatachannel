@@ -27,7 +27,7 @@
 
 namespace rtc {
 
-class RTC_CPP_EXPORT RtcpSrReporter: public MediaHandlerElement {
+class RTC_CPP_EXPORT RtcpSrReporter final: public MediaHandlerElement {
 
 	bool needsToReport = false;
 

@@ -28,7 +28,7 @@
 namespace rtc {
 
 /// RTP packetization of h264 payload
-class RTC_CPP_EXPORT H264RtpPacketizer : public RtpPacketizer, public MediaHandlerRootElement {
+class RTC_CPP_EXPORT H264RtpPacketizer final : public RtpPacketizer, public MediaHandlerRootElement {
 	shared_ptr<NalUnits> splitMessage(binary_ptr message);
 	const uint16_t maximumFragmentSize;
 

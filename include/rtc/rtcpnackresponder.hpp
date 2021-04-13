@@ -28,7 +28,7 @@
 
 namespace rtc {
 
-class RTC_CPP_EXPORT RtcpNackResponder: public MediaHandlerElement {
+class RTC_CPP_EXPORT RtcpNackResponder final: public MediaHandlerElement {
 
 	/// Packet storage
 	class RTC_CPP_EXPORT Storage {
