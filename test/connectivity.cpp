@@ -24,6 +24,8 @@
 #include <memory>
 #include <thread>
 
+#define CUSTOM_MAX_MESSAGE_SIZE 1048576
+
 using namespace rtc;
 using namespace std;
 
@@ -39,7 +41,7 @@ void test_connectivity() {
 	// Custom MTU example
 	config1.mtu = 1500;
 	// Custom max message size
-	config1.maxMessageSize = 1048576;
+	config1.maxMessageSize = CUSTOM_MAX_MESSAGE_SIZE;
 
 	PeerConnection pc1(config1);
 
@@ -50,7 +52,7 @@ void test_connectivity() {
 	// Custom MTU example
 	config2.mtu = 1500;
 	// Custom max message size
-	config2.maxMessageSize = 1048576;
+	config2.maxMessageSize = CUSTOM_MAX_MESSAGE_SIZE;
 	// Port range example
 	config2.portRangeBegin = 5000;
 	config2.portRangeEnd = 6000;
@@ -144,7 +146,7 @@ void test_connectivity() {
 	if (!adc2 || !adc2->isOpen() || !dc1->isOpen())
 		throw runtime_error("DataChannel is not open");
 
-	if (dc1->maxMessageSize() != 1048576 || dc2->maxMessageSize() != 1048576)
+	if (dc1->maxMessageSize() != CUSTOM_MAX_MESSAGE_SIZE || dc2->maxMessageSize() != CUSTOM_MAX_MESSAGE_SIZE)
 		throw runtime_error("DataChannel max message size is incorrect");
 
 	if (auto addr = pc1.localAddress())

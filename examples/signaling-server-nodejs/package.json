@@ -2,7 +2,7 @@
   "name": "libdatachannel-signaling-server",
   "version": "0.1.0",
   "description": "Signaling server example for libdatachannel",
-  "main": "server.js",
+  "main": "signaling-server.js",
   "scripts": {
     "start": "node signaling-server.js",
     "test": "echo \"Error: no test specified\" && exit 1"

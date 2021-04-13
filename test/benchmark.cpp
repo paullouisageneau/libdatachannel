@@ -121,12 +121,11 @@ size_t benchmark(milliseconds duration) {
 			}
 		} catch (const std::exception &e) {
 			std::cout << "Send failed: " << e.what() << std::endl;
-		}
-
-		// When sent data is buffered in the DataChannel,
-		// wait for onBufferedAmountLow callback to continue
+		}		
 	});
 
+	// When sent data is buffered in the DataChannel,
+	// wait for onBufferedAmountLow callback to continue
 	dc1->onBufferedAmountLow([wdc1 = make_weak_ptr(dc1), &messageData]() {
 		auto dc1 = wdc1.lock();
 		if (!dc1)
