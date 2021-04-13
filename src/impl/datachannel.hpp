@@ -36,7 +36,7 @@ struct PeerConnection;
 struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
 	DataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label, string protocol,
 	            Reliability reliability);
-	~DataChannel();
+	virtual ~DataChannel();
 
 	void close();
 	void remoteClose();
