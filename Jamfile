@@ -146,7 +146,7 @@ rule make_libjuice_openssl ( targets * : sources * : properties * )
 	{
 		# on macOS, default to pick up openssl from the homebrew installation
 		# brew install openssl
-		OPENSSL_INCLUDE = /usr/local/opt/openssl/include ;
+		OPENSSL_INCLUDE = /opt/homebrew/opt/openssl /usr/local/opt/openssl/include ;
 	}
 
 	if $(OPENSSL_INCLUDE) != ""
@@ -194,7 +194,7 @@ rule openssl-lib-path ( properties * )
     {
         # on macOS, default to pick up openssl from the homebrew installation
         # brew install openssl
-        OPENSSL_LIB = /usr/local/opt/openssl/lib ;
+        OPENSSL_LIB = /opt/homebrew/opt/openssl/lib /usr/local/opt/openssl/lib ;
     }
     else if <target-os>windows in $(properties) && $(OPENSSL_LIB) = ""
     {
@@ -220,7 +220,7 @@ rule openssl-include-path ( properties * )
     {
         # on macOS, default to pick up openssl from the homebrew installation
         # brew install openssl
-        OPENSSL_INCLUDE = /usr/local/opt/openssl/include ;
+        OPENSSL_INCLUDE = /opt/homebrew/opt/openssl/include /usr/local/opt/openssl/include ;
     }
     else if <target-os>windows in $(properties) && $(OPENSSL_INCLUDE) = ""
     {
