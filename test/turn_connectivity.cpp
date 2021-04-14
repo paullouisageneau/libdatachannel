@@ -108,13 +108,16 @@ void test_turn_connectivity() {
 			return;
 		}
 
+		dc->onOpen([wdc = make_weak_ptr(dc)]() {
+			if (auto dc = wdc.lock())
+				dc->send("Hello from 2");
+		});
+
 		dc->onMessage([](variant<binary, string> message) {
 			if (holds_alternative<string>(message)) {
 				cout << "Message 2: " << get<string>(message) << endl;
 			}
 		});
-
-		dc->send("Hello from 2");
 
 		std::atomic_store(&dc2, dc);
 	});
@@ -175,13 +178,16 @@ void test_turn_connectivity() {
 			return;
 		}
 
+		dc->onOpen([wdc = make_weak_ptr(dc)]() {
+			if (auto dc = wdc.lock())
+				dc->send("Second hello from 2");
+		});
+
 		dc->onMessage([](variant<binary, string> message) {
 			if (holds_alternative<string>(message)) {
 				cout << "Second Message 2: " << get<string>(message) << endl;
 			}
 		});
-
-		dc->send("Send hello from 2");
 
 		std::atomic_store(&second2, dc);
 	});
