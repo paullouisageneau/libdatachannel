@@ -222,17 +222,20 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 		cout << "DataChannel from " << id << " received with label \"" << dc->label() << "\""
 		     << endl;
 
+		dc->onOpen([wdc = make_weak_ptr(dc)]() {
+			if (auto dc = wdc.lock())
+				dc->send("Hello from " + localId);
+		});
+
 		dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
 
-		dc->onMessage([id, wdc = make_weak_ptr(dc)](variant<binary, string> data) {
+		dc->onMessage([id](variant<binary, string> data) {
 			if (holds_alternative<string>(data))
 				cout << "Message from " << id << " received: " << get<string>(data) << endl;
 			else
 				cout << "Binary message from " << id
 				     << " received, size=" << get<binary>(data).size() << endl;
 		});
-
-		dc->send("Hello from " + localId);
 
 		dataChannelMap.emplace(id, dc);
 	});
@@ -251,4 +254,3 @@ string randomId(size_t length) {
 	generate(id.begin(), id.end(), [&]() { return characters.at(dist(rng)); });
 	return id;
 }
-
