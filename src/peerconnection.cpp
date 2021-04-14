@@ -24,6 +24,7 @@
 #include "impl/certificate.hpp"
 #include "impl/dtlstransport.hpp"
 #include "impl/icetransport.hpp"
+#include "impl/internals.hpp"
 #include "impl/peerconnection.hpp"
 #include "impl/processor.hpp"
 #include "impl/sctptransport.hpp"

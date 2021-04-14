@@ -41,7 +41,6 @@
 
 #include "rtc.h" // for C API defines
 
-#include "log.hpp"
 #include "utils.hpp"
 
 #include <cstddef>

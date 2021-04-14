@@ -440,8 +440,8 @@ void PeerConnection::forwardMedia(message_ptr message) {
 			offset += header->lengthInBytes();
 			if (header->payloadType() == 205 || header->payloadType() == 206) {
 				auto rtcpfb = reinterpret_cast<RTCP_FB_HEADER *>(header);
-				ssrcs.insert(rtcpfb->getPacketSenderSSRC());
-				ssrcs.insert(rtcpfb->getMediaSourceSSRC());
+				ssrcs.insert(rtcpfb->packetSenderSSRC());
+				ssrcs.insert(rtcpfb->mediaSourceSSRC());
 
 			} else if (header->payloadType() == 200 || header->payloadType() == 201) {
 				auto rtcpsr = reinterpret_cast<RTCP_SR *>(header);

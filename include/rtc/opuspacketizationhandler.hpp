@@ -27,7 +27,7 @@
 namespace rtc {
 
 /// Handler for opus packetization
-class RTC_CPP_EXPORT OpusPacketizationHandler : public MediaChainableHandler {
+class RTC_CPP_EXPORT OpusPacketizationHandler final : public MediaChainableHandler {
 
 public:
 	/// Construct handler for opus packetization.

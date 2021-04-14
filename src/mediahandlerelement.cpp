@@ -20,6 +20,10 @@
 
 #include "mediahandlerelement.hpp"
 
+#include "impl/internals.hpp"
+
+#include <cassert>
+
 namespace rtc {
 
 ChainedMessagesProduct make_chained_messages_product() {

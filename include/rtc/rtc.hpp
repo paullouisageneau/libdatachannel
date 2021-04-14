@@ -22,7 +22,6 @@
 // C++ API
 #include "common.hpp"
 #include "global.hpp"
-#include "log.hpp"
 //
 #include "datachannel.hpp"
 #include "peerconnection.hpp"

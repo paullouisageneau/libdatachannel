@@ -20,6 +20,8 @@
 
 #include "opusrtppacketizer.hpp"
 
+#include <cassert>
+
 namespace rtc {
 
 OpusRtpPacketizer::OpusRtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig)

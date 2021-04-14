@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef H264_PACKETIZATION_HANDLER_H
-#define H264_PACKETIZATION_HANDLER_H
+#ifndef RTC_H264_PACKETIZATION_HANDLER_H
+#define RTC_H264_PACKETIZATION_HANDLER_H
 
 #if RTC_ENABLE_MEDIA
 
@@ -28,7 +28,7 @@
 namespace rtc {
 
 /// Handler for H264 packetization
-class RTC_CPP_EXPORT H264PacketizationHandler : public MediaChainableHandler {
+class RTC_CPP_EXPORT H264PacketizationHandler final : public MediaChainableHandler {
 public:
 	/// Construct handler for H264 packetization.
 	/// @param packetizer RTP packetizer for h264
@@ -39,4 +39,4 @@ public:
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* H264_PACKETIZATION_HANDLER_H */
+#endif /* RTC_H264_PACKETIZATION_HANDLER_H */

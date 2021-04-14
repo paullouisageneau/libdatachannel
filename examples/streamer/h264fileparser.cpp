@@ -17,8 +17,15 @@
  */
 
 #include "h264fileparser.hpp"
-#include <fstream>
 #include "rtc/rtc.hpp"
+
+#include <fstream>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#else
+#include <arpa/inet.h>
+#endif
 
 using namespace std;
 

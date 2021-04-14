@@ -20,6 +20,10 @@
 
 #include "mediachainablehandler.hpp"
 
+#include "impl/internals.hpp"
+
+#include <cassert>
+
 namespace rtc {
 
 MediaChainableHandler::MediaChainableHandler(shared_ptr<MediaHandlerRootElement> root): MediaHandler(), root(root), leaf(root) { }

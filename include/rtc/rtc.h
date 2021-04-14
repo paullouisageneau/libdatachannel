@@ -284,7 +284,7 @@ int rtcChainRtcpSrReporter(int tr);
 /// Chain RtcpNackResponder to handler chain for given track
 /// @param tr Track id
 /// @param maxStoredPacketsCount Maximum stored packet count
-int rtcChainRtcpNackResponder(int tr, unsigned maxStoredPacketsCount);
+int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount);
 
 /// Set start time for RTP stream
 /// @param startTime_s Start time in seconds

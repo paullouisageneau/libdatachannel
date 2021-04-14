@@ -21,6 +21,7 @@
 
 #include "common.hpp"
 #include "init.hpp"
+#include "internals.hpp"
 
 #include <chrono>
 #include <condition_variable>

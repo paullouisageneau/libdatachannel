@@ -20,6 +20,8 @@
 
 #include "rtppacketizer.hpp"
 
+#include <cstring>
+
 namespace rtc {
 
 RtpPacketizer::RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig)
@@ -37,7 +39,7 @@ binary_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool setMark) {
 		rtp->setMarker(true);
 	}
 	rtp->preparePacket();
-	memcpy(msg->data() + rtpHeaderSize, payload->data(), payload->size());
+	std::memcpy(msg->data() + rtpHeaderSize, payload->data(), payload->size());
 	return msg;
 }
 

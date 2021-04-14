@@ -27,7 +27,7 @@
 namespace rtc {
 
 /// RTP packetizer for opus
-class RTC_CPP_EXPORT OpusRtpPacketizer : public RtpPacketizer, public MediaHandlerRootElement {
+class RTC_CPP_EXPORT OpusRtpPacketizer final : public RtpPacketizer, public MediaHandlerRootElement {
 public:
 	/// default clock rate used in opus RTP communication
 	static const uint32_t defaultClockRate = 48 * 1000;

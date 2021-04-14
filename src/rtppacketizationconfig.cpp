@@ -20,6 +20,8 @@
 
 #include "rtppacketizationconfig.hpp"
 
+#include <cassert>
+
 namespace rtc {
 
 RtpPacketizationConfig::RtpPacketizationConfig(SSRC ssrc, string cname, uint8_t payloadType,

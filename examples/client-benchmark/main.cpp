@@ -71,7 +71,7 @@ bool enableThroughputSet;
 int throughtputSetAsKB;
 int bufferSize;
 const float STEP_COUNT_FOR_1_SEC = 100.0;
-const int stepDurationInMs = 1000 / STEP_COUNT_FOR_1_SEC;
+const int stepDurationInMs = int(1000 / STEP_COUNT_FOR_1_SEC);
 
 int main(int argc, char **argv) try {
 	Cmdline params(argc, argv);

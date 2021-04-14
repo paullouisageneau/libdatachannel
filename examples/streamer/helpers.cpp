@@ -19,10 +19,10 @@
 #include "helpers.hpp"
 #include <ctime>
 
-#if _WIN32
+#ifdef _WIN32
 // taken from https://stackoverflow.com/questions/10905892/equivalent-of-gettimeday-for-windows
-
-#include <Windows.h>
+#include <windows.h>
+#include <winsock2.h> // for struct timeval
 
 struct timezone {
     int tz_minuteswest;
@@ -55,6 +55,8 @@ int gettimeofday(struct timeval *tv, struct timezone *tz)
     }
     return 0;
 }
+#else
+#include <sys/time.h>
 #endif
 
 using namespace std;
