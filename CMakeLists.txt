@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
 project(libdatachannel
-	VERSION 0.12.1
+	VERSION 0.12.2
 	LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "WebRTC Data Channels Library")
 
