@@ -20,22 +20,21 @@
 
 namespace rtc::impl {
 
-void Channel::triggerOpen() { openCallback(); }
+void Channel::triggerOpen() {
+	mOpenTriggered = true;
+	openCallback();
+	flushPendingMessages();
+}
 
 void Channel::triggerClosed() { closedCallback(); }
 
-void Channel::triggerError(string error) { errorCallback(error); }
+void Channel::triggerError(string error) { errorCallback(std::move(error)); }
 
 void Channel::triggerAvailable(size_t count) {
 	if (count == 1)
 		availableCallback();
 
-	while (messageCallback && count--) {
-		auto message = receive();
-		if (!message)
-			break;
-		messageCallback(*message);
-	}
+	flushPendingMessages();
 }
 
 void Channel::triggerBufferedAmount(size_t amount) {
@@ -43,6 +42,24 @@ void Channel::triggerBufferedAmount(size_t amount) {
 	size_t threshold = bufferedAmountLowThreshold.load();
 	if (previous > threshold && amount <= threshold)
 		bufferedAmountLowCallback();
+}
+
+void Channel::flushPendingMessages() {
+	if (!mOpenTriggered)
+		return;
+
+	while (messageCallback) {
+		auto next = receive();
+		if (!next)
+			break;
+
+		messageCallback(*next);
+	}
+}
+
+void Channel::resetOpenCallback() {
+	mOpenTriggered = false;
+	openCallback = nullptr;
 }
 
 void Channel::resetCallbacks() {

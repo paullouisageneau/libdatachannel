@@ -43,10 +43,7 @@ void Channel::onError(std::function<void(string error)> callback) {
 
 void Channel::onMessage(std::function<void(message_variant data)> callback) {
 	impl()->messageCallback = callback;
-
-	// Pass pending messages
-	while (auto message = receive())
-		impl()->messageCallback(*message);
+	impl()->flushPendingMessages();
 }
 
 void Channel::onMessage(std::function<void(binary data)> binaryCallback,
