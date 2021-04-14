@@ -973,17 +973,19 @@ string PeerConnection::localBundleMid() const {
 
 void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {
 	auto dataChannel = weakDataChannel.lock();
-	if (dataChannel)
+	if (dataChannel) {
+		dataChannel->openCallback = nullptr; // might be set internally
 		mPendingDataChannels.push(std::move(dataChannel));
-
+	}
 	triggerPendingDataChannels();
 }
 
 void PeerConnection::triggerTrack(weak_ptr<Track> weakTrack) {
 	auto track = weakTrack.lock();
-	if (track)
+	if (track) {
+		track->openCallback = nullptr; // might be set internally
 		mPendingTracks.push(std::move(track));
-
+	}
 	triggerPendingTracks();
 }
 
@@ -995,6 +997,7 @@ void PeerConnection::triggerPendingDataChannels() {
 
 		auto impl = std::move(*next);
 		dataChannelCallback(std::make_shared<rtc::DataChannel>(impl));
+		impl->triggerOpen();
 	}
 }
 
@@ -1006,6 +1009,7 @@ void PeerConnection::triggerPendingTracks() {
 
 		auto impl = std::move(*next);
 		trackCallback(std::make_shared<rtc::Track>(std::move(impl)));
+		impl->triggerOpen();
 	}
 }
 
