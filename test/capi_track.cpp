@@ -83,7 +83,7 @@ static void RTC_API closedCallback(int id, void *ptr) {
 static void RTC_API trackCallback(int pc, int tr, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->tr = tr;
-	peer->connected = true;
+	rtcSetOpenCallback(tr, openCallback);
 	rtcSetClosedCallback(tr, closedCallback);
 
 	char buffer[1024];

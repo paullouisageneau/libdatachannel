@@ -267,7 +267,7 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, DataChan
 void PeerConnection::onDataChannel(
     std::function<void(shared_ptr<DataChannel> dataChannel)> callback) {
 	impl()->dataChannelCallback = callback;
-	impl()->triggerDataChannel(); // trigger pending DataChannels
+	impl()->flushPendingDataChannels();
 }
 
 std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) {
@@ -282,7 +282,7 @@ std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) 
 
 void PeerConnection::onTrack(std::function<void(std::shared_ptr<Track>)> callback) {
 	impl()->trackCallback = callback;
-	impl()->triggerTrack(); // trigger pending tracks
+	impl()->flushPendingTracks();
 }
 
 void PeerConnection::onLocalDescription(std::function<void(Description description)> callback) {

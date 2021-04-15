@@ -38,17 +38,23 @@ struct Channel {
 	virtual void triggerAvailable(size_t count);
 	virtual void triggerBufferedAmount(size_t amount);
 
-	virtual void resetCallbacks();
+	void flushPendingMessages();
+	void resetOpenCallback();
+	void resetCallbacks();
 
-	synchronized_callback<> openCallback;
-	synchronized_callback<> closedCallback;
-	synchronized_callback<string> errorCallback;
+	synchronized_stored_callback<> openCallback;
+	synchronized_stored_callback<> closedCallback;
+	synchronized_stored_callback<string> errorCallback;
+	synchronized_stored_callback<> availableCallback;
+	synchronized_stored_callback<> bufferedAmountLowCallback;
+
 	synchronized_callback<message_variant> messageCallback;
-	synchronized_callback<> availableCallback;
-	synchronized_callback<> bufferedAmountLowCallback;
 
 	std::atomic<size_t> bufferedAmount = 0;
 	std::atomic<size_t> bufferedAmountLowThreshold = 0;
+
+private:
+	std::atomic<bool> mOpenTriggered = false;
 };
 
 } // namespace rtc::impl

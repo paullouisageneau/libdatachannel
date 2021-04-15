@@ -107,26 +107,29 @@ void test_connectivity() {
 			return;
 		}
 
+		dc->onOpen([wdc = make_weak_ptr(dc)]() {
+			if (auto dc = wdc.lock())
+				dc->send("Hello from 2");
+		});
+
 		dc->onMessage([](variant<binary, string> message) {
 			if (holds_alternative<string>(message)) {
 				cout << "Message 2: " << get<string>(message) << endl;
 			}
 		});
 
-		dc->send("Hello from 2");
-
 		std::atomic_store(&dc2, dc);
 	});
 
 	auto dc1 = pc1.createDataChannel("test");
-	dc1->onOpen([wdc1 = make_weak_ptr(dc1)]() {
-		auto dc1 = wdc1.lock();
-		if (!dc1)
-			return;
 
-		cout << "DataChannel 1: Open" << endl;
-		dc1->send("Hello from 1");
+	dc1->onOpen([wdc1 = make_weak_ptr(dc1)]() {
+		if (auto dc1 = wdc1.lock()) {
+			cout << "DataChannel 1: Open" << endl;
+			dc1->send("Hello from 1");
+		}
 	});
+
 	dc1->onMessage([](const variant<binary, string> &message) {
 		if (holds_alternative<string>(message)) {
 			cout << "Message 1: " << get<string>(message) << endl;
@@ -177,25 +180,26 @@ void test_connectivity() {
 			return;
 		}
 
+		dc->onOpen([wdc = make_weak_ptr(dc)]() {
+			if (auto dc = wdc.lock())
+				dc->send("Second hello from 2");
+		});
+
 		dc->onMessage([](variant<binary, string> message) {
 			if (holds_alternative<string>(message)) {
 				cout << "Second Message 2: " << get<string>(message) << endl;
 			}
 		});
 
-		dc->send("Send hello from 2");
-
 		std::atomic_store(&second2, dc);
 	});
 
 	auto second1 = pc1.createDataChannel("second");
 	second1->onOpen([wsecond1 = make_weak_ptr(dc1)]() {
-		auto second1 = wsecond1.lock();
-		if (!second1)
-			return;
-
-		cout << "Second DataChannel 1: Open" << endl;
-		second1->send("Second hello from 1");
+		if (auto second1 = wsecond1.lock()) {
+			cout << "Second DataChannel 1: Open" << endl;
+			second1->send("Second hello from 1");
+		}
 	});
 	dc1->onMessage([](const variant<binary, string> &message) {
 		if (holds_alternative<string>(message)) {

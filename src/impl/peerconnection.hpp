@@ -84,8 +84,14 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void processRemoteCandidate(Candidate candidate);
 	string localBundleMid() const;
 
-	void triggerDataChannel(weak_ptr<DataChannel> weakDataChannel = {});
-	void triggerTrack(weak_ptr<Track> weakTrack = {});
+	void triggerDataChannel(weak_ptr<DataChannel> weakDataChannel);
+	void triggerTrack(weak_ptr<Track> weakTrack);
+
+	void triggerPendingDataChannels();
+	void triggerPendingTracks();
+
+	void flushPendingDataChannels();
+	void flushPendingTracks();
 
 	bool changeState(State newState);
 	bool changeGatheringState(GatheringState newState);

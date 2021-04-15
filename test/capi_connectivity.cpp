@@ -137,11 +137,11 @@ static void RTC_API dataChannelCallback(int pc, int dc, void *ptr) {
 		return;
 	}
 
+	rtcSetOpenCallback(dc, openCallback);
 	rtcSetClosedCallback(dc, closedCallback);
 	rtcSetMessageCallback(dc, messageCallback);
 
 	peer->dc = dc;
-	peer->connected = true;
 
 	const char *message = peer == peer1 ? "Hello from 1" : "Hello from 2";
 	rtcSendMessage(peer->dc, message, -1); // negative size indicates a null-terminated string
