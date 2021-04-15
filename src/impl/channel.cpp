@@ -63,12 +63,13 @@ void Channel::resetOpenCallback() {
 }
 
 void Channel::resetCallbacks() {
+	mOpenTriggered = false;
 	openCallback = nullptr;
 	closedCallback = nullptr;
 	errorCallback = nullptr;
-	messageCallback = nullptr;
 	availableCallback = nullptr;
 	bufferedAmountLowCallback = nullptr;
+	messageCallback = nullptr;
 }
 
 } // namespace rtc::impl
