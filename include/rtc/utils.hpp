@@ -24,6 +24,7 @@
 #include <mutex>
 #include <optional>
 #include <tuple>
+#include <utility>
 
 namespace rtc {
 
@@ -34,11 +35,10 @@ template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 // weak_ptr bind helper
 template <typename F, typename T, typename... Args> auto weak_bind(F &&f, T *t, Args &&..._args) {
 	return [bound = std::bind(f, t, _args...), weak_this = t->weak_from_this()](auto &&...args) {
-		using result_type = typename decltype(bound)::result_type;
 		if (auto shared_this = weak_this.lock())
 			return bound(args...);
 		else
-			return static_cast<result_type>(false);
+			return static_cast<decltype(bound(args...))>(false);
 	};
 }
 
