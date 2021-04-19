@@ -215,7 +215,7 @@ set_target_properties(datachannel-static PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
 
-target_include_directories(datachannel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(datachannel PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(datachannel PUBLIC Threads::Threads)
@@ -312,9 +312,6 @@ endif()
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
 add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
 
-install(TARGETS datachannel LIBRARY DESTINATION lib)
-install(FILES ${LIBDATACHANNEL_HEADERS} DESTINATION include/rtc)
-
 if(NOT MSVC)
 	target_compile_options(datachannel PRIVATE -Wall -Wextra)
 	target_compile_options(datachannel-static PRIVATE -Wall -Wextra)
@@ -329,6 +326,22 @@ if(WARNINGS_AS_ERRORS)
 		target_compile_options(datachannel-static PRIVATE -Werror)
 	endif()
 endif()
+
+install(TARGETS datachannel EXPORT datachannel-export
+	RUNTIME DESTINATION bin
+	LIBRARY DESTINATION lib
+	ARCHIVE DESTINATION lib
+)
+
+install(FILES ${LIBDATACHANNEL_HEADERS}
+	DESTINATION include/rtc
+)
+
+install(
+  EXPORT datachannel-export
+  NAMESPACE LibDatachannel::
+  DESTINATION share/cmake/libdatachannel
+)
 
 # Tests
 if(NOT NO_TESTS)
