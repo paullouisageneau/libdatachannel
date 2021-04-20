@@ -218,11 +218,11 @@ shared_ptr<ClientTrackData> addVideo(const shared_ptr<PeerConnection> pc, const 
     video.addSSRC(ssrc, cname, msid, cname);
     auto track = pc->addTrack(video);
     // create RTP configuration
-    auto rtpConfig = shared_ptr<RtpPacketizationConfig>(new RtpPacketizationConfig(ssrc, cname, payloadType, H264RtpPacketizer::defaultClockRate));
+    auto rtpConfig = make_shared<RtpPacketizationConfig>(ssrc, cname, payloadType, H264RtpPacketizer::defaultClockRate);
     // create packetizer
-    auto packetizer = shared_ptr<H264RtpPacketizer>(new H264RtpPacketizer(H264RtpPacketizer::Separator::Length, rtpConfig));
+    auto packetizer = make_shared<H264RtpPacketizer>(H264RtpPacketizer::Separator::Length, rtpConfig);
     // create H264 handler
-    shared_ptr<H264PacketizationHandler> h264Handler(new H264PacketizationHandler(packetizer));
+    auto h264Handler = make_shared<H264PacketizationHandler>(packetizer);
     // add RTCP SR handler
     auto srReporter = make_shared<RtcpSrReporter>(rtpConfig);
     h264Handler->addToChain(srReporter);
@@ -242,7 +242,7 @@ shared_ptr<ClientTrackData> addAudio(const shared_ptr<PeerConnection> pc, const 
     audio.addSSRC(ssrc, cname, msid, cname);
     auto track = pc->addTrack(audio);
     // create RTP configuration
-    auto rtpConfig = shared_ptr<RtpPacketizationConfig>(new RtpPacketizationConfig(ssrc, cname, payloadType, OpusRtpPacketizer::defaultClockRate));
+    auto rtpConfig = make_shared<RtpPacketizationConfig>(ssrc, cname, payloadType, OpusRtpPacketizer::defaultClockRate);
     // create packetizer
     auto packetizer = make_shared<OpusRtpPacketizer>(rtpConfig);
     // create opus handler
@@ -265,7 +265,7 @@ shared_ptr<Client> createPeerConnection(const Configuration &config,
                                                 weak_ptr<WebSocket> wws,
                                                 string id) {
     auto pc = make_shared<PeerConnection>(config);
-    shared_ptr<Client> client(new Client(pc));
+    auto client = make_shared<Client>(pc);
 
     pc->onStateChange([id](PeerConnection::State state) {
         cout << "State: " << state << endl;

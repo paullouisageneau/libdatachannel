@@ -34,7 +34,7 @@ class RTC_CPP_EXPORT H264RtpPacketizer final : public RtpPacketizer, public Medi
 
 public:
 	/// Default clock rate for H264 in RTP
-	static const auto defaultClockRate = 90 * 1000;
+	inline static const uint32_t defaultClockRate = 90 * 1000;
 
 	/// Nalunit separator
 	enum class Separator {
