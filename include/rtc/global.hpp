@@ -46,10 +46,12 @@ RTC_EXPORT void Preload();
 RTC_EXPORT void Cleanup();
 
 struct SctpSettings {
+	// For the following settings, not set means optimized default
 	optional<size_t> recvBufferSize;
 	optional<size_t> sendBufferSize;
 	optional<size_t> maxChunksOnQueue;
 	optional<size_t> initialCongestionWindow;
+	optional<size_t> maxBurst;
 	optional<unsigned int> congestionControlModule;
 	optional<std::chrono::milliseconds> delayedSackTime;
 };

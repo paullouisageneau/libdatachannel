@@ -683,6 +683,11 @@ int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 		if (settings->initialCongestionWindow > 0)
 			s.initialCongestionWindow = size_t(settings->initialCongestionWindow);
 
+		if (settings->maxBurst > 0)
+			s.maxBurst = size_t(settings->maxBurst);
+		else if (settings->maxBurst < 0)
+			s.maxBurst = size_t(0); // setting to 0 disables, not setting chooses optimized default
+
 		if (settings->congestionControlModule >= 0)
 			s.congestionControlModule = unsigned(settings->congestionControlModule);
 

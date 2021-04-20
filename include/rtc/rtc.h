@@ -226,6 +226,7 @@ typedef struct {
 	int sendBufferSize;          // <= 0 means optimized default
 	int maxChunksOnQueue;        // <= 0 means optimized default
 	int initialCongestionWindow; // <= 0 means optimized default
+	int maxBurst;				 // 0 means optimized default, < 0 means disabled
 	int congestionControlModule; // <= 0 means default (0: RFC2581, 1: HSTCP, 2: H-TCP, 3: RTCC)
 	int delayedSackTimeMs;       // <= 0 means optimized default
 } rtcSctpSettings;

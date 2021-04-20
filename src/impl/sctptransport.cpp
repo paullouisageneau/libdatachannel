@@ -115,6 +115,9 @@ void SctpTransport::SetSettings(const SctpSettings &s) {
 	// Increase initial congestion window size to 10 MTUs (RFC 6928) by default
 	usrsctp_sysctl_set_sctp_initial_cwnd(to_uint32(s.initialCongestionWindow.value_or(10)));
 
+	// Set max burst to 10 MTUs by default (max burst is initially 0, meaning disabled)
+	usrsctp_sysctl_set_sctp_max_burst_default(to_uint32(s.maxBurst.value_or(10)));
+
 	// Use standard SCTP congestion control (RFC 4960) by default
 	// See https://github.com/paullouisageneau/libdatachannel/issues/354
 	usrsctp_sysctl_set_sctp_default_cc_module(to_uint32(s.congestionControlModule.value_or(0)));
