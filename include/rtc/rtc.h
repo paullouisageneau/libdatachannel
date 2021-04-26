@@ -222,12 +222,13 @@ RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
 
 // SCTP settings
 typedef struct {
-	int recvBufferSize;          // <= 0 means optimized default
-	int sendBufferSize;          // <= 0 means optimized default
-	int maxChunksOnQueue;        // <= 0 means optimized default
-	int initialCongestionWindow; // <= 0 means optimized default
-	int congestionControlModule; // <= 0 means default (0: RFC2581, 1: HSTCP, 2: H-TCP, 3: RTCC)
-	int delayedSackTimeMs;       // <= 0 means optimized default
+	int recvBufferSize;          // in bytes, <= 0 means optimized default
+	int sendBufferSize;          // in bytes, <= 0 means optimized default
+	int maxChunksOnQueue;        // in chunks, <= 0 means optimized default
+	int initialCongestionWindow; // in MTUs, <= 0 means optimized default
+	int maxBurst;				 // in MTUs, 0 means optimized default, < 0 means disabled
+	int congestionControlModule; // 0: RFC2581 (default), 1: HSTCP, 2: H-TCP, 3: RTCC
+	int delayedSackTimeMs;       // in msecs, <= 0 means optimized default
 } rtcSctpSettings;
 
 // Note: SCTP settings apply to newly-created PeerConnections only

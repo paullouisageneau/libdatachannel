@@ -46,11 +46,13 @@ RTC_EXPORT void Preload();
 RTC_EXPORT void Cleanup();
 
 struct SctpSettings {
-	optional<size_t> recvBufferSize;
-	optional<size_t> sendBufferSize;
-	optional<size_t> maxChunksOnQueue;
-	optional<size_t> initialCongestionWindow;
-	optional<unsigned int> congestionControlModule;
+	// For the following settings, not set means optimized default
+	optional<size_t> recvBufferSize;                // in bytes
+	optional<size_t> sendBufferSize;                // in bytes
+	optional<size_t> maxChunksOnQueue;              // in chunks
+	optional<size_t> initialCongestionWindow;       // in MTUs
+	optional<size_t> maxBurst;                      // in MTUs
+	optional<unsigned int> congestionControlModule; // 0: RFC2581, 1: HSTCP, 2: H-TCP, 3: RTCC
 	optional<std::chrono::milliseconds> delayedSackTime;
 };
 
