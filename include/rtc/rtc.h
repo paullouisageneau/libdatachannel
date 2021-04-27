@@ -123,33 +123,6 @@ typedef enum {
 #define RTC_ERR_NOT_AVAIL -3 // element not available
 #define RTC_ERR_TOO_SMALL -4 // buffer too small
 
-typedef struct {
-	const char **iceServers;
-	int iceServersCount;
-	rtcCertificateType certificateType;
-	bool enableIceTcp;
-	bool disableAutoNegotiation;
-	uint16_t portRangeBegin;
-	uint16_t portRangeEnd;
-	int mtu;            // <= 0 means automatic
-	int maxMessageSize; // <= 0 means default
-} rtcConfiguration;
-
-typedef struct {
-	bool unordered;
-	bool unreliable;
-	int maxPacketLifeTime; // ignored if reliable
-	int maxRetransmits;    // ignored if reliable
-} rtcReliability;
-
-typedef struct {
-	rtcReliability reliability;
-	const char *protocol; // empty string if NULL
-	bool negotiated;
-	bool manualStream;
-	uint16_t stream; // numeric ID 0-65534, ignored if manualStream is false
-} rtcDataChannelInit;
-
 typedef void(RTC_API *rtcLogCallbackFunc)(rtcLogLevel level, const char *message);
 typedef void(RTC_API *rtcDescriptionCallbackFunc)(int pc, const char *sdp, const char *type,
                                                   void *ptr);
@@ -168,6 +141,7 @@ typedef void(RTC_API *rtcBufferedAmountLowCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcAvailableCallbackFunc)(int id, void *ptr);
 
 // Log
+
 // NULL cb on the first call will log to stdout
 RTC_EXPORT void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb);
 
@@ -176,6 +150,19 @@ RTC_EXPORT void rtcSetUserPointer(int id, void *ptr);
 RTC_EXPORT void *rtcGetUserPointer(int i);
 
 // PeerConnection
+
+typedef struct {
+	const char **iceServers;
+	int iceServersCount;
+	rtcCertificateType certificateType;
+	bool enableIceTcp;
+	bool disableAutoNegotiation;
+	uint16_t portRangeBegin;
+	uint16_t portRangeEnd;
+	int mtu;            // <= 0 means automatic
+	int maxMessageSize; // <= 0 means default
+} rtcConfiguration;
+
 RTC_EXPORT int rtcCreatePeerConnection(const rtcConfiguration *config); // returns pc id
 RTC_EXPORT int rtcDeletePeerConnection(int pc);
 
@@ -202,6 +189,22 @@ RTC_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, c
                                            int remoteSize);
 
 // DataChannel
+
+typedef struct {
+	bool unordered;
+	bool unreliable;
+	int maxPacketLifeTime; // ignored if reliable
+	int maxRetransmits;    // ignored if reliable
+} rtcReliability;
+
+typedef struct {
+	rtcReliability reliability;
+	const char *protocol; // empty string if NULL
+	bool negotiated;
+	bool manualStream;
+	uint16_t stream; // numeric ID 0-65534, ignored if manualStream is false
+} rtcDataChannelInit;
+
 RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
 RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
 RTC_EXPORT int rtcCreateDataChannelEx(int pc, const char *label,
@@ -214,131 +217,96 @@ RTC_EXPORT int rtcGetDataChannelProtocol(int dc, char *buffer, int size);
 RTC_EXPORT int rtcGetDataChannelReliability(int dc, rtcReliability *reliability);
 
 // Track
+
+typedef struct {
+	rtcDirection direction;
+	rtcCodec codec;
+	int payloadType;
+	uint32_t ssrc;
+	const char *mid;
+	const char *name;    // optional
+	const char *msid;    // optional
+	const char *trackId; // optional, track ID used in MSID
+} rtcTrackInit;
+
 RTC_EXPORT int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb);
 RTC_EXPORT int rtcAddTrack(int pc, const char *mediaDescriptionSdp); // returns tr id
+RTC_EXPORT int rtcAddTrackEx(int pc, const rtcTrackInit *init);      // returns tr id
 RTC_EXPORT int rtcDeleteTrack(int tr);
 
 RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
 
-// SCTP settings
-typedef struct {
-	int recvBufferSize;          // in bytes, <= 0 means optimized default
-	int sendBufferSize;          // in bytes, <= 0 means optimized default
-	int maxChunksOnQueue;        // in chunks, <= 0 means optimized default
-	int initialCongestionWindow; // in MTUs, <= 0 means optimized default
-	int maxBurst;				 // in MTUs, 0 means optimized default, < 0 means disabled
-	int congestionControlModule; // 0: RFC2581 (default), 1: HSTCP, 2: H-TCP, 3: RTCC
-	int delayedSackTimeMs;       // in msecs, <= 0 means optimized default
-} rtcSctpSettings;
-
-// Note: SCTP settings apply to newly-created PeerConnections only
-RTC_EXPORT int rtcSetSctpSettings(const rtcSctpSettings *settings);
-
-// Media
 #if RTC_ENABLE_MEDIA
 
-/// Add track
-/// @param pc Peer connection id
-/// @param codec Codec
-/// @param payloadType Payload type
-/// @param ssrc SSRC
-/// @param _mid MID
-/// @param _direction Direction
-/// @param _name Name (optional)
-/// @param _msid MSID (optional)
-/// @param _trackID Track ID used in MSID (optional)
-/// @returns Track id
-RTC_EXPORT int rtcAddTrackEx(int pc, rtcCodec codec, int payloadType, uint32_t ssrc,
-                             const char *_mid, rtcDirection direction, const char *_name,
-                             const char *_msid, const char *_trackID);
+// Media
 
-/// Set H264PacketizationHandler for track
-/// @param tr Track id
-/// @param ssrc SSRC
-/// @param cname CName
-/// @param payloadType Payload Type
-/// @param clockRate Clock rate
-/// @param maxFragmentSize Maximum NALU fragment size
-/// @param sequenceNumber Sequence number
-/// @param timestamp Timestamp
-RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, uint32_t ssrc, const char *cname,
-                                              uint8_t payloadType, uint32_t clockRate,
-                                              uint16_t maxFragmentSize, uint16_t sequenceNumber,
-                                              uint32_t timestamp);
+typedef struct {
+	uint32_t ssrc;
+	const char *cname;
+	uint8_t payloadType;
+	uint32_t clockRate;
+	uint16_t maxFragmentSize; // Maximum NALU fragment size
+	uint16_t sequenceNumber;
+	uint32_t timestamp;
+} rtcPacketizationHandlerInit;
 
-/// Set OpusPacketizationHandler for track
-/// @param tr Track id
-/// @param ssrc SSRC
-/// @param cname CName
-/// @param payloadType Payload Type
-/// @param clockRate Clock rate
-/// @param _sequenceNumber Sequence number
-/// @param _timestamp Timestamp
-RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, uint32_t ssrc, const char *cname,
-                                              uint8_t payloadType, uint32_t clockRate,
-                                              uint16_t _sequenceNumber, uint32_t _timestamp);
+typedef struct {
+	double seconds;     // Start time in seconds
+	bool since1970;     // true if startTimeSeconds is time interval since 1970
+	                    // false if startTimeSeconds is time interval since 1900
+	uint32_t timestamp; // Start timestamp
+} rtcStartTime;
 
-/// Chain RtcpSrReporter to handler chain for given track
-/// @param tr Track id
-int rtcChainRtcpSrReporter(int tr);
+// Set H264PacketizationHandler for track
+RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
 
-/// Chain RtcpNackResponder to handler chain for given track
-/// @param tr Track id
-/// @param maxStoredPacketsCount Maximum stored packet count
-int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount);
+// Set OpusPacketizationHandler for track
+RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
+
+// Chain RtcpSrReporter to handler chain for given track
+RTC_EXPORT int rtcChainRtcpSrReporter(int tr);
+
+// Chain RtcpNackResponder to handler chain for given track
+RTC_EXPORT int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount);
 
 /// Set start time for RTP stream
-/// @param startTime_s Start time in seconds
-/// @param timeIntervalSince1970 Set true if `startTime_s` is time interval since 1970, false if
-/// `startTime_s` is time interval since 1900
-/// @param _timestamp Start timestamp
-int rtcSetRtpConfigurationStartTime(int id, double startTime_s, bool timeIntervalSince1970,
-                                    uint32_t _timestamp);
+RTC_EXPORT int rtcSetRtpConfigurationStartTime(int id, const rtcStartTime *startTime);
 
-/// Start stats recording for RTCP Sender Reporter
-/// @param id Track identifier
-int rtcStartRtcpSenderReporterRecording(int id);
+// Start stats recording for RTCP Sender Reporter
+RTC_EXPORT int rtcStartRtcpSenderReporterRecording(int id);
 
-/// Transform seconds to timestamp using track's clock rate
-/// @param id Track id
-/// @param seconds Seconds
-/// @param timestamp Pointer to result
-int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp);
+// Transform seconds to timestamp using track's clock rate
+// Result is written to timestamp
+RTC_EXPORT int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp);
 
-/// Transform timestamp to seconds using track's clock rate
-/// @param id Track id
-/// @param timestamp Timestamp
-/// @param seconds Pointer for result
-int rtcTransformTimestampToSeconds(int id, uint32_t timestamp, double *seconds);
+// Transform timestamp to seconds using track's clock rate
+// Result is written to seconds
+RTC_EXPORT int rtcTransformTimestampToSeconds(int id, uint32_t timestamp, double *seconds);
 
-/// Get current timestamp
-/// @param id Track id
-/// @param timestamp Pointer for result
-int rtcGetCurrentTrackTimestamp(int id, uint32_t *timestamp);
+// Get current timestamp
+// Result is written to timestamp
+RTC_EXPORT int rtcGetCurrentTrackTimestamp(int id, uint32_t *timestamp);
 
-/// Get start timestamp for track identified by given id
-/// @param id Track id
-/// @param timestamp Pointer for result
-int rtcGetTrackStartTimestamp(int id, uint32_t *timestamp);
+// Get start timestamp for track identified by given id
+// Result is written to timestamp
+RTC_EXPORT int rtcGetTrackStartTimestamp(int id, uint32_t *timestamp);
 
-/// Set RTP timestamp for track identified by given id
-/// @param id Track id
-/// @param timestamp New timestamp
-int rtcSetTrackRTPTimestamp(int id, uint32_t timestamp);
+// Set RTP timestamp for track identified by given id
+RTC_EXPORT int rtcSetTrackRtpTimestamp(int id, uint32_t timestamp);
 
-/// Get timestamp of previous RTCP SR
-/// @param id Track id
-/// @param timestamp Pointer for result
-int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t *timestamp);
+// Get timestamp of previous RTCP SR
+// Result is written to timestamp
+RTC_EXPORT int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t *timestamp);
 
-/// Set `NeedsToReport` flag in RtcpSrReporter handler identified by given track id
-/// @param id Track id
-int rtcSetNeedsToSendRtcpSr(int id);
+// Set NeedsToReport flag in RtcpSrReporter handler identified by given track id
+RTC_EXPORT int rtcSetNeedsToSendRtcpSr(int id);
 
 #endif // RTC_ENABLE_MEDIA
 
-// WebSocket
 #if RTC_ENABLE_WEBSOCKET
+
+// WebSocket
+
 typedef struct {
 	bool disableTlsVerification; // if true, don't verify the TLS certificate
 } rtcWsConfiguration;
@@ -346,9 +314,11 @@ typedef struct {
 RTC_EXPORT int rtcCreateWebSocket(const char *url); // returns ws id
 RTC_EXPORT int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config);
 RTC_EXPORT int rtcDeleteWebsocket(int ws);
+
 #endif
 
 // DataChannel, Track, and WebSocket common API
+
 RTC_EXPORT int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb);
 RTC_EXPORT int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb);
 RTC_EXPORT int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb);
@@ -360,13 +330,30 @@ RTC_EXPORT int rtcSetBufferedAmountLowThreshold(int id, int amount);
 RTC_EXPORT int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb);
 
 // DataChannel, Track, and WebSocket common extended API
+
 RTC_EXPORT int rtcGetAvailableAmount(int id); // total size available to receive
 RTC_EXPORT int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb);
 RTC_EXPORT int rtcReceiveMessage(int id, char *buffer, int *size);
 
-// Optional preload and cleanup
+// Optional global preload and cleanup
+
 RTC_EXPORT void rtcPreload(void);
 RTC_EXPORT void rtcCleanup(void);
+
+// SCTP global settings
+
+typedef struct {
+	int recvBufferSize;          // in bytes, <= 0 means optimized default
+	int sendBufferSize;          // in bytes, <= 0 means optimized default
+	int maxChunksOnQueue;        // in chunks, <= 0 means optimized default
+	int initialCongestionWindow; // in MTUs, <= 0 means optimized default
+	int maxBurst;                // in MTUs, 0 means optimized default, < 0 means disabled
+	int congestionControlModule; // 0: RFC2581 (default), 1: HSTCP, 2: H-TCP, 3: RTCC
+	int delayedSackTimeMs;       // in msecs, <= 0 means optimized default
+} rtcSctpSettings;
+
+// Note: SCTP settings apply to newly-created PeerConnections only
+RTC_EXPORT int rtcSetSctpSettings(const rtcSctpSettings *settings);
 
 #ifdef __cplusplus
 } // extern "C"
