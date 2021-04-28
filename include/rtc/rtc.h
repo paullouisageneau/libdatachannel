@@ -95,8 +95,6 @@ typedef enum {
 	RTC_CERTIFICATE_RSA = 2,
 } rtcCertificateType;
 
-#if RTC_ENABLE_MEDIA
-
 typedef enum {
 	// video
 	RTC_CODEC_H264 = 0,
@@ -114,8 +112,6 @@ typedef enum {
 	RTC_DIRECTION_SENDRECV = 3,
 	RTC_DIRECTION_INACTIVE = 4
 } rtcDirection;
-
-#endif // RTC_ENABLE_MEDIA
 
 #define RTC_ERR_SUCCESS 0
 #define RTC_ERR_INVALID -1   // invalid argument

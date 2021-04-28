@@ -177,21 +177,6 @@ void emplaceRtpConfig(shared_ptr<RtpPacketizationConfig> ptr, int tr) {
 	rtpConfigMap.emplace(std::make_pair(tr, ptr));
 }
 
-Description::Direction rtcDirectionToDirection(rtcDirection direction) {
-	switch (direction) {
-	case RTC_DIRECTION_SENDONLY:
-		return Description::Direction::SendOnly;
-	case RTC_DIRECTION_RECVONLY:
-		return Description::Direction::RecvOnly;
-	case RTC_DIRECTION_SENDRECV:
-		return Description::Direction::SendRecv;
-	case RTC_DIRECTION_INACTIVE:
-		return Description::Direction::Inactive;
-	default:
-		return Description::Direction::Unknown;
-	}
-}
-
 shared_ptr<RtpPacketizationConfig>
 createRtpPacketizationConfig(const rtcPacketizationHandlerInit *init) {
 	if (!init)
@@ -392,7 +377,20 @@ int rtcDeleteDataChannel(int dc) {
 	});
 }
 
-#if RTC_ENABLE_MEDIA
+int rtcAddTrack(int pc, const char *mediaDescriptionSdp) {
+	return wrap([&] {
+		if (!mediaDescriptionSdp)
+			throw std::invalid_argument("Unexpected null pointer for track media description");
+
+		auto peerConnection = getPeerConnection(pc);
+		Description::Media media{string(mediaDescriptionSdp)};
+		int tr = emplaceTrack(peerConnection->addTrack(std::move(media)));
+		if (auto ptr = getUserPointer(pc))
+			rtcSetUserPointer(tr, *ptr);
+
+		return tr;
+	});
+}
 
 int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 	return wrap([&] {
@@ -401,7 +399,7 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 		if (!init)
 			throw std::invalid_argument("Unexpected null pointer for track init");
 
-		auto direction = rtcDirectionToDirection(init->direction);
+		auto direction = static_cast<Description::Direction>(init->direction);
 
 		string mid;
 		if (init->mid) {
@@ -477,6 +475,30 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 		return tr;
 	});
 }
+
+int rtcDeleteTrack(int tr) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		track->onOpen(nullptr);
+		track->onClosed(nullptr);
+		track->onError(nullptr);
+		track->onMessage(nullptr);
+		track->onBufferedAmountLow(nullptr);
+		track->onAvailable(nullptr);
+
+		eraseTrack(tr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcGetTrackDescription(int tr, char *buffer, int size) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		return copyAndReturn(track->description(), buffer, size);
+	});
+}
+
+#if RTC_ENABLE_MEDIA
 
 int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
 	return wrap([&] {
@@ -609,45 +631,8 @@ int rtcSetNeedsToSendRtcpSr(int id) {
 }
 
 #endif // RTC_ENABLE_MEDIA
-
-int rtcAddTrack(int pc, const char *mediaDescriptionSdp) {
-	return wrap([&] {
-		if (!mediaDescriptionSdp)
-			throw std::invalid_argument("Unexpected null pointer for track media description");
-
-		auto peerConnection = getPeerConnection(pc);
-		Description::Media media{string(mediaDescriptionSdp)};
-		int tr = emplaceTrack(peerConnection->addTrack(std::move(media)));
-		if (auto ptr = getUserPointer(pc))
-			rtcSetUserPointer(tr, *ptr);
-
-		return tr;
-	});
-}
-
-int rtcDeleteTrack(int tr) {
-	return wrap([&] {
-		auto track = getTrack(tr);
-		track->onOpen(nullptr);
-		track->onClosed(nullptr);
-		track->onError(nullptr);
-		track->onMessage(nullptr);
-		track->onBufferedAmountLow(nullptr);
-		track->onAvailable(nullptr);
-
-		eraseTrack(tr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcGetTrackDescription(int tr, char *buffer, int size) {
-	return wrap([&] {
-		auto track = getTrack(tr);
-		return copyAndReturn(track->description(), buffer, size);
-	});
-}
-
 #if RTC_ENABLE_WEBSOCKET
+
 int rtcCreateWebSocket(const char *url) {
 	return wrap([&] {
 		auto ws = std::make_shared<WebSocket>();
@@ -680,6 +665,7 @@ int rtcDeleteWebsocket(int ws) {
 		return RTC_ERR_SUCCESS;
 	});
 }
+
 #endif
 
 int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb) {
