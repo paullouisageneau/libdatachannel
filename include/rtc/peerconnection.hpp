@@ -81,8 +81,6 @@ public:
 	State state() const;
 	GatheringState gatheringState() const;
 	SignalingState signalingState() const;
-	bool hasLocalDescription() const;
-	bool hasRemoteDescription() const;
 	bool hasMedia() const;
 	optional<Description> localDescription() const;
 	optional<Description> remoteDescription() const;
