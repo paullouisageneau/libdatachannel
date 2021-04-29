@@ -42,7 +42,14 @@ class RTC_CPP_EXPORT Description {
 public:
 	enum class Type { Unspec, Offer, Answer, Pranswer, Rollback };
 	enum class Role { ActPass, Passive, Active };
-	enum class Direction { SendOnly, RecvOnly, SendRecv, Inactive, Unknown };
+
+	enum class Direction {
+		SendOnly = RTC_DIRECTION_SENDONLY,
+		RecvOnly = RTC_DIRECTION_RECVONLY,
+		SendRecv = RTC_DIRECTION_SENDRECV,
+		Inactive = RTC_DIRECTION_INACTIVE,
+		Unknown = RTC_DIRECTION_UNKNOWN
+	};
 
 	Description(const string &sdp, Type type = Type::Unspec, Role role = Role::ActPass);
 	Description(const string &sdp, string typeString);
