@@ -248,8 +248,8 @@ typedef struct {
 
 typedef struct {
 	double seconds;     // Start time in seconds
-	bool since1970;     // true if startTimeSeconds is time interval since 1970
-	                    // false if startTimeSeconds is time interval since 1900
+	bool since1970;     // true if seconds since 1970
+	                    // false if seconds since 1900
 	uint32_t timestamp; // Start timestamp
 } rtcStartTime;
 
