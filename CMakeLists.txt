@@ -327,7 +327,7 @@ if(WARNINGS_AS_ERRORS)
 	endif()
 endif()
 
-install(TARGETS datachannel EXPORT datachannel-export
+install(TARGETS datachannel EXPORT libdatachannel-config
 	RUNTIME DESTINATION bin
 	LIBRARY DESTINATION lib
 	ARCHIVE DESTINATION lib
@@ -338,7 +338,7 @@ install(FILES ${LIBDATACHANNEL_HEADERS}
 )
 
 install(
-  EXPORT datachannel-export
+  EXPORT libdatachannel-config
   NAMESPACE LibDatachannel::
   DESTINATION share/cmake/libdatachannel
 )
