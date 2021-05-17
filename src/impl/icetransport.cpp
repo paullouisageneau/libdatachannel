@@ -131,6 +131,11 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	jconfig.turn_servers = k > 0 ? turn_servers : nullptr;
 	jconfig.turn_servers_count = k;
 
+	// Bind address
+	if (config.bindAddress) {
+		jconfig.bind_address = config.bindAddress->c_str();
+	}
+
 	// Port range
 	if (config.portRangeBegin > 1024 ||
 	    (config.portRangeEnd != 0 && config.portRangeEnd != 65535)) {
