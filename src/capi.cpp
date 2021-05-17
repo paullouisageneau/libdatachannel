@@ -290,14 +290,17 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 		for (int i = 0; i < config->iceServersCount; ++i)
 			c.iceServers.emplace_back(string(config->iceServers[i]));
 
-		c.certificateType = static_cast<CertificateType>(config->certificateType);
-		c.enableIceTcp = config->enableIceTcp;
-		c.disableAutoNegotiation = config->disableAutoNegotiation;
+		if (config->bindAddress)
+			c.bindAddress = string(config->bindAddress);
 
 		if (config->portRangeBegin > 0 || config->portRangeEnd > 0) {
 			c.portRangeBegin = config->portRangeBegin;
 			c.portRangeEnd = config->portRangeEnd;
 		}
+
+		c.certificateType = static_cast<CertificateType>(config->certificateType);
+		c.enableIceTcp = config->enableIceTcp;
+		c.disableAutoNegotiation = config->disableAutoNegotiation;
 
 		if (config->mtu > 0)
 			c.mtu = size_t(config->mtu);
