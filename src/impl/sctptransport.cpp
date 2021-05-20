@@ -118,17 +118,21 @@ void SctpTransport::SetSettings(const SctpSettings &s) {
 	usrsctp_sysctl_set_sctp_delayed_sack_time_default(
 	    to_uint32(s.delayedSackTime.value_or(20ms).count()));
 
-	// RTO
+	// RTO settings
+	// RFC 2988 recommends a 1s min RTO, which is very high, but TCP on Linux has a 200ms min RTO
 	usrsctp_sysctl_set_sctp_rto_min_default(
-	    to_uint32(s.minRetransmitTimeout.value_or(1000ms).count()));
+	    to_uint32(s.minRetransmitTimeout.value_or(200ms).count()));
+	// Set only 10s as max RTO instead of 60s for shorter connection timeout
 	usrsctp_sysctl_set_sctp_rto_max_default(
 	    to_uint32(s.maxRetransmitTimeout.value_or(10000ms).count()));
-	usrsctp_sysctl_set_sctp_rto_initial_default(
-	    to_uint32(s.initialRetransmitTimeout.value_or(1000ms).count()));
 	usrsctp_sysctl_set_sctp_init_rto_max_default(
 	    to_uint32(s.maxRetransmitTimeout.value_or(10000ms).count()));
+	// Still set 1s as initial RTO
+	usrsctp_sysctl_set_sctp_rto_initial_default(
+	    to_uint32(s.initialRetransmitTimeout.value_or(1000ms).count()));
 
-	// RTX
+	// RTX settings
+	// 5 retransmissions instead of 8 to shorten the backoff for shorter connection timeout
 	auto maxRtx = to_uint32(s.maxRetransmitAttempts.value_or(5));
 	usrsctp_sysctl_set_sctp_init_rtx_max_default(maxRtx);
 	usrsctp_sysctl_set_sctp_assoc_rtx_max_default(maxRtx);
