@@ -1139,6 +1139,8 @@ int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 
 		if (settings->delayedSackTimeMs > 0)
 			s.delayedSackTime = std::chrono::milliseconds(settings->delayedSackTimeMs);
+		else if (settings->delayedSackTimeMs < 0)
+			s.delayedSackTime = std::chrono::milliseconds(0);
 
 		if (settings->minRetransmitTimeoutMs > 0)
 			s.minRetransmitTimeout = std::chrono::milliseconds(settings->minRetransmitTimeoutMs);

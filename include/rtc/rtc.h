@@ -346,7 +346,7 @@ typedef struct {
 	int initialCongestionWindow;    // in MTUs, <= 0 means optimized default
 	int maxBurst;                   // in MTUs, 0 means optimized default, < 0 means disabled
 	int congestionControlModule;    // 0: RFC2581 (default), 1: HSTCP, 2: H-TCP, 3: RTCC
-	int delayedSackTimeMs;          // in msecs, <= 0 means optimized default
+	int delayedSackTimeMs;          // in msecs, 0 means optimized default, < 0 means disabled
 	int minRetransmitTimeoutMs;     // in msecs, <= 0 means optimized default
 	int maxRetransmitTimeoutMs;     // in msecs, <= 0 means optimized default
 	int initialRetransmitTimeoutMs; // in msecs, <= 0 means optimized default
