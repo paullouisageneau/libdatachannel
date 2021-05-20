@@ -54,6 +54,11 @@ struct SctpSettings {
 	optional<size_t> maxBurst;                      // in MTUs
 	optional<unsigned int> congestionControlModule; // 0: RFC2581, 1: HSTCP, 2: H-TCP, 3: RTCC
 	optional<std::chrono::milliseconds> delayedSackTime;
+	optional<std::chrono::milliseconds> minRetransmitTimeout;
+	optional<std::chrono::milliseconds> maxRetransmitTimeout;
+	optional<std::chrono::milliseconds> initialRetransmitTimeout;
+	optional<unsigned int> maxRetransmitAttempts;
+	optional<std::chrono::milliseconds> heartbeatInterval;
 };
 
 RTC_EXPORT void SetSctpSettings(SctpSettings s);

@@ -92,14 +92,6 @@ void SctpTransport::Init() {
 	usrsctp_init(0, &SctpTransport::WriteCallback, nullptr);
 	usrsctp_sysctl_set_sctp_pr_enable(1);  // Enable Partial Reliability Extension (RFC 3758)
 	usrsctp_sysctl_set_sctp_ecn_enable(0); // Disable Explicit Congestion Notification
-	usrsctp_sysctl_set_sctp_init_rtx_max_default(5);
-	usrsctp_sysctl_set_sctp_path_rtx_max_default(5);
-	usrsctp_sysctl_set_sctp_assoc_rtx_max_default(5);              // single path
-	usrsctp_sysctl_set_sctp_rto_min_default(1 * 1000);             // ms
-	usrsctp_sysctl_set_sctp_rto_max_default(10 * 1000);            // ms
-	usrsctp_sysctl_set_sctp_rto_initial_default(1 * 1000);         // ms
-	usrsctp_sysctl_set_sctp_init_rto_max_default(10 * 1000);       // ms
-	usrsctp_sysctl_set_sctp_heartbeat_interval_default(10 * 1000); // ms
 }
 
 void SctpTransport::SetSettings(const SctpSettings &s) {
@@ -122,9 +114,29 @@ void SctpTransport::SetSettings(const SctpSettings &s) {
 	// See https://github.com/paullouisageneau/libdatachannel/issues/354
 	usrsctp_sysctl_set_sctp_default_cc_module(to_uint32(s.congestionControlModule.value_or(0)));
 
-	// Reduce SACK delay to 20ms by default
+	// Reduce SACK delay to 20ms by default (the recommended default value from RFC 4960 is 200ms)
 	usrsctp_sysctl_set_sctp_delayed_sack_time_default(
 	    to_uint32(s.delayedSackTime.value_or(20ms).count()));
+
+	// RTO
+	usrsctp_sysctl_set_sctp_rto_min_default(
+	    to_uint32(s.minRetransmitTimeout.value_or(1000ms).count()));
+	usrsctp_sysctl_set_sctp_rto_max_default(
+	    to_uint32(s.maxRetransmitTimeout.value_or(10000ms).count()));
+	usrsctp_sysctl_set_sctp_rto_initial_default(
+	    to_uint32(s.initialRetransmitTimeout.value_or(1000ms).count()));
+	usrsctp_sysctl_set_sctp_init_rto_max_default(
+	    to_uint32(s.maxRetransmitTimeout.value_or(10000ms).count()));
+
+	// RTX
+	auto maxRtx = to_uint32(s.maxRetransmitAttempts.value_or(5));
+	usrsctp_sysctl_set_sctp_init_rtx_max_default(maxRtx);
+	usrsctp_sysctl_set_sctp_assoc_rtx_max_default(maxRtx);
+	usrsctp_sysctl_set_sctp_path_rtx_max_default(maxRtx); // single path
+
+	// Heartbeat interval
+	usrsctp_sysctl_set_sctp_heartbeat_interval_default(
+	    to_uint32(s.heartbeatInterval.value_or(10000ms).count()));
 }
 
 void SctpTransport::Cleanup() {

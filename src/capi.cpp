@@ -1140,6 +1140,21 @@ int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 		if (settings->delayedSackTimeMs > 0)
 			s.delayedSackTime = std::chrono::milliseconds(settings->delayedSackTimeMs);
 
+		if (settings->minRetransmitTimeoutMs > 0)
+			s.minRetransmitTimeout = std::chrono::milliseconds(settings->minRetransmitTimeoutMs);
+
+		if (settings->maxRetransmitTimeoutMs > 0)
+			s.maxRetransmitTimeout = std::chrono::milliseconds(settings->maxRetransmitTimeoutMs);
+
+		if (settings->initialRetransmitTimeoutMs > 0)
+			s.initialRetransmitTimeout = std::chrono::milliseconds(settings->initialRetransmitTimeoutMs);
+
+		if (settings->maxRetransmitAttempts > 0)
+			s.maxRetransmitAttempts = settings->maxRetransmitAttempts;
+
+		if (settings->heartbeatIntervalMs > 0)
+			s.heartbeatInterval = std::chrono::milliseconds(settings->heartbeatIntervalMs);
+
 		SetSctpSettings(std::move(s));
 		return RTC_ERR_SUCCESS;
 	});
