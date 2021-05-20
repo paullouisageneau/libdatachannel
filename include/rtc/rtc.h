@@ -340,13 +340,18 @@ RTC_EXPORT void rtcCleanup(void);
 // SCTP global settings
 
 typedef struct {
-	int recvBufferSize;          // in bytes, <= 0 means optimized default
-	int sendBufferSize;          // in bytes, <= 0 means optimized default
-	int maxChunksOnQueue;        // in chunks, <= 0 means optimized default
-	int initialCongestionWindow; // in MTUs, <= 0 means optimized default
-	int maxBurst;                // in MTUs, 0 means optimized default, < 0 means disabled
-	int congestionControlModule; // 0: RFC2581 (default), 1: HSTCP, 2: H-TCP, 3: RTCC
-	int delayedSackTimeMs;       // in msecs, <= 0 means optimized default
+	int recvBufferSize;             // in bytes, <= 0 means optimized default
+	int sendBufferSize;             // in bytes, <= 0 means optimized default
+	int maxChunksOnQueue;           // in chunks, <= 0 means optimized default
+	int initialCongestionWindow;    // in MTUs, <= 0 means optimized default
+	int maxBurst;                   // in MTUs, 0 means optimized default, < 0 means disabled
+	int congestionControlModule;    // 0: RFC2581 (default), 1: HSTCP, 2: H-TCP, 3: RTCC
+	int delayedSackTimeMs;          // in msecs, 0 means optimized default, < 0 means disabled
+	int minRetransmitTimeoutMs;     // in msecs, <= 0 means optimized default
+	int maxRetransmitTimeoutMs;     // in msecs, <= 0 means optimized default
+	int initialRetransmitTimeoutMs; // in msecs, <= 0 means optimized default
+	int maxRetransmitAttempts;      // number of retransmissions, <= 0 means optimized default
+	int heartbeatIntervalMs;        // in msecs, <= 0 means optimized default
 } rtcSctpSettings;
 
 // Note: SCTP settings apply to newly-created PeerConnections only
