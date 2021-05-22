@@ -86,6 +86,7 @@ Arguments:
 - `config`: the configuration structure, containing:
   - `iceServers` (optional): an array of pointers on null-terminated ice server URIs (NULL if unused)
   - `iceServersCount` (optional): number of URLs in the array pointed by `iceServers` (0 if unused)
+  - `bindAddress` (optional): if non-NULL, bind only to the given local address (ignored with libnice as ICE backend)
   - `certificateType` (optional): certificate type, either `RTC_CERTIFICATE_ECDSA` or `RTC_CERTIFICATE_RSA` (0 or `RTC_CERTIFICATE_DEFAULT` if default)
   - `enableIceTcp`: if true, generate TCP candidates for ICE (ignored with libjuice as ICE backend)
   - `disableAutoNegotiation`: if true, the user is responsible for calling `rtcSetLocalDescription` after creating a Data Channel and after setting the remote description
