@@ -1,4 +1,4 @@
-# libdatachannel - C/C++ WebRTC Data Channels
+# libdatachannel - C/C++ WebRTC lightweight library
 
 libdatachannel is a standalone implementation of WebRTC Data Channels, WebRTC Media Transport, and WebSockets in C++17 with C bindings for POSIX platforms (including GNU/Linux, Android, and Apple macOS) and Microsoft Windows.
 
