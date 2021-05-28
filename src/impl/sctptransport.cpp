@@ -25,7 +25,9 @@
 #include <exception>
 #include <iostream>
 #include <limits>
+#include <shared_mutex>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 // RFC 8831: SCTP MUST support performing Path MTU discovery without relying on ICMP or ICMPv6 as
@@ -880,7 +882,7 @@ optional<milliseconds> SctpTransport::rtt() {
 void SctpTransport::UpcallCallback(struct socket *, void *arg, int /* flags */) {
 	auto *transport = static_cast<SctpTransport *>(arg);
 
-	if(auto lock = Instances->lock(transport))
+	if (auto lock = Instances->lock(transport))
 		transport->handleUpcall();
 }
 
@@ -889,7 +891,7 @@ int SctpTransport::WriteCallback(void *ptr, void *data, size_t len, uint8_t tos,
 
 	// Workaround for sctplab/usrsctp#405: Send callback is invoked on already closed socket
 	// https://github.com/sctplab/usrsctp/issues/405
-	if(auto lock = Instances->lock(transport))
+	if (auto lock = Instances->lock(transport))
 		return transport->handleWrite(static_cast<byte *>(data), len, tos, set_df);
 	else
 		return -1;

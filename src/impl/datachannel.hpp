@@ -28,6 +28,7 @@
 #include "sctptransport.hpp"
 
 #include <atomic>
+#include <shared_mutex>
 
 namespace rtc::impl {
 
