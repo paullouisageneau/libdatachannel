@@ -93,7 +93,7 @@ void Candidate::parse(string candidate) {
 	                                        {"so", TransportType::TcpSo}};
 
 	const std::array prefixes{"a=", "candidate:"};
-	for (const string &prefix : prefixes)
+	for (string prefix : prefixes)
 		if (match_prefix(candidate, prefix))
 			candidate.erase(0, prefix.size());
 
