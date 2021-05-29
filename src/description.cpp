@@ -980,18 +980,17 @@ std::ostream &operator<<(std::ostream &out, rtc::Description::Type type) {
 
 std::ostream &operator<<(std::ostream &out, rtc::Description::Role role) {
 	using Role = rtc::Description::Role;
-	const char *str;
 	// Used for SDP generation, do not change
 	switch (role) {
 	case Role::Active:
-		str = "active";
+		out << "active";
 		break;
 	case Role::Passive:
-		str = "passive";
+		out << "passive";
 		break;
 	default:
-		str = "actpass";
+		out << "actpass";
 		break;
 	}
-	return out << str;
+	return out;
 }
