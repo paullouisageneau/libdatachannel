@@ -22,6 +22,7 @@
 #include "common.hpp"
 
 #include <chrono>
+#include <iostream>
 
 namespace rtc {
 
@@ -42,8 +43,8 @@ RTC_CPP_EXPORT void InitLogger(LogLevel level, LogCallback callback = nullptr);
 RTC_CPP_EXPORT void InitLogger(plog::Severity severity, plog::IAppender *appender = nullptr);
 #endif
 
-RTC_EXPORT void Preload();
-RTC_EXPORT void Cleanup();
+RTC_CPP_EXPORT void Preload();
+RTC_CPP_EXPORT void Cleanup();
 
 struct SctpSettings {
 	// For the following settings, not set means optimized default
@@ -61,8 +62,10 @@ struct SctpSettings {
 	optional<std::chrono::milliseconds> heartbeatInterval;
 };
 
-RTC_EXPORT void SetSctpSettings(SctpSettings s);
+RTC_CPP_EXPORT void SetSctpSettings(SctpSettings s);
 
 } // namespace rtc
+
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::LogLevel level);
 
 #endif

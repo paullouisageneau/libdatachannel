@@ -93,3 +93,31 @@ void Cleanup() { Init::Cleanup(); }
 void SetSctpSettings(SctpSettings s) { Init::SetSctpSettings(std::move(s)); }
 
 } // namespace rtc
+
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::LogLevel level) {
+	switch (level) {
+	case rtc::LogLevel::Fatal:
+		out << "fatal";
+		break;
+	case rtc::LogLevel::Error:
+		out << "error";
+		break;
+	case rtc::LogLevel::Warning:
+		out << "warning";
+		break;
+	case rtc::LogLevel::Info:
+		out << "info";
+		break;
+	case rtc::LogLevel::Debug:
+		out << "debug";
+		break;
+	case rtc::LogLevel::Verbose:
+		out << "verbose";
+		break;
+	default:
+		out << "none";
+		break;
+	}
+	return out;
+}
+
