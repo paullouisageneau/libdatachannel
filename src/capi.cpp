@@ -869,7 +869,7 @@ int rtcGetSsrcsForType(const char * mediaType, const char * sdp, uint32_t * buff
 		auto oldSDP = string(sdp);
 		auto description = Description(oldSDP, "unspec");
 		auto mediaCount = description.mediaCount();
-		for (auto i = 0; i < mediaCount; i++) {
+		for (unsigned int i = 0; i < mediaCount; i++) {
 			if (std::holds_alternative<Description::Media *>(description.media(i))) {
 				auto media = std::get<Description::Media *>(description.media(i));
 				auto currentMediaType = lowercased(media->type());
@@ -890,7 +890,7 @@ int rtcSetSsrcForType(const char * mediaType, const char * sdp, char * buffer, c
 		auto prevSDP = string(sdp);
 		auto description = Description(prevSDP, "unspec");
 		auto mediaCount = description.mediaCount();
-		for (auto i = 0; i < mediaCount; i++) {
+		for (unsigned int i = 0; i < mediaCount; i++) {
 			if (std::holds_alternative<Description::Media *>(description.media(i))) {
 				auto media = std::get<Description::Media *>(description.media(i));
 				auto currentMediaType = lowercased(media->type());
