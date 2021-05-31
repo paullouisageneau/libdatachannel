@@ -401,34 +401,6 @@ int rtcDeleteDataChannel(int dc) {
 	});
 }
 
-int rtcIsDataChannelOpen(int dc) {
-	return wrap([dc] {
-		return getDataChannel(dc)->isOpen() ? RTC_ERR_SUCCESS : RTC_ERR_FAILURE;
-	});
-}
-
-#if RTC_ENABLE_MEDIA
-
-void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid, const char *_trackID) {
-
-	optional<string> name = nullopt;
-	if (_name) {
-		name = string(_name);
-	}
-
-	optional<string> msid = nullopt;
-	if (_msid) {
-		msid = string(_msid);
-	}
-
-	optional<string> trackID = nullopt;
-	if (_trackID) {
-		trackID = string(_trackID);
-	}
-
-	description->addSSRC(ssrc, name, msid, trackID);
-}
-
 int rtcAddTrack(int pc, const char *mediaDescriptionSdp) {
 	return wrap([&] {
 		if (!mediaDescriptionSdp)
