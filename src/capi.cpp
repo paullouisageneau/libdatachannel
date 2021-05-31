@@ -691,6 +691,68 @@ int rtcGetTrackPayloadTypesForCodec(int tr, const char * ccodec, int * buffer, i
 	});
 }
 
+int rtcGetSsrcsForTrack(int tr, uint32_t * buffer, int bufferSize) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto ssrcs = track->description().getSSRCs();
+		return copyAndReturn(ssrcs, buffer, bufferSize);
+	});
+}
+
+int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char * cname, int cnameSize) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto description = track->description();
+		auto optCName = description.getCNameForSsrc(ssrc);
+		if (optCName.has_value()) {
+			return copyAndReturn(optCName.value(), cname, cnameSize);
+		} else {
+			return 0;
+		}
+	});
+}
+
+int rtcGetSsrcsForType(const char * mediaType, const char * sdp, uint32_t * buffer, int bufferSize) {
+	return wrap([&] {
+		auto type = lowercased(string(mediaType));
+		auto oldSDP = string(sdp);
+		auto description = Description(oldSDP, "unspec");
+		auto mediaCount = description.mediaCount();
+		for (unsigned int i = 0; i < mediaCount; i++) {
+			if (std::holds_alternative<Description::Media *>(description.media(i))) {
+				auto media = std::get<Description::Media *>(description.media(i));
+				auto currentMediaType = lowercased(media->type());
+				if (currentMediaType == type) {
+					auto ssrcs = media->getSSRCs();
+					return copyAndReturn(ssrcs, buffer, bufferSize);
+				}
+			}
+		}
+		return 0;
+	});
+}
+
+int rtcSetSsrcForType(const char * mediaType, const char * sdp, char * buffer, const int bufferSize,
+					  rtcSsrcForTypeInit * init) {
+	return wrap([&] {
+		auto type = lowercased(string(mediaType));
+		auto prevSDP = string(sdp);
+		auto description = Description(prevSDP, "unspec");
+		auto mediaCount = description.mediaCount();
+		for (unsigned int i = 0; i < mediaCount; i++) {
+			if (std::holds_alternative<Description::Media *>(description.media(i))) {
+				auto media = std::get<Description::Media *>(description.media(i));
+				auto currentMediaType = lowercased(media->type());
+				if (currentMediaType == type) {
+					setSSRC(media, init->ssrc, init->name, init->msid, init->trackId);
+					break;
+				}
+			}
+		}
+		return copyAndReturn(string(description), buffer, bufferSize);
+	});
+}
+
 #endif // RTC_ENABLE_MEDIA
 #if RTC_ENABLE_WEBSOCKET
 
@@ -839,68 +901,6 @@ int rtcSetLocalDescription(int pc, const char *type) {
 		peerConnection->setLocalDescription(type ? Description::stringToType(type)
 		                                         : Description::Type::Unspec);
 		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcGetSsrcsForTrack(int tr, uint32_t * buffer, int bufferSize) {
-	return wrap([&] {
-		auto track = getTrack(tr);
-		auto ssrcs = track->description().getSSRCs();
-		return copyAndReturn(ssrcs, buffer, bufferSize);
-	});
-}
-
-int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char * cname, int cnameSize) {
-	return wrap([&] {
-		auto track = getTrack(tr);
-		auto description = track->description();
-		auto optCName = description.getCNameForSsrc(ssrc);
-		if (optCName.has_value()) {
-			return copyAndReturn(optCName.value(), cname, cnameSize);
-		} else {
-			return 0;
-		}
-	});
-}
-
-int rtcGetSsrcsForType(const char * mediaType, const char * sdp, uint32_t * buffer, int bufferSize) {
-	return wrap([&] {
-		auto type = lowercased(string(mediaType));
-		auto oldSDP = string(sdp);
-		auto description = Description(oldSDP, "unspec");
-		auto mediaCount = description.mediaCount();
-		for (unsigned int i = 0; i < mediaCount; i++) {
-			if (std::holds_alternative<Description::Media *>(description.media(i))) {
-				auto media = std::get<Description::Media *>(description.media(i));
-				auto currentMediaType = lowercased(media->type());
-				if (currentMediaType == type) {
-					auto ssrcs = media->getSSRCs();
-					return copyAndReturn(ssrcs, buffer, bufferSize);
-				}
-			}
-		}
-		return 0;
-	});
-}
-
-int rtcSetSsrcForType(const char * mediaType, const char * sdp, char * buffer, const int bufferSize,
-					  rtcSsrcForTypeInit * init) {
-	return wrap([&] {
-		auto type = lowercased(string(mediaType));
-		auto prevSDP = string(sdp);
-		auto description = Description(prevSDP, "unspec");
-		auto mediaCount = description.mediaCount();
-		for (unsigned int i = 0; i < mediaCount; i++) {
-			if (std::holds_alternative<Description::Media *>(description.media(i))) {
-				auto media = std::get<Description::Media *>(description.media(i));
-				auto currentMediaType = lowercased(media->type());
-				if (currentMediaType == type) {
-					setSSRC(media, init->ssrc, init->name, init->msid, init->trackId);
-					break;
-				}
-			}
-		}
-		return copyAndReturn(string(description), buffer, bufferSize);
 	});
 }
 
