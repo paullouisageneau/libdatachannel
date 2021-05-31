@@ -279,10 +279,13 @@ int copyAndReturn(std::vector<T> b, T *buffer, int size) {
 	return int(b.size());
 }
 
+#if RTC_ENABLE_MEDIA
+// function is used in RTC_ENABLE_MEDIA only
 string lowercased(string str) {
 	std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::tolower(c); });
 	return str;
 }
+#endif // RTC_ENABLE_MEDIA
 } // namespace
 
 void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
