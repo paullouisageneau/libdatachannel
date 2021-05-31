@@ -882,7 +882,10 @@ std::vector<uint32_t> Description::Media::getSSRCs() { return mSsrcs; }
 std::optional<std::string> Description::Media::getCNameForSsrc(uint32_t ssrc) {
 	for (auto &val : mAttributes) {
 		if (val.find("ssrc:") == 0 && val.find("cname:") != std::string::npos) {
-			return val.substr(val.find("cname:") + 6);
+			auto valSsrc = to_integer<uint32_t>(val.substr(5));
+			if (valSsrc == ssrc) {
+				return val.substr(val.find("cname:") + 6);
+			}
 		}
 	}
 	return std::nullopt;
