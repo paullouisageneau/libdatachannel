@@ -858,7 +858,11 @@ void Description::Media::parseSdpLine(string_view line) {
 		} else if (key == "rtcp-mux") {
 			// always added
 		} else if (key == "ssrc") {
-			mSsrcs.emplace_back(to_integer<uint32_t>(value));
+			auto ssrc = to_integer<uint32_t>(value);
+			if (!hasSSRC(ssrc)) {
+				mSsrcs.emplace_back(ssrc);
+			}
+			mAttributes.emplace_back(attr);
 		} else {
 			Entry::parseSdpLine(line);
 		}
@@ -874,6 +878,15 @@ void Description::Media::addRTPMap(const Description::Media::RTPMap &map) {
 }
 
 std::vector<uint32_t> Description::Media::getSSRCs() { return mSsrcs; }
+
+std::optional<std::string> Description::Media::getCNameForSsrc(uint32_t ssrc) {
+	for (auto &val : mAttributes) {
+		if (val.find("ssrc:") == 0 && val.find("cname:") != std::string::npos) {
+			return val.substr(val.find("cname:") + 6);
+		}
+	}
+	return std::nullopt;
+}
 
 std::map<int, Description::Media::RTPMap>::iterator Description::Media::beginMaps() {
 	return mRtpMap.begin();

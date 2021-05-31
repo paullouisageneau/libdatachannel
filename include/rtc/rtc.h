@@ -206,6 +206,7 @@ RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
 RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
 RTC_EXPORT int rtcCreateDataChannelEx(int pc, const char *label,
                                       const rtcDataChannelInit *init); // returns dc id
+RTC_EXPORT int rtcIsDataChannelOpen(int dc);
 RTC_EXPORT int rtcDeleteDataChannel(int dc);
 
 RTC_EXPORT int rtcGetDataChannelStream(int dc);
@@ -254,6 +255,13 @@ typedef struct {
 	uint32_t timestamp; // Start timestamp
 } rtcStartTime;
 
+typedef struct {
+	uint32_t ssrc;
+	const char *name;    // optional
+	const char *msid;    // optional
+	const char *trackId; // optional, track ID used in MSID
+} rtcSsrcForTypeInit;
+
 // Set H264PacketizationHandler for track
 RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
 
@@ -297,6 +305,22 @@ RTC_EXPORT int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t *timest
 
 // Set NeedsToReport flag in RtcpSrReporter handler identified by given track id
 RTC_EXPORT int rtcSetNeedsToSendRtcpSr(int id);
+
+/// Get all available payload types for given codec and stores them in buffer, does nothing if buffer is NULL
+int rtcGetTrackPayloadTypesForCodec(int tr, const char * ccodec, int * buffer, int size);
+
+/// Get all SSRCs for given track
+int rtcGetSsrcsForTrack(int tr, uint32_t * buffer, int bufferSize);
+
+/// Get CName for SSRC
+int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char * cname, int cnameSize);
+
+/// Get all SSRCs for given media type in given SDP
+/// @param mediaType Media type (audio/video)
+int rtcGetSsrcsForType(const char * mediaType, const char * sdp, uint32_t * buffer, int bufferSize);
+
+/// Set SSRC for given media type in given SDP
+int rtcSetSsrcForType(const char * mediaType, const char * sdp, char * buffer, const int bufferSize, rtcSsrcForTypeInit * init);
 
 #endif // RTC_ENABLE_MEDIA
 
