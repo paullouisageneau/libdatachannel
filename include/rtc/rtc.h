@@ -310,7 +310,7 @@ RTC_EXPORT int rtcSetNeedsToSendRtcpSr(int id);
 int rtcGetTrackPayloadTypesForCodec(int tr, const char * ccodec, int * buffer, int size);
 
 /// Get all SSRCs for given track
-int rtcGetSsrcsForTrack(int tr, uint32_t * buffer, int bufferSize);
+int rtcGetSsrcsForTrack(int tr, uint32_t * buffer, int count);
 
 /// Get CName for SSRC
 int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char * cname, int cnameSize);

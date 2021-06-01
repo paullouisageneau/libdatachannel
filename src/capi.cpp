@@ -694,11 +694,11 @@ int rtcGetTrackPayloadTypesForCodec(int tr, const char * ccodec, int * buffer, i
 	});
 }
 
-int rtcGetSsrcsForTrack(int tr, uint32_t * buffer, int bufferSize) {
+int rtcGetSsrcsForTrack(int tr, uint32_t * buffer, int count) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		auto ssrcs = track->description().getSSRCs();
-		return copyAndReturn(ssrcs, buffer, bufferSize);
+		return copyAndReturn(ssrcs, buffer, count);
 	});
 }
 
