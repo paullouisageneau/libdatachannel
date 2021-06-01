@@ -196,6 +196,7 @@ public:
 
 		std::map<int, RTPMap> mRtpMap;
 		std::vector<uint32_t> mSsrcs;
+        std::map<uint32_t, string> mCNameMap;
 
 	public:
 		void addRTPMap(const RTPMap &map);
