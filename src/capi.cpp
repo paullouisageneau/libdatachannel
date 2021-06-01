@@ -383,9 +383,9 @@ int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *
 	});
 }
 
-int rtcIsDataChannelOpen(int dc) {
-	return wrap([dc] {
-		return getDataChannel(dc)->isOpen() ? RTC_ERR_SUCCESS : RTC_ERR_FAILURE;
+int rtcIsOpen(int cid) {
+	return wrap([cid] {
+        return getChannel(cid)->isOpen();
 	});
 }
 
