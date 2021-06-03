@@ -275,7 +275,7 @@ int copyAndReturn(std::vector<T> b, T *buffer, int size) {
 
 	if (size < int(b.size()))
 		return RTC_ERR_TOO_SMALL;
-	memcpy(buffer, b.data(), b.size() * sizeof(*buffer));
+    std::copy(b.begin(), b.end(), buffer);
 	return int(b.size());
 }
 
