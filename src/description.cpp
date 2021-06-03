@@ -866,7 +866,7 @@ void Description::Media::parseSdpLine(string_view line) {
 			}
             auto cnamePos = value.find("cname:");
             if (cnamePos != std::string::npos) {
-                auto cname = value.substr(cnamePos);
+                auto cname = value.substr(cnamePos + 6);
                 mCNameMap.emplace(ssrc, cname);
             }
 			mAttributes.emplace_back(attr);
