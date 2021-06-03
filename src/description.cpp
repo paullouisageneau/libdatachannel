@@ -556,10 +556,12 @@ Description::Entry::removeAttribute(std::vector<string>::iterator it) {
 
 void Description::Media::addSSRC(uint32_t ssrc, optional<string> name, optional<string> msid,
                                  optional<string> trackID) {
-	if (name)
+    if (name) {
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + *name);
-	else
+        mCNameMap.emplace(ssrc, *name);
+    } else {
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc));
+    }
 
 	if (msid)
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " msid:" + *msid + " " +
@@ -858,7 +860,16 @@ void Description::Media::parseSdpLine(string_view line) {
 		} else if (key == "rtcp-mux") {
 			// always added
 		} else if (key == "ssrc") {
-			mSsrcs.emplace_back(to_integer<uint32_t>(value));
+			auto ssrc = to_integer<uint32_t>(value);
+			if (!hasSSRC(ssrc)) {
+				mSsrcs.emplace_back(ssrc);
+			}
+            auto cnamePos = value.find("cname:");
+            if (cnamePos != std::string::npos) {
+                auto cname = value.substr(cnamePos + 6);
+                mCNameMap.emplace(ssrc, cname);
+            }
+			mAttributes.emplace_back(attr);
 		} else {
 			Entry::parseSdpLine(line);
 		}
@@ -874,6 +885,14 @@ void Description::Media::addRTPMap(const Description::Media::RTPMap &map) {
 }
 
 std::vector<uint32_t> Description::Media::getSSRCs() { return mSsrcs; }
+
+std::optional<std::string> Description::Media::getCNameForSsrc(uint32_t ssrc) {
+    auto it = mCNameMap.find(ssrc);
+    if (it != mCNameMap.end()) {
+        return it->second;
+    }
+	return std::nullopt;
+}
 
 std::map<int, Description::Media::RTPMap>::iterator Description::Media::beginMaps() {
 	return mRtpMap.begin();

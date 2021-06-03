@@ -150,6 +150,7 @@ public:
 						 optional<string> msid = nullopt, optional<string> trackID = nullopt);
 		bool hasSSRC(uint32_t ssrc);
 		std::vector<uint32_t> getSSRCs();
+		std::optional<std::string> getCNameForSsrc(uint32_t ssrc);
 
 		void setBitrate(int bitrate);
 		int getBitrate() const;
@@ -195,6 +196,7 @@ public:
 
 		std::map<int, RTPMap> mRtpMap;
 		std::vector<uint32_t> mSsrcs;
+        std::map<uint32_t, string> mCNameMap;
 
 	public:
 		void addRTPMap(const RTPMap &map);

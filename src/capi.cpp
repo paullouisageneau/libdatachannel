@@ -268,6 +268,24 @@ int copyAndReturn(binary b, char *buffer, int size) {
 	return int(b.size());
 }
 
+template<typename T>
+int copyAndReturn(std::vector<T> b, T *buffer, int size) {
+	if (!buffer)
+		return int(b.size());
+
+	if (size < int(b.size()))
+		return RTC_ERR_TOO_SMALL;
+    std::copy(b.begin(), b.end(), buffer);
+	return int(b.size());
+}
+
+#if RTC_ENABLE_MEDIA
+// function is used in RTC_ENABLE_MEDIA only
+string lowercased(string str) {
+	std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::tolower(c); });
+	return str;
+}
+#endif // RTC_ENABLE_MEDIA
 } // namespace
 
 void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
@@ -362,6 +380,12 @@ int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *
 			rtcSetUserPointer(dc, *ptr);
 
 		return dc;
+	});
+}
+
+int rtcIsOpen(int cid) {
+	return wrap([cid] {
+        return getChannel(cid)->isOpen();
 	});
 }
 
@@ -503,6 +527,26 @@ int rtcGetTrackDescription(int tr, char *buffer, int size) {
 
 #if RTC_ENABLE_MEDIA
 
+void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid, const char *_trackID) {
+
+	optional<string> name = nullopt;
+	if (_name) {
+		name = string(_name);
+	}
+
+	optional<string> msid = nullopt;
+	if (_msid) {
+		msid = string(_msid);
+	}
+
+	optional<string> trackID = nullopt;
+	if (_trackID) {
+		trackID = string(_trackID);
+	}
+
+	description->addSSRC(ssrc, name, msid, trackID);
+}
+
 int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
 	return wrap([&] {
 		auto track = getTrack(tr);
@@ -630,6 +674,85 @@ int rtcSetNeedsToSendRtcpSr(int id) {
 		auto sender = getRtcpSrReporter(id);
 		sender->setNeedsToReport();
 		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcGetTrackPayloadTypesForCodec(int tr, const char * ccodec, int * buffer, int size) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto codec = lowercased(string(ccodec));
+		auto description = track->description();
+		std::vector<int> payloadTypes{};
+		payloadTypes.reserve(std::max(size, 0));
+		for (auto it = description.beginMaps(); it != description.endMaps(); it++) {
+			auto element = *it;
+			if (lowercased(element.second.format) == codec) {
+				payloadTypes.push_back(element.first);
+			}
+		}
+		return copyAndReturn(payloadTypes, buffer, size);
+	});
+}
+
+int rtcGetSsrcsForTrack(int tr, uint32_t * buffer, int count) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto ssrcs = track->description().getSSRCs();
+		return copyAndReturn(ssrcs, buffer, count);
+	});
+}
+
+int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char * cname, int cnameSize) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto description = track->description();
+		auto optCName = description.getCNameForSsrc(ssrc);
+		if (optCName.has_value()) {
+			return copyAndReturn(optCName.value(), cname, cnameSize);
+		} else {
+			return 0;
+		}
+	});
+}
+
+int rtcGetSsrcsForType(const char * mediaType, const char * sdp, uint32_t * buffer, int bufferSize) {
+	return wrap([&] {
+		auto type = lowercased(string(mediaType));
+		auto oldSDP = string(sdp);
+		auto description = Description(oldSDP, "unspec");
+		auto mediaCount = description.mediaCount();
+		for (unsigned int i = 0; i < mediaCount; i++) {
+			if (std::holds_alternative<Description::Media *>(description.media(i))) {
+				auto media = std::get<Description::Media *>(description.media(i));
+				auto currentMediaType = lowercased(media->type());
+				if (currentMediaType == type) {
+					auto ssrcs = media->getSSRCs();
+					return copyAndReturn(ssrcs, buffer, bufferSize);
+				}
+			}
+		}
+		return 0;
+	});
+}
+
+int rtcSetSsrcForType(const char * mediaType, const char * sdp, char * buffer, const int bufferSize,
+					  rtcSsrcForTypeInit * init) {
+	return wrap([&] {
+		auto type = lowercased(string(mediaType));
+		auto prevSDP = string(sdp);
+		auto description = Description(prevSDP, "unspec");
+		auto mediaCount = description.mediaCount();
+		for (unsigned int i = 0; i < mediaCount; i++) {
+			if (std::holds_alternative<Description::Media *>(description.media(i))) {
+				auto media = std::get<Description::Media *>(description.media(i));
+				auto currentMediaType = lowercased(media->type());
+				if (currentMediaType == type) {
+					setSSRC(media, init->ssrc, init->name, init->msid, init->trackId);
+					break;
+				}
+			}
+		}
+		return copyAndReturn(string(description), buffer, bufferSize);
 	});
 }
 
