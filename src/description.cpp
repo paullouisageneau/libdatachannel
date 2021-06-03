@@ -929,11 +929,16 @@ int Description::Media::RTPMap::parsePT(string_view view) {
 
 void Description::Media::RTPMap::setMLine(string_view mline) {
 	size_t p = mline.find(' ');
+	if (p == string::npos)
+		throw std::invalid_argument("Invalid m-line");
 
 	this->pt = to_integer<int>(mline.substr(0, p));
 
 	string_view line = mline.substr(p + 1);
 	size_t spl = line.find('/');
+	if (spl == string::npos)
+		throw std::invalid_argument("Invalid m-line");
+
 	this->format = line.substr(0, spl);
 
 	line = line.substr(spl + 1);
