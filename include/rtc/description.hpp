@@ -146,6 +146,7 @@ public:
 
 		void addSSRC(uint32_t ssrc, optional<string> name,
 					 optional<string> msid = nullopt, optional<string> trackID = nullopt);
+		void removeSSRC(uint32_t oldSSRC);
 		void replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, optional<string> name,
 						 optional<string> msid = nullopt, optional<string> trackID = nullopt);
 		bool hasSSRC(uint32_t ssrc);
@@ -182,6 +183,8 @@ public:
 			void setMLine(string_view view);
 		};
 
+		void addRTPMap(const RTPMap &map);
+
 		std::map<int, RTPMap>::iterator beginMaps();
 		std::map<int, RTPMap>::iterator endMaps();
 		std::map<int, RTPMap>::iterator removeMap(std::map<int, RTPMap>::iterator iterator);
@@ -197,11 +200,6 @@ public:
 		std::map<int, RTPMap> mRtpMap;
 		std::vector<uint32_t> mSsrcs;
         std::map<uint32_t, string> mCNameMap;
-
-	public:
-		void addRTPMap(const RTPMap &map);
-
-		void removeSSRC(uint32_t oldSSRC);
 	};
 
 	class RTC_CPP_EXPORT Audio : public Media {

@@ -547,8 +547,11 @@ void Description::Entry::parseSdpLine(string_view line) {
 			mAttributes.emplace_back(line.substr(2));
 	}
 }
+
 std::vector<string>::iterator Description::Entry::beginAttributes() { return mAttributes.begin(); }
+
 std::vector<string>::iterator Description::Entry::endAttributes() { return mAttributes.end(); }
+
 std::vector<string>::iterator
 Description::Entry::removeAttribute(std::vector<string>::iterator it) {
 	return mAttributes.erase(it);
@@ -556,12 +559,12 @@ Description::Entry::removeAttribute(std::vector<string>::iterator it) {
 
 void Description::Media::addSSRC(uint32_t ssrc, optional<string> name, optional<string> msid,
                                  optional<string> trackID) {
-    if (name) {
+	if (name) {
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " cname:" + *name);
-        mCNameMap.emplace(ssrc, *name);
-    } else {
+		mCNameMap.emplace(ssrc, *name);
+	} else {
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc));
-    }
+	}
 
 	if (msid)
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " msid:" + *msid + " " +
@@ -570,26 +573,28 @@ void Description::Media::addSSRC(uint32_t ssrc, optional<string> name, optional<
 	mSsrcs.emplace_back(ssrc);
 }
 
-void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, optional<string> name,
-                                     optional<string> msid, optional<string> trackID) {
-	auto it = mAttributes.begin();
-	while (it != mAttributes.end()) {
-		if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
-			it = mAttributes.erase(it);
-		} else
-			it++;
-	}
-	addSSRC(ssrc, std::move(name), std::move(msid), std::move(trackID));
-}
-
 void Description::Media::removeSSRC(uint32_t oldSSRC) {
 	auto it = mAttributes.begin();
 	while (it != mAttributes.end()) {
-		if (it->find("ssrc:" + std::to_string(oldSSRC)) == 0) {
+		if (match_prefix(*it, "ssrc:" + std::to_string(oldSSRC)))
 			it = mAttributes.erase(it);
-		} else
-			it++;
+		else
+			++it;
 	}
+
+	auto jt = mSsrcs.begin();
+	while (jt != mSsrcs.end()) {
+		if (*jt == oldSSRC)
+			jt = mSsrcs.erase(jt);
+		else
+			++jt;
+	}
+}
+
+void Description::Media::replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, optional<string> name,
+                                     optional<string> msid, optional<string> trackID) {
+	removeSSRC(oldSSRC);
+	addSSRC(ssrc, std::move(name), std::move(msid), std::move(trackID));
 }
 
 bool Description::Media::hasSSRC(uint32_t ssrc) {
@@ -864,11 +869,11 @@ void Description::Media::parseSdpLine(string_view line) {
 			if (!hasSSRC(ssrc)) {
 				mSsrcs.emplace_back(ssrc);
 			}
-            auto cnamePos = value.find("cname:");
-            if (cnamePos != std::string::npos) {
-                auto cname = value.substr(cnamePos + 6);
-                mCNameMap.emplace(ssrc, cname);
-            }
+			auto cnamePos = value.find("cname:");
+			if (cnamePos != std::string::npos) {
+				auto cname = value.substr(cnamePos + 6);
+				mCNameMap.emplace(ssrc, cname);
+			}
 			mAttributes.emplace_back(attr);
 		} else {
 			Entry::parseSdpLine(line);
@@ -887,10 +892,10 @@ void Description::Media::addRTPMap(const Description::Media::RTPMap &map) {
 std::vector<uint32_t> Description::Media::getSSRCs() { return mSsrcs; }
 
 std::optional<std::string> Description::Media::getCNameForSsrc(uint32_t ssrc) {
-    auto it = mCNameMap.find(ssrc);
-    if (it != mCNameMap.end()) {
-        return it->second;
-    }
+	auto it = mCNameMap.find(ssrc);
+	if (it != mCNameMap.end()) {
+		return it->second;
+	}
 	return std::nullopt;
 }
 
