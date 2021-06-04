@@ -870,7 +870,7 @@ void Description::Media::parseSdpLine(string_view line) {
 				mSsrcs.emplace_back(ssrc);
 			}
 			auto cnamePos = value.find("cname:");
-			if (cnamePos != std::string::npos) {
+			if (cnamePos != string::npos) {
 				auto cname = value.substr(cnamePos + 6);
 				mCNameMap.emplace(ssrc, cname);
 			}
@@ -891,12 +891,12 @@ void Description::Media::addRTPMap(const Description::Media::RTPMap &map) {
 
 std::vector<uint32_t> Description::Media::getSSRCs() { return mSsrcs; }
 
-std::optional<std::string> Description::Media::getCNameForSsrc(uint32_t ssrc) {
+optional<string> Description::Media::getCNameForSsrc(uint32_t ssrc) {
 	auto it = mCNameMap.find(ssrc);
 	if (it != mCNameMap.end()) {
 		return it->second;
 	}
-	return std::nullopt;
+	return nullopt;
 }
 
 std::map<int, Description::Media::RTPMap>::iterator Description::Media::beginMaps() {
@@ -1000,7 +1000,7 @@ string Description::typeToString(Type type) {
 } // namespace rtc
 
 std::ostream &operator<<(std::ostream &out, const rtc::Description &description) {
-	return out << std::string(description);
+	return out << string(description);
 }
 
 std::ostream &operator<<(std::ostream &out, rtc::Description::Type type) {

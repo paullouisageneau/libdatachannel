@@ -144,11 +144,11 @@ public:
 
 		void removeFormat(const string &fmt);
 
-		void addSSRC(uint32_t ssrc, optional<string> name,
-					 optional<string> msid = nullopt, optional<string> trackID = nullopt);
+		void addSSRC(uint32_t ssrc, optional<string> name, optional<string> msid = nullopt,
+		             optional<string> trackID = nullopt);
 		void removeSSRC(uint32_t oldSSRC);
 		void replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, optional<string> name,
-						 optional<string> msid = nullopt, optional<string> trackID = nullopt);
+		                 optional<string> msid = nullopt, optional<string> trackID = nullopt);
 		bool hasSSRC(uint32_t ssrc);
 		std::vector<uint32_t> getSSRCs();
 		std::optional<std::string> getCNameForSsrc(uint32_t ssrc);
@@ -199,29 +199,25 @@ public:
 
 		std::map<int, RTPMap> mRtpMap;
 		std::vector<uint32_t> mSsrcs;
-        std::map<uint32_t, string> mCNameMap;
+		std::map<uint32_t, string> mCNameMap;
 	};
 
 	class RTC_CPP_EXPORT Audio : public Media {
 	public:
 		Audio(string mid = "audio", Direction dir = Direction::SendOnly);
 
-		void addAudioCodec(int payloadType, string codec,
-		                   optional<string> profile = std::nullopt);
+		void addAudioCodec(int payloadType, string codec, optional<string> profile = std::nullopt);
 
-		void addOpusCodec(int payloadType,
-		                  optional<string> profile = DEFAULT_OPUS_AUDIO_PROFILE);
+		void addOpusCodec(int payloadType, optional<string> profile = DEFAULT_OPUS_AUDIO_PROFILE);
 	};
 
 	class RTC_CPP_EXPORT Video : public Media {
 	public:
 		Video(string mid = "video", Direction dir = Direction::SendOnly);
 
-		void addVideoCodec(int payloadType, string codec,
-		                   optional<string> profile = std::nullopt);
+		void addVideoCodec(int payloadType, string codec, optional<string> profile = std::nullopt);
 
-		void addH264Codec(int payloadType,
-		                  optional<string> profile = DEFAULT_H264_VIDEO_PROFILE);
+		void addH264Codec(int payloadType, optional<string> profile = DEFAULT_H264_VIDEO_PROFILE);
 		void addVP8Codec(int payloadType);
 		void addVP9Codec(int payloadType);
 	};
