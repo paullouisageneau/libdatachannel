@@ -3,7 +3,7 @@
 This directory contains a native client to open Data Channels with WebSocket signaling using libdatachannel and benchmark functionalities. It offers three functionalities;
 - Benchmark: Bi-directional data transfer benchmark (Also supports One-Way testing)
 - Constant Throughput Set: Send desired amount of data per second
-- Multiple Data Channel: Create desried count of data channel 
+- Multiple Data Channel: Create desired amount of data channel 
 
 ## Start Signaling Server
 - Start one of the signaling server from the examples folder. For example start  `signaling-server-nodejs` like;
