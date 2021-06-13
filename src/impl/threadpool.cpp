@@ -20,12 +20,6 @@
 
 #include <cstdlib>
 
-namespace {
-
-void joinThreadPoolInstance() { rtc::impl::ThreadPool::Instance().join(); }
-
-} // namespace
-
 namespace rtc::impl {
 
 ThreadPool &ThreadPool::Instance() {
@@ -33,7 +27,7 @@ ThreadPool &ThreadPool::Instance() {
 	return *instance;
 }
 
-ThreadPool::ThreadPool() { std::atexit(joinThreadPoolInstance); }
+ThreadPool::ThreadPool() {}
 
 ThreadPool::~ThreadPool() {}
 
