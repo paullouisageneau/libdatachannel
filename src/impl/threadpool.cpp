@@ -18,8 +18,6 @@
 
 #include "threadpool.hpp"
 
-#include <cstdlib>
-
 namespace rtc::impl {
 
 ThreadPool &ThreadPool::Instance() {
