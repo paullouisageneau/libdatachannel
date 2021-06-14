@@ -27,6 +27,8 @@ endif()
 set_target_properties(datachannel-client PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME client)
+set_target_properties(datachannel-client PROPERTIES
+	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.client)
 target_link_libraries(datachannel-client datachannel nlohmann_json)
 
 if(WIN32)
