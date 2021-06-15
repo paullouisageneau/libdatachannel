@@ -18,6 +18,8 @@ endif()
 set_target_properties(datachannel-sfu-media PROPERTIES
 		CXX_STANDARD 17
 		OUTPUT_NAME sfu-media)
+set_target_properties(datachannel-sfu-media PROPERTIES
+	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.sfumedia)
 target_link_libraries(datachannel-sfu-media datachannel nlohmann_json)
 
 if(WIN32)

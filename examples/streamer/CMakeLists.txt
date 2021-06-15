@@ -44,6 +44,8 @@ endif()
 set_target_properties(streamer PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME streamer)
+set_target_properties(streamer PROPERTIES
+	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.streamer)
 
 target_link_libraries(streamer datachannel nlohmann_json)
 

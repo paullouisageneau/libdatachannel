@@ -13,6 +13,8 @@ endif()
 set_target_properties(datachannel-client-benchmark PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME client-benchmark)
+set_target_properties(datachannel-client-benchmark PROPERTIES
+	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.client.benchmark)
 target_link_libraries(datachannel-client-benchmark datachannel nlohmann_json)
 
 if(WIN32)

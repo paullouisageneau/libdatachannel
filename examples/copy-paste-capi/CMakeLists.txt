@@ -30,6 +30,8 @@ else()
 endif()
 set_target_properties(datachannel-copy-paste-capi-offerer PROPERTIES
 	OUTPUT_NAME offerer)
+set_target_properties(datachannel-copy-paste-capi-offerer PROPERTIES
+	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.copypaste.capi.offerer)
 target_link_libraries(datachannel-copy-paste-capi-offerer datachannel)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
@@ -39,6 +41,8 @@ else()
 endif()
 set_target_properties(datachannel-copy-paste-capi-answerer PROPERTIES
 	OUTPUT_NAME answerer)
+set_target_properties(datachannel-copy-paste-capi-answerer PROPERTIES
+	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.copypaste.capi.answerer)
 target_link_libraries(datachannel-copy-paste-capi-answerer datachannel)
 
 if(WIN32)
