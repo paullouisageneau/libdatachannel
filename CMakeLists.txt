@@ -283,6 +283,13 @@ if (USE_GNUTLS)
 	target_link_libraries(datachannel PRIVATE GnuTLS::GnuTLS)
 	target_link_libraries(datachannel-static PRIVATE GnuTLS::GnuTLS)
 else()
+	if(APPLE)
+		# This is a bug in CMake that causes it to prefer the system version over 
+		# the one in the specified ROOT folder
+		set(OPENSSL_ROOT_DIR ${OPENSSL_ROOT_DIR} "/usr/local/Cellar/openssl@1.1/1.1.1g/")
+		set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_ROOT_DIR}/lib/libcrypto.dylib" CACHE FILEPATH "" FORCE)
+		set(OPENSSL_SSL_LIBRARY "${OPENSSL_ROOT_DIR}/lib/libssl.dylib" CACHE FILEPATH "" FORCE)
+	endif()
 	find_package(OpenSSL REQUIRED)
 	target_compile_definitions(datachannel PRIVATE USE_GNUTLS=0)
 	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=0)
