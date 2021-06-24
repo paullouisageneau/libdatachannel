@@ -115,6 +115,7 @@ set(LIBDATACHANNEL_IMPL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/track.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/base64.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sha.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcptransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tlstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/verifiedtlstransport.cpp
@@ -140,6 +141,7 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/track.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/base64.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sha.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcptransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tlstransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/verifiedtlstransport.hpp
@@ -278,13 +280,17 @@ if (USE_GNUTLS)
 			IMPORTED_LINK_INTERFACE_LANGUAGES C
 			IMPORTED_LOCATION "${GNUTLS_LIBRARIES}")
 	endif()
+	if (NOT NO_WEBSOCKET)
+		# Needed for SHA1
+		find_package(Nettle REQUIRED)
+	endif()
 	target_compile_definitions(datachannel PRIVATE USE_GNUTLS=1)
 	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=1)
-	target_link_libraries(datachannel PRIVATE GnuTLS::GnuTLS)
-	target_link_libraries(datachannel-static PRIVATE GnuTLS::GnuTLS)
+	target_link_libraries(datachannel PRIVATE GnuTLS::GnuTLS Nettle::Nettle)
+	target_link_libraries(datachannel-static PRIVATE GnuTLS::GnuTLS Nettle::Nettle)
 else()
 	if(APPLE)
-		# This is a bug in CMake that causes it to prefer the system version over 
+		# This is a bug in CMake that causes it to prefer the system version over
 		# the one in the specified ROOT folder
 		if(EXISTS ${OPENSSL_ROOT_DIR})
 			set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_ROOT_DIR}/lib/libcrypto.dylib" CACHE FILEPATH "" FORCE)
