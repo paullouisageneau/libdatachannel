@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2020-2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,29 +16,40 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "verifiedtlstransport.hpp"
+#ifndef RTC_IMPL_SELECT_INTERRUPTER_H
+#define RTC_IMPL_SELECT_INTERRUPTER_H
+
 #include "common.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
+#include <mutex>
+
+// Use the socket defines from libjuice
+#include "../deps/libjuice/src/socket.h"
+
 namespace rtc::impl {
 
-VerifiedTlsTransport::VerifiedTlsTransport(shared_ptr<TcpTransport> lower, string host,
-                                           certificate_ptr certificate, state_callback callback)
-    : TlsTransport(std::move(lower), std::move(host), std::move(certificate), std::move(callback)) {
+// Utility class to interrupt select()
+class SelectInterrupter final {
+public:
+	SelectInterrupter();
+	~SelectInterrupter();
 
-#if USE_GNUTLS
-	PLOG_DEBUG << "Setting up TLS certificate verification";
-	gnutls_session_set_verify_cert(mSession, mHost->c_str(), 0);
-#else
-	PLOG_DEBUG << "Setting up TLS certificate verification";
-	SSL_set_verify(mSsl, SSL_VERIFY_PEER, NULL);
-	SSL_set_verify_depth(mSsl, 4);
+	int prepare(fd_set &readfds);
+	void interrupt();
+
+private:
+	std::mutex mMutex;
+#ifdef _WIN32
+	socket_t mDummySock = INVALID_SOCKET;
+#else // assume POSIX
+	int mPipeIn, mPipeOut;
 #endif
-}
-
-VerifiedTlsTransport::~VerifiedTlsTransport() {}
+};
 
 } // namespace rtc::impl
+
+#endif
 
 #endif

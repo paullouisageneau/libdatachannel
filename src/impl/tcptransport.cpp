@@ -21,8 +21,6 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
-#include <exception>
-
 #ifndef _WIN32
 #include <fcntl.h>
 #include <unistd.h>
@@ -30,67 +28,38 @@
 
 namespace rtc::impl {
 
-using std::to_string;
-
-SelectInterrupter::SelectInterrupter() {
-#ifndef _WIN32
-	int pipefd[2];
-	if (::pipe(pipefd) != 0)
-		throw std::runtime_error("Failed to create pipe");
-	::fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
-	::fcntl(pipefd[1], F_SETFL, O_NONBLOCK);
-	mPipeOut = pipefd[1]; // read
-	mPipeIn = pipefd[0];  // write
-#endif
-}
-
-SelectInterrupter::~SelectInterrupter() {
-	std::lock_guard lock(mMutex);
-#ifdef _WIN32
-	if (mDummySock != INVALID_SOCKET)
-		::closesocket(mDummySock);
-#else
-	::close(mPipeIn);
-	::close(mPipeOut);
-#endif
-}
-
-int SelectInterrupter::prepare(fd_set &readfds, [[maybe_unused]] fd_set &writefds) {
-	std::lock_guard lock(mMutex);
-#ifdef _WIN32
-	if (mDummySock == INVALID_SOCKET)
-		mDummySock = ::socket(AF_INET, SOCK_DGRAM, 0);
-	FD_SET(mDummySock, &readfds);
-	return SOCKET_TO_INT(mDummySock) + 1;
-#else
-	char dummy;
-	if (::read(mPipeIn, &dummy, 1) < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-		PLOG_WARNING << "Reading from interrupter pipe failed, errno=" << errno;
-	}
-	FD_SET(mPipeIn, &readfds);
-	return mPipeIn + 1;
-#endif
-}
-
-void SelectInterrupter::interrupt() {
-	std::lock_guard lock(mMutex);
-#ifdef _WIN32
-	if (mDummySock != INVALID_SOCKET) {
-		::closesocket(mDummySock);
-		mDummySock = INVALID_SOCKET;
-	}
-#else
-	char dummy = 0;
-	if (::write(mPipeOut, &dummy, 1) < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-		PLOG_WARNING << "Writing to interrupter pipe failed, errno=" << errno;
-	}
-#endif
-}
-
-TcpTransport::TcpTransport(const string &hostname, const string &service, state_callback callback)
-    : Transport(nullptr, std::move(callback)), mHostname(hostname), mService(service) {
+TcpTransport::TcpTransport(string hostname, string service, state_callback callback)
+    : Transport(nullptr, std::move(callback)), mIsActive(true), mHostname(std::move(hostname)),
+      mService(std::move(service)) {
 
 	PLOG_DEBUG << "Initializing TCP transport";
+}
+
+TcpTransport::TcpTransport(socket_t sock, state_callback callback)
+    : Transport(nullptr, std::move(callback)), mIsActive(false), mSock(sock) {
+
+	PLOG_DEBUG << "Initializing TCP transport with socket";
+
+	// Set non-blocking
+	const ctl_t b = 1;
+	if (::ioctlsocket(mSock, FIONBIO, &b) < 0)
+		throw std::runtime_error("Failed to set socket non-blocking mode");
+
+	// Retrieve hostname and service
+	struct sockaddr_storage addr;
+	socklen_t addrlen = sizeof(addr);
+	if (::getpeername(mSock, reinterpret_cast<struct sockaddr *>(&addr), &addrlen) < 0)
+		throw std::runtime_error("getsockname failed");
+
+	char node[MAX_NUMERICNODE_LEN];
+	char serv[MAX_NUMERICSERV_LEN];
+	if (::getnameinfo(reinterpret_cast<struct sockaddr *>(&addr), addrlen, node,
+	                  MAX_NUMERICNODE_LEN, serv, MAX_NUMERICSERV_LEN,
+	                  NI_NUMERICHOST | NI_NUMERICSERV) != 0)
+		throw std::runtime_error("getnameinfo failed");
+
+	mHostname = node;
+	mService = serv;
 }
 
 TcpTransport::~TcpTransport() { stop(); }
@@ -139,9 +108,11 @@ bool TcpTransport::outgoing(message_ptr message) {
 		return true;
 
 	mSendQueue.push(message);
-	interruptSelect(); // so the thread waits for writability
+	mInterrupter.interrupt(); // so the thread waits for writability
 	return false;
 }
+
+string TcpTransport::remoteAddress() const { return mHostname + ':' + mService; }
 
 void TcpTransport::connect(const string &hostname, const string &service) {
 	PLOG_DEBUG << "Connecting to " << hostname << ":" << service;
@@ -197,7 +168,8 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 		if (mSock == INVALID_SOCKET)
 			throw std::runtime_error("TCP socket creation failed");
 
-		ctl_t b = 1;
+		// Set non-blocking
+		const ctl_t b = 1;
 		if (::ioctlsocket(mSock, FIONBIO, &b) < 0)
 			throw std::runtime_error("Failed to set socket non-blocking mode");
 
@@ -269,7 +241,7 @@ void TcpTransport::close() {
 		mSock = INVALID_SOCKET;
 	}
 	changeState(State::Disconnected);
-	interruptSelect();
+	mInterrupter.interrupt();
 }
 
 bool TcpTransport::trySendQueue() {
@@ -301,7 +273,7 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 				message = make_message(message->end() - size, message->end());
 				return false;
 			} else {
-				throw std::runtime_error("Connection lost, errno=" + to_string(sockerrno));
+				throw std::runtime_error("Connection lost, errno=" + std::to_string(sockerrno));
 			}
 		}
 
@@ -318,7 +290,8 @@ void TcpTransport::runLoop() {
 	// Connect
 	try {
 		changeState(State::Connecting);
-		connect(mHostname, mService);
+		if (mSock == INVALID_SOCKET)
+			connect(mHostname, mService);
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "TCP connect: " << e.what();
@@ -337,7 +310,13 @@ void TcpTransport::runLoop() {
 				break;
 
 			fd_set readfds, writefds;
-			int n = prepareSelect(readfds, writefds);
+			FD_ZERO(&readfds);
+			FD_ZERO(&writefds);
+			FD_SET(mSock, &readfds);
+			if (!mSendQueue.empty())
+				FD_SET(mSock, &writefds);
+
+			int n = std::max(mInterrupter.prepare(readfds), SOCKET_TO_INT(mSock) + 1);
 
 			struct timeval tv;
 			tv.tv_sec = 10;
@@ -387,21 +366,6 @@ void TcpTransport::runLoop() {
 	changeState(State::Disconnected);
 	recv(nullptr);
 }
-
-int TcpTransport::prepareSelect(fd_set &readfds, fd_set &writefds) {
-	FD_ZERO(&readfds);
-	FD_ZERO(&writefds);
-	FD_SET(mSock, &readfds);
-
-	if (!mSendQueue.empty())
-		FD_SET(mSock, &writefds);
-
-	int n = SOCKET_TO_INT(mSock) + 1;
-	int m = mInterrupter.prepare(readfds, writefds);
-	return std::max(n, m);
-}
-
-void TcpTransport::interruptSelect() { mInterrupter.interrupt(); }
 
 } // namespace rtc::impl
 

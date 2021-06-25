@@ -20,8 +20,8 @@
 #define RTC_IMPL_CERTIFICATE_H
 
 #include "common.hpp"
-#include "tls.hpp"
 #include "configuration.hpp" // for CertificateType
+#include "tls.hpp"
 
 #include <future>
 #include <tuple>
@@ -30,7 +30,9 @@ namespace rtc::impl {
 
 class Certificate {
 public:
-	Certificate(string crt_pem, string key_pem);
+	static Certificate FromString(string crt_pem, string key_pem);
+	static Certificate FromFile(const string &crt_pem_file, const string &key_pem_file,
+	                            const string &pass);
 
 #if USE_GNUTLS
 	Certificate(gnutls_x509_crt_t crt, gnutls_x509_privkey_t privkey);
@@ -43,6 +45,9 @@ public:
 	string fingerprint() const;
 
 private:
+	Certificate();
+	void computeFingerprint();
+
 #if USE_GNUTLS
 	shared_ptr<gnutls_certificate_credentials_t> mCredentials;
 #else

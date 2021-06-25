@@ -49,6 +49,7 @@ public:
 
 	WebSocket();
 	WebSocket(Configuration config);
+	WebSocket(impl_ptr<impl::WebSocket> impl);
 	~WebSocket();
 
 	State readyState() const;
@@ -61,6 +62,9 @@ public:
 	void close() override;
 	bool send(const message_variant data) override;
 	bool send(const byte *data, size_t size) override;
+
+	optional<string> remoteAddress() const;
+	optional<string> path() const;
 
 private:
 	using CheshireCat<impl::WebSocket>::impl;

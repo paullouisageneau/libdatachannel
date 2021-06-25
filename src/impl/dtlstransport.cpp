@@ -54,6 +54,9 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 
 	PLOG_DEBUG << "Initializing DTLS transport (GnuTLS)";
 
+	if(!mCertificate)
+		throw std::invalid_argument("DTLS certificate is null");
+
 	gnutls_certificate_credentials_t creds = mCertificate->credentials();
 	gnutls_certificate_set_verify_function(creds, CertificateCallback);
 
@@ -330,13 +333,16 @@ void DtlsTransport::Cleanup() {
 	// Nothing to do
 }
 
-DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, shared_ptr<Certificate> certificate,
+DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
                              optional<size_t> mtu, verifier_callback verifierCallback,
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
       mVerifierCallback(std::move(verifierCallback)),
       mIsClient(lower->role() == Description::Role::Active), mCurrentDscp(0) {
 	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
+
+	if(!mCertificate)
+		throw std::invalid_argument("DTLS certificate is null");
 
 	try {
 		mCtx = SSL_CTX_new(DTLS_method());

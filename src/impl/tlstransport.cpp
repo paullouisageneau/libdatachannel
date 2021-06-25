@@ -32,6 +32,23 @@ namespace rtc::impl {
 
 #if USE_GNUTLS
 
+namespace {
+
+gnutls_certificate_credentials_t default_certificate_credentials() {
+	static std::mutex mutex;
+	static shared_ptr<gnutls_certificate_credentials_t> creds;
+
+	std::lock_guard lock(mutex);
+	if (!creds) {
+		creds = shared_ptr<gnutls_certificate_credentials_t>(gnutls::new_credentials(),
+		                                                     gnutls::free_credentials);
+		gnutls::check(gnutls_certificate_set_x509_system_trust(*creds));
+	}
+	return *creds;
+}
+
+} // namespace
+
 void TlsTransport::Init() {
 	// Nothing to do
 }
@@ -40,25 +57,28 @@ void TlsTransport::Cleanup() {
 	// Nothing to do
 }
 
-TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_callback callback)
-    : Transport(lower, std::move(callback)), mHost(std::move(host)) {
+TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, optional<string> host,
+                           certificate_ptr certificate, state_callback callback)
+    : Transport(lower, std::move(callback)), mHost(std::move(host)), mIsClient(lower->isActive()) {
 
 	PLOG_DEBUG << "Initializing TLS transport (GnuTLS)";
 
-	gnutls::check(gnutls_certificate_allocate_credentials(&mCreds));
-	gnutls::check(gnutls_init(&mSession, GNUTLS_CLIENT));
+	gnutls::check(gnutls_init(&mSession, mIsClient ? GNUTLS_CLIENT : GNUTLS_SERVER));
 
 	try {
-		gnutls::check(gnutls_certificate_set_x509_system_trust(mCreds));
-		gnutls::check(gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, mCreds));
-
 		const char *priorities = "SECURE128:-VERS-SSL3.0:-ARCFOUR-128";
 		const char *err_pos = NULL;
 		gnutls::check(gnutls_priority_set_direct(mSession, priorities, &err_pos),
 		              "Failed to set TLS priorities");
 
-		PLOG_VERBOSE << "Server Name Indication: " << mHost;
-		gnutls_server_name_set(mSession, GNUTLS_NAME_DNS, mHost.data(), mHost.size());
+		gnutls::check(gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE,
+		                                     certificate ? certificate->credentials()
+		                                                 : default_certificate_credentials()));
+
+		if (mHost) {
+			PLOG_VERBOSE << "Server Name Indication: " << *mHost;
+			gnutls_server_name_set(mSession, GNUTLS_NAME_DNS, mHost->data(), mHost->size());
+		}
 
 		gnutls_session_set_ptr(mSession, this);
 		gnutls_transport_set_ptr(mSession, this);
@@ -68,7 +88,6 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 
 	} catch (...) {
 		gnutls_deinit(mSession);
-		gnutls_certificate_free_credentials(mCreds);
 		throw;
 	}
 }
@@ -77,7 +96,6 @@ TlsTransport::~TlsTransport() {
 	stop();
 
 	gnutls_deinit(mSession);
-	gnutls_certificate_free_credentials(mCreds);
 }
 
 void TlsTransport::start() {
@@ -253,8 +271,9 @@ void TlsTransport::Cleanup() {
 	// Nothing to do
 }
 
-TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_callback callback)
-    : Transport(lower, std::move(callback)), mHost(std::move(host)) {
+TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, optional<string> host,
+                           certificate_ptr certificate, state_callback callback)
+    : Transport(lower, std::move(callback)), mHost(std::move(host)), mIsClient(lower->isActive()) {
 
 	PLOG_DEBUG << "Initializing TLS transport (OpenSSL)";
 
@@ -265,8 +284,14 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 		openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
 		               "Failed to set SSL priorities");
 
-		if (!SSL_CTX_set_default_verify_paths(mCtx)) {
-			PLOG_WARNING << "SSL root CA certificates unavailable";
+		if (certificate) {
+			auto [x509, pkey] = certificate->credentials();
+			SSL_CTX_use_certificate(mCtx, x509);
+			SSL_CTX_use_PrivateKey(mCtx, pkey);
+		} else {
+			if (!SSL_CTX_set_default_verify_paths(mCtx)) {
+				PLOG_WARNING << "SSL root CA certificates unavailable";
+			}
 		}
 
 		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3);
@@ -281,13 +306,18 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, string host, state_ca
 
 		SSL_set_ex_data(mSsl, TransportExIndex, this);
 
-		SSL_set_hostflags(mSsl, 0);
-		openssl::check(SSL_set1_host(mSsl, mHost.c_str()), "Failed to set SSL host");
+		if (mHost) {
+			SSL_set_hostflags(mSsl, 0);
+			openssl::check(SSL_set1_host(mSsl, mHost->c_str()), "Failed to set SSL host");
 
-		PLOG_VERBOSE << "Server Name Indication: " << mHost;
-		SSL_set_tlsext_host_name(mSsl, mHost.c_str());
+			PLOG_VERBOSE << "Server Name Indication: " << *mHost;
+			SSL_set_tlsext_host_name(mSsl, mHost->c_str());
+		}
 
-		SSL_set_connect_state(mSsl);
+		if (mIsClient)
+			SSL_set_connect_state(mSsl);
+		else
+			SSL_set_accept_state(mSsl);
 
 		if (!(mInBio = BIO_new(BIO_s_mem())) || !(mOutBio = BIO_new(BIO_s_mem())))
 			throw std::runtime_error("Failed to create BIO");

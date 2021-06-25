@@ -26,6 +26,7 @@
 namespace rtc::impl {
 
 binary Sha1(const binary &input);
+binary Sha1(const string &input);
 
 } // namespace rtc::impl
 

@@ -21,23 +21,19 @@
 #include "websocket.hpp"
 #include "common.hpp"
 
-#include "impl/websocket.hpp"
 #include "impl/internals.hpp"
-
-#include <regex>
-
-#ifdef _WIN32
-#include <winsock2.h>
-#endif
+#include "impl/websocket.hpp"
 
 namespace rtc {
-
-using namespace std::placeholders;
 
 WebSocket::WebSocket() : WebSocket(Configuration()) {}
 
 WebSocket::WebSocket(Configuration config)
     : CheshireCat<impl::WebSocket>(std::move(config)),
+      Channel(std::dynamic_pointer_cast<impl::Channel>(CheshireCat<impl::WebSocket>::impl())) {}
+
+WebSocket::WebSocket(impl_ptr<impl::WebSocket> impl)
+    : CheshireCat<impl::WebSocket>(std::move(impl)),
       Channel(std::dynamic_pointer_cast<impl::Channel>(CheshireCat<impl::WebSocket>::impl())) {}
 
 WebSocket::~WebSocket() { impl()->remoteClose(); }
@@ -52,10 +48,7 @@ size_t WebSocket::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
 
 void WebSocket::open(const string &url) {
 	PLOG_VERBOSE << "Opening WebSocket to URL: " << url;
-
-	impl()->parse(url);
-	impl()->changeState(State::Connecting);
-	impl()->initTcpTransport();
+	impl()->open(url);
 }
 
 void WebSocket::close() {
@@ -76,6 +69,17 @@ bool WebSocket::send(message_variant data) {
 
 bool WebSocket::send(const byte *data, size_t size) {
 	return impl()->outgoing(make_message(data, data + size));
+}
+
+optional<string> WebSocket::remoteAddress() const {
+	auto tcpTransport = impl()->getTcpTransport();
+	return tcpTransport ? make_optional(tcpTransport->remoteAddress()) : nullopt;
+}
+
+optional<string> WebSocket::path() const {
+	auto state = impl()->state.load();
+	auto handshake = impl()->getWsHandshake();
+	return state != State::Connecting && handshake ? make_optional(handshake->path()) : nullopt;
 }
 
 } // namespace rtc

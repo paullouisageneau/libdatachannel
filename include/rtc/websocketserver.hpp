@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,29 +16,46 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "verifiedtlstransport.hpp"
-#include "common.hpp"
+#ifndef RTC_WEBSOCKETSERVER_H
+#define RTC_WEBSOCKETSERVER_H
 
 #if RTC_ENABLE_WEBSOCKET
 
-namespace rtc::impl {
+#include "channel.hpp"
+#include "common.hpp"
+#include "message.hpp"
+#include "websocket.hpp"
 
-VerifiedTlsTransport::VerifiedTlsTransport(shared_ptr<TcpTransport> lower, string host,
-                                           certificate_ptr certificate, state_callback callback)
-    : TlsTransport(std::move(lower), std::move(host), std::move(certificate), std::move(callback)) {
+namespace rtc {
 
-#if USE_GNUTLS
-	PLOG_DEBUG << "Setting up TLS certificate verification";
-	gnutls_session_set_verify_cert(mSession, mHost->c_str(), 0);
-#else
-	PLOG_DEBUG << "Setting up TLS certificate verification";
-	SSL_set_verify(mSsl, SSL_VERIFY_PEER, NULL);
-	SSL_set_verify_depth(mSsl, 4);
-#endif
+namespace impl {
+
+struct WebSocketServer;
+
 }
 
-VerifiedTlsTransport::~VerifiedTlsTransport() {}
+class RTC_CPP_EXPORT WebSocketServer final : private CheshireCat<impl::WebSocketServer> {
+public:
+	struct Configuration {
+		uint16_t port = 8080;
+	};
 
-} // namespace rtc::impl
+	WebSocketServer();
+	WebSocketServer(Configuration config);
+	~WebSocketServer();
+
+	void stop();
+
+	uint16_t port() const;
+
+	void onClient(std::function<void(shared_ptr<WebSocket>)> callback);
+
+private:
+	using CheshireCat<impl::WebSocketServer>::impl;
+};
+
+} // namespace rtc
 
 #endif
+
+#endif // RTC_WEBSOCKET_H
