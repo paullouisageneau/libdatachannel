@@ -183,7 +183,7 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
 set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)
-add_subdirectory(deps/plog)
+add_subdirectory(deps/plog EXCLUDE_FROM_ALL)
 
 option(sctp_build_programs 0)
 option(sctp_build_shared_lib 0)
@@ -389,7 +389,7 @@ endif()
 # Examples
 if(NOT NO_EXAMPLES)
 	set(JSON_BuildTests OFF CACHE INTERNAL "")
-	add_subdirectory(deps/json)
+	add_subdirectory(deps/json EXCLUDE_FROM_ALL)
 	add_subdirectory(examples/client)
 	add_subdirectory(examples/client-benchmark)
 if(NOT NO_MEDIA)
