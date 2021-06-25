@@ -280,8 +280,8 @@ if (USE_GNUTLS)
 	endif()
 	target_compile_definitions(datachannel PRIVATE USE_GNUTLS=1)
 	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=1)
-	target_link_libraries(datachannel PRIVATE GnuTLS::GnuTLS)
-	target_link_libraries(datachannel-static PRIVATE GnuTLS::GnuTLS)
+	target_link_libraries(datachannel PUBLIC GnuTLS::GnuTLS)
+	target_link_libraries(datachannel-static PUBLIC GnuTLS::GnuTLS)
 else()
 	if(APPLE)
 		# This is a bug in CMake that causes it to prefer the system version over 
@@ -294,16 +294,16 @@ else()
 	find_package(OpenSSL REQUIRED)
 	target_compile_definitions(datachannel PRIVATE USE_GNUTLS=0)
 	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=0)
-	target_link_libraries(datachannel PRIVATE OpenSSL::SSL)
-	target_link_libraries(datachannel-static PRIVATE OpenSSL::SSL)
+	target_link_libraries(datachannel PUBLIC OpenSSL::SSL)
+	target_link_libraries(datachannel-static PUBLIC OpenSSL::SSL)
 endif()
 
 if (USE_NICE)
 	find_package(LibNice REQUIRED)
 	target_compile_definitions(datachannel PRIVATE USE_NICE=1)
 	target_compile_definitions(datachannel-static PRIVATE USE_NICE=1)
-	target_link_libraries(datachannel PRIVATE LibNice::LibNice)
-	target_link_libraries(datachannel-static PRIVATE LibNice::LibNice)
+	target_link_libraries(datachannel PUBLIC LibNice::LibNice)
+	target_link_libraries(datachannel-static PUBLIC LibNice::LibNice)
 else()
 	add_subdirectory(deps/libjuice EXCLUDE_FROM_ALL)
 	target_compile_definitions(datachannel PRIVATE USE_NICE=0)
@@ -335,7 +335,7 @@ if(WARNINGS_AS_ERRORS)
 	endif()
 endif()
 
-install(TARGETS datachannel EXPORT libdatachannel-config
+install(TARGETS datachannel EXPORT libdatachannel-target
 	RUNTIME DESTINATION bin
 	LIBRARY DESTINATION lib
 	ARCHIVE DESTINATION lib
@@ -346,10 +346,22 @@ install(FILES ${LIBDATACHANNEL_HEADERS}
 )
 
 install(
-  EXPORT libdatachannel-config
+  EXPORT libdatachannel-target
   NAMESPACE LibDatachannel::
   DESTINATION share/cmake/libdatachannel
 )
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(cmake/libdatachannel-config.cmake.in
+  ${CMAKE_BINARY_DIR}/libdatachannel-config.cmake
+  INSTALL_DESTINATION share/cmake/libdatachannel
+  )
+write_basic_package_version_file(
+  ${CMAKE_BINARY_DIR}/libdatachannelConfigVersion.cmake
+  COMPATIBILITY AnyNewerVersion )
+install(FILES ${CMAKE_BINARY_DIR}/libdatachannel-config.cmake
+              ${CMAKE_BINARY_DIR}/libdatachannelConfigVersion.cmake
+    DESTINATION share/cmake/libdatachannel)
 
 # Tests
 if(NOT NO_TESTS)
