@@ -1,0 +1,19 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(Threads)
+
+if (@USE_GNUTLS@)
+    find_dependency(GnuTLS)
+else()
+    find_dependency(OpenSSL)
+endif()
+
+#if (@USE_NICE@)
+#    find_dependency(LibNice)
+#else()
+#    find_dependency(LibJuice)
+#endif()
+
+get_filename_component(_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+include(${_DIR}/libdatachannel-target.cmake)
