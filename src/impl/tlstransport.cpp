@@ -376,10 +376,11 @@ void TlsTransport::runRecvLoop() {
 	try {
 		changeState(State::Connecting);
 
+		int ret;
 		while (true) {
 			if (state() == State::Connecting) {
 				// Initiate or continue the handshake
-				int ret = SSL_do_handshake(mSsl);
+				ret = SSL_do_handshake(mSsl);
 				if (!openssl::check(mSsl, ret, "Handshake failed"))
 					break;
 
@@ -392,13 +393,15 @@ void TlsTransport::runRecvLoop() {
 					changeState(State::Connected);
 					postHandshake();
 				}
-			} else {
-				int ret = SSL_read(mSsl, buffer, bufferSize);
+			}
+
+			if (state() == State::Connected) {
+				// Input
+				while ((ret = SSL_read(mSsl, buffer, bufferSize)) > 0)
+					recv(make_message(buffer, buffer + ret));
+
 				if (!openssl::check(mSsl, ret))
 					break;
-
-				if (ret > 0)
-					recv(make_message(buffer, buffer + ret));
 			}
 
 			auto next = mIncomingQueue.pop();
