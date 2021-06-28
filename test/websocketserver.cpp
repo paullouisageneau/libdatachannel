@@ -32,7 +32,7 @@ using namespace std;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 void test_websocketserver() {
-	InitLogger(LogLevel::Verbose);
+	InitLogger(LogLevel::Debug);
 
 	const string myMessage = "Hello world from client";
 
