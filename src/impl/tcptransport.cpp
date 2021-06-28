@@ -41,7 +41,7 @@ TcpTransport::TcpTransport(socket_t sock, state_callback callback)
 	PLOG_DEBUG << "Initializing TCP transport with socket";
 
 	// Set non-blocking
-	const ctl_t b = 1;
+	ctl_t b = 1;
 	if (::ioctlsocket(mSock, FIONBIO, &b) < 0)
 		throw std::runtime_error("Failed to set socket non-blocking mode");
 
@@ -169,7 +169,7 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 			throw std::runtime_error("TCP socket creation failed");
 
 		// Set non-blocking
-		const ctl_t b = 1;
+		ctl_t b = 1;
 		if (::ioctlsocket(mSock, FIONBIO, &b) < 0)
 			throw std::runtime_error("Failed to set socket non-blocking mode");
 
