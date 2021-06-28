@@ -75,7 +75,7 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, optional<string> host
 		                                     certificate ? certificate->credentials()
 		                                                 : default_certificate_credentials()));
 
-		if (mHost) {
+		if (mIsClient && mHost) {
 			PLOG_VERBOSE << "Server Name Indication: " << *mHost;
 			gnutls_server_name_set(mSession, GNUTLS_NAME_DNS, mHost->data(), mHost->size());
 		}
@@ -306,7 +306,7 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, optional<string> host
 
 		SSL_set_ex_data(mSsl, TransportExIndex, this);
 
-		if (mHost) {
+		if (mIsClient && mHost) {
 			SSL_set_hostflags(mSsl, 0);
 			openssl::check(SSL_set1_host(mSsl, mHost->c_str()), "Failed to set SSL host");
 

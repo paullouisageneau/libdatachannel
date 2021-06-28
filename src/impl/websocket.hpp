@@ -80,6 +80,8 @@ private:
 	const certificate_ptr mCertificate;
 	bool mIsSecure;
 
+	optional<string> mHostname; // for TLS SNI
+
 	shared_ptr<TcpTransport> mTcpTransport;
 	shared_ptr<TlsTransport> mTlsTransport;
 	shared_ptr<WsTransport> mWsTransport;

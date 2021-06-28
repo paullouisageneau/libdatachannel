@@ -32,7 +32,8 @@ class Certificate {
 public:
 	static Certificate FromString(string crt_pem, string key_pem);
 	static Certificate FromFile(const string &crt_pem_file, const string &key_pem_file,
-	                            const string &pass);
+	                            const string &pass = "");
+	static Certificate Generate(CertificateType type, const string &commonName);
 
 #if USE_GNUTLS
 	Certificate(gnutls_x509_crt_t crt, gnutls_x509_privkey_t privkey);
@@ -45,20 +46,19 @@ public:
 	string fingerprint() const;
 
 private:
-	Certificate();
-	void computeFingerprint();
-
 #if USE_GNUTLS
-	shared_ptr<gnutls_certificate_credentials_t> mCredentials;
+	Certificate(shared_ptr<gnutls_certificate_credentials_t> creds);
+	const shared_ptr<gnutls_certificate_credentials_t> mCredentials;
 #else
-	shared_ptr<X509> mX509;
-	shared_ptr<EVP_PKEY> mPKey;
+	const shared_ptr<X509> mX509;
+	const shared_ptr<EVP_PKEY> mPKey;
 #endif
 
-	string mFingerprint;
+	const string mFingerprint;
 };
 
 #if USE_GNUTLS
+string make_fingerprint(gnutls_certificate_credentials_t credentials);
 string make_fingerprint(gnutls_x509_crt_t crt);
 #else
 string make_fingerprint(X509 *x509);

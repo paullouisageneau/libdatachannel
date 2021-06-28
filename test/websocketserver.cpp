@@ -32,12 +32,15 @@ using namespace std;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 void test_websocketserver() {
-	InitLogger(LogLevel::Debug);
+	InitLogger(LogLevel::Verbose);
 
 	const string myMessage = "Hello world from client";
 
 	WebSocketServer::Configuration serverConfig;
 	serverConfig.port = 48080;
+	serverConfig.secure = true;
+	// serverConfig.certificatePemFile = ...
+	// serverConfig.keyPemFile = ...
 	WebSocketServer server(std::move(serverConfig));
 
 	shared_ptr<WebSocket> client;
@@ -87,7 +90,7 @@ void test_websocketserver() {
 		}
 	});
 
-	ws.open("ws://localhost:48080/");
+	ws.open("wss://localhost:48080/");
 
 	int attempts = 10;
 	while ((!ws.isOpen() || !received) && attempts--)

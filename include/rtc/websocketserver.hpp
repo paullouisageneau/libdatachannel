@@ -21,9 +21,7 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
-#include "channel.hpp"
 #include "common.hpp"
-#include "message.hpp"
 #include "websocket.hpp"
 
 namespace rtc {
@@ -38,6 +36,10 @@ class RTC_CPP_EXPORT WebSocketServer final : private CheshireCat<impl::WebSocket
 public:
 	struct Configuration {
 		uint16_t port = 8080;
+		bool secure = false;
+		optional<string> certificatePemFile;
+		optional<string> keyPemFile;
+		optional<string> keyPemPass;
 	};
 
 	WebSocketServer();

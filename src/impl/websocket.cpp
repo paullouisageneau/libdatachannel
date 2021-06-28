@@ -97,6 +97,7 @@ void WebSocket::open(const string &url) {
 	if (string query = m[15]; !query.empty())
 		path += "?" + query;
 
+	mHostname = hostname; // for TLS SNI
 	std::atomic_store(&mWsHandshake, std::make_shared<WsHandshake>(host, path, config.protocols));
 
 	changeState(State::Connecting);
@@ -256,9 +257,7 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 			}
 		};
 
-		auto handshake = getWsHandshake();
-		auto host = handshake ? make_optional(handshake->host()) : nullopt;
-		bool verify = host.has_value() && !config.disableTlsVerification;
+		bool verify = mHostname.has_value() && !config.disableTlsVerification;
 
 #ifdef _WIN32
 		if (std::exchange(verify, false)) {
@@ -267,11 +266,11 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 #else
 		shared_ptr<TlsTransport> transport;
 		if (verify)
-			transport = std::make_shared<VerifiedTlsTransport>(lower, host.value(), mCertificate,
+			transport = std::make_shared<VerifiedTlsTransport>(lower, mHostname.value(), mCertificate,
 			                                                   stateChangeCallback);
 		else
 			transport =
-			    std::make_shared<TlsTransport>(lower, host, mCertificate, stateChangeCallback);
+			    std::make_shared<TlsTransport>(lower, mHostname, mCertificate, stateChangeCallback);
 #endif
 
 		std::atomic_store(&mTlsTransport, transport);
@@ -311,7 +310,7 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 			lower = transport;
 		}
 
-		if(!atomic_load(&mWsHandshake))
+		if (!atomic_load(&mWsHandshake))
 			atomic_store(&mWsHandshake, std::make_shared<WsHandshake>());
 
 		auto stateChangeCallback = [this, weak_this = weak_from_this()](State transportState) {
@@ -339,9 +338,8 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 			}
 		};
 
-		auto transport = std::make_shared<WsTransport>(lower, mWsHandshake,
-		                                          weak_bind(&WebSocket::incoming, this, _1),
-		                                          stateChangeCallback);
+		auto transport = std::make_shared<WsTransport>(
+		    lower, mWsHandshake, weak_bind(&WebSocket::incoming, this, _1), stateChangeCallback);
 
 		std::atomic_store(&mWsTransport, transport);
 		if (state == WebSocket::State::Closed) {
