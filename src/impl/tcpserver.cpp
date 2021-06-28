@@ -55,20 +55,29 @@ shared_ptr<TcpTransport> TcpServer::accept() {
 		if (mSock == INVALID_SOCKET)
 			break;
 
-		if (ret < 0)
-			throw std::runtime_error("Failed to wait on socket");
+		if (ret < 0) {
+			if (sockerrno == SEINTR || sockerrno == SEAGAIN) // interrupted
+				continue;
+			else
+				throw std::runtime_error("Failed to wait for socket connection");
+		}
 
 		if (FD_ISSET(mSock, &readfds)) {
 			struct sockaddr_storage addr;
 			socklen_t addrlen = sizeof(addr);
 			socket_t incomingSock = ::accept(mSock, (struct sockaddr *)&addr, &addrlen);
-			if (incomingSock == INVALID_SOCKET)
-				break;
 
-			return std::make_shared<TcpTransport>(incomingSock, nullptr); // no state callback
+			if (incomingSock != INVALID_SOCKET) {
+				return std::make_shared<TcpTransport>(incomingSock, nullptr); // no state callback
+
+			} else if (sockerrno != SEAGAIN && sockerrno != SEWOULDBLOCK) {
+				PLOG_ERROR << "TCP server failed, errno=" << sockerrno;
+				throw std::runtime_error("TCP server failed");
+			}
 		}
 	}
 
+	PLOG_DEBUG << "TCP server closed";
 	return nullptr;
 }
 

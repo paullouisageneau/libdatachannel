@@ -273,7 +273,8 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 				message = make_message(message->end() - size, message->end());
 				return false;
 			} else {
-				throw std::runtime_error("Connection closed, errno=" + std::to_string(sockerrno));
+				PLOG_ERROR << "Connection closed, errno=" << sockerrno;
+				throw std::runtime_error("Connection closed");
 			}
 		}
 
