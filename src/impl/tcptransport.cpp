@@ -273,7 +273,7 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 				message = make_message(message->end() - size, message->end());
 				return false;
 			} else {
-				throw std::runtime_error("Connection lost, errno=" + std::to_string(sockerrno));
+				throw std::runtime_error("Connection closed, errno=" + std::to_string(sockerrno));
 			}
 		}
 
@@ -346,7 +346,8 @@ void TcpTransport::runLoop() {
 					if (sockerrno == SEAGAIN || sockerrno == SEWOULDBLOCK) {
 						continue;
 					} else {
-						throw std::runtime_error("Connection lost");
+						PLOG_WARNING << "TCP connection lost";
+						break;
 					}
 				}
 
