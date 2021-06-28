@@ -135,10 +135,13 @@ bool TlsTransport::send(message_ptr message) {
 }
 
 void TlsTransport::incoming(message_ptr message) {
-	if (message)
-		mIncomingQueue.push(message);
-	else
+	if (!message) {
 		mIncomingQueue.stop();
+		return;
+	}
+
+	PLOG_VERBOSE << "Incoming size=" << message->size();
+	mIncomingQueue.push(message);
 }
 
 void TlsTransport::postHandshake() {
@@ -389,10 +392,13 @@ bool TlsTransport::send(message_ptr message) {
 }
 
 void TlsTransport::incoming(message_ptr message) {
-	if (message)
-		mIncomingQueue.push(message);
-	else
+	if (!message) {
 		mIncomingQueue.stop();
+		return;
+	}
+
+	PLOG_VERBOSE << "Incoming size=" << message->size();
+	mIncomingQueue.push(message);
 }
 
 void TlsTransport::postHandshake() {
