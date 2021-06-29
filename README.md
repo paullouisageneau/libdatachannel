@@ -149,7 +149,7 @@ Note only SDP BUNDLE mode is supported for media multiplexing ([RFC8843](https:/
 WebSocket is the protocol of choice for WebRTC signaling. The support is optional and can be disabled at compile time.
 
 Protocol stack:
-- WebSocket protocol ([RFC6455](https://tools.ietf.org/html/rfc6455)), client-side only
+- WebSocket protocol ([RFC6455](https://tools.ietf.org/html/rfc6455)), client and server side
 - HTTP over TLS ([RFC2818](https://tools.ietf.org/html/rfc2818))
 
 Features:
