@@ -336,7 +336,7 @@ typedef struct {
 
 RTC_EXPORT int rtcCreateWebSocket(const char *url); // returns ws id
 RTC_EXPORT int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config);
-RTC_EXPORT int rtcDeleteWebsocket(int ws);
+RTC_EXPORT int rtcDeleteWebSocket(int ws);
 
 RTC_EXPORT int rtcGetWebSocketRemoteAddress(int ws, char *buffer, int size);
 RTC_EXPORT int rtcGetWebSocketPath(int ws, char *buffer, int size);
@@ -355,7 +355,7 @@ typedef struct {
 
 RTC_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
                                         rtcWebSocketClientCallbackFunc cb); // returns wsserver id
-RTC_EXPORT int rtcDeleteWebsocketServer(int wsserver);
+RTC_EXPORT int rtcDeleteWebSocketServer(int wsserver);
 
 RTC_EXPORT int rtcSetWebSocketClientCallback(int wsserver, rtcWebSocketClientCallbackFunc cb);
 RTC_EXPORT int rtcGetWebSocketServerPort(int wsserver);

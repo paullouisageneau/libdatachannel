@@ -794,8 +794,11 @@ int rtcCreateWebSocket(const char *url) {
 
 int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 	return wrap([&] {
-		if(!url || !config)
-			return RTC_ERR_INVALID;
+		if (!url)
+			throw std::invalid_argument("Unexpected null pointer for URL");
+
+		if (!config)
+			throw std::invalid_argument("Unexpected null pointer for config");
 
 		WebSocket::Configuration c;
 		c.disableTlsVerification = config->disableTlsVerification;
@@ -805,7 +808,7 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 	});
 }
 
-int rtcDeleteWebsocket(int ws) {
+int rtcDeleteWebSocket(int ws) {
 	return wrap([&] {
 		auto webSocket = getWebSocket(ws);
 		webSocket->onOpen(nullptr);
@@ -843,8 +846,11 @@ int rtcGetWebSocketPath(int ws, char *buffer, int size) {
 RTC_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
                                         rtcWebSocketClientCallbackFunc cb) {
 	return wrap([&] {
-		if(!config || !cb)
-			return RTC_ERR_INVALID;
+		if (!config)
+			throw std::invalid_argument("Unexpected null pointer for config");
+
+		if (!cb)
+			throw std::invalid_argument("Unexpected null pointer for client callback");
 
 		WebSocketServer::Configuration c;
 		c.port = config->port;
@@ -865,11 +871,11 @@ RTC_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
 			}
 		});
 
-		return RTC_ERR_SUCCESS;
+		return wsserver;
 	});
 }
 
-RTC_EXPORT int rtcDeleteWebsocketServer(int wsserver) {
+RTC_EXPORT int rtcDeleteWebSocketServer(int wsserver) {
 	return wrap([&] {
 		auto webSocketServer = getWebSocketServer(wsserver);
 		webSocketServer->onClient(nullptr);
