@@ -18,6 +18,8 @@
 
 #include <rtc/rtc.h>
 
+#if RTC_ENABLE_WEBSOCKET
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -118,7 +120,7 @@ int test_capi_websocketserver_main() {
 	if (wsserver < 0)
 		goto error;
 
-	if(rtcGetWebSocketServerPort(wsserver) != int(port)) {
+	if (rtcGetWebSocketServerPort(wsserver) != int(port)) {
 		fprintf(stderr, "rtcGetWebSocketServerPort failed\n");
 		goto error;
 	}
@@ -167,3 +169,5 @@ void test_capi_websocketserver() {
 	if (test_capi_websocketserver_main())
 		throw std::runtime_error("WebSocketServer test failed");
 }
+
+#endif
