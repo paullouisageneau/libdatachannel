@@ -37,7 +37,7 @@ static bool success = false;
 static bool failed = false;
 
 static void RTC_API openCallback(int ws, void *ptr) {
-	printf("WebSocket: Connection open");
+	printf("WebSocket: Connection open\n");
 
 	if (rtcSendMessage(ws, MESSAGE, -1) < 0) { // negative size indicates a null-terminated string
 		fprintf(stderr, "rtcSendMessage failed\n");
@@ -59,7 +59,7 @@ static void RTC_API messageCallback(int ws, const char *message, int size, void 
 }
 
 static void RTC_API serverOpenCallback(int ws, void *ptr) {
-	printf("WebSocketServer: Client connection open");
+	printf("WebSocketServer: Client connection open\n");
 
 	char path[256];
 	if (rtcGetWebSocketPath(ws, path, 256) < 0) {
