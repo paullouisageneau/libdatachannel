@@ -36,7 +36,7 @@ class RTC_CPP_EXPORT WebSocketServer final : private CheshireCat<impl::WebSocket
 public:
 	struct Configuration {
 		uint16_t port = 8080;
-		bool secure = false;
+		bool enableTls = false;
 		optional<string> certificatePemFile;
 		optional<string> keyPemFile;
 		optional<string> keyPemPass;

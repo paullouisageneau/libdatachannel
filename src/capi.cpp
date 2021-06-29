@@ -43,6 +43,7 @@ std::unordered_map<int, shared_ptr<RtpPacketizationConfig>> rtpConfigMap;
 #endif
 #if RTC_ENABLE_WEBSOCKET
 std::unordered_map<int, shared_ptr<WebSocket>> webSocketMap;
+std::unordered_map<int, shared_ptr<WebSocketServer>> webSocketServerMap;
 #endif
 std::unordered_map<int, void *> userPointerMap;
 std::mutex mutex;
@@ -193,6 +194,7 @@ createRtpPacketizationConfig(const rtcPacketizationHandlerInit *init) {
 #endif // RTC_ENABLE_MEDIA
 
 #if RTC_ENABLE_WEBSOCKET
+
 shared_ptr<WebSocket> getWebSocket(int id) {
 	std::lock_guard lock(mutex);
 	if (auto it = webSocketMap.find(id); it != webSocketMap.end())
@@ -215,6 +217,30 @@ void eraseWebSocket(int ws) {
 		throw std::invalid_argument("WebSocket ID does not exist");
 	userPointerMap.erase(ws);
 }
+
+shared_ptr<WebSocketServer> getWebSocketServer(int id) {
+	std::lock_guard lock(mutex);
+	if (auto it = webSocketServerMap.find(id); it != webSocketServerMap.end())
+		return it->second;
+	else
+		throw std::invalid_argument("WebSocketServer ID does not exist");
+}
+
+int emplaceWebSocketServer(shared_ptr<WebSocketServer> ptr) {
+	std::lock_guard lock(mutex);
+	int wsserver = ++lastId;
+	webSocketServerMap.emplace(std::make_pair(wsserver, ptr));
+	userPointerMap.emplace(std::make_pair(wsserver, nullptr));
+	return wsserver;
+}
+
+void eraseWebSocketServer(int wsserver) {
+	std::lock_guard lock(mutex);
+	if (webSocketServerMap.erase(wsserver) == 0)
+		throw std::invalid_argument("WebSocketServer ID does not exist");
+	userPointerMap.erase(wsserver);
+}
+
 #endif
 
 shared_ptr<Channel> getChannel(int id) {
@@ -268,21 +294,21 @@ int copyAndReturn(binary b, char *buffer, int size) {
 	return int(b.size());
 }
 
-template<typename T>
-int copyAndReturn(std::vector<T> b, T *buffer, int size) {
+template <typename T> int copyAndReturn(std::vector<T> b, T *buffer, int size) {
 	if (!buffer)
 		return int(b.size());
 
 	if (size < int(b.size()))
 		return RTC_ERR_TOO_SMALL;
-    std::copy(b.begin(), b.end(), buffer);
+	std::copy(b.begin(), b.end(), buffer);
 	return int(b.size());
 }
 
 #if RTC_ENABLE_MEDIA
 // function is used in RTC_ENABLE_MEDIA only
 string lowercased(string str) {
-	std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::tolower(c); });
+	std::transform(str.begin(), str.end(), str.begin(),
+	               [](unsigned char c) { return std::tolower(c); });
 	return str;
 }
 #endif // RTC_ENABLE_MEDIA
@@ -326,7 +352,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 		if (config->maxMessageSize)
 			c.maxMessageSize = size_t(config->maxMessageSize);
 
-		return emplacePeerConnection(std::make_shared<PeerConnection>(c));
+		return emplacePeerConnection(std::make_shared<PeerConnection>(std::move(c)));
 	});
 }
 
@@ -384,9 +410,7 @@ int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *
 }
 
 int rtcIsOpen(int cid) {
-	return wrap([cid] {
-        return getChannel(cid)->isOpen();
-	});
+	return wrap([cid] { return getChannel(cid)->isOpen(); });
 }
 
 int rtcDeleteDataChannel(int dc) {
@@ -527,7 +551,8 @@ int rtcGetTrackDescription(int tr, char *buffer, int size) {
 
 #if RTC_ENABLE_MEDIA
 
-void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid, const char *_trackID) {
+void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid,
+             const char *_trackID) {
 
 	optional<string> name = nullopt;
 	if (_name) {
@@ -677,7 +702,7 @@ int rtcSetNeedsToSendRtcpSr(int id) {
 	});
 }
 
-int rtcGetTrackPayloadTypesForCodec(int tr, const char * ccodec, int * buffer, int size) {
+int rtcGetTrackPayloadTypesForCodec(int tr, const char *ccodec, int *buffer, int size) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		auto codec = lowercased(string(ccodec));
@@ -694,7 +719,7 @@ int rtcGetTrackPayloadTypesForCodec(int tr, const char * ccodec, int * buffer, i
 	});
 }
 
-int rtcGetSsrcsForTrack(int tr, uint32_t * buffer, int count) {
+int rtcGetSsrcsForTrack(int tr, uint32_t *buffer, int count) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		auto ssrcs = track->description().getSSRCs();
@@ -702,7 +727,7 @@ int rtcGetSsrcsForTrack(int tr, uint32_t * buffer, int count) {
 	});
 }
 
-int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char * cname, int cnameSize) {
+int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char *cname, int cnameSize) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		auto description = track->description();
@@ -715,7 +740,7 @@ int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char * cname, int cnameSize) {
 	});
 }
 
-int rtcGetSsrcsForType(const char * mediaType, const char * sdp, uint32_t * buffer, int bufferSize) {
+int rtcGetSsrcsForType(const char *mediaType, const char *sdp, uint32_t *buffer, int bufferSize) {
 	return wrap([&] {
 		auto type = lowercased(string(mediaType));
 		auto oldSDP = string(sdp);
@@ -735,8 +760,8 @@ int rtcGetSsrcsForType(const char * mediaType, const char * sdp, uint32_t * buff
 	});
 }
 
-int rtcSetSsrcForType(const char * mediaType, const char * sdp, char * buffer, const int bufferSize,
-					  rtcSsrcForTypeInit * init) {
+int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, const int bufferSize,
+                      rtcSsrcForTypeInit *init) {
 	return wrap([&] {
 		auto type = lowercased(string(mediaType));
 		auto prevSDP = string(sdp);
@@ -761,19 +786,22 @@ int rtcSetSsrcForType(const char * mediaType, const char * sdp, char * buffer, c
 
 int rtcCreateWebSocket(const char *url) {
 	return wrap([&] {
-		auto ws = std::make_shared<WebSocket>();
-		ws->open(url);
-		return emplaceWebSocket(ws);
+		auto webSocket = std::make_shared<WebSocket>();
+		webSocket->open(url);
+		return emplaceWebSocket(webSocket);
 	});
 }
 
 int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 	return wrap([&] {
+		if(!url || !config)
+			return RTC_ERR_INVALID;
+
 		WebSocket::Configuration c;
 		c.disableTlsVerification = config->disableTlsVerification;
-		auto ws = std::make_shared<WebSocket>(c);
-		ws->open(url);
-		return emplaceWebSocket(ws);
+		auto webSocket = std::make_shared<WebSocket>(std::move(c));
+		webSocket->open(url);
+		return emplaceWebSocket(webSocket);
 	});
 }
 
@@ -789,6 +817,73 @@ int rtcDeleteWebsocket(int ws) {
 
 		eraseWebSocket(ws);
 		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcGetWebSocketRemoteAddress(int ws, char *buffer, int size) {
+	return wrap([&] {
+		auto webSocket = getWebSocket(ws);
+		if (auto remoteAddress = webSocket->remoteAddress())
+			return copyAndReturn(*remoteAddress, buffer, size);
+		else
+			return RTC_ERR_NOT_AVAIL;
+	});
+}
+
+int rtcGetWebSocketPath(int ws, char *buffer, int size) {
+	return wrap([&] {
+		auto webSocket = getWebSocket(ws);
+		if (auto path = webSocket->path())
+			return copyAndReturn(*path, buffer, size);
+		else
+			return RTC_ERR_NOT_AVAIL;
+	});
+}
+
+RTC_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
+                                        rtcWebSocketClientCallbackFunc cb) {
+	return wrap([&] {
+		if(!config || !cb)
+			return RTC_ERR_INVALID;
+
+		WebSocketServer::Configuration c;
+		c.port = config->port;
+		c.enableTls = config->enableTls;
+		c.certificatePemFile = config->certificatePemFile
+		                           ? make_optional(string(config->certificatePemFile))
+		                           : nullopt;
+		c.keyPemFile = config->keyPemFile ? make_optional(string(config->keyPemFile)) : nullopt;
+		c.keyPemPass = config->keyPemPass ? make_optional(string(config->keyPemPass)) : nullopt;
+		auto webSocketServer = std::make_shared<WebSocketServer>(std::move(c));
+		int wsserver = emplaceWebSocketServer(webSocketServer);
+
+		webSocketServer->onClient([wsserver, cb](shared_ptr<WebSocket> webSocket) {
+			int ws = emplaceWebSocket(webSocket);
+			if (auto ptr = getUserPointer(wsserver)) {
+				rtcSetUserPointer(wsserver, *ptr);
+				cb(wsserver, ws, *ptr);
+			}
+		});
+
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+RTC_EXPORT int rtcDeleteWebsocketServer(int wsserver) {
+	return wrap([&] {
+		auto webSocketServer = getWebSocketServer(wsserver);
+		webSocketServer->onClient(nullptr);
+		webSocketServer->stop();
+
+		eraseWebSocketServer(wsserver);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+RTC_EXPORT int rtcGetWebSocketServerPort(int wsserver) {
+	return wrap([&] {
+		auto webSocketServer = getWebSocketServer(wsserver);
+		return int(webSocketServer->port());
 	});
 }
 
@@ -1272,7 +1367,8 @@ int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 			s.maxRetransmitTimeout = std::chrono::milliseconds(settings->maxRetransmitTimeoutMs);
 
 		if (settings->initialRetransmitTimeoutMs > 0)
-			s.initialRetransmitTimeout = std::chrono::milliseconds(settings->initialRetransmitTimeoutMs);
+			s.initialRetransmitTimeout =
+			    std::chrono::milliseconds(settings->initialRetransmitTimeoutMs);
 
 		if (settings->maxRetransmitAttempts > 0)
 			s.maxRetransmitAttempts = settings->maxRetransmitAttempts;

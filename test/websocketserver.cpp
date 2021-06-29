@@ -38,7 +38,7 @@ void test_websocketserver() {
 
 	WebSocketServer::Configuration serverConfig;
 	serverConfig.port = 48080;
-	serverConfig.secure = true;
+	serverConfig.enableTls = true;
 	// serverConfig.certificatePemFile = ...
 	// serverConfig.keyPemFile = ...
 	WebSocketServer server(std::move(serverConfig));

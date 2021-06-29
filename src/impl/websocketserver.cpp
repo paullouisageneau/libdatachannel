@@ -32,7 +32,7 @@ WebSocketServer::WebSocketServer(Configuration config_)
       mStopped(false) {
 	PLOG_VERBOSE << "Creating WebSocketServer";
 
-	if (config.secure) {
+	if (config.enableTls) {
 		if (config.certificatePemFile && config.keyPemFile) {
 			mCertificate = std::make_shared<Certificate>(Certificate::FromFile(
 			    *config.certificatePemFile, *config.keyPemFile, config.keyPemPass.value_or("")));
