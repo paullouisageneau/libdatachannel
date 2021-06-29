@@ -83,6 +83,9 @@ bool TcpTransport::stop() {
 
 bool TcpTransport::send(message_ptr message) {
 	std::unique_lock lock(mSockMutex);
+	if(state() == State::Connecting)
+		throw std::runtime_error("Connection is not open");
+
 	if (state() != State::Connected)
 		return false;
 
