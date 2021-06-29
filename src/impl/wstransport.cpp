@@ -105,19 +105,9 @@ void WsTransport::incoming(message_ptr message) {
 	if (message) {
 		PLOG_VERBOSE << "Incoming size=" << message->size();
 
-		if (message->size() == 0) {
-			if (state() == State::Connected) {
-				// TCP is idle, send a ping
-				PLOG_DEBUG << "WebSocket sending ping";
-				uint32_t dummy = 0;
-				sendFrame({PING, reinterpret_cast<byte *>(&dummy), 4, true, mIsClient});
-			}
-			return;
-		}
-
-		mBuffer.insert(mBuffer.end(), message->begin(), message->end());
-
 		try {
+			mBuffer.insert(mBuffer.end(), message->begin(), message->end());
+
 			if (state() == State::Connecting) {
 				if (mIsClient) {
 					if (size_t len =
@@ -137,14 +127,34 @@ void WsTransport::incoming(message_ptr message) {
 			}
 
 			if (state() == State::Connected) {
-				Frame frame;
-				while (size_t len = readFrame(mBuffer.data(), mBuffer.size(), frame)) {
-					recvFrame(frame);
-					mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
+				if (message->size() == 0) {
+					// TCP is idle, send a ping
+					PLOG_DEBUG << "WebSocket sending ping";
+					uint32_t dummy = 0;
+					sendFrame({PING, reinterpret_cast<byte *>(&dummy), 4, true, mIsClient});
+
+				} else {
+					Frame frame;
+					while (size_t len = readFrame(mBuffer.data(), mBuffer.size(), frame)) {
+						recvFrame(frame);
+						mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
+					}
 				}
 			}
 
 			return;
+
+		} catch (const WsHandshake::RequestError &e) {
+			PLOG_WARNING << e.what();
+			try {
+				sendHttpError(e.responseCode());
+
+			} catch (const std::exception &e) {
+				PLOG_WARNING << e.what();
+			}
+
+		} catch (const WsHandshake::Error &e) {
+			PLOG_WARNING << e.what();
 
 		} catch (const std::exception &e) {
 			PLOG_ERROR << e.what();
@@ -174,8 +184,7 @@ bool WsTransport::sendHttpRequest() {
 
 	const string request = mHandshake->generateHttpRequest();
 	auto data = reinterpret_cast<const byte *>(request.data());
-	auto size = request.size();
-	return outgoing(make_message(data, data + size));
+	return outgoing(make_message(data, data + request.size()));
 }
 
 bool WsTransport::sendHttpResponse() {
@@ -183,11 +192,15 @@ bool WsTransport::sendHttpResponse() {
 
 	const string response = mHandshake->generateHttpResponse();
 	auto data = reinterpret_cast<const byte *>(response.data());
-	auto size = response.size();
-	bool ret = outgoing(make_message(data, data + size));
+	return outgoing(make_message(data, data + response.size()));
+}
 
-	changeState(State::Connected);
-	return ret;
+bool WsTransport::sendHttpError(int code) {
+	PLOG_WARNING << "Sending WebSocket HTTP error response " << code;
+
+	const string response = mHandshake->generateHttpError(code);
+	auto data = reinterpret_cast<const byte *>(response.data());
+	return outgoing(make_message(data, data + response.size()));
 }
 
 // RFC6455 5.2. Base Framing Protocol

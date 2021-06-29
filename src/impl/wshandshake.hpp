@@ -39,6 +39,22 @@ public:
 
 	string generateHttpRequest();
 	string generateHttpResponse();
+	string generateHttpError(int responseCode = 400);
+
+	class Error : public std::runtime_error {
+	public:
+		explicit Error(const string &w);
+	};
+
+	class RequestError : public Error {
+	public:
+		explicit RequestError(const string &w, int responseCode = 400);
+		int responseCode() const;
+
+	private:
+		const int mResponseCode;
+	};
+
 	size_t parseHttpRequest(const byte *buffer, size_t size);
 	size_t parseHttpResponse(const byte *buffer, size_t size);
 

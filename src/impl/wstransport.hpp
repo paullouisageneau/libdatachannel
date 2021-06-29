@@ -64,6 +64,7 @@ private:
 	};
 
 	bool sendHttpRequest();
+	bool sendHttpError(int code);
 	bool sendHttpResponse();
 
 	size_t readFrame(byte *buffer, size_t size, Frame &frame);

@@ -101,7 +101,7 @@ string WsHandshake::generateHttpRequest() {
 	             "Host: " +
 	             mHost +
 	             "\r\n"
-	             "Connection: Upgrade\r\n"
+	             "Connection: upgrade\r\n"
 	             "Upgrade: websocket\r\n"
 	             "Sec-WebSocket-Version: 13\r\n"
 	             "Sec-WebSocket-Key: " +
@@ -118,10 +118,48 @@ string WsHandshake::generateHttpRequest() {
 string WsHandshake::generateHttpResponse() {
 	std::unique_lock lock(mMutex);
 	const string out = "HTTP/1.1 101 Switching Protocols\r\n"
-	                   "Connection: Upgrade\r\n"
+	                   "Server: libdatachannel\r\n"
+	                   "Connection: upgrade\r\n"
 	                   "Upgrade: websocket\r\n"
 	                   "Sec-WebSocket-Accept: " +
 	                   computeAcceptKey(mKey) + "\r\n\r\n";
+
+	return out;
+}
+
+namespace {
+
+string GetHttpErrorName(int responseCode) {
+	switch(responseCode) {
+	case 400:
+		return "Bad Request";
+	case 404:
+		return "Not Found";
+	case 405:
+		return "Method Not Allowed";
+	case 426:
+		return "Upgrade Required";
+	case 500:
+		return "Internal Server Error";
+	default:
+		return "Error";
+	}
+}
+
+}
+
+string WsHandshake::generateHttpError(int responseCode) {
+	std::unique_lock lock(mMutex);
+
+	const string error = to_string(responseCode) + " " + GetHttpErrorName(responseCode);
+
+	const string out = "HTTP/1.1 " + error + "\r\n"
+	                   "Server: libdatachannel\r\n"
+	                   "Connection: upgrade\r\n"
+	                   "Upgrade: websocket\r\n"
+	                   "Content-Type: text/plain\r\n"
+	                   "Content-Length: " + to_string(error.size()) + "\r\n"
+	                   "Access-Control-Allow-Origin: *\r\n\r\n" + error;
 
 	return out;
 }
@@ -134,7 +172,7 @@ size_t WsHandshake::parseHttpRequest(const byte *buffer, size_t size) {
 		return 0;
 
 	if (lines.empty())
-		throw std::runtime_error("Invalid HTTP request for WebSocket");
+		throw RequestError("Invalid HTTP request for WebSocket", 400);
 
 	std::istringstream requestLine(std::move(lines.front()));
 	lines.pop_front();
@@ -143,7 +181,7 @@ size_t WsHandshake::parseHttpRequest(const byte *buffer, size_t size) {
 	requestLine >> method >> path >> protocol;
 	PLOG_DEBUG << "WebSocket request method \"" << method << "\" for path: " << path;
 	if (method != "GET")
-		throw std::runtime_error("Unexpected request method \"" + method + "\" for WebSocket");
+		throw RequestError("Invalid request method \"" + method + "\" for WebSocket", 405);
 
 	mPath = std::move(path);
 
@@ -151,23 +189,23 @@ size_t WsHandshake::parseHttpRequest(const byte *buffer, size_t size) {
 
 	auto h = headers.find("host");
 	if (h == headers.end())
-		throw std::runtime_error("WebSocket host header missing in request");
+		throw RequestError("WebSocket host header missing in request", 400);
 
 	mHost = std::move(h->second);
 
 	h = headers.find("upgrade");
 	if (h == headers.end())
-		throw std::runtime_error("WebSocket update header missing in request");
+		throw RequestError("WebSocket upgrade header missing in request", 426);
 
 	string upgrade;
 	std::transform(h->second.begin(), h->second.end(), std::back_inserter(upgrade),
 	               [](char c) { return std::tolower(c); });
 	if (upgrade != "websocket")
-		throw std::runtime_error("WebSocket update header mismatching: " + h->second);
+		throw RequestError("WebSocket upgrade header mismatching: " + h->second, 426);
 
 	h = headers.find("sec-websocket-key");
 	if (h == headers.end())
-		throw std::runtime_error("WebSocket key header missing in request");
+		throw RequestError("WebSocket key header missing in request", 400);
 
 	mKey = std::move(h->second);
 
@@ -186,7 +224,7 @@ size_t WsHandshake::parseHttpResponse(const byte *buffer, size_t size) {
 		return 0;
 
 	if (lines.empty())
-		throw std::runtime_error("Invalid HTTP response for WebSocket");
+		throw Error("Invalid HTTP response for WebSocket");
 
 	std::istringstream status(std::move(lines.front()));
 	lines.pop_front();
@@ -202,20 +240,20 @@ size_t WsHandshake::parseHttpResponse(const byte *buffer, size_t size) {
 
 	auto h = headers.find("upgrade");
 	if (h == headers.end())
-		throw std::runtime_error("WebSocket update header missing");
+		throw Error("WebSocket update header missing");
 
 	string upgrade;
 	std::transform(h->second.begin(), h->second.end(), std::back_inserter(upgrade),
 	               [](char c) { return std::tolower(c); });
 	if (upgrade != "websocket")
-		throw std::runtime_error("WebSocket update header mismatching: " + h->second);
+		throw Error("WebSocket update header mismatching: " + h->second);
 
 	h = headers.find("sec-websocket-accept");
 	if (h == headers.end())
-		throw std::runtime_error("WebSocket accept header missing");
+		throw Error("WebSocket accept header missing");
 
 	if (h->second != computeAcceptKey(mKey))
-		throw std::runtime_error("WebSocket accept header is invalid");
+		throw Error("WebSocket accept header is invalid");
 
 	return length;
 }
@@ -271,6 +309,13 @@ std::multimap<string, string> WsHandshake::parseHttpHeaders(const std::list<stri
 
 	return headers;
 }
+
+WsHandshake::Error::Error(const string &w) : std::runtime_error(w) {}
+
+WsHandshake::RequestError::RequestError(const string &w, int responseCode)
+    : Error(w), mResponseCode(responseCode) {}
+
+int WsHandshake::RequestError::RequestError::responseCode() const { return mResponseCode; }
 
 } // namespace rtc::impl
 
