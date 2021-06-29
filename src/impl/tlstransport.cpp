@@ -188,53 +188,72 @@ void TlsTransport::runRecvLoop() {
 
 ssize_t TlsTransport::WriteCallback(gnutls_transport_ptr_t ptr, const void *data, size_t len) {
 	TlsTransport *t = static_cast<TlsTransport *>(ptr);
-	if (len > 0) {
-		auto b = reinterpret_cast<const byte *>(data);
-		t->outgoing(make_message(b, b + len));
+	try {
+		if (len > 0) {
+			auto b = reinterpret_cast<const byte *>(data);
+			t->outgoing(make_message(b, b + len));
+		}
+		gnutls_transport_set_errno(t->mSession, 0);
+		return ssize_t(len);
+
+	} catch (const std::exception &e) {
+		PLOG_WARNING << e.what();
+		gnutls_transport_set_errno(t->mSession, ECONNRESET);
+		return -1;
 	}
-	gnutls_transport_set_errno(t->mSession, 0);
-	return ssize_t(len);
 }
 
 ssize_t TlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen) {
 	TlsTransport *t = static_cast<TlsTransport *>(ptr);
+	try {
+		message_ptr &message = t->mIncomingMessage;
+		size_t &position = t->mIncomingMessagePosition;
 
-	message_ptr &message = t->mIncomingMessage;
-	size_t &position = t->mIncomingMessagePosition;
+		if (message && position >= message->size())
+			message.reset();
 
-	if (message && position >= message->size())
-		message.reset();
-
-	if (!message) {
-		position = 0;
-		while (auto next = t->mIncomingQueue.pop()) {
-			message = *next;
-			if (message->size() > 0)
-				break;
-			else
-				t->recv(message); // Pass zero-sized messages through
+		if (!message) {
+			position = 0;
+			while (auto next = t->mIncomingQueue.pop()) {
+				message = *next;
+				if (message->size() > 0)
+					break;
+				else
+					t->recv(message); // Pass zero-sized messages through
+			}
 		}
-	}
 
-	if (message) {
-		size_t available = message->size() - position;
-		ssize_t len = std::min(maxlen, available);
-		std::memcpy(data, message->data() + position, len);
-		position += len;
-		gnutls_transport_set_errno(t->mSession, 0);
-		return len;
-	} else {
-		// Closed
-		gnutls_transport_set_errno(t->mSession, 0);
-		return 0;
+		if (message) {
+			size_t available = message->size() - position;
+			ssize_t len = std::min(maxlen, available);
+			std::memcpy(data, message->data() + position, len);
+			position += len;
+			gnutls_transport_set_errno(t->mSession, 0);
+			return len;
+		} else {
+			// Closed
+			gnutls_transport_set_errno(t->mSession, 0);
+			return 0;
+		}
+
+	} catch (const std::exception &e) {
+		PLOG_WARNING << e.what();
+		gnutls_transport_set_errno(t->mSession, ECONNRESET);
+		return -1;
 	}
 }
 
 int TlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) {
 	TlsTransport *t = static_cast<TlsTransport *>(ptr);
-	bool notEmpty = t->mIncomingQueue.wait(
-	    ms != GNUTLS_INDEFINITE_TIMEOUT ? std::make_optional(milliseconds(ms)) : nullopt);
-	return notEmpty ? 1 : 0;
+	try {
+		bool notEmpty = t->mIncomingQueue.wait(
+		    ms != GNUTLS_INDEFINITE_TIMEOUT ? std::make_optional(milliseconds(ms)) : nullopt);
+		return notEmpty ? 1 : 0;
+
+	} catch (const std::exception &e) {
+		PLOG_WARNING << e.what();
+		return 1;
+	}
 }
 
 #else // USE_GNUTLS==0
