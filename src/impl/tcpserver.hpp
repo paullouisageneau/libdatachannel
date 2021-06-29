@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,29 +16,41 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "verifiedtlstransport.hpp"
+#ifndef RTC_IMPL_TCP_SERVER_H
+#define RTC_IMPL_TCP_SERVER_H
+
 #include "common.hpp"
+#include "queue.hpp"
+#include "tcptransport.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
+// Use the socket defines from libjuice
+#include "../deps/libjuice/src/socket.h"
+
 namespace rtc::impl {
 
-VerifiedTlsTransport::VerifiedTlsTransport(shared_ptr<TcpTransport> lower, string host,
-                                           certificate_ptr certificate, state_callback callback)
-    : TlsTransport(std::move(lower), std::move(host), std::move(certificate), std::move(callback)) {
+class TcpServer {
+public:
+	TcpServer(uint16_t port);
+	~TcpServer();
 
-#if USE_GNUTLS
-	PLOG_DEBUG << "Setting up TLS certificate verification";
-	gnutls_session_set_verify_cert(mSession, mHost->c_str(), 0);
-#else
-	PLOG_DEBUG << "Setting up TLS certificate verification";
-	SSL_set_verify(mSsl, SSL_VERIFY_PEER, NULL);
-	SSL_set_verify_depth(mSsl, 4);
-#endif
-}
+	shared_ptr<TcpTransport> accept();
+	void close();
 
-VerifiedTlsTransport::~VerifiedTlsTransport() {}
+	uint16_t port() const { return mPort; }
+
+private:
+	void listen(uint16_t port);
+
+	uint16_t mPort;
+	socket_t mSock = INVALID_SOCKET;
+	std::mutex mSockMutex;
+	SelectInterrupter mInterrupter;
+};
 
 } // namespace rtc::impl
+
+#endif
 
 #endif

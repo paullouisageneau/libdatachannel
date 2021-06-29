@@ -51,6 +51,8 @@ public:
 	virtual bool stop() override;
 	virtual bool send(message_ptr message) override; // false if dropped
 
+	bool isClient() const { return mIsClient; }
+
 protected:
 	virtual void incoming(message_ptr message) override;
 	virtual bool outgoing(message_ptr message) override;

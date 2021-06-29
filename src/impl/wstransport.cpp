@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2020-2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,19 +17,18 @@
  */
 
 #include "wstransport.hpp"
-#include "base64.hpp"
 #include "tcptransport.hpp"
 #include "tlstransport.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
+#include <algorithm>
 #include <chrono>
-#include <iterator>
-#include <list>
-#include <map>
+#include <iostream>
 #include <numeric>
 #include <random>
 #include <regex>
+#include <sstream>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -47,25 +46,26 @@
 
 namespace rtc::impl {
 
-using namespace std::chrono;
 using std::to_integer;
 using std::to_string;
-
+using std::chrono::system_clock;
 using random_bytes_engine =
     std::independent_bits_engine<std::default_random_engine, CHAR_BIT, unsigned short>;
 
-WsTransport::WsTransport(shared_ptr<Transport> lower, Configuration config,
-                         message_callback recvCallback, state_callback stateCallback)
-    : Transport(lower, std::move(stateCallback)), mConfig(std::move(config)) {
+WsTransport::WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TlsTransport>> lower,
+                         shared_ptr<WsHandshake> handshake, message_callback recvCallback,
+                         state_callback stateCallback)
+    : Transport(std::visit([](auto l) { return std::static_pointer_cast<Transport>(l); }, lower),
+                std::move(stateCallback)),
+      mHandshake(std::move(handshake)),
+      mIsClient(
+          std::visit(rtc::overloaded{[](shared_ptr<TcpTransport> l) { return l->isActive(); },
+                                     [](shared_ptr<TlsTransport> l) { return l->isClient(); }},
+                     lower)) {
+
 	onRecv(recvCallback);
 
 	PLOG_DEBUG << "Initializing WebSocket transport";
-
-	if (mConfig.host.empty())
-		throw std::invalid_argument("WebSocket HTTP host cannot be empty");
-
-	if (mConfig.path.empty())
-		throw std::invalid_argument("WebSocket HTTP path cannot be empty");
 }
 
 WsTransport::~WsTransport() { stop(); }
@@ -74,7 +74,10 @@ void WsTransport::start() {
 	Transport::start();
 
 	registerIncoming();
-	sendHttpRequest();
+
+	changeState(State::Connecting);
+	if (mIsClient)
+		sendHttpRequest();
 }
 
 bool WsTransport::stop() {
@@ -91,7 +94,7 @@ bool WsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 	return sendFrame({message->type == Message::String ? TEXT_FRAME : BINARY_FRAME, message->data(),
-	                  message->size(), true, true});
+	                  message->size(), true, mIsClient});
 }
 
 void WsTransport::incoming(message_ptr message) {
@@ -102,34 +105,56 @@ void WsTransport::incoming(message_ptr message) {
 	if (message) {
 		PLOG_VERBOSE << "Incoming size=" << message->size();
 
-		if (message->size() == 0) {
-			// TCP is idle, send a ping
-			PLOG_DEBUG << "WebSocket sending ping";
-			uint32_t dummy = 0;
-			sendFrame({PING, reinterpret_cast<byte *>(&dummy), 4, true, true});
-			return;
-		}
-
-		mBuffer.insert(mBuffer.end(), message->begin(), message->end());
-
 		try {
+			mBuffer.insert(mBuffer.end(), message->begin(), message->end());
+
 			if (state() == State::Connecting) {
-				if (size_t len = readHttpResponse(mBuffer.data(), mBuffer.size())) {
-					PLOG_INFO << "WebSocket open";
-					changeState(State::Connected);
-					mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
+				if (mIsClient) {
+					if (size_t len =
+					        mHandshake->parseHttpResponse(mBuffer.data(), mBuffer.size())) {
+						PLOG_INFO << "WebSocket client-side open";
+						changeState(State::Connected);
+						mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
+					}
+				} else {
+					if (size_t len = mHandshake->parseHttpRequest(mBuffer.data(), mBuffer.size())) {
+						PLOG_INFO << "WebSocket server-side open";
+						sendHttpResponse();
+						changeState(State::Connected);
+						mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
+					}
 				}
 			}
 
 			if (state() == State::Connected) {
-				Frame frame;
-				while (size_t len = readFrame(mBuffer.data(), mBuffer.size(), frame)) {
-					recvFrame(frame);
-					mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
+				if (message->size() == 0) {
+					// TCP is idle, send a ping
+					PLOG_DEBUG << "WebSocket sending ping";
+					uint32_t dummy = 0;
+					sendFrame({PING, reinterpret_cast<byte *>(&dummy), 4, true, mIsClient});
+
+				} else {
+					Frame frame;
+					while (size_t len = readFrame(mBuffer.data(), mBuffer.size(), frame)) {
+						recvFrame(frame);
+						mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
+					}
 				}
 			}
 
 			return;
+
+		} catch (const WsHandshake::RequestError &e) {
+			PLOG_WARNING << e.what();
+			try {
+				sendHttpError(e.responseCode());
+
+			} catch (const std::exception &e) {
+				PLOG_WARNING << e.what();
+			}
+
+		} catch (const WsHandshake::Error &e) {
+			PLOG_WARNING << e.what();
 
 		} catch (const std::exception &e) {
 			PLOG_ERROR << e.what();
@@ -148,115 +173,38 @@ void WsTransport::incoming(message_ptr message) {
 
 void WsTransport::close() {
 	if (state() == State::Connected) {
-		sendFrame({CLOSE, NULL, 0, true, true});
+		sendFrame({CLOSE, NULL, 0, true, mIsClient});
 		PLOG_INFO << "WebSocket closing";
 		changeState(State::Disconnected);
 	}
 }
 
 bool WsTransport::sendHttpRequest() {
-	PLOG_DEBUG << "Sending WebSocket HTTP request for path " << mConfig.path;
-	changeState(State::Connecting);
+	PLOG_DEBUG << "Sending WebSocket HTTP request";
 
-	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
-	random_bytes_engine generator(seed);
-
-	binary key(16);
-	auto k = reinterpret_cast<uint8_t *>(key.data());
-	std::generate(k, k + key.size(), [&]() { return uint8_t(generator()); });
-
-	string appendHeader = "";
-	if (mConfig.protocols.size() > 0) {
-		appendHeader +=
-		    "Sec-WebSocket-Protocol: " +
-		    std::accumulate(mConfig.protocols.begin(), mConfig.protocols.end(), string(),
-		                    [](const string &a, const string &b) -> string {
-			                    return a + (a.length() > 0 ? "," : "") + b;
-		                    }) +
-		    "\r\n";
-	}
-
-	const string request = "GET " + mConfig.path +
-	                       " HTTP/1.1\r\n"
-	                       "Host: " +
-	                       mConfig.host +
-	                       "\r\n"
-	                       "Connection: Upgrade\r\n"
-	                       "Upgrade: websocket\r\n"
-	                       "Sec-WebSocket-Version: 13\r\n"
-	                       "Sec-WebSocket-Key: " +
-	                       to_base64(key) + "\r\n" + std::move(appendHeader) + "\r\n";
-
+	const string request = mHandshake->generateHttpRequest();
 	auto data = reinterpret_cast<const byte *>(request.data());
-	auto size = request.size();
-	return outgoing(make_message(data, data + size));
+	return outgoing(make_message(data, data + request.size()));
 }
 
-size_t WsTransport::readHttpResponse(const byte *buffer, size_t size) {
-	std::list<string> lines;
-	auto begin = reinterpret_cast<const char *>(buffer);
-	auto end = begin + size;
-	auto cur = begin;
+bool WsTransport::sendHttpResponse() {
+	PLOG_DEBUG << "Sending WebSocket HTTP response";
 
-	while (true) {
-		auto last = cur;
-		cur = std::find(cur, end, '\n');
-		if (cur == end)
-			return 0;
-		string line(last, cur != begin && *std::prev(cur) == '\r' ? std::prev(cur++) : cur++);
-		if (line.empty())
-			break;
-		lines.emplace_back(std::move(line));
-	}
-	size_t length = cur - begin;
-
-	if (lines.empty())
-		throw std::runtime_error("Invalid HTTP response for WebSocket");
-
-	string status = std::move(lines.front());
-	lines.pop_front();
-
-	std::istringstream ss(status);
-	string protocol;
-	unsigned int code = 0;
-	ss >> protocol >> code;
-	PLOG_DEBUG << "WebSocket response code: " << code;
-	if (code != 101)
-		throw std::runtime_error("Unexpected response code for WebSocket: " + to_string(code));
-
-	std::multimap<string, string> headers;
-	for (const auto &line : lines) {
-		if (size_t pos = line.find_first_of(':'); pos != string::npos) {
-			string key = line.substr(0, pos);
-			string value = line.substr(line.find_first_not_of(' ', pos + 1));
-			std::transform(key.begin(), key.end(), key.begin(),
-			               [](char c) { return std::tolower(c); });
-			headers.emplace(std::move(key), std::move(value));
-		} else {
-			headers.emplace(line, "");
-		}
-	}
-
-	auto h = headers.find("upgrade");
-	if (h == headers.end())
-		throw std::runtime_error("WebSocket update header missing");
-
-	string upgrade;
-	std::transform(h->second.begin(), h->second.end(), std::back_inserter(upgrade),
-	               [](char c) { return std::tolower(c); });
-	if (upgrade != "websocket")
-		throw std::runtime_error("WebSocket update header mismatching: " + h->second);
-
-	h = headers.find("sec-websocket-accept");
-	if (h == headers.end())
-		throw std::runtime_error("WebSocket accept header missing");
-
-	// TODO: Verify Sec-WebSocket-Accept
-
-	return length;
+	const string response = mHandshake->generateHttpResponse();
+	auto data = reinterpret_cast<const byte *>(response.data());
+	return outgoing(make_message(data, data + response.size()));
 }
 
-// http://tools.ietf.org/html/rfc6455#section-5.2  Base Framing Protocol
+bool WsTransport::sendHttpError(int code) {
+	PLOG_WARNING << "Sending WebSocket HTTP error response " << code;
+
+	const string response = mHandshake->generateHttpError(code);
+	auto data = reinterpret_cast<const byte *>(response.data());
+	return outgoing(make_message(data, data + response.size()));
+}
+
+// RFC6455 5.2. Base Framing Protocol
+// http://tools.ietf.org/html/rfc6455#section-5.2
 //
 //  0                   1                   2                   3
 //  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -364,7 +312,7 @@ void WsTransport::recvFrame(const Frame &frame) {
 	}
 	case PING: {
 		PLOG_DEBUG << "WebSocket received ping, sending pong";
-		sendFrame({PONG, frame.payload, frame.length, true, true});
+		sendFrame({PONG, frame.payload, frame.length, true, mIsClient});
 		break;
 	}
 	case PONG: {
@@ -423,6 +371,6 @@ bool WsTransport::sendFrame(const Frame &frame) {
 	return outgoing(make_message(frame.payload, frame.payload + frame.length)); // payload
 }
 
-} // namespace rtc
+} // namespace rtc::impl
 
 #endif

@@ -186,8 +186,11 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 		PLOG_VERBOSE << "Starting DTLS transport";
 
-		auto certificate = mCertificate.get();
 		auto lower = std::atomic_load(&mIceTransport);
+		if(!lower)
+			throw std::logic_error("No underlying ICE transport for DTLS transport");
+
+		auto certificate = mCertificate.get();
 		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1);
 		auto dtlsStateChangeCallback =
 		    [this, weak_this = weak_from_this()](DtlsTransport::State transportState) {
@@ -258,15 +261,19 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 
 		PLOG_VERBOSE << "Starting SCTP transport";
 
+		auto lower = std::atomic_load(&mDtlsTransport);
+		if(!lower)
+			throw std::logic_error("No underlying DTLS transport for SCTP transport");
+
 		auto remote = remoteDescription();
 		if (!remote || !remote->application())
 			throw std::logic_error("Starting SCTP transport without application description");
 
+		uint16_t sctpPort = remote->application()->sctpPort().value_or(DEFAULT_SCTP_PORT);
+
 		// This is the last occasion to ensure the stream numbers are coherent with the role
 		shiftDataChannels();
 
-		uint16_t sctpPort = remote->application()->sctpPort().value_or(DEFAULT_SCTP_PORT);
-		auto lower = std::atomic_load(&mDtlsTransport);
 		auto transport = std::make_shared<SctpTransport>(
 		    lower, config, sctpPort, weak_bind(&PeerConnection::forwardMessage, this, _1),
 		    weak_bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),

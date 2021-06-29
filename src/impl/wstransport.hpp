@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2020-2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,6 +21,7 @@
 
 #include "common.hpp"
 #include "transport.hpp"
+#include "wshandshake.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -29,25 +30,20 @@ namespace rtc::impl {
 class TcpTransport;
 class TlsTransport;
 
-class WsTransport : public Transport {
+class WsTransport final : public Transport {
 public:
-	struct Configuration {
-		string host;
-		string path = "/";
-		std::vector<string> protocols;
-	};
-
-	WsTransport(shared_ptr<Transport> lower, Configuration config,
-	            message_callback recvCallback, state_callback stateCallback);
+	WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TlsTransport>> lower,
+	            shared_ptr<WsHandshake> handshake, message_callback recvCallback,
+	            state_callback stateCallback);
 	~WsTransport();
 
 	void start() override;
 	bool stop() override;
 	bool send(message_ptr message) override;
-
 	void incoming(message_ptr message) override;
-
 	void close();
+
+	bool isClient() const { return mIsClient; }
 
 private:
 	enum Opcode : uint8_t {
@@ -68,13 +64,15 @@ private:
 	};
 
 	bool sendHttpRequest();
-	size_t readHttpResponse(const byte *buffer, size_t size);
+	bool sendHttpError(int code);
+	bool sendHttpResponse();
 
 	size_t readFrame(byte *buffer, size_t size, Frame &frame);
 	void recvFrame(const Frame &frame);
 	bool sendFrame(const Frame &frame);
 
-	const Configuration mConfig;
+	const shared_ptr<WsHandshake> mHandshake;
+	const bool mIsClient;
 
 	binary mBuffer;
 	binary mPartial;

@@ -61,6 +61,7 @@ public:
 	}
 
 	void onRecv(message_callback callback) { mRecvCallback = std::move(callback); }
+	void onStateChange(state_callback callback) { mStateChangeCallback = std::move(callback); }
 	State state() const { return mState; }
 
 	virtual bool send(message_ptr message) { return outgoing(message); }

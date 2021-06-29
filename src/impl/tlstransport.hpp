@@ -19,6 +19,7 @@
 #ifndef RTC_IMPL_TLS_TRANSPORT_H
 #define RTC_IMPL_TLS_TRANSPORT_H
 
+#include "certificate.hpp"
 #include "common.hpp"
 #include "queue.hpp"
 #include "tls.hpp"
@@ -37,26 +38,29 @@ public:
 	static void Init();
 	static void Cleanup();
 
-	TlsTransport(shared_ptr<TcpTransport> lower, string host, state_callback callback);
+	TlsTransport(shared_ptr<TcpTransport> lower, optional<string> host, certificate_ptr certificate,
+	             state_callback callback);
 	virtual ~TlsTransport();
 
 	void start() override;
 	bool stop() override;
 	bool send(message_ptr message) override;
 
+	bool isClient() const { return mIsClient; }
+
 protected:
 	virtual void incoming(message_ptr message) override;
 	virtual void postHandshake();
 	void runRecvLoop();
 
-	string mHost;
+	const optional<string> mHost;
+	const bool mIsClient;
 
 	Queue<message_ptr> mIncomingQueue;
 	std::thread mRecvThread;
 
 #if USE_GNUTLS
 	gnutls_session_t mSession;
-	gnutls_certificate_credentials_t mCreds;
 
 	message_ptr mIncomingMessage;
 	size_t mIncomingMessagePosition = 0;

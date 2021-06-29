@@ -31,6 +31,7 @@
 
 // WebSocket
 #include "websocket.hpp"
+#include "websocketserver.hpp"
 
 #endif // RTC_ENABLE_WEBSOCKET
 

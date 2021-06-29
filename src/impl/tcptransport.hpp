@@ -22,6 +22,7 @@
 #include "common.hpp"
 #include "queue.hpp"
 #include "transport.hpp"
+#include "selectinterrupter.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -33,27 +34,10 @@
 
 namespace rtc::impl {
 
-// Utility class to interrupt select()
-class SelectInterrupter {
-public:
-	SelectInterrupter();
-	~SelectInterrupter();
-
-	int prepare(fd_set &readfds, fd_set &writefds);
-	void interrupt();
-
-private:
-	std::mutex mMutex;
-#ifdef _WIN32
-	socket_t mDummySock = INVALID_SOCKET;
-#else // assume POSIX
-	int mPipeIn, mPipeOut;
-#endif
-};
-
 class TcpTransport : public Transport {
 public:
-	TcpTransport(const string &hostname, const string &service, state_callback callback);
+	TcpTransport(string hostname, string service, state_callback callback); // active
+	TcpTransport(socket_t sock, state_callback callback);                   // passive
 	~TcpTransport();
 
 	void start() override;
@@ -62,6 +46,10 @@ public:
 
 	void incoming(message_ptr message) override;
 	bool outgoing(message_ptr message) override;
+
+	bool isActive() const { return mIsActive; }
+
+	string remoteAddress() const;
 
 private:
 	void connect(const string &hostname, const string &service);
@@ -73,9 +61,7 @@ private:
 
 	void runLoop();
 
-	int prepareSelect(fd_set &readfds, fd_set &writefds);
-	void interruptSelect();
-
+	const bool mIsActive;
 	string mHostname, mService;
 
 	socket_t mSock = INVALID_SOCKET;

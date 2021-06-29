@@ -41,10 +41,10 @@ struct WebSocket final : public Channel, public std::enable_shared_from_this<Web
 	using State = rtc::WebSocket::State;
 	using Configuration = rtc::WebSocket::Configuration;
 
-	WebSocket(Configuration config_);
+	WebSocket(optional<Configuration> optConfig = nullopt, certificate_ptr certificate = nullptr);
 	~WebSocket();
 
-	void parse(const string &url);
+	void open(const string &url);
 	void close();
 	bool outgoing(message_ptr message);
 	void incoming(message_ptr message);
@@ -60,26 +60,32 @@ struct WebSocket final : public Channel, public std::enable_shared_from_this<Web
 	bool changeState(State state);
 	void remoteClose();
 
-	shared_ptr<TcpTransport> initTcpTransport();
+	shared_ptr<TcpTransport> setTcpTransport(shared_ptr<TcpTransport> transport);
 	shared_ptr<TlsTransport> initTlsTransport();
 	shared_ptr<WsTransport> initWsTransport();
 	shared_ptr<TcpTransport> getTcpTransport() const;
 	shared_ptr<TlsTransport> getTlsTransport() const;
 	shared_ptr<WsTransport> getWsTransport() const;
+	shared_ptr<WsHandshake> getWsHandshake() const;
 
 	void closeTransports();
 
 	const Configuration config;
+
 	std::atomic<State> state = State::Closed;
 
 private:
 	const init_token mInitToken = Init::Token();
 
+	const certificate_ptr mCertificate;
+	bool mIsSecure;
+
+	optional<string> mHostname; // for TLS SNI
+
 	shared_ptr<TcpTransport> mTcpTransport;
 	shared_ptr<TlsTransport> mTlsTransport;
 	shared_ptr<WsTransport> mWsTransport;
-
-	string mScheme, mHost, mHostname, mService, mPath;
+	shared_ptr<WsHandshake> mWsHandshake;
 
 	Queue<message_ptr> mRecvQueue;
 };

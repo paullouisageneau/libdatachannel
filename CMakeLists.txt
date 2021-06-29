@@ -49,6 +49,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpreceivingsession.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/track.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/websocket.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/websocketserver.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizationconfig.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsrreporter.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizer.cpp
@@ -115,11 +116,16 @@ set(LIBDATACHANNEL_IMPL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/track.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/base64.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sha.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/selectinterrupter.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcpserver.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcptransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tlstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/verifiedtlstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocket.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocketserver.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wshandshake.cpp
 )
 
 set(LIBDATACHANNEL_IMPL_HEADERS
@@ -140,11 +146,16 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/track.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/base64.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sha.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/selectinterrupter.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcpserver.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcptransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tlstransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/verifiedtlstransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocket.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocketserver.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wstransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wshandshake.hpp
 )
 
 set(TESTS_SOURCES
@@ -155,6 +166,8 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_track.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/websocket.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/websocketserver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_websocketserver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
 )
 
@@ -282,9 +295,15 @@ if (USE_GNUTLS)
 	target_compile_definitions(datachannel-static PRIVATE USE_GNUTLS=1)
 	target_link_libraries(datachannel PRIVATE GnuTLS::GnuTLS)
 	target_link_libraries(datachannel-static PRIVATE GnuTLS::GnuTLS)
+	if (NOT NO_WEBSOCKET)
+		# Needed for SHA1, it should be present as GnuTLS cryptography backend
+		find_package(Nettle REQUIRED)
+		target_link_libraries(datachannel PRIVATE Nettle::Nettle)
+		target_link_libraries(datachannel-static PRIVATE Nettle::Nettle)
+	endif()
 else()
 	if(APPLE)
-		# This is a bug in CMake that causes it to prefer the system version over 
+		# This is a bug in CMake that causes it to prefer the system version over
 		# the one in the specified ROOT folder
 		if(EXISTS ${OPENSSL_ROOT_DIR})
 			set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_ROOT_DIR}/lib/libcrypto.dylib" CACHE FILEPATH "" FORCE)
@@ -390,13 +409,17 @@ endif()
 if(NOT NO_EXAMPLES)
 	set(JSON_BuildTests OFF CACHE INTERNAL "")
 	add_subdirectory(deps/json EXCLUDE_FROM_ALL)
-	add_subdirectory(examples/client)
-	add_subdirectory(examples/client-benchmark)
-if(NOT NO_MEDIA)
-	add_subdirectory(examples/media)
-	add_subdirectory(examples/sfu-media)
-    add_subdirectory(examples/streamer)
-endif()
+	if(NOT NO_WEBSOCKET)
+		add_subdirectory(examples/client)
+		add_subdirectory(examples/client-benchmark)
+	endif()
+	if(NOT NO_MEDIA)
+		add_subdirectory(examples/media)
+		add_subdirectory(examples/sfu-media)
+	endif()
+	if(NOT NO_MEDIA AND NOT NO_WEBSOCKET)
+    	add_subdirectory(examples/streamer)
+	endif()
 	add_subdirectory(examples/copy-paste)
 	add_subdirectory(examples/copy-paste-capi)
 endif()

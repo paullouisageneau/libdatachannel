@@ -28,70 +28,37 @@
 
 namespace rtc::impl {
 
-const string COMMON_NAME = "libdatachannel";
-
 #if USE_GNUTLS
 
-Certificate::Certificate(string crt_pem, string key_pem)
-    : mCredentials(gnutls::new_credentials(), gnutls::free_credentials) {
+Certificate Certificate::FromString(string crt_pem, string key_pem) {
+	PLOG_DEBUG << "Importing certificate from PEM string (GnuTLS)";
 
+	shared_ptr<gnutls_certificate_credentials_t> creds(gnutls::new_credentials(),
+	                                                   gnutls::free_credentials);
 	gnutls_datum_t crt_datum = gnutls::make_datum(crt_pem.data(), crt_pem.size());
 	gnutls_datum_t key_datum = gnutls::make_datum(key_pem.data(), key_pem.size());
+	gnutls::check(
+	    gnutls_certificate_set_x509_key_mem(*creds, &crt_datum, &key_datum, GNUTLS_X509_FMT_PEM),
+	    "Unable to import PEM certificate and key");
 
-	gnutls::check(gnutls_certificate_set_x509_key_mem(*mCredentials, &crt_datum, &key_datum,
-	                                                  GNUTLS_X509_FMT_PEM),
-	              "Unable to import PEM");
-
-	auto new_crt_list = [this]() -> gnutls_x509_crt_t * {
-		gnutls_x509_crt_t *crt_list = nullptr;
-		unsigned int crt_list_size = 0;
-		gnutls::check(gnutls_certificate_get_x509_crt(*mCredentials, 0, &crt_list, &crt_list_size));
-		assert(crt_list_size == 1);
-		return crt_list;
-	};
-
-	auto free_crt_list = [](gnutls_x509_crt_t *crt_list) {
-		gnutls_x509_crt_deinit(crt_list[0]);
-		gnutls_free(crt_list);
-	};
-
-	unique_ptr<gnutls_x509_crt_t, decltype(free_crt_list)> crt_list(new_crt_list(), free_crt_list);
-
-	mFingerprint = make_fingerprint(*crt_list);
+	return Certificate(std::move(creds));
 }
 
-Certificate::Certificate(gnutls_x509_crt_t crt, gnutls_x509_privkey_t privkey)
-    : mCredentials(gnutls::new_credentials(), gnutls::free_credentials),
-      mFingerprint(make_fingerprint(crt)) {
+Certificate Certificate::FromFile(const string &crt_pem_file, const string &key_pem_file,
+                                  const string &pass) {
+	PLOG_DEBUG << "Importing certificate from PEM file (GnuTLS): " << crt_pem_file;
 
-	gnutls::check(gnutls_certificate_set_x509_key(*mCredentials, &crt, 1, privkey),
-	              "Unable to set certificate and key pair in credentials");
+	shared_ptr<gnutls_certificate_credentials_t> creds(gnutls::new_credentials(),
+	                                                   gnutls::free_credentials);
+	gnutls::check(gnutls_certificate_set_x509_key_file2(*creds, crt_pem_file.c_str(),
+	                                                    key_pem_file.c_str(), GNUTLS_X509_FMT_PEM,
+	                                                    pass.c_str(), 0),
+	              "Unable to import PEM certificate and key from file");
+
+	return Certificate(std::move(creds));
 }
 
-gnutls_certificate_credentials_t Certificate::credentials() const { return *mCredentials; }
-
-string Certificate::fingerprint() const { return mFingerprint; }
-
-string make_fingerprint(gnutls_x509_crt_t crt) {
-	const size_t size = 32;
-	unsigned char buffer[size];
-	size_t len = size;
-	gnutls::check(gnutls_x509_crt_get_fingerprint(crt, GNUTLS_DIG_SHA256, buffer, &len),
-	              "X509 fingerprint error");
-
-	std::ostringstream oss;
-	oss << std::hex << std::uppercase << std::setfill('0');
-	for (size_t i = 0; i < len; ++i) {
-		if (i)
-			oss << std::setw(1) << ':';
-		oss << std::setw(2) << unsigned(buffer[i]);
-	}
-	return oss.str();
-}
-
-namespace {
-
-certificate_ptr make_certificate_impl(CertificateType type) {
+Certificate Certificate::Generate(CertificateType type, const string &commonName) {
 	PLOG_DEBUG << "Generating certificate (GnuTLS)";
 
 	using namespace gnutls;
@@ -127,8 +94,8 @@ certificate_ptr make_certificate_impl(CertificateType type) {
 	gnutls_x509_crt_set_expiration_time(*crt, (now + hours(24 * 365)).time_since_epoch().count());
 	gnutls_x509_crt_set_version(*crt, 1);
 	gnutls_x509_crt_set_key(*crt, *privkey);
-	gnutls_x509_crt_set_dn_by_oid(*crt, GNUTLS_OID_X520_COMMON_NAME, 0, COMMON_NAME.data(),
-	                              COMMON_NAME.size());
+	gnutls_x509_crt_set_dn_by_oid(*crt, GNUTLS_OID_X520_COMMON_NAME, 0, commonName.data(),
+	                              commonName.size());
 
 	const size_t serialSize = 16;
 	char serial[serialSize];
@@ -138,48 +105,49 @@ certificate_ptr make_certificate_impl(CertificateType type) {
 	gnutls::check(gnutls_x509_crt_sign2(*crt, *crt, *privkey, GNUTLS_DIG_SHA256, 0),
 	              "Unable to auto-sign certificate");
 
-	return std::make_shared<Certificate>(*crt, *privkey);
+	return Certificate(*crt, *privkey);
 }
 
-} // namespace
+Certificate::Certificate(gnutls_x509_crt_t crt, gnutls_x509_privkey_t privkey)
+    : mCredentials(gnutls::new_credentials(), gnutls::free_credentials),
+      mFingerprint(make_fingerprint(crt)) {
 
-#else // USE_GNUTLS==0
-
-Certificate::Certificate(string crt_pem, string key_pem) {
-	BIO *bio = BIO_new(BIO_s_mem());
-	BIO_write(bio, crt_pem.data(), int(crt_pem.size()));
-	mX509 = shared_ptr<X509>(PEM_read_bio_X509(bio, nullptr, 0, 0), X509_free);
-	BIO_free(bio);
-	if (!mX509)
-		throw std::invalid_argument("Unable to import certificate PEM");
-
-	bio = BIO_new(BIO_s_mem());
-	BIO_write(bio, key_pem.data(), int(key_pem.size()));
-	mPKey = shared_ptr<EVP_PKEY>(PEM_read_bio_PrivateKey(bio, nullptr, 0, 0), EVP_PKEY_free);
-	BIO_free(bio);
-	if (!mPKey)
-		throw std::invalid_argument("Unable to import PEM key PEM");
-
-	mFingerprint = make_fingerprint(mX509.get());
+	gnutls::check(gnutls_certificate_set_x509_key(*mCredentials, &crt, 1, privkey),
+	              "Unable to set certificate and key pair in credentials");
 }
 
-Certificate::Certificate(shared_ptr<X509> x509, shared_ptr<EVP_PKEY> pkey)
-    : mX509(std::move(x509)), mPKey(std::move(pkey)) {
-	mFingerprint = make_fingerprint(mX509.get());
-}
+Certificate::Certificate(shared_ptr<gnutls_certificate_credentials_t> creds)
+    : mCredentials(std::move(creds)), mFingerprint(make_fingerprint(*mCredentials)) {}
+
+gnutls_certificate_credentials_t Certificate::credentials() const { return *mCredentials; }
 
 string Certificate::fingerprint() const { return mFingerprint; }
 
-std::tuple<X509 *, EVP_PKEY *> Certificate::credentials() const {
-	return {mX509.get(), mPKey.get()};
+string make_fingerprint(gnutls_certificate_credentials_t credentials) {
+	auto new_crt_list = [credentials]() -> gnutls_x509_crt_t * {
+		gnutls_x509_crt_t *crt_list = nullptr;
+		unsigned int crt_list_size = 0;
+		gnutls::check(gnutls_certificate_get_x509_crt(credentials, 0, &crt_list, &crt_list_size));
+		assert(crt_list_size == 1);
+		return crt_list;
+	};
+
+	auto free_crt_list = [](gnutls_x509_crt_t *crt_list) {
+		gnutls_x509_crt_deinit(crt_list[0]);
+		gnutls_free(crt_list);
+	};
+
+	unique_ptr<gnutls_x509_crt_t, decltype(free_crt_list)> crt_list(new_crt_list(), free_crt_list);
+
+	return make_fingerprint(*crt_list);
 }
 
-string make_fingerprint(X509 *x509) {
+string make_fingerprint(gnutls_x509_crt_t crt) {
 	const size_t size = 32;
 	unsigned char buffer[size];
-	unsigned int len = size;
-	if (!X509_digest(x509, EVP_sha256(), buffer, &len))
-		throw std::runtime_error("X509 fingerprint error");
+	size_t len = size;
+	gnutls::check(gnutls_x509_crt_get_fingerprint(crt, GNUTLS_DIG_SHA256, buffer, &len),
+	              "X509 fingerprint error");
 
 	std::ostringstream oss;
 	oss << std::hex << std::uppercase << std::setfill('0');
@@ -191,9 +159,69 @@ string make_fingerprint(X509 *x509) {
 	return oss.str();
 }
 
+#else // USE_GNUTLS==0
+
+#include <cstdio>
+
 namespace {
 
-certificate_ptr make_certificate_impl(CertificateType type) {
+// Dummy password callback that copies the password from user data
+int dummy_pass_cb(char *buf, int size, int /*rwflag*/, void *u) {
+	const char *pass = static_cast<char *>(u);
+	return snprintf(buf, size, "%s", pass);
+}
+
+} // namespace
+
+Certificate Certificate::FromString(string crt_pem, string key_pem) {
+	PLOG_DEBUG << "Importing certificate from PEM string (OpenSSL)";
+
+	BIO *bio = BIO_new(BIO_s_mem());
+	BIO_write(bio, crt_pem.data(), int(crt_pem.size()));
+	auto x509 = shared_ptr<X509>(PEM_read_bio_X509(bio, nullptr, nullptr, nullptr), X509_free);
+	BIO_free(bio);
+	if (!x509)
+		throw std::invalid_argument("Unable to import PEM certificate");
+
+	bio = BIO_new(BIO_s_mem());
+	BIO_write(bio, key_pem.data(), int(key_pem.size()));
+	auto pkey = shared_ptr<EVP_PKEY>(PEM_read_bio_PrivateKey(bio, nullptr, nullptr, nullptr),
+	                                 EVP_PKEY_free);
+	BIO_free(bio);
+	if (!pkey)
+		throw std::invalid_argument("Unable to import PEM key");
+
+	return Certificate(x509, pkey);
+}
+
+Certificate Certificate::FromFile(const string &crt_pem_file, const string &key_pem_file,
+                                  const string &pass) {
+	PLOG_DEBUG << "Importing certificate from PEM file (OpenSSL): " << crt_pem_file;
+
+	FILE *file = fopen(crt_pem_file.c_str(), "r");
+	if (!file)
+		throw std::invalid_argument("Unable to open PEM certificate file");
+
+	auto x509 = shared_ptr<X509>(PEM_read_X509(file, nullptr, nullptr, nullptr), X509_free);
+	fclose(file);
+	if (!x509)
+		throw std::invalid_argument("Unable to import PEM certificate from file");
+
+	file = fopen(key_pem_file.c_str(), "r");
+	if (!file)
+		throw std::invalid_argument("Unable to open PEM key file");
+
+	auto pkey = shared_ptr<EVP_PKEY>(
+	    PEM_read_PrivateKey(file, nullptr, dummy_pass_cb, const_cast<char *>(pass.c_str())),
+	    EVP_PKEY_free);
+	fclose(file);
+	if (!pkey)
+		throw std::invalid_argument("Unable to import PEM key from file");
+
+	return Certificate(x509, pkey);
+}
+
+Certificate Certificate::Generate(CertificateType type, const string &commonName) {
 	PLOG_DEBUG << "Generating certificate (OpenSSL)";
 
 	shared_ptr<X509> x509(X509_new(), X509_free);
@@ -212,8 +240,8 @@ certificate_ptr make_certificate_impl(CertificateType type) {
 	case CertificateType::Ecdsa: {
 		PLOG_VERBOSE << "Generating ECDSA P-256 key pair";
 
-		unique_ptr<EC_KEY, decltype(&EC_KEY_free)> ecc(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1),
-		                                               EC_KEY_free);
+		unique_ptr<EC_KEY, decltype(&EC_KEY_free)> ecc(
+		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
 		if (!ecc)
 			throw std::runtime_error("Unable to allocate structure for ECDSA P-256 key pair");
 
@@ -250,7 +278,7 @@ certificate_ptr make_certificate_impl(CertificateType type) {
 
 	const size_t serialSize = 16;
 	auto *commonNameBytes =
-	    reinterpret_cast<unsigned char *>(const_cast<char *>(COMMON_NAME.c_str()));
+	    reinterpret_cast<unsigned char *>(const_cast<char *>(commonName.c_str()));
 
 	if (!X509_set_pubkey(x509.get(), pkey.get()))
 		throw std::runtime_error("Unable to set certificate public key");
@@ -269,17 +297,43 @@ certificate_ptr make_certificate_impl(CertificateType type) {
 	if (!X509_sign(x509.get(), pkey.get(), EVP_sha256()))
 		throw std::runtime_error("Unable to auto-sign certificate");
 
-	return std::make_shared<Certificate>(x509, pkey);
+	return Certificate(x509, pkey);
 }
 
-} // namespace
+Certificate::Certificate(shared_ptr<X509> x509, shared_ptr<EVP_PKEY> pkey)
+    : mX509(std::move(x509)), mPKey(std::move(pkey)), mFingerprint(make_fingerprint(mX509.get())) {}
+
+string Certificate::fingerprint() const { return mFingerprint; }
+
+std::tuple<X509 *, EVP_PKEY *> Certificate::credentials() const {
+	return {mX509.get(), mPKey.get()};
+}
+
+string make_fingerprint(X509 *x509) {
+	const size_t size = 32;
+	unsigned char buffer[size];
+	unsigned int len = size;
+	if (!X509_digest(x509, EVP_sha256(), buffer, &len))
+		throw std::runtime_error("X509 fingerprint error");
+
+	std::ostringstream oss;
+	oss << std::hex << std::uppercase << std::setfill('0');
+	for (size_t i = 0; i < len; ++i) {
+		if (i)
+			oss << std::setw(1) << ':';
+		oss << std::setw(2) << unsigned(buffer[i]);
+	}
+	return oss.str();
+}
 
 #endif
 
 // Common for GnuTLS and OpenSSL
 
 future_certificate_ptr make_certificate(CertificateType type) {
-	return ThreadPool::Instance().enqueue(make_certificate_impl, type);
+	return ThreadPool::Instance().enqueue([type]() {
+		return std::make_shared<Certificate>(Certificate::Generate(type, "libdatachannel"));
+	});
 }
 
 } // namespace rtc::impl

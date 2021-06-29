@@ -29,6 +29,8 @@ void test_track();
 void test_capi_connectivity();
 void test_capi_track();
 void test_websocket();
+void test_websocketserver();
+void test_capi_websocketserver();
 size_t benchmark(chrono::milliseconds duration);
 
 void test_benchmark() {
@@ -101,8 +103,25 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 */
+	try {
+		cout << endl << "*** Running WebSocketServer test..." << endl;
+		test_websocketserver();
+		cout << "*** Finished WebSocketServer test" << endl;
+	} catch (const exception &e) {
+		cerr << "WebSocketServer test failed: " << e.what() << endl;
+		return -1;
+	}
+	try {
+		cout << endl << "*** Running WebSocketServer C API test..." << endl;
+		test_capi_websocketserver();
+		cout << "*** Finished WebSocketServer C API test" << endl;
+	} catch (const exception &e) {
+		cerr << "WebSocketServer C API test failed: " << e.what() << endl;
+		return -1;
+	}
 #endif
-	this_thread::sleep_for(1s);
+/*
+    this_thread::sleep_for(1s);
 	try {
 		cout << endl << "*** Running WebRTC benchmark..." << endl;
 		test_benchmark();
@@ -112,7 +131,7 @@ int main(int argc, char **argv) {
 		std::this_thread::sleep_for(2s);
 		return -1;
 	}
-
-	std::this_thread::sleep_for(2s);
+*/
+	std::this_thread::sleep_for(1s);
 	return 0;
 }
