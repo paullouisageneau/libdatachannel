@@ -357,7 +357,6 @@ RTC_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
                                         rtcWebSocketClientCallbackFunc cb); // returns wsserver id
 RTC_EXPORT int rtcDeleteWebSocketServer(int wsserver);
 
-RTC_EXPORT int rtcSetWebSocketClientCallback(int wsserver, rtcWebSocketClientCallbackFunc cb);
 RTC_EXPORT int rtcGetWebSocketServerPort(int wsserver);
 
 #endif
