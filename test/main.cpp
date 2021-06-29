@@ -120,7 +120,8 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 #endif
-	this_thread::sleep_for(1s);
+/*
+    this_thread::sleep_for(1s);
 	try {
 		cout << endl << "*** Running WebRTC benchmark..." << endl;
 		test_benchmark();
@@ -130,7 +131,7 @@ int main(int argc, char **argv) {
 		std::this_thread::sleep_for(2s);
 		return -1;
 	}
-
-	std::this_thread::sleep_for(2s);
+*/
+	std::this_thread::sleep_for(1s);
 	return 0;
 }
