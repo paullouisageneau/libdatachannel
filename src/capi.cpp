@@ -675,7 +675,7 @@ int rtcSendMessage(int id, const char *data, int size) {
 	});
 }
 
-int rtcIsOpen(int id) {
+bool rtcIsOpen(int id) {
 	return wrap([id] { return getChannel(id)->isOpen(); });
 }
 
