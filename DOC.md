@@ -72,6 +72,7 @@ typedef struct {
 	const char **iceServers;
 	int iceServersCount;
 	rtcCertificateType certificateType;
+	rtcTransportPolicy iceTransportPolicy;
 	bool enableIceTcp;
 	bool disableAutoNegotiation;
 	uint16_t portRangeBegin;
@@ -88,6 +89,7 @@ Arguments:
   - `iceServersCount` (optional): number of URLs in the array pointed by `iceServers` (0 if unused)
   - `bindAddress` (optional): if non-NULL, bind only to the given local address (ignored with libnice as ICE backend)
   - `certificateType` (optional): certificate type, either `RTC_CERTIFICATE_ECDSA` or `RTC_CERTIFICATE_RSA` (0 or `RTC_CERTIFICATE_DEFAULT` if default)
+  - `iceTransportPolicy` (optional): ICE transport policy, if set to `RTC_TRANSPORT_POLICY_RELAY`, the PeerConnection will emit only relayed candidates (0 or `RTC_TRANSPORT_POLICY_ALL` if default)
   - `enableIceTcp`: if true, generate TCP candidates for ICE (ignored with libjuice as ICE backend)
   - `disableAutoNegotiation`: if true, the user is responsible for calling `rtcSetLocalDescription` after creating a Data Channel and after setting the remote description
   - `portRangeBegin` (optional): first port (included) of the allowed local port range (0 if unused)
