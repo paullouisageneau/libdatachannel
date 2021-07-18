@@ -113,6 +113,11 @@ typedef enum {
 	RTC_DIRECTION_INACTIVE = 4
 } rtcDirection;
 
+typedef enum {
+	RTC_TRANSPORT_POLICY_ALL = 0,
+	RTC_TRANSPORT_POLICY_RELAY = 1
+} rtcTransportPolicy;
+
 #define RTC_ERR_SUCCESS 0
 #define RTC_ERR_INVALID -1   // invalid argument
 #define RTC_ERR_FAILURE -2   // runtime error
@@ -152,6 +157,7 @@ typedef struct {
 	int iceServersCount;
 	const char *bindAddress; // libjuice only, NULL means any
 	rtcCertificateType certificateType;
+	rtcTransportPolicy iceTransportPolicy;
 	bool enableIceTcp;
 	bool disableAutoNegotiation;
 	uint16_t portRangeBegin; // 0 means automatic

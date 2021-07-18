@@ -70,6 +70,11 @@ enum class CertificateType {
 	Rsa = RTC_CERTIFICATE_RSA
 };
 
+enum class TransportPolicy {
+	All = RTC_TRANSPORT_POLICY_ALL,
+	Relay = RTC_TRANSPORT_POLICY_RELAY
+};
+
 struct RTC_CPP_EXPORT Configuration {
 	// ICE settings
 	std::vector<IceServer> iceServers;
@@ -78,6 +83,7 @@ struct RTC_CPP_EXPORT Configuration {
 
 	// Options
 	CertificateType certificateType = CertificateType::Default;
+	TransportPolicy iceTransportPolicy = TransportPolicy::All;
 	bool enableIceTcp = false;
 	bool disableAutoNegotiation = false;
 
