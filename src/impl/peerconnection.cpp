@@ -872,6 +872,8 @@ void PeerConnection::processLocalDescription(Description description) {
 	// Set local fingerprint (wait for certificate if necessary)
 	description.setFingerprint(mCertificate.get()->fingerprint());
 
+	PLOG_VERBOSE << "Issuing local description: " << description;
+
 	{
 		// Set as local description
 		std::lock_guard lock(mLocalDescriptionMutex);
@@ -886,7 +888,6 @@ void PeerConnection::processLocalDescription(Description description) {
 		mLocalDescription->addCandidates(std::move(existingCandidates));
 	}
 
-	PLOG_VERBOSE << "Issuing local description: " << description;
 	mProcessor->enqueue(localDescriptionCallback.wrap(), std::move(description));
 
 	// Reciprocated tracks might need to be open
@@ -900,10 +901,16 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 	if (!mLocalDescription)
 		throw std::logic_error("Got a local candidate without local description");
 
+	if(config.iceTransportPolicy == TransportPolicy::Relay && candidate.type() != Candidate::Type::Relayed) {
+		PLOG_VERBOSE << "Not issuing local candidate because of transport policy: " << candidate;
+		return;
+	}
+
+	PLOG_VERBOSE << "Issuing local candidate: " << candidate;
+
 	candidate.resolve(Candidate::ResolveMode::Simple);
 	mLocalDescription->addCandidate(candidate);
 
-	PLOG_VERBOSE << "Issuing local candidate: " << candidate;
 	mProcessor->enqueue(localCandidateCallback.wrap(), std::move(candidate));
 }
 

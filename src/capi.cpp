@@ -343,6 +343,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 		}
 
 		c.certificateType = static_cast<CertificateType>(config->certificateType);
+		c.iceTransportPolicy = static_cast<TransportPolicy>(config->iceTransportPolicy);
 		c.enableIceTcp = config->enableIceTcp;
 		c.disableAutoNegotiation = config->disableAutoNegotiation;
 
