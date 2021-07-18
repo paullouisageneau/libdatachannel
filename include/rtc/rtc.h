@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2019-2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -113,10 +113,7 @@ typedef enum {
 	RTC_DIRECTION_INACTIVE = 4
 } rtcDirection;
 
-typedef enum {
-	RTC_TRANSPORT_POLICY_ALL = 0,
-	RTC_TRANSPORT_POLICY_RELAY = 1
-} rtcTransportPolicy;
+typedef enum { RTC_TRANSPORT_POLICY_ALL = 0, RTC_TRANSPORT_POLICY_RELAY = 1 } rtcTransportPolicy;
 
 #define RTC_ERR_SUCCESS 0
 #define RTC_ERR_INVALID -1   // invalid argument
@@ -191,6 +188,25 @@ RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote,
                                            int remoteSize);
 
+// DataChannel, Track, and WebSocket common API
+
+RTC_EXPORT int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb);
+RTC_EXPORT int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb);
+RTC_EXPORT int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb);
+RTC_EXPORT int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb);
+RTC_EXPORT int rtcSendMessage(int id, const char *data, int size);
+RTC_EXPORT int rtcIsOpen(int id);
+
+RTC_EXPORT int rtcGetBufferedAmount(int id); // total size buffered to send
+RTC_EXPORT int rtcSetBufferedAmountLowThreshold(int id, int amount);
+RTC_EXPORT int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb);
+
+// DataChannel, Track, and WebSocket common extended API
+
+RTC_EXPORT int rtcGetAvailableAmount(int id); // total size available to receive
+RTC_EXPORT int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb);
+RTC_EXPORT int rtcReceiveMessage(int id, char *buffer, int *size);
+
 // DataChannel
 
 typedef struct {
@@ -212,7 +228,6 @@ RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
 RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
 RTC_EXPORT int rtcCreateDataChannelEx(int pc, const char *label,
                                       const rtcDataChannelInit *init); // returns dc id
-RTC_EXPORT int rtcIsOpen(int dc);
 RTC_EXPORT int rtcDeleteDataChannel(int dc);
 
 RTC_EXPORT int rtcGetDataChannelStream(int dc);
@@ -286,47 +301,41 @@ RTC_EXPORT int rtcSetRtpConfigurationStartTime(int id, const rtcStartTime *start
 // Start stats recording for RTCP Sender Reporter
 RTC_EXPORT int rtcStartRtcpSenderReporterRecording(int id);
 
-// Transform seconds to timestamp using track's clock rate
-// Result is written to timestamp
+// Transform seconds to timestamp using track's clock rate, result is written to timestamp
 RTC_EXPORT int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp);
 
-// Transform timestamp to seconds using track's clock rate
-// Result is written to seconds
+// Transform timestamp to seconds using track's clock rate, result is written to seconds
 RTC_EXPORT int rtcTransformTimestampToSeconds(int id, uint32_t timestamp, double *seconds);
 
-// Get current timestamp
-// Result is written to timestamp
+// Get current timestamp, result is written to timestamp
 RTC_EXPORT int rtcGetCurrentTrackTimestamp(int id, uint32_t *timestamp);
 
-// Get start timestamp for track identified by given id
-// Result is written to timestamp
+// Get start timestamp for track identified by given id, result is written to timestamp
 RTC_EXPORT int rtcGetTrackStartTimestamp(int id, uint32_t *timestamp);
 
 // Set RTP timestamp for track identified by given id
 RTC_EXPORT int rtcSetTrackRtpTimestamp(int id, uint32_t timestamp);
 
-// Get timestamp of previous RTCP SR
-// Result is written to timestamp
+// Get timestamp of previous RTCP SR, result is written to timestamp
 RTC_EXPORT int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t *timestamp);
 
 // Set NeedsToReport flag in RtcpSrReporter handler identified by given track id
 RTC_EXPORT int rtcSetNeedsToSendRtcpSr(int id);
 
-/// Get all available payload types for given codec and stores them in buffer, does nothing if
-/// buffer is NULL
+// Get all available payload types for given codec and stores them in buffer, does nothing if
+// buffer is NULL
 int rtcGetTrackPayloadTypesForCodec(int tr, const char *ccodec, int *buffer, int size);
 
-/// Get all SSRCs for given track
+// Get all SSRCs for given track
 int rtcGetSsrcsForTrack(int tr, uint32_t *buffer, int count);
 
-/// Get CName for SSRC
+// Get CName for SSRC
 int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char *cname, int cnameSize);
 
-/// Get all SSRCs for given media type in given SDP
-/// @param mediaType Media type (audio/video)
+// Get all SSRCs for given media type in given SDP
 int rtcGetSsrcsForType(const char *mediaType, const char *sdp, uint32_t *buffer, int bufferSize);
 
-/// Set SSRC for given media type in given SDP
+// Set SSRC for given media type in given SDP
 int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, const int bufferSize,
                       rtcSsrcForTypeInit *init);
 
@@ -366,24 +375,6 @@ RTC_EXPORT int rtcDeleteWebSocketServer(int wsserver);
 RTC_EXPORT int rtcGetWebSocketServerPort(int wsserver);
 
 #endif
-
-// DataChannel, Track, and WebSocket common API
-
-RTC_EXPORT int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb);
-RTC_EXPORT int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb);
-RTC_EXPORT int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb);
-RTC_EXPORT int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb);
-RTC_EXPORT int rtcSendMessage(int id, const char *data, int size);
-
-RTC_EXPORT int rtcGetBufferedAmount(int id); // total size buffered to send
-RTC_EXPORT int rtcSetBufferedAmountLowThreshold(int id, int amount);
-RTC_EXPORT int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb);
-
-// DataChannel, Track, and WebSocket common extended API
-
-RTC_EXPORT int rtcGetAvailableAmount(int id); // total size available to receive
-RTC_EXPORT int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb);
-RTC_EXPORT int rtcReceiveMessage(int id, char *buffer, int *size);
 
 // Optional global preload and cleanup
 

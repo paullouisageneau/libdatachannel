@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019-2020 Paul-Louis Ageneau
+ * Copyright (c) 2019-2021 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -134,7 +134,74 @@ void eraseTrack(int tr) {
 	userPointerMap.erase(tr);
 }
 
+shared_ptr<Channel> getChannel(int id) {
+	std::lock_guard lock(mutex);
+	if (auto it = dataChannelMap.find(id); it != dataChannelMap.end())
+		return it->second;
+	if (auto it = trackMap.find(id); it != trackMap.end())
+		return it->second;
+#if RTC_ENABLE_WEBSOCKET
+	if (auto it = webSocketMap.find(id); it != webSocketMap.end())
+		return it->second;
+#endif
+	throw std::invalid_argument("DataChannel, Track, or WebSocket ID does not exist");
+}
+
+int copyAndReturn(string s, char *buffer, int size) {
+	if (!buffer)
+		return int(s.size() + 1);
+
+	if (size < int(s.size()))
+		return RTC_ERR_TOO_SMALL;
+
+	std::copy(s.begin(), s.end(), buffer);
+	buffer[s.size()] = '\0';
+	return int(s.size() + 1);
+}
+
+int copyAndReturn(binary b, char *buffer, int size) {
+	if (!buffer)
+		return int(b.size());
+
+	if (size < int(b.size()))
+		return RTC_ERR_TOO_SMALL;
+
+	auto data = reinterpret_cast<const char *>(b.data());
+	std::copy(data, data + b.size(), buffer);
+	buffer[b.size()] = '\0';
+	return int(b.size());
+}
+
+template <typename T> int copyAndReturn(std::vector<T> b, T *buffer, int size) {
+	if (!buffer)
+		return int(b.size());
+
+	if (size < int(b.size()))
+		return RTC_ERR_TOO_SMALL;
+	std::copy(b.begin(), b.end(), buffer);
+	return int(b.size());
+}
+
+template <typename F> int wrap(F func) {
+	try {
+		return int(func());
+
+	} catch (const std::invalid_argument &e) {
+		PLOG_ERROR << e.what();
+		return RTC_ERR_INVALID;
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+		return RTC_ERR_FAILURE;
+	}
+}
+
 #if RTC_ENABLE_MEDIA
+
+string lowercased(string str) {
+	std::transform(str.begin(), str.end(), str.begin(),
+	               [](unsigned char c) { return std::tolower(c); });
+	return str;
+}
 
 shared_ptr<RtcpSrReporter> getRtcpSrReporter(int id) {
 	std::lock_guard lock(mutex);
@@ -243,75 +310,6 @@ void eraseWebSocketServer(int wsserver) {
 
 #endif
 
-shared_ptr<Channel> getChannel(int id) {
-	std::lock_guard lock(mutex);
-	if (auto it = dataChannelMap.find(id); it != dataChannelMap.end())
-		return it->second;
-	if (auto it = trackMap.find(id); it != trackMap.end())
-		return it->second;
-#if RTC_ENABLE_WEBSOCKET
-	if (auto it = webSocketMap.find(id); it != webSocketMap.end())
-		return it->second;
-#endif
-	throw std::invalid_argument("DataChannel, Track, or WebSocket ID does not exist");
-}
-
-template <typename F> int wrap(F func) {
-	try {
-		return int(func());
-
-	} catch (const std::invalid_argument &e) {
-		PLOG_ERROR << e.what();
-		return RTC_ERR_INVALID;
-	} catch (const std::exception &e) {
-		PLOG_ERROR << e.what();
-		return RTC_ERR_FAILURE;
-	}
-}
-
-int copyAndReturn(string s, char *buffer, int size) {
-	if (!buffer)
-		return int(s.size() + 1);
-
-	if (size < int(s.size()))
-		return RTC_ERR_TOO_SMALL;
-
-	std::copy(s.begin(), s.end(), buffer);
-	buffer[s.size()] = '\0';
-	return int(s.size() + 1);
-}
-
-int copyAndReturn(binary b, char *buffer, int size) {
-	if (!buffer)
-		return int(b.size());
-
-	if (size < int(b.size()))
-		return RTC_ERR_TOO_SMALL;
-
-	auto data = reinterpret_cast<const char *>(b.data());
-	std::copy(data, data + b.size(), buffer);
-	buffer[b.size()] = '\0';
-	return int(b.size());
-}
-
-template <typename T> int copyAndReturn(std::vector<T> b, T *buffer, int size) {
-	if (!buffer)
-		return int(b.size());
-
-	if (size < int(b.size()))
-		return RTC_ERR_TOO_SMALL;
-	std::copy(b.begin(), b.end(), buffer);
-	return int(b.size());
-}
-
-#if RTC_ENABLE_MEDIA
-// function is used in RTC_ENABLE_MEDIA only
-string lowercased(string str) {
-	std::transform(str.begin(), str.end(), str.begin(),
-	               [](unsigned char c) { return std::tolower(c); });
-	return str;
-}
-#endif // RTC_ENABLE_MEDIA
 } // namespace
 
 void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb) {
@@ -372,6 +370,404 @@ int rtcDeletePeerConnection(int pc) {
 	});
 }
 
+int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onLocalDescription([pc, cb](Description desc) {
+				if (auto ptr = getUserPointer(pc))
+					cb(pc, string(desc).c_str(), desc.typeString().c_str(), *ptr);
+			});
+		else
+			peerConnection->onLocalDescription(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onLocalCandidate([pc, cb](Candidate cand) {
+				if (auto ptr = getUserPointer(pc))
+					cb(pc, cand.candidate().c_str(), cand.mid().c_str(), *ptr);
+			});
+		else
+			peerConnection->onLocalCandidate(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onStateChange([pc, cb](PeerConnection::State state) {
+				if (auto ptr = getUserPointer(pc))
+					cb(pc, static_cast<rtcState>(state), *ptr);
+			});
+		else
+			peerConnection->onStateChange(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onGatheringStateChange([pc, cb](PeerConnection::GatheringState state) {
+				if (auto ptr = getUserPointer(pc))
+					cb(pc, static_cast<rtcGatheringState>(state), *ptr);
+			});
+		else
+			peerConnection->onGatheringStateChange(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onSignalingStateChange([pc, cb](PeerConnection::SignalingState state) {
+				if (auto ptr = getUserPointer(pc))
+					cb(pc, static_cast<rtcSignalingState>(state), *ptr);
+			});
+		else
+			peerConnection->onGatheringStateChange(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onDataChannel([pc, cb](shared_ptr<DataChannel> dataChannel) {
+				int dc = emplaceDataChannel(dataChannel);
+				if (auto ptr = getUserPointer(pc)) {
+					rtcSetUserPointer(dc, *ptr);
+					cb(pc, dc, *ptr);
+				}
+			});
+		else
+			peerConnection->onDataChannel(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onTrack([pc, cb](shared_ptr<Track> track) {
+				int tr = emplaceTrack(track);
+				if (auto ptr = getUserPointer(pc)) {
+					rtcSetUserPointer(tr, *ptr);
+					cb(pc, tr, *ptr);
+				}
+			});
+		else
+			peerConnection->onTrack(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetLocalDescription(int pc, const char *type) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		peerConnection->setLocalDescription(type ? Description::stringToType(type)
+		                                         : Description::Type::Unspec);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetRemoteDescription(int pc, const char *sdp, const char *type) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		if (!sdp)
+			throw std::invalid_argument("Unexpected null pointer for remote description");
+
+		peerConnection->setRemoteDescription({string(sdp), type ? string(type) : ""});
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		if (!cand)
+			throw std::invalid_argument("Unexpected null pointer for remote candidate");
+
+		peerConnection->addRemoteCandidate({string(cand), mid ? string(mid) : ""});
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcGetLocalDescription(int pc, char *buffer, int size) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		if (auto desc = peerConnection->localDescription())
+			return copyAndReturn(string(*desc), buffer, size);
+		else
+			return RTC_ERR_NOT_AVAIL;
+	});
+}
+
+int rtcGetRemoteDescription(int pc, char *buffer, int size) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		if (auto desc = peerConnection->remoteDescription())
+			return copyAndReturn(string(*desc), buffer, size);
+		else
+			return RTC_ERR_NOT_AVAIL;
+	});
+}
+
+int rtcGetLocalDescriptionType(int pc, char *buffer, int size) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		if (auto desc = peerConnection->localDescription())
+			return copyAndReturn(desc->typeString(), buffer, size);
+		else
+			return RTC_ERR_NOT_AVAIL;
+	});
+}
+
+int rtcGetRemoteDescriptionType(int pc, char *buffer, int size) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		if (auto desc = peerConnection->remoteDescription())
+			return copyAndReturn(desc->typeString(), buffer, size);
+		else
+			return RTC_ERR_NOT_AVAIL;
+	});
+}
+
+int rtcGetLocalAddress(int pc, char *buffer, int size) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		if (auto addr = peerConnection->localAddress())
+			return copyAndReturn(std::move(*addr), buffer, size);
+		else
+			return RTC_ERR_NOT_AVAIL;
+	});
+}
+
+int rtcGetRemoteAddress(int pc, char *buffer, int size) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		if (auto addr = peerConnection->remoteAddress())
+			return copyAndReturn(std::move(*addr), buffer, size);
+		else
+			return RTC_ERR_NOT_AVAIL;
+	});
+}
+
+int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote, int remoteSize) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		Candidate localCand;
+		Candidate remoteCand;
+		if (!peerConnection->getSelectedCandidatePair(&localCand, &remoteCand))
+			return RTC_ERR_NOT_AVAIL;
+
+		int localRet = copyAndReturn(string(localCand), local, localSize);
+		if (localRet < 0)
+			return localRet;
+
+		int remoteRet = copyAndReturn(string(remoteCand), remote, remoteSize);
+		if (remoteRet < 0)
+			return remoteRet;
+
+		return std::max(localRet, remoteRet);
+	});
+}
+
+int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb) {
+	return wrap([&] {
+		auto channel = getChannel(id);
+		if (cb)
+			channel->onOpen([id, cb]() {
+				if (auto ptr = getUserPointer(id))
+					cb(id, *ptr);
+			});
+		else
+			channel->onOpen(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb) {
+	return wrap([&] {
+		auto channel = getChannel(id);
+		if (cb)
+			channel->onClosed([id, cb]() {
+				if (auto ptr = getUserPointer(id))
+					cb(id, *ptr);
+			});
+		else
+			channel->onClosed(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb) {
+	return wrap([&] {
+		auto channel = getChannel(id);
+		if (cb)
+			channel->onError([id, cb](string error) {
+				if (auto ptr = getUserPointer(id))
+					cb(id, error.c_str(), *ptr);
+			});
+		else
+			channel->onError(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb) {
+	return wrap([&] {
+		auto channel = getChannel(id);
+		if (cb)
+			channel->onMessage(
+			    [id, cb](binary b) {
+				    if (auto ptr = getUserPointer(id))
+					    cb(id, reinterpret_cast<const char *>(b.data()), int(b.size()), *ptr);
+			    },
+			    [id, cb](string s) {
+				    if (auto ptr = getUserPointer(id))
+					    cb(id, s.c_str(), -int(s.size() + 1), *ptr);
+			    });
+		else
+			channel->onMessage(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSendMessage(int id, const char *data, int size) {
+	return wrap([&] {
+		auto channel = getChannel(id);
+
+		if (!data && size != 0)
+			throw std::invalid_argument("Unexpected null pointer for data");
+
+		if (size >= 0) {
+			auto b = reinterpret_cast<const byte *>(data);
+			channel->send(binary(b, b + size));
+			return size;
+		} else {
+			string str(data);
+			int len = int(str.size());
+			channel->send(std::move(str));
+			return len;
+		}
+	});
+}
+
+int rtcIsOpen(int id) {
+	return wrap([id] { return getChannel(id)->isOpen(); });
+}
+
+int rtcGetBufferedAmount(int id) {
+	return wrap([id] {
+		auto channel = getChannel(id);
+		return int(channel->bufferedAmount());
+	});
+}
+
+int rtcSetBufferedAmountLowThreshold(int id, int amount) {
+	return wrap([&] {
+		auto channel = getChannel(id);
+		channel->setBufferedAmountLowThreshold(size_t(amount));
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb) {
+	return wrap([&] {
+		auto channel = getChannel(id);
+		if (cb)
+			channel->onBufferedAmountLow([id, cb]() {
+				if (auto ptr = getUserPointer(id))
+					cb(id, *ptr);
+			});
+		else
+			channel->onBufferedAmountLow(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcGetAvailableAmount(int id) {
+	return wrap([id] { return int(getChannel(id)->availableAmount()); });
+}
+
+int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb) {
+	return wrap([&] {
+		auto channel = getChannel(id);
+		if (cb)
+			channel->onAvailable([id, cb]() {
+				if (auto ptr = getUserPointer(id))
+					cb(id, *ptr);
+			});
+		else
+			channel->onAvailable(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcReceiveMessage(int id, char *buffer, int *size) {
+	return wrap([&] {
+		auto channel = getChannel(id);
+
+		if (!size)
+			throw std::invalid_argument("Unexpected null pointer for size");
+
+		*size = std::abs(*size);
+
+		auto message = channel->peek();
+		if (!message)
+			return RTC_ERR_NOT_AVAIL;
+
+		return std::visit( //
+		    overloaded{
+		        [&](binary b) {
+			        int ret = copyAndReturn(std::move(b), buffer, *size);
+			        if (ret >= 0) {
+				        channel->receive(); // discard
+				        *size = ret;
+				        return RTC_ERR_SUCCESS;
+			        } else {
+				        *size = int(b.size());
+				        return ret;
+			        }
+		        },
+		        [&](string s) {
+			        int ret = copyAndReturn(std::move(s), buffer, *size);
+			        if (ret >= 0) {
+				        channel->receive(); // discard
+				        *size = -ret;
+				        return RTC_ERR_SUCCESS;
+			        } else {
+				        *size = -int(s.size() + 1);
+				        return ret;
+			        }
+		        },
+		    },
+		    *message);
+	});
+}
+
 int rtcCreateDataChannel(int pc, const char *label) {
 	return rtcCreateDataChannelEx(pc, label, nullptr);
 }
@@ -410,10 +806,6 @@ int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *
 	});
 }
 
-int rtcIsOpen(int cid) {
-	return wrap([cid] { return getChannel(cid)->isOpen(); });
-}
-
 int rtcDeleteDataChannel(int dc) {
 	return wrap([dc] {
 		auto dataChannel = getDataChannel(dc);
@@ -425,6 +817,50 @@ int rtcDeleteDataChannel(int dc) {
 		dataChannel->onAvailable(nullptr);
 
 		eraseDataChannel(dc);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcGetDataChannelStream(int dc) {
+	return wrap([dc] {
+		auto dataChannel = getDataChannel(dc);
+		return int(dataChannel->id());
+	});
+}
+
+int rtcGetDataChannelLabel(int dc, char *buffer, int size) {
+	return wrap([&] {
+		auto dataChannel = getDataChannel(dc);
+		return copyAndReturn(dataChannel->label(), buffer, size);
+	});
+}
+
+int rtcGetDataChannelProtocol(int dc, char *buffer, int size) {
+	return wrap([&] {
+		auto dataChannel = getDataChannel(dc);
+		return copyAndReturn(dataChannel->protocol(), buffer, size);
+	});
+}
+
+int rtcGetDataChannelReliability(int dc, rtcReliability *reliability) {
+	return wrap([&] {
+		auto dataChannel = getDataChannel(dc);
+
+		if (!reliability)
+			throw std::invalid_argument("Unexpected null pointer for reliability");
+
+		Reliability dcr = dataChannel->reliability();
+		std::memset(reliability, 0, sizeof(*reliability));
+		reliability->unordered = dcr.unordered;
+		if (dcr.type == Reliability::Type::Timed) {
+			reliability->unreliable = true;
+			reliability->maxPacketLifeTime = int(std::get<milliseconds>(dcr.rexmit).count());
+		} else if (dcr.type == Reliability::Type::Rexmit) {
+			reliability->unreliable = true;
+			reliability->maxRetransmits = std::get<int>(dcr.rexmit);
+		} else {
+			reliability->unreliable = false;
+		}
 		return RTC_ERR_SUCCESS;
 	});
 }
@@ -783,6 +1219,7 @@ int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, cons
 }
 
 #endif // RTC_ENABLE_MEDIA
+
 #if RTC_ENABLE_WEBSOCKET
 
 int rtcCreateWebSocket(const char *url) {
@@ -895,444 +1332,6 @@ RTC_EXPORT int rtcGetWebSocketServerPort(int wsserver) {
 }
 
 #endif
-
-int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-		if (cb)
-			peerConnection->onLocalDescription([pc, cb](Description desc) {
-				if (auto ptr = getUserPointer(pc))
-					cb(pc, string(desc).c_str(), desc.typeString().c_str(), *ptr);
-			});
-		else
-			peerConnection->onLocalDescription(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-		if (cb)
-			peerConnection->onLocalCandidate([pc, cb](Candidate cand) {
-				if (auto ptr = getUserPointer(pc))
-					cb(pc, cand.candidate().c_str(), cand.mid().c_str(), *ptr);
-			});
-		else
-			peerConnection->onLocalCandidate(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-		if (cb)
-			peerConnection->onStateChange([pc, cb](PeerConnection::State state) {
-				if (auto ptr = getUserPointer(pc))
-					cb(pc, static_cast<rtcState>(state), *ptr);
-			});
-		else
-			peerConnection->onStateChange(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-		if (cb)
-			peerConnection->onGatheringStateChange([pc, cb](PeerConnection::GatheringState state) {
-				if (auto ptr = getUserPointer(pc))
-					cb(pc, static_cast<rtcGatheringState>(state), *ptr);
-			});
-		else
-			peerConnection->onGatheringStateChange(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-		if (cb)
-			peerConnection->onSignalingStateChange([pc, cb](PeerConnection::SignalingState state) {
-				if (auto ptr = getUserPointer(pc))
-					cb(pc, static_cast<rtcSignalingState>(state), *ptr);
-			});
-		else
-			peerConnection->onGatheringStateChange(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-		if (cb)
-			peerConnection->onDataChannel([pc, cb](shared_ptr<DataChannel> dataChannel) {
-				int dc = emplaceDataChannel(dataChannel);
-				if (auto ptr = getUserPointer(pc)) {
-					rtcSetUserPointer(dc, *ptr);
-					cb(pc, dc, *ptr);
-				}
-			});
-		else
-			peerConnection->onDataChannel(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-		if (cb)
-			peerConnection->onTrack([pc, cb](shared_ptr<Track> track) {
-				int tr = emplaceTrack(track);
-				if (auto ptr = getUserPointer(pc)) {
-					rtcSetUserPointer(tr, *ptr);
-					cb(pc, tr, *ptr);
-				}
-			});
-		else
-			peerConnection->onTrack(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetLocalDescription(int pc, const char *type) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-		peerConnection->setLocalDescription(type ? Description::stringToType(type)
-		                                         : Description::Type::Unspec);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetRemoteDescription(int pc, const char *sdp, const char *type) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-
-		if (!sdp)
-			throw std::invalid_argument("Unexpected null pointer for remote description");
-
-		peerConnection->setRemoteDescription({string(sdp), type ? string(type) : ""});
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-
-		if (!cand)
-			throw std::invalid_argument("Unexpected null pointer for remote candidate");
-
-		peerConnection->addRemoteCandidate({string(cand), mid ? string(mid) : ""});
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcGetLocalDescription(int pc, char *buffer, int size) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-
-		if (auto desc = peerConnection->localDescription())
-			return copyAndReturn(string(*desc), buffer, size);
-		else
-			return RTC_ERR_NOT_AVAIL;
-	});
-}
-
-int rtcGetRemoteDescription(int pc, char *buffer, int size) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-
-		if (auto desc = peerConnection->remoteDescription())
-			return copyAndReturn(string(*desc), buffer, size);
-		else
-			return RTC_ERR_NOT_AVAIL;
-	});
-}
-
-int rtcGetLocalDescriptionType(int pc, char *buffer, int size) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-
-		if (auto desc = peerConnection->localDescription())
-			return copyAndReturn(desc->typeString(), buffer, size);
-		else
-			return RTC_ERR_NOT_AVAIL;
-	});
-}
-
-int rtcGetRemoteDescriptionType(int pc, char *buffer, int size) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-
-		if (auto desc = peerConnection->remoteDescription())
-			return copyAndReturn(desc->typeString(), buffer, size);
-		else
-			return RTC_ERR_NOT_AVAIL;
-	});
-}
-
-int rtcGetLocalAddress(int pc, char *buffer, int size) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-
-		if (auto addr = peerConnection->localAddress())
-			return copyAndReturn(std::move(*addr), buffer, size);
-		else
-			return RTC_ERR_NOT_AVAIL;
-	});
-}
-
-int rtcGetRemoteAddress(int pc, char *buffer, int size) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-
-		if (auto addr = peerConnection->remoteAddress())
-			return copyAndReturn(std::move(*addr), buffer, size);
-		else
-			return RTC_ERR_NOT_AVAIL;
-	});
-}
-
-int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote, int remoteSize) {
-	return wrap([&] {
-		auto peerConnection = getPeerConnection(pc);
-
-		Candidate localCand;
-		Candidate remoteCand;
-		if (!peerConnection->getSelectedCandidatePair(&localCand, &remoteCand))
-			return RTC_ERR_NOT_AVAIL;
-
-		int localRet = copyAndReturn(string(localCand), local, localSize);
-		if (localRet < 0)
-			return localRet;
-
-		int remoteRet = copyAndReturn(string(remoteCand), remote, remoteSize);
-		if (remoteRet < 0)
-			return remoteRet;
-
-		return std::max(localRet, remoteRet);
-	});
-}
-
-int rtcGetDataChannelStream(int dc) {
-	return wrap([dc] {
-		auto dataChannel = getDataChannel(dc);
-		return int(dataChannel->id());
-	});
-}
-
-int rtcGetDataChannelLabel(int dc, char *buffer, int size) {
-	return wrap([&] {
-		auto dataChannel = getDataChannel(dc);
-		return copyAndReturn(dataChannel->label(), buffer, size);
-	});
-}
-
-int rtcGetDataChannelProtocol(int dc, char *buffer, int size) {
-	return wrap([&] {
-		auto dataChannel = getDataChannel(dc);
-		return copyAndReturn(dataChannel->protocol(), buffer, size);
-	});
-}
-
-int rtcGetDataChannelReliability(int dc, rtcReliability *reliability) {
-	return wrap([&] {
-		auto dataChannel = getDataChannel(dc);
-
-		if (!reliability)
-			throw std::invalid_argument("Unexpected null pointer for reliability");
-
-		Reliability dcr = dataChannel->reliability();
-		std::memset(reliability, 0, sizeof(*reliability));
-		reliability->unordered = dcr.unordered;
-		if (dcr.type == Reliability::Type::Timed) {
-			reliability->unreliable = true;
-			reliability->maxPacketLifeTime = int(std::get<milliseconds>(dcr.rexmit).count());
-		} else if (dcr.type == Reliability::Type::Rexmit) {
-			reliability->unreliable = true;
-			reliability->maxRetransmits = std::get<int>(dcr.rexmit);
-		} else {
-			reliability->unreliable = false;
-		}
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb) {
-	return wrap([&] {
-		auto channel = getChannel(id);
-		if (cb)
-			channel->onOpen([id, cb]() {
-				if (auto ptr = getUserPointer(id))
-					cb(id, *ptr);
-			});
-		else
-			channel->onOpen(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb) {
-	return wrap([&] {
-		auto channel = getChannel(id);
-		if (cb)
-			channel->onClosed([id, cb]() {
-				if (auto ptr = getUserPointer(id))
-					cb(id, *ptr);
-			});
-		else
-			channel->onClosed(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb) {
-	return wrap([&] {
-		auto channel = getChannel(id);
-		if (cb)
-			channel->onError([id, cb](string error) {
-				if (auto ptr = getUserPointer(id))
-					cb(id, error.c_str(), *ptr);
-			});
-		else
-			channel->onError(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb) {
-	return wrap([&] {
-		auto channel = getChannel(id);
-		if (cb)
-			channel->onMessage(
-			    [id, cb](binary b) {
-				    if (auto ptr = getUserPointer(id))
-					    cb(id, reinterpret_cast<const char *>(b.data()), int(b.size()), *ptr);
-			    },
-			    [id, cb](string s) {
-				    if (auto ptr = getUserPointer(id))
-					    cb(id, s.c_str(), -int(s.size() + 1), *ptr);
-			    });
-		else
-			channel->onMessage(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSendMessage(int id, const char *data, int size) {
-	return wrap([&] {
-		auto channel = getChannel(id);
-
-		if (!data && size != 0)
-			throw std::invalid_argument("Unexpected null pointer for data");
-
-		if (size >= 0) {
-			auto b = reinterpret_cast<const byte *>(data);
-			channel->send(binary(b, b + size));
-			return size;
-		} else {
-			string str(data);
-			int len = int(str.size());
-			channel->send(std::move(str));
-			return len;
-		}
-	});
-}
-
-int rtcGetBufferedAmount(int id) {
-	return wrap([id] {
-		auto channel = getChannel(id);
-		return int(channel->bufferedAmount());
-	});
-}
-
-int rtcSetBufferedAmountLowThreshold(int id, int amount) {
-	return wrap([&] {
-		auto channel = getChannel(id);
-		channel->setBufferedAmountLowThreshold(size_t(amount));
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb) {
-	return wrap([&] {
-		auto channel = getChannel(id);
-		if (cb)
-			channel->onBufferedAmountLow([id, cb]() {
-				if (auto ptr = getUserPointer(id))
-					cb(id, *ptr);
-			});
-		else
-			channel->onBufferedAmountLow(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcGetAvailableAmount(int id) {
-	return wrap([id] { return int(getChannel(id)->availableAmount()); });
-}
-
-int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb) {
-	return wrap([&] {
-		auto channel = getChannel(id);
-		if (cb)
-			channel->onAvailable([id, cb]() {
-				if (auto ptr = getUserPointer(id))
-					cb(id, *ptr);
-			});
-		else
-			channel->onAvailable(nullptr);
-		return RTC_ERR_SUCCESS;
-	});
-}
-
-int rtcReceiveMessage(int id, char *buffer, int *size) {
-	return wrap([&] {
-		auto channel = getChannel(id);
-
-		if (!size)
-			throw std::invalid_argument("Unexpected null pointer for size");
-
-		*size = std::abs(*size);
-
-		auto message = channel->peek();
-		if (!message)
-			return RTC_ERR_NOT_AVAIL;
-
-		return std::visit( //
-		    overloaded{
-		        [&](binary b) {
-			        int ret = copyAndReturn(std::move(b), buffer, *size);
-			        if (ret >= 0) {
-				        channel->receive(); // discard
-				        *size = ret;
-				        return RTC_ERR_SUCCESS;
-			        } else {
-				        *size = int(b.size());
-				        return ret;
-			        }
-		        },
-		        [&](string s) {
-			        int ret = copyAndReturn(std::move(s), buffer, *size);
-			        if (ret >= 0) {
-				        channel->receive(); // discard
-				        *size = -ret;
-				        return RTC_ERR_SUCCESS;
-			        } else {
-				        *size = -int(s.size() + 1);
-				        return ret;
-			        }
-		        },
-		    },
-		    *message);
-	});
-}
 
 void rtcPreload() { rtc::Preload(); }
 

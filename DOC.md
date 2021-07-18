@@ -327,6 +327,122 @@ Return value: the maximun length of strings copied in buffers (including the ter
 
 If `local`, `remote`, or both, are `NULL`, the corresponding candidate is not copied, but the maximum length is still returned.
 
+### Channel (Common API for Data Channel, Track, and WebSocket)
+
+The following common functions might be called with a generic channel identifier. It may be the identifier of either a Data Channel, a Track, or a WebSocket.
+
+#### rtcSetXCallback
+
+These functions set, change, or unset (if `cb` is `NULL`) the different callbacks of a channel.
+
+```
+int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb)
+```
+
+`cb` must have the following signature: `void myOpenCallback(int id, void *user_ptr)`
+
+```
+int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb)
+```
+
+`cb` must have the following signature: `void myClosedCallback(int id, void *user_ptr)`
+
+```
+int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb)
+```
+
+`cb` must have the following signature: `void myErrorCallback(int id, const char *error, void *user_ptr)`
+
+```
+int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb)
+```
+
+`cb` must have the following signature: `void myMessageCallback(int id, const char *message, int size, void *user_ptr)`
+
+```
+int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb)
+```
+
+`cb` must have the following signature: `void myBufferedAmountLowCallback(int id, void *user_ptr)`
+
+```
+int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb)
+```
+
+`cb` must have the following signature: `void myAvailableCallback(int id, void *user_ptr)`
+
+#### rtcSendMessage
+
+```
+int rtcSendMessage(int id, const char *data, int size)
+```
+
+Arguments:
+- `id`: the channel identifier
+- `data`: the message data
+- `size`: if size >= 0, `data` is interpreted as a binary message of length `size`, otherwise it is interpreted as a null-terminated UTF-8 string.
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+Sends a message immediately if possible.
+
+Data Channel and WebSocket: If the message may not be sent immediately due to flow control or congestion control, it is buffered until it can actually be sent. You can retrieve the current buffered data size with `rtcGetBufferedAmount`.
+Tracks are an exception: There is no flow or congestion control, messages are never buffered and `rtcGetBufferedAmount` always returns 0.
+
+#### rtcGetBufferedAmount
+
+```
+int rtcGetBufferedAmount(int id)
+```
+
+Retrieves the current buffered amount, i.e. the total size of currently buffered messages waiting to be actually sent in the channel. This does not account for the data buffered at the transport level.
+
+Return value: the buffered amount or a negative error code
+
+#### rtcGetBufferedAmountLowThreshold
+
+```
+int rtcSetBufferedAmountLowThreshold(int id, int amount)
+```
+
+Changes the buffered amount threshold under which `BufferedAmountLowCallback` is called. The callback is called when the buffered amount was strictly superior and gets equal to or lower than the threshold when a message is sent. The initial threshold is 0, meaning the the callback is called each time the buffered amount goes back to zero after being non-zero.
+
+Arguments:
+- `id`: the channel identifier
+- `amount`: the new buffer level threshold
+
+Return value: the identifier of the new WebSocket or a negative error code
+
+#### rtcReceiveMessage
+
+```
+int rtcReceiveMessage(int id, char *buffer, int *size)
+```
+
+Receives a pending message if possible. The function may only be called if `MessageCallback` is not set.
+
+Arguments:
+- `id`: the channel identifier
+- `buffer`: a user-supplied buffer where to write the message data
+- `size`: a pointer to a user-supplied int which must be initialized to the size of `buffer`. On success, the function will write the size of the message to it before returning.
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code (In particular, `RTC_ERR_NOT_AVAIL` is returned when there are no pending messages)
+
+If `buffer` is `NULL`, the message is not copied and kept pending but the size is still written to `size`.
+
+#### rtcGetAvailableAmount
+
+```
+int rtcGetAvailableAmount(int id)
+```
+
+Retrieves the available amount, i.e. the total size of messages pending reception with `rtcReceiveMessage`. The function may only be called if `MessageCallback` is not set.
+
+Arguments:
+- `id`: the channel identifier
+
+Return value: the available amount or a negative error code
+
 ### Data Channel
 
 #### rtcCreateDataChannel
@@ -499,6 +615,10 @@ Return value: the length of the string copied in buffer (including the terminati
 
 If `buffer` is `NULL`, the description is not copied but the size is still returned.
 
+### Media
+
+TODO
+
 ### WebSocket
 
 #### rtcCreateWebSocket
@@ -624,121 +744,5 @@ Arguments:
 - `wsserver`: the identifier of the WebSocket Server
 
 Return value: The port of the WebSocket Server or a negative error code
-
-### Channel (Common API for Data Channel, Track, and WebSocket)
-
-The following common functions might be called with a generic channel identifier. It may be the identifier of either a Data Channel, a Track, or a WebSocket.
-
-#### rtcSetXCallback
-
-These functions set, change, or unset (if `cb` is `NULL`) the different callbacks of a channel.
-
-```
-int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb)
-```
-
-`cb` must have the following signature: `void myOpenCallback(int id, void *user_ptr)`
-
-```
-int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb)
-```
-
-`cb` must have the following signature: `void myClosedCallback(int id, void *user_ptr)`
-
-```
-int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb)
-```
-
-`cb` must have the following signature: `void myErrorCallback(int id, const char *error, void *user_ptr)`
-
-```
-int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb)
-```
-
-`cb` must have the following signature: `void myMessageCallback(int id, const char *message, int size, void *user_ptr)`
-
-```
-int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb)
-```
-
-`cb` must have the following signature: `void myBufferedAmountLowCallback(int id, void *user_ptr)`
-
-```
-int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb)
-```
-
-`cb` must have the following signature: `void myAvailableCallback(int id, void *user_ptr)`
-
-#### rtcSendMessage
-
-```
-int rtcSendMessage(int id, const char *data, int size)
-```
-
-Arguments:
-- `id`: the channel identifier
-- `data`: the message data
-- `size`: if size >= 0, `data` is interpreted as a binary message of length `size`, otherwise it is interpreted as a null-terminated UTF-8 string.
-
-Return value: `RTC_ERR_SUCCESS` or a negative error code
-
-Sends a message immediately if possible.
-
-Data Channel and WebSocket: If the message may not be sent immediately due to flow control or congestion control, it is buffered until it can actually be sent. You can retrieve the current buffered data size with `rtcGetBufferedAmount`.
-Tracks are an exception: There is no flow or congestion control, messages are never buffered and `rtcGetBufferedAmount` always returns 0.
-
-#### rtcGetBufferedAmount
-
-```
-int rtcGetBufferedAmount(int id)
-```
-
-Retrieves the current buffered amount, i.e. the total size of currently buffered messages waiting to be actually sent in the channel. This does not account for the data buffered at the transport level.
-
-Return value: the buffered amount or a negative error code
-
-#### rtcGetBufferedAmountLowThreshold
-
-```
-int rtcSetBufferedAmountLowThreshold(int id, int amount)
-```
-
-Changes the buffered amount threshold under which `BufferedAmountLowCallback` is called. The callback is called when the buffered amount was strictly superior and gets equal to or lower than the threshold when a message is sent. The initial threshold is 0, meaning the the callback is called each time the buffered amount goes back to zero after being non-zero.
-
-Arguments:
-- `id`: the channel identifier
-- `amount`: the new buffer level threshold
-
-Return value: the identifier of the new WebSocket or a negative error code
-
-#### rtcReceiveMessage
-
-```
-int rtcReceiveMessage(int id, char *buffer, int *size)
-```
-
-Receives a pending message if possible. The function may only be called if `MessageCallback` is not set.
-
-Arguments:
-- `id`: the channel identifier
-- `buffer`: a user-supplied buffer where to write the message data
-- `size`: a pointer to a user-supplied int which must be initialized to the size of `buffer`. On success, the function will write the size of the message to it before returning.
-
-Return value: `RTC_ERR_SUCCESS` or a negative error code (In particular, `RTC_ERR_NOT_AVAIL` is returned when there are no pending messages)
-
-If `buffer` is `NULL`, the message is not copied and kept pending but the size is still written to `size`.
-
-#### rtcGetAvailableAmount
-
-```
-int rtcGetAvailableAmount(int id)
-```
-
-Retrieves the available amount, i.e. the total size of messages pending reception with `rtcReceiveMessage`. The function may only be called if `MessageCallback` is not set.
-
-Arguments:
-- `id`: the channel identifier
-
-Return value: the available amount or a negative error code
 
 
