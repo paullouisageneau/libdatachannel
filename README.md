@@ -10,7 +10,9 @@ It can be compiled with multiple backends:
 
 The WebRTC stack is fully compatible with Firefox and Chromium, see [Compatibility](#Compatibility) below.
 
-Licensed under LGPLv2, see [LICENSE](https://github.com/paullouisageneau/libdatachannel/blob/master/LICENSE).
+libdatachannel is licensed under LGPLv2, see [LICENSE](https://github.com/paullouisageneau/libdatachannel/blob/master/LICENSE).
+
+libdatachannel is available on [AUR](https://aur.archlinux.org/packages/libdatachannel/) and [vcpkg](https://vcpkg.info/port/libdatachannel).
 
 ## Dependencies
 
@@ -45,7 +47,7 @@ rtc::PeerConection pc(config);
 
 pc.onLocalDescription([](rtc::Description sdp) {
     // Send the SDP to the remote peer
-    MY_SEND_DESCRIPTION_TO_REMOTE(string(sdp));
+    MY_SEND_DESCRIPTION_TO_REMOTE(std::string(sdp));
 });
 
 pc.onLocalCandidate([](rtc::Candidate candidate) {
@@ -53,11 +55,11 @@ pc.onLocalCandidate([](rtc::Candidate candidate) {
     MY_SEND_CANDIDATE_TO_REMOTE(candidate.candidate(), candidate.mid());
 });
 
-MY_ON_RECV_DESCRIPTION_FROM_REMOTE([&pc](string sdp) {
+MY_ON_RECV_DESCRIPTION_FROM_REMOTE([&pc](std::string sdp) {
     pc.setRemoteDescription(rtc::Description(sdp));
 });
 
-MY_ON_RECV_CANDIDATE_FROM_REMOTE([&pc](string candidate, string mid) {
+MY_ON_RECV_CANDIDATE_FROM_REMOTE([&pc](std::string candidate, std::string mid) {
     pc.addRemoteCandidate(rtc::Candidate(candidate, mid));
 });
 ```
@@ -83,9 +85,9 @@ dc->onOpen([]() {
     std::cout << "Open" << std::endl;
 });
 
-dc->onMessage([](std::variant<binary, string> message) {
-    if (std::holds_alternative<string>(message)) {
-        std::cout << "Received: " << get<string>(message) << std::endl;
+dc->onMessage([](std::variant<rtc::binary, rtc::string> message) {
+    if (std::holds_alternative<rtc::string>(message)) {
+        std::cout << "Received: " << get<rtc::string>(message) << std::endl;
     }
 });
 ```
@@ -109,9 +111,9 @@ ws.onOpen([]() {
     std::cout << "WebSocket open" << std::endl;
 });
 
-ws.onMessage([](std::variant<binary, string> message) {
-    if (std::holds_alternative<string>(message)) {
-        std::cout << "WebSocket received: " << std::get<string>(message) << endl;
+ws.onMessage([](std::variant<rtc::binary, rtc::string> message) {
+    if (std::holds_alternative<rtc::string>(message)) {
+        std::cout << "WebSocket received: " << std::get<rtc::string>(message) << endl;
     }
 });
 
