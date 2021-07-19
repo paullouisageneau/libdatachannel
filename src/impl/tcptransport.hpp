@@ -21,16 +21,14 @@
 
 #include "common.hpp"
 #include "queue.hpp"
-#include "transport.hpp"
 #include "selectinterrupter.hpp"
+#include "socket.hpp"
+#include "transport.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
 #include <mutex>
 #include <thread>
-
-// Use the socket defines from libjuice
-#include "../deps/libjuice/src/socket.h"
 
 namespace rtc::impl {
 
