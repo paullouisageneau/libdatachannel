@@ -71,6 +71,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config)
 typedef struct {
 	const char **iceServers;
 	int iceServersCount;
+	const char *bindAddress;
 	rtcCertificateType certificateType;
 	rtcTransportPolicy iceTransportPolicy;
 	bool enableIceTcp;
