@@ -141,7 +141,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 
 	if (message->dscp == 0) { // Track might override the value
 		// Set recommended medium-priority DSCP value
-		// See https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18
+		// See https://datatracker.ietf.org/doc/html/rfc8837#section-5
 		message->dscp = 36; // AF42: Assured Forwarding class 4, medium drop probability
 	}
 
