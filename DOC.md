@@ -79,6 +79,7 @@ typedef struct {
 	uint16_t portRangeBegin;
 	uint16_t portRangeEnd;
 	int mtu;
+	int maxMessageSize;
 } rtcConfiguration;
 ```
 
