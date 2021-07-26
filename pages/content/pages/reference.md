@@ -1,3 +1,6 @@
+Title: Reference
+url: pages/reference.html
+
 ## libdatachannel - C API Documentation
 
 The following details the C API of libdatachannel. The C API is available by including the `rtc/rtc.h` header.

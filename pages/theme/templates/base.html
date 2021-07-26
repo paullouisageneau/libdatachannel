@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="{{ DEFAULT_LANG }}">
+<head>
+        {% block head %}
+        {% include 'analytics.html' %}
+        <title>{% block title %}{{ SITENAME }}{% endblock title %}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta charset="utf-8">
+        {% if FEED_ALL_ATOM %}
+        <link href="{{ FEED_DOMAIN }}/{% if FEED_ALL_ATOM_URL %}{{ FEED_ALL_ATOM_URL }}{% else %}{{ FEED_ALL_ATOM }}{% endif %}" type="application/atom+xml" rel="alternate" title="{{ SITENAME }} Full Atom Feed">
+        {% endif %}
+        {% if FEED_ALL_RSS %}
+        <link href="{{ FEED_DOMAIN }}/{% if FEED_ALL_RSS_URL %}{{ FEED_ALL_RSS_URL }}{% else %}{{ FEED_ALL_RSS }}{% endif %}" type="application/rss+xml" rel="alternate" title="{{ SITENAME }} Full RSS Feed">
+        {% endif %}
+        {% if FEED_ATOM %}
+        <link href="{{ FEED_DOMAIN }}/{%if FEED_ATOM_URL %}{{ FEED_ATOM_URL }}{% else %}{{ FEED_ATOM }}{% endif %}" type="application/atom+xml" rel="alternate" title="{{ SITENAME }} Atom Feed">
+        {% endif %}
+        {% if FEED_RSS %}
+        <link href="{{ FEED_DOMAIN }}/{% if FEED_RSS_URL %}{{ FEED_RSS_URL }}{% else %}{{ FEED_RSS }}{% endif %}" type="application/rss+xml" rel="alternate" title="{{ SITENAME }} RSS Feed">
+        {% endif %}
+        {% if CATEGORY_FEED_ATOM and category %}
+        <link href="{{ FEED_DOMAIN }}/{% if CATEGORY_FEED_ATOM_URL %}{{ CATEGORY_FEED_ATOM_URL|format(slug=category.slug) }}{% else %}{{ CATEGORY_FEED_ATOM|format(slug=category.slug) }}{% endif %}" type="application/atom+xml" rel="alternate" title="{{ SITENAME }} Categories Atom Feed">
+        {% endif %}
+        {% if CATEGORY_FEED_RSS and category %}
+        <link href="{{ FEED_DOMAIN }}/{% if CATEGORY_FEED_RSS_URL %}{{ CATEGORY_FEED_RSS_URL|format(slug=category.slug) }}{% else %}{{ CATEGORY_FEED_RSS|format(slug=category.slug) }}{% endif %}" type="application/rss+xml" rel="alternate" title="{{ SITENAME }} Categories RSS Feed">
+        {% endif %}
+        {% if TAG_FEED_ATOM and tag %}
+        <link href="{{ FEED_DOMAIN }}/{% if TAG_FEED_ATOM_URL %}{{ TAG_FEED_ATOM_URL|format(slug=tag.slug) }}{% else %}{{ TAG_FEED_ATOM|format(slug=tag.slug) }}{% endif %}" type="application/atom+xml" rel="alternate" title="{{ SITENAME }} Tags Atom Feed">
+        {% endif %}
+        {% if TAG_FEED_RSS and tag %}
+        <link href="{{ FEED_DOMAIN }}/{% if TAG_FEED_RSS_URL %}{{ TAG_FEED_RSS_URL|format(slug=tag.slug) }}{% else %}{{ TAG_FEED_RSS|format(slug=tag.slug) }}{% endif %}" type="application/rss+xml" rel="alternate" title="{{ SITENAME }} Tags RSS Feed">
+        {% endif %}
+        <!-- twitter card metadata -->
+        {% block twittercard %}
+        {% endblock twittercard %}
+        <!-- OG Tags -->
+        {% block ogtags %}
+        {% endblock ogtags %}
+        <!-- favicon -->
+        {% if FAVICON %}
+        <link rel="icon" type="image/png" href="{{ SITEURL }}/images/{{ FAVICON }}">
+        {% endif %}
+        <!-- css -->
+        <link rel="stylesheet" type="text/css" href="{{ SITEURL }}/theme/css/main.css">
+        <link rel="stylesheet" type="text/css" href="{{ SITEURL }}/theme/css/pygments-highlight.css">
+        {% endblock head %}
+</head>
+<body>
+    {% include 'github.html' %}
+    {% block header %}
+    <div role="banner" id="banner">
+        <header>
+            {% if GRAVATAR %}
+            <a href="/"><img src="{{ GRAVATAR }}" alt="Avatar" class="gravatar"></a>
+            {% elif LOGO %}
+            <a href="/"><img src="{{ SITEURL }}/images/{{ LOGO }}" alt="{{ SITENAME }}"></a>
+            {% endif %}
+            <nav id="menu">
+                <ul>
+                    {% if DISPLAY_PAGES_ON_MENU %}
+                      {% for p in pages %}
+                        <li{% if p == page %} class="active"{% endif %}><a href="{{ SITEURL }}/{{ p.url }}">{{ p.slug }}</a></li>
+                      {% endfor %}
+                    {% endif %}
+                    {% for title, link in MENUITEMS %}
+                        <li><a href="{{ link }}">{{ title }}</a></li>
+                    {% endfor %}
+                    {% if DISPLAY_CATEGORIES_ON_MENU %}
+                        {% for cat, null in categories %}
+                            {% if cat != "misc" %}
+                            <li{% if cat == category %} class="active"{% endif %}><a href="{{ SITEURL }}/{{ cat.url }}">{{ cat }}</a></li>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </ul>
+            </nav>
+        </header>
+    </div>
+    {% endblock header %}
+        <div class="page" role="main">
+            {% block content %}
+            {% endblock content %}
+            {% block footer %}
+                <footer>
+                    <p>© {{ COPYRIGHT_YEAR }} {{ AUTHOR }}</p>
+                    {% if ATTRIBUTION %}
+                    <p><i>"Brutal"</i> Pelican Theme</p>
+                    <p>Designed and built by <a href="http://twitter.com/mcman_s">@mcman_s</a> in Denver</p>
+                    {% endif %}
+                </footer>
+        {% endblock footer %}
+        </div>
+</body>
+</html>

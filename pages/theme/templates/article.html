@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block head %}
+  {{ super() }}
+  {% if article.description %}
+    <meta name="description" content="{{ article.description }}" />
+  {% endif %}
+
+  {% for tag in article.tags %}
+    <meta name="tags" content="{{tag}}" />
+  {% endfor %}
+
+{% endblock %}
+{% block twittercard %}
+{% if article.cover_image %}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{{ SITEURL }}/images/{{ article.cover_image }}">
+<meta name="twitter:creator" content="{{ TWITTER_USERNAME }}">
+{% elif GRAVATAR %}
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="{{ GRAVATAR }}">
+{% elif LOGO %}
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="{{ SITEURL }}/images/{{ LOGO }}">
+{% endif %}
+<meta name="twitter:site" content="{{ TWITTER_USERNAME }}">
+<meta name="twitter:title" content="{{ article.title }}">
+<meta name="twitter:description" content="{{ article.description }}">
+{% endblock twittercard %}
+<!-- OG Tags -->
+{% block ogtags %}
+<meta property="og:url" content="{{ SITEURL }}/{{ article.url }}"/>
+<meta property="og:title" content="{{ SITENAME }} | {{ article.title }}" />
+<meta property="og:description" content="{{ article.description }}" />
+{% if article.cover_image %}
+<meta property="og:image" content="{{ SITEURL }}/images/{{ article.cover_image }}" />
+{% endif %}
+{% endblock ogtags %}
+
+{% block content %}
+  <div class="article" role="article">
+    <article>
+        <header>
+          <h1>
+            {{ article.title }}
+          </h1>
+        </header>
+      <div class="content">
+         {{ article.content|safe }}
+      </div>
+      <div class="back-to-top">
+          <a href="#top">back to top</a>
+      </div>
+      {% if DISQUS_SITENAME %}
+      <div id="disqus_thread"></div>
+        {% if SITEURL %}
+        <script>
+          var disqus_config = function () {
+          this.page.url = "{{ SITEURL }}/{{ article.url }}";  // Replace PAGE_URL with your page's canonical URL variable
+          this.page.identifier = "{{ article.slug }}"; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+          };
+        </script>
+        {% endif %}
+        <script>
+        (function() {
+              var d = document, s = d.createElement('script');
+              s.src = 'https://{{ DISQUS_SITENAME }}.disqus.com/embed.js';
+              s.setAttribute('data-timestamp', +new Date());
+              (d.head || d.body).appendChild(s);
+        })();
+      </script>
+      <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+      {% endif %}
+    </article>
+  </div>
+<!-- end article -->
+{% endblock content %}

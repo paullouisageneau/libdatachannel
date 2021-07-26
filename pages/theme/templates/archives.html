@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-title">
+        <h1>archives</h1>
+    </div>
+<div class="articles">
+    <ol>
+        {% for article in dates %}
+        <li>
+            <article>
+                <footer>
+                        <p>
+                        {% if article.category %}
+                            {% if article.category != "misc" %}
+                                in <a href="{{ SITEURL }}/{{ article.category.url }}"><span class="category-tag">{{ article.category }}</span></a>
+                            {% endif %}
+                        {% endif %}
+                    </p>
+                </footer>
+                <header>
+                    <a href="{{ SITEURL }}/{{ article.url }}">
+                        <h2>{{ article.title }}</h2>
+                    </a>
+                </header>
+                <div class="summary">{{ article.summary }} </div>
+                <div class="tags">
+                    <ul class="tags">
+                    {% for tag in article.tags %}
+                        <li><a href="{{ SITEURL }}/{{ tag.url }}" class="tag">{{ tag.name }}</a></li>
+                    {% endfor %}
+                    </ul>
+                </div>
+                <a href="{{ SITEURL }}/{{ article.url }}">
+                    <p class="readmore">Read more...</p>
+                </a>
+            </article>
+        </li>
+        {% endfor %}
+    </ol>
+</div>
+{% endblock content %}

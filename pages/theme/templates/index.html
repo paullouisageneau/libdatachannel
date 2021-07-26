@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+<!-- twitter card metadata -->
+{% block twittercard %}
+{% if SITEIMAGE %}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{{ SITEURL }}/images/{{ SITEIMAGE }}">
+<meta name="twitter:creator" content="{{ TWITTER_USERNAME }}">
+{% elif GRAVATAR %}
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="{{ GRAVATAR }}">
+{% elif LOGO %}
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="{{ SITEURL }}/images/{{ LOGO }}">
+{% endif %}
+<meta name="twitter:site" content="{{ TWITTER_USERNAME }}">
+<meta name="twitter:title" content="{{ SITENAME }}">
+<meta name="twitter:description" content="{{ SITEDESCRIPTION }}">
+{% endblock twittercard %}
+<!-- OG Tags -->
+{% block ogtags %}
+<meta property="og:url" content="{{ SITEURL }}"/>
+<meta property="og:title" content="{{ SITENAME }}" />
+<meta property="og:description" content="{{ SITEDESCRIPTION }}" />
+{% if SITEIMAGE %}
+<meta property="og:image" content="{{ SITEURL }}/images/{{ SITEIMAGE }}" />
+{% endif %}
+{% endblock ogtags %}
+{% block content %}
+{% include 'article_list.html' %}
+{% endblock content %}
