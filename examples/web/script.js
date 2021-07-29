@@ -115,7 +115,7 @@ function offerPeerConnection(ws, id) {
 // Create and setup a PeerConnection
 function createPeerConnection(ws, id) {
   const pc = new RTCPeerConnection(config);
-  pc.onconnectionstatechange = () => console.log(`Connection state: ${pc.connectionState}`);
+  pc.oniceconnectionstatechange = () => console.log(`Connection state: ${pc.iceConnectionState}`);
   pc.onicegatheringstatechange = () => console.log(`Gathering state: ${pc.iceGatheringState}`);
   pc.onicecandidate = (e) => {
     if (e.candidate && e.candidate.candidate) {
