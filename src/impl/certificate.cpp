@@ -161,8 +161,6 @@ string make_fingerprint(gnutls_x509_crt_t crt) {
 
 #else // USE_GNUTLS==0
 
-#include <cstdio>
-
 namespace {
 
 // Dummy password callback that copies the password from user data
@@ -198,23 +196,23 @@ Certificate Certificate::FromFile(const string &crt_pem_file, const string &key_
                                   const string &pass) {
 	PLOG_DEBUG << "Importing certificate from PEM file (OpenSSL): " << crt_pem_file;
 
-	FILE *file = fopen(crt_pem_file.c_str(), "r");
-	if (!file)
+	BIO *bio = openssl::BIO_new_from_file(crt_pem_file);
+	if (!bio)
 		throw std::invalid_argument("Unable to open PEM certificate file");
 
-	auto x509 = shared_ptr<X509>(PEM_read_X509(file, nullptr, nullptr, nullptr), X509_free);
-	fclose(file);
+	auto x509 = shared_ptr<X509>(PEM_read_bio_X509(bio, nullptr, nullptr, nullptr), X509_free);
+	BIO_free(bio);
 	if (!x509)
 		throw std::invalid_argument("Unable to import PEM certificate from file");
 
-	file = fopen(key_pem_file.c_str(), "r");
-	if (!file)
+	bio = openssl::BIO_new_from_file(key_pem_file);
+	if (!bio)
 		throw std::invalid_argument("Unable to open PEM key file");
 
 	auto pkey = shared_ptr<EVP_PKEY>(
-	    PEM_read_PrivateKey(file, nullptr, dummy_pass_cb, const_cast<char *>(pass.c_str())),
+	    PEM_read_bio_PrivateKey(bio, nullptr, dummy_pass_cb, const_cast<char *>(pass.c_str())),
 	    EVP_PKEY_free);
-	fclose(file);
+	BIO_free(bio);
 	if (!pkey)
 		throw std::invalid_argument("Unable to import PEM key from file");
 
