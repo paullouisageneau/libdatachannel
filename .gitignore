@@ -5,6 +5,9 @@ output/
 *.o
 *.a
 *.so
+*.pyc
+*.pyo
+__pycache__
 compile_commands.json
 /tests
 .DS_Store
