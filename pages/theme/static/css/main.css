@@ -54,7 +54,7 @@ a {
 
 #menu {
 	margin: 1.5em;
-	font-size: 1.4em;
+	font-size: 1.2em;
 	font-weight: bold;
 }
 #menu ul {
@@ -67,7 +67,7 @@ a {
 	margin-right: 0.5em;
 }
 .page {
-  max-width: 70em;
+  max-width: 64em;
   margin: auto;
   text-align: center;
   line-height: 1.5;
@@ -132,10 +132,6 @@ a {
   padding-bottom: 1em;
   font-weight: bold;
   text-align: center;
-}
-.article article .content {
-  font-size: 1.125em;
-  font-weight: 300;
 }
 .article article .content p {
   padding-bottom: 0.5em;
