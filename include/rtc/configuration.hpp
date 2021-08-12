@@ -91,10 +91,10 @@ struct RTC_CPP_EXPORT Configuration {
 	uint16_t portRangeBegin = 1024;
 	uint16_t portRangeEnd = 65535;
 
-	// MTU
+	// Network MTU
 	optional<size_t> mtu;
 
-	// Local max message size at reception
+	// Local maximum message size for Data Channels
 	optional<size_t> maxMessageSize;
 };
 
