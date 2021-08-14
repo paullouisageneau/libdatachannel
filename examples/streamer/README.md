@@ -2,21 +2,26 @@
 
 This example streams H264 and opus<sup id="a1">[1](#f1)</sup> samples to the connected browser client.
 
-## Start a signaling server
+## Start the example signaling server
 
 ```sh
-$ python3 ../signaling-server-python/signaling-server.py
+$ python3 examples/signaling-server-python/signaling-server.py
 ```
 
 ## Start a web server
 
 ```sh
+$ cd examples/streamer
 $ python3 -m http.server --bind 127.0.0.1 8080
 ```
 
-Now you can open the demo at [http://127.0.0.1:8080](http://127.0.0.1:8080).
+## Start the streamer
 
-## Arguments
+```sh
+$ cd build/examples/streamer
+$ ./streamer
+```
+Arguments:
 
 - `-a` Directory with OPUS samples (default: *../../../../examples/streamer/samples/opus/*).
 - `-b` Directory with H264 samples (default: *../../../../examples/streamer/samples/h264/*).
@@ -24,6 +29,8 @@ Now you can open the demo at [http://127.0.0.1:8080](http://127.0.0.1:8080).
 - `-p` Signaling server port (default: 8000).
 - `-v` Enable debug logs.
 - `-h` Print this help and exit.
+
+You can now open the example at the web server URL [http://127.0.0.1:8080](http://127.0.0.1:8080).
 
 ## Generating H264 and Opus samples
 
