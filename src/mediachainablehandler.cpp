@@ -62,9 +62,8 @@ bool MediaChainableHandler::sendProduct(ChainedOutgoingProduct product) {
 message_ptr MediaChainableHandler::handleIncomingBinary(message_ptr msg) {
 	assert(msg->type == Message::Binary);
 	auto messages = root->split(msg);
-	auto incoming = leaf->formIncomingBinaryMessage(messages, [this](ChainedOutgoingProduct outgoing) {
-		return sendProduct(outgoing);
-	});
+	auto incoming = getLeaf()->formIncomingBinaryMessage(
+	    messages, [this](ChainedOutgoingProduct outgoing) { return sendProduct(outgoing); });
 	if (incoming) {
 		return root->reduce(incoming);
 	} else {
@@ -74,9 +73,8 @@ message_ptr MediaChainableHandler::handleIncomingBinary(message_ptr msg) {
 
 message_ptr MediaChainableHandler::handleIncomingControl(message_ptr msg) {
 	assert(msg->type == Message::Control);
-	auto incoming = leaf->formIncomingControlMessage(msg, [this](ChainedOutgoingProduct outgoing) {
-		return sendProduct(outgoing);
-	});
+	auto incoming = getLeaf()->formIncomingControlMessage(
+	    msg, [this](ChainedOutgoingProduct outgoing) { return sendProduct(outgoing); });
 	assert(!incoming || incoming->type == Message::Control);
 	return incoming;
 }
@@ -129,7 +127,6 @@ message_ptr MediaChainableHandler::outgoing(message_ptr ptr) {
 		LOG_ERROR << "Outgoing message is nullptr, ignoring";
 		return nullptr;
 	}
-	std::lock_guard<std::mutex> guard(inoutMutex);
 	if (ptr->type == Message::Binary) {
 		return handleOutgoingBinary(ptr);
 	} else if (ptr->type == Message::Control) {
@@ -143,7 +140,6 @@ message_ptr MediaChainableHandler::incoming(message_ptr ptr) {
 		LOG_ERROR << "Incoming message is nullptr, ignoring";
 		return nullptr;
 	}
-	std::lock_guard<std::mutex> guard(inoutMutex);
 	if (ptr->type == Message::Binary) {
 		return handleIncomingBinary(ptr);
 	} else if (ptr->type == Message::Control) {
@@ -162,7 +158,13 @@ bool MediaChainableHandler::send(message_ptr msg) {
 	return false;
 }
 
+shared_ptr<MediaHandlerElement> MediaChainableHandler::getLeaf() const {
+	std::lock_guard lock(mutex);
+	return leaf;
+}
+
 void MediaChainableHandler::addToChain(shared_ptr<MediaHandlerElement> chainable) {
+	std::lock_guard lock(mutex);
 	assert(leaf);
 	leaf = leaf->chainWith(chainable);
 }
