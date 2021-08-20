@@ -46,8 +46,8 @@ set_target_properties(streamer PROPERTIES
 	OUTPUT_NAME streamer)
 set_target_properties(streamer PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.streamer)
-
-target_link_libraries(streamer datachannel nlohmann_json)
+find_package(Threads)
+target_link_libraries(streamer datachannel nlohmann_json Threads::Threads)
 
 if(WIN32)
 	add_custom_command(TARGET streamer POST_BUILD
