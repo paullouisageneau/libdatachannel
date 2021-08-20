@@ -230,13 +230,17 @@ set_target_properties(datachannel-static PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
 
-target_include_directories(datachannel PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+target_include_directories(datachannel PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(datachannel PUBLIC Threads::Threads)
 target_link_libraries(datachannel PRIVATE Usrsctp::Usrsctp plog::plog)
 
-target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(datachannel-static PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(datachannel-static PUBLIC Threads::Threads)
