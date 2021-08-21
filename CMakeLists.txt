@@ -352,7 +352,10 @@ if(CAPI_STDCALL)
 	target_compile_definitions(datachannel-static PUBLIC CAPI_STDCALL)
 endif()
 
+set_target_properties(datachannel PROPERTIES EXPORT_NAME LibDataChannel)
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
+
+set_target_properties(datachannel-static PROPERTIES EXPORT_NAME LibDataChannelStatic)
 add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
 
 if(NOT MSVC)
@@ -394,14 +397,17 @@ if(NOT NO_TESTS)
 	else()
 		add_executable(datachannel-tests ${TESTS_SOURCES})
 	endif()
+
 	set_target_properties(datachannel-tests PROPERTIES
 		VERSION ${PROJECT_VERSION}
-		CXX_STANDARD 17)
-	set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
+		CXX_STANDARD 17
+		OUTPUT_NAME tests)
+
 	set_target_properties(datachannel-tests PROPERTIES
 		XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.tests)
+
 	target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-	target_link_libraries(datachannel-tests datachannel)
+	target_link_libraries(datachannel-tests datachannel Threads::Threads)
 
 	# Benchmark
 	if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
@@ -410,21 +416,25 @@ if(NOT NO_TESTS)
 	else()
 		add_executable(datachannel-benchmark test/benchmark.cpp)
 	endif()
+
 	set_target_properties(datachannel-benchmark PROPERTIES
 		VERSION ${PROJECT_VERSION}
-		CXX_STANDARD 17)
-	set_target_properties(datachannel-benchmark PROPERTIES OUTPUT_NAME benchmark)
+		CXX_STANDARD 17
+		OUTPUT_NAME benchmark)
+
 	set_target_properties(datachannel-benchmark PROPERTIES
 		XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.benchmark)
+
 	target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
 	target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-	target_link_libraries(datachannel-benchmark datachannel)
+	target_link_libraries(datachannel-benchmark datachannel Threads::Threads)
 endif()
 
 # Examples
 if(NOT NO_EXAMPLES)
 	set(JSON_BuildTests OFF CACHE INTERNAL "")
 	add_subdirectory(deps/json EXCLUDE_FROM_ALL)
+
 	if(NOT NO_WEBSOCKET)
 		add_subdirectory(examples/client)
 		add_subdirectory(examples/client-benchmark)

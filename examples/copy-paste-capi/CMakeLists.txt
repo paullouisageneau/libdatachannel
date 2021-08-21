@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.1)
+cmake_minimum_required(VERSION 3.7)
 project(offerer C)
 
 set(CMAKE_C_STANDARD 11)
@@ -23,27 +23,35 @@ set(ANSWERER_UWP_RESOURCES
 	uwp/answerer/Windows_TemporaryKey.pfx
 )
 
+find_package(Threads)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 	add_executable(datachannel-copy-paste-capi-offerer offerer.c ${OFFERER_UWP_RESOURCES})
 else()
 	add_executable(datachannel-copy-paste-capi-offerer offerer.c)
 endif()
+
 set_target_properties(datachannel-copy-paste-capi-offerer PROPERTIES
 	OUTPUT_NAME offerer)
+
 set_target_properties(datachannel-copy-paste-capi-offerer PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.copypaste.capi.offerer)
-target_link_libraries(datachannel-copy-paste-capi-offerer datachannel)
+
+target_link_libraries(datachannel-copy-paste-capi-offerer datachannel Threads::Threads)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 	add_executable(datachannel-copy-paste-capi-answerer answerer.c ${ANSWERER_UWP_RESOURCES})
 else()
 	add_executable(datachannel-copy-paste-capi-answerer answerer.c)
 endif()
+
 set_target_properties(datachannel-copy-paste-capi-answerer PROPERTIES
 	OUTPUT_NAME answerer)
+
 set_target_properties(datachannel-copy-paste-capi-answerer PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.copypaste.capi.answerer)
-target_link_libraries(datachannel-copy-paste-capi-answerer datachannel)
+
+target_link_libraries(datachannel-copy-paste-capi-answerer datachannel Threads::Threads)
 
 if(WIN32)
 	add_custom_command(TARGET datachannel-copy-paste-capi-offerer POST_BUILD
