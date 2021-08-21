@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.7)
 if(POLICY CMP0079)
 	cmake_policy(SET CMP0079 NEW)
 endif()
-
+find_package(Threads)
 if(WIN32)
 	add_executable(datachannel-client-benchmark main.cpp parse_cl.cpp parse_cl.h getopt.cpp getopt.h)
 	target_compile_definitions(datachannel-client-benchmark PUBLIC STATIC_GETOPT)
@@ -15,7 +15,7 @@ set_target_properties(datachannel-client-benchmark PROPERTIES
 	OUTPUT_NAME client-benchmark)
 set_target_properties(datachannel-client-benchmark PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.client.benchmark)
-target_link_libraries(datachannel-client-benchmark datachannel nlohmann_json)
+target_link_libraries(datachannel-client-benchmark datachannel nlohmann_json Threads::Threads)
 
 if(WIN32)
 	add_custom_command(TARGET datachannel-client-benchmark POST_BUILD
