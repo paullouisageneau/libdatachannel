@@ -352,7 +352,10 @@ if(CAPI_STDCALL)
 	target_compile_definitions(datachannel-static PUBLIC CAPI_STDCALL)
 endif()
 
+set_target_properties(datachannel PROPERTIES EXPORT_NAME LibDataChannel)
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
+
+set_target_properties(datachannel-static PROPERTIES EXPORT_NAME LibDataChannelStatic)
 add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
 
 if(NOT MSVC)
