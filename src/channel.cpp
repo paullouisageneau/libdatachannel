@@ -18,14 +18,12 @@
 
 #include "channel.hpp"
 
-#include "impl/internals.hpp"
 #include "impl/channel.hpp"
+#include "impl/internals.hpp"
 
 namespace rtc {
 
-Channel::~Channel() {
-	impl()->resetCallbacks();
-}
+Channel::~Channel() { impl()->resetCallbacks(); }
 
 Channel::Channel(impl_ptr<impl::Channel> impl) : CheshireCat<impl::Channel>(std::move(impl)) {}
 
@@ -61,17 +59,11 @@ void Channel::setBufferedAmountLowThreshold(size_t amount) {
 	impl()->bufferedAmountLowThreshold = amount;
 }
 
-optional<message_variant> Channel::receive() {
-	return impl()->receive();
-}
+optional<message_variant> Channel::receive() { return impl()->receive(); }
 
-optional<message_variant> Channel::peek() {
-	return impl()->peek();
-}
+optional<message_variant> Channel::peek() { return impl()->peek(); }
 
-size_t Channel::availableAmount() const {
-	return impl()->availableAmount();
-}
+size_t Channel::availableAmount() const { return impl()->availableAmount(); }
 
 void Channel::onAvailable(std::function<void()> callback) { impl()->availableCallback = callback; }
 

@@ -22,8 +22,8 @@
 #if RTC_ENABLE_MEDIA
 
 #include "h264rtppacketizer.hpp"
-#include "nalunit.hpp"
 #include "mediachainablehandler.hpp"
+#include "nalunit.hpp"
 
 namespace rtc {
 

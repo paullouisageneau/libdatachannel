@@ -37,8 +37,10 @@ namespace rtc {
 
 static impl::LogCounter COUNTER_BAD_RTP_HEADER(plog::warning, "Number of malformed RTP headers");
 static impl::LogCounter COUNTER_UNKNOWN_PPID(plog::warning, "Number of Unknown PPID messages");
-static impl::LogCounter COUNTER_BAD_NOTIF_LEN(plog::warning, "Number of Bad-Lengthed notifications");
-static impl::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning, "Number of unknown SCTP_STATUS errors");
+static impl::LogCounter COUNTER_BAD_NOTIF_LEN(plog::warning,
+                                              "Number of Bad-Lengthed notifications");
+static impl::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning,
+                                                "Number of unknown SCTP_STATUS errors");
 
 message_ptr RtcpReceivingSession::outgoing(message_ptr ptr) { return ptr; }
 

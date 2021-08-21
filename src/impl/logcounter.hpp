@@ -46,6 +46,6 @@ public:
 	LogCounter &operator++(int);
 };
 
-} // namespace rtc
+} // namespace rtc::impl
 
 #endif // RTC_SERVER_LOGCOUNTER_HPP

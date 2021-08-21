@@ -559,7 +559,7 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 	             type == Description::Type::Offer ? TRUE : FALSE, nullptr);
 
 	unique_ptr<gchar[], void (*)(void *)> sdp(nice_agent_generate_local_sdp(mNiceAgent.get()),
-	                                               g_free);
+	                                          g_free);
 
 	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
 	// setup:actpass.

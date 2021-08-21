@@ -33,37 +33,33 @@ namespace {
 binary Sha1(const byte *data, size_t size) {
 #if USE_GNUTLS
 
-binary output(SHA1_DIGEST_SIZE);
-struct sha1_ctx ctx;
-sha1_init(&ctx);
-sha1_update(&ctx, size, reinterpret_cast<const uint8_t*>(data));
-sha1_digest(&ctx, SHA1_DIGEST_SIZE, reinterpret_cast<uint8_t*>(output.data()));
-return output;
+	binary output(SHA1_DIGEST_SIZE);
+	struct sha1_ctx ctx;
+	sha1_init(&ctx);
+	sha1_update(&ctx, size, reinterpret_cast<const uint8_t *>(data));
+	sha1_digest(&ctx, SHA1_DIGEST_SIZE, reinterpret_cast<uint8_t *>(output.data()));
+	return output;
 
 #else // USE_GNUTLS==0
 
-binary output(SHA_DIGEST_LENGTH);
-SHA_CTX ctx;
-SHA1_Init(&ctx);
-SHA1_Update(&ctx, data, size);
-SHA1_Final(reinterpret_cast<unsigned char*>(output.data()), &ctx);
-return output;
+	binary output(SHA_DIGEST_LENGTH);
+	SHA_CTX ctx;
+	SHA1_Init(&ctx);
+	SHA1_Update(&ctx, data, size);
+	SHA1_Final(reinterpret_cast<unsigned char *>(output.data()), &ctx);
+	return output;
 
 #endif
 }
 
-}
+} // namespace
 
-binary Sha1(const binary &input) {
-	return Sha1(input.data(), input.size());
-}
-
+binary Sha1(const binary &input) { return Sha1(input.data(), input.size()); }
 
 binary Sha1(const string &input) {
-	return Sha1(reinterpret_cast<const byte*>(input.data()), input.size());
+	return Sha1(reinterpret_cast<const byte *>(input.data()), input.size());
 }
 
 } // namespace rtc::impl
 
 #endif
-

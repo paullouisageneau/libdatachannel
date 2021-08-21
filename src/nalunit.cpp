@@ -27,8 +27,8 @@
 namespace rtc {
 
 NalUnitFragmentA::NalUnitFragmentA(FragmentType type, bool forbiddenBit, uint8_t nri,
-								   uint8_t unitType, binary data)
-: NalUnit(data.size() + 2) {
+                                   uint8_t unitType, binary data)
+    : NalUnit(data.size() + 2) {
 	setForbiddenBit(forbiddenBit);
 	setNRI(nri);
 	fragmentIndicator()->setUnitType(NalUnitFragmentA::nal_type_fu_A);
@@ -37,8 +37,8 @@ NalUnitFragmentA::NalUnitFragmentA(FragmentType type, bool forbiddenBit, uint8_t
 	copy(data.begin(), data.end(), begin() + 2);
 }
 
-std::vector<shared_ptr<NalUnitFragmentA>> NalUnitFragmentA::fragmentsFrom(shared_ptr<NalUnit> nalu,
-																			   uint16_t maximumFragmentSize) {
+std::vector<shared_ptr<NalUnitFragmentA>>
+NalUnitFragmentA::fragmentsFrom(shared_ptr<NalUnit> nalu, uint16_t maximumFragmentSize) {
 	assert(nalu->size() > maximumFragmentSize);
 	if (nalu->size() <= maximumFragmentSize) {
 		// we need to change `maximum_fragment_size` to have at least two fragments
@@ -69,7 +69,8 @@ std::vector<shared_ptr<NalUnitFragmentA>> NalUnitFragmentA::fragmentsFrom(shared
 			fragmentType = FragmentType::End;
 		}
 		fragmentData = {payload.begin() + offset, payload.begin() + offset + maximumFragmentSize};
-		auto fragment = std::make_shared<NalUnitFragmentA>(fragmentType, f, nri, naluType, fragmentData);
+		auto fragment =
+		    std::make_shared<NalUnitFragmentA>(fragmentType, f, nri, naluType, fragmentData);
 		result.push_back(fragment);
 		offset += maximumFragmentSize;
 	}
@@ -79,17 +80,17 @@ std::vector<shared_ptr<NalUnitFragmentA>> NalUnitFragmentA::fragmentsFrom(shared
 void NalUnitFragmentA::setFragmentType(FragmentType type) {
 	fragmentHeader()->setReservedBit6(false);
 	switch (type) {
-		case FragmentType::Start:
-			fragmentHeader()->setStart(true);
-			fragmentHeader()->setEnd(false);
-			break;
-		case FragmentType::End:
-			fragmentHeader()->setStart(false);
-			fragmentHeader()->setEnd(true);
-			break;
-		default:
-			fragmentHeader()->setStart(false);
-			fragmentHeader()->setEnd(false);
+	case FragmentType::Start:
+		fragmentHeader()->setStart(true);
+		fragmentHeader()->setEnd(false);
+		break;
+	case FragmentType::End:
+		fragmentHeader()->setStart(false);
+		fragmentHeader()->setEnd(true);
+		break;
+	default:
+		fragmentHeader()->setStart(false);
+		fragmentHeader()->setEnd(false);
 	}
 }
 
@@ -98,7 +99,7 @@ std::vector<shared_ptr<binary>> NalUnits::generateFragments(uint16_t maximumFrag
 	for (auto nalu : *this) {
 		if (nalu->size() > maximumFragmentSize) {
 			std::vector<shared_ptr<NalUnitFragmentA>> fragments =
-			NalUnitFragmentA::fragmentsFrom(nalu, maximumFragmentSize);
+			    NalUnitFragmentA::fragmentsFrom(nalu, maximumFragmentSize);
 			result.insert(result.end(), fragments.begin(), fragments.end());
 		} else {
 			result.push_back(nalu);

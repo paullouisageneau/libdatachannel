@@ -21,13 +21,14 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "rtppacketizer.hpp"
 #include "mediahandlerrootelement.hpp"
+#include "rtppacketizer.hpp"
 
 namespace rtc {
 
 /// RTP packetizer for opus
-class RTC_CPP_EXPORT OpusRtpPacketizer final : public RtpPacketizer, public MediaHandlerRootElement {
+class RTC_CPP_EXPORT OpusRtpPacketizer final : public RtpPacketizer,
+                                               public MediaHandlerRootElement {
 public:
 	/// default clock rate used in opus RTP communication
 	inline static const uint32_t defaultClockRate = 48 * 1000;
@@ -48,7 +49,8 @@ public:
 	/// @param messages opus samples
 	/// @param control RTCP
 	/// @returns RTP packets and unchanged `control`
-	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) override;
+	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages,
+	                                                    message_ptr control) override;
 };
 
 } // namespace rtc

@@ -21,8 +21,8 @@
 #include "certificate.hpp"
 #include "common.hpp"
 #include "dtlstransport.hpp"
-#include "internals.hpp"
 #include "icetransport.hpp"
+#include "internals.hpp"
 #include "logcounter.hpp"
 #include "peerconnection.hpp"
 #include "processor.hpp"
@@ -187,7 +187,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		PLOG_VERBOSE << "Starting DTLS transport";
 
 		auto lower = std::atomic_load(&mIceTransport);
-		if(!lower)
+		if (!lower)
 			throw std::logic_error("No underlying ICE transport for DTLS transport");
 
 		auto certificate = mCertificate.get();
@@ -262,7 +262,7 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 		PLOG_VERBOSE << "Starting SCTP transport";
 
 		auto lower = std::atomic_load(&mDtlsTransport);
-		if(!lower)
+		if (!lower)
 			throw std::logic_error("No underlying DTLS transport for SCTP transport");
 
 		auto remote = remoteDescription();
@@ -901,7 +901,8 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 	if (!mLocalDescription)
 		throw std::logic_error("Got a local candidate without local description");
 
-	if(config.iceTransportPolicy == TransportPolicy::Relay && candidate.type() != Candidate::Type::Relayed) {
+	if (config.iceTransportPolicy == TransportPolicy::Relay &&
+	    candidate.type() != Candidate::Type::Relayed) {
 		PLOG_VERBOSE << "Not issuing local candidate because of transport policy: " << candidate;
 		return;
 	}

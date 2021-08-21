@@ -34,33 +34,39 @@ RTC_CPP_EXPORT ChainedMessagesProduct make_chained_messages_product(message_ptr 
 
 /// Ougoing messages
 struct RTC_CPP_EXPORT ChainedOutgoingProduct {
-	ChainedOutgoingProduct(ChainedMessagesProduct messages = nullptr, message_ptr control = nullptr);
+	ChainedOutgoingProduct(ChainedMessagesProduct messages = nullptr,
+	                       message_ptr control = nullptr);
 	const ChainedMessagesProduct messages;
 	const message_ptr control;
 };
 
 /// Incoming messages with response
 struct RTC_CPP_EXPORT ChainedIncomingProduct {
-	ChainedIncomingProduct(ChainedMessagesProduct incoming = nullptr, ChainedMessagesProduct outgoing = nullptr);
+	ChainedIncomingProduct(ChainedMessagesProduct incoming = nullptr,
+	                       ChainedMessagesProduct outgoing = nullptr);
 	const ChainedMessagesProduct incoming;
 	const ChainedOutgoingProduct outgoing;
 };
 
 /// Incoming control messages with response
 struct RTC_CPP_EXPORT ChainedIncomingControlProduct {
-	ChainedIncomingControlProduct(message_ptr incoming, optional<ChainedOutgoingProduct> outgoing = nullopt);
+	ChainedIncomingControlProduct(message_ptr incoming,
+	                              optional<ChainedOutgoingProduct> outgoing = nullopt);
 	const message_ptr incoming;
 	const optional<ChainedOutgoingProduct> outgoing;
 };
 
 /// Chainable handler
-class RTC_CPP_EXPORT MediaHandlerElement: public std::enable_shared_from_this<MediaHandlerElement> {
+class RTC_CPP_EXPORT MediaHandlerElement
+    : public std::enable_shared_from_this<MediaHandlerElement> {
 	shared_ptr<MediaHandlerElement> upstream = nullptr;
 	shared_ptr<MediaHandlerElement> downstream = nullptr;
 
-	void prepareAndSendResponse(optional<ChainedOutgoingProduct> outgoing, std::function<bool (ChainedOutgoingProduct)> send);
+	void prepareAndSendResponse(optional<ChainedOutgoingProduct> outgoing,
+	                            std::function<bool(ChainedOutgoingProduct)> send);
 
 	void removeFromChain();
+
 public:
 	MediaHandlerElement();
 
@@ -70,8 +76,11 @@ public:
 	optional<ChainedOutgoingProduct> processOutgoingResponse(ChainedOutgoingProduct messages);
 
 	// Process incoming and ougoing messages
-	message_ptr formIncomingControlMessage(message_ptr message, std::function<bool (ChainedOutgoingProduct)> send);
-	ChainedMessagesProduct formIncomingBinaryMessage(ChainedMessagesProduct messages, std::function<bool (ChainedOutgoingProduct)> send);
+	message_ptr formIncomingControlMessage(message_ptr message,
+	                                       std::function<bool(ChainedOutgoingProduct)> send);
+	ChainedMessagesProduct
+	formIncomingBinaryMessage(ChainedMessagesProduct messages,
+	                          std::function<bool(ChainedOutgoingProduct)> send);
 	message_ptr formOutgoingControlMessage(message_ptr message);
 	optional<ChainedOutgoingProduct> formOutgoingBinaryMessage(ChainedOutgoingProduct product);
 
@@ -94,7 +103,8 @@ public:
 	/// @param messages current message
 	/// @param control current control message
 	/// @returns Modified binary message and control message
-	virtual ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control);
+	virtual ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages,
+	                                                            message_ptr control);
 
 	/// Set given element as upstream to this
 	/// @param upstream Upstream element

@@ -70,10 +70,7 @@ enum class CertificateType {
 	Rsa = RTC_CERTIFICATE_RSA
 };
 
-enum class TransportPolicy {
-	All = RTC_TRANSPORT_POLICY_ALL,
-	Relay = RTC_TRANSPORT_POLICY_RELAY
-};
+enum class TransportPolicy { All = RTC_TRANSPORT_POLICY_ALL, Relay = RTC_TRANSPORT_POLICY_RELAY };
 
 struct RTC_CPP_EXPORT Configuration {
 	// ICE settings

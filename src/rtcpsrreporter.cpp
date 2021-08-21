@@ -20,12 +20,13 @@
 
 #include "rtcpsrreporter.hpp"
 
-#include <cmath>
 #include <cassert>
+#include <cmath>
 
 namespace rtc {
 
-ChainedOutgoingProduct RtcpSrReporter::processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) {
+ChainedOutgoingProduct RtcpSrReporter::processOutgoingBinaryMessage(ChainedMessagesProduct messages,
+                                                                    message_ptr control) {
 	if (needsToReport) {
 		auto timestamp = rtpConfig->timestamp;
 		auto sr = getSenderReport(timestamp);
@@ -36,7 +37,7 @@ ChainedOutgoingProduct RtcpSrReporter::processOutgoingBinaryMessage(ChainedMessa
 		}
 		needsToReport = false;
 	}
-	for (auto message: *messages) {
+	for (auto message : *messages) {
 		auto rtp = reinterpret_cast<RTP *>(message->data());
 		addToReport(rtp, message->size());
 	}
@@ -55,7 +56,7 @@ void RtcpSrReporter::addToReport(RTP *rtp, uint32_t rtpSize) {
 }
 
 RtcpSrReporter::RtcpSrReporter(shared_ptr<RtpPacketizationConfig> rtpConfig)
-: MediaHandlerElement(), rtpConfig(rtpConfig) {}
+    : MediaHandlerElement(), rtpConfig(rtpConfig) {}
 
 uint64_t RtcpSrReporter::secondsToNTP(double seconds) {
 	return std::round(seconds * double(uint64_t(1) << 32));
@@ -66,7 +67,7 @@ void RtcpSrReporter::setNeedsToReport() { needsToReport = true; }
 message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
 	auto srSize = RTCP_SR::Size(0);
 	auto msg = make_message(srSize + RTCP_SDES::Size({{uint8_t(rtpConfig->cname.size())}}),
-							Message::Type::Control);
+	                        Message::Type::Control);
 	auto sr = reinterpret_cast<RTCP_SR *>(msg->data());
 	auto timestamp_s = rtpConfig->timestampToSeconds(timestamp);
 	auto currentTime = timeOffset + timestamp_s;

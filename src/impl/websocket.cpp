@@ -267,8 +267,8 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 
 		shared_ptr<TlsTransport> transport;
 		if (verify)
-			transport = std::make_shared<VerifiedTlsTransport>(lower, mHostname.value(), mCertificate,
-			                                                   stateChangeCallback);
+			transport = std::make_shared<VerifiedTlsTransport>(lower, mHostname.value(),
+			                                                   mCertificate, stateChangeCallback);
 		else
 			transport =
 			    std::make_shared<TlsTransport>(lower, mHostname, mCertificate, stateChangeCallback);

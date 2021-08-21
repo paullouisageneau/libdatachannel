@@ -58,7 +58,6 @@ gnutls_datum_t make_datum(char *data, size_t size);
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
-#include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>

@@ -19,8 +19,8 @@
 #ifndef RTC_IMPL_DTLS_SRTP_TRANSPORT_H
 #define RTC_IMPL_DTLS_SRTP_TRANSPORT_H
 
-#include "dtlstransport.hpp"
 #include "common.hpp"
+#include "dtlstransport.hpp"
 
 #if RTC_ENABLE_MEDIA
 
@@ -60,7 +60,7 @@ private:
 	std::mutex sendMutex;
 };
 
-} // namespace rtc
+} // namespace rtc::impl
 
 #endif
 

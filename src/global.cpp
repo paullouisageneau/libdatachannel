@@ -120,4 +120,3 @@ RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::LogLevel level) 
 	}
 	return out;
 }
-

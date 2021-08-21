@@ -33,8 +33,8 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 //
-#include <windows.h>
 #include <iphlpapi.h>
+#include <windows.h>
 
 #ifdef __MINGW32__
 #include <sys/stat.h>

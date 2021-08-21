@@ -42,9 +42,8 @@ public:
 
 	using verifier_callback = std::function<bool(const std::string &fingerprint)>;
 
-	DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
-	              optional<size_t> mtu, verifier_callback verifierCallback,
-	              state_callback stateChangeCallback);
+	DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate, optional<size_t> mtu,
+	              verifier_callback verifierCallback, state_callback stateChangeCallback);
 	~DtlsTransport();
 
 	virtual void start() override;
@@ -95,6 +94,6 @@ protected:
 #endif
 };
 
-} // namespace rtc
+} // namespace rtc::impl
 
 #endif

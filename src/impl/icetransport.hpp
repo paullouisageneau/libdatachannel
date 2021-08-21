@@ -20,9 +20,9 @@
 #define RTC_IMPL_ICE_TRANSPORT_H
 
 #include "candidate.hpp"
+#include "common.hpp"
 #include "configuration.hpp"
 #include "description.hpp"
-#include "common.hpp"
 #include "peerconnection.hpp"
 #include "transport.hpp"
 
@@ -115,6 +115,6 @@ private:
 #endif
 };
 
-} // namespace rtc
+} // namespace rtc::impl
 
 #endif

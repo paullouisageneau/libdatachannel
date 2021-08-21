@@ -21,6 +21,8 @@
 
 #include "rtc/rtc.hpp"
 
+#include <shared_mutex>
+
 struct ClientTrackData {
     std::shared_ptr<rtc::Track> track;
 	std::shared_ptr<rtc::RtcpSrReporter> sender;
