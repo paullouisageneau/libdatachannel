@@ -19,8 +19,9 @@ libdatachannel is available on [AUR](https://aur.archlinux.org/packages/libdatac
 Only [GnuTLS](https://www.gnutls.org/) or [OpenSSL](https://www.openssl.org/) are necessary. Optionally, [libnice](https://nice.freedesktop.org/) can be selected as an alternative ICE backend instead of libjuice.
 
 Submodules:
-- libjuice: https://github.com/paullouisageneau/libjuice
 - usrsctp: https://github.com/sctplab/usrsctp
+- plog: https://github.com/SergiusTheBest/plog
+- libjuice: https://github.com/paullouisageneau/libjuice (if not compiled with libnice backend)
 - libsrtp: https://github.com/cisco/libsrtp (if compiled with media support)
 
 ## Building
