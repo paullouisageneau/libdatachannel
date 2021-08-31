@@ -34,6 +34,30 @@
 #include <locale>
 #endif
 
+namespace {
+
+void plogInit(plog::Severity severity, plog::IAppender *appender) {
+	using Logger = plog::Logger<PLOG_DEFAULT_INSTANCE_ID>;
+	static Logger *logger = nullptr;
+	if (!logger) {
+		PLOG_DEBUG << "Initializing logger";
+		logger = new Logger(severity);
+		if (appender) {
+			logger->addAppender(appender);
+		} else {
+			using ConsoleAppender = plog::ColorConsoleAppender<plog::TxtFormatter>;
+			static ConsoleAppender *consoleAppender = new ConsoleAppender();
+			logger->addAppender(consoleAppender);
+		}
+	} else {
+		logger->setMaxSeverity(severity);
+		if (appender)
+			logger->addAppender(appender);
+	}
+}
+
+}
+
 namespace rtc {
 
 struct LogAppender : public plog::IAppender {
@@ -64,36 +88,18 @@ void InitLogger(LogLevel level, LogCallback callback) {
 	std::lock_guard lock(mutex);
 	if (appender) {
 		appender->callback = std::move(callback);
-		InitLogger(severity, nullptr); // change the severity
+		plogInit(severity, nullptr); // change the severity
 	} else if (callback) {
 		appender = new LogAppender();
 		appender->callback = std::move(callback);
-		InitLogger(severity, appender);
+		plogInit(severity, appender);
 	} else {
-		InitLogger(severity, nullptr); // log to cout
+		plogInit(severity, nullptr); // log to cout
 	}
 }
 
 void InitLogger(plog::Severity severity, plog::IAppender *appender) {
-	using Logger = plog::Logger<PLOG_DEFAULT_INSTANCE_ID>;
-	static Logger *logger = nullptr;
-	static std::mutex mutex;
-	std::lock_guard lock(mutex);
-	if (!logger) {
-		PLOG_DEBUG << "Initializing logger";
-		logger = new Logger(severity);
-		if (appender) {
-			logger->addAppender(appender);
-		} else {
-			using ConsoleAppender = plog::ColorConsoleAppender<plog::TxtFormatter>;
-			static ConsoleAppender *consoleAppender = new ConsoleAppender();
-			logger->addAppender(consoleAppender);
-		}
-	} else {
-		logger->setMaxSeverity(severity);
-		if (appender)
-			logger->addAppender(appender);
-	}
+	plogInit(severity, appender);
 }
 
 void Preload() { Init::Preload(); }

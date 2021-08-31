@@ -42,6 +42,7 @@ RTC_CPP_EXPORT void InitLogger(LogLevel level, LogCallback callback = nullptr);
 
 #ifdef PLOG_DEFAULT_INSTANCE_ID
 // Deprecated, kept for retro-compatibility
+[[deprecated]]
 RTC_CPP_EXPORT void InitLogger(plog::Severity severity, plog::IAppender *appender = nullptr);
 #endif
 
