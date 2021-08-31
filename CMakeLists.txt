@@ -389,6 +389,14 @@ install(
   DESTINATION share/cmake/libdatachannel
 )
 
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    "${CMAKE_BINARY_DIR}/libdatachannelConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion)
+install(FILES "${CMAKE_BINARY_DIR}/libdatachannelConfigVersion.cmake"
+    DESTINATION share/cmake/libdatachannel)
+
 # Tests
 if(NOT NO_TESTS)
 	if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
