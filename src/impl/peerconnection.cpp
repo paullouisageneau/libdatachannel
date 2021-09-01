@@ -867,12 +867,20 @@ void PeerConnection::processLocalDescription(Description description) {
 				description.addMedia(std::move(media));
 			}
 		}
+
+		// There might be no media at this point if the user created a Track, deleted it,
+		// then called setLocalDescription().
+		if (description.mediaCount() == 0)
+			throw std::runtime_error("No DataChannel or Track to negotiate");
 	}
 
 	// Set local fingerprint (wait for certificate if necessary)
 	description.setFingerprint(mCertificate.get()->fingerprint());
 
 	PLOG_VERBOSE << "Issuing local description: " << description;
+
+	if (description.mediaCount() == 0)
+		throw std::logic_error("Local description has no media line");
 
 	{
 		// Set as local description
