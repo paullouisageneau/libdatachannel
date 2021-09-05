@@ -373,7 +373,7 @@ if(WARNINGS_AS_ERRORS)
 	endif()
 endif()
 
-install(TARGETS datachannel EXPORT LibDataChannel-config
+install(TARGETS datachannel EXPORT LibDataChannelConfig
 	RUNTIME DESTINATION bin
 	LIBRARY DESTINATION lib
 	ARCHIVE DESTINATION lib
@@ -384,7 +384,8 @@ install(FILES ${LIBDATACHANNEL_HEADERS}
 )
 
 install(
-	EXPORT LibDataChannel-config
+	EXPORT LibDataChannelConfig
+	FILE LibDataChannelConfig.cmake
 	NAMESPACE LibDataChannel::
 	DESTINATION share/cmake/LibDataChannel
 )
