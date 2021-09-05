@@ -392,11 +392,11 @@ install(
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-    "${CMAKE_BINARY_DIR}/LibDataChannelConfigVersion.cmake"
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY AnyNewerVersion)
-install(FILES "${CMAKE_BINARY_DIR}/LibDataChannelConfigVersion.cmake"
-    DESTINATION share/cmake/LibDataChannel)
+	${CMAKE_BINARY_DIR}/LibDataChannelConfigVersion.cmake
+	VERSION ${PROJECT_VERSION}
+	COMPATIBILITY SameMajorVersion)
+install(FILES ${CMAKE_BINARY_DIR}/LibDataChannelConfigVersion.cmake
+	DESTINATION share/cmake/LibDataChannel)
 
 # Tests
 if(NOT NO_TESTS)
