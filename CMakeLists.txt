@@ -373,7 +373,7 @@ if(WARNINGS_AS_ERRORS)
 	endif()
 endif()
 
-install(TARGETS datachannel EXPORT libdatachannel-config
+install(TARGETS datachannel EXPORT LibDataChannelConfig
 	RUNTIME DESTINATION bin
 	LIBRARY DESTINATION lib
 	ARCHIVE DESTINATION lib
@@ -384,18 +384,19 @@ install(FILES ${LIBDATACHANNEL_HEADERS}
 )
 
 install(
-  EXPORT libdatachannel-config
-  NAMESPACE LibDatachannel::
-  DESTINATION share/cmake/libdatachannel
+	EXPORT LibDataChannelConfig
+	FILE LibDataChannelConfig.cmake
+	NAMESPACE LibDataChannel::
+	DESTINATION share/cmake/LibDataChannel
 )
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-    "${CMAKE_BINARY_DIR}/libdatachannelConfigVersion.cmake"
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY AnyNewerVersion)
-install(FILES "${CMAKE_BINARY_DIR}/libdatachannelConfigVersion.cmake"
-    DESTINATION share/cmake/libdatachannel)
+	${CMAKE_BINARY_DIR}/LibDataChannelConfigVersion.cmake
+	VERSION ${PROJECT_VERSION}
+	COMPATIBILITY SameMajorVersion)
+install(FILES ${CMAKE_BINARY_DIR}/LibDataChannelConfigVersion.cmake
+	DESTINATION share/cmake/LibDataChannel)
 
 # Tests
 if(NOT NO_TESTS)
