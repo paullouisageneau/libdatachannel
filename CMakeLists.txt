@@ -387,13 +387,13 @@ install(
 	EXPORT LibDataChannelTargets
 	FILE LibDataChannelTargets.cmake
 	NAMESPACE LibDataChannel::
-	DESTINATION share/cmake/LibDataChannel
+	DESTINATION lib/cmake/LibDataChannel
 )
 
 # Export config
 install(
 	FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/LibDataChannelConfig.cmake
-	DESTINATION share/cmake/LibDataChannel
+	DESTINATION lib/cmake/LibDataChannel
 )
 
 # Export config version
@@ -403,7 +403,7 @@ write_basic_package_version_file(
 	VERSION ${PROJECT_VERSION}
 	COMPATIBILITY SameMajorVersion)
 install(FILES ${CMAKE_BINARY_DIR}/LibDataChannelConfigVersion.cmake
-	DESTINATION share/cmake/LibDataChannel)
+	DESTINATION lib/cmake/LibDataChannel)
 
 # Tests
 if(NOT NO_TESTS)
