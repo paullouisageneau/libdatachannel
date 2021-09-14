@@ -28,8 +28,8 @@ set_target_properties(datachannel-client-benchmark PROPERTIES
 set_target_properties(datachannel-client-benchmark PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.client.benchmark)
 
-find_package(Threads)
-target_link_libraries(datachannel-client-benchmark datachannel nlohmann_json Threads::Threads)
+find_package(Threads REQUIRED)
+target_link_libraries(datachannel-client-benchmark LibDataChannel::LibDataChannel Threads::Threads nlohmann_json)
 
 if(WIN32)
 	add_custom_command(TARGET datachannel-client-benchmark POST_BUILD

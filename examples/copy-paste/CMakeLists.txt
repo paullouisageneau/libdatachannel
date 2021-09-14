@@ -48,7 +48,8 @@ set_target_properties(datachannel-copy-paste-answerer PROPERTIES
 set_target_properties(datachannel-copy-paste-answerer PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.copypaste.answerer)
 
-target_link_libraries(datachannel-copy-paste-answerer datachannel)
+find_package(Threads REQUIRED)
+target_link_libraries(datachannel-copy-paste-answerer LibDataChannel::LibDataChannel Threads::Threads)
 
 if(WIN32)
 	add_custom_command(TARGET datachannel-copy-paste-offerer POST_BUILD

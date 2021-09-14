@@ -23,7 +23,7 @@ set_target_properties(datachannel-sfu-media PROPERTIES
 set_target_properties(datachannel-sfu-media PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.sfumedia)
 
-target_link_libraries(datachannel-sfu-media datachannel nlohmann_json)
+target_link_libraries(datachannel-sfu-media LibDataChannel::LibDataChannel nlohmann_json)
 
 if(WIN32)
 	add_custom_command(TARGET datachannel-sfu-media POST_BUILD

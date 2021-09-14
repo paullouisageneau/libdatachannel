@@ -23,8 +23,6 @@ set(ANSWERER_UWP_RESOURCES
 	uwp/answerer/Windows_TemporaryKey.pfx
 )
 
-find_package(Threads)
-
 if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 	add_executable(datachannel-copy-paste-capi-offerer offerer.c ${OFFERER_UWP_RESOURCES})
 else()
@@ -51,7 +49,8 @@ set_target_properties(datachannel-copy-paste-capi-answerer PROPERTIES
 set_target_properties(datachannel-copy-paste-capi-answerer PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.copypaste.capi.answerer)
 
-target_link_libraries(datachannel-copy-paste-capi-answerer datachannel Threads::Threads)
+find_package(Threads REQUIRED)
+target_link_libraries(datachannel-copy-paste-capi-answerer LibDataChannel::LibDataChannel Threads::Threads)
 
 if(WIN32)
 	add_custom_command(TARGET datachannel-copy-paste-capi-offerer POST_BUILD
