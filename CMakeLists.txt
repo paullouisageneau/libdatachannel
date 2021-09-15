@@ -224,7 +224,8 @@ add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
 
 set_target_properties(datachannel PROPERTIES
 	VERSION ${PROJECT_VERSION}
-	CXX_STANDARD 17)
+	CXX_STANDARD 17
+	CXX_VISIBILITY_PRESET default)
 set_target_properties(datachannel-static PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
