@@ -491,9 +491,16 @@ void DtlsTransport::incoming(message_ptr message) {
 }
 
 bool DtlsTransport::outgoing(message_ptr message) {
-	if (message->dscp == 0)
-		message->dscp = mCurrentDscp;
-
+	if (message->dscp == 0) {
+		// Set a higher priority for DTLS handshake packet
+		if (state() != DtlsTransport::State::Connected) {
+			message->dscp = 48; // S6 = 48, S7 = 56
+		// User packet keep the current DSCP value
+		}else {
+			message->dscp = mCurrentDscp;
+		}
+		
+	}
 	return Transport::outgoing(std::move(message));
 }
 
