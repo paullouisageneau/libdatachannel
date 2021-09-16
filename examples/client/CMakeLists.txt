@@ -3,6 +3,17 @@ if(POLICY CMP0079)
 	cmake_policy(SET CMP0079 NEW)
 endif()
 
+set(CLIENT_SOURCES
+	main.cpp
+	parse_cl.cpp
+	parse_cl.h
+)
+
+set(GETOPT_SOURCES
+	getopt.cpp
+	getopt.h
+)
+
 set(CLIENT_UWP_RESOURCES
 	uwp/Logo.png
 	uwp/package.appxManifest
@@ -15,21 +26,24 @@ set(CLIENT_UWP_RESOURCES
 
 if(WIN32)
 	if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
-	add_executable(datachannel-client main.cpp parse_cl.cpp parse_cl.h getopt.cpp getopt.h ${CLIENT_UWP_RESOURCES})
+		add_executable(datachannel-client ${CLIENT_SOURCES} ${GETOPT_SOURCES} ${CLIENT_UWP_RESOURCES})
 	else()
-	    add_executable(datachannel-client main.cpp parse_cl.cpp parse_cl.h getopt.cpp getopt.h)
+	    add_executable(datachannel-client ${CLIENT_SOURCES} ${GETOPT_SOURCES})
 	endif()
 	target_compile_definitions(datachannel-client PUBLIC STATIC_GETOPT)
 else()
-	add_executable(datachannel-client main.cpp parse_cl.cpp parse_cl.h)
+	add_executable(datachannel-client ${CLIENT_SOURCES})
 endif()
 
 set_target_properties(datachannel-client PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME client)
+
 set_target_properties(datachannel-client PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.client)
-target_link_libraries(datachannel-client datachannel nlohmann_json)
+
+find_package(Threads REQUIRED)
+target_link_libraries(datachannel-client LibDataChannel::LibDataChannel Threads::Threads nlohmann_json)
 
 if(WIN32)
 	add_custom_command(TARGET datachannel-client POST_BUILD

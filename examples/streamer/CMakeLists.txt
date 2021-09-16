@@ -37,17 +37,15 @@ else()
 	add_executable(streamer ${STREAMER_SOURCES})
 endif()
 
-if(WIN32)
-	target_compile_definitions(streamer PUBLIC STATIC_GETOPT)
-endif()
-
 set_target_properties(streamer PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME streamer)
+
 set_target_properties(streamer PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.streamer)
 
-target_link_libraries(streamer datachannel nlohmann_json)
+find_package(Threads REQUIRED)
+target_link_libraries(streamer LibDataChannel::LibDataChannel Threads::Threads nlohmann_json)
 
 if(WIN32)
 	add_custom_command(TARGET streamer POST_BUILD

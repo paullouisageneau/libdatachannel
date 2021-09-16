@@ -20,6 +20,8 @@
 
 #include "internals.hpp"
 
+#include <fstream>
+
 #if USE_GNUTLS
 
 namespace rtc::gnutls {
@@ -124,6 +126,30 @@ bool check(SSL *ssl, int ret, const string &message) {
 	string str = error_string(err);
 	PLOG_ERROR << str;
 	throw std::runtime_error(message + ": " + str);
+}
+
+BIO *BIO_new_from_file(const string &filename) {
+	BIO *bio = nullptr;
+	try {
+		std::ifstream ifs(filename, std::ifstream::in | std::ifstream::binary);
+		if (!ifs.is_open())
+			return nullptr;
+
+		bio = BIO_new(BIO_s_mem());
+
+		const size_t bufferSize = 4096;
+		char buffer[bufferSize];
+		while (ifs.good()) {
+			ifs.read(buffer, bufferSize);
+			BIO_write(bio, buffer, ifs.gcount());
+		}
+		ifs.close();
+		return bio;
+
+	} catch (const std::exception &e) {
+		BIO_free(bio);
+		return nullptr;
+	}
 }
 
 } // namespace rtc::openssl

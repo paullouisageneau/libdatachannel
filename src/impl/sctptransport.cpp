@@ -455,7 +455,7 @@ void SctpTransport::incoming(message_ptr message) {
 
 bool SctpTransport::outgoing(message_ptr message) {
 	// Set recommended medium-priority DSCP value
-	// See https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18
+	// See https://datatracker.ietf.org/doc/html/rfc8837#section-5
 	message->dscp = 10; // AF11: Assured Forwarding class 1, low drop probability
 	return Transport::outgoing(std::move(message));
 }

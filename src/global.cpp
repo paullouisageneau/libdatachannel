@@ -34,6 +34,30 @@
 #include <locale>
 #endif
 
+namespace {
+
+void plogInit(plog::Severity severity, plog::IAppender *appender) {
+	using Logger = plog::Logger<PLOG_DEFAULT_INSTANCE_ID>;
+	static Logger *logger = nullptr;
+	if (!logger) {
+		PLOG_DEBUG << "Initializing logger";
+		logger = new Logger(severity);
+		if (appender) {
+			logger->addAppender(appender);
+		} else {
+			using ConsoleAppender = plog::ColorConsoleAppender<plog::TxtFormatter>;
+			static ConsoleAppender *consoleAppender = new ConsoleAppender();
+			logger->addAppender(consoleAppender);
+		}
+	} else {
+		logger->setMaxSeverity(severity);
+		if (appender)
+			logger->addAppender(appender);
+	}
+}
+
+}
+
 namespace rtc {
 
 struct LogAppender : public plog::IAppender {
@@ -58,33 +82,24 @@ struct LogAppender : public plog::IAppender {
 };
 
 void InitLogger(LogLevel level, LogCallback callback) {
-	static unique_ptr<LogAppender> appender;
 	const auto severity = static_cast<plog::Severity>(level);
+	static LogAppender *appender = nullptr;
+	static std::mutex mutex;
+	std::lock_guard lock(mutex);
 	if (appender) {
 		appender->callback = std::move(callback);
-		InitLogger(severity, nullptr); // change the severity
+		plogInit(severity, nullptr); // change the severity
 	} else if (callback) {
-		appender = std::make_unique<LogAppender>();
+		appender = new LogAppender();
 		appender->callback = std::move(callback);
-		InitLogger(severity, appender.get());
+		plogInit(severity, appender);
 	} else {
-		InitLogger(severity, nullptr); // log to cout
+		plogInit(severity, nullptr); // log to cout
 	}
 }
 
 void InitLogger(plog::Severity severity, plog::IAppender *appender) {
-	static plog::ColorConsoleAppender<plog::TxtFormatter> consoleAppender;
-	static plog::Logger<0> *logger = nullptr;
-	static std::mutex mutex;
-	std::lock_guard lock(mutex);
-	if (!logger) {
-		logger = &plog::init(severity, appender ? appender : &consoleAppender);
-		PLOG_DEBUG << "Logger initialized";
-	} else {
-		logger->setMaxSeverity(severity);
-		if (appender)
-			logger->addAppender(appender);
-	}
+	plogInit(severity, appender);
 }
 
 void Preload() { Init::Preload(); }
@@ -120,4 +135,3 @@ RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::LogLevel level) 
 	}
 	return out;
 }
-

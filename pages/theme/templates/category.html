@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block ogtags %}
+<meta property="og:url" content="{{ SITEURL }}/category/{{ category }}"/>
+<meta property="og:title" content="{{ SITENAME }} | {{ category }}" />
+{% endblock ogtags %}
+{% block content %}
+<div class="page-title">
+    <h1>{{ category }}</h1>
+</div>
+{% include 'article_list.html' %}
+{% endblock content %}

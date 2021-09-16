@@ -21,8 +21,8 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "opusrtppacketizer.hpp"
 #include "mediachainablehandler.hpp"
+#include "opusrtppacketizer.hpp"
 
 namespace rtc {
 

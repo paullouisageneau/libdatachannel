@@ -130,7 +130,7 @@ string WsHandshake::generateHttpResponse() {
 namespace {
 
 string GetHttpErrorName(int responseCode) {
-	switch(responseCode) {
+	switch (responseCode) {
 	case 400:
 		return "Bad Request";
 	case 404:
@@ -146,20 +146,24 @@ string GetHttpErrorName(int responseCode) {
 	}
 }
 
-}
+} // namespace
 
 string WsHandshake::generateHttpError(int responseCode) {
 	std::unique_lock lock(mMutex);
 
 	const string error = to_string(responseCode) + " " + GetHttpErrorName(responseCode);
 
-	const string out = "HTTP/1.1 " + error + "\r\n"
+	const string out = "HTTP/1.1 " + error +
+	                   "\r\n"
 	                   "Server: libdatachannel\r\n"
 	                   "Connection: upgrade\r\n"
 	                   "Upgrade: websocket\r\n"
 	                   "Content-Type: text/plain\r\n"
-	                   "Content-Length: " + to_string(error.size()) + "\r\n"
-	                   "Access-Control-Allow-Origin: *\r\n\r\n" + error;
+	                   "Content-Length: " +
+	                   to_string(error.size()) +
+	                   "\r\n"
+	                   "Access-Control-Allow-Origin: *\r\n\r\n" +
+	                   error;
 
 	return out;
 }

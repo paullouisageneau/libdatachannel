@@ -15,12 +15,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 else()
 	add_executable(datachannel-media main.cpp)
 endif()
+
 set_target_properties(datachannel-media PROPERTIES
-        CXX_STANDARD 17
-        OUTPUT_NAME media)
+    CXX_STANDARD 17
+    OUTPUT_NAME media)
+
 set_target_properties(datachannel-media PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.media)
-target_link_libraries(datachannel-media datachannel nlohmann_json)
+
+find_package(Threads REQUIRED)
+target_link_libraries(datachannel-media LibDataChannel::LibDataChannel Threads::Threads nlohmann_json)
 
 if(WIN32)
 	add_custom_command(TARGET datachannel-media POST_BUILD

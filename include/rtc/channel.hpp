@@ -58,7 +58,7 @@ public:
 	// Extended API
 	optional<message_variant> receive(); // only if onMessage unset
 	optional<message_variant> peek();    // only if onMessage unset
-	size_t availableAmount() const;           // total size available to receive
+	size_t availableAmount() const;      // total size available to receive
 	void onAvailable(std::function<void()> callback);
 
 protected:

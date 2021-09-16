@@ -47,4 +47,4 @@ LogCounter &LogCounter::operator++(int) {
 	return *this;
 }
 
-} // namespace rtc
+} // namespace rtc::impl

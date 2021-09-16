@@ -20,13 +20,11 @@
 #define RTC_IMPL_SELECT_INTERRUPTER_H
 
 #include "common.hpp"
+#include "socket.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
 #include <mutex>
-
-// Use the socket defines from libjuice
-#include "../deps/libjuice/src/socket.h"
 
 namespace rtc::impl {
 

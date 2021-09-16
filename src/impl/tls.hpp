@@ -58,7 +58,6 @@ gnutls_datum_t make_datum(char *data, size_t size);
 #include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
-#include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
@@ -75,6 +74,8 @@ string error_string(unsigned long err);
 
 bool check(int success, const string &message = "OpenSSL error");
 bool check(SSL *ssl, int ret, const string &message = "OpenSSL error");
+
+BIO *BIO_new_from_file(const string &filename);
 
 } // namespace rtc::openssl
 

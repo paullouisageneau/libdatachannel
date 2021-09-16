@@ -26,18 +26,17 @@
 
 namespace rtc {
 
-MediaChainableHandler::MediaChainableHandler(shared_ptr<MediaHandlerRootElement> root): MediaHandler(), root(root), leaf(root) { }
+MediaChainableHandler::MediaChainableHandler(shared_ptr<MediaHandlerRootElement> root)
+    : MediaHandler(), root(root), leaf(root) {}
 
-MediaChainableHandler::~MediaChainableHandler() {
-	leaf->recursiveRemoveChain();
-}
+MediaChainableHandler::~MediaChainableHandler() { leaf->recursiveRemoveChain(); }
 
 bool MediaChainableHandler::sendProduct(ChainedOutgoingProduct product) {
 	bool result = true;
 	if (product.control) {
 		assert(product.control->type == Message::Control);
 		auto sendResult = send(product.control);
-		if(!sendResult) {
+		if (!sendResult) {
 			LOG_DEBUG << "Failed to send control message";
 		}
 		result = result && sendResult;
@@ -50,7 +49,7 @@ bool MediaChainableHandler::sendProduct(ChainedOutgoingProduct product) {
 				LOG_DEBUG << "Invalid message to send " << i + 1 << "/" << messages->size();
 			}
 			auto sendResult = send(make_message(*message));
-			if(!sendResult) {
+			if (!sendResult) {
 				LOG_DEBUG << "Failed to send message " << i + 1 << "/" << messages->size();
 			}
 			result = result && sendResult;
@@ -62,9 +61,8 @@ bool MediaChainableHandler::sendProduct(ChainedOutgoingProduct product) {
 message_ptr MediaChainableHandler::handleIncomingBinary(message_ptr msg) {
 	assert(msg->type == Message::Binary);
 	auto messages = root->split(msg);
-	auto incoming = leaf->formIncomingBinaryMessage(messages, [this](ChainedOutgoingProduct outgoing) {
-		return sendProduct(outgoing);
-	});
+	auto incoming = getLeaf()->formIncomingBinaryMessage(
+	    messages, [this](ChainedOutgoingProduct outgoing) { return sendProduct(outgoing); });
 	if (incoming) {
 		return root->reduce(incoming);
 	} else {
@@ -74,9 +72,8 @@ message_ptr MediaChainableHandler::handleIncomingBinary(message_ptr msg) {
 
 message_ptr MediaChainableHandler::handleIncomingControl(message_ptr msg) {
 	assert(msg->type == Message::Control);
-	auto incoming = leaf->formIncomingControlMessage(msg, [this](ChainedOutgoingProduct outgoing) {
-		return sendProduct(outgoing);
-	});
+	auto incoming = getLeaf()->formIncomingControlMessage(
+	    msg, [this](ChainedOutgoingProduct outgoing) { return sendProduct(outgoing); });
 	assert(!incoming || incoming->type == Message::Control);
 	return incoming;
 }
@@ -91,7 +88,7 @@ message_ptr MediaChainableHandler::handleOutgoingBinary(message_ptr msg) {
 	}
 	auto outgoing = optOutgoing.value();
 	if (outgoing.control) {
-		if(!send(outgoing.control)) {
+		if (!send(outgoing.control)) {
 			LOG_DEBUG << "Failed to send control message";
 		}
 	}
@@ -105,7 +102,7 @@ message_ptr MediaChainableHandler::handleOutgoingBinary(message_ptr msg) {
 		if (!message) {
 			LOG_DEBUG << "Invalid message to send " << i + 1 << "/" << outgoing.messages->size();
 		}
-		if(!send(make_message(*message))) {
+		if (!send(make_message(*message))) {
 			LOG_DEBUG << "Failed to send message " << i + 1 << "/" << outgoing.messages->size();
 		}
 	}
@@ -129,7 +126,6 @@ message_ptr MediaChainableHandler::outgoing(message_ptr ptr) {
 		LOG_ERROR << "Outgoing message is nullptr, ignoring";
 		return nullptr;
 	}
-	std::lock_guard<std::mutex> guard(inoutMutex);
 	if (ptr->type == Message::Binary) {
 		return handleOutgoingBinary(ptr);
 	} else if (ptr->type == Message::Control) {
@@ -143,7 +139,6 @@ message_ptr MediaChainableHandler::incoming(message_ptr ptr) {
 		LOG_ERROR << "Incoming message is nullptr, ignoring";
 		return nullptr;
 	}
-	std::lock_guard<std::mutex> guard(inoutMutex);
 	if (ptr->type == Message::Binary) {
 		return handleIncomingBinary(ptr);
 	} else if (ptr->type == Message::Control) {
@@ -162,7 +157,13 @@ bool MediaChainableHandler::send(message_ptr msg) {
 	return false;
 }
 
+shared_ptr<MediaHandlerElement> MediaChainableHandler::getLeaf() const {
+	std::lock_guard lock(mutex);
+	return leaf;
+}
+
 void MediaChainableHandler::addToChain(shared_ptr<MediaHandlerElement> chainable) {
+	std::lock_guard lock(mutex);
 	assert(leaf);
 	leaf = leaf->chainWith(chainable);
 }

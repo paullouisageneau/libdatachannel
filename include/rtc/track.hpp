@@ -25,9 +25,6 @@
 #include "mediahandler.hpp"
 #include "message.hpp"
 
-#include <atomic>
-#include <shared_mutex>
-
 namespace rtc {
 
 namespace impl {

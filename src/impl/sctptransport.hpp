@@ -20,10 +20,10 @@
 #define RTC_IMPL_SCTP_TRANSPORT_H
 
 #include "common.hpp"
+#include "configuration.hpp"
 #include "processor.hpp"
 #include "queue.hpp"
 #include "transport.hpp"
-#include "configuration.hpp"
 
 #include <condition_variable>
 #include <functional>

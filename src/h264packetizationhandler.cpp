@@ -22,7 +22,8 @@
 
 namespace rtc {
 
-H264PacketizationHandler::H264PacketizationHandler(shared_ptr<H264RtpPacketizer> packetizer): MediaChainableHandler(packetizer) { }
+H264PacketizationHandler::H264PacketizationHandler(shared_ptr<H264RtpPacketizer> packetizer)
+    : MediaChainableHandler(packetizer) {}
 
 } // namespace rtc
 

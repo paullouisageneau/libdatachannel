@@ -28,7 +28,7 @@ namespace rtc {
 /// Chainable message handler
 class RTC_CPP_EXPORT MediaHandlerRootElement : public MediaHandlerElement {
 public:
-	MediaHandlerRootElement() { }
+	MediaHandlerRootElement() {}
 
 	/// Reduce multiple messages into one message
 	/// @param messages Messages to reduce

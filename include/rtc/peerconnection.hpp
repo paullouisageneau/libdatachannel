@@ -20,10 +20,10 @@
 #define RTC_PEER_CONNECTION_H
 
 #include "candidate.hpp"
+#include "common.hpp"
 #include "configuration.hpp"
 #include "datachannel.hpp"
 #include "description.hpp"
-#include "common.hpp"
 #include "message.hpp"
 #include "reliability.hpp"
 #include "track.hpp"

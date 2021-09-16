@@ -25,11 +25,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 else()
 	add_executable(datachannel-copy-paste-offerer offerer.cpp)
 endif()
+
 set_target_properties(datachannel-copy-paste-offerer PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME offerer)
+
 set_target_properties(datachannel-copy-paste-offerer PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.copypaste.offerer)
+
 target_link_libraries(datachannel-copy-paste-offerer datachannel)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
@@ -37,12 +40,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 else()
 	add_executable(datachannel-copy-paste-answerer answerer.cpp)
 endif()
+
 set_target_properties(datachannel-copy-paste-answerer PROPERTIES
 	CXX_STANDARD 17
 	OUTPUT_NAME answerer)
+
 set_target_properties(datachannel-copy-paste-answerer PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.copypaste.answerer)
-target_link_libraries(datachannel-copy-paste-answerer datachannel)
+
+find_package(Threads REQUIRED)
+target_link_libraries(datachannel-copy-paste-answerer LibDataChannel::LibDataChannel Threads::Threads)
 
 if(WIN32)
 	add_custom_command(TARGET datachannel-copy-paste-offerer POST_BUILD

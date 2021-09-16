@@ -136,8 +136,7 @@ template <typename T> optional<T> Queue<T>::exchange(T element) {
 	return std::make_optional(std::move(element));
 }
 
-template <typename T>
-bool Queue<T>::wait(const optional<std::chrono::milliseconds> &duration) {
+template <typename T> bool Queue<T>::wait(const optional<std::chrono::milliseconds> &duration) {
 	std::unique_lock lock(mMutex);
 	if (duration)
 		mPopCondition.wait_for(lock, *duration, [this]() { return !mQueue.empty() || mStopping; });

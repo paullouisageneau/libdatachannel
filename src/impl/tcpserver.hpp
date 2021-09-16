@@ -21,12 +21,10 @@
 
 #include "common.hpp"
 #include "queue.hpp"
+#include "socket.hpp"
 #include "tcptransport.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
-
-// Use the socket defines from libjuice
-#include "../deps/libjuice/src/socket.h"
 
 namespace rtc::impl {
 

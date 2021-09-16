@@ -26,19 +26,21 @@
 
 namespace rtc {
 
-RtcpNackResponder::Storage::Element::Element(binary_ptr packet, uint16_t sequenceNumber, shared_ptr<Element> next)
-: packet(packet), sequenceNumber(sequenceNumber), next(next) { }
+RtcpNackResponder::Storage::Element::Element(binary_ptr packet, uint16_t sequenceNumber,
+                                             shared_ptr<Element> next)
+    : packet(packet), sequenceNumber(sequenceNumber), next(next) {}
 
 unsigned RtcpNackResponder::Storage::size() { return storage.size(); }
 
-RtcpNackResponder::Storage::Storage(unsigned _maximumSize): maximumSize(_maximumSize) {
+RtcpNackResponder::Storage::Storage(unsigned _maximumSize) : maximumSize(_maximumSize) {
 	assert(maximumSize > 0);
 	storage.reserve(maximumSize);
 }
 
 optional<binary_ptr> RtcpNackResponder::Storage::get(uint16_t sequenceNumber) {
 	auto position = storage.find(sequenceNumber);
-	return position != storage.end() ? std::make_optional(storage.at(sequenceNumber)->packet) : nullopt;
+	return position != storage.end() ? std::make_optional(storage.at(sequenceNumber)->packet)
+	                                 : nullopt;
 }
 
 void RtcpNackResponder::Storage::store(binary_ptr packet) {
@@ -71,9 +73,10 @@ void RtcpNackResponder::Storage::store(binary_ptr packet) {
 }
 
 RtcpNackResponder::RtcpNackResponder(unsigned maxStoredPacketCount)
-: MediaHandlerElement(), storage(std::make_shared<Storage>(maxStoredPacketCount)) { }
+    : MediaHandlerElement(), storage(std::make_shared<Storage>(maxStoredPacketCount)) {}
 
-ChainedIncomingControlProduct RtcpNackResponder::processIncomingControlMessage(message_ptr message) {
+ChainedIncomingControlProduct
+RtcpNackResponder::processIncomingControlMessage(message_ptr message) {
 	optional<ChainedOutgoingProduct> optPackets = ChainedOutgoingProduct(nullptr);
 	auto packets = make_chained_messages_product();
 
@@ -89,13 +92,15 @@ ChainedIncomingControlProduct RtcpNackResponder::processIncomingControlMessage(m
 		auto fieldsCount = nack->getSeqNoCount();
 
 		std::vector<uint16_t> missingSequenceNumbers{};
-		for(unsigned int i = 0; i < fieldsCount; i++) {
+		for (unsigned int i = 0; i < fieldsCount; i++) {
 			auto field = nack->parts[i];
 			auto newMissingSeqenceNumbers = field.getSequenceNumbers();
-			missingSequenceNumbers.insert(missingSequenceNumbers.end(), newMissingSeqenceNumbers.begin(), newMissingSeqenceNumbers.end());
+			missingSequenceNumbers.insert(missingSequenceNumbers.end(),
+			                              newMissingSeqenceNumbers.begin(),
+			                              newMissingSeqenceNumbers.end());
 		}
 		packets->reserve(packets->size() + missingSequenceNumbers.size());
-		for (auto sequenceNumber: missingSequenceNumbers) {
+		for (auto sequenceNumber : missingSequenceNumbers) {
 			auto optPacket = storage->get(sequenceNumber);
 			if (optPacket.has_value()) {
 				auto packet = optPacket.value();
@@ -111,8 +116,10 @@ ChainedIncomingControlProduct RtcpNackResponder::processIncomingControlMessage(m
 	}
 }
 
-ChainedOutgoingProduct RtcpNackResponder::processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) {
-	for (auto message: *messages) {
+ChainedOutgoingProduct
+RtcpNackResponder::processOutgoingBinaryMessage(ChainedMessagesProduct messages,
+                                                message_ptr control) {
+	for (auto message : *messages) {
 		storage->store(message);
 	}
 	return {messages, control};

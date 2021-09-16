@@ -33,6 +33,8 @@ void test_turn_connectivity() {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
+	config1.iceTransportPolicy = TransportPolicy::Relay; // force relay
+
 	// STUN server example (not necessary, just here for testing)
 	// Please do not use outside of libdatachannel tests
 	config1.iceServers.emplace_back("stun:stun.ageneau.net:3478");
@@ -43,6 +45,8 @@ void test_turn_connectivity() {
 	PeerConnection pc1(config1);
 
 	Configuration config2;
+	config2.iceTransportPolicy = TransportPolicy::Relay; // force relay
+
 	// STUN server example (not necessary, just here for testing)
 	// Please do not use outside of libdatachannel tests
 	config1.iceServers.emplace_back("stun:stun.ageneau.net:3478");
@@ -58,12 +62,8 @@ void test_turn_connectivity() {
 	});
 
 	pc1.onLocalCandidate([&pc2](Candidate candidate) {
-		// For this test, filter out non-relay candidates to force TURN
-		string str(candidate);
-		if (str.find("relay") != string::npos) {
-			cout << "Candidate 1: " << str << endl;
-			pc2.addRemoteCandidate(str);
-		}
+		cout << "Candidate 1: " << candidate << endl;
+		pc2.addRemoteCandidate(string(candidate));
 	});
 
 	pc1.onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
@@ -82,12 +82,8 @@ void test_turn_connectivity() {
 	});
 
 	pc2.onLocalCandidate([&pc1](Candidate candidate) {
-		// For this test, filter out non-relay candidates to force TURN
-		string str(candidate);
-		if (str.find("relay") != string::npos) {
-			cout << "Candidate 1: " << str << endl;
-			pc1.addRemoteCandidate(str);
-		}
+		cout << "Candidate 2: " << candidate << endl;
+		pc1.addRemoteCandidate(string(candidate));
 	});
 
 	pc2.onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
@@ -160,14 +156,23 @@ void test_turn_connectivity() {
 		cout << "Remote address 2: " << *addr << endl;
 
 	Candidate local, remote;
-	if (pc1.getSelectedCandidatePair(&local, &remote)) {
-		cout << "Local candidate 1:  " << local << endl;
-		cout << "Remote candidate 1: " << remote << endl;
-	}
-	if (pc2.getSelectedCandidatePair(&local, &remote)) {
-		cout << "Local candidate 2:  " << local << endl;
-		cout << "Remote candidate 2: " << remote << endl;
-	}
+	if (!pc1.getSelectedCandidatePair(&local, &remote))
+		throw runtime_error("getSelectedCabndidatePair failed");
+
+	cout << "Local candidate 1:  " << local << endl;
+	cout << "Remote candidate 1: " << remote << endl;
+
+	if(local.type() != Candidate::Type::Relayed || remote.type() != Candidate::Type::Relayed)
+		throw runtime_error("Connection is not relayed as expected");
+
+	if (!pc2.getSelectedCandidatePair(&local, &remote))
+		throw runtime_error("getSelectedCabndidatePair failed");
+
+	cout << "Local candidate 2:  " << local << endl;
+	cout << "Remote candidate 2: " << remote << endl;
+
+	if(local.type() != Candidate::Type::Relayed || remote.type() != Candidate::Type::Relayed)
+		throw runtime_error("Connection is not relayed as expected");
 
 	// Try to open a second data channel with another label
 	shared_ptr<DataChannel> second2;

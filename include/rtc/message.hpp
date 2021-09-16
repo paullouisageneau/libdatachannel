@@ -50,12 +50,11 @@ using message_variant = variant<binary, string>;
 
 inline size_t message_size_func(const message_ptr &m) {
 	return m->type == Message::Binary || m->type == Message::String ? m->size() : 0;
-};
+}
 
 template <typename Iterator>
 message_ptr make_message(Iterator begin, Iterator end, Message::Type type = Message::Binary,
-                         unsigned int stream = 0,
-                         shared_ptr<Reliability> reliability = nullptr) {
+                         unsigned int stream = 0, shared_ptr<Reliability> reliability = nullptr) {
 	auto message = std::make_shared<Message>(begin, end, type);
 	message->stream = stream;
 	message->reliability = reliability;

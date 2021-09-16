@@ -21,8 +21,8 @@
 #include "certificate.hpp"
 #include "common.hpp"
 #include "dtlstransport.hpp"
-#include "internals.hpp"
 #include "icetransport.hpp"
+#include "internals.hpp"
 #include "logcounter.hpp"
 #include "peerconnection.hpp"
 #include "processor.hpp"
@@ -187,7 +187,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		PLOG_VERBOSE << "Starting DTLS transport";
 
 		auto lower = std::atomic_load(&mIceTransport);
-		if(!lower)
+		if (!lower)
 			throw std::logic_error("No underlying ICE transport for DTLS transport");
 
 		auto certificate = mCertificate.get();
@@ -262,7 +262,7 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 		PLOG_VERBOSE << "Starting SCTP transport";
 
 		auto lower = std::atomic_load(&mDtlsTransport);
-		if(!lower)
+		if (!lower)
 			throw std::logic_error("No underlying DTLS transport for SCTP transport");
 
 		auto remote = remoteDescription();
@@ -867,10 +867,20 @@ void PeerConnection::processLocalDescription(Description description) {
 				description.addMedia(std::move(media));
 			}
 		}
+
+		// There might be no media at this point if the user created a Track, deleted it,
+		// then called setLocalDescription().
+		if (description.mediaCount() == 0)
+			throw std::runtime_error("No DataChannel or Track to negotiate");
 	}
 
 	// Set local fingerprint (wait for certificate if necessary)
 	description.setFingerprint(mCertificate.get()->fingerprint());
+
+	PLOG_VERBOSE << "Issuing local description: " << description;
+
+	if (description.mediaCount() == 0)
+		throw std::logic_error("Local description has no media line");
 
 	{
 		// Set as local description
@@ -886,7 +896,6 @@ void PeerConnection::processLocalDescription(Description description) {
 		mLocalDescription->addCandidates(std::move(existingCandidates));
 	}
 
-	PLOG_VERBOSE << "Issuing local description: " << description;
 	mProcessor->enqueue(localDescriptionCallback.wrap(), std::move(description));
 
 	// Reciprocated tracks might need to be open
@@ -900,10 +909,17 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 	if (!mLocalDescription)
 		throw std::logic_error("Got a local candidate without local description");
 
+	if (config.iceTransportPolicy == TransportPolicy::Relay &&
+	    candidate.type() != Candidate::Type::Relayed) {
+		PLOG_VERBOSE << "Not issuing local candidate because of transport policy: " << candidate;
+		return;
+	}
+
+	PLOG_VERBOSE << "Issuing local candidate: " << candidate;
+
 	candidate.resolve(Candidate::ResolveMode::Simple);
 	mLocalDescription->addCandidate(candidate);
 
-	PLOG_VERBOSE << "Issuing local candidate: " << candidate;
 	mProcessor->enqueue(localCandidateCallback.wrap(), std::move(candidate));
 }
 

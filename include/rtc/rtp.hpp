@@ -340,6 +340,6 @@ struct RTC_CPP_EXPORT RTP_RTX {
 
 #pragma pack(pop)
 
-}; // namespace rtc
+} // namespace rtc
 
 #endif

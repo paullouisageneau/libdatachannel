@@ -221,9 +221,7 @@ Candidate::operator string() const {
 }
 
 bool Candidate::operator==(const Candidate &other) const {
-	return (mFoundation == other.mFoundation &&
-	        mService == other.mService &&
-	        mNode == other.mNode);
+	return (mFoundation == other.mFoundation && mService == other.mService && mNode == other.mNode);
 }
 
 bool Candidate::operator!=(const Candidate &other) const {

@@ -70,6 +70,8 @@ enum class CertificateType {
 	Rsa = RTC_CERTIFICATE_RSA
 };
 
+enum class TransportPolicy { All = RTC_TRANSPORT_POLICY_ALL, Relay = RTC_TRANSPORT_POLICY_RELAY };
+
 struct RTC_CPP_EXPORT Configuration {
 	// ICE settings
 	std::vector<IceServer> iceServers;
@@ -78,6 +80,7 @@ struct RTC_CPP_EXPORT Configuration {
 
 	// Options
 	CertificateType certificateType = CertificateType::Default;
+	TransportPolicy iceTransportPolicy = TransportPolicy::All;
 	bool enableIceTcp = false;
 	bool disableAutoNegotiation = false;
 
@@ -85,10 +88,10 @@ struct RTC_CPP_EXPORT Configuration {
 	uint16_t portRangeBegin = 1024;
 	uint16_t portRangeEnd = 65535;
 
-	// MTU
+	// Network MTU
 	optional<size_t> mtu;
 
-	// Local max message size at reception
+	// Local maximum message size for Data Channels
 	optional<size_t> maxMessageSize;
 };
 

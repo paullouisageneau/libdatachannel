@@ -18,8 +18,8 @@
 
 #include "dtlssrtptransport.hpp"
 #include "logcounter.hpp"
-#include "tls.hpp"
 #include "rtp.hpp"
+#include "tls.hpp"
 
 #if RTC_ENABLE_MEDIA
 
@@ -32,12 +32,11 @@ using std::to_string;
 namespace rtc::impl {
 
 static LogCounter COUNTER_MEDIA_TRUNCATED(plog::warning,
-                                               "Number of truncated SRT(C)P packets received");
+                                          "Number of truncated SRT(C)P packets received");
 static LogCounter
     COUNTER_UNKNOWN_PACKET_TYPE(plog::warning,
                                 "Number of RTP packets received with an unknown packet type");
-static LogCounter COUNTER_SRTCP_REPLAY(plog::warning,
-                                            "Number of SRTCP replay packets received");
+static LogCounter COUNTER_SRTCP_REPLAY(plog::warning, "Number of SRTCP replay packets received");
 static LogCounter
     COUNTER_SRTCP_AUTH_FAIL(plog::warning,
                             "Number of SRTCP packets received that failed authentication checks");
@@ -57,8 +56,7 @@ void DtlsSrtpTransport::Init() { srtp_init(); }
 void DtlsSrtpTransport::Cleanup() { srtp_shutdown(); }
 
 DtlsSrtpTransport::DtlsSrtpTransport(shared_ptr<IceTransport> lower,
-                                     shared_ptr<Certificate> certificate,
-                                     optional<size_t> mtu,
+                                     shared_ptr<Certificate> certificate, optional<size_t> mtu,
                                      verifier_callback verifierCallback,
                                      message_callback srtpRecvCallback,
                                      state_callback stateChangeCallback)
@@ -141,7 +139,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 
 	if (message->dscp == 0) { // Track might override the value
 		// Set recommended medium-priority DSCP value
-		// See https://tools.ietf.org/html/draft-ietf-tsvwg-rtcweb-qos-18
+		// See https://datatracker.ietf.org/doc/html/rfc8837#section-5
 		message->dscp = 36; // AF42: Assured Forwarding class 4, medium drop probability
 	}
 
@@ -324,6 +322,6 @@ void DtlsSrtpTransport::postHandshake() {
 	mInitDone = true;
 }
 
-} // namespace rtc
+} // namespace rtc::impl
 
 #endif

@@ -1,13 +1,14 @@
 cmake_minimum_required(VERSION 3.7)
 project(libdatachannel
-	VERSION 0.13.4
+	VERSION 0.14.3
 	LANGUAGES CXX)
-set(PROJECT_DESCRIPTION "WebRTC Data Channels Library")
+set(PROJECT_DESCRIPTION "C/C++ WebRTC network library featuring Data Channels, Media Transport, and WebSockets")
 
 # Options
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 option(USE_NICE "Use libnice instead of libjuice" OFF)
 option(USE_SYSTEM_SRTP "Use system libSRTP" OFF)
+option(USE_SYSTEM_JUICE "Use system libjuice" OFF)
 option(NO_WEBSOCKET "Disable WebSocket support" OFF)
 option(NO_MEDIA "Disable media transport support" OFF)
 option(NO_EXAMPLES "Disable examples" OFF)
@@ -70,7 +71,6 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/candidate.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/channel.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/configuration.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/configuration.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/datachannel.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/description.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandler.hpp
@@ -85,6 +85,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtp.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/track.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocket.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocketserver.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizationconfig.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpsrreporter.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizer.hpp
@@ -223,21 +224,26 @@ add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
 
 set_target_properties(datachannel PROPERTIES
 	VERSION ${PROJECT_VERSION}
-	CXX_STANDARD 17)
+	CXX_STANDARD 17
+	CXX_VISIBILITY_PRESET default)
 set_target_properties(datachannel-static PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
 
-target_include_directories(datachannel PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+target_include_directories(datachannel PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(datachannel PUBLIC Threads::Threads)
+target_link_libraries(datachannel PRIVATE Threads::Threads)
 target_link_libraries(datachannel PRIVATE Usrsctp::Usrsctp plog::plog)
 
-target_include_directories(datachannel-static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(datachannel-static PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(datachannel-static PUBLIC Threads::Threads)
+target_link_libraries(datachannel-static PRIVATE Threads::Threads)
 target_link_libraries(datachannel-static PRIVATE Usrsctp::Usrsctp plog::plog)
 
 if(WIN32)
@@ -324,11 +330,21 @@ if (USE_NICE)
 	target_link_libraries(datachannel PRIVATE LibNice::LibNice)
 	target_link_libraries(datachannel-static PRIVATE LibNice::LibNice)
 else()
-	add_subdirectory(deps/libjuice EXCLUDE_FROM_ALL)
 	target_compile_definitions(datachannel PRIVATE USE_NICE=0)
 	target_compile_definitions(datachannel-static PRIVATE USE_NICE=0)
-	target_link_libraries(datachannel PRIVATE LibJuice::LibJuiceStatic)
-	target_link_libraries(datachannel-static PRIVATE LibJuice::LibJuiceStatic)
+	if(USE_SYSTEM_JUICE)
+		find_package(LibJuice REQUIRED)
+		target_compile_definitions(datachannel PRIVATE RTC_SYSTEM_JUICE=1)
+		target_compile_definitions(datachannel-static PRIVATE RTC_SYSTEM_JUICE=1)
+		target_link_libraries(datachannel PRIVATE LibJuice::LibJuice)
+		target_link_libraries(datachannel-static PRIVATE LibJuice::LibJuice)
+	else()
+		add_subdirectory(deps/libjuice EXCLUDE_FROM_ALL)
+		target_compile_definitions(datachannel PRIVATE RTC_SYSTEM_JUICE=0)
+		target_compile_definitions(datachannel-static PRIVATE RTC_SYSTEM_JUICE=0)
+		target_link_libraries(datachannel PRIVATE LibJuice::LibJuiceStatic)
+		target_link_libraries(datachannel-static PRIVATE LibJuice::LibJuiceStatic)
+	endif()
 endif()
 
 if(CAPI_STDCALL)
@@ -336,7 +352,10 @@ if(CAPI_STDCALL)
 	target_compile_definitions(datachannel-static PUBLIC CAPI_STDCALL)
 endif()
 
+set_target_properties(datachannel PROPERTIES EXPORT_NAME LibDataChannel)
 add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
+
+set_target_properties(datachannel-static PROPERTIES EXPORT_NAME LibDataChannelStatic)
 add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
 
 if(NOT MSVC)
@@ -354,7 +373,7 @@ if(WARNINGS_AS_ERRORS)
 	endif()
 endif()
 
-install(TARGETS datachannel EXPORT libdatachannel-config
+install(TARGETS datachannel EXPORT LibDataChannelTargets
 	RUNTIME DESTINATION bin
 	LIBRARY DESTINATION lib
 	ARCHIVE DESTINATION lib
@@ -364,11 +383,28 @@ install(FILES ${LIBDATACHANNEL_HEADERS}
 	DESTINATION include/rtc
 )
 
+# Export targets
 install(
-  EXPORT libdatachannel-config
-  NAMESPACE LibDatachannel::
-  DESTINATION share/cmake/libdatachannel
+	EXPORT LibDataChannelTargets
+	FILE LibDataChannelTargets.cmake
+	NAMESPACE LibDataChannel::
+	DESTINATION lib/cmake/LibDataChannel
 )
+
+# Export config
+install(
+	FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/LibDataChannelConfig.cmake
+	DESTINATION lib/cmake/LibDataChannel
+)
+
+# Export config version
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+	${CMAKE_BINARY_DIR}/LibDataChannelConfigVersion.cmake
+	VERSION ${PROJECT_VERSION}
+	COMPATIBILITY SameMajorVersion)
+install(FILES ${CMAKE_BINARY_DIR}/LibDataChannelConfigVersion.cmake
+	DESTINATION lib/cmake/LibDataChannel)
 
 # Tests
 if(NOT NO_TESTS)
@@ -378,14 +414,17 @@ if(NOT NO_TESTS)
 	else()
 		add_executable(datachannel-tests ${TESTS_SOURCES})
 	endif()
+
 	set_target_properties(datachannel-tests PROPERTIES
 		VERSION ${PROJECT_VERSION}
-		CXX_STANDARD 17)
-	set_target_properties(datachannel-tests PROPERTIES OUTPUT_NAME tests)
+		CXX_STANDARD 17
+		OUTPUT_NAME tests)
+
 	set_target_properties(datachannel-tests PROPERTIES
 		XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.tests)
+
 	target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-	target_link_libraries(datachannel-tests datachannel)
+	target_link_libraries(datachannel-tests datachannel Threads::Threads)
 
 	# Benchmark
 	if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
@@ -394,21 +433,25 @@ if(NOT NO_TESTS)
 	else()
 		add_executable(datachannel-benchmark test/benchmark.cpp)
 	endif()
+
 	set_target_properties(datachannel-benchmark PROPERTIES
 		VERSION ${PROJECT_VERSION}
-		CXX_STANDARD 17)
-	set_target_properties(datachannel-benchmark PROPERTIES OUTPUT_NAME benchmark)
+		CXX_STANDARD 17
+		OUTPUT_NAME benchmark)
+
 	set_target_properties(datachannel-benchmark PROPERTIES
 		XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.benchmark)
+
 	target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
 	target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-	target_link_libraries(datachannel-benchmark datachannel)
+	target_link_libraries(datachannel-benchmark datachannel Threads::Threads)
 endif()
 
 # Examples
 if(NOT NO_EXAMPLES)
 	set(JSON_BuildTests OFF CACHE INTERNAL "")
 	add_subdirectory(deps/json EXCLUDE_FROM_ALL)
+
 	if(NOT NO_WEBSOCKET)
 		add_subdirectory(examples/client)
 		add_subdirectory(examples/client-benchmark)

@@ -21,13 +21,13 @@
 
 #if RTC_ENABLE_MEDIA
 
+#include "mediahandlerelement.hpp"
 #include "message.hpp"
 #include "rtppacketizationconfig.hpp"
-#include "mediahandlerelement.hpp"
 
 namespace rtc {
 
-class RTC_CPP_EXPORT RtcpSrReporter final: public MediaHandlerElement {
+class RTC_CPP_EXPORT RtcpSrReporter final : public MediaHandlerElement {
 
 	bool needsToReport = false;
 
@@ -51,7 +51,8 @@ public:
 
 	RtcpSrReporter(shared_ptr<RtpPacketizationConfig> rtpConfig);
 
-	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages, message_ptr control) override;
+	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages,
+	                                                    message_ptr control) override;
 
 	/// Set `needsToReport` flag. Sender report will be sent before next RTP packet with same
 	/// timestamp.
