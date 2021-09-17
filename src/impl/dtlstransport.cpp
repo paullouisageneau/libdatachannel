@@ -494,9 +494,9 @@ bool DtlsTransport::outgoing(message_ptr message) {
 	if (message->dscp == 0) {
 		// DTLS handshake packet
 		if (state() != DtlsTransport::State::Connected) {
-			// Set recommended medium-priority DSCP value
+			// Set recommended high-priority DSCP value
 			// See https://datatracker.ietf.org/doc/html/rfc8837#section-5
-			message->dscp = 18; // AF21(18), the recommendation for high-priority data
+			message->dscp = 18; // AF21(18), Assured Forwarding class 2, low drop probability
 		// User packet
 		}else {
 			message->dscp = mCurrentDscp;
