@@ -45,13 +45,14 @@ shared_ptr<TcpTransport> TcpServer::accept() {
 		if (mSock == INVALID_SOCKET)
 			break;
 
-		fd_set readfds;
-		FD_ZERO(&readfds);
-		FD_SET(mSock, &readfds);
-		int n = std::max(mInterrupter.prepare(readfds), SOCKET_TO_INT(mSock) + 1);
+		struct pollfd pfd[2];
+		pfd[0].fd = mSock;
+		pfd[0].events = POLLIN;
+		mInterrupter.prepare(pfd[1]);
 		lock.unlock();
-		int ret = ::select(n, &readfds, NULL, NULL, NULL);
+		int ret = ::poll(pfd, 2, -1);
 		lock.lock();
+
 		if (mSock == INVALID_SOCKET)
 			break;
 
@@ -62,7 +63,11 @@ shared_ptr<TcpTransport> TcpServer::accept() {
 				throw std::runtime_error("Failed to wait for socket connection");
 		}
 
-		if (FD_ISSET(mSock, &readfds)) {
+		if (pfd[0].revents & POLLNVAL || pfd[0].revents & POLLERR) {
+			throw std::runtime_error("Error while waiting for socket connection");
+		}
+
+		if (pfd[0].revents & POLLIN) {
 			struct sockaddr_storage addr;
 			socklen_t addrlen = sizeof(addr);
 			socket_t incomingSock = ::accept(mSock, (struct sockaddr *)&addr, &addrlen);

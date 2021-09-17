@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "selectinterrupter.hpp"
+#include "pollinterrupter.hpp"
 #include "internals.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
@@ -28,7 +28,7 @@
 
 namespace rtc::impl {
 
-SelectInterrupter::SelectInterrupter() {
+PollInterrupter::PollInterrupter() {
 #ifndef _WIN32
 	int pipefd[2];
 	if (::pipe(pipefd) != 0)
@@ -40,7 +40,7 @@ SelectInterrupter::SelectInterrupter() {
 #endif
 }
 
-SelectInterrupter::~SelectInterrupter() {
+PollInterrupter::~PollInterrupter() {
 	std::lock_guard lock(mMutex);
 #ifdef _WIN32
 	if (mDummySock != INVALID_SOCKET)
@@ -51,24 +51,24 @@ SelectInterrupter::~SelectInterrupter() {
 #endif
 }
 
-int SelectInterrupter::prepare(fd_set &readfds) {
+void PollInterrupter::prepare(struct pollfd &pfd) {
 	std::lock_guard lock(mMutex);
 #ifdef _WIN32
 	if (mDummySock == INVALID_SOCKET)
 		mDummySock = ::socket(AF_INET, SOCK_DGRAM, 0);
-	FD_SET(mDummySock, &readfds);
-	return SOCKET_TO_INT(mDummySock) + 1;
+	pfd.fd = mDummySock;
+	pfd.events = POLLIN;
 #else
 	char dummy;
 	if (::read(mPipeIn, &dummy, 1) < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
 		PLOG_WARNING << "Reading from interrupter pipe failed, errno=" << errno;
 	}
-	FD_SET(mPipeIn, &readfds);
-	return mPipeIn + 1;
+	pfd.fd = mPipeIn;
+	pfd.events = POLLIN;
 #endif
 }
 
-void SelectInterrupter::interrupt() {
+void PollInterrupter::interrupt() {
 	std::lock_guard lock(mMutex);
 #ifdef _WIN32
 	if (mDummySock != INVALID_SOCKET) {
