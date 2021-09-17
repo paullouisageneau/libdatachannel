@@ -492,10 +492,12 @@ void DtlsTransport::incoming(message_ptr message) {
 
 bool DtlsTransport::outgoing(message_ptr message) {
 	if (message->dscp == 0) {
-		// Set a higher priority for DTLS handshake packet
+		// DTLS handshake packet
 		if (state() != DtlsTransport::State::Connected) {
-			message->dscp = 48; // S6 = 48, S7 = 56
-		// User packet keep the current DSCP value
+			// Set recommended medium-priority DSCP value
+			// See https://datatracker.ietf.org/doc/html/rfc8837#section-5
+			message->dscp = 18; // AF21(18), the recommendation for high-priority data
+		// User packet
 		}else {
 			message->dscp = mCurrentDscp;
 		}
