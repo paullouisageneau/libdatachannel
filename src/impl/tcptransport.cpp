@@ -210,10 +210,6 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 					throw std::runtime_error("Failed to wait for socket connection");
 			}
 
-			if (pfd[0].revents & POLLNVAL || pfd[0].revents & POLLERR) {
-				throw std::runtime_error("Error while waiting for socket connection");
-			}
-
 			if (!(pfd[0].revents & POLLOUT)) {
 				std::ostringstream msg;
 				msg << "TCP connection to " << node << ":" << serv << " timed out";
