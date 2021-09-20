@@ -351,7 +351,7 @@ The following common functions might be called with a generic channel identifier
 
 #### rtcSetXCallback
 
-These functions set, change, or unset (if `cb` is `NULL`) the different callbacks of a channel.
+These functions set, change, or unset (if `cb` is `NULL`) the different callbacks of a channel identified by the argument `id`.
 
 ```
 int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb)
@@ -359,11 +359,15 @@ int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb)
 
 `cb` must have the following signature: `void myOpenCallback(int id, void *user_ptr)`
 
+It is called when the channel was previously connecting and is now open.
+
 ```
 int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb)
 ```
 
 `cb` must have the following signature: `void myClosedCallback(int id, void *user_ptr)`
+
+It is called when the channel was previously open and is now closed.
 
 ```
 int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb)
@@ -371,11 +375,15 @@ int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb)
 
 `cb` must have the following signature: `void myErrorCallback(int id, const char *error, void *user_ptr)`
 
+It is called when the channel experience an error, either while connecting or open.
+
 ```
 int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb)
 ```
 
 `cb` must have the following signature: `void myMessageCallback(int id, const char *message, int size, void *user_ptr)`
+
+It is called when the channel receives a message. While it is set, messages can't be received with `rtcReceiveMessage`.
 
 ```
 int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb)
@@ -383,17 +391,35 @@ int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb)
 
 `cb` must have the following signature: `void myBufferedAmountLowCallback(int id, void *user_ptr)`
 
+It is called when the buffered amount was strictly higher than the threshold (see `rtcSetBufferedAmountLowThreshold`) and is now lower or equal than the threshold.
+
 ```
 int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb)
 ```
 
 `cb` must have the following signature: `void myAvailableCallback(int id, void *user_ptr)`
 
+It is called when messages are now available to be received with `rtcReceiveMessage`.
+
+#### rtcIsOpen
+
+```
+bool rtcIsOpen(int id)
+```
+
+Arguments:
+
+- `id`: the channel identifier
+
+Return value: `true` if the channel exists and is open, `false` otherwise
+
 #### rtcSendMessage
 
 ```
 int rtcSendMessage(int id, const char *data, int size)
 ```
+
+Sends a message in the channel.
 
 Arguments:
 
@@ -403,7 +429,7 @@ Arguments:
 
 Return value: `RTC_ERR_SUCCESS` or a negative error code
 
-Sends a message immediately if possible.
+The message is sent immediately if possible, otherwise it is buffered to be sent later.
 
 Data Channel and WebSocket: If the message may not be sent immediately due to flow control or congestion control, it is buffered until it can actually be sent. You can retrieve the current buffered data size with `rtcGetBufferedAmount`.
 Tracks are an exception: There is no flow or congestion control, messages are never buffered and `rtcGetBufferedAmount` always returns 0.
@@ -415,6 +441,10 @@ int rtcGetBufferedAmount(int id)
 ```
 
 Retrieves the current buffered amount, i.e. the total size of currently buffered messages waiting to be actually sent in the channel. This does not account for the data buffered at the transport level.
+
+Arguments:
+
+- `id`: the channel identifier
 
 Return value: the buffered amount or a negative error code
 
