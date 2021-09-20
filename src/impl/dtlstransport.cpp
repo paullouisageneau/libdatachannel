@@ -497,11 +497,9 @@ bool DtlsTransport::outgoing(message_ptr message) {
 			// Set recommended high-priority DSCP value
 			// See https://datatracker.ietf.org/doc/html/rfc8837#section-5
 			message->dscp = 18; // AF21(18), Assured Forwarding class 2, low drop probability
-		// User packet
-		}else {
+		} else {
 			message->dscp = mCurrentDscp;
 		}
-		
 	}
 	return Transport::outgoing(std::move(message));
 }
