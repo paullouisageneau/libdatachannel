@@ -137,6 +137,8 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 	}
 
 	auto iceTransport = impl()->initIceTransport();
+	if (!iceTransport)
+		return; // closed
 
 	Description local = iceTransport->getLocalDescription(type);
 	impl()->processLocalDescription(std::move(local));

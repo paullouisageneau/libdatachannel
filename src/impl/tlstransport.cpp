@@ -267,9 +267,9 @@ ssize_t TlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_
 int TlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) {
 	TlsTransport *t = static_cast<TlsTransport *>(ptr);
 	try {
-		bool notEmpty = t->mIncomingQueue.wait(
+		bool isReadable = t->mIncomingQueue.wait(
 		    ms != GNUTLS_INDEFINITE_TIMEOUT ? std::make_optional(milliseconds(ms)) : nullopt);
-		return notEmpty ? 1 : 0;
+		return isReadable ? 1 : 0;
 
 	} catch (const std::exception &e) {
 		PLOG_WARNING << e.what();
