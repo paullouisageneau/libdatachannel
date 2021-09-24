@@ -149,7 +149,7 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport() {
 				    changeState(State::Failed);
 				    break;
 			    case IceTransport::State::Connected:
-				    initDtlsTransport();
+				    mProcessor->enqueue(&PeerConnection::initDtlsTransport, this);
 				    break;
 			    case IceTransport::State::Disconnected:
 				    changeState(State::Disconnected);
@@ -208,7 +208,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 			    switch (transportState) {
 			    case DtlsTransport::State::Connected:
 				    if (auto remote = remoteDescription(); remote && remote->hasApplication())
-					    initSctpTransport();
+					    mProcessor->enqueue(&PeerConnection::initSctpTransport, this);
 				    else
 					    changeState(State::Connected);
 
