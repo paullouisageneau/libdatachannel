@@ -183,7 +183,7 @@ shared_ptr<T> emplaceTransport(WebSocket *ws, shared_ptr<T> *member, shared_ptr<
 	if (ws->state.load() == WebSocket::State::Closed) {
 		std::atomic_store(member, decltype(transport)(nullptr));
 		transport->stop();
-		throw std::runtime_error("Connection is closed");
+		return nullptr;
 	}
 	return transport;
 }

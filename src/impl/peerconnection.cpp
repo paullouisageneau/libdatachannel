@@ -123,7 +123,7 @@ shared_ptr<T> emplaceTransport(PeerConnection *pc, shared_ptr<T> *member, shared
 	if (pc->state.load() == PeerConnection::State::Closed) {
 		std::atomic_store(member, decltype(transport)(nullptr));
 		transport->stop();
-		throw std::runtime_error("Connection is closed");
+		return nullptr;
 	}
 	return transport;
 }
@@ -933,6 +933,9 @@ void PeerConnection::processRemoteDescription(Description description) {
 	}
 
 	auto iceTransport = initIceTransport();
+	if (!iceTransport)
+		return; // closed
+
 	iceTransport->setRemoteDescription(std::move(description));
 
 	// Since we assumed passive role during DataChannel creation, we might need to shift the stream
