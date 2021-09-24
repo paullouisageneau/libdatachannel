@@ -175,6 +175,19 @@ void WebSocket::incoming(message_ptr message) {
 	}
 }
 
+// Helper for WebSocket::initXTransport methods: start and emplace the transport
+template <typename T>
+shared_ptr<T> emplaceTransport(WebSocket *ws, shared_ptr<T> *member, shared_ptr<T> transport) {
+	transport->start();
+	std::atomic_store(member, transport);
+	if (ws->state.load() == WebSocket::State::Closed) {
+		std::atomic_store(member, decltype(transport)(nullptr));
+		transport->stop();
+		throw std::runtime_error("Connection is closed");
+	}
+	return transport;
+}
+
 shared_ptr<TcpTransport> WebSocket::setTcpTransport(shared_ptr<TcpTransport> transport) {
 	PLOG_VERBOSE << "Starting TCP transport";
 
@@ -210,13 +223,7 @@ shared_ptr<TcpTransport> WebSocket::setTcpTransport(shared_ptr<TcpTransport> tra
 			}
 		});
 
-		std::atomic_store(&mTcpTransport, transport);
-		if (state == WebSocket::State::Closed) {
-			std::atomic_store(&mTcpTransport, decltype(mTcpTransport)(nullptr));
-			throw std::runtime_error("Connection is closed");
-		}
-		transport->start();
-		return transport;
+		return emplaceTransport(this, &mTcpTransport, std::move(transport));
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
@@ -273,13 +280,7 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 			transport =
 			    std::make_shared<TlsTransport>(lower, mHostname, mCertificate, stateChangeCallback);
 
-		std::atomic_store(&mTlsTransport, transport);
-		if (state == WebSocket::State::Closed) {
-			std::atomic_store(&mTlsTransport, decltype(mTlsTransport)(nullptr));
-			throw std::runtime_error("Connection is closed");
-		}
-		transport->start();
-		return transport;
+		return emplaceTransport(this, &mTlsTransport, std::move(transport));
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
@@ -341,13 +342,7 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 		auto transport = std::make_shared<WsTransport>(
 		    lower, mWsHandshake, weak_bind(&WebSocket::incoming, this, _1), stateChangeCallback);
 
-		std::atomic_store(&mWsTransport, transport);
-		if (state == WebSocket::State::Closed) {
-			std::atomic_store(&mWsTransport, decltype(mWsTransport)(nullptr));
-			throw std::runtime_error("Connection is closed");
-		}
-		transport->start();
-		return transport;
+		return emplaceTransport(this, &mWsTransport, std::move(transport));
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
@@ -387,18 +382,19 @@ void WebSocket::closeTransports() {
 	auto ws = std::atomic_exchange(&mWsTransport, decltype(mWsTransport)(nullptr));
 	auto tls = std::atomic_exchange(&mTlsTransport, decltype(mTlsTransport)(nullptr));
 	auto tcp = std::atomic_exchange(&mTcpTransport, decltype(mTcpTransport)(nullptr));
-	ThreadPool::Instance().enqueue([ws, tls, tcp]() mutable {
-		if (ws)
-			ws->stop();
-		if (tls)
-			tls->stop();
-		if (tcp)
-			tcp->stop();
+	ThreadPool::Instance().enqueue(
+	    [ws = std::move(ws), tls = std::move(tls), tcp = std::move(tcp)]() mutable {
+		    if (ws)
+			    ws->stop();
+		    if (tls)
+			    tls->stop();
+		    if (tcp)
+			    tcp->stop();
 
-		ws.reset();
-		tls.reset();
-		tcp.reset();
-	});
+		    ws.reset();
+		    tls.reset();
+		    tcp.reset();
+	    });
 }
 
 } // namespace rtc::impl
