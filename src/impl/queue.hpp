@@ -138,12 +138,13 @@ template <typename T> optional<T> Queue<T>::exchange(T element) {
 
 template <typename T> bool Queue<T>::wait(const optional<std::chrono::milliseconds> &duration) {
 	std::unique_lock lock(mMutex);
-	if (duration)
-		mPopCondition.wait_for(lock, *duration, [this]() { return !mQueue.empty() || mStopping; });
-	else
+	if (duration) {
+		return mPopCondition.wait_for(lock, *duration,
+		                              [this]() { return !mQueue.empty() || mStopping; });
+	} else {
 		mPopCondition.wait(lock, [this]() { return !mQueue.empty() || mStopping; });
-
-	return !mQueue.empty();
+		return true;
+	}
 }
 
 template <typename T> void Queue<T>::pushImpl(T element) {
