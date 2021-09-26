@@ -49,12 +49,14 @@
 
 typedef SOCKET socket_t;
 typedef SOCKADDR sockaddr;
-typedef u_long ctl_t;
+typedef ULONG ctl_t;
 typedef DWORD sockopt_t;
 #define sockerrno ((int)WSAGetLastError())
 #define IP_DONTFRAG IP_DONTFRAGMENT
-#define SOCKET_TO_INT(x) 0
 #define HOST_NAME_MAX 256
+
+#define poll WSAPoll
+typedef ULONG nfds_t;
 
 #define SEADDRINUSE WSAEADDRINUSE
 #define SEINTR WSAEINTR
@@ -76,6 +78,7 @@ typedef DWORD sockopt_t;
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
 #include <sys/socket.h>
@@ -99,7 +102,6 @@ typedef int ctl_t;
 typedef int sockopt_t;
 #define sockerrno errno
 #define INVALID_SOCKET -1
-#define SOCKET_TO_INT(x) (x)
 #define ioctlsocket ioctl
 #define closesocket close
 

@@ -26,7 +26,13 @@
 #include <unistd.h>
 #endif
 
+#include <chrono>
+
 namespace rtc::impl {
+
+using namespace std::chrono_literals;
+using std::chrono::duration_cast;
+using std::chrono::milliseconds;
 
 TcpTransport::TcpTransport(string hostname, string service, state_callback callback)
     : Transport(nullptr, std::move(callback)), mIsActive(true), mHostname(std::move(hostname)),
@@ -191,42 +197,42 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 			throw std::runtime_error(msg.str());
 		}
 
-		while (true) {
-			fd_set writefds;
-			FD_ZERO(&writefds);
-			FD_SET(mSock, &writefds);
-			struct timeval tv;
-			tv.tv_sec = 10; // TODO: Make the timeout configurable
-			tv.tv_usec = 0;
-			ret = ::select(SOCKET_TO_INT(mSock) + 1, NULL, &writefds, NULL, &tv);
+		// Wait for connection
+		struct pollfd pfd[1];
+		pfd[0].fd = mSock;
+		pfd[0].events = POLLOUT;
 
-			if (ret < 0) {
-				if (sockerrno == SEINTR || sockerrno == SEAGAIN) // interrupted
-					continue;
-				else
-					throw std::runtime_error("Failed to wait for socket connection");
-			}
+		using clock = std::chrono::steady_clock;
+		auto end = clock::now() + 10s; // TODO: Make the timeout configurable
 
-			if (ret == 0) {
-				std::ostringstream msg;
-				msg << "TCP connection to " << node << ":" << serv << " timed out";
-				throw std::runtime_error(msg.str());
-			}
+		do {
+			auto timeout = std::max(clock::duration::zero(), end - clock::now());
+			ret = ::poll(pfd, 1, duration_cast<milliseconds>(timeout).count());
 
-			int error = 0;
-			socklen_t errorlen = sizeof(error);
-			if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, (char *)&error, &errorlen) != 0)
-				throw std::runtime_error("Failed to get socket error code");
+		} while (ret < 0 && (sockerrno == SEINTR || sockerrno == SEAGAIN));
 
-			if (error != 0) {
-				std::ostringstream msg;
-				msg << "TCP connection to " << node << ":" << serv << " failed, errno=" << error;
-				throw std::runtime_error(msg.str());
-			}
+		if (ret < 0)
+			throw std::runtime_error("Failed to wait for socket connection");
 
-			PLOG_DEBUG << "TCP connection to " << node << ":" << serv << " succeeded";
-			break;
+		if (!(pfd[0].revents & POLLOUT)) {
+			std::ostringstream msg;
+			msg << "TCP connection to " << node << ":" << serv << " timed out";
+			throw std::runtime_error(msg.str());
 		}
+
+		int err = 0;
+		socklen_t errlen = sizeof(err);
+		if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, (char *)&err, &errlen) != 0)
+			throw std::runtime_error("Failed to get socket error code");
+
+		if (err != 0) {
+			std::ostringstream msg;
+			msg << "TCP connection to " << node << ":" << serv << " failed, errno=" << err;
+			throw std::runtime_error(msg.str());
+		}
+
+		PLOG_DEBUG << "TCP connection to " << node << ":" << serv << " succeeded";
+
 	} catch (...) {
 		if (mSock != INVALID_SOCKET) {
 			::closesocket(mSock);
@@ -310,40 +316,49 @@ void TcpTransport::runLoop() {
 
 		while (true) {
 			std::unique_lock lock(mSockMutex);
+
 			if (mSock == INVALID_SOCKET)
 				break;
 
-			fd_set readfds, writefds;
-			FD_ZERO(&readfds);
-			FD_ZERO(&writefds);
-			FD_SET(mSock, &readfds);
-			if (!mSendQueue.empty())
-				FD_SET(mSock, &writefds);
+			struct pollfd pfd[2];
+			pfd[0].fd = mSock;
+			pfd[0].events = !mSendQueue.empty() ? (POLLIN | POLLOUT) : POLLIN;
+			mInterrupter.prepare(pfd[1]);
 
-			int n = std::max(mInterrupter.prepare(readfds), SOCKET_TO_INT(mSock) + 1);
+			using clock = std::chrono::steady_clock;
+			auto end = clock::now() + 10s;
 
-			struct timeval tv;
-			tv.tv_sec = 10;
-			tv.tv_usec = 0;
+			int ret;
 			lock.unlock();
-			int ret = ::select(n, &readfds, &writefds, NULL, &tv);
+			do {
+				auto timeout = std::max(clock::duration::zero(), end - clock::now());
+				ret = ::poll(pfd, 2, duration_cast<milliseconds>(timeout).count());
+
+			} while (ret < 0 && (sockerrno == SEINTR || sockerrno == SEAGAIN));
 			lock.lock();
+
 			if (mSock == INVALID_SOCKET)
 				break;
 
-			if (ret < 0) {
+			if (ret < 0)
 				throw std::runtime_error("Failed to wait on socket");
-			} else if (ret == 0) {
+
+			if (ret == 0) {
 				PLOG_VERBOSE << "TCP is idle";
 				lock.unlock(); // unlock now since the upper layer might send on incoming
 				incoming(make_message(0));
 				continue;
 			}
 
-			if (FD_ISSET(mSock, &writefds))
-				trySendQueue();
+			if (pfd[0].revents & POLLNVAL || pfd[0].revents & POLLERR) {
+				throw std::runtime_error("Error while waiting for socket connection");
+			}
 
-			if (FD_ISSET(mSock, &readfds)) {
+			if (pfd[0].revents & POLLOUT) {
+				trySendQueue();
+			}
+
+			if (pfd[0].revents & POLLIN) {
 				char buffer[bufferSize];
 				int len = ::recv(mSock, buffer, bufferSize, 0);
 				if (len < 0) {

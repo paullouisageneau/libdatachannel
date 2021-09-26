@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_IMPL_SELECT_INTERRUPTER_H
-#define RTC_IMPL_SELECT_INTERRUPTER_H
+#ifndef RTC_IMPL_POLL_INTERRUPTER_H
+#define RTC_IMPL_POLL_INTERRUPTER_H
 
 #include "common.hpp"
 #include "socket.hpp"
@@ -28,13 +28,13 @@
 
 namespace rtc::impl {
 
-// Utility class to interrupt select()
-class SelectInterrupter final {
+// Utility class to interrupt poll()
+class PollInterrupter final {
 public:
-	SelectInterrupter();
-	~SelectInterrupter();
+	PollInterrupter();
+	~PollInterrupter();
 
-	int prepare(fd_set &readfds);
+	void prepare(struct pollfd &pfd);
 	void interrupt();
 
 private:

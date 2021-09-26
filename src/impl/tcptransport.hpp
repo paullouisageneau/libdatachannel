@@ -21,7 +21,7 @@
 
 #include "common.hpp"
 #include "queue.hpp"
-#include "selectinterrupter.hpp"
+#include "pollinterrupter.hpp"
 #include "socket.hpp"
 #include "transport.hpp"
 
@@ -65,7 +65,7 @@ private:
 	socket_t mSock = INVALID_SOCKET;
 	std::mutex mSockMutex;
 	std::thread mThread;
-	SelectInterrupter mInterrupter;
+	PollInterrupter mInterrupter;
 	Queue<message_ptr> mSendQueue;
 };
 
