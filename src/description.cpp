@@ -690,6 +690,17 @@ Description::Media Description::Media::reciprocate() const {
 		break;
 	}
 
+	// Clear all ssrc attributes as them are individual
+	auto it = mAttributes.begin();
+	while (it != mAttributes.end()) {
+		if (match_prefix(*it, "ssrc:"))
+			it = reciprocated.mAttributes.erase(it);
+		else
+			++it;
+	}
+	reciprocated.mSsrcs.clear();
+	reciprocated.mCNameMap.clear();
+
 	return reciprocated;
 }
 
