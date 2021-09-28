@@ -46,7 +46,7 @@ Additionnaly, you might want to have a look at the [C API documentation](https:/
 rtc::Configuration config;
 config.iceServers.emplace_back("mystunserver.org:3478");
 
-rtc::PeerConection pc(config);
+rtc::PeerConnection pc(config);
 
 pc.onLocalDescription([](rtc::Description sdp) {
     // Send the SDP to the remote peer
