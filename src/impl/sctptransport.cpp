@@ -268,7 +268,7 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 		spp.spp_flags |= SPP_PMTUD_DISABLE;
 		// The MTU value provided specifies the space available for chunks in the
 		// packet, so we also subtract the SCTP header size.
-		size_t pmtu = config.mtu.value_or(DEFAULT_MTU) - 12 - 37 - 8 - 40; // SCTP/DTLS/UDP/IPv6
+		size_t pmtu = config.mtu.value_or(DEFAULT_MTU) - 12 - 48 - 8 - 40; // SCTP/DTLS/UDP/IPv6
 		spp.spp_pathmtu = to_uint32(pmtu);
 		PLOG_VERBOSE << "Path MTU discovery disabled, SCTP MTU set to " << pmtu;
 	}
