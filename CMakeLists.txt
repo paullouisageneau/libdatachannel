@@ -312,8 +312,16 @@ else()
 		# This is a bug in CMake that causes it to prefer the system version over
 		# the one in the specified ROOT folder
 		if(EXISTS ${OPENSSL_ROOT_DIR})
-			set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_ROOT_DIR}/lib/libcrypto.dylib" CACHE FILEPATH "" FORCE)
-			set(OPENSSL_SSL_LIBRARY "${OPENSSL_ROOT_DIR}/lib/libssl.dylib" CACHE FILEPATH "" FORCE)
+            # Use static files when OPENSSL_USE_STATIC_LIBS is set.
+            # OPENSSL_USE_STATIC_LIBS is what CMake's FindOpenSSL looks at
+            # to decide whether to use static libraries.
+            if(OPENSSL_USE_STATIC_LIBS)
+                set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_ROOT_DIR}/lib/libcrypto.a" CACHE FILEPATH "" FORCE)
+                set(OPENSSL_SSL_LIBRARY "${OPENSSL_ROOT_DIR}/lib/libssl.a" CACHE FILEPATH "" FORCE)
+            else()
+                set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_ROOT_DIR}/lib/libcrypto.dylib" CACHE FILEPATH "" FORCE)
+                set(OPENSSL_SSL_LIBRARY "${OPENSSL_ROOT_DIR}/lib/libssl.dylib" CACHE FILEPATH "" FORCE)
+            endif()
 		endif()
 	endif()
 	find_package(OpenSSL REQUIRED)
