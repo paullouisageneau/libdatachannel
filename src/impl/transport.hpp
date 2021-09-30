@@ -92,7 +92,7 @@ protected:
 	}
 
 private:
-	shared_ptr<Transport> mLower;
+	const shared_ptr<Transport> mLower;
 	synchronized_callback<State> mStateChangeCallback;
 	synchronized_callback<message_ptr> mRecvCallback;
 
