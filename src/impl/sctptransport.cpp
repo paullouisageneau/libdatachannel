@@ -22,6 +22,8 @@
 #include "logcounter.hpp"
 
 #include <chrono>
+#include <cstdarg>
+#include <cstdio>
 #include <exception>
 #include <iostream>
 #include <limits>
@@ -113,9 +115,12 @@ private:
 SctpTransport::InstancesSet *SctpTransport::Instances = new InstancesSet;
 
 void SctpTransport::Init() {
-	usrsctp_init(0, &SctpTransport::WriteCallback, nullptr);
+	usrsctp_init(0, SctpTransport::WriteCallback, SctpTransport::DebugCallback);
 	usrsctp_sysctl_set_sctp_pr_enable(1);  // Enable Partial Reliability Extension (RFC 3758)
 	usrsctp_sysctl_set_sctp_ecn_enable(0); // Disable Explicit Congestion Notification
+#ifdef SCTP_DEBUG
+	usrsctp_sysctl_set_sctp_debug_on(SCTP_DEBUG_ALL);
+#endif
 }
 
 void SctpTransport::SetSettings(const SctpSettings &s) {
@@ -882,7 +887,7 @@ optional<milliseconds> SctpTransport::rtt() {
 void SctpTransport::UpcallCallback(struct socket *, void *arg, int /* flags */) {
 	auto *transport = static_cast<SctpTransport *>(arg);
 
-	if (auto lock = Instances->lock(transport))
+	if (auto locked = Instances->lock(transport))
 		transport->handleUpcall();
 }
 
@@ -891,10 +896,26 @@ int SctpTransport::WriteCallback(void *ptr, void *data, size_t len, uint8_t tos,
 
 	// Workaround for sctplab/usrsctp#405: Send callback is invoked on already closed socket
 	// https://github.com/sctplab/usrsctp/issues/405
-	if (auto lock = Instances->lock(transport))
+	if (auto locked = Instances->lock(transport))
 		return transport->handleWrite(static_cast<byte *>(data), len, tos, set_df);
 	else
 		return -1;
+}
+
+void SctpTransport::DebugCallback(const char *format, ...) {
+	const size_t bufferSize = 1024;
+	char buffer[bufferSize];
+	va_list va;
+	va_start(va, format);
+	int len = std::vsnprintf(buffer, bufferSize, format, va);
+	va_end(va);
+	if (len <= 0)
+		return;
+
+	len = std::min(len, int(bufferSize - 1));
+	buffer[len - 1] = '\0'; // remove newline
+
+	PLOG_VERBOSE << "usrsctp: " << buffer; // usrsctp debug as verbose
 }
 
 } // namespace rtc::impl
