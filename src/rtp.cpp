@@ -160,7 +160,7 @@ uint8_t RTCP_HEADER::version() const { return _first >> 6; }
 
 bool RTCP_HEADER::padding() const { return (_first >> 5) & 0x01; }
 
-uint8_t RTCP_HEADER::reportCount() const { return _first & 0x0F; }
+uint8_t RTCP_HEADER::reportCount() const { return _first & 0x1F; }
 
 uint8_t RTCP_HEADER::payloadType() const { return _payloadType; }
 
