@@ -679,6 +679,10 @@ bool rtcIsOpen(int id) {
 	return wrap([id] { return getChannel(id)->isOpen(); });
 }
 
+bool rtcIsClosed(int id) {
+	return wrap([id] { return getChannel(id)->isClosed(); });
+}
+
 int rtcGetBufferedAmount(int id) {
 	return wrap([id] {
 		auto channel = getChannel(id);
