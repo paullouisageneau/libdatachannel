@@ -413,6 +413,18 @@ Arguments:
 
 Return value: `true` if the channel exists and is open, `false` otherwise
 
+#### rtcIsClosed
+
+```
+bool rtcIsClosed(int id)
+```
+
+Arguments:
+
+- `id`: the channel identifier
+
+Return value: `true` if the channel exists and is closed (not open and not connecting), `false` otherwise
+
 #### rtcSendMessage
 
 ```

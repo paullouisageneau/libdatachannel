@@ -80,6 +80,16 @@ static void RTC_API openCallback(int id, void *ptr) {
 	peer->connected = true;
 	printf("DataChannel %d: Open\n", peer == peer1 ? 1 : 2);
 
+	if (!rtcIsOpen(id)) {
+		fprintf(stderr, "rtcIsOpen failed\n");
+		return;
+	}
+
+	if (rtcIsClosed(id)) {
+		fprintf(stderr, "rtcIsClosed failed\n");
+		return;
+	}
+
 	const char *message = peer == peer1 ? "Hello from 1" : "Hello from 2";
 	rtcSendMessage(peer->dc, message, -1); // negative size indicates a null-terminated string
 }
@@ -180,6 +190,16 @@ int test_capi_connectivity_main() {
 	int attempts;
 
 	rtcInitLogger(RTC_LOG_DEBUG, nullptr);
+
+	if (rtcIsOpen(666)) {
+		fprintf(stderr, "rtcIsOpen for invalid channel id failed\n");
+		return -1;
+	}
+
+	if (rtcIsClosed(666)) {
+		fprintf(stderr, "rtcIsOpen for invalid channel id failed\n");
+		return -1;
+	}
 
 	// STUN server example (not necessary to connect locally)
 	// Please do not use outside of libdatachannel tests
