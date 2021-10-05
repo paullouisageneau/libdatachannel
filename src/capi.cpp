@@ -676,11 +676,11 @@ int rtcSendMessage(int id, const char *data, int size) {
 }
 
 bool rtcIsOpen(int id) {
-	return wrap([id] { return getChannel(id)->isOpen(); });
+	return wrap([id] { return getChannel(id)->isOpen() ? 0 : 1; }) == 0 ? true : false;
 }
 
 bool rtcIsClosed(int id) {
-	return wrap([id] { return getChannel(id)->isClosed(); });
+	return wrap([id] { return getChannel(id)->isClosed() ? 0 : 1; }) == 0 ? true : false ;
 }
 
 int rtcGetBufferedAmount(int id) {
