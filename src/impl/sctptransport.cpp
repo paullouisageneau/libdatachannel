@@ -116,6 +116,7 @@ SctpTransport::InstancesSet *SctpTransport::Instances = new InstancesSet;
 
 void SctpTransport::Init() {
 	usrsctp_init(0, SctpTransport::WriteCallback, SctpTransport::DebugCallback);
+	usrsctp_enable_crc32c_offload();       // We'll compute CRC32 only for outgoing packets
 	usrsctp_sysctl_set_sctp_pr_enable(1);  // Enable Partial Reliability Extension (RFC 3758)
 	usrsctp_sysctl_set_sctp_ecn_enable(0); // Disable Explicit Congestion Notification
 #ifdef SCTP_DEBUG
@@ -893,6 +894,13 @@ void SctpTransport::UpcallCallback(struct socket *, void *arg, int /* flags */) 
 
 int SctpTransport::WriteCallback(void *ptr, void *data, size_t len, uint8_t tos, uint8_t set_df) {
 	auto *transport = static_cast<SctpTransport *>(ptr);
+
+	// Set the CRC32 ourselves as we have enabled CRC32 offloading
+	if(len >= 12) {
+		uint32_t *checksum = reinterpret_cast<uint32_t *>(data) + 2;
+		*checksum = 0;
+		*checksum = usrsctp_crc32c(data, len);
+	}
 
 	// Workaround for sctplab/usrsctp#405: Send callback is invoked on already closed socket
 	// https://github.com/sctplab/usrsctp/issues/405
