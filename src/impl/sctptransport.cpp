@@ -536,6 +536,7 @@ bool SctpTransport::trySendQueue() {
 		message_ptr message = std::move(*next);
 		if (!trySendMessage(message))
 			return false;
+
 		mSendQueue.pop();
 		updateBufferedAmount(to_uint16(message->stream), -ptrdiff_t(message_size_func(message)));
 	}
@@ -629,6 +630,10 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 
 void SctpTransport::updateBufferedAmount(uint16_t streamId, ptrdiff_t delta) {
 	// Requires mSendMutex to be locked
+
+	if(delta == 0)
+		return;
+
 	auto it = mBufferedAmount.insert(std::make_pair(streamId, 0)).first;
 	size_t amount = size_t(std::max(ptrdiff_t(it->second) + delta, ptrdiff_t(0)));
 	if (amount == 0)
