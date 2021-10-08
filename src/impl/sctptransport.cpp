@@ -436,9 +436,11 @@ bool SctpTransport::flush() {
 }
 
 void SctpTransport::closeStream(unsigned int stream) {
-	// This method must not call the buffered callback synchronously, so call send() from processor
-	mProcessor.enqueue(&SctpTransport::send, this,
-	                   make_message(0, Message::Reset, to_uint16(stream)));
+	std::lock_guard lock(mSendMutex);
+
+	// This method must not call the buffered callback synchronously
+	mSendQueue.push(make_message(0, Message::Reset, to_uint16(stream)));
+	mProcessor.enqueue(&SctpTransport::flush, this);
 }
 
 void SctpTransport::incoming(message_ptr message) {
