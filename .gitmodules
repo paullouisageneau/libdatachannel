@@ -6,7 +6,7 @@
 	url = https://github.com/sctplab/usrsctp.git
 [submodule "deps/libjuice"]
 	path = deps/libjuice
-	url = https://github.com/paullouisageneau/libjuice
+	url = https://github.com/paullouisageneau/libjuice.git
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/nlohmann/json.git
