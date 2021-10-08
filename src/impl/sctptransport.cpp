@@ -351,6 +351,7 @@ bool SctpTransport::stop() {
 	flush();
 	shutdown();
 	onRecv(nullptr);
+	mBufferedAmountCallback = nullptr;
 	return true;
 }
 
@@ -435,7 +436,9 @@ bool SctpTransport::flush() {
 }
 
 void SctpTransport::closeStream(unsigned int stream) {
-	send(make_message(0, Message::Reset, to_uint16(stream)));
+	// This method must not call the buffered callback synchronously, so call send() from processor
+	mProcessor.enqueue(&SctpTransport::send, this,
+	                   make_message(0, Message::Reset, to_uint16(stream)));
 }
 
 void SctpTransport::incoming(message_ptr message) {
@@ -536,6 +539,7 @@ bool SctpTransport::trySendQueue() {
 		message_ptr message = std::move(*next);
 		if (!trySendMessage(message))
 			return false;
+
 		mSendQueue.pop();
 		updateBufferedAmount(to_uint16(message->stream), -ptrdiff_t(message_size_func(message)));
 	}
@@ -629,6 +633,10 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 
 void SctpTransport::updateBufferedAmount(uint16_t streamId, ptrdiff_t delta) {
 	// Requires mSendMutex to be locked
+
+	if (delta == 0)
+		return;
+
 	auto it = mBufferedAmount.insert(std::make_pair(streamId, 0)).first;
 	size_t amount = size_t(std::max(ptrdiff_t(it->second) + delta, ptrdiff_t(0)));
 	if (amount == 0)
@@ -896,7 +904,7 @@ int SctpTransport::WriteCallback(void *ptr, void *data, size_t len, uint8_t tos,
 	auto *transport = static_cast<SctpTransport *>(ptr);
 
 	// Set the CRC32 ourselves as we have enabled CRC32 offloading
-	if(len >= 12) {
+	if (len >= 12) {
 		uint32_t *checksum = reinterpret_cast<uint32_t *>(data) + 2;
 		*checksum = 0;
 		*checksum = usrsctp_crc32c(data, len);
