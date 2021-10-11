@@ -1,0 +1,8 @@
+name: Build and test on FreeBSD
+os: freebsd
+language: cpp
+script:
+- sudo sysctl net.inet6.ip6.v6only=0
+- cmake -B build
+- cd build && make -j2 && ./tests
+
