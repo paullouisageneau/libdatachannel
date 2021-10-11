@@ -133,8 +133,8 @@ void TcpServer::listen(uint16_t port) {
 		// Listen on both IPv6 and IPv4
 		const sockopt_t disabled = 0;
 		if (ai->ai_family == AF_INET6)
-			::setsockopt(mSock, IPPROTO_IPV6, IPV6_V6ONLY, (const char *)&disabled,
-			             sizeof(disabled));
+			::setsockopt(mSock, IPPROTO_IPV6, IPV6_V6ONLY,
+			             reinterpret_cast<const char *>(&disabled), sizeof(disabled));
 
 		// Set non-blocking
 		ctl_t b = 1;
