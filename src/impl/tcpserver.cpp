@@ -109,18 +109,19 @@ void TcpServer::listen(uint16_t port) {
 	if (::getaddrinfo(nullptr, std::to_string(port).c_str(), &hints, &result))
 		throw std::runtime_error("Resolution failed for local address");
 
-	static const auto find_family = [](struct addrinfo *ai_list, int family) {
-		struct addrinfo *ai = ai_list;
-		while (ai && ai->ai_family != family)
-			ai = ai->ai_next;
-		return ai;
-	};
-
-	struct addrinfo *ai;
-	if ((ai = find_family(result, AF_INET6)) == NULL && (ai = find_family(result, AF_INET)) == NULL)
-		throw std::runtime_error("No suitable address family found");
-
 	try {
+		static const auto find_family = [](struct addrinfo *ai_list, int family) {
+			struct addrinfo *ai = ai_list;
+			while (ai && ai->ai_family != family)
+				ai = ai->ai_next;
+			return ai;
+		};
+
+		struct addrinfo *ai;
+		if ((ai = find_family(result, AF_INET6)) == NULL &&
+		    (ai = find_family(result, AF_INET)) == NULL)
+			throw std::runtime_error("No suitable address family found");
+
 		std::unique_lock lock(mSockMutex);
 		PLOG_VERBOSE << "Creating TCP server socket";
 
