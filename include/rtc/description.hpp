@@ -95,6 +95,24 @@ public:
 		std::vector<string>::iterator endAttributes();
 		std::vector<string>::iterator removeAttribute(std::vector<string>::iterator iterator);
 
+		struct ExtMap {
+			ExtMap(string_view mline);
+			ExtMap() {}
+
+			int id;
+			string uri;
+			string attributes;
+
+			static int parseId(string_view view);
+			void setMLine(string_view view);
+		};
+
+		void addExtMap(const ExtMap &map);
+
+		std::map<int, ExtMap>::iterator beginExtMaps();
+		std::map<int, ExtMap>::iterator endExtMaps();
+		std::map<int, ExtMap>::iterator removeExtMap(std::map<int, ExtMap>::iterator iterator);
+
 	protected:
 		Entry(const string &mline, string mid, Direction dir = Direction::Unknown);
 		virtual string generateSdpLines(string_view eol) const;
@@ -106,6 +124,7 @@ public:
 		string mDescription;
 		string mMid;
 		Direction mDirection;
+		std::map<int, ExtMap> mExtMap;
 	};
 
 	struct RTC_CPP_EXPORT Application : public Entry {

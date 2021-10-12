@@ -500,6 +500,15 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 	sdp << "a=bundle-only" << eol;
 	sdp << "a=mid:" << mMid << eol;
 
+	for (auto it = mExtMap.begin(); it != mExtMap.end(); ++it) {
+		auto &map = it->second;
+
+		sdp << "a=extmap:" << map.id << ' ' << map.uri;
+		if (!map.attributes.empty())
+			sdp << ' ' << map.attributes;
+		sdp << eol;
+	}
+
 	switch (mDirection) {
 	case Direction::SendOnly:
 		sdp << "a=sendonly" << eol;
@@ -533,7 +542,15 @@ void Description::Entry::parseSdpLine(string_view line) {
 
 		if (key == "mid")
 			mMid = value;
-		else if (attr == "sendonly")
+		else if (key == "extmap") {
+			auto id = Description::Media::ExtMap::parseId(value);
+			auto it = mExtMap.find(id);
+			if (it == mExtMap.end()) {
+				it = mExtMap.insert(std::make_pair(id, Description::Media::ExtMap(value))).first;
+			} else {
+				it->second.setMLine(value);
+			}
+		} else if (attr == "sendonly")
 			mDirection = Direction::SendOnly;
 		else if (attr == "recvonly")
 			mDirection = Direction::RecvOnly;
@@ -555,6 +572,48 @@ std::vector<string>::iterator Description::Entry::endAttributes() { return mAttr
 std::vector<string>::iterator
 Description::Entry::removeAttribute(std::vector<string>::iterator it) {
 	return mAttributes.erase(it);
+}
+
+void Description::Entry::addExtMap(const Description::Entry::ExtMap &map) {
+	mExtMap.emplace(map.id, map);
+}
+
+std::map<int, Description::Entry::ExtMap>::iterator Description::Entry::beginExtMaps() {
+	return mExtMap.begin();
+}
+
+std::map<int, Description::Entry::ExtMap>::iterator Description::Entry::endExtMaps() {
+	return mExtMap.end();
+}
+
+std::map<int, Description::Entry::ExtMap>::iterator
+Description::Entry::removeExtMap(std::map<int, Description::Entry::ExtMap>::iterator iterator) {
+	return mExtMap.erase(iterator);
+}
+
+Description::Entry::ExtMap::ExtMap(string_view mline) { setMLine(mline); }
+
+int Description::Entry::ExtMap::parseId(string_view view) {
+	size_t p = view.find(' ');
+
+	return to_integer<int>(view.substr(0, p));
+}
+
+void Description::Entry::ExtMap::setMLine(string_view mline) {
+	size_t p = mline.find(' ');
+	if (p == string::npos)
+		throw std::invalid_argument("Invalid m-line");
+
+	this->id = to_integer<int>(mline.substr(0, p));
+	string_view line = mline.substr(p + 1);
+
+	size_t spl = line.find(' ');
+	if (spl == string::npos)
+		this->uri = line;
+	else {
+		this->uri = line.substr(0, spl);
+		this->attributes = line.substr(spl + 1);
+	}
 }
 
 void Description::Media::addSSRC(uint32_t ssrc, optional<string> name, optional<string> msid,
