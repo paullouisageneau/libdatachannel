@@ -103,7 +103,7 @@ void TcpServer::listen(uint16_t port) {
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
-	hints.ai_flags = AI_ADDRCONFIG;
+	hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
 
 	struct addrinfo *result = nullptr;
 	if (::getaddrinfo(nullptr, std::to_string(port).c_str(), &hints, &result))
