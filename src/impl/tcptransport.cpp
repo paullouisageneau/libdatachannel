@@ -188,8 +188,8 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 
 #ifdef __APPLE__
 		// MacOS lacks MSG_NOSIGNAL and requires SO_NOSIGPIPE instead
-		int opt = 1;
-		if (::setsockopt(mSock, SOL_SOCKET, SO_NOSIGPIPE, &opt, sizeof(opt)) < 0)
+		const sockopt_t enabled = 1;
+		if (::setsockopt(mSock, SOL_SOCKET, SO_NOSIGPIPE, &enabled, sizeof(enabled)) < 0)
 			throw std::runtime_error("Failed to disable SIGPIPE for socket");
 #endif
 

@@ -1,5 +1,5 @@
 /*
- * libdatachannel client example
+ * libdatachannel media example
  * Copyright (c) 2020 Staz Modrzynski
  * Copyright (c) 2020 Paul-Louis Ageneau
  *
@@ -30,7 +30,9 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #else
+#include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 typedef int SOCKET;
 #endif
 
