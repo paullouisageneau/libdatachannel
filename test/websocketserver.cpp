@@ -92,7 +92,7 @@ void test_websocketserver() {
 
 	ws.open("wss://localhost:48080/");
 
-	int attempts = 10;
+	int attempts = 15;
 	while ((!ws.isOpen() || !received) && attempts--)
 		this_thread::sleep_for(1s);
 
