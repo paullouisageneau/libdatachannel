@@ -56,15 +56,15 @@ size_t RTP::getSize() const {
 	       sizeof(SSRC) * csrcCount();
 }
 
-size_t RTP::getExtSize() const {
-	auto header = reinterpret_cast<const RTP_ExtensionHeader *>(getExt());
+size_t RTP::getExtensionHeaderSize() const {
+	auto header = reinterpret_cast<const RTP_ExtensionHeader *>(getExtensionHeader());
 	if (header) {
 		return header->getSize() + sizeof(RTP_ExtensionHeader);
 	}
 	return 0;
 }
 
-const RTP_ExtensionHeader *RTP::getExt() const {
+const RTP_ExtensionHeader *RTP::getExtensionHeader() const {
 	if (extension()) {
 		auto header = reinterpret_cast<const char *>(&_csrc) + sizeof(SSRC) * csrcCount();
 		return reinterpret_cast<const RTP_ExtensionHeader *>(header);
@@ -72,7 +72,7 @@ const RTP_ExtensionHeader *RTP::getExt() const {
 	return nullptr;
 }
 
-RTP_ExtensionHeader *RTP::getExt() {
+RTP_ExtensionHeader *RTP::getExtensionHeader() {
 	if (extension()) {
 		auto header = reinterpret_cast<char *>(&_csrc) + sizeof(SSRC) * csrcCount();
 		return reinterpret_cast<RTP_ExtensionHeader *>(header);
@@ -81,10 +81,10 @@ RTP_ExtensionHeader *RTP::getExt() {
 }
 
 const char *RTP::getBody() const {
-	return reinterpret_cast<const char *>(&_csrc) + sizeof(SSRC) * csrcCount() + getExtSize();
+	return reinterpret_cast<const char *>(&_csrc) + sizeof(SSRC) * csrcCount() + getExtensionHeaderSize();
 }
 
-char *RTP::getBody() { return reinterpret_cast<char *>(&_csrc) + sizeof(SSRC) * csrcCount() + getExtSize(); }
+char *RTP::getBody() { return reinterpret_cast<char *>(&_csrc) + sizeof(SSRC) * csrcCount() + getExtensionHeaderSize(); }
 
 void RTP::preparePacket() { _first |= (1 << 7); }
 

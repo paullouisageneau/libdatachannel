@@ -49,7 +49,7 @@ binary_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool setMark) {
 	if (rtpExtHeaderSize) {
 		rtp->setExtension(true);
 
-		auto extHeader = rtp->getExt();
+		auto extHeader = rtp->getExtensionHeader();
 		extHeader->setProfileSpecificId(0xbede);
 		extHeader->setHeaderLength(1);
 		extHeader->clearBody();

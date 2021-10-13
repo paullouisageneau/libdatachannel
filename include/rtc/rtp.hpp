@@ -68,9 +68,9 @@ struct RTC_CPP_EXPORT RTP {
 	[[nodiscard]] uint32_t ssrc() const;
 
 	[[nodiscard]] size_t getSize() const;
-	[[nodiscard]] size_t getExtSize() const;
-	[[nodiscard]] const RTP_ExtensionHeader *getExt() const;
-	[[nodiscard]] RTP_ExtensionHeader *getExt();
+	[[nodiscard]] size_t getExtensionHeaderSize() const;
+	[[nodiscard]] const RTP_ExtensionHeader *getExtensionHeader() const;
+	[[nodiscard]] RTP_ExtensionHeader *getExtensionHeader();
 	[[nodiscard]] const char *getBody() const;
 	[[nodiscard]] char *getBody();
 
