@@ -548,7 +548,7 @@ void Description::Entry::parseSdpLine(string_view line) {
 			if (it == mExtMap.end()) {
 				it = mExtMap.insert(std::make_pair(id, Description::Media::ExtMap(value))).first;
 			} else {
-				it->second.setMLine(value);
+				it->second.setDescription(value);
 			}
 		} else if (attr == "sendonly")
 			mDirection = Direction::SendOnly;
@@ -591,7 +591,7 @@ Description::Entry::removeExtMap(std::map<int, Description::Entry::ExtMap>::iter
 	return mExtMap.erase(iterator);
 }
 
-Description::Entry::ExtMap::ExtMap(string_view mline) { setMLine(mline); }
+Description::Entry::ExtMap::ExtMap(string_view description) { setDescription(description); }
 
 int Description::Entry::ExtMap::parseId(string_view view) {
 	size_t p = view.find(' ');
@@ -599,20 +599,39 @@ int Description::Entry::ExtMap::parseId(string_view view) {
 	return to_integer<int>(view.substr(0, p));
 }
 
-void Description::Entry::ExtMap::setMLine(string_view mline) {
-	size_t p = mline.find(' ');
-	if (p == string::npos)
-		throw std::invalid_argument("Invalid m-line");
+void Description::Entry::ExtMap::setDescription(string_view description) {
+	const size_t uriStart = description.find(' ');
+	if (uriStart == string::npos)
+		throw std::invalid_argument("Invalid description");
 
-	this->id = to_integer<int>(mline.substr(0, p));
-	string_view line = mline.substr(p + 1);
+	const string_view idAndDirection = description.substr(0, uriStart);
+	const size_t idSplit = idAndDirection.find('/');
+	if (idSplit == string::npos) {
+		this->id = to_integer<int>(idAndDirection);
+	} else {
+		this->id = to_integer<int>(idAndDirection.substr(0, idSplit));
 
-	size_t spl = line.find(' ');
-	if (spl == string::npos)
-		this->uri = line;
+		const string_view directionStr = idAndDirection.substr(idSplit + 1);
+		if (directionStr == "sendonly")
+			this->direction = Direction::SendOnly;
+		else if (directionStr == "recvonly")
+			this->direction = Direction::RecvOnly;
+		else if (directionStr == "sendrecv")
+			this->direction = Direction::SendRecv;
+		else if (directionStr == "inactive")
+			this->direction = Direction::Inactive;
+		else
+			throw std::invalid_argument("Invalid direction");
+	}
+
+	const string_view uriAndAttributes = description.substr(uriStart + 1);
+	const size_t attributeSplit = uriAndAttributes.find(' ');
+
+	if (attributeSplit == string::npos)
+		this->uri = uriAndAttributes;
 	else {
-		this->uri = line.substr(0, spl);
-		this->attributes = line.substr(spl + 1);
+		this->uri = uriAndAttributes.substr(0, attributeSplit);
+		this->attributes = uriAndAttributes.substr(attributeSplit + 1);
 	}
 }
 

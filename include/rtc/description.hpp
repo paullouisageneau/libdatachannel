@@ -102,9 +102,10 @@ public:
 			int id;
 			string uri;
 			string attributes;
+			Direction direction = Direction::Unknown;
 
 			static int parseId(string_view view);
-			void setMLine(string_view view);
+			void setDescription(string_view view);
 		};
 
 		void addExtMap(const ExtMap &map);
