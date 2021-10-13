@@ -503,7 +503,25 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 	for (auto it = mExtMap.begin(); it != mExtMap.end(); ++it) {
 		auto &map = it->second;
 
-		sdp << "a=extmap:" << map.id << ' ' << map.uri;
+		sdp << "a=extmap:" << map.id;
+		switch (map.direction) {
+		case Direction::SendOnly:
+			sdp << "/sendonly";
+			break;
+		case Direction::RecvOnly:
+			sdp << "/recvonly";
+			break;
+		case Direction::SendRecv:
+			sdp << "/sendrecv";
+			break;
+		case Direction::Inactive:
+			sdp << "/inactive";
+			break;
+		default:
+			// Ignore
+			break;
+		}
+		sdp << ' ' << map.uri;
 		if (!map.attributes.empty())
 			sdp << ' ' << map.attributes;
 		sdp << eol;
