@@ -37,12 +37,12 @@ public:
 	/// Default clock rate for H264 in RTP
 	inline static const uint32_t defaultClockRate = 90 * 1000;
 
-	/// Nalunit separator
+	/// NAL unit separator
 	enum class Separator {
-		LongStartSequence,  // 0x00, 0x00, 0x00, 0x01
-		ShortStartSequence, // 0x00, 0x00, 0x01
-		StartSequence,      // LongStartSequence or ShortStartSequence
-		Length              // first 4 bytes is nal unit length
+		Length = RTC_NAL_SEPARATOR_LENGTH, // first 4 bytes are NAL unit length
+		LongStartSequence = RTC_NAL_SEPARATOR_LONG_START_SEQUENCE,   // 0x00, 0x00, 0x00, 0x01
+		ShortStartSequence = RTC_NAL_SEPARATOR_SHORT_START_SEQUENCE, // 0x00, 0x00, 0x01
+		StartSequence = RTC_NAL_SEPARATOR_START_SEQUENCE, // LongStartSequence or ShortStartSequence
 	};
 
 	H264RtpPacketizer(H264RtpPacketizer::Separator separator,
