@@ -119,13 +119,13 @@ public:
 		virtual string generateSdpLines(string_view eol) const;
 
 		std::vector<string> mAttributes;
+		std::map<int, ExtMap> mExtMap;
 
 	private:
 		string mType;
 		string mDescription;
 		string mMid;
 		Direction mDirection;
-		std::map<int, ExtMap> mExtMap;
 	};
 
 	struct RTC_CPP_EXPORT Application : public Entry {

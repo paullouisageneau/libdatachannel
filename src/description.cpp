@@ -774,7 +774,7 @@ Description::Media Description::Media::reciprocate() const {
 	Media reciprocated(*this);
 
 	// Invert direction
-	switch (direction()) {
+	switch (reciprocated.direction()) {
 	case Direction::RecvOnly:
 		reciprocated.setDirection(Direction::SendOnly);
 		break;
@@ -784,6 +784,22 @@ Description::Media Description::Media::reciprocate() const {
 	default:
 		// We are good
 		break;
+	}
+
+	// Invert directions of extmap
+	for (auto it = reciprocated.mExtMap.begin(); it != reciprocated.mExtMap.end(); ++it) {
+		auto &map = it->second;
+		switch (map.direction) {
+		case Direction::RecvOnly:
+			map.direction = Direction::SendOnly;
+			break;
+		case Direction::SendOnly:
+			map.direction = Direction::RecvOnly;
+			break;
+		default:
+			// We are good
+			break;
+		}
 	}
 
 	// Clear all ssrc attributes as they are individual
