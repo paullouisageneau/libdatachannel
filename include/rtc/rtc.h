@@ -260,14 +260,26 @@ RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
 
 // Media
 
+// Define how NAL units are separated in a H264 sample
+typedef enum {
+	RTC_NAL_SEPARATOR_LENGTH = 0,               // first 4 bytes are NAL unit length
+	RTC_NAL_SEPARATOR_LONG_START_SEQUENCE = 1,  // 0x00, 0x00, 0x00, 0x01
+	RTC_NAL_SEPARATOR_SHORT_START_SEQUENCE = 2, // 0x00, 0x00, 0x01
+	RTC_NAL_SEPARATOR_START_SEQUENCE = 3,       // long or short start sequence
+} rtcNalUnitSeparator;
+
 typedef struct {
 	uint32_t ssrc;
 	const char *cname;
 	uint8_t payloadType;
 	uint32_t clockRate;
-	uint16_t maxFragmentSize; // Maximum NALU fragment size
 	uint16_t sequenceNumber;
 	uint32_t timestamp;
+
+	// H264
+	rtcNalUnitSeparator nalSeparator; // NAL unit separator
+	uint16_t maxFragmentSize;         // Maximum NAL unit fragment size
+
 } rtcPacketizationHandlerInit;
 
 typedef struct {
