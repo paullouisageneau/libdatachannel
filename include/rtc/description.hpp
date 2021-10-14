@@ -96,7 +96,7 @@ public:
 		std::vector<string>::iterator removeAttribute(std::vector<string>::iterator iterator);
 
 		struct ExtMap {
-			ExtMap(string_view mline);
+			ExtMap(string_view description);
 			ExtMap() {}
 
 			int id;
