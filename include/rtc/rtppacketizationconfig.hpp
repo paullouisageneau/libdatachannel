@@ -38,11 +38,31 @@ public:
 	const uint32_t clockRate;
 	const double &startTime_s = _startTime_s;
 	const uint32_t &startTimestamp = _startTimestamp;
+	const uint8_t videoOrientationId;
 
 	/// current sequence number
 	uint16_t sequenceNumber;
 	/// current timestamp
 	uint32_t timestamp;
+	/// Current video orientation
+	///
+	/// Bit#       7  6  5  4  3  2  1  0
+	/// Definition 0  0  0  0  C  F  R1 R0
+	///
+	/// C
+	///   0 - Front-facing camera (use this if unsure)
+	///   1 - Back-facing camera
+	///
+	/// F
+	///   0 - No Flip
+	///   1 - Horizontal flip
+	///
+	/// R1 R0 - CW rotation that receiver must apply
+	///   0 - 0 degrees
+	///   1 - 90 degrees
+	///   2 - 180 degrees
+	///   3 - 270 degrees
+	uint8_t videoOrientation = 0;
 
 	enum class EpochStart : unsigned long long {
 		T1970 = 2208988800, // number of seconds between 1970 and 1900
@@ -67,7 +87,8 @@ public:
 	/// @param timestamp Initial timastamp of RTP packets (random number is choosed if nullopt)
 	RtpPacketizationConfig(SSRC ssrc, std::string cname, uint8_t payloadType, uint32_t clockRate,
 	                       optional<uint16_t> sequenceNumber = std::nullopt,
-	                       optional<uint32_t> timestamp = std::nullopt);
+	                       optional<uint32_t> timestamp = std::nullopt,
+	                       uint8_t videoOrientationId = 0);
 
 	/// Convert timestamp to seconds
 	/// @param timestamp Timestamp

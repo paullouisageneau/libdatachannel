@@ -56,11 +56,35 @@ size_t RTP::getSize() const {
 	       sizeof(SSRC) * csrcCount();
 }
 
-const char *RTP::getBody() const {
-	return reinterpret_cast<const char *>(&_csrc) + sizeof(SSRC) * csrcCount();
+size_t RTP::getExtensionHeaderSize() const {
+	auto header = reinterpret_cast<const RTP_ExtensionHeader *>(getExtensionHeader());
+	if (header) {
+		return header->getSize() + sizeof(RTP_ExtensionHeader);
+	}
+	return 0;
 }
 
-char *RTP::getBody() { return reinterpret_cast<char *>(&_csrc) + sizeof(SSRC) * csrcCount(); }
+const RTP_ExtensionHeader *RTP::getExtensionHeader() const {
+	if (extension()) {
+		auto header = reinterpret_cast<const char *>(&_csrc) + sizeof(SSRC) * csrcCount();
+		return reinterpret_cast<const RTP_ExtensionHeader *>(header);
+	}
+	return nullptr;
+}
+
+RTP_ExtensionHeader *RTP::getExtensionHeader() {
+	if (extension()) {
+		auto header = reinterpret_cast<char *>(&_csrc) + sizeof(SSRC) * csrcCount();
+		return reinterpret_cast<RTP_ExtensionHeader *>(header);
+	}
+	return nullptr;
+}
+
+const char *RTP::getBody() const {
+	return reinterpret_cast<const char *>(&_csrc) + sizeof(SSRC) * csrcCount() + getExtensionHeaderSize();
+}
+
+char *RTP::getBody() { return reinterpret_cast<char *>(&_csrc) + sizeof(SSRC) * csrcCount() + getExtensionHeaderSize(); }
 
 void RTP::preparePacket() { _first |= (1 << 7); }
 
@@ -76,11 +100,41 @@ void RTP::setMarker(bool marker) { _payloadType = (_payloadType & 0x7F) | (marke
 
 void RTP::setTimestamp(uint32_t i) { _timestamp = htonl(i); }
 
+void RTP::setExtension(bool extension) { _first = (_first & ~0x10) | ((extension & 1) << 4); }
+
 void RTP::log() const {
 	PLOG_VERBOSE << "RTP V: " << (int)version() << " P: " << (padding() ? "P" : " ")
 	             << " X: " << (extension() ? "X" : " ") << " CC: " << (int)csrcCount()
 	             << " M: " << (marker() ? "M" : " ") << " PT: " << (int)payloadType()
 	             << " SEQNO: " << seqNumber() << " TS: " << timestamp();
+}
+
+uint16_t RTP_ExtensionHeader::profileSpecificId() const { return ntohs(_profileSpecificId); }
+
+uint16_t RTP_ExtensionHeader::headerLength() const { return ntohs(_headerLength); }
+
+size_t RTP_ExtensionHeader::getSize() const { return headerLength() * 4; }
+
+const char *RTP_ExtensionHeader::getBody() const { return reinterpret_cast<const char *>((&_headerLength) + 1); }
+
+char *RTP_ExtensionHeader::getBody() { return reinterpret_cast<char *>((&_headerLength) + 1); }
+
+void RTP_ExtensionHeader::setProfileSpecificId(uint16_t profileSpecificId) {
+	_profileSpecificId = htons(profileSpecificId);
+}
+
+void RTP_ExtensionHeader::setHeaderLength(uint16_t headerLength) {
+	_headerLength = htons(headerLength);
+}
+
+void RTP_ExtensionHeader::clearBody() { std::memset(getBody(), 0, getSize()); }
+
+void RTP_ExtensionHeader::writeCurrentVideoOrientation(size_t offset, uint8_t id, uint8_t value)
+{
+	if ((id == 0) || (id > 14) || ((offset + 2) > getSize())) return;
+	auto buf = getBody() + offset;
+	buf[0] = id << 4;
+	buf[1] = value;
 }
 
 SSRC RTCP_ReportBlock::getSSRC() const { return ntohl(_ssrc); }

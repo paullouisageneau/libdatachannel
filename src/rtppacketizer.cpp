@@ -27,7 +27,16 @@ namespace rtc {
 RtpPacketizer::RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig) : rtpConfig(rtpConfig) {}
 
 binary_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool setMark) {
-	auto msg = std::make_shared<binary>(rtpHeaderSize + payload->size());
+	int rtpExtHeaderSize = 0;
+	const bool setVideoRotation =
+		(rtpConfig->videoOrientationId != 0) &&
+		(rtpConfig->videoOrientationId < 15) &&  // needs fixing if longer extension headers are supported
+		setMark &&
+		(rtpConfig->videoOrientation != 0);
+	if (setVideoRotation) {
+		rtpExtHeaderSize = rtpExtHeaderCvoSize;
+	}
+	auto msg = std::make_shared<binary>(rtpHeaderSize + rtpExtHeaderSize + payload->size());
 	auto *rtp = (RTP *)msg->data();
 	rtp->setPayloadType(rtpConfig->payloadType);
 	// increase sequence number
@@ -37,8 +46,18 @@ binary_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool setMark) {
 	if (setMark) {
 		rtp->setMarker(true);
 	}
+	if (rtpExtHeaderSize) {
+		rtp->setExtension(true);
+
+		auto extHeader = rtp->getExtensionHeader();
+		extHeader->setProfileSpecificId(0xbede);
+		extHeader->setHeaderLength(1);
+		extHeader->clearBody();
+		extHeader->writeCurrentVideoOrientation(0,
+			rtpConfig->videoOrientationId, rtpConfig->videoOrientation);
+	}
 	rtp->preparePacket();
-	std::memcpy(msg->data() + rtpHeaderSize, payload->data(), payload->size());
+	std::memcpy(msg->data() + rtpHeaderSize + rtpExtHeaderSize, payload->data(), payload->size());
 	return msg;
 }
 

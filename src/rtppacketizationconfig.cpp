@@ -27,8 +27,9 @@ namespace rtc {
 RtpPacketizationConfig::RtpPacketizationConfig(SSRC ssrc, string cname, uint8_t payloadType,
                                                uint32_t clockRate,
                                                optional<uint16_t> sequenceNumber,
-                                               optional<uint32_t> timestamp)
-    : ssrc(ssrc), cname(cname), payloadType(payloadType), clockRate(clockRate) {
+                                               optional<uint32_t> timestamp,
+                                               uint8_t videoOrientationId)
+    : ssrc(ssrc), cname(cname), payloadType(payloadType), clockRate(clockRate), videoOrientationId(videoOrientationId) {
 	assert(clockRate > 0);
 	srand((unsigned)time(NULL));
 	if (sequenceNumber.has_value()) {

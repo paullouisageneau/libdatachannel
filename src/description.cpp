@@ -500,6 +500,33 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 	sdp << "a=bundle-only" << eol;
 	sdp << "a=mid:" << mMid << eol;
 
+	for (auto it = mExtMap.begin(); it != mExtMap.end(); ++it) {
+		auto &map = it->second;
+
+		sdp << "a=extmap:" << map.id;
+		switch (map.direction) {
+		case Direction::SendOnly:
+			sdp << "/sendonly";
+			break;
+		case Direction::RecvOnly:
+			sdp << "/recvonly";
+			break;
+		case Direction::SendRecv:
+			sdp << "/sendrecv";
+			break;
+		case Direction::Inactive:
+			sdp << "/inactive";
+			break;
+		default:
+			// Ignore
+			break;
+		}
+		sdp << ' ' << map.uri;
+		if (!map.attributes.empty())
+			sdp << ' ' << map.attributes;
+		sdp << eol;
+	}
+
 	switch (mDirection) {
 	case Direction::SendOnly:
 		sdp << "a=sendonly" << eol;
@@ -533,7 +560,15 @@ void Description::Entry::parseSdpLine(string_view line) {
 
 		if (key == "mid")
 			mMid = value;
-		else if (attr == "sendonly")
+		else if (key == "extmap") {
+			auto id = Description::Media::ExtMap::parseId(value);
+			auto it = mExtMap.find(id);
+			if (it == mExtMap.end()) {
+				it = mExtMap.insert(std::make_pair(id, Description::Media::ExtMap(value))).first;
+			} else {
+				it->second.setDescription(value);
+			}
+		} else if (attr == "sendonly")
 			mDirection = Direction::SendOnly;
 		else if (attr == "recvonly")
 			mDirection = Direction::RecvOnly;
@@ -555,6 +590,67 @@ std::vector<string>::iterator Description::Entry::endAttributes() { return mAttr
 std::vector<string>::iterator
 Description::Entry::removeAttribute(std::vector<string>::iterator it) {
 	return mAttributes.erase(it);
+}
+
+void Description::Entry::addExtMap(const Description::Entry::ExtMap &map) {
+	mExtMap.emplace(map.id, map);
+}
+
+std::map<int, Description::Entry::ExtMap>::iterator Description::Entry::beginExtMaps() {
+	return mExtMap.begin();
+}
+
+std::map<int, Description::Entry::ExtMap>::iterator Description::Entry::endExtMaps() {
+	return mExtMap.end();
+}
+
+std::map<int, Description::Entry::ExtMap>::iterator
+Description::Entry::removeExtMap(std::map<int, Description::Entry::ExtMap>::iterator iterator) {
+	return mExtMap.erase(iterator);
+}
+
+Description::Entry::ExtMap::ExtMap(string_view description) { setDescription(description); }
+
+int Description::Entry::ExtMap::parseId(string_view view) {
+	size_t p = view.find(' ');
+
+	return to_integer<int>(view.substr(0, p));
+}
+
+void Description::Entry::ExtMap::setDescription(string_view description) {
+	const size_t uriStart = description.find(' ');
+	if (uriStart == string::npos)
+		throw std::invalid_argument("Invalid description");
+
+	const string_view idAndDirection = description.substr(0, uriStart);
+	const size_t idSplit = idAndDirection.find('/');
+	if (idSplit == string::npos) {
+		this->id = to_integer<int>(idAndDirection);
+	} else {
+		this->id = to_integer<int>(idAndDirection.substr(0, idSplit));
+
+		const string_view directionStr = idAndDirection.substr(idSplit + 1);
+		if (directionStr == "sendonly")
+			this->direction = Direction::SendOnly;
+		else if (directionStr == "recvonly")
+			this->direction = Direction::RecvOnly;
+		else if (directionStr == "sendrecv")
+			this->direction = Direction::SendRecv;
+		else if (directionStr == "inactive")
+			this->direction = Direction::Inactive;
+		else
+			throw std::invalid_argument("Invalid direction");
+	}
+
+	const string_view uriAndAttributes = description.substr(uriStart + 1);
+	const size_t attributeSplit = uriAndAttributes.find(' ');
+
+	if (attributeSplit == string::npos)
+		this->uri = uriAndAttributes;
+	else {
+		this->uri = uriAndAttributes.substr(0, attributeSplit);
+		this->attributes = uriAndAttributes.substr(attributeSplit + 1);
+	}
 }
 
 void Description::Media::addSSRC(uint32_t ssrc, optional<string> name, optional<string> msid,

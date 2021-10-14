@@ -31,6 +31,24 @@ typedef uint32_t SSRC;
 
 #pragma pack(push, 1)
 
+struct RTC_CPP_EXPORT RTP_ExtensionHeader {
+	uint16_t _profileSpecificId;
+	uint16_t _headerLength;
+
+	[[nodiscard]] uint16_t profileSpecificId() const;
+	[[nodiscard]] uint16_t headerLength() const;
+
+	[[nodiscard]] size_t getSize() const;
+	[[nodiscard]] const char *getBody() const;
+	[[nodiscard]] char *getBody();
+
+	void setProfileSpecificId(uint16_t profileSpecificId);
+	void setHeaderLength(uint16_t headerLength);
+
+	void clearBody();
+	void writeCurrentVideoOrientation(size_t offset, uint8_t id, uint8_t value);
+};
+
 struct RTC_CPP_EXPORT RTP {
 	uint8_t _first;
 	uint8_t _payloadType;
@@ -50,6 +68,9 @@ struct RTC_CPP_EXPORT RTP {
 	[[nodiscard]] uint32_t ssrc() const;
 
 	[[nodiscard]] size_t getSize() const;
+	[[nodiscard]] size_t getExtensionHeaderSize() const;
+	[[nodiscard]] const RTP_ExtensionHeader *getExtensionHeader() const;
+	[[nodiscard]] RTP_ExtensionHeader *getExtensionHeader();
 	[[nodiscard]] const char *getBody() const;
 	[[nodiscard]] char *getBody();
 
@@ -61,6 +82,7 @@ struct RTC_CPP_EXPORT RTP {
 	void setSsrc(uint32_t in_ssrc);
 	void setMarker(bool marker);
 	void setTimestamp(uint32_t i);
+	void setExtension(bool extension);
 };
 
 struct RTC_CPP_EXPORT RTCP_ReportBlock {
