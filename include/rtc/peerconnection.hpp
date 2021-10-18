@@ -89,7 +89,6 @@ public:
 	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
 	void setLocalDescription(Description::Type type = Description::Type::Unspec);
-
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
 
