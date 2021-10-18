@@ -36,7 +36,13 @@ WebSocket::WebSocket(impl_ptr<impl::WebSocket> impl)
     : CheshireCat<impl::WebSocket>(std::move(impl)),
       Channel(std::dynamic_pointer_cast<impl::Channel>(CheshireCat<impl::WebSocket>::impl())) {}
 
-WebSocket::~WebSocket() { impl()->remoteClose(); }
+WebSocket::~WebSocket() {
+	try {
+		impl()->remoteClose();
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+	}
+}
 
 WebSocket::State WebSocket::readyState() const { return impl()->state; }
 

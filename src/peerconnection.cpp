@@ -48,7 +48,13 @@ PeerConnection::PeerConnection() : PeerConnection(Configuration()) {}
 PeerConnection::PeerConnection(Configuration config)
     : CheshireCat<impl::PeerConnection>(std::move(config)) {}
 
-PeerConnection::~PeerConnection() { close(); }
+PeerConnection::~PeerConnection() {
+	try {
+		close();
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+	}
+}
 
 void PeerConnection::close() { impl()->close(); }
 
