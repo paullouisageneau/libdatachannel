@@ -39,9 +39,62 @@
 
 namespace rtc {
 
-namespace {
+struct Init::TokenPayload {
+	TokenPayload() { Init::Instance().doInit(); }
 
-void doInit() {
+	~TokenPayload() {
+		std::thread t([]() { Init::Instance().doCleanup(); });
+		t.detach();
+	}
+};
+
+Init &Init::Instance() {
+	static Init *instance = new Init;
+	return *instance;
+}
+
+Init::Init() {}
+
+Init::~Init() {}
+
+init_token Init::token() {
+	std::lock_guard lock(mMutex);
+	if (auto locked = mWeak.lock())
+		return locked;
+
+	mGlobal = std::make_shared<TokenPayload>();
+	mWeak = *mGlobal;
+	return *mGlobal;
+}
+
+void Init::preload() {
+	std::lock_guard lock(mMutex);
+	if (!mGlobal) {
+		mGlobal = std::make_shared<TokenPayload>();
+		mWeak = *mGlobal;
+	}
+}
+
+void Init::cleanup() {
+	std::lock_guard lock(mMutex);
+	mGlobal.reset();
+}
+
+void Init::setSctpSettings(SctpSettings s) {
+	std::lock_guard lock(mMutex);
+	if (mGlobal)
+		impl::SctpTransport::SetSettings(s);
+
+	mCurrentSctpSettings = std::move(s); // store for next init
+}
+
+void Init::doInit() {
+	// mMutex needs to be locked
+
+	if (std::exchange(mInitialized, true))
+		return;
+
+	PLOG_DEBUG << "Global initialization";
 
 #ifdef _WIN32
 	WSADATA wsaData;
@@ -58,6 +111,7 @@ void doInit() {
 #endif
 
 	impl::SctpTransport::Init();
+	impl::SctpTransport::SetSettings(mCurrentSctpSettings);
 	impl::DtlsTransport::Init();
 #if RTC_ENABLE_WEBSOCKET
 	impl::TlsTransport::Init();
@@ -67,7 +121,16 @@ void doInit() {
 #endif
 }
 
-void doCleanup() {
+void Init::doCleanup() {
+	std::lock_guard lock(mMutex);
+	if (mGlobal)
+		return;
+
+	if (!std::exchange(mInitialized, false))
+		return;
+
+	PLOG_DEBUG << "Global cleanup";
+
 	impl::ThreadPool::Instance().join();
 
 	impl::SctpTransport::Cleanup();
@@ -82,69 +145,6 @@ void doCleanup() {
 #ifdef _WIN32
 	WSACleanup();
 #endif
-}
-
-} // namespace
-
-weak_ptr<void> Init::Weak;
-shared_ptr<void> *Init::Global = nullptr;
-bool Init::Initialized = false;
-SctpSettings Init::CurrentSctpSettings = {};
-std::recursive_mutex Init::Mutex;
-
-init_token Init::Token() {
-	std::unique_lock lock(Mutex);
-	if (auto token = Weak.lock())
-		return token;
-
-	delete Global;
-	Global = new shared_ptr<void>(new Init());
-	Weak = *Global;
-	return *Global;
-}
-
-void Init::Preload() {
-	std::unique_lock lock(Mutex);
-	auto token = Token();
-	if (!Global)
-		Global = new shared_ptr<void>(token);
-}
-
-void Init::Cleanup() {
-	std::unique_lock lock(Mutex);
-	delete Global;
-	Global = nullptr;
-}
-
-void Init::SetSctpSettings(SctpSettings s) {
-	auto token = Token();
-	std::unique_lock lock(Mutex);
-	impl::SctpTransport::SetSettings(s);
-	CurrentSctpSettings = std::move(s); // store for next init
-}
-
-Init::Init() {
-	// Mutex is locked by Token() here
-	if (!std::exchange(Initialized, true)) {
-		PLOG_DEBUG << "Global initialization";
-		doInit();
-		impl::SctpTransport::SetSettings(CurrentSctpSettings);
-	}
-}
-
-Init::~Init() {
-	std::thread t([]() {
-		// We need to lock Mutex ourselves
-		std::unique_lock lock(Mutex);
-		if (Global)
-			return;
-
-		if (std::exchange(Initialized, false)) {
-			PLOG_DEBUG << "Global cleanup";
-			doCleanup();
-		}
-	});
-	t.detach();
 }
 
 } // namespace rtc

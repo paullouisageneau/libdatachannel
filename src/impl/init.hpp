@@ -31,21 +31,32 @@ using init_token = shared_ptr<void>;
 
 class Init {
 public:
-	static init_token Token();
-	static void Preload();
-	static void Cleanup();
-	static void SetSctpSettings(SctpSettings s);
+	static Init &Instance();
 
-	~Init();
+	Init(const Init &) = delete;
+	Init &operator=(const Init &) = delete;
+	Init(Init &&) = delete;
+	Init &operator=(Init &&) = delete;
+
+	init_token token();
+	void preload();
+	void cleanup();
+	void setSctpSettings(SctpSettings s);
 
 private:
 	Init();
+	~Init();
 
-	static weak_ptr<void> Weak;
-	static shared_ptr<void> *Global;
-	static bool Initialized;
-	static SctpSettings CurrentSctpSettings;
-	static std::recursive_mutex Mutex;
+	void doInit();
+	void doCleanup();
+
+	std::optional<shared_ptr<void>> mGlobal;
+	weak_ptr<void> mWeak;
+	bool mInitialized = false;
+	SctpSettings mCurrentSctpSettings = {};
+	std::mutex mMutex;
+
+	struct TokenPayload;
 };
 
 } // namespace rtc

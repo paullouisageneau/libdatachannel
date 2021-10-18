@@ -75,7 +75,7 @@ struct WebSocket final : public Channel, public std::enable_shared_from_this<Web
 	std::atomic<State> state = State::Closed;
 
 private:
-	const init_token mInitToken = Init::Token();
+	const init_token mInitToken = Init::Instance().token();
 
 	const certificate_ptr mCertificate;
 	bool mIsSecure;

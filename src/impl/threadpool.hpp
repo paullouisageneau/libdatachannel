@@ -66,7 +66,7 @@ public:
 	template <class F, class... Args>
 	auto schedule(clock::time_point time, F &&f, Args &&...args) -> invoke_future_t<F, Args...>;
 
-protected:
+private:
 	ThreadPool();
 	~ThreadPool();
 
@@ -115,7 +115,7 @@ auto ThreadPool::schedule(clock::time_point time, F &&f, Args &&...args)
 	});
 	std::future<R> result = task->get_future();
 
-	mTasks.push({time, [task = std::move(task), token = Init::Token()]() { return (*task)(); }});
+	mTasks.push({time, [task = std::move(task), token = Init::Instance().token()]() { return (*task)(); }});
 	mTasksCondition.notify_one();
 	return result;
 }
