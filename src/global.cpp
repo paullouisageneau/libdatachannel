@@ -56,7 +56,7 @@ void plogInit(plog::Severity severity, plog::IAppender *appender) {
 	}
 }
 
-}
+} // namespace
 
 namespace rtc {
 
@@ -102,10 +102,10 @@ void InitLogger(plog::Severity severity, plog::IAppender *appender) {
 	plogInit(severity, appender);
 }
 
-void Preload() { Init::Preload(); }
-void Cleanup() { Init::Cleanup(); }
+void Preload() { Init::Instance().preload(); }
+void Cleanup() { Init::Instance().cleanup(); }
 
-void SetSctpSettings(SctpSettings s) { Init::SetSctpSettings(std::move(s)); }
+void SetSctpSettings(SctpSettings s) { Init::Instance().setSctpSettings(std::move(s)); }
 
 } // namespace rtc
 
