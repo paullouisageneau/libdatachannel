@@ -253,7 +253,7 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 				initWsTransport();
 				break;
 			case State::Failed:
-				triggerError("TCP connection failed");
+				triggerError("TLS connection failed");
 				remoteClose();
 				break;
 			case State::Disconnected:
