@@ -37,6 +37,7 @@
 #include <iomanip>
 #include <set>
 #include <thread>
+#include <array>
 
 using namespace std::placeholders;
 
@@ -339,19 +340,27 @@ void PeerConnection::closeTransports() {
 		auto sctp = std::atomic_exchange(&mSctpTransport, decltype(mSctpTransport)(nullptr));
 		auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
 		auto ice = std::atomic_exchange(&mIceTransport, decltype(mIceTransport)(nullptr));
-		ThreadPool::Instance().enqueue(
-		    [sctp = std::move(sctp), dtls = std::move(dtls), ice = std::move(ice)]() mutable {
-			    if (sctp)
-				    sctp->stop();
-			    if (dtls)
-				    dtls->stop();
-			    if (ice)
-				    ice->stop();
 
-			    sctp.reset();
-			    dtls.reset();
-			    ice.reset();
-		    });
+		if (sctp) {
+			sctp->onRecv(nullptr);
+			sctp->onBufferedAmount(nullptr);
+		}
+
+		using array = std::array<shared_ptr<Transport>, 3>;
+		array transports{std::move(sctp), std::move(dtls), std::move(ice)};
+
+		for (const auto &t : transports)
+			if (t)
+				t->onStateChange(nullptr);
+
+		ThreadPool::Instance().enqueue([transports = std::move(transports)]() mutable {
+			for (const auto &t : transports)
+				if (t)
+					t->stop();
+
+			for (auto &t : transports)
+				t.reset();
+		});
 	});
 }
 
