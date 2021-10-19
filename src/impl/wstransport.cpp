@@ -63,7 +63,7 @@ WsTransport::WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TlsTranspo
                                      [](shared_ptr<TlsTransport> l) { return l->isClient(); }},
                      lower)) {
 
-	onRecv(recvCallback);
+	onRecv(std::move(recvCallback));
 
 	PLOG_DEBUG << "Initializing WebSocket transport";
 }

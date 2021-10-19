@@ -29,6 +29,7 @@
 #include "wstransport.hpp"
 
 #include <regex>
+#include <array>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -377,19 +378,25 @@ void WebSocket::closeTransports() {
 	auto ws = std::atomic_exchange(&mWsTransport, decltype(mWsTransport)(nullptr));
 	auto tls = std::atomic_exchange(&mTlsTransport, decltype(mTlsTransport)(nullptr));
 	auto tcp = std::atomic_exchange(&mTcpTransport, decltype(mTcpTransport)(nullptr));
-	ThreadPool::Instance().enqueue(
-	    [ws = std::move(ws), tls = std::move(tls), tcp = std::move(tcp)]() mutable {
-		    if (ws)
-			    ws->stop();
-		    if (tls)
-			    tls->stop();
-		    if (tcp)
-			    tcp->stop();
 
-		    ws.reset();
-		    tls.reset();
-		    tcp.reset();
-	    });
+	if (ws)
+		ws->onRecv(nullptr);
+
+	using array = std::array<shared_ptr<Transport>, 3>;
+	array transports{std::move(ws), std::move(tls), std::move(tcp)};
+
+	for (const auto &t : transports)
+		if (t)
+			t->onStateChange(nullptr);
+
+	ThreadPool::Instance().enqueue([transports = std::move(transports)]() mutable {
+		for (const auto &t : transports)
+			if (t)
+				t->stop();
+
+		for (auto &t : transports)
+			t.reset();
+	});
 
 	triggerClosed();
 }

@@ -53,6 +53,10 @@ public:
 	bool flush();
 	void closeStream(unsigned int stream);
 
+	void onBufferedAmount(amount_callback callback) {
+		mBufferedAmountCallback = std::move(callback);
+	}
+
 	// Stats
 	void clearStats();
 	size_t bytesSent();
