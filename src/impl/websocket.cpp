@@ -322,8 +322,8 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 			case State::Connected:
 				if (state == WebSocket::State::Connecting) {
 					PLOG_DEBUG << "WebSocket open";
-					changeState(WebSocket::State::Open);
-					triggerOpen();
+					if (changeState(WebSocket::State::Open))
+						triggerOpen();
 				}
 				break;
 			case State::Failed:
@@ -370,13 +370,8 @@ shared_ptr<WsHandshake> WebSocket::getWsHandshake() const {
 void WebSocket::closeTransports() {
 	PLOG_VERBOSE << "Closing transports";
 
-	if (state.load() != State::Closed) {
-		changeState(State::Closed);
-		triggerClosed();
-	}
-
-	// Reset callbacks now that state is changed
-	resetCallbacks();
+	if (!changeState(State::Closed))
+		return; // already closed
 
 	// Pass the pointers to a thread, allowing to terminate a transport from its own thread
 	auto ws = std::atomic_exchange(&mWsTransport, decltype(mWsTransport)(nullptr));
@@ -395,6 +390,8 @@ void WebSocket::closeTransports() {
 		    tls.reset();
 		    tcp.reset();
 	    });
+
+	triggerClosed();
 }
 
 } // namespace rtc::impl
