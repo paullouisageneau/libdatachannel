@@ -39,6 +39,7 @@ WebSocket::WebSocket(impl_ptr<impl::WebSocket> impl)
 WebSocket::~WebSocket() {
 	try {
 		impl()->remoteClose();
+		impl()->resetCallbacks(); // not done by impl::WebSocket
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
 	}
@@ -57,17 +58,7 @@ void WebSocket::open(const string &url) {
 	impl()->open(url);
 }
 
-void WebSocket::close() {
-	auto state = impl()->state.load();
-	if (state == State::Connecting || state == State::Open) {
-		PLOG_VERBOSE << "Closing WebSocket";
-		impl()->changeState(State::Closing);
-		if (auto transport = impl()->getWsTransport())
-			transport->close();
-		else
-			impl()->changeState(State::Closed);
-	}
-}
+void WebSocket::close() { impl()->close(); }
 
 bool WebSocket::send(message_variant data) {
 	return impl()->outgoing(make_message(std::move(data)));

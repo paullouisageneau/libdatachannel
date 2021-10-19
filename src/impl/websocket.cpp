@@ -29,6 +29,7 @@
 #include "wstransport.hpp"
 
 #include <regex>
+#include <array>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -322,8 +323,8 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 			case State::Connected:
 				if (state == WebSocket::State::Connecting) {
 					PLOG_DEBUG << "WebSocket open";
-					changeState(WebSocket::State::Open);
-					triggerOpen();
+					if (changeState(WebSocket::State::Open))
+						triggerOpen();
 				}
 				break;
 			case State::Failed:
@@ -370,31 +371,34 @@ shared_ptr<WsHandshake> WebSocket::getWsHandshake() const {
 void WebSocket::closeTransports() {
 	PLOG_VERBOSE << "Closing transports";
 
-	if (state.load() != State::Closed) {
-		changeState(State::Closed);
-		triggerClosed();
-	}
-
-	// Reset callbacks now that state is changed
-	resetCallbacks();
+	if (!changeState(State::Closed))
+		return; // already closed
 
 	// Pass the pointers to a thread, allowing to terminate a transport from its own thread
 	auto ws = std::atomic_exchange(&mWsTransport, decltype(mWsTransport)(nullptr));
 	auto tls = std::atomic_exchange(&mTlsTransport, decltype(mTlsTransport)(nullptr));
 	auto tcp = std::atomic_exchange(&mTcpTransport, decltype(mTcpTransport)(nullptr));
-	ThreadPool::Instance().enqueue(
-	    [ws = std::move(ws), tls = std::move(tls), tcp = std::move(tcp)]() mutable {
-		    if (ws)
-			    ws->stop();
-		    if (tls)
-			    tls->stop();
-		    if (tcp)
-			    tcp->stop();
 
-		    ws.reset();
-		    tls.reset();
-		    tcp.reset();
-	    });
+	if (ws)
+		ws->onRecv(nullptr);
+
+	using array = std::array<shared_ptr<Transport>, 3>;
+	array transports{std::move(ws), std::move(tls), std::move(tcp)};
+
+	for (const auto &t : transports)
+		if (t)
+			t->onStateChange(nullptr);
+
+	ThreadPool::Instance().enqueue([transports = std::move(transports)]() mutable {
+		for (const auto &t : transports)
+			if (t)
+				t->stop();
+
+		for (auto &t : transports)
+			t.reset();
+	});
+
+	triggerClosed();
 }
 
 } // namespace rtc::impl
