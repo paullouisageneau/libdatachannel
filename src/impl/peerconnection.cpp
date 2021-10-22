@@ -565,6 +565,7 @@ void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
 }
 
 shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(string label, DataChannelInit init) {
+	cleanupDataChannels();
 	std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
 	uint16_t stream;
 	if (init.id) {
@@ -630,23 +631,26 @@ void PeerConnection::shiftDataChannels() {
 	}
 }
 
-void PeerConnection::iterateDataChannels(
-    std::function<void(shared_ptr<DataChannel> channel)> func) {
-	// Iterate
+void PeerConnection::iterateDataChannels(std::function<void(shared_ptr<DataChannel> channel)> func) {
+	std::vector<shared_ptr<DataChannel>> locked;
 	{
 		std::shared_lock lock(mDataChannelsMutex); // read-only
+		locked.reserve(mDataChannels.size());
 		auto it = mDataChannels.begin();
 		while (it != mDataChannels.end()) {
 			auto channel = it->second.lock();
 			if (channel && !channel->isClosed())
-				func(channel);
+				locked.push_back(std::move(channel));
 
 			++it;
 		}
 	}
 
-	// Cleanup
-	{
+	for(auto &channel : locked)
+		func(std::move(channel));
+}
+
+void PeerConnection::cleanupDataChannels() {
 		std::unique_lock lock(mDataChannelsMutex); // we are going to erase
 		auto it = mDataChannels.begin();
 		while (it != mDataChannels.end()) {
@@ -657,7 +661,6 @@ void PeerConnection::iterateDataChannels(
 
 			++it;
 		}
-	}
 }
 
 void PeerConnection::openDataChannels() {
