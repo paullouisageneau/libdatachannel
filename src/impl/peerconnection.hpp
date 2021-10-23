@@ -69,6 +69,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	shared_ptr<DataChannel> findDataChannel(uint16_t stream);
 	void shiftDataChannels();
 	void iterateDataChannels(std::function<void(shared_ptr<DataChannel> channel)> func);
+	void cleanupDataChannels();
 	void openDataChannels();
 	void closeDataChannels();
 	void remoteCloseDataChannels();
