@@ -24,7 +24,6 @@
 
 #include "common.hpp"
 #include "mediahandler.hpp"
-#include "message.hpp"
 #include "rtp.hpp"
 
 namespace rtc {

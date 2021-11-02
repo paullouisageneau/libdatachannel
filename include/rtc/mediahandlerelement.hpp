@@ -22,7 +22,6 @@
 #if RTC_ENABLE_MEDIA
 
 #include "common.hpp"
-#include "message.hpp"
 #include "rtp.hpp"
 
 namespace rtc {

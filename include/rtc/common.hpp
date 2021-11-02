@@ -75,6 +75,17 @@ using std::uint32_t;
 using std::uint64_t;
 using std::uint8_t;
 
+using message_variant = variant<binary, string>;
+
+namespace impl {
+
+struct Message;
+
+}
+
+using message_ptr = shared_ptr<impl::Message>;
+using message_callback = std::function<void(message_ptr message)>;
+
 } // namespace rtc
 
 #endif
