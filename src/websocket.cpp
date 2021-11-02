@@ -21,6 +21,7 @@
 #include "websocket.hpp"
 #include "common.hpp"
 
+#include "impl/message.hpp"
 #include "impl/internals.hpp"
 #include "impl/websocket.hpp"
 
@@ -61,11 +62,11 @@ void WebSocket::open(const string &url) {
 void WebSocket::close() { impl()->close(); }
 
 bool WebSocket::send(message_variant data) {
-	return impl()->outgoing(make_message(std::move(data)));
+	return impl()->outgoing(impl::make_message(std::move(data)));
 }
 
 bool WebSocket::send(const byte *data, size_t size) {
-	return impl()->outgoing(make_message(data, data + size));
+	return impl()->outgoing(impl::make_message(data, data + size, impl::Message::Binary));
 }
 
 optional<string> WebSocket::remoteAddress() const {

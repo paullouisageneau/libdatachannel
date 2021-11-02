@@ -23,6 +23,7 @@
 #include "track.hpp"
 
 #include "impl/logcounter.hpp"
+#include "impl/message.hpp"
 
 #include <cmath>
 #include <utility>
@@ -45,7 +46,7 @@ static impl::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning,
 message_ptr RtcpReceivingSession::outgoing(message_ptr ptr) { return ptr; }
 
 message_ptr RtcpReceivingSession::incoming(message_ptr ptr) {
-	if (ptr->type == Message::Type::Binary) {
+	if (ptr->type == impl::Message::Binary) {
 		auto rtp = reinterpret_cast<const RTP *>(ptr->data());
 
 		// https://tools.ietf.org/html/rfc3550#appendix-A.1
@@ -69,7 +70,7 @@ message_ptr RtcpReceivingSession::incoming(message_ptr ptr) {
 		return ptr;
 	}
 
-	assert(ptr->type == Message::Type::Control);
+	assert(ptr->type == impl::Message::Control);
 	auto rr = reinterpret_cast<const RTCP_RR *>(ptr->data());
 	if (rr->header.payloadType() == 201) {
 		// RR
@@ -99,7 +100,7 @@ void RtcpReceivingSession::requestBitrate(unsigned int newBitrate) {
 }
 
 void RtcpReceivingSession::pushREMB(unsigned int bitrate) {
-	message_ptr msg = make_message(RTCP_REMB::SizeWithSSRCs(1), Message::Type::Control);
+	message_ptr msg = impl::make_message(RTCP_REMB::SizeWithSSRCs(1), impl::Message::Control);
 	auto remb = reinterpret_cast<RTCP_REMB *>(msg->data());
 	remb->preparePacket(mSsrc, 1, bitrate);
 	remb->setSsrc(0, mSsrc);
@@ -108,7 +109,7 @@ void RtcpReceivingSession::pushREMB(unsigned int bitrate) {
 }
 
 void RtcpReceivingSession::pushRR(unsigned int lastSR_delay) {
-	auto msg = make_message(RTCP_RR::SizeWithReportBlocks(1), Message::Type::Control);
+	auto msg = impl::make_message(RTCP_RR::SizeWithReportBlocks(1), impl::Message::Control);
 	auto rr = reinterpret_cast<RTCP_RR *>(msg->data());
 	rr->preparePacket(mSsrc, 1);
 	rr->getReportBlock(0)->preparePacket(mSsrc, 0, 0, uint16_t(mGreatestSeqNo), 0, 0, mSyncNTPTS,
@@ -134,7 +135,7 @@ bool RtcpReceivingSession::requestKeyframe() {
 }
 
 void RtcpReceivingSession::pushPLI() {
-	auto msg = make_message(RTCP_PLI::Size(), Message::Type::Control);
+	auto msg = impl::make_message(RTCP_PLI::Size(), impl::Message::Control);
 	auto *pli = reinterpret_cast<RTCP_PLI *>(msg->data());
 	pli->preparePacket(mSsrc);
 	send(msg);

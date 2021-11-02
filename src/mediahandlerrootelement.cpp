@@ -20,13 +20,15 @@
 
 #include "mediahandlerrootelement.hpp"
 
+#include "impl/message.hpp"
+
 namespace rtc {
 
 message_ptr MediaHandlerRootElement::reduce(ChainedMessagesProduct messages) {
 	if (messages && !messages->empty()) {
-		auto msg_ptr = messages->front();
-		if (msg_ptr) {
-			return make_message(*msg_ptr);
+		auto msg = messages->front();
+		if (msg) {
+			return impl::make_message(*msg);
 		} else {
 			return nullptr;
 		}

@@ -201,7 +201,7 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTCP packet, size=" << size;
-			message->type = Message::Type::Control;
+			message->type = Message::Control;
 			message->stream = reinterpret_cast<RTCP_SR *>(message->data())->senderSSRC();
 
 		} else {
@@ -220,7 +220,7 @@ void DtlsSrtpTransport::incoming(message_ptr message) {
 				return;
 			}
 			PLOG_VERBOSE << "Unprotected SRTP packet, size=" << size;
-			message->type = Message::Type::Binary;
+			message->type = Message::Binary;
 			message->stream = reinterpret_cast<RTP *>(message->data())->ssrc();
 		}
 

@@ -362,7 +362,6 @@ shared_ptr<Stream> createStream(const string h264Samples, const unsigned fps, co
             }
         }
         if (!tracks.empty()) {
-            auto message = make_message(move(sample));
             for (auto clientTrack: tracks) {
                 auto client = clientTrack.id;
                 auto trackData = clientTrack.trackData;
@@ -381,11 +380,11 @@ shared_ptr<Stream> createStream(const string h264Samples, const unsigned fps, co
                 if (rtpConfig->timestampToSeconds(reportElapsedTimestamp) > 1) {
                     trackData->sender->setNeedsToReport();
                 }
-                cout << "Sending " << streamType << " sample with size: " << to_string(message->size()) << " to " << client << endl;
+                cout << "Sending " << streamType << " sample with size: " << to_string(sample.size()) << " to " << client << endl;
                 bool send = false;
                 try {
                     // send sample
-                    send = trackData->track->send(*message);
+                    send = trackData->track->send(sample);
                 } catch (...) {
                     send = false;
                 }

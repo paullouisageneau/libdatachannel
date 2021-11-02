@@ -19,6 +19,7 @@
 #include "track.hpp"
 
 #include "impl/internals.hpp"
+#include "impl/message.hpp"
 #include "impl/track.hpp"
 
 namespace rtc {
@@ -38,9 +39,13 @@ void Track::setDescription(Description::Media description) {
 
 void Track::close() { impl()->close(); }
 
-bool Track::send(message_variant data) { return impl()->outgoing(make_message(std::move(data))); }
+bool Track::send(message_variant data) {
+	return impl()->outgoing(impl::make_message(std::move(data)));
+}
 
-bool Track::send(const byte *data, size_t size) { return send(binary(data, data + size)); }
+bool Track::send(const byte *data, size_t size) {
+	return impl()->outgoing(impl::make_message(data, data + size, impl::Message::Binary));
+}
 
 bool Track::isOpen(void) const { return impl()->isOpen(); }
 
