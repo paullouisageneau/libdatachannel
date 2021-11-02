@@ -626,7 +626,7 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 	}
 
 	PLOG_VERBOSE << "SCTP sent size=" << message->size();
-	if (message->type == Message::Type::Binary || message->type == Message::Type::String)
+	if (message->type == Message::Binary || message->type == Message::String)
 		mBytesSent += message->size();
 	return true;
 }
