@@ -68,6 +68,10 @@ using std::weak_ptr;
 using binary = std::vector<byte>;
 using binary_ptr = std::shared_ptr<binary>;
 
+using std::int16_t;
+using std::int32_t;
+using std::int64_t;
+using std::int8_t;
 using std::ptrdiff_t;
 using std::size_t;
 using std::uint16_t;
