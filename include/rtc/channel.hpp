@@ -20,6 +20,7 @@
 #define RTC_CHANNEL_H
 
 #include "common.hpp"
+#include "message.hpp"
 
 #include <atomic>
 #include <functional>

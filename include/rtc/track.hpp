@@ -23,6 +23,7 @@
 #include "common.hpp"
 #include "description.hpp"
 #include "mediahandler.hpp"
+#include "message.hpp"
 
 namespace rtc {
 

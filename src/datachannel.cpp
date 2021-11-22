@@ -63,11 +63,11 @@ bool DataChannel::isClosed(void) const { return impl()->isClosed(); }
 size_t DataChannel::maxMessageSize() const { return impl()->maxMessageSize(); }
 
 bool DataChannel::send(message_variant data) {
-	return impl()->outgoing(impl::make_message(std::move(data)));
+	return impl()->outgoing(make_message(std::move(data)));
 }
 
 bool DataChannel::send(const byte *data, size_t size) {
-	return impl()->outgoing(impl::make_message(data, data + size, impl::Message::Binary));
+	return impl()->outgoing(std::make_shared<Message>(data, data + size, Message::Binary));
 }
 
 } // namespace rtc

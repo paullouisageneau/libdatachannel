@@ -21,7 +21,6 @@
 #include "rtcpnackresponder.hpp"
 
 #include "impl/internals.hpp"
-#include "impl/message.hpp"
 
 #include <cassert>
 

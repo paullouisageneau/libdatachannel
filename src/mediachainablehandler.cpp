@@ -21,7 +21,6 @@
 #include "mediachainablehandler.hpp"
 
 #include "impl/internals.hpp"
-#include "impl/message.hpp"
 
 #include <cassert>
 
@@ -35,7 +34,7 @@ MediaChainableHandler::~MediaChainableHandler() { leaf->recursiveRemoveChain(); 
 bool MediaChainableHandler::sendProduct(ChainedOutgoingProduct product) {
 	bool result = true;
 	if (product.control) {
-		assert(product.control->type == impl::Message::Control);
+		assert(product.control->type == Message::Control);
 		auto sendResult = send(product.control);
 		if (!sendResult) {
 			LOG_DEBUG << "Failed to send control message";
@@ -49,7 +48,7 @@ bool MediaChainableHandler::sendProduct(ChainedOutgoingProduct product) {
 			if (!message) {
 				LOG_DEBUG << "Invalid message to send " << i + 1 << "/" << messages->size();
 			}
-			auto sendResult = send(impl::make_message(*message));
+			auto sendResult = send(make_message(*message));
 			if (!sendResult) {
 				LOG_DEBUG << "Failed to send message " << i + 1 << "/" << messages->size();
 			}
@@ -60,7 +59,7 @@ bool MediaChainableHandler::sendProduct(ChainedOutgoingProduct product) {
 }
 
 message_ptr MediaChainableHandler::handleIncomingBinary(message_ptr msg) {
-	assert(msg->type == impl::Message::Binary);
+	assert(msg->type == Message::Binary);
 	auto messages = root->split(msg);
 	auto incoming = getLeaf()->formIncomingBinaryMessage(
 	    messages, [this](ChainedOutgoingProduct outgoing) { return sendProduct(outgoing); });
@@ -72,15 +71,15 @@ message_ptr MediaChainableHandler::handleIncomingBinary(message_ptr msg) {
 }
 
 message_ptr MediaChainableHandler::handleIncomingControl(message_ptr msg) {
-	assert(msg->type == impl::Message::Control);
+	assert(msg->type == Message::Control);
 	auto incoming = getLeaf()->formIncomingControlMessage(
 	    msg, [this](ChainedOutgoingProduct outgoing) { return sendProduct(outgoing); });
-	assert(!incoming || incoming->type == impl::Message::Control);
+	assert(!incoming || incoming->type == Message::Control);
 	return incoming;
 }
 
 message_ptr MediaChainableHandler::handleOutgoingBinary(message_ptr msg) {
-	assert(msg->type == impl::Message::Binary);
+	assert(msg->type == Message::Binary);
 	auto messages = make_chained_messages_product(msg);
 	auto optOutgoing = root->formOutgoingBinaryMessage(ChainedOutgoingProduct(messages));
 	if (!optOutgoing.has_value()) {
@@ -103,17 +102,17 @@ message_ptr MediaChainableHandler::handleOutgoingBinary(message_ptr msg) {
 		if (!message) {
 			LOG_DEBUG << "Invalid message to send " << i + 1 << "/" << outgoing.messages->size();
 		}
-		if (!send(impl::make_message(*message))) {
+		if (!send(make_message(*message))) {
 			LOG_DEBUG << "Failed to send message " << i + 1 << "/" << outgoing.messages->size();
 		}
 	}
-	return impl::make_message(*lastMessage);
+	return make_message(*lastMessage);
 }
 
 message_ptr MediaChainableHandler::handleOutgoingControl(message_ptr msg) {
-	assert(msg->type == impl::Message::Control);
+	assert(msg->type == Message::Control);
 	auto outgoing = root->formOutgoingControlMessage(msg);
-	assert(!outgoing || outgoing->type == impl::Message::Control);
+	assert(!outgoing || outgoing->type == Message::Control);
 	if (!outgoing) {
 		LOG_ERROR << "Generating outgoing control message failed";
 		return nullptr;
@@ -127,9 +126,9 @@ message_ptr MediaChainableHandler::outgoing(message_ptr ptr) {
 		LOG_ERROR << "Outgoing message is nullptr, ignoring";
 		return nullptr;
 	}
-	if (ptr->type == impl::Message::Binary) {
+	if (ptr->type == Message::Binary) {
 		return handleOutgoingBinary(ptr);
-	} else if (ptr->type == impl::Message::Control) {
+	} else if (ptr->type == Message::Control) {
 		return handleOutgoingControl(ptr);
 	}
 	return ptr;
@@ -140,9 +139,9 @@ message_ptr MediaChainableHandler::incoming(message_ptr ptr) {
 		LOG_ERROR << "Incoming message is nullptr, ignoring";
 		return nullptr;
 	}
-	if (ptr->type == impl::Message::Binary) {
+	if (ptr->type == Message::Binary) {
 		return handleIncomingBinary(ptr);
-	} else if (ptr->type == impl::Message::Control) {
+	} else if (ptr->type == Message::Control) {
 		return handleIncomingControl(ptr);
 	}
 	return ptr;

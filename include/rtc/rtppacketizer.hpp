@@ -21,6 +21,7 @@
 
 #if RTC_ENABLE_MEDIA
 
+#include "message.hpp"
 #include "rtppacketizationconfig.hpp"
 
 namespace rtc {
