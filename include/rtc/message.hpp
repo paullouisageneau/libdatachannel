@@ -16,17 +16,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef RTC_IMPL_MESSAGE_H
-#define RTC_IMPL_MESSAGE_H
+#ifndef RTC_MESSAGE_H
+#define RTC_MESSAGE_H
 
 #include "common.hpp"
 #include "reliability.hpp"
 
 #include <functional>
 
-namespace rtc::impl {
+namespace rtc {
 
-struct Message : binary {
+struct RTC_CPP_EXPORT Message : binary {
 	enum Type { Binary, String, Control, Reset };
 
 	Message(const Message &message) = default;
@@ -44,6 +44,9 @@ struct Message : binary {
 	shared_ptr<Reliability> reliability;
 };
 
+using message_ptr = shared_ptr<Message>;
+using message_callback = std::function<void(message_ptr message)>;
+
 inline size_t message_size_func(const message_ptr &m) {
 	return m->type == Message::Binary || m->type == Message::String ? m->size() : 0;
 }
@@ -57,18 +60,18 @@ message_ptr make_message(Iterator begin, Iterator end, Message::Type type = Mess
 	return message;
 }
 
-message_ptr make_message(size_t size, Message::Type type = Message::Binary,
+RTC_CPP_EXPORT message_ptr make_message(size_t size, Message::Type type = Message::Binary,
                                         unsigned int stream = 0,
                                         shared_ptr<Reliability> reliability = nullptr);
 
-message_ptr make_message(binary &&data, Message::Type type = Message::Binary,
+RTC_CPP_EXPORT message_ptr make_message(binary &&data, Message::Type type = Message::Binary,
                                         unsigned int stream = 0,
                                         shared_ptr<Reliability> reliability = nullptr);
 
-message_ptr make_message(message_variant data);
+RTC_CPP_EXPORT message_ptr make_message(message_variant data);
 
-message_variant to_variant(Message &&message);
+RTC_CPP_EXPORT message_variant to_variant(Message &&message);
 
-} // namespace rtc::impl
+} // namespace rtc
 
 #endif

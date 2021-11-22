@@ -20,8 +20,6 @@
 
 #include "rtcpsrreporter.hpp"
 
-#include "impl/message.hpp"
-
 #include <cassert>
 #include <cmath>
 
@@ -68,8 +66,8 @@ void RtcpSrReporter::setNeedsToReport() { needsToReport = true; }
 
 message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
 	auto srSize = RTCP_SR::Size(0);
-	auto msg = impl::make_message(srSize + RTCP_SDES::Size({{uint8_t(rtpConfig->cname.size())}}),
-	                              impl::Message::Control);
+	auto msg = make_message(srSize + RTCP_SDES::Size({{uint8_t(rtpConfig->cname.size())}}),
+	                        Message::Control);
 	auto sr = reinterpret_cast<RTCP_SR *>(msg->data());
 	auto timestamp_s = rtpConfig->timestampToSeconds(timestamp);
 	auto currentTime = timeOffset + timestamp_s;

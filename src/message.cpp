@@ -18,7 +18,7 @@
 
 #include "message.hpp"
 
-namespace rtc::impl {
+namespace rtc {
 
 message_ptr make_message(size_t size, Message::Type type, unsigned int stream,
                          shared_ptr<Reliability> reliability) {
@@ -57,4 +57,4 @@ message_variant to_variant(Message &&message) {
 	}
 }
 
-} // namespace rtc::impl
+} // namespace rtc
