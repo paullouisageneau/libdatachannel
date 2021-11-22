@@ -23,7 +23,6 @@
 
 #include "channel.hpp"
 #include "common.hpp"
-#include "message.hpp"
 
 namespace rtc {
 

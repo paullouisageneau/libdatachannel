@@ -20,7 +20,6 @@
 #define RTC_ICE_CONFIGURATION_H
 
 #include "common.hpp"
-#include "message.hpp"
 
 #include <vector>
 

@@ -21,7 +21,6 @@
 
 #include "channel.hpp"
 #include "common.hpp"
-#include "message.hpp"
 #include "reliability.hpp"
 
 #include <type_traits>

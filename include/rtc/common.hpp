@@ -66,7 +66,8 @@ using std::variant;
 using std::weak_ptr;
 
 using binary = std::vector<byte>;
-using binary_ptr = std::shared_ptr<binary>;
+using binary_ptr = shared_ptr<binary>;
+using message_variant = variant<binary, string>;
 
 using std::int16_t;
 using std::int32_t;
