@@ -3,7 +3,7 @@
 [![Build with OpenSSL](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-openssl.yml/badge.svg)](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-openssl.yml)
 [![Build with GnuTLS](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-gnutls.yml/badge.svg)](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-gnutls.yml)
 [![Join the chat at https://gitter.im/libdatachannel/community](https://badges.gitter.im/libdatachannel/community.svg)](https://gitter.im/libdatachannel/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Discord](https://img.shields.io/discord/903257095539925006?logo=discord)](https://discord.gg/yJBpZaz4)
+[![Discord](https://img.shields.io/discord/903257095539925006?logo=discord)](https://discord.gg/jXAP8jp3Nn)
 
 [![AUR package](https://repology.org/badge/version-for-repo/aur/libdatachannel.svg)](https://repology.org/project/libdatachannel/versions) [![FreeBSD port](https://repology.org/badge/version-for-repo/freebsd/libdatachannel.svg)](https://repology.org/project/libdatachannel/versions) [![Vcpkg package](https://repology.org/badge/version-for-repo/vcpkg/libdatachannel.svg)](https://repology.org/project/libdatachannel/versions)
 
