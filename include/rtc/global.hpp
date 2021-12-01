@@ -23,6 +23,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <future>
 
 namespace rtc {
 
@@ -47,7 +48,7 @@ RTC_CPP_EXPORT void InitLogger(plog::Severity severity, plog::IAppender *appende
 #endif
 
 RTC_CPP_EXPORT void Preload();
-RTC_CPP_EXPORT void Cleanup();
+RTC_CPP_EXPORT std::shared_future<void> Cleanup();
 
 struct SctpSettings {
 	// For the following settings, not set means optimized default

@@ -35,6 +35,7 @@ static const char *MESSAGE = "Hello, this is a C API WebSocket test!";
 
 static bool success = false;
 static bool failed = false;
+static int wsclient = -1;
 
 static void RTC_API openCallback(int ws, void *ptr) {
 	printf("WebSocket: Connection open\n");
@@ -86,6 +87,8 @@ static void RTC_API serverMessageCallback(int ws, const char *message, int size,
 }
 
 static void RTC_API serverClientCallback(int wsserver, int ws, void *ptr) {
+	wsclient = ws;
+
 	char address[256];
 	if (rtcGetWebSocketRemoteAddress(ws, address, 256) < 0) {
 		fprintf(stderr, "rtcGetWebSocketRemoteAddress failed\n");
@@ -144,6 +147,9 @@ int test_capi_websocketserver_main() {
 	if (failed)
 		goto error;
 
+	rtcDeleteWebSocket(wsclient);
+	sleep(1);
+
 	rtcDeleteWebSocket(ws);
 	sleep(1);
 
@@ -154,6 +160,9 @@ int test_capi_websocketserver_main() {
 	return 0;
 
 error:
+	if (wsclient >= 0)
+		rtcDeleteWebSocket(wsclient);
+
 	if (ws >= 0)
 		rtcDeleteWebSocket(ws);
 

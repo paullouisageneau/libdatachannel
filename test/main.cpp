@@ -20,6 +20,8 @@
 #include <iostream>
 #include <thread>
 
+#include <rtc/rtc.hpp>
+
 using namespace std;
 using namespace chrono_literals;
 
@@ -132,6 +134,14 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 */
-	std::this_thread::sleep_for(1s);
+	try {
+		cout << endl << "*** Running cleanup..." << endl;
+		if(rtc::Cleanup().wait_for(10s) == future_status::timeout)
+			throw std::runtime_error("Timeout");
+
+	} catch (const exception &e) {
+		cerr << "Cleanup failed: " << e.what() << endl;
+		return -1;
+	}
 	return 0;
 }
