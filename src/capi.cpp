@@ -29,6 +29,7 @@
 #include <utility>
 
 using namespace rtc;
+using namespace std::chrono_literals;
 using std::chrono::milliseconds;
 
 namespace {
@@ -132,6 +133,23 @@ void eraseTrack(int tr) {
 	rtpConfigMap.erase(tr);
 #endif
 	userPointerMap.erase(tr);
+}
+
+void eraseAll() {
+	std::lock_guard lock(mutex);
+	dataChannelMap.clear();
+	trackMap.clear();
+	peerConnectionMap.clear();
+#if RTC_ENABLE_MEDIA
+	rtcpChainableHandlerMap.clear();
+	rtcpSrReporterMap.clear();
+	rtpConfigMap.clear();
+#endif
+#if RTC_ENABLE_WEBSOCKET
+	webSocketMap.clear();
+	webSocketServerMap.clear();
+#endif
+	userPointerMap.clear();
 }
 
 shared_ptr<Channel> getChannel(int id) {
@@ -680,7 +698,7 @@ bool rtcIsOpen(int id) {
 }
 
 bool rtcIsClosed(int id) {
-	return wrap([id] { return getChannel(id)->isClosed() ? 0 : 1; }) == 0 ? true : false ;
+	return wrap([id] { return getChannel(id)->isClosed() ? 0 : 1; }) == 0 ? true : false;
 }
 
 int rtcGetBufferedAmount(int id) {
@@ -1337,9 +1355,24 @@ RTC_EXPORT int rtcGetWebSocketServerPort(int wsserver) {
 
 #endif
 
-void rtcPreload() { rtc::Preload(); }
+void rtcPreload() {
+	try {
+		rtc::Preload();
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+	}
+}
 
-void rtcCleanup() { rtc::Cleanup(); }
+void rtcCleanup() {
+	try {
+		eraseAll();
+		if(rtc::Cleanup().wait_for(10s) == std::future_status::timeout)
+			throw std::runtime_error("Cleanup timeout");
+
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+	}
+}
 
 int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 	return wrap([&] {
