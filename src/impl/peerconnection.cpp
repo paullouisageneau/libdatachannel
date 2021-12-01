@@ -34,10 +34,10 @@
 #include "dtlssrtptransport.hpp"
 #endif
 
+#include <array>
 #include <iomanip>
 #include <set>
 #include <thread>
-#include <array>
 
 using namespace std::placeholders;
 
@@ -334,25 +334,25 @@ void PeerConnection::closeTransports() {
 	// Reset callbacks now that state is changed
 	resetCallbacks();
 
+	// Pass the pointers to a thread, allowing to terminate a transport from its own thread
+	auto sctp = std::atomic_exchange(&mSctpTransport, decltype(mSctpTransport)(nullptr));
+	auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
+	auto ice = std::atomic_exchange(&mIceTransport, decltype(mIceTransport)(nullptr));
+
+	if (sctp) {
+		sctp->onRecv(nullptr);
+		sctp->onBufferedAmount(nullptr);
+	}
+
+	using array = std::array<shared_ptr<Transport>, 3>;
+	array transports{std::move(sctp), std::move(dtls), std::move(ice)};
+
+	for (const auto &t : transports)
+		if (t)
+			t->onStateChange(nullptr);
+
 	// Initiate transport stop on the processor after closing the data channels
-	mProcessor->enqueue([this]() {
-		// Pass the pointers to a thread
-		auto sctp = std::atomic_exchange(&mSctpTransport, decltype(mSctpTransport)(nullptr));
-		auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
-		auto ice = std::atomic_exchange(&mIceTransport, decltype(mIceTransport)(nullptr));
-
-		if (sctp) {
-			sctp->onRecv(nullptr);
-			sctp->onBufferedAmount(nullptr);
-		}
-
-		using array = std::array<shared_ptr<Transport>, 3>;
-		array transports{std::move(sctp), std::move(dtls), std::move(ice)};
-
-		for (const auto &t : transports)
-			if (t)
-				t->onStateChange(nullptr);
-
+	mProcessor->enqueue([transports = std::move(transports)]() {
 		ThreadPool::Instance().enqueue([transports = std::move(transports)]() mutable {
 			for (const auto &t : transports)
 				if (t)
@@ -631,7 +631,8 @@ void PeerConnection::shiftDataChannels() {
 	}
 }
 
-void PeerConnection::iterateDataChannels(std::function<void(shared_ptr<DataChannel> channel)> func) {
+void PeerConnection::iterateDataChannels(
+    std::function<void(shared_ptr<DataChannel> channel)> func) {
 	std::vector<shared_ptr<DataChannel>> locked;
 	{
 		std::shared_lock lock(mDataChannelsMutex); // read-only
@@ -646,21 +647,21 @@ void PeerConnection::iterateDataChannels(std::function<void(shared_ptr<DataChann
 		}
 	}
 
-	for(auto &channel : locked)
+	for (auto &channel : locked)
 		func(std::move(channel));
 }
 
 void PeerConnection::cleanupDataChannels() {
-		std::unique_lock lock(mDataChannelsMutex); // we are going to erase
-		auto it = mDataChannels.begin();
-		while (it != mDataChannels.end()) {
-			if (!it->second.lock()) {
-				it = mDataChannels.erase(it);
-				continue;
-			}
-
-			++it;
+	std::unique_lock lock(mDataChannelsMutex); // we are going to erase
+	auto it = mDataChannels.begin();
+	while (it != mDataChannels.end()) {
+		if (!it->second.lock()) {
+			it = mDataChannels.erase(it);
+			continue;
 		}
+
+		++it;
+	}
 }
 
 void PeerConnection::openDataChannels() {
