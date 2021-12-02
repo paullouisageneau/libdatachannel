@@ -47,6 +47,7 @@ void test_benchmark() {
 }
 
 int main(int argc, char **argv) {
+	// C++ API tests
 	try {
 		cout << endl << "*** Running WebRTC connectivity test..." << endl;
 		test_connectivity();
@@ -63,14 +64,6 @@ int main(int argc, char **argv) {
 		cerr << "WebRTC TURN connectivity test failed: " << e.what() << endl;
 		return -1;
 	}
-	try {
-		cout << endl << "*** Running WebRTC C API connectivity test..." << endl;
-		test_capi_connectivity();
-		cout << "*** Finished WebRTC C API connectivity test" << endl;
-	} catch (const exception &e) {
-		cerr << "WebRTC C API connectivity test failed: " << e.what() << endl;
-		return -1;
-	}
 #if RTC_ENABLE_MEDIA
 	try {
 		cout << endl << "*** Running WebRTC Track test..." << endl;
@@ -78,14 +71,6 @@ int main(int argc, char **argv) {
 		cout << "*** Finished WebRTC Track test" << endl;
 	} catch (const exception &e) {
 		cerr << "WebRTC Track test failed: " << e.what() << endl;
-		return -1;
-	}
-	try {
-		cout << endl << "*** Running WebRTC C API track test..." << endl;
-		test_capi_track();
-		cout << "*** Finished WebRTC C API track test" << endl;
-	} catch (const exception &e) {
-		cerr << "WebRTC C API track test failed: " << e.what() << endl;
 		return -1;
 	}
 #endif
@@ -109,6 +94,38 @@ int main(int argc, char **argv) {
 		cerr << "WebSocketServer test failed: " << e.what() << endl;
 		return -1;
 	}
+#endif
+	try {
+		// Every created object must have been destroyed, otherwise the wait will block
+		cout << endl << "*** Running cleanup..." << endl;
+		if(rtc::Cleanup().wait_for(10s) == future_status::timeout)
+			throw std::runtime_error("Timeout");
+		cout << "*** Finished cleanup..." << endl;
+	} catch (const exception &e) {
+		cerr << "Cleanup failed: " << e.what() << endl;
+		return -1;
+	}
+
+	// C API tests
+	try {
+		cout << endl << "*** Running WebRTC C API connectivity test..." << endl;
+		test_capi_connectivity();
+		cout << "*** Finished WebRTC C API connectivity test" << endl;
+	} catch (const exception &e) {
+		cerr << "WebRTC C API connectivity test failed: " << e.what() << endl;
+		return -1;
+	}
+#if RTC_ENABLE_MEDIA
+	try {
+		cout << endl << "*** Running WebRTC C API track test..." << endl;
+		test_capi_track();
+		cout << "*** Finished WebRTC C API track test" << endl;
+	} catch (const exception &e) {
+		cerr << "WebRTC C API track test failed: " << e.what() << endl;
+		return -1;
+	}
+#endif
+#if RTC_ENABLE_WEBSOCKET
 	try {
 		cout << endl << "*** Running WebSocketServer C API test..." << endl;
 		test_capi_websocketserver();
@@ -118,7 +135,16 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 #endif
+	try {
+		cout << endl << "*** Running C API cleanup..." << endl;
+		rtcCleanup();
+		cout << "*** Finished C API cleanup..." << endl;
+	} catch (const exception &e) {
+		cerr << "C API cleanup failed: " << e.what() << endl;
+		return -1;
+	}
 /*
+	// Benchmark
 	try {
 		cout << endl << "*** Running WebRTC benchmark..." << endl;
 		test_benchmark();
@@ -129,14 +155,5 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 */
-	try {
-		cout << endl << "*** Running cleanup..." << endl;
-		if(rtc::Cleanup().wait_for(10s) == future_status::timeout)
-			throw std::runtime_error("Timeout");
-
-	} catch (const exception &e) {
-		cerr << "Cleanup failed: " << e.what() << endl;
-		return -1;
-	}
 	return 0;
 }
