@@ -28,8 +28,8 @@
 #include "verifiedtlstransport.hpp"
 #include "wstransport.hpp"
 
-#include <regex>
 #include <array>
+#include <regex>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -118,7 +118,7 @@ void WebSocket::close() {
 }
 
 void WebSocket::remoteClose() {
-	if (state.load() != State::Closed) {
+	if (state != State::Closed) {
 		close();
 		closeTransports();
 	}
@@ -181,7 +181,7 @@ template <typename T>
 shared_ptr<T> emplaceTransport(WebSocket *ws, shared_ptr<T> *member, shared_ptr<T> transport) {
 	transport->start();
 	std::atomic_store(member, transport);
-	if (ws->state.load() == WebSocket::State::Closed) {
+	if (ws->state == WebSocket::State::Closed) {
 		std::atomic_store(member, decltype(transport)(nullptr));
 		transport->stop();
 		return nullptr;
