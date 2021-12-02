@@ -40,12 +40,8 @@ NalUnitFragmentA::NalUnitFragmentA(FragmentType type, bool forbiddenBit, uint8_t
 std::vector<shared_ptr<NalUnitFragmentA>>
 NalUnitFragmentA::fragmentsFrom(shared_ptr<NalUnit> nalu, uint16_t maximumFragmentSize) {
 	assert(nalu->size() > maximumFragmentSize);
-	if (nalu->size() <= maximumFragmentSize) {
-		// we need to change `maximum_fragment_size` to have at least two fragments
-		maximumFragmentSize = nalu->size() / 2;
-	}
 	auto fragments_count = ceil(double(nalu->size()) / maximumFragmentSize);
-	maximumFragmentSize = ceil(nalu->size() / fragments_count);
+	maximumFragmentSize = uint16_t(int(ceil(nalu->size() / fragments_count)));
 
 	// 2 bytes for FU indicator and FU header
 	maximumFragmentSize -= 2;
@@ -64,7 +60,7 @@ NalUnitFragmentA::fragmentsFrom(shared_ptr<NalUnit> nalu, uint16_t maximumFragme
 			fragmentType = FragmentType::Middle;
 		} else {
 			if (offset + maximumFragmentSize > payload.size()) {
-				maximumFragmentSize = payload.size() - offset;
+				maximumFragmentSize = uint16_t(payload.size() - offset);
 			}
 			fragmentType = FragmentType::End;
 		}

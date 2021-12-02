@@ -44,8 +44,8 @@ int gettimeofday(struct timeval *tv, struct timezone *tz)
         x.LowPart =  filetime.dwLowDateTime;
         x.HighPart = filetime.dwHighDateTime;
         usec = x.QuadPart / 10  -  epoch_offset_us;
-        tv->tv_sec  = (time_t)(usec / 1000000ULL);
-        tv->tv_usec = (long)(usec % 1000000ULL);
+        tv->tv_sec  = time_t(usec / 1000000ULL);
+        tv->tv_usec = long(usec % 1000000ULL);
     }
     if (tz) {
         TIME_ZONE_INFORMATION timezone;

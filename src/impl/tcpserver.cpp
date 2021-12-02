@@ -142,7 +142,7 @@ void TcpServer::listen(uint16_t port) {
 			throw std::runtime_error("Failed to set socket non-blocking mode");
 
 		// Bind socket
-		if (::bind(mSock, ai->ai_addr, ai->ai_addrlen) < 0) {
+		if (::bind(mSock, ai->ai_addr, socklen_t(ai->ai_addrlen)) < 0) {
 			PLOG_WARNING << "TCP server socket binding on port " << port
 			             << " failed, errno=" << sockerrno;
 			throw std::runtime_error("TCP server socket binding failed");

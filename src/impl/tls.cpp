@@ -141,12 +141,12 @@ BIO *BIO_new_from_file(const string &filename) {
 		char buffer[bufferSize];
 		while (ifs.good()) {
 			ifs.read(buffer, bufferSize);
-			BIO_write(bio, buffer, ifs.gcount());
+			BIO_write(bio, buffer, int(ifs.gcount()));
 		}
 		ifs.close();
 		return bio;
 
-	} catch (const std::exception &e) {
+	} catch (const std::exception &) {
 		BIO_free(bio);
 		return nullptr;
 	}

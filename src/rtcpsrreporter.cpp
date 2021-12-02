@@ -39,7 +39,7 @@ ChainedOutgoingProduct RtcpSrReporter::processOutgoingBinaryMessage(ChainedMessa
 	}
 	for (auto message : *messages) {
 		auto rtp = reinterpret_cast<RTP *>(message->data());
-		addToReport(rtp, message->size());
+		addToReport(rtp, uint32_t(message->size()));
 	}
 	return {messages, control};
 }
@@ -52,14 +52,14 @@ void RtcpSrReporter::startRecording() {
 void RtcpSrReporter::addToReport(RTP *rtp, uint32_t rtpSize) {
 	packetCount += 1;
 	assert(!rtp->padding());
-	payloadOctets += rtpSize - rtp->getSize();
+	payloadOctets += rtpSize - uint32_t(rtp->getSize());
 }
 
 RtcpSrReporter::RtcpSrReporter(shared_ptr<RtpPacketizationConfig> rtpConfig)
     : MediaHandlerElement(), rtpConfig(rtpConfig) {}
 
 uint64_t RtcpSrReporter::secondsToNTP(double seconds) {
-	return std::round(seconds * double(uint64_t(1) << 32));
+	return uint64_t(std::round(seconds * double(uint64_t(1) << 32)));
 }
 
 void RtcpSrReporter::setNeedsToReport() { needsToReport = true; }

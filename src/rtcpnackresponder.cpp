@@ -30,7 +30,7 @@ RtcpNackResponder::Storage::Element::Element(binary_ptr packet, uint16_t sequenc
                                              shared_ptr<Element> next)
     : packet(packet), sequenceNumber(sequenceNumber), next(next) {}
 
-unsigned RtcpNackResponder::Storage::size() { return storage.size(); }
+unsigned RtcpNackResponder::Storage::size() { return unsigned(storage.size()); }
 
 RtcpNackResponder::Storage::Storage(unsigned _maximumSize) : maximumSize(_maximumSize) {
 	assert(maximumSize > 0);
@@ -80,10 +80,10 @@ RtcpNackResponder::processIncomingControlMessage(message_ptr message) {
 	optional<ChainedOutgoingProduct> optPackets = ChainedOutgoingProduct(nullptr);
 	auto packets = make_chained_messages_product();
 
-	unsigned int i = 0;
-	while (i < message->size()) {
-		auto nack = reinterpret_cast<RTCP_NACK *>(message->data() + i);
-		i += nack->header.header.lengthInBytes();
+	size_t p = 0;
+	while (p < message->size()) {
+		auto nack = reinterpret_cast<RTCP_NACK *>(message->data() + p);
+		p += nack->header.header.lengthInBytes();
 		// check if rtcp is nack
 		if (nack->header.header.payloadType() != 205 || nack->header.header.reportCount() != 1) {
 			continue;
