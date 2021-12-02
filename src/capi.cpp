@@ -135,21 +135,25 @@ void eraseTrack(int tr) {
 	userPointerMap.erase(tr);
 }
 
-void eraseAll() {
+size_t eraseAll() {
 	std::lock_guard lock(mutex);
+	size_t count = dataChannelMap.size() + trackMap.size() + peerConnectionMap.size();
 	dataChannelMap.clear();
 	trackMap.clear();
 	peerConnectionMap.clear();
 #if RTC_ENABLE_MEDIA
+	count += rtcpChainableHandlerMap.size() + rtcpSrReporterMap.size() + rtpConfigMap.size();
 	rtcpChainableHandlerMap.clear();
 	rtcpSrReporterMap.clear();
 	rtpConfigMap.clear();
 #endif
 #if RTC_ENABLE_WEBSOCKET
+	count += webSocketMap.size() + webSocketServerMap.size();
 	webSocketMap.clear();
 	webSocketServerMap.clear();
 #endif
 	userPointerMap.clear();
+	return count;
 }
 
 shared_ptr<Channel> getChannel(int id) {
@@ -1365,7 +1369,11 @@ void rtcPreload() {
 
 void rtcCleanup() {
 	try {
-		eraseAll();
+		size_t count = eraseAll();
+		if(count != 0) {
+			PLOG_INFO << count << " objects were not properly destroyed before cleanup";
+		}
+
 		if(rtc::Cleanup().wait_for(10s) == std::future_status::timeout)
 			throw std::runtime_error("Cleanup timeout (possible deadlock or undestructible object)");
 
