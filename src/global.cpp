@@ -103,7 +103,7 @@ void InitLogger(plog::Severity severity, plog::IAppender *appender) {
 }
 
 void Preload() { Init::Instance().preload(); }
-void Cleanup() { Init::Instance().cleanup(); }
+std::shared_future<void> Cleanup() { return Init::Instance().cleanup(); }
 
 void SetSctpSettings(SctpSettings s) { Init::Instance().setSctpSettings(std::move(s)); }
 

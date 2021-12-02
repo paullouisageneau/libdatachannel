@@ -24,6 +24,7 @@
 
 #include <chrono>
 #include <mutex>
+#include <future>
 
 namespace rtc {
 
@@ -40,7 +41,7 @@ public:
 
 	init_token token();
 	void preload();
-	void cleanup();
+	std::shared_future<void> cleanup();
 	void setSctpSettings(SctpSettings s);
 
 private:
@@ -55,6 +56,7 @@ private:
 	bool mInitialized = false;
 	SctpSettings mCurrentSctpSettings = {};
 	std::mutex mMutex;
+	std::shared_future<void> mCleanupFuture;
 
 	struct TokenPayload;
 };

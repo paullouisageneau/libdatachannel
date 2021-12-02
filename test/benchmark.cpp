@@ -121,7 +121,7 @@ size_t benchmark(milliseconds duration) {
 			}
 		} catch (const std::exception &e) {
 			std::cout << "Send failed: " << e.what() << std::endl;
-		}		
+		}
 	});
 
 	// When sent data is buffered in the DataChannel,
@@ -168,7 +168,6 @@ size_t benchmark(milliseconds duration) {
 	pc2.close();
 
 	rtc::Cleanup();
-	this_thread::sleep_for(1s);
 	return goodput;
 }
 

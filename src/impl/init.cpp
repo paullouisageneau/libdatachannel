@@ -40,12 +40,28 @@
 namespace rtc {
 
 struct Init::TokenPayload {
-	TokenPayload() { Init::Instance().doInit(); }
+	TokenPayload(std::shared_future<void> *cleanupFuture) {
+		Init::Instance().doInit();
+		if(cleanupFuture)
+			*cleanupFuture = cleanupPromise.get_future().share();
+	}
 
 	~TokenPayload() {
-		std::thread t([]() { Init::Instance().doCleanup(); });
+		std::thread t(
+		    [](std::promise<void> promise) {
+			    try {
+				    Init::Instance().doCleanup();
+				    promise.set_value();
+			    } catch (const std::exception &e) {
+				    PLOG_WARNING << e.what();
+				    promise.set_exception(std::make_exception_ptr(e));
+			    }
+		    },
+		    std::move(cleanupPromise));
 		t.detach();
 	}
+
+	std::promise<void> cleanupPromise;
 };
 
 Init &Init::Instance() {
@@ -53,7 +69,11 @@ Init &Init::Instance() {
 	return *instance;
 }
 
-Init::Init() {}
+Init::Init() {
+	std::promise<void> p;
+    p.set_value();
+    mCleanupFuture = p.get_future(); // make it ready
+}
 
 Init::~Init() {}
 
@@ -62,7 +82,7 @@ init_token Init::token() {
 	if (auto locked = mWeak.lock())
 		return locked;
 
-	mGlobal = std::make_shared<TokenPayload>();
+	mGlobal = std::make_shared<TokenPayload>(&mCleanupFuture);
 	mWeak = *mGlobal;
 	return *mGlobal;
 }
@@ -70,14 +90,15 @@ init_token Init::token() {
 void Init::preload() {
 	std::lock_guard lock(mMutex);
 	if (!mGlobal) {
-		mGlobal = std::make_shared<TokenPayload>();
+		mGlobal = std::make_shared<TokenPayload>(&mCleanupFuture);
 		mWeak = *mGlobal;
 	}
 }
 
-void Init::cleanup() {
+std::shared_future<void> Init::cleanup() {
 	std::lock_guard lock(mMutex);
 	mGlobal.reset();
+	return mCleanupFuture;
 }
 
 void Init::setSctpSettings(SctpSettings s) {
