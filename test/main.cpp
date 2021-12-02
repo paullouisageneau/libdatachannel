@@ -55,7 +55,6 @@ int main(int argc, char **argv) {
 		cerr << "WebRTC connectivity test failed: " << e.what() << endl;
 		return -1;
 	}
-	this_thread::sleep_for(1s);
 	try {
 		cout << endl << "*** Running WebRTC TURN connectivity test..." << endl;
 		test_turn_connectivity();
@@ -64,7 +63,6 @@ int main(int argc, char **argv) {
 		cerr << "WebRTC TURN connectivity test failed: " << e.what() << endl;
 		return -1;
 	}
-	this_thread::sleep_for(1s);
 	try {
 		cout << endl << "*** Running WebRTC C API connectivity test..." << endl;
 		test_capi_connectivity();
@@ -74,7 +72,6 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 #if RTC_ENABLE_MEDIA
-	this_thread::sleep_for(1s);
 	try {
 		cout << endl << "*** Running WebRTC Track test..." << endl;
 		test_track();
@@ -95,7 +92,6 @@ int main(int argc, char **argv) {
 #if RTC_ENABLE_WEBSOCKET
 // TODO: Temporarily disabled as the echo service is unreliable
 /*
-	this_thread::sleep_for(1s);
 	try {
 		cout << endl << "*** Running WebSocket test..." << endl;
 		test_websocket();
@@ -123,7 +119,6 @@ int main(int argc, char **argv) {
 	}
 #endif
 /*
-    this_thread::sleep_for(1s);
 	try {
 		cout << endl << "*** Running WebRTC benchmark..." << endl;
 		test_benchmark();
