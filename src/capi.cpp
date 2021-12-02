@@ -1367,7 +1367,7 @@ void rtcCleanup() {
 	try {
 		eraseAll();
 		if(rtc::Cleanup().wait_for(10s) == std::future_status::timeout)
-			throw std::runtime_error("Cleanup timeout");
+			throw std::runtime_error("Cleanup timeout (possible deadlock or undestructible object)");
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
