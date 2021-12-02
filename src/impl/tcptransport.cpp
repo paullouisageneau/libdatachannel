@@ -211,7 +211,7 @@ void TcpTransport::connect(const sockaddr *addr, socklen_t addrlen) {
 
 		do {
 			auto timeout = std::max(clock::duration::zero(), end - clock::now());
-			ret = ::poll(pfd, 1, duration_cast<milliseconds>(timeout).count());
+			ret = ::poll(pfd, 1, int(duration_cast<milliseconds>(timeout).count()));
 
 		} while (ret < 0 && (sockerrno == SEINTR || sockerrno == SEAGAIN));
 
@@ -336,7 +336,7 @@ void TcpTransport::runLoop() {
 			lock.unlock();
 			do {
 				auto timeout = std::max(clock::duration::zero(), end - clock::now());
-				ret = ::poll(pfd, 2, duration_cast<milliseconds>(timeout).count());
+				ret = ::poll(pfd, 2, int(duration_cast<milliseconds>(timeout).count()));
 
 			} while (ret < 0 && (sockerrno == SEINTR || sockerrno == SEAGAIN));
 			lock.lock();
