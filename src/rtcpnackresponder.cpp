@@ -47,7 +47,7 @@ void RtcpNackResponder::Storage::store(binary_ptr packet) {
 	if (!packet || packet->size() < 12) {
 		return;
 	}
-	auto rtp = reinterpret_cast<RTP *>(packet->data());
+	auto rtp = reinterpret_cast<RtpHeader *>(packet->data());
 	auto sequenceNumber = rtp->seqNumber();
 
 	assert((storage.empty() && !oldest && !newest) || (!storage.empty() && oldest && newest));
@@ -82,7 +82,7 @@ RtcpNackResponder::processIncomingControlMessage(message_ptr message) {
 
 	size_t p = 0;
 	while (p < message->size()) {
-		auto nack = reinterpret_cast<RTCP_NACK *>(message->data() + p);
+		auto nack = reinterpret_cast<RtcpNack *>(message->data() + p);
 		p += nack->header.header.lengthInBytes();
 		// check if rtcp is nack
 		if (nack->header.header.payloadType() != 205 || nack->header.header.reportCount() != 1) {

@@ -37,7 +37,7 @@ binary_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool setMark) {
 		rtpExtHeaderSize = rtpExtHeaderCvoSize;
 	}
 	auto msg = std::make_shared<binary>(rtpHeaderSize + rtpExtHeaderSize + payload->size());
-	auto *rtp = (RTP *)msg->data();
+	auto *rtp = (RtpHeader *)msg->data();
 	rtp->setPayloadType(rtpConfig->payloadType);
 	// increase sequence number
 	rtp->setSeqNumber(rtpConfig->sequenceNumber++);

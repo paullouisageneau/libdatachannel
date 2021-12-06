@@ -83,7 +83,7 @@ NalUnitStartSequenceMatch StartSequenceMatchSucc(NalUnitStartSequenceMatch match
 shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 	auto nalus = std::make_shared<NalUnits>();
 	if (separator == Separator::Length) {
-		unsigned long long index = 0;
+		size_t index = 0;
 		while (index < message->size()) {
 			assert(index + 4 < message->size());
 			if (index + 4 >= message->size()) {
@@ -107,7 +107,7 @@ shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 		}
 	} else {
 		NalUnitStartSequenceMatch match = NUSM_noMatch;
-		unsigned long long index = 0;
+		size_t index = 0;
 		while (index < message->size()) {
 			match = StartSequenceMatchSucc(match, (*message)[index++], separator);
 			if (match == NUSM_longMatch || match == NUSM_shortMatch) {
@@ -116,13 +116,13 @@ shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 			}
 		}
 
-		unsigned long long naluStartIndex = index;
+		size_t naluStartIndex = index;
 
 		while (index < message->size()) {
 			match = StartSequenceMatchSucc(match, (*message)[index], separator);
 			if (match == NUSM_longMatch || match == NUSM_shortMatch) {
 				auto sequenceLength = match == NUSM_longMatch ? 4 : 3;
-				unsigned long long naluEndIndex = index - sequenceLength;
+				size_t naluEndIndex = index - sequenceLength;
 				match = NUSM_noMatch;
 				auto begin = message->begin() + naluStartIndex;
 				auto end = message->begin() + naluEndIndex + 1;

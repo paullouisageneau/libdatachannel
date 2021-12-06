@@ -44,7 +44,7 @@ using namespace std::placeholders;
 namespace rtc::impl {
 
 static LogCounter COUNTER_MEDIA_TRUNCATED(plog::warning,
-                                          "Number of RTP packets truncated over past second");
+                                          "Number of truncated RTP packets over past second");
 static LogCounter COUNTER_SRTP_DECRYPT_ERROR(plog::warning,
                                              "Number of SRTP decryption errors over past second");
 static LogCounter COUNTER_SRTP_ENCRYPT_ERROR(plog::warning,
@@ -443,25 +443,25 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	if (message->type == Message::Control) {
 		std::set<uint32_t> ssrcs;
 		size_t offset = 0;
-		while ((sizeof(rtc::RTCP_HEADER) + offset) <= message->size()) {
-			auto header = reinterpret_cast<rtc::RTCP_HEADER *>(message->data() + offset);
+		while ((sizeof(RtcpHeader) + offset) <= message->size()) {
+			auto header = reinterpret_cast<RtcpHeader *>(message->data() + offset);
 			if (header->lengthInBytes() > message->size() - offset) {
 				COUNTER_MEDIA_TRUNCATED++;
 				break;
 			}
 			offset += header->lengthInBytes();
 			if (header->payloadType() == 205 || header->payloadType() == 206) {
-				auto rtcpfb = reinterpret_cast<RTCP_FB_HEADER *>(header);
+				auto rtcpfb = reinterpret_cast<RtcpFbHeader *>(header);
 				ssrcs.insert(rtcpfb->packetSenderSSRC());
 				ssrcs.insert(rtcpfb->mediaSourceSSRC());
 
 			} else if (header->payloadType() == 200 || header->payloadType() == 201) {
-				auto rtcpsr = reinterpret_cast<RTCP_SR *>(header);
+				auto rtcpsr = reinterpret_cast<RtcpSr *>(header);
 				ssrcs.insert(rtcpsr->senderSSRC());
 				for (int i = 0; i < rtcpsr->header.reportCount(); ++i)
 					ssrcs.insert(rtcpsr->getReportBlock(i)->getSSRC());
 			} else if (header->payloadType() == 202) {
-				auto sdes = reinterpret_cast<RTCP_SDES *>(header);
+				auto sdes = reinterpret_cast<RtcpSdes *>(header);
 				if (!sdes->isValid()) {
 					PLOG_WARNING << "RTCP SDES packet is invalid";
 					continue;
