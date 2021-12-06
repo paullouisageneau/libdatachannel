@@ -91,10 +91,10 @@ public:
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
 
-	shared_ptr<DataChannel> createDataChannel(string label, DataChannelInit init = {});
+	[[nodiscard]] shared_ptr<DataChannel> createDataChannel(string label, DataChannelInit init = {});
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
 
-	shared_ptr<Track> addTrack(Description::Media description);
+	[[nodiscard]] shared_ptr<Track> addTrack(Description::Media description);
 	void onTrack(std::function<void(std::shared_ptr<Track> track)> callback);
 
 	void onLocalDescription(std::function<void(Description description)> callback);

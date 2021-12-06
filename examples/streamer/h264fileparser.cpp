@@ -34,7 +34,7 @@ H264FileParser::H264FileParser(string directory, uint32_t fps, bool loop): FileP
 void H264FileParser::loadNextSample() {
     FileParser::loadNextSample();
 
-    unsigned long long i = 0;
+    size_t i = 0;
     while (i < sample.size()) {
         assert(i + 4 < sample.size());
         auto lengthPtr = (uint32_t *) (sample.data() + i);

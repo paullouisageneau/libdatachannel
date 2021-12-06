@@ -28,23 +28,22 @@
 namespace rtc {
 
 class RTC_CPP_EXPORT RtcpSrReporter final : public MediaHandlerElement {
-
 	bool needsToReport = false;
 
 	uint32_t packetCount = 0;
 	uint32_t payloadOctets = 0;
 	double timeOffset = 0;
 
-	uint32_t _previousReportedTimestamp = 0;
+	uint32_t mPreviousReportedTimestamp = 0;
 
-	void addToReport(RTP *rtp, uint32_t rtpSize);
+	void addToReport(RtpHeader *rtp, uint32_t rtpSize);
 	message_ptr getSenderReport(uint32_t timestamp);
 
 public:
 	static uint64_t secondsToNTP(double seconds);
 
 	/// Timestamp of previous sender report
-	const uint32_t &previousReportedTimestamp = _previousReportedTimestamp;
+	const uint32_t &previousReportedTimestamp = mPreviousReportedTimestamp;
 
 	/// RTP configuration
 	const shared_ptr<RtpPacketizationConfig> rtpConfig;
@@ -60,8 +59,7 @@ public:
 
 	/// Set offset to compute NTS for RTCP SR packets. Offset represents relation between real start
 	/// time and timestamp of the stream in RTP packets
-	/// @note `time_offset = rtpConfig->startTime_s -
-	/// rtpConfig->timestampToSeconds(rtpConfig->timestamp)`
+	/// @note `time_offset = rtpConfig->startTime - rtpConfig->timestampToSeconds(rtpConfig->timestamp)`
 	void startRecording();
 };
 

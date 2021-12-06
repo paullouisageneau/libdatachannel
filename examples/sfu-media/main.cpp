@@ -67,7 +67,7 @@ int main() {
 		track->onMessage(
 		    [&receivers, targetSSRC](rtc::binary message) {
 			    // This is an RTP packet
-			    auto rtp = (rtc::RTP *)message.data();
+			    auto rtp = reinterpret_cast<rtc::RtpHeader *>(message.data());
 			    rtp->setSsrc(targetSSRC);
 			    for (auto pc : receivers) {
 				    if (pc->track != nullptr && pc->track->isOpen()) {

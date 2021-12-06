@@ -38,18 +38,18 @@ ChainedOutgoingProduct RtcpSrReporter::processOutgoingBinaryMessage(ChainedMessa
 		needsToReport = false;
 	}
 	for (auto message : *messages) {
-		auto rtp = reinterpret_cast<RTP *>(message->data());
+		auto rtp = reinterpret_cast<RtpHeader *>(message->data());
 		addToReport(rtp, uint32_t(message->size()));
 	}
 	return {messages, control};
 }
 
 void RtcpSrReporter::startRecording() {
-	_previousReportedTimestamp = rtpConfig->timestamp;
-	timeOffset = rtpConfig->startTime_s - rtpConfig->timestampToSeconds(rtpConfig->timestamp);
+	mPreviousReportedTimestamp = rtpConfig->timestamp;
+	timeOffset = rtpConfig->startTime - rtpConfig->timestampToSeconds(rtpConfig->timestamp);
 }
 
-void RtcpSrReporter::addToReport(RTP *rtp, uint32_t rtpSize) {
+void RtcpSrReporter::addToReport(RtpHeader *rtp, uint32_t rtpSize) {
 	packetCount += 1;
 	assert(!rtp->padding());
 	payloadOctets += rtpSize - uint32_t(rtp->getSize());
@@ -65,10 +65,10 @@ uint64_t RtcpSrReporter::secondsToNTP(double seconds) {
 void RtcpSrReporter::setNeedsToReport() { needsToReport = true; }
 
 message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
-	auto srSize = RTCP_SR::Size(0);
-	auto msg = make_message(srSize + RTCP_SDES::Size({{uint8_t(rtpConfig->cname.size())}}),
+	auto srSize = RtcpSr::Size(0);
+	auto msg = make_message(srSize + RtcpSdes::Size({{uint8_t(rtpConfig->cname.size())}}),
 	                        Message::Control);
-	auto sr = reinterpret_cast<RTCP_SR *>(msg->data());
+	auto sr = reinterpret_cast<RtcpSr *>(msg->data());
 	auto timestamp_s = rtpConfig->timestampToSeconds(timestamp);
 	auto currentTime = timeOffset + timestamp_s;
 	sr->setNtpTimestamp(secondsToNTP(currentTime));
@@ -77,7 +77,7 @@ message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
 	sr->setOctetCount(payloadOctets);
 	sr->preparePacket(rtpConfig->ssrc, 0);
 
-	auto sdes = reinterpret_cast<RTCP_SDES *>(msg->data() + srSize);
+	auto sdes = reinterpret_cast<RtcpSdes *>(msg->data() + srSize);
 	auto chunk = sdes->getChunk(0);
 	chunk->setSSRC(rtpConfig->ssrc);
 	auto item = chunk->getItem(0);
@@ -85,7 +85,7 @@ message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
 	item->setText(rtpConfig->cname);
 	sdes->preparePacket(1);
 
-	_previousReportedTimestamp = timestamp;
+	mPreviousReportedTimestamp = timestamp;
 
 	return msg;
 }
