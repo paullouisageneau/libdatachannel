@@ -462,7 +462,7 @@ Retrieves the current buffered amount, i.e. the total size of currently buffered
 
 Return value: the buffered amount or a negative error code
 
-#### rtcGetBufferedAmountLowThreshold
+#### rtcSetBufferedAmountLowThreshold
 
 ```
 int rtcSetBufferedAmountLowThreshold(int id, int amount)
@@ -475,7 +475,7 @@ Arguments:
 - `id`: the channel identifier
 - `amount`: the new buffer level threshold
 
-Return value: the identifier of the new WebSocket or a negative error code
+Return value: `RTC_ERR_SUCCESS` or a negative error code
 
 #### rtcReceiveMessage
 
