@@ -53,7 +53,8 @@ a {
 }
 
 #menu {
-	margin: 1.5em;
+	margin: 1em;
+	margin-top: 2em;
 	font-size: 1.2em;
 	font-weight: bold;
 }
@@ -83,8 +84,7 @@ a {
 .article article {
   display: inline-block;
   width: 100%;
-  padding: 1em;
-  padding-top: 1em;
+  padding: 0.5em;
   text-align: left;
   line-height: 1.5;
 }
@@ -246,14 +246,36 @@ img.emoji {
   padding-right: 0.5em;
 }
 
+#home p {
+  padding-bottom: 0.5em;
+}
 #home section {
 	clear: both;
 }
 #home section img {
   float: left;
-  margin: 1em;
+  margin: 0.75em;
   margin-right: 2em;
   width: 10em;
   max-width: 30%;
+}
+
+.social {
+	text-align: center;
+}
+.social img {
+	display: inline-block;
+	margin-left: 0.5em;
+	margin-right: 0.5em;
+	width: 4em;
+}
+
+.sponsor {
+	text-align: center;
+	margin: 0.25em;
+}
+.sponsor * {
+	display: inline-block;
+	vertical-align: middle;
 }
 

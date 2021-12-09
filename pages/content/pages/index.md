@@ -3,9 +3,14 @@ url:
 save_as: index.html
 
 <div id="home">
-	<p>
-	libdatachannel is an open-source software library implementing WebRTC Data Channels, WebRTC Media Transport, and WebSockets. It is written in C++17 and offers C bindings. The <a href="https://github.com/paullouisageneau/libdatachannel">code source</a> is available under LGPLv2.
-	</p>
+	<header>
+		<p>libdatachannel is an open-source software library implementing WebRTC Data Channels, WebRTC Media Transport, and WebSockets. It is written in C++17 and offers C bindings. The <a href="https://github.com/paullouisageneau/libdatachannel">source code</a> is available under LGPLv2, and the library is on <a href="https://aur.archlinux.org/packages/libdatachannel/">AUR</a>, <a href="https://github.com/Microsoft/vcpkg/tree/master/ports/libdatachannel">Vcpkg</a>, and <a href="https://github.com/Microsoft/vcpkg/tree/master/ports/libdatachannel">FreeBSD Ports</a>.</p>
+		<div class="social">
+			<a href="https://github.com/paullouisageneau/libdatachannel"><img src="/images/icon_github.png" alt="GitHub"></a>
+			<a href="https://gitter.im/libdatachannel/community"><img src="/images/icon_gitter.png" alt="Gitter"></a>
+			<a href="https://discord.gg/jXAP8jp3Nn"><img src="/images/icon_discord.png" alt="Discord"></a>
+		</div>
+	</header>
 	<section>
 		<img src="/images/icon_easy.png">
 		<h3>Easy</h3>
@@ -33,5 +38,8 @@ save_as: index.html
 			<li>Code using Data Channels and WebSockets may be compiled as-is to WebAssembly for browsers with <a href="https://github.com/paullouisageneau/datachannel-wasm">datachannel-wasm</a></li>
 		</ul>
 	</section>
-</div>
+	<div class="sponsor">
+        <iframe src="https://github.com/sponsors/paullouisageneau/button" title="Sponsor paullouisageneau" height="35" width="116" style="border: 0;"></iframe>
+        <div class="liberapay"><a href="https://liberapay.com/paullouisageneau/donate"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg"></a></div>
+	</div>
 
