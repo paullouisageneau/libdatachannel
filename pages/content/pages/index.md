@@ -33,7 +33,7 @@ save_as: index.html
 		<img src="/images/icon_portable.png">
 		<h3>Portable</h3>
 		<ul>
-			<li>Support for POSIX platforms (including GNU/Linux, Android, Apple macOS, and FreeBSD) and Microsoft Windows</li>
+			<li>Support for POSIX platforms (including GNU/Linux, Android, FreeBSD, Apple macOS and iOS) and Microsoft Windows</li>
 			<li>Support for both <a href="https://www.openssl.org/">OpenSSL</a> and <a href="https://www.gnutls.org/">GnuTLS</a> as TLS backend
 			<li>Code using Data Channels and WebSockets may be compiled as-is to WebAssembly for browsers with <a href="https://github.com/paullouisageneau/datachannel-wasm">datachannel-wasm</a></li>
 		</ul>
