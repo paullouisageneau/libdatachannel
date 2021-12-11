@@ -68,7 +68,7 @@ a {
 	margin-right: 0.5em;
 }
 .page {
-  max-width: 64em;
+  max-width: 70em;
   margin: auto;
   text-align: center;
   line-height: 1.5;
@@ -271,6 +271,7 @@ img.emoji {
 }
 
 .sponsor {
+	clear: both;
 	text-align: center;
 	margin: 0.25em;
 }
