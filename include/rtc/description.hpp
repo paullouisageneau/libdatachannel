@@ -95,7 +95,7 @@ public:
 		std::vector<string>::iterator endAttributes();
 		std::vector<string>::iterator removeAttribute(std::vector<string>::iterator iterator);
 
-		struct ExtMap {
+		struct RTC_CPP_EXPORT ExtMap {
 			ExtMap(string_view description);
 			ExtMap() {}
 
@@ -183,7 +183,7 @@ public:
 
 		virtual void parseSdpLine(string_view line) override;
 
-		struct RTPMap {
+		struct RTC_CPP_EXPORT RTPMap {
 			RTPMap(string_view mline);
 			RTPMap() {}
 
