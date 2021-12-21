@@ -42,7 +42,12 @@ public:
 
 	using amount_callback = std::function<void(uint16_t streamId, size_t amount)>;
 
-	SctpTransport(shared_ptr<Transport> lower, const Configuration &config, uint16_t port,
+	struct Ports {
+		uint16_t local = DEFAULT_SCTP_PORT;
+		uint16_t remote = DEFAULT_SCTP_PORT;
+	};
+
+	SctpTransport(shared_ptr<Transport> lower, const Configuration &config, Ports ports,
 	              message_callback recvCallback, amount_callback bufferedAmountCallback,
 	              state_callback stateChangeCallback);
 	~SctpTransport();
@@ -76,6 +81,8 @@ private:
 		PPID_BINARY_EMPTY = 57
 	};
 
+	struct sockaddr_conn getSockAddrConn(uint16_t port);
+
 	void connect();
 	void shutdown();
 	void close();
@@ -96,7 +103,7 @@ private:
 	void processData(binary &&data, uint16_t streamId, PayloadId ppid);
 	void processNotification(const union sctp_notification *notify, size_t len);
 
-	const uint16_t mPort;
+	const Ports mPorts;
 	struct socket *mSock;
 
 	Processor mProcessor;
