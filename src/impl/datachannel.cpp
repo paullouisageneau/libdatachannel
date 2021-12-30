@@ -85,9 +85,15 @@ DataChannel::DataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string la
       mReliability(std::make_shared<Reliability>(std::move(reliability))),
       mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
-DataChannel::~DataChannel() { close(); }
+DataChannel::~DataChannel() {
+	PLOG_VERBOSE << "Destroying DataChannel";
+
+	close();
+}
 
 void DataChannel::close() {
+	PLOG_VERBOSE << "Closing DataChannel";
+
 	shared_ptr<SctpTransport> transport;
 	{
 		std::shared_lock lock(mMutex);
