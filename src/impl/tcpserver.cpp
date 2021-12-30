@@ -130,8 +130,14 @@ void TcpServer::listen(uint16_t port) {
 		if (mSock == INVALID_SOCKET)
 			throw std::runtime_error("TCP server socket creation failed");
 
-		// Listen on both IPv6 and IPv4
+		const sockopt_t enabled = 1;
 		const sockopt_t disabled = 0;
+
+		// Enable REUSEADDR
+		::setsockopt(mSock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char *>(&enabled),
+			             sizeof(enabled));
+
+		// Listen on both IPv6 and IPv4
 		if (ai->ai_family == AF_INET6)
 			::setsockopt(mSock, IPPROTO_IPV6, IPV6_V6ONLY,
 			             reinterpret_cast<const char *>(&disabled), sizeof(disabled));
