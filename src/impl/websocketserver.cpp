@@ -41,14 +41,14 @@ WebSocketServer::WebSocketServer(Configuration config_)
 			        ? Certificate::FromString(*config.certificatePemFile, *config.keyPemFile)
 			        : Certificate::FromFile(*config.certificatePemFile, *config.keyPemFile,
 			                                config.keyPemPass.value_or("")));
-		}
 
-	} else if (!config.certificatePemFile && !config.keyPemFile) {
-		mCertificate = std::make_shared<Certificate>(
-		    Certificate::Generate(CertificateType::Default, "localhost"));
-	} else {
-		throw std::invalid_argument(
-		    "Either none or both certificate and key PEM files must be specified");
+		} else if (!config.certificatePemFile && !config.keyPemFile) {
+			mCertificate = std::make_shared<Certificate>(
+			    Certificate::Generate(CertificateType::Default, "localhost"));
+		} else {
+			throw std::invalid_argument(
+			    "Either none or both certificate and key PEM files must be specified");
+		}
 	}
 
 	mThread = std::thread(&WebSocketServer::runLoop, this);
