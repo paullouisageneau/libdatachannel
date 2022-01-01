@@ -27,6 +27,8 @@ namespace rtc::impl {
 
 using namespace std::placeholders;
 
+const string PemBeginCertificateTag = "-----BEGIN CERTIFICATE-----";
+
 WebSocketServer::WebSocketServer(Configuration config_)
     : config(std::move(config_)), tcpServer(std::make_unique<TcpServer>(config.port)),
       mStopped(false) {
@@ -34,8 +36,11 @@ WebSocketServer::WebSocketServer(Configuration config_)
 
 	if (config.enableTls) {
 		if (config.certificatePemFile && config.keyPemFile) {
-			mCertificate = std::make_shared<Certificate>(Certificate::FromFile(
-			    *config.certificatePemFile, *config.keyPemFile, config.keyPemPass.value_or("")));
+			mCertificate = std::make_shared<Certificate>(
+			    config.certificatePemFile->find(PemBeginCertificateTag) != string::npos
+			        ? Certificate::FromString(*config.certificatePemFile, *config.keyPemFile)
+			        : Certificate::FromFile(*config.certificatePemFile, *config.keyPemFile,
+			                                config.keyPemPass.value_or("")));
 
 		} else if (!config.certificatePemFile && !config.keyPemFile) {
 			mCertificate = std::make_shared<Certificate>(
