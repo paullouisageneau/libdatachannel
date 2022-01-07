@@ -68,7 +68,7 @@ public:
 		HaveRemoteOffer = RTC_SIGNALING_HAVE_REMOTE_OFFER,
 		HaveLocalPranswer = RTC_SIGNALING_HAVE_LOCAL_PRANSWER,
 		HaveRemotePranswer = RTC_SIGNALING_HAVE_REMOTE_PRANSWER,
-	} rtcSignalingState;
+	};
 
 	PeerConnection();
 	PeerConnection(Configuration config);
