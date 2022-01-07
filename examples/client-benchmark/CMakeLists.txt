@@ -31,7 +31,7 @@ set_target_properties(datachannel-client-benchmark PROPERTIES
 find_package(Threads REQUIRED)
 target_link_libraries(datachannel-client-benchmark LibDataChannel::LibDataChannel Threads::Threads nlohmann_json)
 
-if(WIN32)
+if(MSVC)
 	add_custom_command(TARGET datachannel-client-benchmark POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different
 		"$<TARGET_FILE_DIR:datachannel>/datachannel.dll"
