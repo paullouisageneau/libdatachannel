@@ -51,7 +51,7 @@ set_target_properties(datachannel-copy-paste-answerer PROPERTIES
 find_package(Threads REQUIRED)
 target_link_libraries(datachannel-copy-paste-answerer LibDataChannel::LibDataChannel Threads::Threads)
 
-if(WIN32)
+if(MSVC)
 	add_custom_command(TARGET datachannel-copy-paste-offerer POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different
 		"$<TARGET_FILE_DIR:datachannel>/datachannel.dll"
