@@ -852,12 +852,6 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 			PLOG_VERBOSE << "SCTP reset event, " << desc.str();
 		}
 
-		if (flags & SCTP_STREAM_RESET_OUTGOING_SSN) {
-			for (int i = 0; i < count; ++i) {
-				uint16_t streamId = reset_event.strreset_stream_list[i];
-				closeStream(streamId);
-			}
-		}
 		if (flags & SCTP_STREAM_RESET_INCOMING_SSN) {
 			const byte dataChannelCloseMessage{0x04};
 			for (int i = 0; i < count; ++i) {

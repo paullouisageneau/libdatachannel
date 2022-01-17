@@ -430,7 +430,8 @@ void PeerConnection::forwardMessage(message_ptr message) {
 
 			std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
 			mDataChannels.emplace(stream, channel);
-		} else {
+
+		} else if(message->type != Message::Control) {
 			// Invalid, close the DataChannel
 			sctpTransport->closeStream(message->stream);
 			return;
