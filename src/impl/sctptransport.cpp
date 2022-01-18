@@ -441,8 +441,12 @@ bool SctpTransport::flush() {
 void SctpTransport::closeStream(unsigned int stream) {
 	std::lock_guard lock(mSendMutex);
 
-	// This method must not call the buffered callback synchronously
+	// RFC 8831 6.7. Closing a Data Channel
+	// Closing of a data channel MUST be signaled by resetting the corresponding outgoing streams
+	// See https://tools.ietf.org/html/rfc8831#section-6.7
 	mSendQueue.push(make_message(0, Message::Reset, to_uint16(stream)));
+
+	// This method must not call the buffered callback synchronously
 	mProcessor.enqueue(&SctpTransport::flush, this);
 }
 
@@ -852,12 +856,11 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 			PLOG_VERBOSE << "SCTP reset event, " << desc.str();
 		}
 
-		if (flags & SCTP_STREAM_RESET_OUTGOING_SSN) {
-			for (int i = 0; i < count; ++i) {
-				uint16_t streamId = reset_event.strreset_stream_list[i];
-				closeStream(streamId);
-			}
-		}
+		// RFC 8831 6.7. Closing a Data Channel
+		// If one side decides to close the data channel, it resets the corresponding outgoing
+		// stream. When the peer sees that an incoming stream was reset, it also resets its
+		// corresponding outgoing stream.
+		// See https://tools.ietf.org/html/rfc8831#section-6.7
 		if (flags & SCTP_STREAM_RESET_INCOMING_SSN) {
 			const byte dataChannelCloseMessage{0x04};
 			for (int i = 0; i < count; ++i) {

@@ -273,7 +273,8 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 
 		auto remote = remoteDescription();
 		if (!remote || !remote->application())
-			throw std::logic_error("Starting SCTP transport without remote application description");
+			throw std::logic_error(
+			    "Starting SCTP transport without remote application description");
 
 		SctpTransport::Ports ports = {};
 		ports.local = local->application()->sctpPort().value_or(DEFAULT_SCTP_PORT);
@@ -418,10 +419,18 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		if (!iceTransport || !sctpTransport)
 			return;
 
+		// See https://tools.ietf.org/html/rfc8832
 		const byte dataChannelOpenMessage{0x03};
 		uint16_t remoteParity = (iceTransport->role() == Description::Role::Active) ? 1 : 0;
-		if (message->type == Message::Control && *message->data() == dataChannelOpenMessage &&
-		    stream % 2 == remoteParity) {
+		if (message->type == Message::Control) {
+			if (message->size() == 0 || *message->data() != dataChannelOpenMessage)
+				return; // ignore
+
+			if (stream % 2 != remoteParity) {
+				// The odd/even rule is violated, close the DataChannel
+				sctpTransport->closeStream(message->stream);
+				return;
+			}
 
 			channel =
 			    std::make_shared<NegotiatedDataChannel>(weak_from_this(), sctpTransport, stream);
@@ -430,6 +439,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 
 			std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
 			mDataChannels.emplace(stream, channel);
+
 		} else {
 			// Invalid, close the DataChannel
 			sctpTransport->closeStream(message->stream);
