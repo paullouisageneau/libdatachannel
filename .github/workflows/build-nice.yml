@@ -14,7 +14,7 @@ jobs:
     - name: install packages
       run: sudo apt update && sudo apt install libgnutls28-dev libnice-dev
     - name: submodules
-      run: git submodule update --init --recursive
+      run: git submodule update --init --recursive --depth 1
     - name: cmake
       run: cmake -B build -DUSE_GNUTLS=1 -DUSE_NICE=1 -DWARNINGS_AS_ERRORS=1
     - name: make
@@ -28,7 +28,7 @@ jobs:
     - name: install packages
       run: sudo apt update && sudo apt install libgnutls28-dev libnice-dev
     - name: submodules
-      run: git submodule update --init --recursive
+      run: git submodule update --init --recursive --depth 1
     - name: cmake
       run: cmake -B build -DUSE_GNUTLS=1 -DUSE_NICE=1 -DNO_MEDIA=1 -DWARNINGS_AS_ERRORS=1
     - name: make

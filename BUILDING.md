@@ -5,7 +5,7 @@
 ```bash
 $ git clone https://github.com/paullouisageneau/libdatachannel.git
 $ cd libdatachannel
-$ git submodule update --init --recursive --depth=1
+$ git submodule update --init --recursive --depth 1
 ```
 
 ## Build with CMake
