@@ -7,7 +7,7 @@
 
 [![AUR package](https://repology.org/badge/version-for-repo/aur/libdatachannel.svg)](https://repology.org/project/libdatachannel/versions) [![FreeBSD port](https://repology.org/badge/version-for-repo/freebsd/libdatachannel.svg)](https://repology.org/project/libdatachannel/versions) [![Vcpkg package](https://repology.org/badge/version-for-repo/vcpkg/libdatachannel.svg)](https://repology.org/project/libdatachannel/versions)
 
-libdatachannel is a standalone implementation of WebRTC Data Channels, WebRTC Media Transport, and WebSockets in C++17 with C bindings for POSIX platforms (including GNU/Linux, Android, FreeBSD, Apple macOS and iOS) and Microsoft Windows.
+libdatachannel is a standalone implementation of WebRTC Data Channels, WebRTC Media Transport, and WebSockets in C++17 with C bindings for POSIX platforms (including GNU/Linux, Android, FreeBSD, Apple macOS and iOS) and Microsoft Windows. WebRTC is a W3C and IETF standard enabling real-time peer-to-peer data and media exchange between two devices.
 
 The library aims at being both straightforward and lightweight with minimal external dependencies, to enable direct connectivity between native applications and web browsers without the pain of importing Google's bloated [reference library](https://webrtc.googlesource.com/src/). The interface consists of somewhat simplified versions of the JavaScript WebRTC and WebSocket APIs present in browsers, in order to ease the design of cross-environment applications.
 
@@ -19,7 +19,7 @@ The WebRTC stack is fully compatible with browsers like Firefox and Chromium, se
 
 libdatachannel is licensed under LGPLv2, see [LICENSE](https://github.com/paullouisageneau/libdatachannel/blob/master/LICENSE).
 
-libdatachannel is available on [AUR](https://aur.archlinux.org/packages/libdatachannel/) and [vcpkg](https://vcpkg.info/port/libdatachannel).
+libdatachannel is available on [AUR](https://aur.archlinux.org/packages/libdatachannel/), [vcpkg](https://vcpkg.info/port/libdatachannel), and [FreeBSD ports](https://www.freshports.org/www/libdatachannel). Bindings are available for [Rust](https://crates.io/crates/datachannel) and [Node.js](https://www.npmjs.com/package/node-datachannel).
 
 ## Dependencies
 
@@ -134,7 +134,7 @@ The library implements the following communication protocols:
 
 ### WebRTC Data Channels and Media Transport
 
-The library implements WebRTC Peer Connections with both Data Channels and Media Transport. Media transport is optional and can be disabled at compile time.
+WebRTC allows real-time data and media exchange between two devices through a Peer Connection (or RTCPeerConnection), a signaled peer-to-peer connection which can carry both Data Channels and media tracks. It is compatible with browsers Firefox, Chromium, and Safari, and other WebRTC libraries (see [webrtc-echoes](https://github.com/sipsorcery/webrtc-echoes)). Media transport is optional and can be disabled at compile time.
 
 Protocol stack:
 - SCTP-based Data Channels ([RFC8831](https://tools.ietf.org/html/rfc8831))
@@ -167,9 +167,9 @@ Features:
 - Keepalive with ping/pong
 
 ## External resources
-- Rust wrapper for libdatachannel: [datachannel-rs](https://github.com/lerouxrgd/datachannel-rs)
-- Node.js wrapper for libdatachannel: [node-datachannel](https://github.com/murat-dogan/node-datachannel)
-- Unity wrapper for Windows 10 and Hololens: [datachannel-unity](https://github.com/hanseuljun/datachannel-unity)
+- Rust bindings for libdatachannel: [datachannel-rs](https://github.com/lerouxrgd/datachannel-rs)
+- Node.js bindings for libdatachannel: [node-datachannel](https://github.com/murat-dogan/node-datachannel)
+- Unity bindings for Windows 10 and Hololens: [datachannel-unity](https://github.com/hanseuljun/datachannel-unity)
 - WebAssembly wrapper compatible with libdatachannel: [datachannel-wasm](https://github.com/paullouisageneau/datachannel-wasm)
 - Lightweight STUN/TURN server: [Violet](https://github.com/paullouisageneau/violet)
 
