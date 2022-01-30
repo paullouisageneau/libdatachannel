@@ -93,6 +93,7 @@ tests: $(NAME).a $(TEST_OBJS)
 clean:
 	-$(RM) include/rtc/*.d *.d
 	-$(RM) src/*.o src/*.d
+	-$(RM) src/impl/*.o src/impl/*.d
 	-$(RM) test/*.o test/*.d
 
 dist-clean: clean
