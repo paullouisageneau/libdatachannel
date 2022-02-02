@@ -47,8 +47,8 @@ struct RTC_CPP_EXPORT NalUnitFragmentHeader {
 	uint8_t _first = 0;
 
 	bool isStart() { return _first >> 7; }
-	bool reservedBit6() { return (_first >> 6) & 0x01; }
-	bool isEnd() { return (_first >> 5) & 0x01; }
+	bool reservedBit6() { return (_first >> 5) & 0x01; }
+	bool isEnd() { return (_first >> 6) & 0x01; }
 	uint8_t unitType() { return _first & 0x1F; }
 
 	void setStart(bool isSet) { _first = (_first & 0x7F) | (isSet << 7); }
