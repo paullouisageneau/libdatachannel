@@ -7,8 +7,8 @@ on:
     branches:
     - master
 jobs:
-  build-media:
-    runs-on: ubuntu-latest
+  build-gnutls:
+    runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v2
     - name: install packages
@@ -21,8 +21,22 @@ jobs:
       run: (cd build; make -j2)
     - name: test
       run: ./build/tests
+  build-openssl:
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: install packages
+      run: sudo apt update && sudo apt install libssl-dev libnice-dev
+    - name: submodules
+      run: git submodule update --init --recursive --depth 1
+    - name: cmake
+      run: cmake -B build -DUSE_GNUTLS=0 -DUSE_NICE=1 -DWARNINGS_AS_ERRORS=1
+    - name: make
+      run: (cd build; make -j2)
+    - name: test
+      run: ./build/tests
   build-no-media:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v2
     - name: install packages
