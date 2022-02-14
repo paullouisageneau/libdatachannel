@@ -125,7 +125,9 @@ void Init::doInit() {
 #endif
 
 	ThreadPool::Instance().spawn(THREADPOOL_SIZE);
+#if RTC_ENABLE_WEBSOCKET
 	PollService::Instance().start();
+#endif
 
 #if USE_GNUTLS
 	// Nothing to do
@@ -154,8 +156,10 @@ void Init::doCleanup() {
 
 	PLOG_DEBUG << "Global cleanup";
 
-	PollService::Instance().join();
 	ThreadPool::Instance().join();
+#if RTC_ENABLE_WEBSOCKET
+	PollService::Instance().join();
+#endif
 
 	SctpTransport::Cleanup();
 	DtlsTransport::Cleanup();
