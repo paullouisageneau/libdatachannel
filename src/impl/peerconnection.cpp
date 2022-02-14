@@ -119,13 +119,21 @@ size_t PeerConnection::remoteMaxMessageSize() const {
 // Helper for PeerConnection::initXTransport methods: start and emplace the transport
 template <typename T>
 shared_ptr<T> emplaceTransport(PeerConnection *pc, shared_ptr<T> *member, shared_ptr<T> transport) {
-	transport->start();
 	std::atomic_store(member, transport);
+	try {
+		transport->start();
+	} catch (...) {
+		std::atomic_store(member, decltype(transport)(nullptr));
+		transport->stop();
+		throw;
+	}
+
 	if (pc->state.load() == PeerConnection::State::Closed) {
 		std::atomic_store(member, decltype(transport)(nullptr));
 		transport->stop();
 		return nullptr;
 	}
+
 	return transport;
 }
 
@@ -609,7 +617,7 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(string label, DataCha
 			stream += 2;
 		}
 	}
-	// If the DataChannel is user-negotiated, do not negociate it here
+	// If the DataChannel is user-negotiated, do not negotiate it here
 	auto channel =
 	    init.negotiated
 	        ? std::make_shared<DataChannel>(weak_from_this(), stream, std::move(label),
