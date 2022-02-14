@@ -19,30 +19,30 @@
 #include "init.hpp"
 #include "internals.hpp"
 
-#include "impl/certificate.hpp"
-#include "impl/dtlstransport.hpp"
-#include "impl/sctptransport.hpp"
-#include "impl/threadpool.hpp"
-#include "impl/tls.hpp"
+#include "certificate.hpp"
+#include "dtlstransport.hpp"
+#include "sctptransport.hpp"
+#include "threadpool.hpp"
+#include "tls.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
-#include "impl/tlstransport.hpp"
+#include "tlstransport.hpp"
 #endif
 
 #if RTC_ENABLE_MEDIA
-#include "impl/dtlssrtptransport.hpp"
+#include "dtlssrtptransport.hpp"
 #endif
 
 #ifdef _WIN32
 #include <winsock2.h>
 #endif
 
-namespace rtc {
+namespace rtc::impl {
 
 struct Init::TokenPayload {
 	TokenPayload(std::shared_future<void> *cleanupFuture) {
 		Init::Instance().doInit();
-		if(cleanupFuture)
+		if (cleanupFuture)
 			*cleanupFuture = cleanupPromise.get_future().share();
 	}
 
@@ -71,8 +71,8 @@ Init &Init::Instance() {
 
 Init::Init() {
 	std::promise<void> p;
-    p.set_value();
-    mCleanupFuture = p.get_future(); // make it ready
+	p.set_value();
+	mCleanupFuture = p.get_future(); // make it ready
 }
 
 Init::~Init() {}
@@ -104,7 +104,7 @@ std::shared_future<void> Init::cleanup() {
 void Init::setSctpSettings(SctpSettings s) {
 	std::lock_guard lock(mMutex);
 	if (mGlobal)
-		impl::SctpTransport::SetSettings(s);
+		SctpTransport::SetSettings(s);
 
 	mCurrentSctpSettings = std::move(s); // store for next init
 }
@@ -123,7 +123,7 @@ void Init::doInit() {
 		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
 #endif
 
-	impl::ThreadPool::Instance().spawn(THREADPOOL_SIZE);
+	ThreadPool::Instance().spawn(THREADPOOL_SIZE);
 
 #if USE_GNUTLS
 	// Nothing to do
@@ -131,14 +131,14 @@ void Init::doInit() {
 	openssl::init();
 #endif
 
-	impl::SctpTransport::Init();
-	impl::SctpTransport::SetSettings(mCurrentSctpSettings);
-	impl::DtlsTransport::Init();
+	SctpTransport::Init();
+	SctpTransport::SetSettings(mCurrentSctpSettings);
+	DtlsTransport::Init();
 #if RTC_ENABLE_WEBSOCKET
-	impl::TlsTransport::Init();
+	TlsTransport::Init();
 #endif
 #if RTC_ENABLE_MEDIA
-	impl::DtlsSrtpTransport::Init();
+	DtlsSrtpTransport::Init();
 #endif
 }
 
@@ -152,15 +152,15 @@ void Init::doCleanup() {
 
 	PLOG_DEBUG << "Global cleanup";
 
-	impl::ThreadPool::Instance().join();
+	ThreadPool::Instance().join();
 
-	impl::SctpTransport::Cleanup();
-	impl::DtlsTransport::Cleanup();
+	SctpTransport::Cleanup();
+	DtlsTransport::Cleanup();
 #if RTC_ENABLE_WEBSOCKET
-	impl::TlsTransport::Cleanup();
+	TlsTransport::Cleanup();
 #endif
 #if RTC_ENABLE_MEDIA
-	impl::DtlsSrtpTransport::Cleanup();
+	DtlsSrtpTransport::Cleanup();
 #endif
 
 #ifdef _WIN32
@@ -168,4 +168,4 @@ void Init::doCleanup() {
 #endif
 }
 
-} // namespace rtc
+} // namespace rtc::impl

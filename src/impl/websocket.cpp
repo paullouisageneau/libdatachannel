@@ -179,13 +179,21 @@ void WebSocket::incoming(message_ptr message) {
 // Helper for WebSocket::initXTransport methods: start and emplace the transport
 template <typename T>
 shared_ptr<T> emplaceTransport(WebSocket *ws, shared_ptr<T> *member, shared_ptr<T> transport) {
-	transport->start();
 	std::atomic_store(member, transport);
+	try {
+		transport->start();
+	} catch (...) {
+		std::atomic_store(member, decltype(transport)(nullptr));
+		transport->stop();
+		throw;
+	}
+
 	if (ws->state == WebSocket::State::Closed) {
 		std::atomic_store(member, decltype(transport)(nullptr));
 		transport->stop();
 		return nullptr;
 	}
+
 	return transport;
 }
 
