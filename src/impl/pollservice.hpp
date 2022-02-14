@@ -19,18 +19,19 @@
 #ifndef RTC_IMPL_POLL_SERVICE_H
 #define RTC_IMPL_POLL_SERVICE_H
 
-#include "pollinterrupter.hpp"
-#include "socket.hpp"
 #include "common.hpp"
 #include "internals.hpp"
+#include "pollinterrupter.hpp"
+#include "socket.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
 #include <chrono>
+#include <functional>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
-#include <functional>
+#include <vector>
 
 namespace rtc::impl {
 

@@ -28,7 +28,6 @@
 #if RTC_ENABLE_WEBSOCKET
 
 #include <mutex>
-#include <future>
 
 namespace rtc::impl {
 
