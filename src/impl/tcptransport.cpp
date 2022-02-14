@@ -152,43 +152,43 @@ void TcpTransport::connect() {
 		try {
 			prepare(ai->ai_addr, socklen_t(ai->ai_addrlen));
 
-			auto timeout = 10s;
+			auto callback = [this, result, ai, recurse](PollService::Event event) mutable {
+				try {
+					if (event == PollService::Event::Error)
+						throw std::runtime_error("Connection interrupted");
+
+					if (event == PollService::Event::Timeout)
+						throw std::runtime_error("Connection timed out");
+
+					if (event != PollService::Event::Out)
+						return;
+
+					int err = 0;
+					socklen_t errlen = sizeof(err);
+					if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, (char *)&err, &errlen) != 0)
+						throw std::runtime_error("Failed to get socket error code");
+
+					if (err != 0) {
+						std::ostringstream msg;
+						msg << "TCP connection failed, errno=" << err;
+						throw std::runtime_error(msg.str());
+					}
+
+					PLOG_DEBUG << "TCP connection succeeded";
+					freeaddrinfo(result);
+					changeState(State::Connected);
+
+					setPoll(PollService::Direction::In);
+
+				} catch (const std::runtime_error &e) {
+					PLOG_DEBUG << e.what();
+					recurse(ai->ai_next, recurse);
+				}
+			};
+
+			const auto timeout = 10s;
 			PollService::Instance().add(
-			    mSock,
-			    {PollService::Direction::Out, timeout,
-			     [this, result, ai, recurse](PollService::Event event) mutable {
-				     try {
-					     if (event == PollService::Event::Error)
-						     throw std::runtime_error("Connection interrupted");
-
-						if (event == PollService::Event::Timeout)
-						     throw std::runtime_error("Connection timed out");
-
-					     if (event != PollService::Event::Out)
-						     return;
-
-					     int err = 0;
-					     socklen_t errlen = sizeof(err);
-					     if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, (char *)&err, &errlen) != 0)
-						     throw std::runtime_error("Failed to get socket error code");
-
-					     if (err != 0) {
-						     std::ostringstream msg;
-						     msg << "TCP connection failed, errno=" << err;
-						     throw std::runtime_error(msg.str());
-					     }
-
-					     PLOG_DEBUG << "TCP connection succeeded";
-					     freeaddrinfo(result);
-					     changeState(State::Connected);
-
-					     setPoll(PollService::Direction::In);
-
-				     } catch (const std::runtime_error &e) {
-					     PLOG_DEBUG << e.what();
-					     recurse(ai->ai_next, recurse);
-				     }
-			     }});
+			    mSock, {PollService::Direction::Out, timeout, std::move(callback)});
 
 		} catch (const std::runtime_error &e) {
 			PLOG_DEBUG << e.what();
@@ -329,7 +329,7 @@ void TcpTransport::process(PollService::Event event) {
 			const size_t bufferSize = 4096;
 			char buffer[bufferSize];
 			int len;
-			while((len = ::recv(mSock, buffer, bufferSize, 0)) > 0) {
+			while ((len = ::recv(mSock, buffer, bufferSize, 0)) > 0) {
 				auto *b = reinterpret_cast<byte *>(buffer);
 				incoming(make_message(b, b + len));
 			}
