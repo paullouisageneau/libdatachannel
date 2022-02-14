@@ -130,6 +130,7 @@ void TcpTransport::connect() {
 	PLOG_DEBUG << "Connecting to " << mHostname << ":" << mService;
 	changeState(State::Connecting);
 
+	// Resolve hostname
 	struct addrinfo hints = {};
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
@@ -140,6 +141,7 @@ void TcpTransport::connect() {
 	if (getaddrinfo(mHostname.c_str(), mService.c_str(), &hints, &result))
 		throw std::runtime_error("Resolution failed for \"" + mHostname + ":" + mService + "\"");
 
+	// Chain connection attempt to each address
 	auto attempt = [this, result](struct addrinfo *ai, auto recurse) {
 		if (!ai) {
 			PLOG_WARNING << "Connection to " << mHostname << ":" << mService << " failed";
@@ -156,6 +158,7 @@ void TcpTransport::connect() {
 			recurse(ai->ai_next, recurse);
 		}
 
+		// Poll out event callback
 		auto callback = [this, result, ai, recurse](PollService::Event event) mutable {
 			try {
 				if (event == PollService::Event::Error)
@@ -178,6 +181,7 @@ void TcpTransport::connect() {
 					throw std::runtime_error(msg.str());
 				}
 
+				// Success
 				PLOG_INFO << "TCP connected";
 				freeaddrinfo(result);
 				changeState(State::Connected);
