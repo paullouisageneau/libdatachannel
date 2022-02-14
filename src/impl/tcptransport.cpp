@@ -155,10 +155,10 @@ void TcpTransport::connect() {
 			auto callback = [this, result, ai, recurse](PollService::Event event) mutable {
 				try {
 					if (event == PollService::Event::Error)
-						throw std::runtime_error("Connection interrupted");
+						throw std::runtime_error("TCP connection failed");
 
 					if (event == PollService::Event::Timeout)
-						throw std::runtime_error("Connection timed out");
+						throw std::runtime_error("TCP connection timed out");
 
 					if (event != PollService::Event::Out)
 						return;
