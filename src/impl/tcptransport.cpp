@@ -37,7 +37,7 @@ using std::chrono::milliseconds;
 
 TcpTransport::TcpTransport(string hostname, string service, state_callback callback)
     : Transport(nullptr, std::move(callback)), mIsActive(true), mHostname(std::move(hostname)),
-      mService(std::move(service)) {
+      mService(std::move(service)), mSock(INVALID_SOCKET) {
 
 	PLOG_DEBUG << "Initializing TCP transport";
 }
@@ -174,7 +174,7 @@ void TcpTransport::connect() {
 						throw std::runtime_error(msg.str());
 					}
 
-					PLOG_DEBUG << "TCP connection succeeded";
+					PLOG_INFO << "TCP connected";
 					freeaddrinfo(result);
 					changeState(State::Connected);
 

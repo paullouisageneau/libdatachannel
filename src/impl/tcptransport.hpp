@@ -63,7 +63,7 @@ private:
 	const bool mIsActive;
 	string mHostname, mService;
 
-	socket_t mSock = INVALID_SOCKET;
+	socket_t mSock;
 	Queue<message_ptr> mSendQueue;
 	std::mutex mSendMutex;
 };
