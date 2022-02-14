@@ -20,15 +20,15 @@
 #define RTC_IMPL_TCP_TRANSPORT_H
 
 #include "common.hpp"
+#include "pollservice.hpp"
 #include "queue.hpp"
-#include "pollinterrupter.hpp"
 #include "socket.hpp"
 #include "transport.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
 #include <mutex>
-#include <thread>
+#include <future>
 
 namespace rtc::impl {
 
@@ -50,23 +50,22 @@ public:
 	string remoteAddress() const;
 
 private:
-	void connect(const string &hostname, const string &service);
-	void connect(const sockaddr *addr, socklen_t addrlen);
+	void connect();
+	void prepare(const sockaddr *addr, socklen_t addrlen);
+	void setPoll(PollService::Direction direction);
 	void close();
 
 	bool trySendQueue();
 	bool trySendMessage(message_ptr &message);
 
-	void runLoop();
+	void process(PollService::Event event);
 
 	const bool mIsActive;
 	string mHostname, mService;
 
 	socket_t mSock = INVALID_SOCKET;
-	std::mutex mSockMutex;
-	std::thread mThread;
-	PollInterrupter mInterrupter;
 	Queue<message_ptr> mSendQueue;
+	std::mutex mSendMutex;
 };
 
 } // namespace rtc::impl

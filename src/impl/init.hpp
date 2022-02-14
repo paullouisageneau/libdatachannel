@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2020-2022 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
