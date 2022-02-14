@@ -102,10 +102,10 @@ void InitLogger(plog::Severity severity, plog::IAppender *appender) {
 	plogInit(severity, appender);
 }
 
-void Preload() { Init::Instance().preload(); }
-std::shared_future<void> Cleanup() { return Init::Instance().cleanup(); }
+void Preload() { impl::Init::Instance().preload(); }
+std::shared_future<void> Cleanup() { return impl::Init::Instance().cleanup(); }
 
-void SetSctpSettings(SctpSettings s) { Init::Instance().setSctpSettings(std::move(s)); }
+void SetSctpSettings(SctpSettings s) { impl::Init::Instance().setSctpSettings(std::move(s)); }
 
 } // namespace rtc
 

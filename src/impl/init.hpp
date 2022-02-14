@@ -23,10 +23,10 @@
 #include "global.hpp" // for SctpSettings
 
 #include <chrono>
-#include <mutex>
 #include <future>
+#include <mutex>
 
-namespace rtc {
+namespace rtc::impl {
 
 using init_token = shared_ptr<void>;
 
@@ -61,6 +61,6 @@ private:
 	struct TokenPayload;
 };
 
-} // namespace rtc
+} // namespace rtc::impl
 
 #endif
