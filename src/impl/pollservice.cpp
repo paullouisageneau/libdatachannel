@@ -173,21 +173,27 @@ void PollService::runLoop() {
 		while (!mStopped) {
 			prepare(pfds, next);
 
-			PLOG_VERBOSE << "Entering poll";
 			int ret;
 			do {
-				int timeout = next ? duration_cast<milliseconds>(
-				                         std::max(clock::duration::zero(), *next - clock::now()))
-				                         .count()
-				                   : -1;
+				int timeout;
+				if (next) {
+					auto msecs = duration_cast<milliseconds>(
+					    std::max(clock::duration::zero(), *next - clock::now()));
+					PLOG_VERBOSE << "Entering poll, timeout=" << msecs.count() << "ms";
+					timeout = msecs.count();
+				} else {
+					PLOG_VERBOSE << "Entering poll";
+					timeout = -1;
+				}
+
 				ret = ::poll(pfds.data(), pfds.size(), timeout);
+
+				PLOG_VERBOSE << "Exiting poll";
 
 			} while (ret < 0 && (sockerrno == SEINTR || sockerrno == SEAGAIN));
 
-			PLOG_VERBOSE << "Exiting poll";
-
 			if (ret < 0)
-				throw std::runtime_error("Failed to wait for socket connection");
+				throw std::runtime_error("poll failed, errno=" + std::to_string(sockerrno));
 
 			process(pfds);
 		}
