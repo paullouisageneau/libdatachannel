@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2020-2022 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,6 +21,7 @@
 
 #include "certificate.hpp"
 #include "dtlstransport.hpp"
+#include "pollservice.hpp"
 #include "sctptransport.hpp"
 #include "threadpool.hpp"
 #include "tls.hpp"
@@ -124,6 +125,9 @@ void Init::doInit() {
 #endif
 
 	ThreadPool::Instance().spawn(THREADPOOL_SIZE);
+#if RTC_ENABLE_WEBSOCKET
+	PollService::Instance().start();
+#endif
 
 #if USE_GNUTLS
 	// Nothing to do
@@ -153,6 +157,9 @@ void Init::doCleanup() {
 	PLOG_DEBUG << "Global cleanup";
 
 	ThreadPool::Instance().join();
+#if RTC_ENABLE_WEBSOCKET
+	PollService::Instance().join();
+#endif
 
 	SctpTransport::Cleanup();
 	DtlsTransport::Cleanup();

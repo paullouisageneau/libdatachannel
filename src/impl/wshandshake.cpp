@@ -183,7 +183,7 @@ size_t WsHandshake::parseHttpRequest(const byte *buffer, size_t size) {
 
 	string method, path, protocol;
 	requestLine >> method >> path >> protocol;
-	PLOG_DEBUG << "WebSocket request method \"" << method << "\" for path: " << path;
+	PLOG_DEBUG << "WebSocket request method=\"" << method << "\", path=\"" << path << "\"";
 	if (method != "GET")
 		throw RequestError("Invalid request method \"" + method + "\" for WebSocket", 405);
 
@@ -205,7 +205,7 @@ size_t WsHandshake::parseHttpRequest(const byte *buffer, size_t size) {
 	std::transform(h->second.begin(), h->second.end(), std::back_inserter(upgrade),
 	               [](char c) { return std::tolower(c); });
 	if (upgrade != "websocket")
-		throw RequestError("WebSocket upgrade header mismatching: " + h->second, 426);
+		throw RequestError("WebSocket upgrade header mismatching", 426);
 
 	h = headers.find("sec-websocket-key");
 	if (h == headers.end())
@@ -236,7 +236,7 @@ size_t WsHandshake::parseHttpResponse(const byte *buffer, size_t size) {
 	string protocol;
 	unsigned int code = 0;
 	status >> protocol >> code;
-	PLOG_DEBUG << "WebSocket response code: " << code;
+	PLOG_DEBUG << "WebSocket response code=" << code;
 	if (code != 101)
 		throw std::runtime_error("Unexpected response code " + to_string(code) + " for WebSocket");
 
@@ -250,7 +250,7 @@ size_t WsHandshake::parseHttpResponse(const byte *buffer, size_t size) {
 	std::transform(h->second.begin(), h->second.end(), std::back_inserter(upgrade),
 	               [](char c) { return std::tolower(c); });
 	if (upgrade != "websocket")
-		throw Error("WebSocket update header mismatching: " + h->second);
+		throw Error("WebSocket update header mismatching");
 
 	h = headers.find("sec-websocket-accept");
 	if (h == headers.end())
