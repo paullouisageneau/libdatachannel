@@ -64,7 +64,7 @@ endif()
 
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(SRTP
+find_package_handle_standard_args(libSRTP
 	DEFAULT_MSG
 	SRTP_INCLUDE_DIRS SRTP_LIBRARIES HAVE_SRTP_SRTP_H SRTP_VERSION
 )
