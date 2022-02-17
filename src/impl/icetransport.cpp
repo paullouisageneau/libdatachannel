@@ -367,9 +367,18 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	if (!mMainLoop)
 		std::runtime_error("Failed to create the main loop");
 
-	// RFC 5245 was obsoleted by RFC 8445 but this should be OK.
+	// RFC 8445: The nomination process that was referred to as "aggressive nomination" in RFC 5245
+	// has been deprecated in this specification.
+	// libnice defaults to aggressive nomation therefore we change to regular nomination.
+	// See https://gitlab.freedesktop.org/libnice/libnice/-/merge_requests/125
+	NiceAgentOption flags = NICE_AGENT_OPTION_REGULAR_NOMINATION;
+
+	// Create agent
 	mNiceAgent = decltype(mNiceAgent)(
-	    nice_agent_new(g_main_loop_get_context(mMainLoop.get()), NICE_COMPATIBILITY_RFC5245),
+	    nice_agent_new_full(
+	        g_main_loop_get_context(mMainLoop.get()),
+	        NICE_COMPATIBILITY_RFC5245, // RFC 5245 was obsoleted by RFC 8445 but this should be OK
+	        flags),
 	    g_object_unref);
 
 	if (!mNiceAgent)
