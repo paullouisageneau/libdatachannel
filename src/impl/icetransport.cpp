@@ -166,8 +166,10 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
 	// setup:actpass.
 	// See https://tools.ietf.org/html/rfc5763#section-5
-	return Description(string(sdp), type,
+	Description desc(string(sdp), type,
 	                   type == Description::Type::Offer ? Description::Role::ActPass : mRole);
+	desc.addIceOption("trickle");
+	return desc;
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {
@@ -573,8 +575,10 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
 	// setup:actpass.
 	// See https://tools.ietf.org/html/rfc5763#section-5
-	return Description(string(sdp.get()), type,
+	Description desc(string(sdp.get()), type,
 	                   type == Description::Type::Offer ? Description::Role::ActPass : mRole);
+	desc.addIceOption("trickle");
+	return desc;
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {

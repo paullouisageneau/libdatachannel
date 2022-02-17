@@ -58,6 +58,7 @@ public:
 	string typeString() const;
 	Role role() const;
 	string bundleMid() const;
+	std::vector<string> iceOptions() const;
 	optional<string> iceUfrag() const;
 	optional<string> icePwd() const;
 	optional<string> fingerprint() const;
@@ -65,6 +66,7 @@ public:
 
 	void hintType(Type type);
 	void setFingerprint(string fingerprint);
+	void addIceOption(string option);
 
 	bool hasCandidate(const Candidate &candidate) const;
 	void addCandidate(Candidate candidate);
@@ -274,6 +276,7 @@ private:
 	Role mRole;
 	string mUsername;
 	string mSessionId;
+	std::vector<string> mIceOptions;
 	optional<string> mIceUfrag, mIcePwd;
 	optional<string> mFingerprint;
 

@@ -116,6 +116,7 @@ set(LIBDATACHANNEL_IMPL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/threadpool.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tls.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/track.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/utils.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/base64.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sha.cpp
@@ -147,6 +148,7 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/threadpool.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tls.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/track.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/utils.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/base64.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sha.hpp

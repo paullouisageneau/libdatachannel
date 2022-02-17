@@ -20,6 +20,7 @@
 #include "description.hpp"
 
 #include "impl/internals.hpp"
+#include "impl/utils.hpp"
 
 #include <algorithm>
 #include <array>
@@ -93,6 +94,8 @@ inline bool is_sha256_fingerprint(string_view f) {
 
 namespace rtc {
 
+namespace utils = impl::utils;
+
 Description::Description(const string &sdp, Type type, Role role)
     : mType(Type::Unspec), mRole(role) {
 	hintType(type);
@@ -138,6 +141,8 @@ Description::Description(const string &sdp, Type type, Role role)
 				mIceUfrag = value;
 			} else if (key == "ice-pwd") {
 				mIcePwd = value;
+			} else if (key == "ice-options") {
+				mIceOptions = utils::explode(string(value), ',');
 			} else if (key == "candidate") {
 				addCandidate(Candidate(attr, bundleMid()));
 			} else if (key == "end-of-candidates") {
@@ -179,6 +184,8 @@ string Description::bundleMid() const {
 
 optional<string> Description::iceUfrag() const { return mIceUfrag; }
 
+std::vector<string> Description::iceOptions() const { return mIceOptions; }
+
 optional<string> Description::icePwd() const { return mIcePwd; }
 
 optional<string> Description::fingerprint() const { return mFingerprint; }
@@ -200,6 +207,11 @@ void Description::setFingerprint(string fingerprint) {
 	std::transform(fingerprint.begin(), fingerprint.end(), fingerprint.begin(),
 	               [](char c) { return char(std::toupper(c)); });
 	mFingerprint.emplace(std::move(fingerprint));
+}
+
+void Description::addIceOption(string option) {
+	if (std::find(mIceOptions.begin(), mIceOptions.end(), option) == mIceOptions.end())
+		mIceOptions.emplace_back(std::move(option));
 }
 
 bool Description::hasCandidate(const Candidate &candidate) const {
@@ -269,8 +281,8 @@ string Description::generateSdp(string_view eol) const {
 		sdp << "a=ice-ufrag:" << *mIceUfrag << eol;
 	if (mIcePwd)
 		sdp << "a=ice-pwd:" << *mIcePwd << eol;
-	if (!mEnded)
-		sdp << "a=ice-options:trickle" << eol;
+	if (!mIceOptions.empty())
+		sdp << "a=ice-options:" << utils::implode(mIceOptions, ',') << eol;
 	if (mFingerprint)
 		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
 
@@ -329,8 +341,8 @@ string Description::generateApplicationSdp(string_view eol) const {
 		sdp << "a=ice-ufrag:" << *mIceUfrag << eol;
 	if (mIcePwd)
 		sdp << "a=ice-pwd:" << *mIcePwd << eol;
-	if (!mEnded)
-		sdp << "a=ice-options:trickle" << eol;
+	if (!mIceOptions.empty())
+		sdp << "a=ice-options:" << utils::implode(mIceOptions, ',') << eol;
 	if (mFingerprint)
 		sdp << "a=fingerprint:sha-256 " << *mFingerprint << eol;
 
