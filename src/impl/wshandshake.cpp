@@ -20,6 +20,7 @@
 #include "base64.hpp"
 #include "internals.hpp"
 #include "sha.hpp"
+#include "utils.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -27,36 +28,10 @@
 #include <chrono>
 #include <climits>
 #include <iostream>
-#include <iterator>
 #include <random>
 #include <sstream>
 
 using std::string;
-
-namespace {
-
-std::vector<string> explode(const string &str, char delim) {
-	std::vector<std::string> result;
-	std::istringstream ss(str);
-	string token;
-	while (std::getline(ss, token, delim))
-		result.push_back(token);
-
-	return result;
-}
-
-string implode(const std::vector<string> &tokens, char delim) {
-	string sdelim(1, delim);
-	std::ostringstream ss;
-	std::copy(tokens.begin(), tokens.end(), std::ostream_iterator<string>(ss, sdelim.c_str()));
-	string result = ss.str();
-	if (result.size() > 0)
-		result.resize(result.size() - 1);
-
-	return result;
-}
-
-} // namespace
 
 namespace rtc::impl {
 
@@ -108,7 +83,7 @@ string WsHandshake::generateHttpRequest() {
 	             mKey + "\r\n";
 
 	if (!mProtocols.empty())
-		out += "Sec-WebSocket-Protocol: " + implode(mProtocols, ',') + "\r\n";
+		out += "Sec-WebSocket-Protocol: " + utils::implode(mProtocols, ',') + "\r\n";
 
 	out += "\r\n";
 
@@ -215,7 +190,7 @@ size_t WsHandshake::parseHttpRequest(const byte *buffer, size_t size) {
 
 	h = headers.find("sec-websocket-protocol");
 	if (h != headers.end())
-		mProtocols = explode(h->second, ',');
+		mProtocols = utils::explode(h->second, ',');
 
 	return length;
 }
