@@ -1173,14 +1173,11 @@ int rtcGetTrackPayloadTypesForCodec(int tr, const char *ccodec, int *buffer, int
 		auto track = getTrack(tr);
 		auto codec = lowercased(string(ccodec));
 		auto description = track->description();
-		std::vector<int> payloadTypes{};
-		payloadTypes.reserve(std::max(size, 0));
-		for (auto it = description.beginMaps(); it != description.endMaps(); it++) {
-			auto element = *it;
-			if (lowercased(element.second.format) == codec) {
-				payloadTypes.push_back(element.first);
-			}
-		}
+		std::vector<int> payloadTypes;
+		for(int pt : description.payloadTypes())
+			if (lowercased(description.rtpMap(pt)->format) == codec)
+				payloadTypes.push_back(pt);
+
 		return copyAndReturn(payloadTypes, buffer, size);
 	});
 }
