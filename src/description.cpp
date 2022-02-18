@@ -214,6 +214,10 @@ void Description::addIceOption(string option) {
 		mIceOptions.emplace_back(std::move(option));
 }
 
+void Description::removeIceOption(const string &option) {
+	mIceOptions.erase(std::remove(mIceOptions.begin(), mIceOptions.end(), option), mIceOptions.end());
+}
+
 bool Description::hasCandidate(const Candidate &candidate) const {
 	for (const Candidate &other : mCandidates)
 		if (candidate == other)

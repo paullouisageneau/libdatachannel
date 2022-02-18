@@ -67,6 +67,7 @@ public:
 	void hintType(Type type);
 	void setFingerprint(string fingerprint);
 	void addIceOption(string option);
+	void removeIceOption(const string &option);
 
 	bool hasCandidate(const Candidate &candidate) const;
 	void addCandidate(Candidate candidate);
