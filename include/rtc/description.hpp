@@ -69,11 +69,16 @@ public:
 	void addIceOption(string option);
 	void removeIceOption(const string &option);
 
+	std::vector<string> attributes() const;
+	void addAttribute(string attr);
+	void removeAttribute(const string &attr);
+
+	std::vector<Candidate> candidates() const;
+	std::vector<Candidate> extractCandidates();
 	bool hasCandidate(const Candidate &candidate) const;
 	void addCandidate(Candidate candidate);
 	void addCandidates(std::vector<Candidate> candidates);
 	void endCandidates();
-	std::vector<Candidate> extractCandidates();
 
 	operator string() const;
 	string generateSdp(string_view eol) const;
@@ -175,9 +180,9 @@ public:
 		Media reciprocate() const;
 
 		void addSSRC(uint32_t ssrc, optional<string> name, optional<string> msid = nullopt,
-		             optional<string> trackID = nullopt);
-		void removeSSRC(uint32_t oldSSRC);
-		void replaceSSRC(uint32_t oldSSRC, uint32_t ssrc, optional<string> name,
+		             optional<string> trackId = nullopt);
+		void removeSSRC(uint32_t ssrc);
+		void replaceSSRC(uint32_t old, uint32_t ssrc, optional<string> name,
 		                 optional<string> msid = nullopt, optional<string> trackID = nullopt);
 		bool hasSSRC(uint32_t ssrc);
 		std::vector<uint32_t> getSSRCs();
@@ -301,6 +306,7 @@ private:
 	std::vector<string> mIceOptions;
 	optional<string> mIceUfrag, mIcePwd;
 	optional<string> mFingerprint;
+	std::vector<string> mAttributes; // other attributes
 
 	// Entries
 	std::vector<shared_ptr<Entry>> mEntries;
