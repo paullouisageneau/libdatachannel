@@ -1146,7 +1146,7 @@ void Description::Video::addVideoCodec(int payloadType, string codec, optional<s
 	if (codec.find('/') == string::npos)
 		codec += "/90000";
 
-	RtpMap map(std::to_string(payloadType) + ' ' + codec + "/90000");
+	RtpMap map(std::to_string(payloadType) + ' ' + codec);
 
 	map.addFeedback("nack");
 	map.addFeedback("nack pli");
