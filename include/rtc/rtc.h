@@ -155,7 +155,8 @@ typedef struct {
 	const char *bindAddress; // libjuice only, NULL means any
 	rtcCertificateType certificateType;
 	rtcTransportPolicy iceTransportPolicy;
-	bool enableIceTcp;
+	bool enableIceTcp;    // libnice only
+	bool enableIceUdpMux; // libjuice only
 	bool disableAutoNegotiation;
 	uint16_t portRangeBegin; // 0 means automatic
 	uint16_t portRangeEnd;   // 0 means automatic

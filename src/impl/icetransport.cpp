@@ -42,9 +42,9 @@ using std::chrono::system_clock;
 
 namespace rtc::impl {
 
-#if !USE_NICE
+#if !USE_NICE // libjuice
 
-#define MAX_TURN_SERVERS_COUNT 2
+const int MAX_TURN_SERVERS_COUNT = 2;
 
 IceTransport::IceTransport(const Configuration &config, candidate_callback candidateCallback,
                            state_callback stateChangeCallback,
@@ -56,9 +56,6 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
       mAgent(nullptr, nullptr) {
 
 	PLOG_DEBUG << "Initializing ICE transport (libjuice)";
-	if (config.enableIceTcp) {
-		PLOG_WARNING << "ICE-TCP is not supported with libjuice";
-	}
 
 	juice_log_level_t level;
 	auto logger = plog::get();
@@ -92,6 +89,17 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	jconfig.cb_gathering_done = IceTransport::GatheringDoneCallback;
 	jconfig.cb_recv = IceTransport::RecvCallback;
 	jconfig.user_ptr = this;
+
+	if (config.enableIceTcp) {
+		PLOG_WARNING << "ICE-TCP is not supported with libjuice";
+	}
+
+	if (config.enableIceUdpMux) {
+		PLOG_DEBUG << "Enabling ICE UDP mux";
+		jconfig.concurrency_mode = JUICE_CONCURRENCY_MODE_MUX;
+	} else {
+		jconfig.concurrency_mode = JUICE_CONCURRENCY_MODE_POLL;
+	}
 
 	// Randomize servers order
 	std::vector<IceServer> servers = config.iceServers;
@@ -167,7 +175,7 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 	// setup:actpass.
 	// See https://tools.ietf.org/html/rfc5763#section-5
 	Description desc(string(sdp), type,
-	                   type == Description::Type::Offer ? Description::Role::ActPass : mRole);
+	                 type == Description::Type::Offer ? Description::Role::ActPass : mRole);
 	desc.addIceOption("trickle");
 	return desc;
 }
@@ -420,6 +428,10 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 		             nullptr);
 	}
 
+	if (config.enableIceUdpMux) {
+		PLOG_WARNING << "ICE UDP mux is not available with libnice";
+	}
+
 	// Randomize order
 	std::vector<IceServer> servers = config.iceServers;
 	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
@@ -576,7 +588,7 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 	// setup:actpass.
 	// See https://tools.ietf.org/html/rfc5763#section-5
 	Description desc(string(sdp.get()), type,
-	                   type == Description::Type::Offer ? Description::Role::ActPass : mRole);
+	                 type == Description::Type::Offer ? Description::Role::ActPass : mRole);
 	desc.addIceOption("trickle");
 	return desc;
 }

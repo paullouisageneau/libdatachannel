@@ -21,6 +21,7 @@
 
 #include "common.hpp"
 #include "configuration.hpp"
+#include "global.hpp"
 #include "processor.hpp"
 #include "queue.hpp"
 #include "transport.hpp"

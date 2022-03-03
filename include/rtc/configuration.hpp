@@ -80,7 +80,8 @@ struct RTC_CPP_EXPORT Configuration {
 	// Options
 	CertificateType certificateType = CertificateType::Default;
 	TransportPolicy iceTransportPolicy = TransportPolicy::All;
-	bool enableIceTcp = false;
+	bool enableIceTcp = false;    // libnice only
+	bool enableIceUdpMux = false; // libjuice only
 	bool disableAutoNegotiation = false;
 
 	// Port range

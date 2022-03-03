@@ -23,6 +23,7 @@
 #include "common.hpp"
 #include "configuration.hpp"
 #include "description.hpp"
+#include "global.hpp"
 #include "peerconnection.hpp"
 #include "transport.hpp"
 
