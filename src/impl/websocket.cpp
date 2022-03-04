@@ -113,7 +113,7 @@ void WebSocket::close() {
 		if (auto transport = std::atomic_load(&mWsTransport))
 			transport->close();
 		else
-			changeState(State::Closed);
+			remoteClose();
 	}
 }
 
