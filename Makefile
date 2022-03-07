@@ -101,6 +101,7 @@ dist-clean: clean
 	-$(RM) $(NAME).so
 	-$(RM) libusrsctp.a
 	-$(RM) libjuice.a
+	-$(RM) libsrtp2.a
 	-$(RM) tests
 	-$(RM) include/*~
 	-$(RM) src/*~
