@@ -46,9 +46,10 @@ shared_ptr<TcpTransport> TcpServer::accept() {
 			break;
 
 		struct pollfd pfd[2];
-		pfd[0].fd = mSock;
-		pfd[0].events = POLLIN;
-		mInterrupter.prepare(pfd[1]);
+		mInterrupter.prepare(pfd[0]);
+		pfd[1].fd = mSock;
+		pfd[1].events = POLLIN;
+
 		lock.unlock();
 		int ret = ::poll(pfd, 2, -1);
 		lock.lock();
@@ -63,11 +64,13 @@ shared_ptr<TcpTransport> TcpServer::accept() {
 				throw std::runtime_error("Failed to wait for socket connection");
 		}
 
-		if (pfd[0].revents & POLLNVAL || pfd[0].revents & POLLERR) {
+		mInterrupter.process(pfd[0]);
+
+		if (pfd[1].revents & POLLNVAL || pfd[1].revents & POLLERR) {
 			throw std::runtime_error("Error while waiting for socket connection");
 		}
 
-		if (pfd[0].revents & POLLIN) {
+		if (pfd[1].revents & POLLIN) {
 			struct sockaddr_storage addr;
 			socklen_t addrlen = sizeof(addr);
 			socket_t incomingSock = ::accept(mSock, (struct sockaddr *)&addr, &addrlen);
@@ -106,7 +109,7 @@ void TcpServer::listen(uint16_t port) {
 	hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
 
 	struct addrinfo *result = nullptr;
-	if (::getaddrinfo(nullptr, std::to_string(port).c_str(), &hints, &result))
+	if (getaddrinfo(nullptr, std::to_string(port).c_str(), &hints, &result))
 		throw std::runtime_error("Resolution failed for local address");
 
 	try {
@@ -135,7 +138,7 @@ void TcpServer::listen(uint16_t port) {
 
 		// Enable REUSEADDR
 		::setsockopt(mSock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char *>(&enabled),
-			             sizeof(enabled));
+		             sizeof(enabled));
 
 		// Listen on both IPv6 and IPv4
 		if (ai->ai_family == AF_INET6)
@@ -143,8 +146,8 @@ void TcpServer::listen(uint16_t port) {
 			             reinterpret_cast<const char *>(&disabled), sizeof(disabled));
 
 		// Set non-blocking
-		ctl_t b = 1;
-		if (::ioctlsocket(mSock, FIONBIO, &b) < 0)
+		ctl_t nbio = 1;
+		if (::ioctlsocket(mSock, FIONBIO, &nbio) < 0)
 			throw std::runtime_error("Failed to set socket non-blocking mode");
 
 		// Bind socket

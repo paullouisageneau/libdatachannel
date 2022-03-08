@@ -144,7 +144,7 @@ int test_capi_websocketserver_main() {
 	while (!success && !failed && attempts--)
 		sleep(1);
 
-	if (failed)
+	if (!success || failed)
 		goto error;
 
 	rtcDeleteWebSocket(wsclient);
