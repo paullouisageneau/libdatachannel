@@ -151,6 +151,7 @@ Features:
 - SRTP and SRTCP key derivation from DTLS ([RFC5764](https://tools.ietf.org/html/rfc5764))
 - Differentiated Services QoS ([RFC8837](https://tools.ietf.org/html/rfc8837)) where possible
 - Multicast DNS candidates ([draft-ietf-rtcweb-mdns-ice-candidates-04](https://tools.ietf.org/html/draft-ietf-rtcweb-mdns-ice-candidates-04))
+- Multiplexing connections on a single UDP port with libjuice as ICE backend
 
 Note only SDP BUNDLE mode is supported for media multiplexing ([RFC8843](https://tools.ietf.org/html/rfc8843)). The behavior is equivalent to the JSEP bundle-only policy: the library always negociates one unique network component, where SRTP media streams are multiplexed with SRTCP control packets ([RFC5761](https://tools.ietf.org/html/rfc5761)) and SCTP/DTLS data traffic ([RFC8261](https://tools.ietf.org/html/rfc8261)).
 
