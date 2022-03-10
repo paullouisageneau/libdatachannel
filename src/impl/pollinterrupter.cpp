@@ -31,8 +31,7 @@ namespace rtc::impl {
 PollInterrupter::PollInterrupter() {
 #ifdef _WIN32
 	struct addrinfo *ai = NULL;
-	struct addrinfo hints;
-	memset(&hints, 0, sizeof(hints));
+	struct addrinfo hints = {};
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
