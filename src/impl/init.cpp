@@ -23,6 +23,7 @@
 #include "dtlstransport.hpp"
 #include "pollservice.hpp"
 #include "sctptransport.hpp"
+#include "icetransport.hpp"
 #include "threadpool.hpp"
 #include "tls.hpp"
 

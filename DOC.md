@@ -81,6 +81,7 @@ typedef struct {
 	rtcCertificateType certificateType;
 	rtcTransportPolicy iceTransportPolicy;
 	bool enableIceTcp;
+	bool enableIceUdpMux;
 	bool disableAutoNegotiation;
 	uint16_t portRangeBegin;
 	uint16_t portRangeEnd;
@@ -100,6 +101,7 @@ Arguments:
   - `certificateType` (optional): certificate type, either `RTC_CERTIFICATE_ECDSA` or `RTC_CERTIFICATE_RSA` (0 or `RTC_CERTIFICATE_DEFAULT` if default)
   - `iceTransportPolicy` (optional): ICE transport policy, if set to `RTC_TRANSPORT_POLICY_RELAY`, the PeerConnection will emit only relayed candidates (0 or `RTC_TRANSPORT_POLICY_ALL` if default)
   - `enableIceTcp`: if true, generate TCP candidates for ICE (ignored with libjuice as ICE backend)
+  - `enableIceUdpMux`: if true, connections are multiplexed on the same UDP port (should be combined with `portRangeBegin` and `portRangeEnd`, ignored with libnice as ICE backend)
   - `disableAutoNegotiation`: if true, the user is responsible for calling `rtcSetLocalDescription` after creating a Data Channel and after setting the remote description
   - `portRangeBegin` (optional): first port (included) of the allowed local port range (0 if unused)
   - `portRangeEnd` (optional): last port (included) of the allowed local port (0 if unused)

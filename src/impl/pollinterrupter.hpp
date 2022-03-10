@@ -24,8 +24,6 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
-#include <mutex>
-
 namespace rtc::impl {
 
 // Utility class to interrupt poll()
@@ -34,13 +32,16 @@ public:
 	PollInterrupter();
 	~PollInterrupter();
 
+	PollInterrupter(const PollInterrupter &other) = delete;
+	void operator=(const PollInterrupter &other) = delete;
+
 	void prepare(struct pollfd &pfd);
+	void process(struct pollfd &pfd);
 	void interrupt();
 
 private:
-	std::mutex mMutex;
 #ifdef _WIN32
-	socket_t mDummySock = INVALID_SOCKET;
+	socket_t mSock;
 #else // assume POSIX
 	int mPipeIn, mPipeOut;
 #endif

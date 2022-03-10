@@ -29,10 +29,13 @@
 
 namespace rtc::impl {
 
-class TcpServer {
+class TcpServer final {
 public:
 	TcpServer(uint16_t port);
 	~TcpServer();
+
+	TcpServer(const TcpServer &other) = delete;
+	void operator=(const TcpServer &other) = delete;
 
 	shared_ptr<TcpTransport> accept();
 	void close();

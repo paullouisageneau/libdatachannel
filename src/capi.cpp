@@ -365,6 +365,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 		c.certificateType = static_cast<CertificateType>(config->certificateType);
 		c.iceTransportPolicy = static_cast<TransportPolicy>(config->iceTransportPolicy);
 		c.enableIceTcp = config->enableIceTcp;
+		c.enableIceUdpMux = config->enableIceUdpMux;
 		c.disableAutoNegotiation = config->disableAutoNegotiation;
 
 		if (config->mtu > 0)
@@ -1431,3 +1432,4 @@ int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 		return RTC_ERR_SUCCESS;
 	});
 }
+

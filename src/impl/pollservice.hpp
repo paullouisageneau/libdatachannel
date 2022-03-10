@@ -76,11 +76,11 @@ private:
 
 	using SocketMap = std::unordered_map<socket_t, SocketEntry>;
 	unique_ptr<SocketMap> mSocks;
+	unique_ptr<PollInterrupter> mInterrupter;
 
 	std::recursive_mutex mMutex;
 	std::thread mThread;
 	bool mStopped;
-	PollInterrupter mInterrupter;
 };
 
 std::ostream &operator<<(std::ostream &out, PollService::Direction direction);

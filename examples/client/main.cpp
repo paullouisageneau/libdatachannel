@@ -72,6 +72,11 @@ int main(int argc, char **argv) try {
 		config.iceServers.emplace_back(stunServer);
 	}
 
+	if (params.udpMux()) {
+		cout << "ICE UDP mux enabled" << endl;
+		config.enableIceUdpMux = true;
+	}
+
 	localId = randomId(4);
 	cout << "The local ID is: " << localId << endl;
 

@@ -40,6 +40,7 @@ PollService::~PollService() {}
 
 void PollService::start() {
 	mSocks = std::make_unique<SocketMap>();
+	mInterrupter = std::make_unique<PollInterrupter>();
 	mStopped = false;
 	mThread = std::thread(&PollService::runLoop, this);
 }
@@ -51,35 +52,35 @@ void PollService::join() {
 
 	lock.unlock();
 
-	mInterrupter.interrupt();
+	mInterrupter->interrupt();
 	mThread.join();
+
 	mSocks.reset();
+	mInterrupter.reset();
 }
 
 void PollService::add(socket_t sock, Params params) {
 	std::unique_lock lock(mMutex);
-	assert(mSocks);
-
-	mSocks->erase(sock);
-
-	if (!params.callback)
-		return;
+	assert(params.callback);
 
 	PLOG_VERBOSE << "Registering socket in poll service, direction=" << params.direction;
 	auto until = params.timeout ? std::make_optional(clock::now() + *params.timeout) : nullopt;
-	mSocks->emplace(sock, SocketEntry{std::move(params), std::move(until)});
+	assert(mSocks);
+	mSocks->insert_or_assign(sock, SocketEntry{std::move(params), std::move(until)});
 
-	mInterrupter.interrupt();
+	assert(mInterrupter);
+	mInterrupter->interrupt();
 }
 
 void PollService::remove(socket_t sock) {
 	std::unique_lock lock(mMutex);
-	assert(mSocks);
 
 	PLOG_VERBOSE << "Unregistering socket in poll service";
+	assert(mSocks);
 	mSocks->erase(sock);
 
-	mInterrupter.interrupt();
+	assert(mInterrupter);
+	mInterrupter->interrupt();
 }
 
 void PollService::prepare(std::vector<struct pollfd> &pfds, optional<clock::time_point> &next) {
@@ -88,7 +89,7 @@ void PollService::prepare(std::vector<struct pollfd> &pfds, optional<clock::time
 	next.reset();
 
 	auto it = pfds.begin();
-	mInterrupter.prepare(*it++);
+	mInterrupter->prepare(*it++);
 	for (const auto &[sock, entry] : *mSocks) {
 		it->fd = sock;
 		switch (entry.params.direction) {
@@ -111,55 +112,52 @@ void PollService::prepare(std::vector<struct pollfd> &pfds, optional<clock::time
 
 void PollService::process(std::vector<struct pollfd> &pfds) {
 	std::unique_lock lock(mMutex);
-	for (auto it = pfds.begin(); it != pfds.end(); ++it) {
+
+	auto it = pfds.begin();
+	mInterrupter->process(*it++);
+	while (it != pfds.end()) {
 		socket_t sock = it->fd;
 		auto jt = mSocks->find(sock);
-		if (jt == mSocks->end())
-			continue; // removed
+		if (jt != mSocks->end()) {
+			try {
+				auto &entry = jt->second;
+				const auto &params = entry.params;
 
-		try {
-			auto &entry = jt->second;
-			const auto &params = entry.params;
+				if (it->revents & POLLNVAL || it->revents & POLLERR) {
+					PLOG_VERBOSE << "Poll error event";
+					auto callback = std::move(params.callback);
+					mSocks->erase(sock);
+					callback(Event::Error);
 
-			if (it->revents & POLLNVAL || it->revents & POLLERR) {
-				PLOG_VERBOSE << "Poll error event";
-				auto callback = std::move(params.callback);
-				mSocks->erase(sock);
-				callback(Event::Error);
-				continue;
-			}
+				} else if (it->revents & POLLIN || it->revents & POLLOUT) {
+					entry.until = params.timeout
+					                  ? std::make_optional(clock::now() + *params.timeout)
+					                  : nullopt;
 
-			if (it->revents & POLLIN || it->revents & POLLOUT) {
-				entry.until =
-				    params.timeout ? std::make_optional(clock::now() + *params.timeout) : nullopt;
+					auto callback = params.callback;
+					if (it->revents & POLLIN) {
+						PLOG_VERBOSE << "Poll in event";
+						callback(Event::In);
+					}
+					if (it->revents & POLLOUT) {
+						PLOG_VERBOSE << "Poll out event";
+						callback(Event::Out);
+					}
 
-				auto callback = params.callback;
-
-				if (it->revents & POLLIN) {
-					PLOG_VERBOSE << "Poll in event";
-					params.callback(Event::In);
+				} else if (entry.until && clock::now() >= *entry.until) {
+					PLOG_VERBOSE << "Poll timeout event";
+					auto callback = std::move(params.callback);
+					mSocks->erase(sock);
+					callback(Event::Timeout);
 				}
 
-				if (it->revents & POLLOUT) {
-					PLOG_VERBOSE << "Poll out event";
-					params.callback(Event::Out);
-				}
-
-				continue;
-			}
-
-			if (entry.until && clock::now() >= *entry.until) {
-				PLOG_VERBOSE << "Poll timeout event";
-				auto callback = std::move(params.callback);
+			} catch (const std::exception &e) {
+				PLOG_WARNING << e.what();
 				mSocks->erase(sock);
-				callback(Event::Timeout);
-				continue;
 			}
-
-		} catch (const std::exception &e) {
-			PLOG_WARNING << e.what();
-			mSocks->erase(sock);
 		}
+
+		++it;
 	}
 }
 
@@ -180,7 +178,7 @@ void PollService::runLoop() {
 					auto msecs = duration_cast<milliseconds>(
 					    std::max(clock::duration::zero(), *next - clock::now()));
 					PLOG_VERBOSE << "Entering poll, timeout=" << msecs.count() << "ms";
-					timeout = msecs.count();
+					timeout = int(msecs.count());
 				} else {
 					PLOG_VERBOSE << "Entering poll";
 					timeout = -1;
