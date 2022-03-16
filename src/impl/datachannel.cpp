@@ -100,18 +100,19 @@ void DataChannel::close() {
 		transport = mSctpTransport.lock();
 	}
 
-	mIsClosed = true;
 	if (mIsOpen.exchange(false) && transport)
 		transport->closeStream(mStream);
+
+	if (!mIsClosed.exchange(true))
+		triggerClosed();
 
 	resetCallbacks();
 }
 
 void DataChannel::remoteClose() {
+	mIsOpen = false;
 	if (!mIsClosed.exchange(true))
 		triggerClosed();
-
-	mIsOpen = false;
 }
 
 optional<message_variant> DataChannel::receive() {
@@ -187,7 +188,7 @@ void DataChannel::open(shared_ptr<SctpTransport> transport) {
 		mSctpTransport = transport;
 	}
 
-	if (!mIsOpen.exchange(true))
+	if (!mIsClosed && !mIsOpen.exchange(true))
 		triggerOpen();
 }
 

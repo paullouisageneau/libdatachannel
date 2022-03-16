@@ -381,13 +381,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 int rtcDeletePeerConnection(int pc) {
 	return wrap([pc] {
 		auto peerConnection = getPeerConnection(pc);
-		peerConnection->onDataChannel(nullptr);
-		peerConnection->onTrack(nullptr);
-		peerConnection->onLocalDescription(nullptr);
-		peerConnection->onLocalCandidate(nullptr);
-		peerConnection->onStateChange(nullptr);
-		peerConnection->onGatheringStateChange(nullptr);
-
+		peerConnection->close();
 		erasePeerConnection(pc);
 		return RTC_ERR_SUCCESS;
 	});
@@ -836,13 +830,7 @@ int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *
 int rtcDeleteDataChannel(int dc) {
 	return wrap([dc] {
 		auto dataChannel = getDataChannel(dc);
-		dataChannel->onOpen(nullptr);
-		dataChannel->onClosed(nullptr);
-		dataChannel->onError(nullptr);
-		dataChannel->onMessage(nullptr);
-		dataChannel->onBufferedAmountLow(nullptr);
-		dataChannel->onAvailable(nullptr);
-
+		dataChannel->close();
 		eraseDataChannel(dc);
 		return RTC_ERR_SUCCESS;
 	});
@@ -994,13 +982,7 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 int rtcDeleteTrack(int tr) {
 	return wrap([&] {
 		auto track = getTrack(tr);
-		track->onOpen(nullptr);
-		track->onClosed(nullptr);
-		track->onError(nullptr);
-		track->onMessage(nullptr);
-		track->onBufferedAmountLow(nullptr);
-		track->onAvailable(nullptr);
-
+		track->close();
 		eraseTrack(tr);
 		return RTC_ERR_SUCCESS;
 	});
@@ -1276,13 +1258,7 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 int rtcDeleteWebSocket(int ws) {
 	return wrap([&] {
 		auto webSocket = getWebSocket(ws);
-		webSocket->onOpen(nullptr);
-		webSocket->onClosed(nullptr);
-		webSocket->onError(nullptr);
-		webSocket->onMessage(nullptr);
-		webSocket->onBufferedAmountLow(nullptr);
-		webSocket->onAvailable(nullptr);
-
+		webSocket->close();
 		eraseWebSocket(ws);
 		return RTC_ERR_SUCCESS;
 	});
