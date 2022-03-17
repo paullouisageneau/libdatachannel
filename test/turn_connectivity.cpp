@@ -198,7 +198,7 @@ void test_turn_connectivity() {
 	});
 
 	auto second1 = pc1.createDataChannel("second");
-	second1->onOpen([wsecond1 = make_weak_ptr(dc1)]() {
+	second1->onOpen([wsecond1 = make_weak_ptr(second1)]() {
 		auto second1 = wsecond1.lock();
 		if (!second1)
 			return;
@@ -206,7 +206,7 @@ void test_turn_connectivity() {
 		cout << "Second DataChannel 1: Open" << endl;
 		second1->send("Second hello from 1");
 	});
-	dc1->onMessage([](const variant<binary, string> &message) {
+	second1->onMessage([](const variant<binary, string> &message) {
 		if (holds_alternative<string>(message)) {
 			cout << "Second Message 1: " << get<string>(message) << endl;
 		}
