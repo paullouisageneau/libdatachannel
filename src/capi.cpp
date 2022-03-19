@@ -692,6 +692,14 @@ int rtcSendMessage(int id, const char *data, int size) {
 	});
 }
 
+int rtcClose(int id) {
+	return wrap([&] {
+		auto channel = getChannel(id);
+		channel->close();
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 bool rtcIsOpen(int id) {
 	return wrap([id] { return getChannel(id)->isOpen() ? 0 : 1; }) == 0 ? true : false;
 }
@@ -1157,7 +1165,7 @@ int rtcGetTrackPayloadTypesForCodec(int tr, const char *ccodec, int *buffer, int
 		auto codec = lowercased(string(ccodec));
 		auto description = track->description();
 		std::vector<int> payloadTypes;
-		for(int pt : description.payloadTypes())
+		for (int pt : description.payloadTypes())
 			if (lowercased(description.rtpMap(pt)->format) == codec)
 				payloadTypes.push_back(pt);
 
@@ -1347,12 +1355,13 @@ void rtcPreload() {
 void rtcCleanup() {
 	try {
 		size_t count = eraseAll();
-		if(count != 0) {
+		if (count != 0) {
 			PLOG_INFO << count << " objects were not properly destroyed before cleanup";
 		}
 
-		if(rtc::Cleanup().wait_for(10s) == std::future_status::timeout)
-			throw std::runtime_error("Cleanup timeout (possible deadlock or undestructible object)");
+		if (rtc::Cleanup().wait_for(10s) == std::future_status::timeout)
+			throw std::runtime_error(
+			    "Cleanup timeout (possible deadlock or undestructible object)");
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
@@ -1408,4 +1417,3 @@ int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 		return RTC_ERR_SUCCESS;
 	});
 }
-
