@@ -59,6 +59,7 @@ public:
 
 	void open(const string &url);
 	void close() override;
+	void forceClose();
 	bool send(const message_variant data) override;
 	bool send(const byte *data, size_t size) override;
 

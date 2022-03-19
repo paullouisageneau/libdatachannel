@@ -1266,7 +1266,8 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 int rtcDeleteWebSocket(int ws) {
 	return wrap([&] {
 		auto webSocket = getWebSocket(ws);
-		webSocket->close();
+		webSocket->forceClose();
+		webSocket->resetCallbacks(); // not done on close by WebSocket
 		eraseWebSocket(ws);
 		return RTC_ERR_SUCCESS;
 	});
@@ -1329,7 +1330,6 @@ RTC_EXPORT int rtcDeleteWebSocketServer(int wsserver) {
 		auto webSocketServer = getWebSocketServer(wsserver);
 		webSocketServer->onClient(nullptr);
 		webSocketServer->stop();
-
 		eraseWebSocketServer(wsserver);
 		return RTC_ERR_SUCCESS;
 	});
