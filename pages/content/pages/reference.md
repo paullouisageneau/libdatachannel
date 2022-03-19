@@ -408,6 +408,44 @@ int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb)
 
 It is called when messages are now available to be received with `rtcReceiveMessage`.
 
+#### rtcSendMessage
+
+```
+int rtcSendMessage(int id, const char *data, int size)
+```
+
+Sends a message in the channel.
+
+Arguments:
+
+- `id`: the channel identifier
+- `data`: the message data
+- `size`: if size >= 0, `data` is interpreted as a binary message of length `size`, otherwise it is interpreted as a null-terminated UTF-8 string.
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+The message is sent immediately if possible, otherwise it is buffered to be sent later.
+
+Data Channel and WebSocket: If the message may not be sent immediately due to flow control or congestion control, it is buffered until it can actually be sent. You can retrieve the current buffered data size with `rtcGetBufferedAmount`.
+
+Track: There is no flow or congestion control, messages are never buffered and `rtcGetBufferedAmount` always returns 0.
+
+#### rtcClose
+
+```
+int rtcClose(int id)
+```
+
+Close the channel.
+
+Arguments:
+
+- `id`: the channel identifier
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+WebSocket: Like with the JavaScript API, the state will first change to closing, then closed only after the connection has been actually closed.
+
 #### rtcIsOpen
 
 ```
@@ -431,27 +469,6 @@ Arguments:
 - `id`: the channel identifier
 
 Return value: `true` if the channel exists and is closed (not open and not connecting), `false` otherwise
-
-#### rtcSendMessage
-
-```
-int rtcSendMessage(int id, const char *data, int size)
-```
-
-Sends a message in the channel.
-
-Arguments:
-
-- `id`: the channel identifier
-- `data`: the message data
-- `size`: if size >= 0, `data` is interpreted as a binary message of length `size`, otherwise it is interpreted as a null-terminated UTF-8 string.
-
-Return value: `RTC_ERR_SUCCESS` or a negative error code
-
-The message is sent immediately if possible, otherwise it is buffered to be sent later.
-
-Data Channel and WebSocket: If the message may not be sent immediately due to flow control or congestion control, it is buffered until it can actually be sent. You can retrieve the current buffered data size with `rtcGetBufferedAmount`.
-Tracks are an exception: There is no flow or congestion control, messages are never buffered and `rtcGetBufferedAmount` always returns 0.
 
 #### rtcGetBufferedAmount
 

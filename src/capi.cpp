@@ -381,13 +381,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 int rtcDeletePeerConnection(int pc) {
 	return wrap([pc] {
 		auto peerConnection = getPeerConnection(pc);
-		peerConnection->onDataChannel(nullptr);
-		peerConnection->onTrack(nullptr);
-		peerConnection->onLocalDescription(nullptr);
-		peerConnection->onLocalCandidate(nullptr);
-		peerConnection->onStateChange(nullptr);
-		peerConnection->onGatheringStateChange(nullptr);
-
+		peerConnection->close();
 		erasePeerConnection(pc);
 		return RTC_ERR_SUCCESS;
 	});
@@ -698,6 +692,14 @@ int rtcSendMessage(int id, const char *data, int size) {
 	});
 }
 
+int rtcClose(int id) {
+	return wrap([&] {
+		auto channel = getChannel(id);
+		channel->close();
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 bool rtcIsOpen(int id) {
 	return wrap([id] { return getChannel(id)->isOpen() ? 0 : 1; }) == 0 ? true : false;
 }
@@ -836,13 +838,7 @@ int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *
 int rtcDeleteDataChannel(int dc) {
 	return wrap([dc] {
 		auto dataChannel = getDataChannel(dc);
-		dataChannel->onOpen(nullptr);
-		dataChannel->onClosed(nullptr);
-		dataChannel->onError(nullptr);
-		dataChannel->onMessage(nullptr);
-		dataChannel->onBufferedAmountLow(nullptr);
-		dataChannel->onAvailable(nullptr);
-
+		dataChannel->close();
 		eraseDataChannel(dc);
 		return RTC_ERR_SUCCESS;
 	});
@@ -994,13 +990,7 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 int rtcDeleteTrack(int tr) {
 	return wrap([&] {
 		auto track = getTrack(tr);
-		track->onOpen(nullptr);
-		track->onClosed(nullptr);
-		track->onError(nullptr);
-		track->onMessage(nullptr);
-		track->onBufferedAmountLow(nullptr);
-		track->onAvailable(nullptr);
-
+		track->close();
 		eraseTrack(tr);
 		return RTC_ERR_SUCCESS;
 	});
@@ -1175,7 +1165,7 @@ int rtcGetTrackPayloadTypesForCodec(int tr, const char *ccodec, int *buffer, int
 		auto codec = lowercased(string(ccodec));
 		auto description = track->description();
 		std::vector<int> payloadTypes;
-		for(int pt : description.payloadTypes())
+		for (int pt : description.payloadTypes())
 			if (lowercased(description.rtpMap(pt)->format) == codec)
 				payloadTypes.push_back(pt);
 
@@ -1276,13 +1266,8 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 int rtcDeleteWebSocket(int ws) {
 	return wrap([&] {
 		auto webSocket = getWebSocket(ws);
-		webSocket->onOpen(nullptr);
-		webSocket->onClosed(nullptr);
-		webSocket->onError(nullptr);
-		webSocket->onMessage(nullptr);
-		webSocket->onBufferedAmountLow(nullptr);
-		webSocket->onAvailable(nullptr);
-
+		webSocket->forceClose();
+		webSocket->resetCallbacks(); // not done on close by WebSocket
 		eraseWebSocket(ws);
 		return RTC_ERR_SUCCESS;
 	});
@@ -1345,7 +1330,6 @@ RTC_EXPORT int rtcDeleteWebSocketServer(int wsserver) {
 		auto webSocketServer = getWebSocketServer(wsserver);
 		webSocketServer->onClient(nullptr);
 		webSocketServer->stop();
-
 		eraseWebSocketServer(wsserver);
 		return RTC_ERR_SUCCESS;
 	});
@@ -1371,12 +1355,13 @@ void rtcPreload() {
 void rtcCleanup() {
 	try {
 		size_t count = eraseAll();
-		if(count != 0) {
+		if (count != 0) {
 			PLOG_INFO << count << " objects were not properly destroyed before cleanup";
 		}
 
-		if(rtc::Cleanup().wait_for(10s) == std::future_status::timeout)
-			throw std::runtime_error("Cleanup timeout (possible deadlock or undestructible object)");
+		if (rtc::Cleanup().wait_for(10s) == std::future_status::timeout)
+			throw std::runtime_error(
+			    "Cleanup timeout (possible deadlock or undestructible object)");
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
@@ -1432,4 +1417,3 @@ int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 		return RTC_ERR_SUCCESS;
 	});
 }
-

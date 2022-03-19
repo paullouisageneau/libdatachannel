@@ -103,6 +103,8 @@ public:
 	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
 	void onSignalingStateChange(std::function<void(SignalingState state)> callback);
 
+	void resetCallbacks();
+
 	// Stats
 	void clearStats();
 	size_t bytesSent();

@@ -64,7 +64,8 @@ void Track::setDescription(Description::Media description) {
 void Track::close() {
 	PLOG_VERBOSE << "Closing Track";
 
-	mIsClosed = true;
+	if (!mIsClosed.exchange(true))
+		triggerClosed();
 
 	setMediaHandler(nullptr);
 	resetCallbacks();
@@ -112,7 +113,8 @@ void Track::open(shared_ptr<DtlsSrtpTransport> transport) {
 		mDtlsSrtpTransport = transport;
 	}
 
-	triggerOpen();
+	if (!mIsClosed)
+		triggerOpen();
 }
 #endif
 

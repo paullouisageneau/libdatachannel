@@ -54,6 +54,8 @@ public:
 	void onBufferedAmountLow(std::function<void()> callback);
 	void setBufferedAmountLowThreshold(size_t amount);
 
+	void resetCallbacks();
+
 	// Extended API
 	optional<message_variant> receive(); // only if onMessage unset
 	optional<message_variant> peek();    // only if onMessage unset

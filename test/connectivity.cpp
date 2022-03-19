@@ -112,6 +112,10 @@ void test_connectivity() {
 				dc->send("Hello from 2");
 		});
 
+		dc->onClosed([]() {
+			cout << "DataChannel 2: Closed" << endl;
+		});
+
 		dc->onMessage([](variant<binary, string> message) {
 			if (holds_alternative<string>(message)) {
 				cout << "Message 2: " << get<string>(message) << endl;
@@ -128,6 +132,10 @@ void test_connectivity() {
 			cout << "DataChannel 1: Open" << endl;
 			dc1->send("Hello from 1");
 		}
+	});
+
+	dc1->onClosed([]() {
+		cout << "DataChannel 1: Closed" << endl;
 	});
 
 	dc1->onMessage([](const variant<binary, string> &message) {
@@ -195,12 +203,18 @@ void test_connectivity() {
 	});
 
 	auto second1 = pc1.createDataChannel("second");
+
 	second1->onOpen([wsecond1 = make_weak_ptr(second1)]() {
 		if (auto second1 = wsecond1.lock()) {
 			cout << "Second DataChannel 1: Open" << endl;
 			second1->send("Second hello from 1");
 		}
 	});
+
+	second1->onClosed([]() {
+		cout << "Second DataChannel 1: Closed" << endl;
+	});
+
 	second1->onMessage([](const variant<binary, string> &message) {
 		if (holds_alternative<string>(message)) {
 			cout << "Second Message 1: " << get<string>(message) << endl;

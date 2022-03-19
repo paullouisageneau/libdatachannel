@@ -60,6 +60,8 @@ void WebSocket::open(const string &url) {
 
 void WebSocket::close() { impl()->close(); }
 
+void WebSocket::forceClose() { impl()->remoteClose(); }
+
 bool WebSocket::send(message_variant data) {
 	return impl()->outgoing(make_message(std::move(data)));
 }
