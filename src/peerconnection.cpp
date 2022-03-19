@@ -320,6 +320,10 @@ void PeerConnection::onSignalingStateChange(std::function<void(SignalingState st
 	impl()->signalingStateChangeCallback = callback;
 }
 
+void PeerConnection::resetCallbacks() {
+	impl()->resetCallbacks();
+}
+
 bool PeerConnection::getSelectedCandidatePair(Candidate *local, Candidate *remote) {
 	auto iceTransport = impl()->getIceTransport();
 	return iceTransport ? iceTransport->getSelectedCandidatePair(local, remote) : false;
