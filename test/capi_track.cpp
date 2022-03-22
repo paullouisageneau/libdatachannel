@@ -41,7 +41,8 @@ static Peer *peer1 = NULL;
 static Peer *peer2 = NULL;
 
 static const char *mediaDescription = "video 9 UDP/TLS/RTP/SAVPF\r\n"
-                                      "a=mid:video\r\n";
+                                      "a=mid:video\r\n"
+                                      "a=sendonly\r\n";
 
 static void RTC_API descriptionCallback(int pc, const char *sdp, const char *type, void *ptr) {
 	Peer *peer = (Peer *)ptr;
@@ -82,13 +83,31 @@ static void RTC_API closedCallback(int id, void *ptr) {
 
 static void RTC_API trackCallback(int pc, int tr, void *ptr) {
 	Peer *peer = (Peer *)ptr;
+
+	char buffer[1024];
+	if (rtcGetTrackDescription(tr, buffer, 1024) < 0) {
+		fprintf(stderr, "rtcGetTrackDescription failed\n");
+		return;
+	}
+
+	printf("Track %d: Received with media description: \n%s\n", peer == peer1 ? 1 : 2, buffer);
+
+	char mid[256];
+	if (rtcGetTrackMid(tr, mid, 256) < 0 || strcmp(mid, "video") != 0) {
+		fprintf(stderr, "rtcGetTrackMid failed\n");
+		return;
+	}
+
+	// Description is reversed here
+	rtcDirection direction;
+	if (rtcGetTrackDirection(tr, &direction) < 0 || direction != RTC_DIRECTION_RECVONLY) {
+		fprintf(stderr, "rtcGetTrackDirection failed\n");
+		return;
+	}
+
 	peer->tr = tr;
 	rtcSetOpenCallback(tr, openCallback);
 	rtcSetClosedCallback(tr, closedCallback);
-
-	char buffer[1024];
-	if (rtcGetTrackDescription(tr, buffer, 1024) >= 0)
-		printf("Track %d: Received with media description: \n%s\n", peer == peer1 ? 1 : 2, buffer);
 }
 
 static Peer *createPeer(const rtcConfiguration *config) {
@@ -154,6 +173,18 @@ int test_capi_track_main() {
 	peer1->tr = rtcAddTrack(peer1->pc, mediaDescription);
 	rtcSetOpenCallback(peer1->tr, openCallback);
 	rtcSetClosedCallback(peer1->tr, closedCallback);
+
+	char mid[256];
+	if (rtcGetTrackMid(peer1->tr, mid, 256) < 0 || strcmp(mid, "video") != 0) {
+		fprintf(stderr, "rtcGetTrackMid failed\n");
+		goto error;
+	}
+
+	rtcDirection direction;
+	if (rtcGetTrackDirection(peer1->tr, &direction) < 0 || direction != RTC_DIRECTION_SENDONLY) {
+		fprintf(stderr, "rtcGetTrackDirection failed\n");
+		goto error;
+	}
 
 	// Initiate the handshake
 	rtcSetLocalDescription(peer1->pc, NULL);

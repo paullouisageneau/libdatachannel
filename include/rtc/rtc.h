@@ -255,6 +255,8 @@ RTC_EXPORT int rtcAddTrackEx(int pc, const rtcTrackInit *init);      // returns 
 RTC_EXPORT int rtcDeleteTrack(int tr);
 
 RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
+RTC_EXPORT int rtcGetTrackMid(int tr, char *buffer, int size);
+RTC_EXPORT int rtcGetTrackDirection(int tr, rtcDirection *direction);
 
 #if RTC_ENABLE_MEDIA
 
