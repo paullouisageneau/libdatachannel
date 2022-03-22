@@ -1003,6 +1003,24 @@ int rtcGetTrackDescription(int tr, char *buffer, int size) {
 	});
 }
 
+int rtcGetTrackMid(int tr, char *buffer, int size) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		return copyAndReturn(track->mid(), buffer, size);
+	});
+}
+
+int rtcGetTrackDirection(int tr, rtcDirection *direction) {
+	return wrap([&] {
+		if (!direction)
+			throw std::invalid_argument("Unexpected null pointer for track direction");
+
+		auto track = getTrack(tr);
+		*direction = static_cast<rtcDirection>(track->direction());
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 #if RTC_ENABLE_MEDIA
 
 void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid,
