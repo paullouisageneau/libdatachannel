@@ -685,7 +685,7 @@ Retrieves the SDP media description of a Track.
 
 Arguments:
 
-- `dc`: the Track identifier
+- `tr`: the Track identifier
 - `buffer`: a user-supplied buffer to store the description
 - `size`: the size of `buffer`
 
@@ -693,7 +693,40 @@ Return value: the length of the string copied in buffer (including the terminati
 
 If `buffer` is `NULL`, the description is not copied but the size is still returned.
 
-### Media
+#### rtcGetTrackMid
+
+```
+int rtcGetTrackMid(int tr, char *buffer, int size)
+```
+
+Retrieves the mid (media indentifier) of a Track.
+
+Arguments:
+
+- `tr`: the Track identifier
+- `buffer`: a user-supplied buffer to store the mid
+- `size`: the size of `buffer`
+
+Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code
+
+If `buffer` is `NULL`, the mid is not copied but the size is still returned.
+
+#### rtcGetTrackDirection
+
+```
+int rtcGetTrackDirection(int tr, rtcDirection *direction)
+```
+
+Retrieves the direction of a Track.
+
+Arguments:
+
+- `tr`: the Track identifier
+- `direction`: a pointer to a rtcDescription enum to store the result
+
+On success, the value pointed by `direction` will be set to one of the following: `RTC_DIRECTION_SENDONLY`, `RTC_DIRECTION_RECVONLY`, `RTC_DIRECTION_SENDRECV`, `RTC_DIRECTION_INACTIVE`, or `RTC_DIRECTION_UNKNOWN`.
+
+### Media handling
 
 TODO
 
