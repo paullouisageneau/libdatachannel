@@ -1021,6 +1021,9 @@ int rtcGetTrackMid(int tr, char *buffer, int size) {
 
 int rtcGetTrackDirection(int tr, rtcDirection *direction) {
 	return wrap([&] {
+		if (!direction)
+			throw std::invalid_argument("Unexpected null pointer for track direction");
+
 		auto track = getTrack(tr);
 		*direction = static_cast<rtcDirection>(track->direction());
 		return RTC_ERR_SUCCESS;
@@ -1388,12 +1391,13 @@ void rtcPreload() {
 void rtcCleanup() {
 	try {
 		size_t count = eraseAll();
-		if(count != 0) {
+		if (count != 0) {
 			PLOG_INFO << count << " objects were not properly destroyed before cleanup";
 		}
 
-		if(rtc::Cleanup().wait_for(10s) == std::future_status::timeout)
-			throw std::runtime_error("Cleanup timeout (possible deadlock or undestructible object)");
+		if (rtc::Cleanup().wait_for(10s) == std::future_status::timeout)
+			throw std::runtime_error(
+			    "Cleanup timeout (possible deadlock or undestructible object)");
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
