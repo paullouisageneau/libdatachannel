@@ -389,6 +389,8 @@ int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb)
 
 It is called when the channel receives a message. While it is set, messages can't be received with `rtcReceiveMessage`.
 
+Track: By default, the track receives data as RTP packets.
+
 ```
 int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb)
 ```
@@ -425,7 +427,7 @@ The message is sent immediately if possible, otherwise it is buffered to be sent
 
 Data Channel and WebSocket: If the message may not be sent immediately due to flow control or congestion control, it is buffered until it can actually be sent. You can retrieve the current buffered data size with `rtcGetBufferedAmount`.
 
-Track: There is no flow or congestion control, messages are never buffered and `rtcGetBufferedAmount` always returns 0.
+Track: By default, the track expects RTP packets. There is no flow or congestion control, packets are never buffered and `rtcGetBufferedAmount` always returns 0.
 
 #### rtcClose
 
@@ -513,6 +515,8 @@ Arguments:
 Return value: `RTC_ERR_SUCCESS` or a negative error code (In particular, `RTC_ERR_NOT_AVAIL` is returned when there are no pending messages)
 
 If `buffer` is `NULL`, the message is not copied and kept pending but the size is still written to `size`.
+
+Track: By default, the track receives data as RTP packets.
 
 #### rtcGetAvailableAmount
 
