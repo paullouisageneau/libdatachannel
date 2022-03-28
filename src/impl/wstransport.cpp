@@ -204,7 +204,7 @@ bool WsTransport::sendHttpError(int code) {
 }
 
 // RFC6455 5.2. Base Framing Protocol
-// http://tools.ietf.org/html/rfc6455#section-5.2
+// http://datatracker.ietf.org/doc/html/rfc6455#section-5.2
 //
 //  0                   1                   2                   3
 //  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1

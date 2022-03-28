@@ -71,7 +71,7 @@ public:
 
 private:
 	// Order seems wrong but these are the actual values
-	// See https://tools.ietf.org/html/draft-ietf-rtcweb-data-channel-13#section-8
+	// See https://datatracker.ietf.org/doc/html/draft-ietf-rtcweb-data-channel-13#section-8
 	enum PayloadId : uint32_t {
 		PPID_CONTROL = 50,
 		PPID_STRING = 51,
