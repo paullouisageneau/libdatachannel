@@ -274,7 +274,7 @@ string Description::generateSdp(string_view eol) const {
 	sdp << "t=0 0" << eol;
 
 	// Bundle (RFC8843 Negotiating Media Multiplexing Using the Session Description Protocol)
-	// https://datatracker.ietf.org/doc/html/rfc8843
+	// https://www.rfc-editor.org/rfc/rfc8843.html
 	sdp << "a=group:BUNDLE";
 	for (const auto &entry : mEntries)
 		sdp << ' ' << entry->mid();

@@ -37,7 +37,7 @@ using std::chrono::milliseconds;
 namespace rtc::impl {
 
 // Messages for the DataChannel establishment protocol (RFC 8832)
-// See https://datatracker.ietf.org/doc/html/rfc8832
+// See https://www.rfc-editor.org/rfc/rfc8832.html
 
 enum MessageType : uint8_t {
 	MESSAGE_OPEN_REQUEST = 0x00,

@@ -69,7 +69,7 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	// RFC 8827 WebRTC Security Architecture 6.5. Communications Security
 	// All implementations MUST support DTLS 1.2 with the TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 	// cipher suite and the P-256 curve
-	// See https://datatracker.ietf.org/doc/html/rfc8827#section-6.5
+	// See https://www.rfc-editor.org/rfc/rfc8827.html#section-6.5
 	case CertificateType::Default:
 	case CertificateType::Ecdsa: {
 		gnutls::check(gnutls_x509_privkey_generate(*privkey, GNUTLS_PK_ECDSA,
@@ -233,7 +233,7 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	// RFC 8827 WebRTC Security Architecture 6.5. Communications Security
 	// All implementations MUST support DTLS 1.2 with the TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
 	// cipher suite and the P-256 curve
-	// See https://datatracker.ietf.org/doc/html/rfc8827#section-6.5
+	// See https://www.rfc-editor.org/rfc/rfc8827.html#section-6.5
 	case CertificateType::Default:
 	case CertificateType::Ecdsa: {
 		PLOG_VERBOSE << "Generating ECDSA P-256 key pair";

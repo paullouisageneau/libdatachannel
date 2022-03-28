@@ -173,7 +173,7 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 
 	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
 	// setup:actpass.
-	// See https://datatracker.ietf.org/doc/html/rfc5763#section-5
+	// See https://www.rfc-editor.org/rfc/rfc5763.html#section-5
 	Description desc(string(sdp), type,
 	                 type == Description::Type::Offer ? Description::Role::ActPass : mRole);
 	desc.addIceOption("trickle");
@@ -586,7 +586,7 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 
 	// RFC 5763: The endpoint that is the offerer MUST use the setup attribute value of
 	// setup:actpass.
-	// See https://datatracker.ietf.org/doc/html/rfc5763#section-5
+	// See https://www.rfc-editor.org/rfc/rfc5763.html#section-5
 	Description desc(string(sdp.get()), type,
 	                 type == Description::Type::Offer ? Description::Role::ActPass : mRole);
 	desc.addIceOption("trickle");

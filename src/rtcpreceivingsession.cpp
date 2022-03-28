@@ -48,7 +48,7 @@ message_ptr RtcpReceivingSession::incoming(message_ptr ptr) {
 	if (ptr->type == Message::Binary) {
 		auto rtp = reinterpret_cast<const RtpHeader *>(ptr->data());
 
-		// https://datatracker.ietf.org/doc/html/rfc3550#appendix-A.1
+		// https://www.rfc-editor.org/rfc/rfc3550.html#appendix-A.1
 		if (rtp->version() != 2) {
 			COUNTER_BAD_RTP_HEADER++;
 			PLOG_VERBOSE << "RTP packet is not version 2";

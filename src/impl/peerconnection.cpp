@@ -427,7 +427,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		if (!iceTransport || !sctpTransport)
 			return;
 
-		// See https://datatracker.ietf.org/doc/html/rfc8832
+		// See https://www.rfc-editor.org/rfc/rfc8832.html
 		const byte dataChannelOpenMessage{0x03};
 		uint16_t remoteParity = (iceTransport->role() == Description::Role::Active) ? 1 : 0;
 		if (message->type == Message::Control) {
@@ -599,7 +599,7 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(string label, DataCha
 	} else {
 		// RFC 5763: The answerer MUST use either a setup attribute value of setup:active or
 		// setup:passive. [...] Thus, setup:active is RECOMMENDED.
-		// See https://datatracker.ietf.org/doc/html/rfc5763#section-5
+		// See https://www.rfc-editor.org/rfc/rfc5763.html#section-5
 		// Therefore, we assume passive role if we are the offerer.
 		auto iceTransport = getIceTransport();
 		auto role = iceTransport ? iceTransport->role() : Description::Role::Passive;
@@ -608,7 +608,7 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(string label, DataCha
 		// which the corresponding incoming and outgoing streams are unused.  If the side is acting
 		// as the DTLS client, it MUST choose an even stream identifier; if the side is acting as
 		// the DTLS server, it MUST choose an odd one.
-		// See https://datatracker.ietf.org/doc/html/rfc8832#section-6
+		// See https://www.rfc-editor.org/rfc/rfc8832.html#section-6
 		stream = (role == Description::Role::Active) ? 0 : 1;
 		while (mDataChannels.find(stream) != mDataChannels.end()) {
 			if (stream >= 65535 - 2)

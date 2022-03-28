@@ -57,7 +57,7 @@ void WebSocket::open(const string &url) {
 	if (state != State::Closed)
 		throw std::logic_error("WebSocket must be closed before opening");
 
-	// Modified regex from RFC 3986, see https://datatracker.ietf.org/doc/html/rfc3986#appendix-B
+	// Modified regex from RFC 3986, see https://www.rfc-editor.org/rfc/rfc3986.html#appendix-B
 	static const char *rs =
 	    R"(^(([^:.@/?#]+):)?(/{0,2}((([^:@]*)(:([^@]*))?)@)?(([^:/?#]*)(:([^/?#]*))?))?([^?#]*)(\?([^#]*))?(#(.*))?)";
 
