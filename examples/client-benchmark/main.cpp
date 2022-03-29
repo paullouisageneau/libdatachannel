@@ -39,31 +39,28 @@
 #include <thread>
 #include <unordered_map>
 
-using namespace rtc;
-using namespace std;
 using namespace std::chrono_literals;
-
-using chrono::milliseconds;
-using chrono::steady_clock;
-
-using json = nlohmann::json;
-
+using std::shared_ptr;
+using std::weak_ptr;
+using std::chrono::milliseconds;
+using std::chrono::steady_clock;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-unordered_map<string, shared_ptr<PeerConnection>> peerConnectionMap;
-unordered_map<string, shared_ptr<DataChannel>> dataChannelMap;
+using nlohmann::json;
 
-string localId;
+std::string localId;
+std::unordered_map<std::string, shared_ptr<rtc::PeerConnection>> peerConnectionMap;
+std::unordered_map<std::string, shared_ptr<rtc::DataChannel>> dataChannelMap;
 
-shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
-                                                weak_ptr<WebSocket> wws, string id);
-string randomId(size_t length);
+shared_ptr<rtc::PeerConnection> createPeerConnection(const rtc::Configuration &config,
+                                                     weak_ptr<rtc::WebSocket> wws, std::string id);
+std::string randomId(size_t length);
 
 // Benchmark
 const size_t messageSize = 65535;
-binary messageData(messageSize);
-unordered_map<string, atomic<size_t>> receivedSizeMap;
-unordered_map<string, atomic<size_t>> sentSizeMap;
+rtc::binary messageData(messageSize);
+std::unordered_map<std::string, std::atomic<size_t>> receivedSizeMap;
+std::unordered_map<std::string, std::atomic<size_t>> sentSizeMap;
 bool noSend = false;
 
 // Benchmark - enableThroughputSet params
@@ -76,7 +73,7 @@ const int stepDurationInMs = int(1000 / STEP_COUNT_FOR_1_SEC);
 int main(int argc, char **argv) try {
 	Cmdline params(argc, argv);
 
-	rtc::InitLogger(LogLevel::Info);
+	rtc::InitLogger(rtc::LogLevel::Info);
 
 	// Benchmark - construct message to send
 	fill(messageData.begin(), messageData.end(), std::byte(0xFF));
@@ -89,110 +86,113 @@ int main(int argc, char **argv) try {
 	// No Send option
 	noSend = params.noSend();
 	if (noSend)
-		cout << "Not Sending data. (One way benchmark)." << endl;
+		std::cout << "Not sending data (one way benchmark)." << std::endl;
 
-	Configuration config;
-	string stunServer = "";
+	rtc::Configuration config;
+	std::string stunServer = "";
 	if (params.noStun()) {
-		cout << "No STUN server is configured. Only local hosts and public IP addresses supported."
-		     << endl;
+		std::cout
+		    << "No STUN server is configured. Only local hosts and public IP addresses supported."
+		    << std::endl;
 	} else {
 		if (params.stunServer().substr(0, 5).compare("stun:") != 0) {
 			stunServer = "stun:";
 		}
-		stunServer += params.stunServer() + ":" + to_string(params.stunPort());
-		cout << "Stun server is " << stunServer << endl;
+		stunServer += params.stunServer() + ":" + std::to_string(params.stunPort());
+		std::cout << "STUN server is " << stunServer << std::endl;
 		config.iceServers.emplace_back(stunServer);
 	}
 
 	localId = randomId(4);
-	cout << "The local ID is: " << localId << endl;
+	std::cout << "The local ID is " << localId << std::endl;
 
-	auto ws = make_shared<WebSocket>();
+	auto ws = std::make_shared<rtc::WebSocket>();
 
 	std::promise<void> wsPromise;
 	auto wsFuture = wsPromise.get_future();
 
 	ws->onOpen([&wsPromise]() {
-		cout << "WebSocket connected, signaling ready" << endl;
+		std::cout << "WebSocket connected, signaling ready" << std::endl;
 		wsPromise.set_value();
 	});
 
-	ws->onError([&wsPromise](string s) {
-		cout << "WebSocket error" << endl;
+	ws->onError([&wsPromise](std::string s) {
+		std::cout << "WebSocket error" << std::endl;
 		wsPromise.set_exception(std::make_exception_ptr(std::runtime_error(s)));
 	});
 
-	ws->onClosed([]() { cout << "WebSocket closed" << endl; });
+	ws->onClosed([]() { std::cout << "WebSocket closed" << std::endl; });
 
-	ws->onMessage([&](variant<binary, string> data) {
-		if (!holds_alternative<string>(data))
+	ws->onMessage([&config, wws = make_weak_ptr(ws)](auto data) {
+		if (!std::holds_alternative<std::string>(data))
 			return;
 
-		json message = json::parse(get<string>(data));
+		json message = json::parse(std::get<std::string>(data));
 
 		auto it = message.find("id");
 		if (it == message.end())
 			return;
-		string id = it->get<string>();
+
+		auto id = it->get<std::string>();
 
 		it = message.find("type");
 		if (it == message.end())
 			return;
-		string type = it->get<string>();
 
-		shared_ptr<PeerConnection> pc;
+		auto type = it->get<std::string>();
+
+		shared_ptr<rtc::PeerConnection> pc;
 		if (auto jt = peerConnectionMap.find(id); jt != peerConnectionMap.end()) {
 			pc = jt->second;
 		} else if (type == "offer") {
-			cout << "Answering to " + id << endl;
-			pc = createPeerConnection(config, ws, id);
+			std::cout << "Answering to " + id << std::endl;
+			pc = createPeerConnection(config, wws, id);
 		} else {
 			return;
 		}
 
 		if (type == "offer" || type == "answer") {
-			auto sdp = message["description"].get<string>();
-			pc->setRemoteDescription(Description(sdp, type));
+			auto sdp = message["description"].get<std::string>();
+			pc->setRemoteDescription(rtc::Description(sdp, type));
 		} else if (type == "candidate") {
-			auto sdp = message["candidate"].get<string>();
-			auto mid = message["mid"].get<string>();
-			pc->addRemoteCandidate(Candidate(sdp, mid));
+			auto sdp = message["candidate"].get<std::string>();
+			auto mid = message["mid"].get<std::string>();
+			pc->addRemoteCandidate(rtc::Candidate(sdp, mid));
 		}
 	});
 
-	string wsPrefix = "";
-	if (params.webSocketServer().substr(0, 5).compare("ws://") != 0) {
-		wsPrefix = "ws://";
-	}
-	const string url = wsPrefix + params.webSocketServer() + ":" +
-	                   to_string(params.webSocketPort()) + "/" + localId;
-	cout << "Url is " << url << endl;
+	const std::string wsPrefix =
+	    params.webSocketServer().find("://") == std::string::npos ? "ws://" : "";
+	const std::string url = wsPrefix + params.webSocketServer() + ":" +
+	                        std::to_string(params.webSocketPort()) + "/" + localId;
+
+	std::cout << "WebSocket URL is " << url << std::endl;
 	ws->open(url);
 
-	cout << "Waiting for signaling to be connected..." << endl;
+	std::cout << "Waiting for signaling to be connected..." << std::endl;
 	wsFuture.get();
 
-	string id;
-	cout << "Enter a remote ID to send an offer:" << endl;
-	cin >> id;
-	cin.ignore();
+	std::string id;
+	std::cout << "Enter a remote ID to send an offer:" << std::endl;
+	std::cin >> id;
+	std::cin.ignore();
 	if (id.empty()) {
 		// Nothing to do
 		return 0;
 	}
+
 	if (id == localId) {
-		cout << "Invalid remote ID (This is my local ID). Exiting..." << endl;
+		std::cout << "Invalid remote ID (This is the local ID). Exiting..." << std::endl;
 		return 0;
 	}
 
-	cout << "Offering to " + id << endl;
+	std::cout << "Offering to " + id << std::endl;
 	auto pc = createPeerConnection(config, ws, id);
 
 	// We are the offerer, so create a data channel to initiate the process
 	for (int i = 1; i <= params.dataChannelCount(); i++) {
-		const string label = "DC-" + std::to_string(i);
-		cout << "Creating DataChannel with label \"" << label << "\"" << endl;
+		const std::string label = "DC-" + std::to_string(i);
+		std::cout << "Creating DataChannel with label \"" << label << "\"" << std::endl;
 		auto dc = pc->createDataChannel(label);
 		receivedSizeMap.emplace(label, 0);
 		sentSizeMap.emplace(label, 0);
@@ -201,7 +201,7 @@ int main(int argc, char **argv) try {
 		dc->setBufferedAmountLowThreshold(bufferSize);
 
 		dc->onOpen([id, wdc = make_weak_ptr(dc), label]() {
-			cout << "DataChannel from " << id << " open" << endl;
+			std::cout << "DataChannel from " << id << " open" << std::endl;
 			if (noSend)
 				return;
 
@@ -242,18 +242,18 @@ int main(int argc, char **argv) try {
 			}
 		});
 
-		dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
+		dc->onClosed([id]() { std::cout << "DataChannel from " << id << " closed" << std::endl; });
 
-		dc->onMessage([id, wdc = make_weak_ptr(dc), label](variant<binary, string> data) {
-			if (holds_alternative<binary>(data))
-				receivedSizeMap.at(label) += get<binary>(data).size();
+		dc->onMessage([id, wdc = make_weak_ptr(dc), label](auto data) {
+			if (std::holds_alternative<rtc::binary>(data))
+				receivedSizeMap.at(label) += std::get<rtc::binary>(data).size();
 		});
 
 		dataChannelMap.emplace(label, dc);
 	}
 
 	const int duration = params.durationInSec() > 0 ? params.durationInSec() : INT32_MAX;
-	cout << "Benchmark will run for " << duration << " seconds" << endl;
+	std::cout << "Benchmark will run for " << duration << " seconds" << std::endl;
 
 	int printCounter = 0;
 	int printStatCounter = 0;
@@ -262,7 +262,7 @@ int main(int argc, char **argv) try {
 	// Byte count to send for every loop
 	int byteToSendOnEveryLoop = throughtputSetAsKB * stepDurationInMs;
 	for (int i = 1; i <= duration * STEP_COUNT_FOR_1_SEC; ++i) {
-		this_thread::sleep_for(milliseconds(stepDurationInMs));
+		std::this_thread::sleep_for(milliseconds(stepDurationInMs));
 		printCounter++;
 
 		if (enableThroughputSet) {
@@ -274,7 +274,7 @@ int main(int argc, char **argv) try {
 			int byteToSendThisLoop = static_cast<int>(
 			    byteToSendOnEveryLoop * ((elapsedTimeInSecs * 1000.0) / stepDurationInMs));
 
-			binary tempMessageData(byteToSendThisLoop);
+			rtc::binary tempMessageData(byteToSendThisLoop);
 			fill(tempMessageData.begin(), tempMessageData.end(), std::byte(0xFF));
 
 			for (const auto &[label, dc] : dataChannelMap) {
@@ -292,39 +292,40 @@ int main(int argc, char **argv) try {
 
 			unsigned long receiveSpeedTotal = 0;
 			unsigned long sendSpeedTotal = 0;
-			cout << "#" << i / STEP_COUNT_FOR_1_SEC << endl;
+			std::cout << "#" << i / STEP_COUNT_FOR_1_SEC << std::endl;
 			for (const auto &[label, dc] : dataChannelMap) {
 				unsigned long channelReceiveSpeed = static_cast<int>(
 				    receivedSizeMap[label].exchange(0) / (elapsedTimeInSecs * 1000));
 				unsigned long channelSendSpeed =
 				    static_cast<int>(sentSizeMap[label].exchange(0) / (elapsedTimeInSecs * 1000));
 
-				cout << std::setw(10) << label << " Received: " << channelReceiveSpeed << " KB/s"
-				     << "   Sent: " << channelSendSpeed << " KB/s"
-				     << "   BufferSize: " << dc->bufferedAmount() << endl;
+				std::cout << std::setw(10) << label << " Received: " << channelReceiveSpeed
+				          << " KB/s"
+				          << "   Sent: " << channelSendSpeed << " KB/s"
+				          << "   BufferSize: " << dc->bufferedAmount() << std::endl;
 
 				receiveSpeedTotal += channelReceiveSpeed;
 				sendSpeedTotal += channelSendSpeed;
 			}
-			cout << std::setw(10) << "TOTL"
-			     << " Received: " << receiveSpeedTotal << " KB/s"
-			     << "   Sent: " << sendSpeedTotal << " KB/s" << endl;
+			std::cout << std::setw(10) << "TOTAL"
+			          << " Received: " << receiveSpeedTotal << " KB/s"
+			          << "   Sent: " << sendSpeedTotal << " KB/s" << std::endl;
 
 			printStatCounter++;
 			printCounter = 0;
 		}
 
 		if (printStatCounter >= 5) {
-			cout << "Stats# "
-			     << "Received Total: " << pc->bytesReceived() / (1000 * 1000) << " MB"
-			     << "   Sent Total: " << pc->bytesSent() / (1000 * 1000) << " MB"
-			     << "   RTT: " << pc->rtt().value_or(0ms).count() << " ms" << endl;
-			cout << endl;
+			std::cout << "Stats# "
+			          << "Received Total: " << pc->bytesReceived() / (1000 * 1000) << " MB"
+			          << "   Sent Total: " << pc->bytesSent() / (1000 * 1000) << " MB"
+			          << "   RTT: " << pc->rtt().value_or(0ms).count() << " ms" << std::endl;
+			std::cout << std::endl;
 			printStatCounter = 0;
 		}
 	}
 
-	cout << "Cleaning up..." << endl;
+	std::cout << "Cleaning up..." << std::endl;
 
 	dataChannelMap.clear();
 	peerConnectionMap.clear();
@@ -342,40 +343,44 @@ int main(int argc, char **argv) try {
 }
 
 // Create and setup a PeerConnection
-shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
-                                                weak_ptr<WebSocket> wws, string id) {
-	auto pc = make_shared<PeerConnection>(config);
+shared_ptr<rtc::PeerConnection> createPeerConnection(const rtc::Configuration &config,
+                                                     weak_ptr<rtc::WebSocket> wws, std::string id) {
+	auto pc = std::make_shared<rtc::PeerConnection>(config);
 
-	pc->onStateChange([](PeerConnection::State state) { cout << "State: " << state << endl; });
+	pc->onStateChange(
+	    [](rtc::PeerConnection::State state) { std::cout << "State: " << state << std::endl; });
 
-	pc->onGatheringStateChange(
-	    [](PeerConnection::GatheringState state) { cout << "Gathering State: " << state << endl; });
+	pc->onGatheringStateChange([](rtc::PeerConnection::GatheringState state) {
+		std::cout << "Gathering State: " << state << std::endl;
+	});
 
-	pc->onLocalDescription([wws, id](Description description) {
-		json message = {
-		    {"id", id}, {"type", description.typeString()}, {"description", string(description)}};
+	pc->onLocalDescription([wws, id](rtc::Description description) {
+		json message = {{"id", id},
+		                {"type", description.typeString()},
+		                {"description", std::string(description)}};
 
 		if (auto ws = wws.lock())
 			ws->send(message.dump());
 	});
 
-	pc->onLocalCandidate([wws, id](Candidate candidate) {
+	pc->onLocalCandidate([wws, id](rtc::Candidate candidate) {
 		json message = {{"id", id},
 		                {"type", "candidate"},
-		                {"candidate", string(candidate)},
+		                {"candidate", std::string(candidate)},
 		                {"mid", candidate.mid()}};
 
 		if (auto ws = wws.lock())
 			ws->send(message.dump());
 	});
 
-	pc->onDataChannel([id](shared_ptr<DataChannel> dc) {
-		const string label = dc->label();
-		cout << "DataChannel from " << id << " received with label \"" << label << "\"" << endl;
+	pc->onDataChannel([id](shared_ptr<rtc::DataChannel> dc) {
+		const std::string label = dc->label();
+		std::cout << "DataChannel from " << id << " received with label \"" << label << "\""
+		          << std::endl;
 
-		cout << "###########################################" << endl;
-		cout << "### Check other peer's screen for stats ###" << endl;
-		cout << "###########################################" << endl;
+		std::cout << "###########################################" << std::endl;
+		std::cout << "### Check other peer's screen for stats ###" << std::endl;
+		std::cout << "###########################################" << std::endl;
 
 		receivedSizeMap.emplace(dc->label(), 0);
 		sentSizeMap.emplace(dc->label(), 0);
@@ -402,7 +407,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 				// Byte count to send for every loop
 				int byteToSendOnEveryLoop = throughtputSetAsKB * stepDurationInMs;
 				while (true) {
-					this_thread::sleep_for(milliseconds(stepDurationInMs));
+					std::this_thread::sleep_for(milliseconds(stepDurationInMs));
 
 					auto dcLocked = wdc.lock();
 					if (!dcLocked)
@@ -421,7 +426,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 						    static_cast<int>(byteToSendOnEveryLoop *
 						                     ((elapsedTimeInSecs * 1000.0) / stepDurationInMs));
 
-						binary tempMessageData(byteToSendThisLoop);
+						rtc::binary tempMessageData(byteToSendThisLoop);
 						fill(tempMessageData.begin(), tempMessageData.end(), std::byte(0xFF));
 
 						if (dcLocked->bufferedAmount() <= bufferSize) {
@@ -432,7 +437,7 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 						std::cout << "Send failed: " << e.what() << std::endl;
 					}
 				}
-				cout << "Send Data Thread exiting..." << endl;
+				std::cout << "Send Data Thread exiting..." << std::endl;
 			}).detach();
 		}
 
@@ -458,11 +463,11 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 			}
 		});
 
-		dc->onClosed([id]() { cout << "DataChannel from " << id << " closed" << endl; });
+		dc->onClosed([id]() { std::cout << "DataChannel from " << id << " closed" << std::endl; });
 
-		dc->onMessage([id, wdc = make_weak_ptr(dc), label](variant<binary, string> data) {
-			if (holds_alternative<binary>(data))
-				receivedSizeMap.at(label) += get<binary>(data).size();
+		dc->onMessage([id, wdc = make_weak_ptr(dc), label](auto data) {
+			if (std::holds_alternative<rtc::binary>(data))
+				receivedSizeMap.at(label) += std::get<rtc::binary>(data).size();
 		});
 
 		dataChannelMap.emplace(label, dc);
@@ -473,12 +478,12 @@ shared_ptr<PeerConnection> createPeerConnection(const Configuration &config,
 };
 
 // Helper function to generate a random ID
-string randomId(size_t length) {
-	static const string characters(
+std::string randomId(size_t length) {
+	static const std::string characters(
 	    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
-	string id(length, '0');
-	default_random_engine rng(random_device{}());
-	uniform_int_distribution<int> dist(0, int(characters.size() - 1));
-	generate(id.begin(), id.end(), [&]() { return characters.at(dist(rng)); });
+	std::string id(length, '0');
+	std::default_random_engine rng(std::random_device{}());
+	std::uniform_int_distribution<int> dist(0, int(characters.size() - 1));
+	std::generate(id.begin(), id.end(), [&]() { return characters.at(dist(rng)); });
 	return id;
 }

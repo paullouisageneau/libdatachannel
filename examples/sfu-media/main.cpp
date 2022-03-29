@@ -17,12 +17,11 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
-
 #include "rtc/rtc.hpp"
 
 #include <iostream>
 #include <memory>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -32,6 +31,7 @@ struct Receiver {
 	std::shared_ptr<rtc::PeerConnection> conn;
 	std::shared_ptr<rtc::Track> track;
 };
+
 int main() {
 	std::vector<std::shared_ptr<Receiver>> receivers;
 
@@ -77,7 +77,7 @@ int main() {
 		    },
 		    nullptr);
 
-		// Set the SENDERS Answer
+		// Set the sender's answer
 		{
 			std::cout << "Please copy/paste the answer provided by the SENDER: " << std::endl;
 			std::string sdp;

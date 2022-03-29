@@ -17,8 +17,6 @@
  * along with this program; If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
-
 #include "rtc/rtc.hpp"
 
 #include <iostream>
@@ -28,11 +26,12 @@
 #include <nlohmann/json.hpp>
 
 #ifdef _WIN32
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <winsock2.h>
 #else
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
 typedef int SOCKET;
 #endif
 
@@ -57,10 +56,10 @@ int main() {
 		});
 
 		SOCKET sock = socket(AF_INET, SOCK_DGRAM, 0);
-		sockaddr_in addr;
+		sockaddr_in addr = {};
+		addr.sin_family = AF_INET;
 		addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 		addr.sin_port = htons(5000);
-		addr.sin_family = AF_INET;
 
 		rtc::Description::Video media("video", rtc::Description::Direction::RecvOnly);
 		media.addH264Codec(96);

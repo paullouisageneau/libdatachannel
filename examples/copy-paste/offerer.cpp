@@ -23,67 +23,70 @@
 #include <memory>
 #include <thread>
 
-using namespace rtc;
-using namespace std;
-
+using namespace std::chrono_literals;
+using std::shared_ptr;
+using std::weak_ptr;
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
 int main(int argc, char **argv) {
-	rtc::InitLogger(LogLevel::Warning);
+	rtc::InitLogger(rtc::LogLevel::Warning);
 
-	Configuration config;
+	rtc::Configuration config;
 	// config.iceServers.emplace_back("stun.l.google.com:19302");
 
-	auto pc = std::make_shared<PeerConnection>(config);
+	auto pc = std::make_shared<rtc::PeerConnection>(config);
 
-	pc->onLocalDescription([](Description description) {
-		cout << "Local Description (Paste this to the other peer):" << endl;
-		cout << string(description) << endl;
+	pc->onLocalDescription([](rtc::Description description) {
+		std::cout << "Local Description (Paste this to the other peer):" << std::endl;
+		std::cout << std::string(description) << std::endl;
 	});
 
-	pc->onLocalCandidate([](Candidate candidate) {
-		cout << "Local Candidate (Paste this to the other peer after the local description):"
-		     << endl;
-		cout << string(candidate) << endl << endl;
+	pc->onLocalCandidate([](rtc::Candidate candidate) {
+		std::cout << "Local Candidate (Paste this to the other peer after the local description):"
+		          << std::endl;
+		std::cout << std::string(candidate) << std::endl << std::endl;
 	});
 
-	pc->onStateChange(
-	    [](PeerConnection::State state) { cout << "[State: " << state << "]" << endl; });
+	pc->onStateChange([](rtc::PeerConnection::State state) {
+		std::cout << "[State: " << state << "]" << std::endl;
+	});
 
-	pc->onGatheringStateChange([](PeerConnection::GatheringState state) {
-		cout << "[Gathering State: " << state << "]" << endl;
+	pc->onGatheringStateChange([](rtc::PeerConnection::GatheringState state) {
+		std::cout << "[Gathering State: " << state << "]" << std::endl;
 	});
 
 	auto dc = pc->createDataChannel("test"); // this is the offerer, so create a data channel
 
-	dc->onOpen([&]() { cout << "[DataChannel open: " << dc->label() << "]" << endl; });
+	dc->onOpen([&]() { std::cout << "[DataChannel open: " << dc->label() << "]" << std::endl; });
 
-	dc->onClosed([&]() { cout << "[DataChannel closed: " << dc->label() << "]" << endl; });
+	dc->onClosed(
+	    [&]() { std::cout << "[DataChannel closed: " << dc->label() << "]" << std::endl; });
 
-	dc->onMessage([](variant<binary, string> message) {
-		if (holds_alternative<string>(message)) {
-			cout << "[Received: " << get<string>(message) << "]" << endl;
+	dc->onMessage([](auto data) {
+		if (std::holds_alternative<std::string>(data)) {
+			std::cout << "[Received: " << std::get<std::string>(data) << "]" << std::endl;
 		}
 	});
 
-	this_thread::sleep_for(1s);
+	std::this_thread::sleep_for(1s);
 
 	bool exit = false;
 	while (!exit) {
-		cout << endl
-		     << "**********************************************************************************"
-		        "*****"
-		     << endl
-		     << "* 0: Exit /"
-		     << " 1: Enter remote description /"
-		     << " 2: Enter remote candidate /"
-		     << " 3: Send message /"
-		     << " 4: Print Connection Info *" << endl
-		     << "[Command]: ";
+		std::cout
+		    << std::endl
+		    << "**********************************************************************************"
+		       "*****"
+		    << std::endl
+		    << "* 0: Exit /"
+		    << " 1: Enter remote description /"
+		    << " 2: Enter remote candidate /"
+		    << " 3: Send message /"
+		    << " 4: Print Connection Info *" << std::endl
+		    << "[Command]: ";
 
 		int command = -1;
-		cin >> command;
-		cin.ignore();
+		std::cin >> command;
+		std::cin.ignore();
 
 		switch (command) {
 		case 0: {
@@ -92,9 +95,9 @@ int main(int argc, char **argv) {
 		}
 		case 1: {
 			// Parse Description
-			cout << "[Description]: ";
-			string sdp, line;
-			while (getline(cin, line) && !line.empty()) {
+			std::cout << "[Description]: ";
+			std::string sdp, line;
+			while (getline(std::cin, line) && !line.empty()) {
 				sdp += line;
 				sdp += "\r\n";
 			}
@@ -103,48 +106,49 @@ int main(int argc, char **argv) {
 		}
 		case 2: {
 			// Parse Candidate
-			cout << "[Candidate]: ";
-			string candidate;
-			getline(cin, candidate);
+			std::cout << "[Candidate]: ";
+			std::string candidate;
+			getline(std::cin, candidate);
 			pc->addRemoteCandidate(candidate);
 			break;
 		}
 		case 3: {
 			// Send Message
 			if (!dc->isOpen()) {
-				cout << "** Channel is not Open ** ";
+				std::cout << "** Channel is not Open ** ";
 				break;
 			}
-			cout << "[Message]: ";
-			string message;
-			getline(cin, message);
+			std::cout << "[Message]: ";
+			std::string message;
+			getline(std::cin, message);
 			dc->send(message);
 			break;
 		}
 		case 4: {
 			// Connection Info
 			if (!dc || !dc->isOpen()) {
-				cout << "** Channel is not Open ** ";
+				std::cout << "** Channel is not Open ** ";
 				break;
 			}
-			Candidate local, remote;
+			rtc::Candidate local, remote;
 			std::optional<std::chrono::milliseconds> rtt = pc->rtt();
 			if (pc->getSelectedCandidatePair(&local, &remote)) {
-				cout << "Local: " << local << endl;
-				cout << "Remote: " << remote << endl;
-				cout << "Bytes Sent:" << pc->bytesSent()
-				     << " / Bytes Received:" << pc->bytesReceived() << " / Round-Trip Time:";
+				std::cout << "Local: " << local << std::endl;
+				std::cout << "Remote: " << remote << std::endl;
+				std::cout << "Bytes Sent:" << pc->bytesSent()
+				          << " / Bytes Received:" << pc->bytesReceived() << " / Round-Trip Time:";
 				if (rtt.has_value())
-					cout << rtt.value().count();
+					std::cout << rtt.value().count();
 				else
-					cout << "null";
-				cout << " ms";
-			} else
-				cout << "Could not get Candidate Pair Info" << endl;
+					std::cout << "null";
+				std::cout << " ms";
+			} else {
+				std::cout << "Could not get Candidate Pair Info" << std::endl;
+			}
 			break;
 		}
 		default: {
-			cout << "** Invalid Command ** ";
+			std::cout << "** Invalid Command **" << std::endl;
 			break;
 		}
 		}
@@ -152,6 +156,7 @@ int main(int argc, char **argv) {
 
 	if (dc)
 		dc->close();
+
 	if (pc)
 		pc->close();
 }
