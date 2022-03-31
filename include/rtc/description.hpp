@@ -32,7 +32,7 @@ namespace rtc {
 const string DEFAULT_OPUS_AUDIO_PROFILE =
     "minptime=10;maxaveragebitrate=96000;stereo=1;sprop-stereo=1;useinbandfec=1";
 
-// Use Constrained Baseline profile Level 4.2 (necessary for Firefox)
+// Use Constrained Baseline profile Level 3.1 (necessary for Firefox)
 // https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#Supported_video_codecs
 // TODO: Should be 42E0 but 42C0 appears to be more compatible. Investigate this.
 const string DEFAULT_H264_VIDEO_PROFILE =
