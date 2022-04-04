@@ -2,13 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>libdatachannel media receiver example</title>
+    <title>libdatachannel media sender example</title>
 </head>
 <body>
 
-<p>Please enter the offer provided to you by the receiver application: </p>
+<p>Please enter the offer provided to you by the sender application: </p>
 <textarea cols="80" rows="25"></textarea>
 <button>Submit</button>
+
+<video id="video-element" muted></video>
 
 <script>
     document.querySelector('button').addEventListener('click',  async () => {
@@ -23,20 +25,18 @@
                 // We only want to provide an answer once all of our candidates have been added to the SDP.
                 const answer = pc.localDescription;
                 document.querySelector('textarea').value = JSON.stringify({"type": answer.type, sdp: answer.sdp});
-                document.querySelector('p').value = 'Please paste the answer in the receiver application.';
-                alert('Please paste the answer in the receiver application.');
+                document.querySelector('p').value = 'Please paste the answer in the sender application.';
+                alert('Please paste the answer in the sender application.');
             }
         }
 
-        await pc.setRemoteDescription(offer);
+		pc.ontrack = (evt) => {
+			const videoElement = document.getElementById('video-element');
+			videoElement.srcObject = evt.streams[0];
+			videoElement.play();
+		};
 
-        const media = await navigator.mediaDevices.getUserMedia({
-            video: {
-                width: 1280,
-                height: 720
-            }
-        });
-        media.getTracks().forEach(track => pc.addTrack(track, media));
+        await pc.setRemoteDescription(offer);
 
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
