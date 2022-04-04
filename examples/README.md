@@ -9,7 +9,7 @@ This directory contains different WebRTC clients and compatible WebSocket + JSON
 - [signaling-server-python](signaling-server-python) contains a similar signaling server in Python
 - [signaling-server-rust](signaling-server-rust) contains a similar signaling server in Rust (see [lerouxrgd/datachannel-rs](https://github.com/lerouxrgd/datachannel-rs) for Rust wrappers)
 
-- [media](media) is a copy/paste demo to send the webcam from your browser into gstreamer.
+- [media-receiver](media-receiver) is a copy/paste demo to send the webcam from your browser receive it into gstreamer.
 - [sfu-media](sfu-media) is a copy/paste SFU demo to relay the webcam between browsers.
 - [streamer](streamer) streams h264 and opus samples to web browsers (signaling-server-python is required).
 

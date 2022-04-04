@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>libdatachannel media example</title>
+    <title>libdatachannel media receiver example</title>
 </head>
 <body>
 
-<p>Please enter the offer provided to you by the application: </p>
+<p>Please enter the offer provided to you by the receiver application: </p>
 <textarea cols="50" rows="50"></textarea>
 <button>Submit</button>
 
@@ -23,8 +23,8 @@
                 // We only want to provide an answer once all of our candidates have been added to the SDP.
                 let answer = rtc.localDescription;
                 document.querySelector('textarea').value = JSON.stringify({"type": answer.type, sdp: answer.sdp});
-                document.querySelector('p').value = 'Please paste the answer in the application.';
-                alert('Please paste the answer in the application.');
+                document.querySelector('p').value = 'Please paste the answer in the receiver application.';
+                alert('Please paste the answer in the receiver application.');
             }
         }
         await rtc.setRemoteDescription(offer);

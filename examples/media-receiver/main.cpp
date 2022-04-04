@@ -1,5 +1,5 @@
 /*
- * libdatachannel media example
+ * libdatachannel media receiver example
  * Copyright (c) 2020 Staz Modrzynski
  * Copyright (c) 2020 Paul-Louis Ageneau
  *
@@ -85,12 +85,15 @@ int main() {
 		std::cout << "Please copy/paste the answer provided by the browser: " << std::endl;
 		std::string sdp;
 		std::getline(std::cin, sdp);
+
 		std::cout << "Got answer" << sdp << std::endl;
 		json j = json::parse(sdp);
 		rtc::Description answer(j["sdp"].get<std::string>(), j["type"].get<std::string>());
 		pc->setRemoteDescription(answer);
+
 		std::cout << "Press any key to exit." << std::endl;
-		std::cin >> sdp;
+		char dummy;
+		std::cin >> dummy;
 
 	} catch (const std::exception &e) {
 		std::cerr << "Error: " << e.what() << std::endl;
