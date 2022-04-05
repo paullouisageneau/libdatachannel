@@ -1120,7 +1120,7 @@ bool PeerConnection::changeSignalingState(SignalingState newState) {
 		return false;
 
 	std::ostringstream s;
-	s << state;
+	s << newState;
 	PLOG_INFO << "Changed signaling state to " << s.str();
 	mProcessor->enqueue(signalingStateChangeCallback.wrap(), newState);
 	return true;
