@@ -92,7 +92,7 @@ bool Track::isOpen(void) const {
 	std::shared_lock lock(mMutex);
 	return !mIsClosed && mDtlsSrtpTransport.lock();
 #else
-	return !mIsClosed;
+	return false;
 #endif
 }
 
@@ -184,8 +184,7 @@ bool Track::transportSend([[maybe_unused]] message_ptr message) {
 
 	return transport->sendMedia(message);
 #else
-	PLOG_WARNING << "Ignoring track send (not compiled with media support)";
-	return false;
+	throw std::runtime_error("Track is disabled (not compiled with media support)");
 #endif
 }
 

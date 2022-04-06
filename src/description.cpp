@@ -310,8 +310,8 @@ string Description::generateSdp(string_view eol) const {
 	                        ? (string(cand->family() == Candidate::Family::Ipv6 ? "IP6" : "IP4") +
 	                           " " + *cand->address())
 	                        : "IP4 0.0.0.0";
-	const string port = std::to_string(
-	    cand && cand->isResolved() ? *cand->port() : 9); // Port 9 is the discard protocol
+	const uint16_t port =
+	    cand && cand->isResolved() ? *cand->port() : 9; // Port 9 is the discard protocol
 
 	// Entries
 	bool first = true;
@@ -345,8 +345,8 @@ string Description::generateApplicationSdp(string_view eol) const {
 	                        ? (string(cand->family() == Candidate::Family::Ipv6 ? "IP6" : "IP4") +
 	                           " " + *cand->address())
 	                        : "IP4 0.0.0.0";
-	const string port = std::to_string(
-	    cand && cand->isResolved() ? *cand->port() : 9); // Port 9 is the discard protocol
+	const uint16_t port =
+	    cand && cand->isResolved() ? *cand->port() : 9; // Port 9 is the discard protocol
 
 	// Application
 	auto app = mApplication ? mApplication : std::make_shared<Application>();
@@ -397,7 +397,7 @@ shared_ptr<Description::Entry> Description::createEntry(string mline, string mid
 	string type = mline.substr(0, mline.find(' '));
 	if (type == "application") {
 		removeApplication();
-		mApplication = std::make_shared<Application>(std::move(mid));
+		mApplication = std::make_shared<Application>(mline, std::move(mid));
 		mEntries.emplace_back(mApplication);
 		return mApplication;
 	} else {
@@ -418,11 +418,11 @@ void Description::removeApplication() {
 	mApplication.reset();
 }
 
-bool Description::hasApplication() const { return mApplication != nullptr; }
+bool Description::hasApplication() const { return mApplication && !mApplication->isRemoved(); }
 
 bool Description::hasAudioOrVideo() const {
 	for (auto entry : mEntries)
-		if (entry != mApplication)
+		if (entry != mApplication && !entry->isRemoved())
 			return true;
 
 	return false;
@@ -515,14 +515,20 @@ unsigned int Description::mediaCount() const { return unsigned(mEntries.size());
 Description::Entry::Entry(const string &mline, string mid, Direction dir)
     : mMid(std::move(mid)), mDirection(dir) {
 
-	unsigned int port;
+	uint16_t port;
 	std::istringstream ss(mline);
 	ss >> mType;
-	ss >> port; // ignored
+	ss >> port;
 	ss >> mDescription;
+
+	// RFC 3264: Existing media streams are removed by creating a new SDP with the port number for
+	// that stream set to zero.
+	mIsRemoved = (port == 0);
 }
 
 void Description::Entry::setDirection(Direction dir) { mDirection = dir; }
+
+void Description::Entry::setRemoved() { mIsRemoved = true; }
 
 std::vector<string> Description::attributes() const { return mAttributes; }
 
@@ -561,11 +567,14 @@ void Description::Entry::addExtMap(ExtMap map) {
 
 void Description::Entry::removeExtMap(int id) { mExtMaps.erase(id); }
 
-Description::Entry::operator string() const { return generateSdp("\r\n", "IP4 0.0.0.0", "9"); }
+Description::Entry::operator string() const { return generateSdp("\r\n", "IP4 0.0.0.0", 9); }
 
-string Description::Entry::generateSdp(string_view eol, string_view addr, string_view port) const {
+string Description::Entry::generateSdp(string_view eol, string_view addr, uint16_t port) const {
 	std::ostringstream sdp;
-	sdp << "m=" << type() << ' ' << port << ' ' << description() << eol;
+	// RFC 3264: Existing media streams are removed by creating a new SDP with the port number for
+	// that stream set to zero. [...] A stream that is offered with a port of zero MUST be marked
+	// with port zero in the answer.
+	sdp << "m=" << type() << ' ' << (mIsRemoved ? 0 : port) << ' ' << description() << eol;
 	sdp << "c=IN " << addr << eol;
 	sdp << generateSdpLines(eol);
 
@@ -760,6 +769,9 @@ bool Description::Media::hasSSRC(uint32_t ssrc) {
 
 Description::Application::Application(string mid)
     : Entry("application 9 UDP/DTLS/SCTP", std::move(mid), Direction::SendRecv) {}
+
+Description::Application::Application(const string &mline, string mid)
+    : Entry(mline, std::move(mid), Direction::SendRecv) {}
 
 string Description::Application::description() const {
 	return Entry::description() + " webrtc-datachannel";
