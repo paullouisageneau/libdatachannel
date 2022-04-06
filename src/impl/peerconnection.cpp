@@ -863,24 +863,6 @@ void PeerConnection::processLocalDescription(Description description) {
 
 	if (description.type() == Description::Type::Offer) {
 		// This is an offer, add locally created data channels and tracks
-		// Add application for data channels
-		if (!description.hasApplication()) {
-			std::shared_lock lock(mDataChannelsMutex);
-			if (!mDataChannels.empty()) {
-				unsigned int m = 0;
-				while (description.hasMid(std::to_string(m)))
-					++m;
-				Description::Application app(std::to_string(m));
-				app.setSctpPort(localSctpPort);
-				app.setMaxMessageSize(localMaxMessageSize);
-
-				PLOG_DEBUG << "Adding application to local description, mid=\"" << app.mid()
-				           << "\"";
-
-				description.addMedia(std::move(app));
-			}
-		}
-
 		// Add media for local tracks
 		std::shared_lock lock(mTracksMutex);
 		for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it) {
@@ -898,6 +880,25 @@ void PeerConnection::processLocalDescription(Description description) {
 				           << (media.direction() != Description::Direction::Inactive);
 
 				description.addMedia(std::move(media));
+			}
+		}
+
+		// Add application for data channels
+		if (!description.hasApplication()) {
+			std::shared_lock lock(mDataChannelsMutex);
+			if (!mDataChannels.empty()) {
+				// Prevents mid collision with remote or local tracks
+				unsigned int m = 0;
+				while (description.hasMid(std::to_string(m)))
+					++m;
+				Description::Application app(std::to_string(m));
+				app.setSctpPort(localSctpPort);
+				app.setMaxMessageSize(localMaxMessageSize);
+
+				PLOG_DEBUG << "Adding application to local description, mid=\"" << app.mid()
+				           << "\"";
+
+				description.addMedia(std::move(app));
 			}
 		}
 
