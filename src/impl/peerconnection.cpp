@@ -419,42 +419,47 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		return;
 	}
 
-	uint16_t stream = uint16_t(message->stream);
+	const uint16_t stream = uint16_t(message->stream);
 	auto channel = findDataChannel(stream);
-	if (!channel) {
+
+	if (DataChannel::IsOpenMessage(message)) {
 		auto iceTransport = getIceTransport();
 		auto sctpTransport = getSctpTransport();
 		if (!iceTransport || !sctpTransport)
 			return;
 
-		// See https://tools.ietf.org/html/rfc8832
-		const byte dataChannelOpenMessage{0x03};
-		uint16_t remoteParity = (iceTransport->role() == Description::Role::Active) ? 1 : 0;
-		if (message->type == Message::Control) {
-			if (message->size() == 0 || *message->data() != dataChannelOpenMessage)
-				return; // ignore
-
-			if (stream % 2 != remoteParity) {
-				// The odd/even rule is violated, close the DataChannel
-				sctpTransport->closeStream(message->stream);
-				return;
-			}
-
-			channel =
-			    std::make_shared<NegotiatedDataChannel>(weak_from_this(), sctpTransport, stream);
-			channel->openCallback = weak_bind(&PeerConnection::triggerDataChannel, this,
-			                                  weak_ptr<DataChannel>{channel});
-
-			std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
-			mDataChannels.emplace(stream, channel);
-
-		} else {
-			// Invalid, close the DataChannel
+		const uint16_t remoteParity = (iceTransport->role() == Description::Role::Active) ? 1 : 0;
+		if (stream % 2 != remoteParity) {
+			// The odd/even rule is violated, close the DataChannel
+			PLOG_WARNING << "Got open message violating the odd/even rule on stream " << stream;
 			sctpTransport->closeStream(message->stream);
 			return;
 		}
+
+		if (channel && channel->isOpen()) {
+			PLOG_WARNING << "Got open message on stream " << stream
+			             << " for an already open DataChannel, closing it first";
+			channel->close();
+		}
+
+		channel = std::make_shared<NegotiatedDataChannel>(weak_from_this(), sctpTransport, stream);
+		channel->openCallback =
+		    weak_bind(&PeerConnection::triggerDataChannel, this, weak_ptr<DataChannel>{channel});
+
+		std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
+		mDataChannels.emplace(stream, channel);
 	}
 
+	if (!channel) {
+		// Invalid, close the DataChannel
+		PLOG_WARNING << "Got unexpected message on stream " << stream;
+		if (auto sctpTransport = getSctpTransport())
+			sctpTransport->closeStream(message->stream);
+
+		return;
+	}
+
+	// Forward the message
 	channel->incoming(message);
 }
 

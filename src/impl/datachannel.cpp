@@ -78,6 +78,14 @@ struct CloseMessage {
 LogCounter COUNTER_USERNEG_OPEN_MESSAGE(
     plog::warning, "Number of open messages for a user-negotiated DataChannel received");
 
+bool DataChannel::IsOpenMessage(message_ptr message) {
+	if (message->type != Message::Control)
+		return false;
+
+	auto raw = reinterpret_cast<const uint8_t *>(message->data());
+	return !message->empty() && raw[0] == MESSAGE_OPEN;
+}
+
 DataChannel::DataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label,
                          string protocol, Reliability reliability)
     : mPeerConnection(pc), mStream(stream), mLabel(std::move(label)),
@@ -217,7 +225,7 @@ bool DataChannel::outgoing(message_ptr message) {
 }
 
 void DataChannel::incoming(message_ptr message) {
-	if (!message)
+	if (!message || mIsClosed)
 		return;
 
 	switch (message->type) {
