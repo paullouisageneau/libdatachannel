@@ -710,7 +710,7 @@ shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
 #if !RTC_ENABLE_MEDIA
 	// No media support, mark as removed
 	PLOG_WARNING << "Tracks are disabled (not compiled with media support)";
-	description.setRemoved();
+	description.markRemoved();
 #endif
 
 	shared_ptr<Track> track;
@@ -849,7 +849,7 @@ void PeerConnection::processLocalDescription(Description description) {
 
 					        } else {
 						        auto reciprocated = remoteMedia->reciprocate();
-						        reciprocated.setRemoved();
+						        reciprocated.markRemoved();
 
 						        PLOG_DEBUG << "Adding media to local description, mid=\""
 						                   << reciprocated.mid()
@@ -866,7 +866,7 @@ void PeerConnection::processLocalDescription(Description description) {
 				        if (!reciprocated.isRemoved()) {
 							// No media support, mark as removed
 							PLOG_WARNING << "Rejecting track (not compiled with media support)";
-							reciprocated.setRemoved();
+							reciprocated.markRemoved();
 						}
 #endif
 				        incomingTrack(reciprocated);

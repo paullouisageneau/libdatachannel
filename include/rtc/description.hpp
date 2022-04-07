@@ -96,7 +96,7 @@ public:
 		void setDirection(Direction dir);
 
 		bool isRemoved() const { return mIsRemoved; }
-		void setRemoved();
+		void markRemoved();
 
 		std::vector<string> attributes() const;
 		void addAttribute(string attr);

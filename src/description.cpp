@@ -528,7 +528,7 @@ Description::Entry::Entry(const string &mline, string mid, Direction dir)
 
 void Description::Entry::setDirection(Direction dir) { mDirection = dir; }
 
-void Description::Entry::setRemoved() { mIsRemoved = true; }
+void Description::Entry::markRemoved() { mIsRemoved = true; }
 
 std::vector<string> Description::attributes() const { return mAttributes; }
 
