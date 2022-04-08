@@ -513,7 +513,7 @@ Arguments:
 
 - `id`: the channel identifier
 - `buffer`: a user-supplied buffer where to write the message data
-- `size`: a pointer to a user-supplied int which must be initialized to the size of `buffer`. On success, the function will write the size of the message to it before returning.
+- `size`: a pointer to a user-supplied int which must be initialized to the size of `buffer`. On success, the function will write the size of the message to it before returning (positive size if binary, negative size including terminating 0 if string).
 
 Return value: `RTC_ERR_SUCCESS` or a negative error code (In particular, `RTC_ERR_NOT_AVAIL` is returned when there are no pending messages)
 
