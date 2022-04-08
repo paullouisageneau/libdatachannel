@@ -105,8 +105,10 @@ void test_turn_connectivity() {
 		}
 
 		dc->onOpen([wdc = make_weak_ptr(dc)]() {
-			if (auto dc = wdc.lock())
+			if (auto dc = wdc.lock()) {
+				cout << "DataChannel 2: Open" << endl;
 				dc->send("Hello from 2");
+			}
 		});
 
 		dc->onMessage([](variant<binary, string> message) {
@@ -162,7 +164,7 @@ void test_turn_connectivity() {
 	cout << "Local candidate 1:  " << local << endl;
 	cout << "Remote candidate 1: " << remote << endl;
 
-	if(local.type() != Candidate::Type::Relayed || remote.type() != Candidate::Type::Relayed)
+	if (local.type() != Candidate::Type::Relayed || remote.type() != Candidate::Type::Relayed)
 		throw runtime_error("Connection is not relayed as expected");
 
 	if (!pc2.getSelectedCandidatePair(&local, &remote))
@@ -171,7 +173,7 @@ void test_turn_connectivity() {
 	cout << "Local candidate 2:  " << local << endl;
 	cout << "Remote candidate 2: " << remote << endl;
 
-	if(local.type() != Candidate::Type::Relayed || remote.type() != Candidate::Type::Relayed)
+	if (local.type() != Candidate::Type::Relayed || remote.type() != Candidate::Type::Relayed)
 		throw runtime_error("Connection is not relayed as expected");
 
 	// Try to open a second data channel with another label

@@ -108,8 +108,10 @@ void test_connectivity() {
 		}
 
 		dc->onOpen([wdc = make_weak_ptr(dc)]() {
-			if (auto dc = wdc.lock())
+			if (auto dc = wdc.lock()) {
+				cout << "DataChannel 2: Open" << endl;
 				dc->send("Hello from 2");
+			}
 		});
 
 		dc->onMessage([](variant<binary, string> message) {
@@ -149,7 +151,8 @@ void test_connectivity() {
 	if (!adc2 || !adc2->isOpen() || !dc1->isOpen())
 		throw runtime_error("DataChannel is not open");
 
-	if (dc1->maxMessageSize() != CUSTOM_MAX_MESSAGE_SIZE || dc2->maxMessageSize() != CUSTOM_MAX_MESSAGE_SIZE)
+	if (dc1->maxMessageSize() != CUSTOM_MAX_MESSAGE_SIZE ||
+	    dc2->maxMessageSize() != CUSTOM_MAX_MESSAGE_SIZE)
 		throw runtime_error("DataChannel max message size is incorrect");
 
 	if (auto addr = pc1.localAddress())

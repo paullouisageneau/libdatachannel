@@ -97,6 +97,7 @@ static void RTC_API openCallback(int id, void *ptr) {
 static void RTC_API closedCallback(int id, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->connected = false;
+	printf("DataChannel %d: Closed\n", peer == peer1 ? 1 : 2);
 }
 
 static void RTC_API messageCallback(int id, const char *message, int size, void *ptr) {
@@ -152,9 +153,6 @@ static void RTC_API dataChannelCallback(int pc, int dc, void *ptr) {
 	rtcSetMessageCallback(dc, messageCallback);
 
 	peer->dc = dc;
-
-	const char *message = peer == peer1 ? "Hello from 1" : "Hello from 2";
-	rtcSendMessage(peer->dc, message, -1); // negative size indicates a null-terminated string
 }
 
 static Peer *createPeer(const rtcConfiguration *config) {
