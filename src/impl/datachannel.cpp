@@ -75,8 +75,13 @@ struct CloseMessage {
 };
 #pragma pack(pop)
 
-LogCounter COUNTER_USERNEG_OPEN_MESSAGE(
-    plog::warning, "Number of open messages for a user-negotiated DataChannel received");
+bool DataChannel::IsOpenMessage(message_ptr message) {
+	if (message->type != Message::Control)
+		return false;
+
+	auto raw = reinterpret_cast<const uint8_t *>(message->data());
+	return !message->empty() && raw[0] == MESSAGE_OPEN;
+}
 
 DataChannel::DataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label,
                          string protocol, Reliability reliability)
@@ -193,8 +198,7 @@ void DataChannel::open(shared_ptr<SctpTransport> transport) {
 }
 
 void DataChannel::processOpenMessage(message_ptr) {
-	PLOG_DEBUG << "Received an open message for a user-negotiated DataChannel, ignoring";
-	COUNTER_USERNEG_OPEN_MESSAGE++;
+	PLOG_WARNING << "Received an open message for a user-negotiated DataChannel, ignoring";
 }
 
 bool DataChannel::outgoing(message_ptr message) {
@@ -218,7 +222,7 @@ bool DataChannel::outgoing(message_ptr message) {
 }
 
 void DataChannel::incoming(message_ptr message) {
-	if (!message)
+	if (!message || mIsClosed)
 		return;
 
 	switch (message->type) {
@@ -260,12 +264,6 @@ void DataChannel::incoming(message_ptr message) {
 NegotiatedDataChannel::NegotiatedDataChannel(weak_ptr<PeerConnection> pc, uint16_t stream,
                                              string label, string protocol, Reliability reliability)
     : DataChannel(pc, stream, std::move(label), std::move(protocol), std::move(reliability)) {}
-
-NegotiatedDataChannel::NegotiatedDataChannel(weak_ptr<PeerConnection> pc,
-                                             weak_ptr<SctpTransport> transport, uint16_t stream)
-    : DataChannel(pc, stream, "", "", {}) {
-	mSctpTransport = transport;
-}
 
 NegotiatedDataChannel::~NegotiatedDataChannel() {}
 
@@ -314,7 +312,23 @@ void NegotiatedDataChannel::open(shared_ptr<SctpTransport> transport) {
 	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
 }
 
-void NegotiatedDataChannel::processOpenMessage(message_ptr message) {
+void NegotiatedDataChannel::processOpenMessage(message_ptr) {
+	PLOG_WARNING << "Received an open message for a locally-created DataChannel, ignoring";
+}
+
+IncomingDataChannel::IncomingDataChannel(weak_ptr<PeerConnection> pc,
+                                         weak_ptr<SctpTransport> transport, uint16_t stream)
+    : DataChannel(pc, stream, "", "", {}) {
+	mSctpTransport = transport;
+}
+
+IncomingDataChannel::~IncomingDataChannel() {}
+
+void IncomingDataChannel::open(shared_ptr<SctpTransport>) {
+	// Ignore
+}
+
+void IncomingDataChannel::processOpenMessage(message_ptr message) {
 	std::unique_lock lock(mMutex);
 	auto transport = mSctpTransport.lock();
 	if (!transport)
