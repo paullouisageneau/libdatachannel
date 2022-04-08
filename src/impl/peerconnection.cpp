@@ -442,7 +442,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 			channel->close();
 		}
 
-		channel = std::make_shared<NegotiatedDataChannel>(weak_from_this(), sctpTransport, stream);
+		channel = std::make_shared<IncomingDataChannel>(weak_from_this(), sctpTransport, stream);
 		channel->openCallback =
 		    weak_bind(&PeerConnection::triggerDataChannel, this, weak_ptr<DataChannel>{channel});
 

@@ -84,11 +84,18 @@ protected:
 struct NegotiatedDataChannel final : public DataChannel {
 	NegotiatedDataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label,
 	                      string protocol, Reliability reliability);
-	NegotiatedDataChannel(weak_ptr<PeerConnection> pc, weak_ptr<SctpTransport> transport,
-	                      uint16_t stream);
 	~NegotiatedDataChannel();
 
-	void open(impl_ptr<SctpTransport> transport) override;
+	void open(shared_ptr<SctpTransport> transport) override;
+	void processOpenMessage(message_ptr message) override;
+};
+
+struct IncomingDataChannel final : public DataChannel {
+	IncomingDataChannel(weak_ptr<PeerConnection> pc, weak_ptr<SctpTransport> transport,
+	                    uint16_t stream);
+	~IncomingDataChannel();
+
+	void open(shared_ptr<SctpTransport> transport) override;
 	void processOpenMessage(message_ptr message) override;
 };
 
