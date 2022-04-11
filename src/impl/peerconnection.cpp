@@ -707,6 +707,12 @@ void PeerConnection::remoteCloseDataChannels() {
 }
 
 shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
+#if !RTC_ENABLE_MEDIA
+	// No media support, mark as removed
+	PLOG_WARNING << "Tracks are disabled (not compiled with media support)";
+	description.markRemoved();
+#endif
+
 	shared_ptr<Track> track;
 	if (auto it = mTracks.find(description.mid()); it != mTracks.end())
 		if (track = it->second.lock(); track)
@@ -718,22 +724,27 @@ shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
 		mTrackLines.emplace_back(track);
 	}
 
+	if (description.isRemoved())
+		track->close();
+
 	return track;
 }
 
 void PeerConnection::incomingTrack(Description::Media description) {
 	std::unique_lock lock(mTracksMutex); // we are going to emplace
-#if !RTC_ENABLE_MEDIA
-	if (mTracks.empty()) {
-		PLOG_WARNING << "Tracks will be inative (not compiled with media support)";
-	}
-#endif
-	if (mTracks.find(description.mid()) == mTracks.end()) {
-		auto track = std::make_shared<Track>(weak_from_this(), std::move(description));
+	shared_ptr<Track> track;
+	if (auto it = mTracks.find(description.mid()); it != mTracks.end()) {
+		if (track = it->second.lock(); track)
+			track->setDescription(std::move(description));
+	} else {
+		track = std::make_shared<Track>(weak_from_this(), std::move(description));
 		mTracks.emplace(std::make_pair(track->mid(), track));
 		mTrackLines.emplace_back(track);
 		triggerTrack(track);
 	}
+
+	if (track && description.isRemoved())
+		track->close();
 }
 
 void PeerConnection::openTracks() {
@@ -764,9 +775,13 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 
 	int activeMediaCount = 0;
 	for (unsigned int i = 0; i < description.mediaCount(); ++i)
-		std::visit(rtc::overloaded{[&](const Description::Application *) { ++activeMediaCount; },
+		std::visit(rtc::overloaded{[&](const Description::Application *application) {
+			                           if (!application->isRemoved())
+				                           ++activeMediaCount;
+		                           },
 		                           [&](const Description::Media *media) {
-			                           if (media->direction() != Description::Direction::Inactive)
+			                           if (!media->isRemoved() ||
+			                               media->direction() != Description::Direction::Inactive)
 				                           ++activeMediaCount;
 		                           }},
 		           description.media(i));
@@ -825,22 +840,20 @@ void PeerConnection::processLocalDescription(Description description) {
 					        // Prefer local description
 					        if (auto track = it->second.lock()) {
 						        auto media = track->description();
-#if !RTC_ENABLE_MEDIA
-						        // No media support, mark as inactive
-						        media.setDirection(Description::Direction::Inactive);
-#endif
-						        PLOG_DEBUG
-						            << "Adding media to local description, mid=\"" << media.mid()
-						            << "\", active=" << std::boolalpha
-						            << (media.direction() != Description::Direction::Inactive);
+
+						        PLOG_DEBUG << "Adding media to local description, mid=\""
+						                   << media.mid() << "\", removed=" << std::boolalpha
+						                   << media.isRemoved();
 
 						        description.addMedia(std::move(media));
+
 					        } else {
 						        auto reciprocated = remoteMedia->reciprocate();
-						        reciprocated.setDirection(Description::Direction::Inactive);
+						        reciprocated.markRemoved();
 
-						        PLOG_DEBUG << "Adding inactive media to local description, mid=\""
-						                   << reciprocated.mid() << "\"";
+						        PLOG_DEBUG << "Adding media to local description, mid=\""
+						                   << reciprocated.mid()
+						                   << "\", removed=true (track is destroyed)";
 
 						        description.addMedia(std::move(reciprocated));
 					        }
@@ -850,15 +863,17 @@ void PeerConnection::processLocalDescription(Description description) {
 
 				        auto reciprocated = remoteMedia->reciprocate();
 #if !RTC_ENABLE_MEDIA
-				        // No media support, mark as inactive
-				        reciprocated.setDirection(Description::Direction::Inactive);
+				        if (!reciprocated.isRemoved()) {
+							// No media support, mark as removed
+							PLOG_WARNING << "Rejecting track (not compiled with media support)";
+							reciprocated.markRemoved();
+						}
 #endif
 				        incomingTrack(reciprocated);
 
-				        PLOG_DEBUG
-				            << "Reciprocating media in local description, mid=\""
-				            << reciprocated.mid() << "\", active=" << std::boolalpha
-				            << (reciprocated.direction() != Description::Direction::Inactive);
+				        PLOG_DEBUG << "Reciprocating media in local description, mid=\""
+				                   << reciprocated.mid() << "\", removed=" << std::boolalpha
+				                   << reciprocated.isRemoved();
 
 				        description.addMedia(std::move(reciprocated));
 			        },
@@ -876,13 +891,9 @@ void PeerConnection::processLocalDescription(Description description) {
 					continue;
 
 				auto media = track->description();
-#if !RTC_ENABLE_MEDIA
-				// No media support, mark as inactive
-				media.setDirection(Description::Direction::Inactive);
-#endif
+
 				PLOG_DEBUG << "Adding media to local description, mid=\"" << media.mid()
-				           << "\", active=" << std::boolalpha
-				           << (media.direction() != Description::Direction::Inactive);
+				           << "\", removed=" << std::boolalpha << media.isRemoved();
 
 				description.addMedia(std::move(media));
 			}
@@ -991,6 +1002,8 @@ void PeerConnection::processRemoteDescription(Description description) {
 		if (!sctpTransport && dtlsTransport &&
 		    dtlsTransport->state() == Transport::State::Connected)
 			initSctpTransport();
+	} else {
+		mProcessor->enqueue(&PeerConnection::remoteCloseDataChannels, this);
 	}
 }
 

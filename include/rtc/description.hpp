@@ -91,8 +91,12 @@ public:
 		virtual string type() const { return mType; }
 		virtual string description() const { return mDescription; }
 		virtual string mid() const { return mMid; }
+
 		Direction direction() const { return mDirection; }
 		void setDirection(Direction dir);
+
+		bool isRemoved() const { return mIsRemoved; }
+		void markRemoved();
 
 		std::vector<string> attributes() const;
 		void addAttribute(string attr);
@@ -117,7 +121,7 @@ public:
 		void removeExtMap(int id);
 
 		operator string() const;
-		string generateSdp(string_view eol, string_view addr, string_view port) const;
+		string generateSdp(string_view eol, string_view addr, uint16_t port) const;
 
 		virtual void parseSdpLine(string_view line);
 
@@ -143,11 +147,13 @@ public:
 		string mDescription;
 		string mMid;
 		Direction mDirection;
+		bool mIsRemoved;
 	};
 
 	struct RTC_CPP_EXPORT Application : public Entry {
 	public:
 		Application(string mid = "data");
+		Application(const string &mline, string mid);
 		virtual ~Application() = default;
 
 		string description() const override;
