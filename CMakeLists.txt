@@ -26,8 +26,8 @@ else()
 	endif()
 endif()
 
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 set(BUILD_SHARED_LIBS OFF) # to force usrsctp to be built static
 
 if(WIN32)
