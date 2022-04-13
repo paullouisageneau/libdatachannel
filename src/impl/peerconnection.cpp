@@ -1074,7 +1074,7 @@ void PeerConnection::triggerPendingTracks() {
 
 		auto impl = std::move(*next);
 		trackCallback(std::make_shared<rtc::Track>(impl));
-		impl->triggerOpen();
+		// Do not trigger open immediately for tracks as it'll be done later
 	}
 }
 
