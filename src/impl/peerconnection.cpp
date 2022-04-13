@@ -864,10 +864,10 @@ void PeerConnection::processLocalDescription(Description description) {
 				        auto reciprocated = remoteMedia->reciprocate();
 #if !RTC_ENABLE_MEDIA
 				        if (!reciprocated.isRemoved()) {
-							// No media support, mark as removed
-							PLOG_WARNING << "Rejecting track (not compiled with media support)";
-							reciprocated.markRemoved();
-						}
+					        // No media support, mark as removed
+					        PLOG_WARNING << "Rejecting track (not compiled with media support)";
+					        reciprocated.markRemoved();
+				        }
 #endif
 				        incomingTrack(reciprocated);
 
@@ -1087,7 +1087,7 @@ void PeerConnection::triggerPendingTracks() {
 
 		auto impl = std::move(*next);
 		trackCallback(std::make_shared<rtc::Track>(impl));
-		impl->triggerOpen();
+		// Do not trigger open immediately for tracks as it'll be done later
 	}
 }
 
