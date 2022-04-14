@@ -1288,6 +1288,9 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 		if (config->proxyServer)
 			c.proxyServer.emplace(config->proxyServer);
 
+		for (int i = 0; i < config->protocolsCount; ++i)
+			c.protocols.emplace_back(string(config->protocols[i]));
+
 		auto webSocket = std::make_shared<WebSocket>(std::move(c));
 		webSocket->open(url);
 		return emplaceWebSocket(webSocket);
