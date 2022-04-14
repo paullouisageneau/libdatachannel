@@ -365,6 +365,7 @@ int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, cons
 
 typedef struct {
 	bool disableTlsVerification; // if true, don't verify the TLS certificate
+	const char *proxyServer;     // unsupported for now
 } rtcWsConfiguration;
 
 RTC_EXPORT int rtcCreateWebSocket(const char *url); // returns ws id

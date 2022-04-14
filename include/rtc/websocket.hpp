@@ -23,6 +23,7 @@
 
 #include "channel.hpp"
 #include "common.hpp"
+#include "configuration.hpp"
 
 namespace rtc {
 
@@ -43,6 +44,7 @@ public:
 
 	struct Configuration {
 		bool disableTlsVerification = false; // if true, don't verify the TLS certificate
+		optional<ProxyServer> proxyServer;   // unsupported for now
 		std::vector<string> protocols;
 	};
 

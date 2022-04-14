@@ -1284,6 +1284,10 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 
 		WebSocket::Configuration c;
 		c.disableTlsVerification = config->disableTlsVerification;
+
+		if (config->proxyServer)
+			c.proxyServer.emplace(config->proxyServer);
+
 		auto webSocket = std::make_shared<WebSocket>(std::move(c));
 		webSocket->open(url);
 		return emplaceWebSocket(webSocket);
