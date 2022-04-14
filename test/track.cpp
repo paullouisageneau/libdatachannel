@@ -82,11 +82,17 @@ void test_track() {
 	shared_ptr<Track> t2;
 	string newTrackMid;
 	pc2.onTrack([&t2, &newTrackMid](shared_ptr<Track> t) {
-		cout << "Track 2: Received with mid \"" << t->mid() << "\"" << endl;
-		if (t->mid() != newTrackMid) {
+		string mid = t->mid();
+		cout << "Track 2: Received track with mid \"" << mid << "\"" << endl;
+		if (mid != newTrackMid) {
 			cerr << "Wrong track mid" << endl;
 			return;
 		}
+
+		t->onOpen([mid]() { cout << "Track 2: Track with mid \"" << mid << "\" is open" << endl; });
+
+		t->onClosed(
+		    [mid]() { cout << "Track 2: Track with mid \"" << mid << "\" is closed" << endl; });
 
 		std::atomic_store(&t2, t);
 	});
@@ -130,6 +136,9 @@ void test_track() {
 	this_thread::sleep_for(1s);
 	pc2.close();
 	this_thread::sleep_for(1s);
+
+	if (!t1->isClosed() || !t2->isClosed())
+		throw runtime_error("Track is not closed");
 
 	cout << "Success" << endl;
 }
