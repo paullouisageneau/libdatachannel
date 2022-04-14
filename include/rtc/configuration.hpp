@@ -51,16 +51,18 @@ struct RTC_CPP_EXPORT IceServer {
 };
 
 struct RTC_CPP_EXPORT ProxyServer {
-	enum class Type { None = 0, Socks5, Http, Last = Http };
+	enum class Type { Http, Socks5 };
 
-	ProxyServer(Type type_, string hostname_, uint16_t port_, string username_ = "",
-	            string password_ = "");
+	ProxyServer(const string &url);
+
+	ProxyServer(Type type_, string hostname_, uint16_t port_);
+	ProxyServer(Type type_, string hostname_, uint16_t port_, string username_, string password_);
 
 	Type type;
 	string hostname;
 	uint16_t port;
-	string username;
-	string password;
+	optional<string> username;
+	optional<string> password;
 };
 
 enum class CertificateType {

@@ -417,15 +417,34 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp-timeout", 200, nullptr);
 
 	// Proxy
-	if (config.proxyServer.has_value()) {
-		ProxyServer proxyServer = config.proxyServer.value();
-		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-type", proxyServer.type, nullptr);
+	if (config.proxyServer) {
+		const auto &proxyServer = *config.proxyServer;
+
+		NiceProxyType type;
+		switch (proxyServer.type) {
+		case ProxyServer::Type::Http:
+			type = NICE_PROXY_TYPE_HTTP;
+			break;
+		case ProxyServer::Type::Socks5:
+			type = NICE_PROXY_TYPE_SOCKS5;
+			break;
+		default:
+			PLOG_WARNING << "Proxy server type is not supported";
+			type = NICE_PROXY_TYPE_NONE;
+			break;
+		}
+
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-type", type, nullptr);
 		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-ip", proxyServer.hostname.c_str(), nullptr);
-		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-port", proxyServer.port, nullptr);
-		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-username", proxyServer.username.c_str(),
-		             nullptr);
-		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-password", proxyServer.password.c_str(),
-		             nullptr);
+		g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-port", guint(proxyServer.port), nullptr);
+
+		if (proxyServer.username)
+			g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-username",
+			             proxyServer.username->c_str(), nullptr);
+
+		if (proxyServer.password)
+			g_object_set(G_OBJECT(mNiceAgent.get()), "proxy-password",
+			             proxyServer.password->c_str(), nullptr);
 	}
 
 	if (config.enableIceUdpMux) {
