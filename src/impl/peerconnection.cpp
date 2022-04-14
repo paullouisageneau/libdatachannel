@@ -83,8 +83,9 @@ void PeerConnection::close() {
 
 	negotiationNeeded = false;
 
-	// Close data channels asynchronously
+	// Close data channels and tracks asynchronously
 	mProcessor->enqueue(&PeerConnection::closeDataChannels, this);
+	mProcessor->enqueue(&PeerConnection::closeTracks, this);
 
 	closeTransports();
 }
@@ -225,9 +226,11 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 				    break;
 			    case DtlsTransport::State::Failed:
 				    changeState(State::Failed);
+				    mProcessor->enqueue(&PeerConnection::closeTracks, this);
 				    break;
 			    case DtlsTransport::State::Disconnected:
 				    changeState(State::Disconnected);
+				    mProcessor->enqueue(&PeerConnection::closeTracks, this);
 				    break;
 			    default:
 				    // Ignore
@@ -752,12 +755,19 @@ void PeerConnection::openTracks() {
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
 		auto srtpTransport = std::dynamic_pointer_cast<DtlsSrtpTransport>(transport);
 		std::shared_lock lock(mTracksMutex); // read-only
-		for (auto it = mTracks.begin(); it != mTracks.end(); ++it)
-			if (auto track = it->second.lock())
+		for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it)
+			if (auto track = it->lock())
 				if (!track->isOpen())
 					track->open(srtpTransport);
 	}
 #endif
+}
+
+void PeerConnection::closeTracks() {
+	std::shared_lock lock(mTracksMutex); // read-only
+	for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it)
+		if (auto track = it->lock())
+			track->close();
 }
 
 void PeerConnection::validateRemoteDescription(const Description &description) {
