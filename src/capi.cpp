@@ -354,6 +354,9 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 		for (int i = 0; i < config->iceServersCount; ++i)
 			c.iceServers.emplace_back(string(config->iceServers[i]));
 
+		if (config->proxyServer)
+			c.proxyServer.emplace(config->proxyServer);
+
 		if (config->bindAddress)
 			c.bindAddress = string(config->bindAddress);
 
@@ -769,37 +772,37 @@ int rtcReceiveMessage(int id, char *buffer, int *size) {
 			return RTC_ERR_NOT_AVAIL;
 
 		return std::visit( //
-		overloaded{
-			[&](binary b) {
-				int ret = copyAndReturn(std::move(b), buffer, *size);
-				if (ret >= 0) {
-					*size = ret;
-					if (buffer) {
-						channel->receive(); // discard
-					}
-					
-					return RTC_ERR_SUCCESS;
-				} else {
-					*size = int(b.size());
-					return ret;
-				}
-			},
-			[&](string s) {
-				int ret = copyAndReturn(std::move(s), buffer, *size);
-				if (ret >= 0) {
-					*size = -ret;
-					if (buffer) {
-						channel->receive(); // discard
-					}
-					
-					return RTC_ERR_SUCCESS;
-				} else {
-					*size = -int(s.size() + 1);
-					return ret;
-				}
-			},
-		},
-		*message);
+		    overloaded{
+		        [&](binary b) {
+			        int ret = copyAndReturn(std::move(b), buffer, *size);
+			        if (ret >= 0) {
+				        *size = ret;
+				        if (buffer) {
+					        channel->receive(); // discard
+				        }
+
+				        return RTC_ERR_SUCCESS;
+			        } else {
+				        *size = int(b.size());
+				        return ret;
+			        }
+		        },
+		        [&](string s) {
+			        int ret = copyAndReturn(std::move(s), buffer, *size);
+			        if (ret >= 0) {
+				        *size = -ret;
+				        if (buffer) {
+					        channel->receive(); // discard
+				        }
+
+				        return RTC_ERR_SUCCESS;
+			        } else {
+				        *size = -int(s.size() + 1);
+				        return ret;
+			        }
+		        },
+		    },
+		    *message);
 	});
 }
 
@@ -1281,6 +1284,13 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 
 		WebSocket::Configuration c;
 		c.disableTlsVerification = config->disableTlsVerification;
+
+		if (config->proxyServer)
+			c.proxyServer.emplace(config->proxyServer);
+
+		for (int i = 0; i < config->protocolsCount; ++i)
+			c.protocols.emplace_back(string(config->protocols[i]));
+
 		auto webSocket = std::make_shared<WebSocket>(std::move(c));
 		webSocket->open(url);
 		return emplaceWebSocket(webSocket);

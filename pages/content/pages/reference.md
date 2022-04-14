@@ -80,6 +80,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config)
 typedef struct {
 	const char **iceServers;
 	int iceServersCount;
+	const char *proxyServer;
 	const char *bindAddress;
 	rtcCertificateType certificateType;
 	rtcTransportPolicy iceTransportPolicy;
@@ -98,8 +99,9 @@ Creates a Peer Connection.
 Arguments:
 
 - `config`: the configuration structure, containing:
-  - `iceServers` (optional): an array of pointers on null-terminated ice server URIs (NULL if unused)
+  - `iceServers` (optional): an array of pointers on null-terminated ICE server URIs (NULL if unused)
   - `iceServersCount` (optional): number of URLs in the array pointed by `iceServers` (0 if unused)
+  - `proxyServer` (optional): if non-NULL, specifies the proxy server URI to use for TURN relaying (ignored with libjuice as ICE backend)
   - `bindAddress` (optional): if non-NULL, bind only to the given local address (ignored with libnice as ICE backend)
   - `certificateType` (optional): certificate type, either `RTC_CERTIFICATE_ECDSA` or `RTC_CERTIFICATE_RSA` (0 or `RTC_CERTIFICATE_DEFAULT` if default)
   - `iceTransportPolicy` (optional): ICE transport policy, if set to `RTC_TRANSPORT_POLICY_RELAY`, the PeerConnection will emit only relayed candidates (0 or `RTC_TRANSPORT_POLICY_ALL` if default)
@@ -115,7 +117,10 @@ Return value: the identifier of the new Peer Connection or a negative error code
 
 The Peer Connection must be deleted with `rtcDeletePeerConnection`.
 
-The format of each entry in `iceServers` must match the format `[("stun"|"turn"|"turns") ":"][login ":" password "@"]hostname[":" port]["?transport=" ("udp"|"tcp"|"tls")]`. The default scheme is STUN, the default port is 3478 (5349 over TLS), and the default transport is UDP.  For instance, a STUN server URI could be `mystunserver.org`, and a TURN server URI could be `turn:myuser:12345678@turnserver.org`. Note transports TCP and TLS are only available for a TURN server with libnice as ICE backend and govern only the TURN control connection, meaning relaying is always performed over UDP.
+Each entry in `iceServers` must match the format `[("stun"|"turn"|"turns") (":"|"://")][username ":" password "@"]hostname[":" port]["?transport=" ("udp"|"tcp"|"tls")]`. The default scheme is STUN, the default port is 3478 (5349 over TLS), and the default transport is UDP.  For instance, a STUN server URI could be `mystunserver.org`, and a TURN server URI could be `turn:myuser:12345678@turnserver.org`. Note transports TCP and TLS are only available for a TURN server with libnice as ICE backend and govern only the TURN control connection, meaning relaying is always performed over UDP.
+
+The `proxyServer` URI, if present, must match the format `[("http"|"socks5") (":"|"://")][username ":" password "@"]hostname["    :" port]`. The default scheme is HTTP, and the default port is 3128 for HTTP or 1080 for SOCKS5.
+
 
 #### rtcDeletePeerConnection
 
@@ -763,6 +768,8 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config)
 
 typedef struct {
 	bool disableTlsVerification;    // if true, disable TLS certificate verification
+	const char **protocols;
+	int protocolsCount;
 } rtcWsConfiguration;
 ```
 
@@ -773,6 +780,9 @@ Arguments:
 - `url`: a null-terminated string representing the fully-qualified URL to open.
 - `config`: a structure with the following parameters:
   - `bool disableTlsVerification`: if true, don't verify the TLS certificate, else try to verify it if possible
+  - `protocols` (optional): an array of pointers on null-terminated protocol names (NULL if unused)
+  - `protocolsCount` (optional): number of URLs in the array pointed by `protocols` (0 if unused)
+
 
 Return value: the identifier of the new WebSocket or a negative error code
 

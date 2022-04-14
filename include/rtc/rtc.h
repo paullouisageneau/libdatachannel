@@ -152,6 +152,7 @@ RTC_EXPORT void *rtcGetUserPointer(int i);
 typedef struct {
 	const char **iceServers;
 	int iceServersCount;
+	const char *proxyServer; // libnice only
 	const char *bindAddress; // libjuice only, NULL means any
 	rtcCertificateType certificateType;
 	rtcTransportPolicy iceTransportPolicy;
@@ -364,6 +365,9 @@ int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, cons
 
 typedef struct {
 	bool disableTlsVerification; // if true, don't verify the TLS certificate
+	const char *proxyServer;     // unsupported for now
+	const char **protocols;
+	int protocolsCount;
 } rtcWsConfiguration;
 
 RTC_EXPORT int rtcCreateWebSocket(const char *url); // returns ws id
