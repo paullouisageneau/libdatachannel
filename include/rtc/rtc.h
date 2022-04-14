@@ -152,6 +152,7 @@ RTC_EXPORT void *rtcGetUserPointer(int i);
 typedef struct {
 	const char **iceServers;
 	int iceServersCount;
+	const char *proxyServer; // libnice only
 	const char *bindAddress; // libjuice only, NULL means any
 	rtcCertificateType certificateType;
 	rtcTransportPolicy iceTransportPolicy;
