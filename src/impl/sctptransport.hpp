@@ -35,7 +35,7 @@
 
 namespace rtc::impl {
 
-class SctpTransport final : public Transport {
+class SctpTransport final : public Transport, public std::enable_shared_from_this<SctpTransport> {
 public:
 	static void Init();
 	static void SetSettings(const SctpSettings &s);
