@@ -23,6 +23,7 @@
 #include "datachannel.hpp"
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
+#include "processor.hpp"
 #include "sctptransport.hpp"
 #include "track.hpp"
 
@@ -101,7 +102,10 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	void resetCallbacks();
 
-	void outgoingMedia(message_ptr message);
+	// Helper method for asynchronous callback invocation
+	template <typename... Args> void trigger(synchronized_callback<Args...> &cb, Args... args) {
+		cb(std::move(args...));
+	}
 
 	const Configuration config;
 	std::atomic<State> state = State::New;
@@ -121,8 +125,8 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 private:
 	const init_token mInitToken = Init::Instance().token();
 	const future_certificate_ptr mCertificate;
-	const unique_ptr<Processor> mProcessor;
 
+	Processor mProcessor;
 	optional<Description> mLocalDescription, mRemoteDescription;
 	optional<Description> mCurrentLocalDescription;
 	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;

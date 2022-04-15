@@ -447,7 +447,7 @@ void SctpTransport::closeStream(unsigned int stream) {
 	mSendQueue.push(make_message(0, Message::Reset, to_uint16(stream)));
 
 	// This method must not call the buffered callback synchronously
-	mProcessor.enqueue(&SctpTransport::flush, this);
+	mProcessor.enqueue(&SctpTransport::flush, shared_from_this());
 }
 
 void SctpTransport::incoming(message_ptr message) {
@@ -702,12 +702,12 @@ void SctpTransport::handleUpcall() {
 
 	if (events & SCTP_EVENT_READ && mPendingRecvCount == 0) {
 		++mPendingRecvCount;
-		mProcessor.enqueue(&SctpTransport::doRecv, this);
+		mProcessor.enqueue(&SctpTransport::doRecv, shared_from_this());
 	}
 
 	if (events & SCTP_EVENT_WRITE && mPendingFlushCount == 0) {
 		++mPendingFlushCount;
-		mProcessor.enqueue(&SctpTransport::doFlush, this);
+		mProcessor.enqueue(&SctpTransport::doFlush, shared_from_this());
 	}
 }
 
