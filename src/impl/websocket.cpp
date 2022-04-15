@@ -48,7 +48,6 @@ WebSocket::WebSocket(optional<Configuration> optConfig, certificate_ptr certific
 
 WebSocket::~WebSocket() {
 	PLOG_VERBOSE << "Destroying WebSocket";
-	remoteClose();
 }
 
 void WebSocket::open(const string &url) {
