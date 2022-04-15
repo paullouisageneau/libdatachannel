@@ -1126,12 +1126,13 @@ bool PeerConnection::changeState(State newState) {
 	s << newState;
 	PLOG_INFO << "Changed state to " << s.str();
 
-	if (newState == State::Closed)
-		stateChangeCallback(State::Closed); // synchronous
-	else
+	if (newState == State::Closed) {
+		auto callback = std::move(stateChangeCallback); // steal the callback
+		callback(State::Closed);                        // call it synchronously
+	} else {
 		mProcessor.enqueue(&PeerConnection::trigger<State>, shared_from_this(), stateChangeCallback,
 		                   newState);
-
+	}
 	return true;
 }
 
