@@ -157,6 +157,11 @@ bool DtlsTransport::outgoing(message_ptr message) {
 	return Transport::outgoing(std::move(message));
 }
 
+bool DtlsTransport::demuxMessage(message_ptr) {
+	// Dummy
+	return false;
+}
+
 void DtlsTransport::postHandshake() {
 	// Dummy
 }
@@ -298,8 +303,11 @@ ssize_t DtlsTransport::WriteCallback(gnutls_transport_ptr_t ptr, const void *dat
 ssize_t DtlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen) {
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
 	try {
-		if (auto next = t->mIncomingQueue.pop()) {
+		while (auto next = t->mIncomingQueue.pop()) {
 			message_ptr message = std::move(*next);
+			if (t->demuxMessage(message))
+				continue;
+
 			ssize_t len = std::min(maxlen, message->size());
 			std::memcpy(data, message->data(), len);
 			gnutls_transport_set_errno(t->mSession, 0);
@@ -504,6 +512,11 @@ bool DtlsTransport::outgoing(message_ptr message) {
 	return Transport::outgoing(std::move(message));
 }
 
+bool DtlsTransport::demuxMessage(message_ptr) {
+	// Dummy
+	return false;
+}
+
 void DtlsTransport::postHandshake() {
 	// Dummy
 }
@@ -526,6 +539,9 @@ void DtlsTransport::runRecvLoop() {
 			// Process pending messages
 			while (auto next = mIncomingQueue.tryPop()) {
 				message_ptr message = std::move(*next);
+				if (demuxMessage(message))
+					continue;
+
 				BIO_write(mInBio, message->data(), int(message->size()));
 
 				if (state() == State::Connecting) {
