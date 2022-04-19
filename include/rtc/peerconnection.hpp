@@ -85,6 +85,7 @@ public:
 	optional<Description> remoteDescription() const;
 	optional<string> localAddress() const;
 	optional<string> remoteAddress() const;
+	uint16_t maxDataChannelId() const;
 	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
 	void setLocalDescription(Description::Type type = Description::Type::Unspec);

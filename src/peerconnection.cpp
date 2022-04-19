@@ -259,6 +259,8 @@ optional<string> PeerConnection::remoteAddress() const {
 	return iceTransport ? iceTransport->getRemoteAddress() : nullopt;
 }
 
+uint16_t PeerConnection::maxDataChannelId() const { return impl()->maxDataChannelStream(); }
+
 shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, DataChannelInit init) {
 	auto channelImpl = impl()->emplaceDataChannel(std::move(label), std::move(init));
 	auto channel = std::make_shared<DataChannel>(channelImpl);
@@ -319,9 +321,7 @@ void PeerConnection::onSignalingStateChange(std::function<void(SignalingState st
 	impl()->signalingStateChangeCallback = callback;
 }
 
-void PeerConnection::resetCallbacks() {
-	impl()->resetCallbacks();
-}
+void PeerConnection::resetCallbacks() { impl()->resetCallbacks(); }
 
 bool PeerConnection::getSelectedCandidatePair(Candidate *local, Candidate *remote) {
 	auto iceTransport = impl()->getIceTransport();
