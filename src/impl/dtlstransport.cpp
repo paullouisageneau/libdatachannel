@@ -157,7 +157,7 @@ bool DtlsTransport::outgoing(message_ptr message) {
 	return Transport::outgoing(std::move(message));
 }
 
-bool DtlsTransport::demuxMessage(message_ptr message) {
+bool DtlsTransport::demuxMessage(message_ptr) {
 	// Dummy
 	return false;
 }
@@ -512,7 +512,7 @@ bool DtlsTransport::outgoing(message_ptr message) {
 	return Transport::outgoing(std::move(message));
 }
 
-bool DtlsTransport::demuxMessage(message_ptr message) {
+bool DtlsTransport::demuxMessage(message_ptr) {
 	// Dummy
 	return false;
 }
