@@ -98,7 +98,7 @@ bool TcpTransport::send(message_ptr message) {
 	if (!message)
 		return trySendQueue();
 
-	PLOG_VERBOSE << "Send size=" << (message ? message->size() : 0);
+	PLOG_VERBOSE << "Send size=" << message->size();
 	return outgoing(message);
 }
 
