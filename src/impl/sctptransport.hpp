@@ -59,6 +59,8 @@ public:
 	bool flush();
 	void closeStream(unsigned int stream);
 
+	unsigned int maxStream() const;
+
 	void onBufferedAmount(amount_callback callback) {
 		mBufferedAmountCallback = std::move(callback);
 	}
@@ -106,6 +108,7 @@ private:
 
 	const Ports mPorts;
 	struct socket *mSock;
+	std::optional<uint16_t> mNegotiatedStreamsCount;
 
 	Processor mProcessor;
 	std::atomic<int> mPendingRecvCount = 0;

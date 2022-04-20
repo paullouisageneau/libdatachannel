@@ -47,7 +47,8 @@ public:
 	bool sendMedia(message_ptr message);
 
 private:
-	void incoming(message_ptr message) override;
+	void recvMedia(message_ptr message);
+	bool demuxMessage(message_ptr message) override;
 	void postHandshake() override;
 
 	message_callback mSrtpRecvCallback;

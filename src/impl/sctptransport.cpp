@@ -281,9 +281,12 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 	// The number of streams negotiated during SCTP association setup SHOULD be 65535, which is the
 	// maximum number of streams that can be negotiated during the association setup.
 	// See https://www.rfc-editor.org/rfc/rfc8831.html#section-6.2
+	// However, usrsctp allocates tables to hold the stream states. For 65535 streams, it results in
+	// the waste of a few MBs for each association. Therefore, we use a lower limit to save memory.
+	// See https://github.com/sctplab/usrsctp/issues/121
 	struct sctp_initmsg sinit = {};
-	sinit.sinit_num_ostreams = 65535;
-	sinit.sinit_max_instreams = 65535;
+	sinit.sinit_num_ostreams = MAX_SCTP_STREAMS_COUNT;
+	sinit.sinit_max_instreams = MAX_SCTP_STREAMS_COUNT;
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_INITMSG, &sinit, sizeof(sinit)))
 		throw std::runtime_error("Could not set socket option SCTP_INITMSG, errno=" +
 		                         std::to_string(errno));
@@ -448,6 +451,11 @@ void SctpTransport::closeStream(unsigned int stream) {
 
 	// This method must not call the buffered callback synchronously
 	mProcessor.enqueue(&SctpTransport::flush, shared_from_this());
+}
+
+unsigned int SctpTransport::maxStream() const {
+	unsigned int streamsCount = mNegotiatedStreamsCount.value_or(MAX_SCTP_STREAMS_COUNT);
+	return streamsCount > 0 ? streamsCount - 1 : 0;
 }
 
 void SctpTransport::incoming(message_ptr message) {
@@ -804,8 +812,14 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 
 	switch (type) {
 	case SCTP_ASSOC_CHANGE: {
-		const struct sctp_assoc_change &assoc_change = notify->sn_assoc_change;
-		if (assoc_change.sac_state == SCTP_COMM_UP) {
+		PLOG_VERBOSE << "SCTP association change event";
+		const struct sctp_assoc_change &sac = notify->sn_assoc_change;
+		if (sac.sac_state == SCTP_COMM_UP) {
+			PLOG_DEBUG << "SCTP negotiated streams: incoming=" << sac.sac_inbound_streams
+			           << ", outgoing=" << sac.sac_outbound_streams;
+			mNegotiatedStreamsCount.emplace(
+			    std::min(sac.sac_inbound_streams, sac.sac_outbound_streams));
+
 			PLOG_INFO << "SCTP connected";
 			changeState(State::Connected);
 		} else {
@@ -822,7 +836,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 	}
 
 	case SCTP_SENDER_DRY_EVENT: {
-		PLOG_VERBOSE << "SCTP dry event";
+		PLOG_VERBOSE << "SCTP sender dry event";
 		// It should not be necessary since the send callback should have been called already,
 		// but to be sure, let's try to send now.
 		flush();

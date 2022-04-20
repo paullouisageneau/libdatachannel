@@ -599,11 +599,12 @@ void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
 shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(string label, DataChannelInit init) {
 	cleanupDataChannels();
 	std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
+	const uint16_t maxStream = maxDataChannelStream();
 	uint16_t stream;
 	if (init.id) {
 		stream = *init.id;
-		if (stream == 65535)
-			throw std::invalid_argument("Invalid DataChannel id");
+		if (stream > maxStream)
+			throw std::invalid_argument("DataChannel stream id is too high");
 	} else {
 		// RFC 5763: The answerer MUST use either a setup attribute value of setup:active or
 		// setup:passive. [...] Thus, setup:active is RECOMMENDED.
@@ -618,9 +619,13 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(string label, DataCha
 		// the DTLS server, it MUST choose an odd one.
 		// See https://www.rfc-editor.org/rfc/rfc8832.html#section-6
 		stream = (role == Description::Role::Active) ? 0 : 1;
-		while (mDataChannels.find(stream) != mDataChannels.end()) {
-			if (stream >= 65535 - 2)
+		while (true) {
+			if (stream > maxStream)
 				throw std::runtime_error("Too many DataChannels");
+
+			auto it = mDataChannels.find(stream);
+			if (it == mDataChannels.end() || !it->second.lock())
+				break;
 
 			stream += 2;
 		}
@@ -644,6 +649,11 @@ shared_ptr<DataChannel> PeerConnection::findDataChannel(uint16_t stream) {
 			return channel;
 
 	return nullptr;
+}
+
+uint16_t PeerConnection::maxDataChannelStream() const {
+	auto sctpTransport = std::atomic_load(&mSctpTransport);
+	return sctpTransport ? sctpTransport->maxStream() : (MAX_SCTP_STREAMS_COUNT - 1);
 }
 
 void PeerConnection::shiftDataChannels() {
@@ -698,7 +708,15 @@ void PeerConnection::cleanupDataChannels() {
 
 void PeerConnection::openDataChannels() {
 	if (auto transport = std::atomic_load(&mSctpTransport))
-		iterateDataChannels([&](shared_ptr<DataChannel> channel) { channel->open(transport); });
+		iterateDataChannels([&](shared_ptr<DataChannel> channel) {
+			// Check again as the maximum might have been negotiated lower
+			if (channel->stream() <= transport->maxStream()) {
+				channel->open(transport);
+			} else {
+				channel->triggerError("DataChannel stream id is too high");
+				channel->remoteClose();
+			}
+		});
 }
 
 void PeerConnection::closeDataChannels() {

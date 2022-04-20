@@ -68,6 +68,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	shared_ptr<DataChannel> emplaceDataChannel(string label, DataChannelInit init);
 	shared_ptr<DataChannel> findDataChannel(uint16_t stream);
+	uint16_t maxDataChannelStream() const;
 	void shiftDataChannels();
 	void iterateDataChannels(std::function<void(shared_ptr<DataChannel> channel)> func);
 	void cleanupDataChannels();
