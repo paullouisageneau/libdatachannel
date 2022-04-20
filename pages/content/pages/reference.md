@@ -579,7 +579,7 @@ Arguments:
   - `protocol` (optional): a user-defined UTF-8 string representing the Data Channel protocol, empty if NULL
   - `negotiated`: if `true`, the Data Channel is assumed to be negotiated by the user and won't be negotiated by the WebRTC layer
   - `manualStream`: if `true`, the Data Channel will use `stream` as stream ID, else an available id is automatically selected
-  - `stream` (0-65534): if `manualStream` is `true`, the Data Channel will use it as stream ID, else it is ignored
+  - `stream`: if `manualStream` is `true`, the Data Channel will use it as stream ID, else it is ignored
 
 `rtcDataChannel()` is equivalent to `rtcDataChannelEx()` with settings set to ordered, reliable, non-negotiated, with automatic stream ID selection (all flags set to `false`), and `protocol` set to an empty string.
 
@@ -615,7 +615,7 @@ Arguments:
 
 - `dc`: the Data Channel identifier
 
-Return value: the stream ID (0-65534) or a negative error code
+Return value: the stream ID or a negative error code
 
 #### rtcGetDataChannelLabel
 
