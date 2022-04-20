@@ -95,9 +95,6 @@ bool TcpTransport::send(message_ptr message) {
 	if (state() != State::Connected)
 		throw std::runtime_error("Connection is not open");
 
-	if (state() != State::Connected)
-		return false;
-
 	if (!message)
 		return trySendQueue();
 
