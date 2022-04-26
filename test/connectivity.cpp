@@ -235,34 +235,6 @@ void test_connectivity() {
 	if (!asecond2 || !asecond2->isOpen() || !second1->isOpen())
 		throw runtime_error("Second DataChannel is not open");
 
-	// Try to open a negotiated channel
-	DataChannelInit init;
-	init.negotiated = true;
-	init.id = 42;
-	auto negotiated1 = pc1.createDataChannel("negotiated", init);
-	auto negotiated2 = pc2.createDataChannel("negoctated", init);
-
-	if (!negotiated1->isOpen() || !negotiated2->isOpen())
-		throw runtime_error("Negotiated DataChannel is not open");
-
-	std::atomic<bool> received = false;
-	negotiated2->onMessage([&received](const variant<binary, string> &message) {
-		if (holds_alternative<string>(message)) {
-			cout << "Second Message 2: " << get<string>(message) << endl;
-			received = true;
-		}
-	});
-
-	negotiated1->send("Hello from negotiated channel");
-
-	// Wait a bit
-	attempts = 5;
-	while (!received && attempts--)
-		this_thread::sleep_for(1s);
-
-	if (!received)
-		throw runtime_error("Negotiated DataChannel failed");
-
 	// Delay close of peer 2 to check closing works properly
 	pc1.close();
 	this_thread::sleep_for(1s);
