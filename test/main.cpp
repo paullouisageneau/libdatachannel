@@ -51,14 +51,6 @@ int main(int argc, char **argv) {
 	// C++ API tests
 	try {
 		cout << endl << "*** Running WebRTC connectivity test..." << endl;
-		test_negotiated();
-		cout << "*** Finished WebRTC negotiated datachannel test" << endl;
-	} catch (const exception &e) {
-		cerr << "WebRTC negotiated datachannel test failed: " << e.what() << endl;
-		return -1;
-	}
-	try {
-		cout << endl << "*** Running WebRTC connectivity test..." << endl;
 		test_connectivity();
 		cout << "*** Finished WebRTC connectivity test" << endl;
 	} catch (const exception &e) {
@@ -71,6 +63,14 @@ int main(int argc, char **argv) {
 		cout << "*** Finished WebRTC TURN connectivity test" << endl;
 	} catch (const exception &e) {
 		cerr << "WebRTC TURN connectivity test failed: " << e.what() << endl;
+		return -1;
+	}
+	try {
+		cout << endl << "*** Running WebRTC negotiated DataChannel test..." << endl;
+		test_negotiated();
+		cout << "*** Finished WebRTC negotiated DataChannel test" << endl;
+	} catch (const exception &e) {
+		cerr << "WebRTC negotiated DataChannel test failed: " << e.what() << endl;
 		return -1;
 	}
 #if RTC_ENABLE_MEDIA
