@@ -80,10 +80,10 @@ protected:
 	std::atomic<bool> mIsClosed = false;
 };
 
-struct NegotiatedDataChannel final : public DataChannel {
-	NegotiatedDataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label,
+struct OutgoingDataChannel final : public DataChannel {
+	OutgoingDataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label,
 	                      string protocol, Reliability reliability);
-	~NegotiatedDataChannel();
+	~OutgoingDataChannel();
 
 	void shiftStream() override;
 	void open(shared_ptr<SctpTransport> transport) override;

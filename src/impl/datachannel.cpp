@@ -259,19 +259,19 @@ void DataChannel::incoming(message_ptr message) {
 	}
 }
 
-NegotiatedDataChannel::NegotiatedDataChannel(weak_ptr<PeerConnection> pc, uint16_t stream,
+OutgoingDataChannel::OutgoingDataChannel(weak_ptr<PeerConnection> pc, uint16_t stream,
                                              string label, string protocol, Reliability reliability)
     : DataChannel(pc, stream, std::move(label), std::move(protocol), std::move(reliability)) {}
 
-NegotiatedDataChannel::~NegotiatedDataChannel() {}
+OutgoingDataChannel::~OutgoingDataChannel() {}
 
-void NegotiatedDataChannel::shiftStream() {
+void OutgoingDataChannel::shiftStream() {
 	std::shared_lock lock(mMutex);
 	if (mStream % 2 == 1)
 		mStream -= 1;
 }
 
-void NegotiatedDataChannel::open(shared_ptr<SctpTransport> transport) {
+void OutgoingDataChannel::open(shared_ptr<SctpTransport> transport) {
 	std::unique_lock lock(mMutex);
 	mSctpTransport = transport;
 
@@ -316,7 +316,7 @@ void NegotiatedDataChannel::open(shared_ptr<SctpTransport> transport) {
 	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
 }
 
-void NegotiatedDataChannel::processOpenMessage(message_ptr) {
+void OutgoingDataChannel::processOpenMessage(message_ptr) {
 	PLOG_WARNING << "Received an open message for a locally-created DataChannel, ignoring";
 }
 
