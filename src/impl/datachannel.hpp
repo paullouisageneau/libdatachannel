@@ -59,8 +59,7 @@ struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
 	bool isClosed(void) const;
 	size_t maxMessageSize() const;
 
-	void shiftStream();
-
+	virtual void shiftStream();
 	virtual void open(shared_ptr<SctpTransport> transport);
 	virtual void processOpenMessage(message_ptr);
 
@@ -86,6 +85,7 @@ struct NegotiatedDataChannel final : public DataChannel {
 	                      string protocol, Reliability reliability);
 	~NegotiatedDataChannel();
 
+	void shiftStream() override;
 	void open(shared_ptr<SctpTransport> transport) override;
 	void processOpenMessage(message_ptr message) override;
 };
