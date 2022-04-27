@@ -25,6 +25,7 @@
 using namespace std;
 using namespace chrono_literals;
 
+void test_negotiated();
 void test_connectivity();
 void test_turn_connectivity();
 void test_track();
@@ -62,6 +63,14 @@ int main(int argc, char **argv) {
 		cout << "*** Finished WebRTC TURN connectivity test" << endl;
 	} catch (const exception &e) {
 		cerr << "WebRTC TURN connectivity test failed: " << e.what() << endl;
+		return -1;
+	}
+	try {
+		cout << endl << "*** Running WebRTC negotiated DataChannel test..." << endl;
+		test_negotiated();
+		cout << "*** Finished WebRTC negotiated DataChannel test" << endl;
+	} catch (const exception &e) {
+		cerr << "WebRTC negotiated DataChannel test failed: " << e.what() << endl;
 		return -1;
 	}
 #if RTC_ENABLE_MEDIA

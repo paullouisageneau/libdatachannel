@@ -182,9 +182,7 @@ size_t DataChannel::maxMessageSize() const {
 }
 
 void DataChannel::shiftStream() {
-	std::shared_lock lock(mMutex);
-	if (mStream % 2 == 1)
-		mStream -= 1;
+	// Ignore
 }
 
 void DataChannel::open(shared_ptr<SctpTransport> transport) {
@@ -266,6 +264,12 @@ NegotiatedDataChannel::NegotiatedDataChannel(weak_ptr<PeerConnection> pc, uint16
     : DataChannel(pc, stream, std::move(label), std::move(protocol), std::move(reliability)) {}
 
 NegotiatedDataChannel::~NegotiatedDataChannel() {}
+
+void NegotiatedDataChannel::shiftStream() {
+	std::shared_lock lock(mMutex);
+	if (mStream % 2 == 1)
+		mStream -= 1;
+}
 
 void NegotiatedDataChannel::open(shared_ptr<SctpTransport> transport) {
 	std::unique_lock lock(mMutex);
