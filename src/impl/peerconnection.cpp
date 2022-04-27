@@ -630,14 +630,14 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(string label, DataCha
 			stream += 2;
 		}
 	}
-	// If the DataChannel is user-negotiated, do not negotiate it here
+	// If the DataChannel is user-negotiated, do not negotiate it in-band
 	auto channel =
 	    init.negotiated
 	        ? std::make_shared<DataChannel>(weak_from_this(), stream, std::move(label),
 	                                        std::move(init.protocol), std::move(init.reliability))
-	        : std::make_shared<NegotiatedDataChannel>(weak_from_this(), stream, std::move(label),
-	                                                  std::move(init.protocol),
-	                                                  std::move(init.reliability));
+	        : std::make_shared<OutgoingDataChannel>(weak_from_this(), stream, std::move(label),
+	                                                std::move(init.protocol),
+	                                                std::move(init.reliability));
 	mDataChannels.emplace(std::make_pair(stream, channel));
 	return channel;
 }
