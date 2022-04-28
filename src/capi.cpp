@@ -614,6 +614,13 @@ int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote
 	});
 }
 
+int rtcGetMaxDataChannelStream(int pc) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		return int(peerConnection->maxDataChannelId());
+	});
+}
+
 int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb) {
 	return wrap([&] {
 		auto channel = getChannel(id);

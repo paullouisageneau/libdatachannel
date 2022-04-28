@@ -190,6 +190,8 @@ RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 RTC_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote,
                                            int remoteSize);
 
+RTC_EXPORT int rtcGetMaxDataChannelStream(int pc);
+
 // DataChannel, Track, and WebSocket common API
 
 RTC_EXPORT int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb);

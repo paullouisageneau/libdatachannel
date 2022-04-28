@@ -346,6 +346,11 @@ int test_capi_connectivity_main() {
 	printf("Local candidate 2:  %s\n", buffer);
 	printf("Remote candidate 2: %s\n", buffer2);
 
+	if (rtcGetMaxDataChannelStream(peer1->pc) <= 0 || rtcGetMaxDataChannelStream(peer2->pc) <= 0) {
+		fprintf(stderr, "rtcGetMaxDataChannelStream failed\n");
+		goto error;
+	}
+
 	deletePeer(peer1);
 	sleep(1);
 	deletePeer(peer2);
