@@ -339,7 +339,7 @@ If `buffer` is `NULL`, the address is not copied but the size is still returned.
 int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote, int remoteSize)
 ```
 
-Retrieve the currently selected candidate pair. The call may fail if the state is not `RTC_CONNECTED`, and the selected candidate pair might change if the state is not `RTC_COMPLETED`.
+Retrieves the currently selected candidate pair. The call may fail if the state is not `RTC_CONNECTED`, and the selected candidate pair might change if the state is not `RTC_COMPLETED`.
 
 Arguments:
 
@@ -352,6 +352,18 @@ Arguments:
 Return value: the maximun length of strings copied in buffers (including the terminating null character) or a negative error code
 
 If `local`, `remote`, or both, are `NULL`, the corresponding candidate is not copied, but the maximum length is still returned.
+
+#### rtcGetMaxDataChannelStream
+```
+int rtcGetMaxDataChannelStream(int pc);
+```
+
+Retrieves the maximum stream ID a Data Channel may use. It is useful to create user-negotiated Data Channels with `negotiated=true` and `manualStream=true`. The maximum is negotiated during connection, therefore the final value after connection might be lower than before connection if the remote maximum is lower.
+
+Arguments:
+- `pc`: the Peer Connection identifier
+
+Return value: the maximum stream ID (`stream` for a Data Channel may be set from 0 to this value included) or a negative error code
 
 ### Channel (Common API for Data Channel, Track, and WebSocket)
 
