@@ -22,6 +22,7 @@
 #include <regex>
 
 #include <iostream>
+#include <sstream>
 
 namespace {
 
@@ -42,6 +43,23 @@ bool parse_url(const std::string &url, std::vector<std::optional<std::string>> &
 
 	assert(result.size() == 18);
 	return true;
+}
+
+std::string url_decode(const std::string &str) {
+	static const std::regex r(R"(%[0-9A-Fa-f]{2})", std::regex::extended);
+
+	std::stringstream ss;
+	std::smatch m;
+	for (size_t i = 0; i < str.length(); ++i) {
+		std::string substr = str.substr(i, 3);
+		if (std::regex_match(substr, m, r)) {
+			ss << static_cast<char>(std::stoi("0x" + substr.substr(1, 2), nullptr, 16));
+			i += 2;
+		} else {
+			ss << str[i];
+		}
+	}
+	return ss.str();
 }
 
 } // namespace
@@ -74,8 +92,8 @@ IceServer::IceServer(const string &url) {
 			relayType = RelayType::TurnTls;
 	}
 
-	username = opt[6].value_or("");
-	password = opt[8].value_or("");
+	username = url_decode(opt[6].value_or(""));
+	password = url_decode(opt[8].value_or(""));
 
 	hostname = opt[10].value();
 	while (!hostname.empty() && hostname.front() == '[')
