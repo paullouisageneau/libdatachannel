@@ -41,6 +41,23 @@
 
 namespace rtc {
 
+bool IsRtcp(const binary &data) {
+	if (data.size() < 8)
+		return false;
+
+	uint8_t payloadType = std::to_integer<uint8_t>(data[1]) & 0x7F;
+	PLOG_VERBOSE << "Demultiplexing RTCP and RTP with payload type, value=" << int(payloadType);
+
+	// RFC 5761 Multiplexing RTP and RTCP 4. Distinguishable RTP and RTCP Packets
+	// https://www.rfc-editor.org/rfc/rfc5761.html#section-4
+	// It is RECOMMENDED to follow the guidelines in the RTP/AVP profile for the choice of RTP
+	// payload type values, with the additional restriction that payload type values in the
+	// range 64-95 MUST NOT be used. Specifically, dynamic RTP payload types SHOULD be chosen in
+	// the range 96-127 where possible. Values below 64 MAY be used if that is insufficient
+	// [...]
+	return (payloadType >= 64 && payloadType <= 95); // Range 64-95 (inclusive) MUST be RTCP
+}
+
 uint8_t RtpHeader::version() const { return _first >> 6; }
 bool RtpHeader::padding() const { return (_first >> 5) & 0x01; }
 bool RtpHeader::extension() const { return (_first >> 4) & 0x01; }
