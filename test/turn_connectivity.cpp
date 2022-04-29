@@ -50,9 +50,9 @@ void test_turn_connectivity() {
 	// STUN server example (not necessary, just here for testing)
 	// Please do not use outside of libdatachannel tests
 	config1.iceServers.emplace_back("stun:stun.ageneau.net:3478");
-	// TURN server example
+	// TURN server example (note that the reserved special character '@' is percent-encoded)
 	// Please do not use outside of libdatachannel tests
-	config2.iceServers.emplace_back("turn:datachannel_test:14018314739877@stun.ageneau.net:3478");
+	config2.iceServers.emplace_back("turn:datachannel_test_speci%40l:14018314739877@stun.ageneau.net:3478");
 
 	PeerConnection pc2(config2);
 

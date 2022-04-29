@@ -22,6 +22,7 @@
 #include "common.hpp"
 #include "internals.hpp"
 #include "threadpool.hpp"
+#include "utils.hpp"
 
 #include "tcptransport.hpp"
 #include "tlstransport.hpp"
@@ -46,9 +47,7 @@ WebSocket::WebSocket(optional<Configuration> optConfig, certificate_ptr certific
 	PLOG_VERBOSE << "Creating WebSocket";
 }
 
-WebSocket::~WebSocket() {
-	PLOG_VERBOSE << "Destroying WebSocket";
-}
+WebSocket::~WebSocket() { PLOG_VERBOSE << "Destroying WebSocket"; }
 
 void WebSocket::open(const string &url) {
 	PLOG_VERBOSE << "Opening WebSocket to URL: " << url;
@@ -79,8 +78,8 @@ void WebSocket::open(const string &url) {
 
 	mIsSecure = (scheme != "ws");
 
-	string username = m[6];
-	string password = m[8];
+	string username = utils::url_decode(m[6]);
+	string password = utils::url_decode(m[8]);
 	if (!username.empty() || !password.empty()) {
 		PLOG_WARNING << "HTTP authentication support for WebSocket is not implemented";
 	}
@@ -95,10 +94,13 @@ void WebSocket::open(const string &url) {
 		host = hostname + ':' + service;
 	}
 
-	while (!hostname.empty() && hostname.front() == '[')
+	if (hostname.front() == '[' && hostname.back() == ']') {
+		// IPv6 literal
 		hostname.erase(hostname.begin());
-	while (!hostname.empty() && hostname.back() == ']')
 		hostname.pop_back();
+	} else {
+		hostname = utils::url_decode(hostname);
+	}
 
 	string path = m[13];
 	if (path.empty())
