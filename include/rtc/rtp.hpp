@@ -29,6 +29,8 @@ namespace rtc {
 
 typedef uint32_t SSRC;
 
+RTC_CPP_EXPORT bool IsRtcp(const binary &data);
+
 #pragma pack(push, 1)
 
 struct RTC_CPP_EXPORT RtpExtensionHeader {

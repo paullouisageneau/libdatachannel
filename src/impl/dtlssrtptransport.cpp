@@ -104,18 +104,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 	// the authentication tag) into the location in memory immediately following the RTP packet.
 	message->resize(size + SRTP_MAX_TRAILER_LEN);
 
-	uint8_t value2 = to_integer<uint8_t>(*(message->begin() + 1)) & 0x7F;
-	PLOG_VERBOSE << "Demultiplexing SRTCP and SRTP with RTP payload type, value="
-	             << unsigned(value2);
-
-	// RFC 5761 Multiplexing RTP and RTCP 4. Distinguishable RTP and RTCP Packets
-	// https://www.rfc-editor.org/rfc/rfc5761.html#section-4
-	// It is RECOMMENDED to follow the guidelines in the RTP/AVP profile for the choice of RTP
-	// payload type values, with the additional restriction that payload type values in the
-	// range 64-95 MUST NOT be used. Specifically, dynamic RTP payload types SHOULD be chosen in
-	// the range 96-127 where possible. Values below 64 MAY be used if that is insufficient
-	// [...]
-	if (value2 >= 64 && value2 <= 95) { // Range 64-95 (inclusive) MUST be RTCP
+	if (IsRtcp(*message)) { // Demultiplex RTCP and RTP using payload type
 		if (srtp_err_status_t err = srtp_protect_rtcp(mSrtpOut, message->data(), &size)) {
 			if (err == srtp_err_status_replay_fail)
 				throw std::runtime_error("Outgoing SRTCP packet is a replay");
@@ -124,6 +113,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 				                         to_string(static_cast<int>(err)));
 		}
 		PLOG_VERBOSE << "Protected SRTCP packet, size=" << size;
+
 	} else {
 		if (srtp_err_status_t err = srtp_protect(mSrtpOut, message->data(), &size)) {
 			if (err == srtp_err_status_replay_fail)
@@ -160,8 +150,7 @@ void DtlsSrtpTransport::recvMedia(message_ptr message) {
 	PLOG_VERBOSE << "Demultiplexing SRTCP and SRTP with RTP payload type, value="
 	             << unsigned(value2);
 
-	// See RFC 5761 reference above
-	if (value2 >= 64 && value2 <= 95) { // Range 64-95 (inclusive) MUST be RTCP
+	if (IsRtcp(*message)) { // Demultiplex RTCP and RTP using payload type
 		PLOG_VERBOSE << "Incoming SRTCP packet, size=" << size;
 		if (srtp_err_status_t err = srtp_unprotect_rtcp(mSrtpIn, message->data(), &size)) {
 			if (err == srtp_err_status_replay_fail) {
