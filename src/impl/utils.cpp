@@ -18,6 +18,10 @@
 
 #include "utils.hpp"
 
+#include "impl/internals.hpp"
+
+#include <cctype>
+#include <functional>
 #include <iterator>
 #include <sstream>
 
@@ -40,6 +44,31 @@ string implode(const std::vector<string> &tokens, char delim) {
 	string result = ss.str();
 	if (result.size() > 0)
 		result.resize(result.size() - 1);
+
+	return result;
+}
+
+string url_decode(const string &str) {
+	string result;
+	size_t i = 0;
+	while (i < str.size()) {
+		char c = str[i++];
+		if (c == '%') {
+			auto value = str.substr(i, 2);
+			try {
+				if (value.size() != 2 || !std::isxdigit(value[0]) || !std::isxdigit(value[1]))
+					throw std::exception();
+
+				c = static_cast<char>(std::stoi(value, nullptr, 16));
+				i += 2;
+
+			} catch (...) {
+				PLOG_WARNING << "Invalid percent-encoded character in URL: \"%" + value + "\"";
+			}
+		}
+
+		result.push_back(c);
+	}
 
 	return result;
 }

@@ -28,6 +28,10 @@ namespace rtc::impl::utils {
 std::vector<string> explode(const string &str, char delim);
 string implode(const std::vector<string> &tokens, char delim);
 
+// Decode URL percent-encoding (RFC 3986)
+// See https://www.rfc-editor.org/rfc/rfc3986.html#section-2.1
+string url_decode(const string &str);
+
 } // namespace rtc::impl
 
 #endif
