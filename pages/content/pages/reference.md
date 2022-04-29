@@ -117,10 +117,11 @@ Return value: the identifier of the new Peer Connection or a negative error code
 
 The Peer Connection must be deleted with `rtcDeletePeerConnection`.
 
-Each entry in `iceServers` must match the format `[("stun"|"turn"|"turns") (":"|"://")][username ":" password "@"]hostname[":" port]["?transport=" ("udp"|"tcp"|"tls")]`. The default scheme is STUN, the default port is 3478 (5349 over TLS), and the default transport is UDP.  For instance, a STUN server URI could be `mystunserver.org`, and a TURN server URI could be `turn:myuser:12345678@turnserver.org`. Note transports TCP and TLS are only available for a TURN server with libnice as ICE backend and govern only the TURN control connection, meaning relaying is always performed over UDP.
+Each entry in `iceServers` must match the format `[("stun"|"turn"|"turns") (":"|"://")][username ":" password "@"]hostname[":" port]["?transport=" ("udp"|"tcp"|"tls")]`. The default scheme is STUN, the default port is 3478 (5349 over TLS), and the default transport is UDP. For instance, a STUN server URI could be `mystunserver.org`, and a TURN server URI could be `turn:myuser:12345678@turnserver.org`. Note transports TCP and TLS are only available for a TURN server with libnice as ICE backend and govern only the TURN control connection, meaning relaying is always performed over UDP.
 
 The `proxyServer` URI, if present, must match the format `[("http"|"socks5") (":"|"://")][username ":" password "@"]hostname["    :" port]`. The default scheme is HTTP, and the default port is 3128 for HTTP or 1080 for SOCKS5.
 
+If the username or password of an URI contains reserved special characters, they must be percent-encoded. In particular, ":" must be encoded as "%3A" and "@" must by encoded as "%40".
 
 #### rtcDeletePeerConnection
 
