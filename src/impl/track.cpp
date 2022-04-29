@@ -20,6 +20,7 @@
 #include "internals.hpp"
 #include "logcounter.hpp"
 #include "peerconnection.hpp"
+#include "rtp.hpp"
 
 namespace rtc::impl {
 
@@ -122,7 +123,8 @@ void Track::incoming(message_ptr message) {
 	if (!message)
 		return;
 
-	// TODO
+	auto handler = getMediaHandler();
+
 	auto dir = direction();
 	if ((dir == Description::Direction::SendOnly || dir == Description::Direction::Inactive) &&
 	    message->type != Message::Control) {
@@ -130,7 +132,7 @@ void Track::incoming(message_ptr message) {
 		return;
 	}
 
-	if (auto handler = getMediaHandler()) {
+	if (handler) {
 		message = handler->incoming(message);
 		if (!message)
 			return;
@@ -150,13 +152,20 @@ bool Track::outgoing(message_ptr message) {
 	if (mIsClosed)
 		throw std::runtime_error("Track is closed");
 
+	auto handler = getMediaHandler();
+
+	// If there is no handler, the track expects RTP or RTCP packets
+	if (!handler && IsRtcp(*message))
+		message->type = Message::Control; // to allow sending RTCP packets irrelevant of direction
+
 	auto dir = direction();
-	if ((dir == Description::Direction::RecvOnly || dir == Description::Direction::Inactive)) {
+	if ((dir == Description::Direction::RecvOnly || dir == Description::Direction::Inactive) &&
+	    message->type != Message::Control) {
 		COUNTER_MEDIA_BAD_DIRECTION++;
 		return false;
 	}
 
-	if (auto handler = getMediaHandler()) {
+	if (handler) {
 		message = handler->outgoing(message);
 		if (!message)
 			return false;
