@@ -81,8 +81,8 @@ public:
 	void endCandidates();
 
 	operator string() const;
-	string generateSdp(string_view eol) const;
-	string generateApplicationSdp(string_view eol) const;
+	string generateSdp(string_view eol = "\r\n") const;
+	string generateApplicationSdp(string_view eol = "\r\n") const;
 
 	class RTC_CPP_EXPORT Entry {
 	public:
@@ -121,7 +121,8 @@ public:
 		void removeExtMap(int id);
 
 		operator string() const;
-		string generateSdp(string_view eol, string_view addr, uint16_t port) const;
+		string generateSdp(string_view eol = "\r\n", string_view addr = "0.0.0.0",
+		                   uint16_t port = 9) const;
 
 		virtual void parseSdpLine(string_view line);
 
