@@ -17,7 +17,6 @@
  */
 
 #include "wshandshake.hpp"
-#include "base64.hpp"
 #include "internals.hpp"
 #include "sha.hpp"
 #include "utils.hpp"
@@ -246,11 +245,11 @@ string WsHandshake::generateKey() {
 	binary key(16);
 	auto k = reinterpret_cast<uint8_t *>(key.data());
 	std::generate(k, k + key.size(), [&]() { return uint8_t(generator()); });
-	return to_base64(key);
+	return utils::base64_encode(key);
 }
 
 string WsHandshake::computeAcceptKey(const string &key) {
-	return to_base64(Sha1(string(key) + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"));
+	return utils::base64_encode(Sha1(string(key) + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"));
 }
 
 size_t WsHandshake::parseHttpLines(const byte *buffer, size_t size, std::list<string> &lines) {

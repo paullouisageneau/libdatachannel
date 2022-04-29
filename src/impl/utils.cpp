@@ -27,6 +27,8 @@
 
 namespace rtc::impl::utils {
 
+using std::to_integer;
+
 std::vector<string> explode(const string &str, char delim) {
 	std::vector<std::string> result;
 	std::istringstream ss(str);
@@ -71,6 +73,41 @@ string url_decode(const string &str) {
 	}
 
 	return result;
+}
+
+string base64_encode(const binary &data) {
+	static const char tab[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+	string out;
+	out.reserve(3 * ((data.size() + 3) / 4));
+	int i = 0;
+	while (data.size() - i >= 3) {
+		auto d0 = to_integer<uint8_t>(data[i]);
+		auto d1 = to_integer<uint8_t>(data[i + 1]);
+		auto d2 = to_integer<uint8_t>(data[i + 2]);
+		out += tab[d0 >> 2];
+		out += tab[((d0 & 3) << 4) | (d1 >> 4)];
+		out += tab[((d1 & 0x0F) << 2) | (d2 >> 6)];
+		out += tab[d2 & 0x3F];
+		i += 3;
+	}
+
+	int left = int(data.size() - i);
+	if (left) {
+		auto d0 = to_integer<uint8_t>(data[i]);
+		out += tab[d0 >> 2];
+		if (left == 1) {
+			out += tab[(d0 & 3) << 4];
+			out += '=';
+		} else { // left == 2
+			auto d1 = to_integer<uint8_t>(data[i + 1]);
+			out += tab[((d0 & 3) << 4) | (d1 >> 4)];
+			out += tab[(d1 & 0x0F) << 2];
+		}
+		out += '=';
+	}
+
+	return out;
 }
 
 } // namespace rtc::impl::utils
