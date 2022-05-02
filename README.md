@@ -176,5 +176,5 @@ Features:
 
 ## Thanks
 
-Thanks to [Streamr](https://streamr.network/) for sponsoring this work!
+Thanks to [Streamr](https://streamr.network/), [Vagon](https://vagon.io/), [Deon Botha](https://github.com/dbotha), and [Michael Cho](https://github.com/micoolcho) for sponsoring this work!
 
