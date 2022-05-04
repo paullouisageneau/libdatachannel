@@ -41,5 +41,6 @@ save_as: index.html
 	<div class="sponsor">
         <iframe src="https://github.com/sponsors/paullouisageneau/button" title="Sponsor paullouisageneau" height="35" width="116" style="border: 0;"></iframe>
         <div class="liberapay"><a href="https://liberapay.com/paullouisageneau/donate"><img alt="Donate using Liberapay" src="https://liberapay.com/assets/widgets/donate.svg"></a></div>
+        <div class="ko-fi"><a href='https://ko-fi.com/A0A8CIDHU' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://cdn.ko-fi.com/cdn/kofi3.png?v=3' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a></div>
 	</div>
 
