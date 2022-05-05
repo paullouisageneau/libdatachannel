@@ -57,7 +57,7 @@ struct RTC_CPP_EXPORT RtpHeader {
 	uint16_t _seqNumber;
 	uint32_t _timestamp;
 	SSRC _ssrc;
-	SSRC _csrc[16];
+	SSRC _csrc[];
 
 	[[nodiscard]] uint8_t version() const;
 	[[nodiscard]] bool padding() const;
