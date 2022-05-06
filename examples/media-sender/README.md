@@ -1,6 +1,6 @@
 # Example streaming to browser
 
-This is a copy/paste example to forward a local RTP stream to the browser.
+This is a copy/paste example forwarding a local RTP stream to the browser.
 
 ## How to use
 

@@ -1,6 +1,6 @@
 # Example streaming from browser
 
-This is a copy/paste example to stream the webcam from the browser and forward it as RTP to port 5000.
+This is a copy/paste example streaming the webcam from the browser and forwarding it as RTP to port 5000.
 
 ## How to use
 
