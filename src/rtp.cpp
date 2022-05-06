@@ -69,41 +69,30 @@ uint32_t RtpHeader::timestamp() const { return ntohl(_timestamp); }
 uint32_t RtpHeader::ssrc() const { return ntohl(_ssrc); }
 
 size_t RtpHeader::getSize() const {
-	return reinterpret_cast<const char *>(&_csrc) - reinterpret_cast<const char *>(this) +
-	       sizeof(SSRC) * csrcCount();
+	return reinterpret_cast<const char *>(&_ssrc + 1 + csrcCount()) -
+	       reinterpret_cast<const char *>(this);
 }
 
 size_t RtpHeader::getExtensionHeaderSize() const {
-	auto header = reinterpret_cast<const RtpExtensionHeader *>(getExtensionHeader());
-	if (header) {
-		return header->getSize() + sizeof(RtpExtensionHeader);
-	}
-	return 0;
+	auto header = getExtensionHeader();
+	return header ? header->getSize() + sizeof(RtpExtensionHeader) : 0;
 }
 
 const RtpExtensionHeader *RtpHeader::getExtensionHeader() const {
-	if (extension()) {
-		auto header = reinterpret_cast<const char *>(&_csrc) + sizeof(SSRC) * csrcCount();
-		return reinterpret_cast<const RtpExtensionHeader *>(header);
-	}
-	return nullptr;
+	return extension() ? reinterpret_cast<const RtpExtensionHeader *>(&_ssrc + 1 + csrcCount())
+	                   : nullptr;
 }
 
 RtpExtensionHeader *RtpHeader::getExtensionHeader() {
-	if (extension()) {
-		auto header = reinterpret_cast<char *>(&_csrc) + sizeof(SSRC) * csrcCount();
-		return reinterpret_cast<RtpExtensionHeader *>(header);
-	}
-	return nullptr;
+	return extension() ? reinterpret_cast<RtpExtensionHeader *>(&_ssrc + 1 + csrcCount()) : nullptr;
 }
 
 const char *RtpHeader::getBody() const {
-	return reinterpret_cast<const char *>(&_csrc) + sizeof(SSRC) * csrcCount() +
-	       getExtensionHeaderSize();
+	return reinterpret_cast<const char *>(&_ssrc + 1 + csrcCount()) + getExtensionHeaderSize();
 }
 
 char *RtpHeader::getBody() {
-	return reinterpret_cast<char *>(&_csrc) + sizeof(SSRC) * csrcCount() + getExtensionHeaderSize();
+	return reinterpret_cast<char *>(&_ssrc + 1 + csrcCount()) + getExtensionHeaderSize();
 }
 
 void RtpHeader::preparePacket() { _first |= (1 << 7); }
