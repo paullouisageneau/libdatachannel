@@ -23,6 +23,7 @@
 #include "datachannel.hpp"
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
+#include "init.hpp"
 #include "processor.hpp"
 #include "sctptransport.hpp"
 #include "track.hpp"

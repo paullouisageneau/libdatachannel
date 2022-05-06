@@ -40,4 +40,13 @@ void Processor::schedule() {
 	}
 }
 
+TearDownProcessor &TearDownProcessor::Instance() {
+	static TearDownProcessor *instance = new TearDownProcessor;
+	return *instance;
+}
+
+TearDownProcessor::TearDownProcessor() {}
+
+TearDownProcessor::~TearDownProcessor() {}
+
 } // namespace rtc::impl

@@ -20,7 +20,6 @@
 #define RTC_IMPL_PROCESSOR_H
 
 #include "common.hpp"
-#include "init.hpp"
 #include "queue.hpp"
 #include "threadpool.hpp"
 
@@ -33,10 +32,10 @@
 namespace rtc::impl {
 
 // Processed tasks in order by delegating them to the thread pool
-class Processor final {
+class Processor {
 public:
 	Processor(size_t limit = 0);
-	~Processor();
+	virtual ~Processor();
 
 	Processor(const Processor &) = delete;
 	Processor &operator=(const Processor &) = delete;
@@ -47,17 +46,23 @@ public:
 
 	template <class F, class... Args> void enqueue(F &&f, Args &&...args);
 
-protected:
+private:
 	void schedule();
-
-	// Keep an init token
-	const init_token mInitToken = Init::Instance().token();
 
 	Queue<std::function<void()>> mTasks;
 	bool mPending = false; // true iff a task is pending in the thread pool
 
 	mutable std::mutex mMutex;
 	std::condition_variable mCondition;
+};
+
+class TearDownProcessor final : public Processor {
+public:
+	static TearDownProcessor &Instance();
+
+private:
+	TearDownProcessor();
+	~TearDownProcessor();
 };
 
 template <class F, class... Args> void Processor::enqueue(F &&f, Args &&...args) {
