@@ -25,9 +25,9 @@
 #include "internals.hpp"
 #include "logcounter.hpp"
 #include "peerconnection.hpp"
+#include "processor.hpp"
 #include "rtp.hpp"
 #include "sctptransport.hpp"
-#include "threadpool.hpp"
 
 #if RTC_ENABLE_MEDIA
 #include "dtlssrtptransport.hpp"
@@ -371,14 +371,15 @@ void PeerConnection::closeTransports() {
 
 	// Initiate transport stop on the processor after closing the data channels
 	mProcessor.enqueue([self = shared_from_this(), transports = std::move(transports)]() {
-		ThreadPool::Instance().enqueue([transports = std::move(transports)]() mutable {
-			for (const auto &t : transports)
-				if (t)
-					t->stop();
+		TearDownProcessor::Instance().enqueue(
+		    [transports = std::move(transports), token = Init::Instance().token()]() mutable {
+			    for (const auto &t : transports)
+				    if (t)
+					    t->stop();
 
-			for (auto &t : transports)
-				t.reset();
-		});
+			    for (auto &t : transports)
+				    t.reset();
+		    });
 	});
 }
 

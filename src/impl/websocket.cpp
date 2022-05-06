@@ -21,7 +21,7 @@
 #include "websocket.hpp"
 #include "common.hpp"
 #include "internals.hpp"
-#include "threadpool.hpp"
+#include "processor.hpp"
 #include "utils.hpp"
 
 #include "tcptransport.hpp"
@@ -408,14 +408,15 @@ void WebSocket::closeTransports() {
 		if (t)
 			t->onStateChange(nullptr);
 
-	ThreadPool::Instance().enqueue([transports = std::move(transports)]() mutable {
-		for (const auto &t : transports)
-			if (t)
-				t->stop();
+	TearDownProcessor::Instance().enqueue(
+	    [transports = std::move(transports), token = Init::Instance().token()]() mutable {
+		    for (const auto &t : transports)
+			    if (t)
+				    t->stop();
 
-		for (auto &t : transports)
-			t.reset();
-	});
+		    for (auto &t : transports)
+			    t.reset();
+	    });
 
 	triggerClosed();
 }
