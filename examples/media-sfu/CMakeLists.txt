@@ -11,24 +11,24 @@ set(SFU_MEDIA_UWP_RESOURCES
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
-	add_executable(datachannel-sfu-media main.cpp ${SFU_MEDIA_UWP_RESOURCES})
+	add_executable(datachannel-media-sfu main.cpp ${SFU_MEDIA_UWP_RESOURCES})
 else()
-	add_executable(datachannel-sfu-media main.cpp)
+	add_executable(datachannel-media-sfu main.cpp)
 endif()
 
-set_target_properties(datachannel-sfu-media PROPERTIES
+set_target_properties(datachannel-media-sfu PROPERTIES
 	CXX_STANDARD 17
-	OUTPUT_NAME sfu-media)
+	OUTPUT_NAME media-sfu)
 
-set_target_properties(datachannel-sfu-media PROPERTIES
+set_target_properties(datachannel-media-sfu PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.sfumedia)
 
-target_link_libraries(datachannel-sfu-media LibDataChannel::LibDataChannel nlohmann_json)
+target_link_libraries(datachannel-media-sfu LibDataChannel::LibDataChannel nlohmann_json)
 
 if(MSVC)
-	add_custom_command(TARGET datachannel-sfu-media POST_BUILD
+	add_custom_command(TARGET datachannel-media-sfu POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different
 		"$<TARGET_FILE_DIR:datachannel>/datachannel.dll"
-		$<TARGET_FILE_DIR:datachannel-sfu-media>
+		$<TARGET_FILE_DIR:datachannel-media-sfu>
 	)
 endif()

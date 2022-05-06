@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>libdatachannel media receiver example</title>
+</head>
+<body>
+
+<p>Please enter the offer provided to you by the receiver application: </p>
+<textarea cols="80" rows="25"></textarea>
+<button>Submit</button>
+
+<script>
+    document.querySelector('button').addEventListener('click',  async () => {
+        const offer = JSON.parse(document.querySelector('textarea').value);
+        const pc = new RTCPeerConnection({
+            // Recommended for libdatachannel
+            bundlePolicy: "max-bundle",
+        });
+
+        pc.onicegatheringstatechange = (state) => {
+            if (pc.iceGatheringState === 'complete') {
+                // We only want to provide an answer once all of our candidates have been added to the SDP.
+                const answer = pc.localDescription;
+                document.querySelector('textarea').value = JSON.stringify({"type": answer.type, sdp: answer.sdp});
+                document.querySelector('p').value = 'Please paste the answer in the receiver application.';
+                alert('Please paste the answer in the receiver application.');
+            }
+        }
+
+        await pc.setRemoteDescription(offer);
+
+        const media = await navigator.mediaDevices.getUserMedia({
+            video: {
+                width: 1280,
+                height: 720
+            }
+        });
+        media.getTracks().forEach(track => pc.addTrack(track, media));
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+    })
+</script>
+
+</body>
+</html>
