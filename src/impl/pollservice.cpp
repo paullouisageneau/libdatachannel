@@ -176,7 +176,7 @@ void PollService::runLoop() {
 				int timeout;
 				if (next) {
 					auto msecs = duration_cast<milliseconds>(
-					    std::max(clock::duration::zero(), *next - clock::now()));
+					    std::max(clock::duration::zero(), *next - clock::now() + 1ms));
 					PLOG_VERBOSE << "Entering poll, timeout=" << msecs.count() << "ms";
 					timeout = static_cast<int>(msecs.count());
 				} else {
