@@ -16,10 +16,12 @@ The option `USE_GNUTLS` allows to switch between OpenSSL (default) and GnuTLS, a
 
 If you only need Data Channels, the option `NO_MEDIA` allows to make the library lighter by removing media support. Similarly, `NO_WEBSOCKET` removes WebSocket support.
 
+For the sake of performance, the library should be compiled in `Release` mode if you don't plan to debug it.
+
 ### POSIX-compliant operating systems (including Linux and Apple macOS)
 
 ```bash
-$ cmake -B build -DUSE_GNUTLS=1 -DUSE_NICE=0
+$ cmake -B build -DUSE_GNUTLS=1 -DUSE_NICE=0 -DCMAKE_BUILD_TYPE=Release
 $ cd build
 $ make -j2
 ```
@@ -29,7 +31,7 @@ $ make -j2
 To generate an Xcode project in the `build` directory:
 
 ```bash
-$ cmake -B build -DUSE_GNUTLS=0 -DUSE_NICE=0 -G Xcode
+$ cmake -B build -G Xcode -DUSE_GNUTLS=0 -DUSE_NICE=0
 ```
 
 #### Solving "Could NOT find OpenSSL" error
@@ -43,13 +45,13 @@ Could NOT find OpenSSL, try to set the path to OpenSSL root folder in the system
 For example:
 
 ```bash
-$ cmake -B build -DUSE_GNUTLS=0 -DUSE_NICE=0 -G Xcode -DOPENSSL_ROOT_DIR=/usr/local/Cellar/openssl\@1.1/1.1.1h/
+$ cmake -B build -G Xcode -DUSE_GNUTLS=0 -DUSE_NICE=0 -DOPENSSL_ROOT_DIR=/usr/local/Cellar/openssl\@1.1/1.1.1h/
 ```
 
 ### Microsoft Windows with MinGW cross-compilation
 
 ```bash
-$ cmake -B build -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw/toolchain-x86_64-w64-mingw32.cmake # replace with your toolchain file
+$ cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=/usr/share/mingw/toolchain-x86_64-w64-mingw32.cmake # replace with your toolchain file
 $ cd build
 $ make -j2
 ```
