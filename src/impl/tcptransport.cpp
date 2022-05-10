@@ -247,8 +247,11 @@ void TcpTransport::prepare(const sockaddr *addr, socklen_t addrlen) {
 }
 
 void TcpTransport::setPoll(PollService::Direction direction) {
-	PollService::Instance().add(mSock,
-	                            {direction, nullopt, std::bind(&TcpTransport::process, this, _1)});
+	const auto timeout = 10s;
+	PollService::Instance().add(
+	    mSock,
+	    {direction, direction == PollService::Direction::In ? make_optional(timeout) : nullopt,
+	     std::bind(&TcpTransport::process, this, _1)});
 }
 
 void TcpTransport::close() {
@@ -315,6 +318,7 @@ void TcpTransport::process(PollService::Event event) {
 		case PollService::Event::Timeout: {
 			PLOG_VERBOSE << "TCP is idle";
 			incoming(make_message(0));
+			setPoll(PollService::Direction::In);
 			return;
 		}
 
