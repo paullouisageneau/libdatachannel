@@ -46,6 +46,8 @@ public:
 		bool disableTlsVerification = false; // if true, don't verify the TLS certificate
 		optional<ProxyServer> proxyServer;   // unsupported for now
 		std::vector<string> protocols;
+		int maxMissedPongsAllowed = 2;                   // -1 is no check
+		std::chrono::milliseconds sendPingInterval = std::chrono::seconds(10); // interval at which to send pings
 	};
 
 	WebSocket();

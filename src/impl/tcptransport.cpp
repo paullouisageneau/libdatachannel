@@ -123,6 +123,8 @@ bool TcpTransport::outgoing(message_ptr message) {
 
 string TcpTransport::remoteAddress() const { return mHostname + ':' + mService; }
 
+void TcpTransport::setReadTimeout(std::chrono::milliseconds readTimeout) { mReadTimeout = readTimeout; }
+
 void TcpTransport::connect() {
 	PLOG_DEBUG << "Connecting to " << mHostname << ":" << mService;
 	changeState(State::Connecting);
@@ -247,7 +249,7 @@ void TcpTransport::prepare(const sockaddr *addr, socklen_t addrlen) {
 }
 
 void TcpTransport::setPoll(PollService::Direction direction) {
-	const auto timeout = 10s;
+	const auto timeout = mReadTimeout;
 	PollService::Instance().add(
 	    mSock,
 	    {direction, direction == PollService::Direction::In ? make_optional(timeout) : nullopt,
