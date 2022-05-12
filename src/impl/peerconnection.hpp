@@ -79,6 +79,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	shared_ptr<Track> emplaceTrack(Description::Media description);
 	void incomingTrack(Description::Media description);
+	void iterateTracks(std::function<void(shared_ptr<Track> track)> func);
 	void openTracks();
 	void closeTracks();
 
@@ -141,8 +142,8 @@ private:
 	std::vector<weak_ptr<DataChannel>> mUnassignedDataChannels;
 	std::shared_mutex mDataChannelsMutex;
 
-	std::unordered_map<string, weak_ptr<Track>> mTracks;               // by mid
-	std::vector<weak_ptr<Track>> mTrackLines;                          // by SDP order
+	std::unordered_map<string, weak_ptr<Track>> mTracks; // by mid
+	std::vector<weak_ptr<Track>> mTrackLines;            // by SDP order
 	std::shared_mutex mTracksMutex;
 
 	Queue<shared_ptr<DataChannel>> mPendingDataChannels;

@@ -549,6 +549,7 @@ optional<std::string> PeerConnection::getMidFromSsrc(uint32_t ssrc) {
 		std::lock_guard lock(mRemoteDescriptionMutex);
 		if (!mRemoteDescription)
 			return nullopt;
+
 		for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
 			if (auto found =
 			        std::visit(rtc::overloaded{[&](Description::Application *) -> optional<string> {
@@ -782,24 +783,35 @@ void PeerConnection::incomingTrack(Description::Media description) {
 		track->close();
 }
 
+void PeerConnection::iterateTracks(std::function<void(shared_ptr<Track> track)> func) {
+	std::shared_lock lock(mTracksMutex); // read-only
+	for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it) {
+		auto track = it->lock();
+		if (track && !track->isClosed()) {
+			try {
+				func(std::move(track));
+			} catch (const std::exception &e) {
+				PLOG_WARNING << e.what();
+			}
+		}
+	}
+}
+
 void PeerConnection::openTracks() {
 #if RTC_ENABLE_MEDIA
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
 		auto srtpTransport = std::dynamic_pointer_cast<DtlsSrtpTransport>(transport);
-		std::shared_lock lock(mTracksMutex); // read-only
-		for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it)
-			if (auto track = it->lock())
-				if (!track->isOpen())
-					track->open(srtpTransport);
+		iterateTracks([&](shared_ptr<Track> track) {
+			if (!track->isOpen())
+				track->open(srtpTransport);
+		});
 	}
 #endif
 }
 
 void PeerConnection::closeTracks() {
 	std::shared_lock lock(mTracksMutex); // read-only
-	for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it)
-		if (auto track = it->lock())
-			track->close();
+	iterateTracks([&](shared_ptr<Track> track) { track->close(); });
 }
 
 void PeerConnection::validateRemoteDescription(const Description &description) {
