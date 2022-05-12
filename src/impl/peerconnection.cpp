@@ -289,9 +289,6 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 		ports.local = local->application()->sctpPort().value_or(DEFAULT_SCTP_PORT);
 		ports.remote = remote->application()->sctpPort().value_or(DEFAULT_SCTP_PORT);
 
-		// This is the last occasion to ensure the stream numbers are coherent with the role
-		shiftDataChannels();
-
 		auto transport = std::make_shared<SctpTransport>(
 		    lower, config, std::move(ports), weak_bind(&PeerConnection::forwardMessage, this, _1),
 		    weak_bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
@@ -302,6 +299,7 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 			    switch (transportState) {
 			    case SctpTransport::State::Connected:
 				    changeState(State::Connected);
+				    assignDataChannels();
 				    mProcessor.enqueue(&PeerConnection::openDataChannels, shared_from_this());
 				    break;
 			    case SctpTransport::State::Failed:
@@ -446,7 +444,8 @@ void PeerConnection::forwardMessage(message_ptr message) {
 			channel->close();
 		}
 
-		channel = std::make_shared<IncomingDataChannel>(weak_from_this(), sctpTransport, stream);
+		channel = std::make_shared<IncomingDataChannel>(weak_from_this(), sctpTransport);
+		channel->assignStream(stream);
 		channel->openCallback =
 		    weak_bind(&PeerConnection::triggerDataChannel, this, weak_ptr<DataChannel>{channel});
 
@@ -600,46 +599,38 @@ void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
 shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(string label, DataChannelInit init) {
 	cleanupDataChannels();
 	std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
-	const uint16_t maxStream = maxDataChannelStream();
-	uint16_t stream;
-	if (init.id) {
-		stream = *init.id;
-		if (stream > maxStream)
-			throw std::invalid_argument("DataChannel stream id is too high");
-	} else {
-		// RFC 5763: The answerer MUST use either a setup attribute value of setup:active or
-		// setup:passive. [...] Thus, setup:active is RECOMMENDED.
-		// See https://www.rfc-editor.org/rfc/rfc5763.html#section-5
-		// Therefore, we assume passive role if we are the offerer.
-		auto iceTransport = getIceTransport();
-		auto role = iceTransport ? iceTransport->role() : Description::Role::Passive;
 
-		// RFC 8832: The peer that initiates opening a data channel selects a stream identifier for
-		// which the corresponding incoming and outgoing streams are unused.  If the side is acting
-		// as the DTLS client, it MUST choose an even stream identifier; if the side is acting as
-		// the DTLS server, it MUST choose an odd one.
-		// See https://www.rfc-editor.org/rfc/rfc8832.html#section-6
-		stream = (role == Description::Role::Active) ? 0 : 1;
-		while (true) {
-			if (stream > maxStream)
-				throw std::runtime_error("Too many DataChannels");
-
-			auto it = mDataChannels.find(stream);
-			if (it == mDataChannels.end() || !it->second.lock())
-				break;
-
-			stream += 2;
-		}
-	}
 	// If the DataChannel is user-negotiated, do not negotiate it in-band
 	auto channel =
 	    init.negotiated
-	        ? std::make_shared<DataChannel>(weak_from_this(), stream, std::move(label),
+	        ? std::make_shared<DataChannel>(weak_from_this(), std::move(label),
 	                                        std::move(init.protocol), std::move(init.reliability))
-	        : std::make_shared<OutgoingDataChannel>(weak_from_this(), stream, std::move(label),
+	        : std::make_shared<OutgoingDataChannel>(weak_from_this(), std::move(label),
 	                                                std::move(init.protocol),
 	                                                std::move(init.reliability));
-	mDataChannels.emplace(std::make_pair(stream, channel));
+
+	// If the user supplied a stream id, use it, otherwise assign it later
+	if (init.id) {
+		uint16_t stream = *init.id;
+		if (stream > maxDataChannelStream())
+			throw std::invalid_argument("DataChannel stream id is too high");
+
+		channel->assignStream(stream);
+		mDataChannels.emplace(std::make_pair(stream, channel));
+
+	} else {
+		mUnassignedDataChannels.push_back(channel);
+	}
+
+	lock.unlock(); // we are going to call assignDataChannels()
+
+	// If SCTP is connected, assign and open now
+	auto sctpTransport = getSctpTransport();
+	if (sctpTransport && sctpTransport->state() == SctpTransport::State::Connected) {
+		assignDataChannels();
+		channel->open(sctpTransport);
+	}
+
 	return channel;
 }
 
@@ -657,21 +648,43 @@ uint16_t PeerConnection::maxDataChannelStream() const {
 	return sctpTransport ? sctpTransport->maxStream() : (MAX_SCTP_STREAMS_COUNT - 1);
 }
 
-void PeerConnection::shiftDataChannels() {
-	auto iceTransport = std::atomic_load(&mIceTransport);
-	auto sctpTransport = std::atomic_load(&mSctpTransport);
-	if (!sctpTransport && iceTransport && iceTransport->role() == Description::Role::Active) {
-		std::unique_lock lock(mDataChannelsMutex); // we are going to swap the container
-		decltype(mDataChannels) newDataChannels;
-		auto it = mDataChannels.begin();
-		while (it != mDataChannels.end()) {
-			auto channel = it->second.lock();
-			channel->shiftStream();
-			newDataChannels.emplace(channel->stream(), channel);
-			++it;
+void PeerConnection::assignDataChannels() {
+	std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
+
+	auto iceTransport = getIceTransport();
+	if (!iceTransport)
+		throw std::logic_error("Attempted to assign DataChannels without ICE transport");
+
+	const uint16_t maxStream = maxDataChannelStream();
+	for (auto it = mUnassignedDataChannels.begin(); it != mUnassignedDataChannels.end(); ++it) {
+		auto channel = it->lock();
+		if (!channel)
+			continue;
+
+		// RFC 8832: The peer that initiates opening a data channel selects a stream identifier
+		// for which the corresponding incoming and outgoing streams are unused.  If the side is
+		// acting as the DTLS client, it MUST choose an even stream identifier; if the side is
+		// acting as the DTLS server, it MUST choose an odd one. See
+		// https://www.rfc-editor.org/rfc/rfc8832.html#section-6
+		uint16_t stream = (iceTransport->role() == Description::Role::Active) ? 0 : 1;
+		while (true) {
+			if (stream > maxStream)
+				throw std::runtime_error("Too many DataChannels");
+
+			auto it = mDataChannels.find(stream);
+			if (it == mDataChannels.end() || !it->second.lock())
+				break;
+
+			stream += 2;
 		}
-		std::swap(mDataChannels, newDataChannels);
+
+		PLOG_DEBUG << "Assigning stream " << stream  << " to DataChannel";
+
+		channel->assignStream(stream);
+		mDataChannels.emplace(std::make_pair(stream, channel));
 	}
+
+	mUnassignedDataChannels.clear();
 }
 
 void PeerConnection::iterateDataChannels(
@@ -690,8 +703,13 @@ void PeerConnection::iterateDataChannels(
 		}
 	}
 
-	for (auto &channel : locked)
-		func(std::move(channel));
+	for (auto &channel : locked) {
+		try {
+			func(std::move(channel));
+		} catch (const std::exception &e) {
+			PLOG_WARNING << e.what();
+		}
+	}
 }
 
 void PeerConnection::cleanupDataChannels() {
@@ -710,13 +728,8 @@ void PeerConnection::cleanupDataChannels() {
 void PeerConnection::openDataChannels() {
 	if (auto transport = std::atomic_load(&mSctpTransport))
 		iterateDataChannels([&](shared_ptr<DataChannel> channel) {
-			// Check again as the maximum might have been negotiated lower
-			if (channel->stream() <= transport->maxStream()) {
+			if (!channel->isOpen())
 				channel->open(transport);
-			} else {
-				channel->triggerError("DataChannel stream id is too high");
-				channel->remoteClose();
-			}
 		});
 }
 
@@ -841,7 +854,7 @@ void PeerConnection::processLocalDescription(Description description) {
 			    rtc::overloaded{
 			        [&](Description::Application *remoteApp) {
 				        std::shared_lock lock(mDataChannelsMutex);
-				        if (!mDataChannels.empty()) {
+				        if (!mDataChannels.empty() || !mUnassignedDataChannels.empty()) {
 					        // Prefer local description
 					        Description::Application app(remoteApp->mid());
 					        app.setSctpPort(localSctpPort);
@@ -931,11 +944,12 @@ void PeerConnection::processLocalDescription(Description description) {
 		// Add application for data channels
 		if (!description.hasApplication()) {
 			std::shared_lock lock(mDataChannelsMutex);
-			if (!mDataChannels.empty()) {
+			if (!mDataChannels.empty() || !mUnassignedDataChannels.empty()) {
 				// Prevents mid collision with remote or local tracks
 				unsigned int m = 0;
 				while (description.hasMid(std::to_string(m)))
 					++m;
+
 				Description::Application app(std::to_string(m));
 				app.setSctpPort(localSctpPort);
 				app.setMaxMessageSize(localMaxMessageSize);
@@ -1022,10 +1036,6 @@ void PeerConnection::processRemoteDescription(Description description) {
 		return; // closed
 
 	iceTransport->setRemoteDescription(std::move(description));
-
-	// Since we assumed passive role during DataChannel creation, we might need to shift the stream
-	// numbers from odd to even.
-	shiftDataChannels();
 
 	if (description.hasApplication()) {
 		auto dtlsTransport = std::atomic_load(&mDtlsTransport);

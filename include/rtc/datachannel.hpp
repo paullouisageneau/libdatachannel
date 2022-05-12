@@ -39,8 +39,8 @@ public:
 	DataChannel(impl_ptr<impl::DataChannel> impl);
 	virtual ~DataChannel();
 
-	uint16_t stream() const;
-	uint16_t id() const;
+	optional<uint16_t> stream() const;
+	optional<uint16_t> id() const;
 	string label() const;
 	string protocol() const;
 	Reliability reliability() const;

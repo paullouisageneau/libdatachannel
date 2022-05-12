@@ -83,10 +83,9 @@ bool DataChannel::IsOpenMessage(message_ptr message) {
 	return !message->empty() && raw[0] == MESSAGE_OPEN;
 }
 
-DataChannel::DataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label,
-                         string protocol, Reliability reliability)
-    : mPeerConnection(pc), mStream(stream), mLabel(std::move(label)),
-      mProtocol(std::move(protocol)),
+DataChannel::DataChannel(weak_ptr<PeerConnection> pc, string label, string protocol,
+                         Reliability reliability)
+    : mPeerConnection(pc), mLabel(std::move(label)), mProtocol(std::move(protocol)),
       mReliability(std::make_shared<Reliability>(std::move(reliability))),
       mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
 
@@ -105,8 +104,8 @@ void DataChannel::close() {
 		transport = mSctpTransport.lock();
 	}
 
-	if (mIsOpen.exchange(false) && transport)
-		transport->closeStream(mStream);
+	if (mIsOpen.exchange(false) && transport && mStream.has_value())
+		transport->closeStream(mStream.value());
 
 	if (!mIsClosed.exchange(true))
 		triggerClosed();
@@ -152,7 +151,7 @@ optional<message_variant> DataChannel::peek() {
 
 size_t DataChannel::availableAmount() const { return mRecvQueue.amount(); }
 
-uint16_t DataChannel::stream() const {
+optional<uint16_t> DataChannel::stream() const {
 	std::shared_lock lock(mMutex);
 	return mStream;
 }
@@ -181,8 +180,13 @@ size_t DataChannel::maxMessageSize() const {
 	return pc ? pc->remoteMaxMessageSize() : DEFAULT_MAX_MESSAGE_SIZE;
 }
 
-void DataChannel::shiftStream() {
-	// Ignore
+void DataChannel::assignStream(uint16_t stream) {
+	std::unique_lock lock(mMutex);
+
+	if (mStream.has_value())
+		throw std::logic_error("DataChannel already has a stream assigned");
+
+	mStream = stream;
 }
 
 void DataChannel::open(shared_ptr<SctpTransport> transport) {
@@ -208,12 +212,15 @@ bool DataChannel::outgoing(message_ptr message) {
 		if (!transport || mIsClosed)
 			throw std::runtime_error("DataChannel is closed");
 
+		if (!mStream.has_value())
+			throw std::logic_error("DataChannel has no stream assigned");
+
 		if (message->size() > maxMessageSize())
-			throw std::runtime_error("Message size exceeds limit");
+			throw std::invalid_argument("Message size exceeds limit");
 
 		// Before the ACK has been received on a DataChannel, all messages must be sent ordered
 		message->reliability = mIsOpen ? mReliability : nullptr;
-		message->stream = mStream;
+		message->stream = mStream.value();
 	}
 
 	return transport->send(message);
@@ -259,21 +266,18 @@ void DataChannel::incoming(message_ptr message) {
 	}
 }
 
-OutgoingDataChannel::OutgoingDataChannel(weak_ptr<PeerConnection> pc, uint16_t stream,
-                                             string label, string protocol, Reliability reliability)
-    : DataChannel(pc, stream, std::move(label), std::move(protocol), std::move(reliability)) {}
+OutgoingDataChannel::OutgoingDataChannel(weak_ptr<PeerConnection> pc, string label, string protocol,
+                                         Reliability reliability)
+    : DataChannel(pc, std::move(label), std::move(protocol), std::move(reliability)) {}
 
 OutgoingDataChannel::~OutgoingDataChannel() {}
-
-void OutgoingDataChannel::shiftStream() {
-	std::shared_lock lock(mMutex);
-	if (mStream % 2 == 1)
-		mStream -= 1;
-}
 
 void OutgoingDataChannel::open(shared_ptr<SctpTransport> transport) {
 	std::unique_lock lock(mMutex);
 	mSctpTransport = transport;
+
+	if (!mStream.has_value())
+		throw std::runtime_error("DataChannel has no stream assigned");
 
 	uint8_t channelType;
 	uint32_t reliabilityParameter;
@@ -313,7 +317,7 @@ void OutgoingDataChannel::open(shared_ptr<SctpTransport> transport) {
 
 	lock.unlock();
 
-	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
+	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream.value()));
 }
 
 void OutgoingDataChannel::processOpenMessage(message_ptr) {
@@ -321,8 +325,9 @@ void OutgoingDataChannel::processOpenMessage(message_ptr) {
 }
 
 IncomingDataChannel::IncomingDataChannel(weak_ptr<PeerConnection> pc,
-                                         weak_ptr<SctpTransport> transport, uint16_t stream)
-    : DataChannel(pc, stream, "", "", {}) {
+                                         weak_ptr<SctpTransport> transport)
+    : DataChannel(pc, "", "", {}) {
+
 	mSctpTransport = transport;
 }
 
@@ -336,7 +341,10 @@ void IncomingDataChannel::processOpenMessage(message_ptr message) {
 	std::unique_lock lock(mMutex);
 	auto transport = mSctpTransport.lock();
 	if (!transport)
-		throw std::runtime_error("DataChannel has no transport");
+		throw std::logic_error("DataChannel has no transport");
+
+	if (!mStream.has_value())
+		throw std::logic_error("DataChannel has no stream assigned");
 
 	if (message->size() < sizeof(OpenMessage))
 		throw std::invalid_argument("DataChannel open message too small");
@@ -375,7 +383,7 @@ void IncomingDataChannel::processOpenMessage(message_ptr message) {
 	auto &ack = *reinterpret_cast<AckMessage *>(buffer.data());
 	ack.type = MESSAGE_ACK;
 
-	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream));
+	transport->send(make_message(buffer.begin(), buffer.end(), Message::Control, mStream.value()));
 
 	if (!mIsOpen.exchange(true))
 		triggerOpen();
