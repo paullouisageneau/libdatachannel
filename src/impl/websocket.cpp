@@ -221,6 +221,8 @@ shared_ptr<TcpTransport> WebSocket::setTcpTransport(shared_ptr<TcpTransport> tra
 		if (std::atomic_load(&mTcpTransport))
 			throw std::logic_error("TCP transport is already set");
 
+		transport->onBufferedAmount(weak_bind(&WebSocket::triggerBufferedAmount, this, _1));
+
 		transport->onStateChange([this, weak_this = weak_from_this()](State transportState) {
 			auto shared_this = weak_this.lock();
 			if (!shared_this)
@@ -409,6 +411,9 @@ void WebSocket::closeTransports() {
 
 	if (ws)
 		ws->onRecv(nullptr);
+
+	if (tcp)
+		tcp->onBufferedAmount(nullptr);
 
 	using array = std::array<shared_ptr<Transport>, 3>;
 	array transports{std::move(ws), std::move(tls), std::move(tcp)};

@@ -333,6 +333,10 @@ SctpTransport::~SctpTransport() {
 	Instances->erase(this);
 }
 
+void SctpTransport::onBufferedAmount(amount_callback callback) {
+	mBufferedAmountCallback = std::move(callback);
+}
+
 void SctpTransport::start() {
 	Transport::start();
 
