@@ -118,20 +118,23 @@ bool TlsTransport::stop() {
 }
 
 bool TlsTransport::send(message_ptr message) {
-	if (!message || state() != State::Connected)
-		return false;
+	if (state() != State::Connected)
+		throw std::runtime_error("TLS is not open");
+
+	if (!message || message->size() == 0)
+		return outgoing(message); // pass through
 
 	PLOG_VERBOSE << "Send size=" << message->size();
-
-	if (message->size() == 0)
-		return true;
 
 	ssize_t ret;
 	do {
 		ret = gnutls_record_send(mSession, message->data(), message->size());
 	} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
 
-	return gnutls::check(ret);
+	if (!gnutls::check(ret))
+		throw std::runtime_error("TLS send failed");
+
+	return mOutgoingResult;
 }
 
 void TlsTransport::incoming(message_ptr message) {
@@ -142,6 +145,12 @@ void TlsTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	mIncomingQueue.push(message);
+}
+
+bool TlsTransport::outgoing(message_ptr message) {
+	bool result = Transport::outgoing(std::move(message));
+	mOutgoingResult = result;
+	return result;
 }
 
 void TlsTransport::postHandshake() {
@@ -390,24 +399,25 @@ bool TlsTransport::stop() {
 }
 
 bool TlsTransport::send(message_ptr message) {
-	if (!message || state() != State::Connected)
-		return false;
+	if (state() != State::Connected)
+		throw std::runtime_error("TLS is not open");
+
+	if (!message || message->size() == 0)
+		return outgoing(message); // pass through
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
-	if (message->size() == 0)
-		return true;
-
 	int ret = SSL_write(mSsl, message->data(), int(message->size()));
 	if (!openssl::check(mSsl, ret))
-		return false;
+		throw std::runtime_error("TLS send failed");
 
 	const size_t bufferSize = 4096;
 	byte buffer[bufferSize];
+	bool result = true;
 	while ((ret = BIO_read(mOutBio, buffer, bufferSize)) > 0)
-		outgoing(make_message(buffer, buffer + ret));
+		result = outgoing(make_message(buffer, buffer + ret));
 
-	return true;
+	return result;
 }
 
 void TlsTransport::incoming(message_ptr message) {
@@ -418,6 +428,10 @@ void TlsTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	mIncomingQueue.push(message);
+}
+
+bool TlsTransport::outgoing(message_ptr message) {
+	return Transport::outgoing(std::move(message));
 }
 
 void TlsTransport::postHandshake() {

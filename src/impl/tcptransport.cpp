@@ -95,7 +95,7 @@ bool TcpTransport::send(message_ptr message) {
 	if (state() != State::Connected)
 		throw std::runtime_error("Connection is not open");
 
-	if (!message)
+	if (!message || message->size() == 0)
 		return trySendQueue();
 
 	PLOG_VERBOSE << "Send size=" << message->size();

@@ -27,6 +27,7 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
+#include <atomic>
 #include <thread>
 
 namespace rtc::impl {
@@ -50,6 +51,7 @@ public:
 
 protected:
 	virtual void incoming(message_ptr message) override;
+	virtual bool outgoing(message_ptr message) override;
 	virtual void postHandshake();
 	void runRecvLoop();
 
@@ -64,6 +66,7 @@ protected:
 
 	message_ptr mIncomingMessage;
 	size_t mIncomingMessagePosition = 0;
+	std::atomic<bool> mOutgoingResult = true;
 
 	static ssize_t WriteCallback(gnutls_transport_ptr_t ptr, const void *data, size_t len);
 	static ssize_t ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen);
