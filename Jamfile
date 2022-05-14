@@ -99,7 +99,7 @@ rule make_libusrsctp ( targets * : sources * : properties * )
 }
 actions make_libusrsctp
 {
-    (cd $(CWD)/deps/usrsctp && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(VARIANT) -DCMAKE_C_FLAGS="-fPIC -Wno-unknown-warning-option -Wno-format-truncation" -Dsctp_build_shared_lib=0 -Dsctp_build_programs=0 .. && make -j2 usrsctp)
+    (cd $(CWD)/deps/usrsctp && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(VARIANT) -DCMAKE_C_FLAGS="-fPIC -Wno-unknown-warning-option -Wno-format-truncation" -Dsctp_build_shared_lib=0 -Dsctp_build_programs=0 -Dsctp_inet=0 -Dsctp_inet6=0 .. && make -j2 usrsctp)
     cp $(CWD)/deps/usrsctp/$(BUILD_DIR)/usrsctplib/libusrsctp.a $(<)
 }
 rule make_libusrsctp_msvc ( targets * : sources * : properties * )

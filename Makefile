@@ -113,7 +113,8 @@ dist-clean: clean
 libusrsctp.a:
 	cd $(USRSCTP_DIR) && \
 		./bootstrap && \
-		./configure --enable-static --disable-debug CFLAGS="-fPIC" && \
+		./configure --enable-static --disable-programs --disable-debug \
+			--disable-inet --disable-inet6 CFLAGS="-fPIC" && \
 		make
 	cp $(USRSCTP_DIR)/usrsctplib/.libs/libusrsctp.a .
 
