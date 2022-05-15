@@ -67,6 +67,7 @@ protected:
 	Queue<message_ptr> mIncomingQueue;
 	std::thread mRecvThread;
 	std::atomic<unsigned int> mCurrentDscp;
+	std::atomic<bool> mOutgoingResult = true;
 
 #if USE_GNUTLS
 	gnutls_session_t mSession;
