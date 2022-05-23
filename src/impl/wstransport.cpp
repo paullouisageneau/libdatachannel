@@ -62,7 +62,7 @@ WsTransport::WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TlsTranspo
           std::visit(rtc::overloaded{[](shared_ptr<TcpTransport> l) { return l->isActive(); },
                                      [](shared_ptr<TlsTransport> l) { return l->isClient(); }},
                      lower)),
-      mMaxPongsMissed(maxOutstandingPings) {
+      mMaxOutstandingPings(std::move(maxOutstandingPings)) {
 
 	onRecv(std::move(recvCallback));
 
@@ -375,7 +375,7 @@ bool WsTransport::sendFrame(const Frame &frame) {
 
 void WsTransport::addOutstandingPing() {
 	++mPingsOutstanding;
-	if (mMaxPongsMissed && *mMaxPongsMissed > 0 && mPingsOutstanding > *mMaxPongsMissed) {
+	if (mMaxOutstandingPings && *mMaxOutstandingPings > 0 && mPingsOutstanding > *mMaxOutstandingPings) {
 		changeState(State::Failed);
 	}
 }

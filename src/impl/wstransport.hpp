@@ -75,7 +75,7 @@ private:
 
 	const shared_ptr<WsHandshake> mHandshake;
 	const bool mIsClient;
-	const optional<int> mMaxPongsMissed;
+	const optional<int> mMaxOutstandingPings;
 
 	binary mBuffer;
 	binary mPartial;
