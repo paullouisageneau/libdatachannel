@@ -47,6 +47,7 @@ public:
 	bool isActive() const { return mIsActive; }
 
 	string remoteAddress() const;
+	void setReadTimeout(std::chrono::milliseconds readTimeout);
 
 private:
 	void connect();
@@ -61,6 +62,7 @@ private:
 
 	const bool mIsActive;
 	string mHostname, mService;
+	std::chrono::milliseconds mReadTimeout = std::chrono::seconds(10);
 
 	socket_t mSock;
 	Queue<message_ptr> mSendQueue;
