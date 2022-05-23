@@ -54,7 +54,7 @@ using random_bytes_engine =
 
 WsTransport::WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TlsTransport>> lower,
                          shared_ptr<WsHandshake> handshake, message_callback recvCallback,
-                         state_callback stateCallback, int maxPongsMissed)
+                         state_callback stateCallback, std::optional<int> maxOutstandingPings)
     : Transport(std::visit([](auto l) { return std::static_pointer_cast<Transport>(l); }, lower),
                 std::move(stateCallback)),
       mHandshake(std::move(handshake)),
@@ -62,7 +62,7 @@ WsTransport::WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TlsTranspo
           std::visit(rtc::overloaded{[](shared_ptr<TcpTransport> l) { return l->isActive(); },
                                      [](shared_ptr<TlsTransport> l) { return l->isClient(); }},
                      lower)),
-      mMaxPongsMissed(maxPongsMissed) {
+      mMaxPongsMissed(maxOutstandingPings) {
 
 	onRecv(std::move(recvCallback));
 
@@ -133,7 +133,7 @@ void WsTransport::incoming(message_ptr message) {
 					PLOG_DEBUG << "WebSocket sending ping";
 					uint32_t dummy = 0;
 					sendFrame({PING, reinterpret_cast<byte *>(&dummy), 4, true, mIsClient});
-					addOpenPing();
+					addOutstandingPing();
 				} else {
 					Frame frame;
 					while (size_t len = readFrame(mBuffer.data(), mBuffer.size(), frame)) {
@@ -313,14 +313,12 @@ void WsTransport::recvFrame(const Frame &frame) {
 	}
 	case PING: {
 		PLOG_DEBUG << "WebSocket received ping, sending pong";
-		if (!sendFrame({PONG, frame.payload, frame.length, true, mIsClient})) {
-			PLOG_ERROR << "WebSocket could not send ping";
-		}
+		sendFrame({PONG, frame.payload, frame.length, true, mIsClient});
 		break;
 	}
 	case PONG: {
 		PLOG_DEBUG << "WebSocket received pong";
-		mPingsOpen = 0;
+		mPingsOutstanding = 0;
 		break;
 	}
 	case CLOSE: {
@@ -375,9 +373,9 @@ bool WsTransport::sendFrame(const Frame &frame) {
 	return outgoing(make_message(frame.payload, frame.payload + frame.length)); // payload
 }
 
-void WsTransport::addOpenPing() {
-	++mPingsOpen;
-	if (mMaxPongsMissed > 0 && mPingsOpen > mMaxPongsMissed) {
+void WsTransport::addOutstandingPing() {
+	++mPingsOutstanding;
+	if (mMaxPongsMissed && *mMaxPongsMissed > 0 && mPingsOutstanding > *mMaxPongsMissed) {
 		changeState(State::Failed);
 	}
 }

@@ -114,7 +114,7 @@ void WebSocket::open(const string &url) {
 
 	changeState(State::Connecting);
 	auto tcpTransport = std::make_shared<TcpTransport>(hostname, service, nullptr);
-	tcpTransport->setReadTimeout(config.sendPingInterval);
+	tcpTransport->setReadTimeout(config.pingInterval);
 	setTcpTransport(tcpTransport);
 }
 
@@ -363,7 +363,7 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 
 		auto transport = std::make_shared<WsTransport>(
 			lower, mWsHandshake, weak_bind(&WebSocket::incoming, this, _1), stateChangeCallback,
-			config.maxMissedPongsAllowed);
+			config.maxOutstandingPings);
 
 		return emplaceTransport(this, &mWsTransport, std::move(transport));
 

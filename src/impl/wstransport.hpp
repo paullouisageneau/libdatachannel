@@ -33,8 +33,8 @@ class TlsTransport;
 class WsTransport final : public Transport {
 public:
 	WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TlsTransport>> lower,
-	            shared_ptr<WsHandshake> handshake, message_callback recvCallback,
-				state_callback stateCallback, int maxPongsMissed);
+				shared_ptr<WsHandshake> handshake, message_callback recvCallback,
+				state_callback stateCallback, optional<int> maxOutstandingPings);
 	~WsTransport();
 
 	void start() override;
@@ -71,16 +71,16 @@ private:
 	void recvFrame(const Frame &frame);
 	bool sendFrame(const Frame &frame);
 
-	void addOpenPing();
+	void addOutstandingPing();
 
 	const shared_ptr<WsHandshake> mHandshake;
 	const bool mIsClient;
-	const int mMaxPongsMissed;
+	const optional<int> mMaxPongsMissed;
 
 	binary mBuffer;
 	binary mPartial;
 	Opcode mPartialOpcode;
-	int mPingsOpen = 0;
+	int mPingsOutstanding = 0;
 };
 
 } // namespace rtc::impl
