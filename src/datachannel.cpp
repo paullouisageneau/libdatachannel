@@ -46,9 +46,9 @@ DataChannel::~DataChannel() {
 
 void DataChannel::close() { return impl()->close(); }
 
-uint16_t DataChannel::stream() const { return impl()->stream(); }
+optional<uint16_t> DataChannel::stream() const { return impl()->stream(); }
 
-uint16_t DataChannel::id() const { return impl()->stream(); }
+optional<uint16_t> DataChannel::id() const { return impl()->stream(); }
 
 string DataChannel::label() const { return impl()->label(); }
 

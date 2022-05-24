@@ -70,7 +70,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	shared_ptr<DataChannel> emplaceDataChannel(string label, DataChannelInit init);
 	shared_ptr<DataChannel> findDataChannel(uint16_t stream);
 	uint16_t maxDataChannelStream() const;
-	void shiftDataChannels();
+	void assignDataChannels();
 	void iterateDataChannels(std::function<void(shared_ptr<DataChannel> channel)> func);
 	void cleanupDataChannels();
 	void openDataChannels();
@@ -79,6 +79,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	shared_ptr<Track> emplaceTrack(Description::Media description);
 	void incomingTrack(Description::Media description);
+	void iterateTracks(std::function<void(shared_ptr<Track> track)> func);
 	void openTracks();
 	void closeTracks();
 
@@ -138,9 +139,12 @@ private:
 	shared_ptr<SctpTransport> mSctpTransport;
 
 	std::unordered_map<uint16_t, weak_ptr<DataChannel>> mDataChannels; // by stream ID
-	std::unordered_map<string, weak_ptr<Track>> mTracks;               // by mid
-	std::vector<weak_ptr<Track>> mTrackLines;                          // by SDP order
-	std::shared_mutex mDataChannelsMutex, mTracksMutex;
+	std::vector<weak_ptr<DataChannel>> mUnassignedDataChannels;
+	std::shared_mutex mDataChannelsMutex;
+
+	std::unordered_map<string, weak_ptr<Track>> mTracks; // by mid
+	std::vector<weak_ptr<Track>> mTrackLines;            // by SDP order
+	std::shared_mutex mTracksMutex;
 
 	Queue<shared_ptr<DataChannel>> mPendingDataChannels;
 	Queue<shared_ptr<Track>> mPendingTracks;

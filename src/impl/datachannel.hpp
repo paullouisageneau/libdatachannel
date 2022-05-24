@@ -37,7 +37,7 @@ struct PeerConnection;
 struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
 	static bool IsOpenMessage(message_ptr message);
 
-	DataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label, string protocol,
+	DataChannel(weak_ptr<PeerConnection> pc, string label, string protocol,
 	            Reliability reliability);
 	virtual ~DataChannel();
 
@@ -50,7 +50,7 @@ struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
 	optional<message_variant> peek() override;
 	size_t availableAmount() const override;
 
-	uint16_t stream() const;
+	optional<uint16_t> stream() const;
 	string label() const;
 	string protocol() const;
 	Reliability reliability() const;
@@ -59,7 +59,7 @@ struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
 	bool isClosed(void) const;
 	size_t maxMessageSize() const;
 
-	virtual void shiftStream();
+	virtual void assignStream(uint16_t stream);
 	virtual void open(shared_ptr<SctpTransport> transport);
 	virtual void processOpenMessage(message_ptr);
 
@@ -67,32 +67,31 @@ protected:
 	const weak_ptr<impl::PeerConnection> mPeerConnection;
 	weak_ptr<SctpTransport> mSctpTransport;
 
-	uint16_t mStream;
+	optional<uint16_t> mStream;
 	string mLabel;
 	string mProtocol;
 	shared_ptr<Reliability> mReliability;
 
 	mutable std::shared_mutex mMutex;
 
-	Queue<message_ptr> mRecvQueue;
-
 	std::atomic<bool> mIsOpen = false;
 	std::atomic<bool> mIsClosed = false;
+
+private:
+	Queue<message_ptr> mRecvQueue;
 };
 
 struct OutgoingDataChannel final : public DataChannel {
-	OutgoingDataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label,
-	                      string protocol, Reliability reliability);
+	OutgoingDataChannel(weak_ptr<PeerConnection> pc, string label, string protocol,
+	                    Reliability reliability);
 	~OutgoingDataChannel();
 
-	void shiftStream() override;
 	void open(shared_ptr<SctpTransport> transport) override;
 	void processOpenMessage(message_ptr message) override;
 };
 
 struct IncomingDataChannel final : public DataChannel {
-	IncomingDataChannel(weak_ptr<PeerConnection> pc, weak_ptr<SctpTransport> transport,
-	                    uint16_t stream);
+	IncomingDataChannel(weak_ptr<PeerConnection> pc, weak_ptr<SctpTransport> transport);
 	~IncomingDataChannel();
 
 	void open(shared_ptr<SctpTransport> transport) override;

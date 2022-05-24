@@ -265,10 +265,6 @@ shared_ptr<DataChannel> PeerConnection::createDataChannel(string label, DataChan
 	auto channelImpl = impl()->emplaceDataChannel(std::move(label), std::move(init));
 	auto channel = std::make_shared<DataChannel>(channelImpl);
 
-	if (auto transport = impl()->getSctpTransport())
-		if (transport->state() == impl::SctpTransport::State::Connected)
-			channelImpl->open(transport);
-
 	// Renegotiation is needed iff the current local description does not have application
 	auto local = impl()->localDescription();
 	if (!local || !local->hasApplication())

@@ -863,7 +863,10 @@ int rtcDeleteDataChannel(int dc) {
 int rtcGetDataChannelStream(int dc) {
 	return wrap([dc] {
 		auto dataChannel = getDataChannel(dc);
-		return int(dataChannel->id());
+		if (auto stream = dataChannel->stream())
+			return int(*stream);
+		else
+			return RTC_ERR_NOT_AVAIL;
 	});
 }
 
