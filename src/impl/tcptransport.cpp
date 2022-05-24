@@ -249,11 +249,9 @@ void TcpTransport::prepare(const sockaddr *addr, socklen_t addrlen) {
 }
 
 void TcpTransport::setPoll(PollService::Direction direction) {
-	const auto timeout = mReadTimeout;
 	PollService::Instance().add(
-	    mSock,
-	    {direction, direction == PollService::Direction::In ? make_optional(timeout) : nullopt,
-	     std::bind(&TcpTransport::process, this, _1)});
+	    mSock, {direction, direction == PollService::Direction::In ? mReadTimeout : nullopt,
+	            std::bind(&TcpTransport::process, this, _1)});
 }
 
 void TcpTransport::close() {
