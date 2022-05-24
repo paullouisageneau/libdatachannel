@@ -28,6 +28,7 @@
 #if RTC_ENABLE_WEBSOCKET
 
 #include <mutex>
+#include <chrono>
 
 namespace rtc::impl {
 
@@ -45,8 +46,8 @@ public:
 	bool outgoing(message_ptr message) override;
 
 	bool isActive() const { return mIsActive; }
-
 	string remoteAddress() const;
+
 	void setReadTimeout(std::chrono::milliseconds readTimeout);
 
 private:
@@ -62,7 +63,7 @@ private:
 
 	const bool mIsActive;
 	string mHostname, mService;
-	std::chrono::milliseconds mReadTimeout = std::chrono::seconds(10);
+	optional<std::chrono::milliseconds> mReadTimeout;
 
 	socket_t mSock;
 	Queue<message_ptr> mSendQueue;

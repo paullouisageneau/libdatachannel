@@ -53,8 +53,8 @@ using random_bytes_engine =
     std::independent_bits_engine<std::default_random_engine, CHAR_BIT, unsigned short>;
 
 WsTransport::WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TlsTransport>> lower,
-                         shared_ptr<WsHandshake> handshake, message_callback recvCallback,
-                         state_callback stateCallback, std::optional<int> maxOutstandingPings)
+                         shared_ptr<WsHandshake> handshake, int maxOutstandingPings,
+                         message_callback recvCallback, state_callback stateCallback)
     : Transport(std::visit([](auto l) { return std::static_pointer_cast<Transport>(l); }, lower),
                 std::move(stateCallback)),
       mHandshake(std::move(handshake)),
@@ -62,7 +62,7 @@ WsTransport::WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TlsTranspo
           std::visit(rtc::overloaded{[](shared_ptr<TcpTransport> l) { return l->isActive(); },
                                      [](shared_ptr<TlsTransport> l) { return l->isClient(); }},
                      lower)),
-      mMaxPongsMissed(maxOutstandingPings) {
+      mMaxOutstandingPings(maxOutstandingPings) {
 
 	onRecv(std::move(recvCallback));
 
@@ -318,7 +318,7 @@ void WsTransport::recvFrame(const Frame &frame) {
 	}
 	case PONG: {
 		PLOG_DEBUG << "WebSocket received pong";
-		mPingsOutstanding = 0;
+		mOutstandingPings = 0;
 		break;
 	}
 	case CLOSE: {
@@ -374,8 +374,8 @@ bool WsTransport::sendFrame(const Frame &frame) {
 }
 
 void WsTransport::addOutstandingPing() {
-	++mPingsOutstanding;
-	if (mMaxPongsMissed && *mMaxPongsMissed > 0 && mPingsOutstanding > *mMaxPongsMissed) {
+	++mOutstandingPings;
+	if (mMaxOutstandingPings > 0 && mOutstandingPings > mMaxOutstandingPings) {
 		changeState(State::Failed);
 	}
 }

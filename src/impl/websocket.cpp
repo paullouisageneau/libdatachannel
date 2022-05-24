@@ -30,6 +30,7 @@
 #include "wstransport.hpp"
 
 #include <array>
+#include <chrono>
 #include <regex>
 
 #ifdef _WIN32
@@ -39,6 +40,7 @@
 namespace rtc::impl {
 
 using namespace std::placeholders;
+using namespace std::chrono_literals;
 
 WebSocket::WebSocket(optional<Configuration> optConfig, certificate_ptr certificate)
     : config(optConfig ? std::move(*optConfig) : Configuration()),
@@ -113,9 +115,7 @@ void WebSocket::open(const string &url) {
 	std::atomic_store(&mWsHandshake, std::make_shared<WsHandshake>(host, path, config.protocols));
 
 	changeState(State::Connecting);
-	auto tcpTransport = std::make_shared<TcpTransport>(hostname, service, nullptr);
-	tcpTransport->setReadTimeout(config.pingInterval);
-	setTcpTransport(tcpTransport);
+	setTcpTransport(std::make_shared<TcpTransport>(hostname, service, nullptr));
 }
 
 void WebSocket::close() {
@@ -245,6 +245,11 @@ shared_ptr<TcpTransport> WebSocket::setTcpTransport(shared_ptr<TcpTransport> tra
 			}
 		});
 
+		// WS transport sends a ping on read timeout
+		auto pingInterval = config.pingInterval.value_or(10000ms);
+		if (pingInterval > std::chrono::milliseconds::zero())
+			transport->setReadTimeout(pingInterval);
+
 		return emplaceTransport(this, &mTcpTransport, std::move(transport));
 
 	} catch (const std::exception &e) {
@@ -361,9 +366,10 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 			}
 		};
 
-		auto transport = std::make_shared<WsTransport>(
-			lower, mWsHandshake, weak_bind(&WebSocket::incoming, this, _1), stateChangeCallback,
-			config.maxOutstandingPings);
+		auto maxOutstandingPings = config.maxOutstandingPings.value_or(0);
+		auto transport = std::make_shared<WsTransport>(lower, mWsHandshake, maxOutstandingPings,
+		                                               weak_bind(&WebSocket::incoming, this, _1),
+		                                               stateChangeCallback);
 
 		return emplaceTransport(this, &mWsTransport, std::move(transport));
 

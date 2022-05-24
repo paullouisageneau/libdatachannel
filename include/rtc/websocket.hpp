@@ -23,7 +23,7 @@
 
 #include "channel.hpp"
 #include "common.hpp"
-#include "configuration.hpp"
+#include "configuration.hpp" // for ProxyServer
 
 namespace rtc {
 
@@ -46,9 +46,8 @@ public:
 		bool disableTlsVerification = false; // if true, don't verify the TLS certificate
 		optional<ProxyServer> proxyServer;   // unsupported for now
 		std::vector<string> protocols;
+		optional<std::chrono::milliseconds> pingInterval; // zero to disable
 		optional<int> maxOutstandingPings;
-		std::chrono::milliseconds pingInterval =
-			std::chrono::seconds(10); // interval at which to send pings
 	};
 
 	WebSocket();

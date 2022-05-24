@@ -370,6 +370,8 @@ typedef struct {
 	const char *proxyServer;     // unsupported for now
 	const char **protocols;
 	int protocolsCount;
+	int pingInterval;        // in milliseconds, 0 means default, < 0 means disabled
+	int maxOutstandingPings; // 0 means default, < 0 means disabled
 } rtcWsConfiguration;
 
 RTC_EXPORT int rtcCreateWebSocket(const char *url); // returns ws id
