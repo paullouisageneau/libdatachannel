@@ -780,6 +780,8 @@ typedef struct {
 	bool disableTlsVerification;    // if true, disable TLS certificate verification
 	const char **protocols;
 	int protocolsCount;
+	int pingInterval;
+	int maxOutstandingPings;
 } rtcWsConfiguration;
 ```
 
@@ -789,10 +791,11 @@ Arguments:
 
 - `url`: a null-terminated string representing the fully-qualified URL to open.
 - `config`: a structure with the following parameters:
-  - `bool disableTlsVerification`: if true, don't verify the TLS certificate, else try to verify it if possible
+  - `disableTlsVerification`: if true, don't verify the TLS certificate, else try to verify it if possible
   - `protocols` (optional): an array of pointers on null-terminated protocol names (NULL if unused)
   - `protocolsCount` (optional): number of URLs in the array pointed by `protocols` (0 if unused)
-
+  - `pingInterval` (optional): ping interval in milliseconds (0 if default, < 0 if disabled)
+  - `maxOutstandingPings` (optional): number of unanswered pings before declaring failure (0 if default, < 0 if disabled)
 
 Return value: the identifier of the new WebSocket or a negative error code
 
