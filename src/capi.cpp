@@ -1298,6 +1298,17 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 		for (int i = 0; i < config->protocolsCount; ++i)
 			c.protocols.emplace_back(string(config->protocols[i]));
 
+		if (config->pingInterval > 0)
+			c.pingInterval = std::chrono::milliseconds(config->pingInterval);
+		else if (config->pingInterval < 0)
+			c.pingInterval = std::chrono::milliseconds::zero(); // setting to 0 disables,
+			                                                    // not setting keeps default
+
+		if (config->maxOutstandingPings > 0)
+			c.maxOutstandingPings = config->maxOutstandingPings;
+		else if (config->maxOutstandingPings < 0)
+			c.maxOutstandingPings = 0; // setting to 0 disables, not setting keeps default
+
 		auto webSocket = std::make_shared<WebSocket>(std::move(c));
 		webSocket->open(url);
 		return emplaceWebSocket(webSocket);
