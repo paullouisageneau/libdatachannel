@@ -60,7 +60,7 @@ void test_websocket() {
 
 	ws.open("wss://echo.websocket.org:443/");
 
-	int attempts = 10;
+	int attempts = 20;
 	while ((!ws.isOpen() || !received) && attempts--)
 		this_thread::sleep_for(1s);
 

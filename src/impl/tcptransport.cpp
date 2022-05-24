@@ -71,6 +71,14 @@ TcpTransport::TcpTransport(socket_t sock, state_callback callback)
 
 TcpTransport::~TcpTransport() { stop(); }
 
+void TcpTransport::onBufferedAmount(amount_callback callback) {
+	mBufferedAmountCallback = std::move(callback);
+}
+
+void TcpTransport::setReadTimeout(std::chrono::milliseconds readTimeout) {
+	mReadTimeout = readTimeout;
+}
+
 void TcpTransport::start() {
 	Transport::start();
 
@@ -95,7 +103,7 @@ bool TcpTransport::send(message_ptr message) {
 	if (state() != State::Connected)
 		throw std::runtime_error("Connection is not open");
 
-	if (!message)
+	if (!message || message->size() == 0)
 		return trySendQueue();
 
 	PLOG_VERBOSE << "Send size=" << message->size();
@@ -117,13 +125,12 @@ bool TcpTransport::outgoing(message_ptr message) {
 		return true;
 
 	mSendQueue.push(message);
+	updateBufferedAmount(ptrdiff_t(message->size()));
 	setPoll(PollService::Direction::Both);
 	return false;
 }
 
 string TcpTransport::remoteAddress() const { return mHostname + ':' + mService; }
-
-void TcpTransport::setReadTimeout(std::chrono::milliseconds readTimeout) { mReadTimeout = readTimeout; }
 
 void TcpTransport::connect() {
 	PLOG_DEBUG << "Connecting to " << mHostname << ":" << mService;
@@ -269,11 +276,15 @@ bool TcpTransport::trySendQueue() {
 	// mSendMutex must be locked
 	while (auto next = mSendQueue.peek()) {
 		message_ptr message = std::move(*next);
-		if (!trySendMessage(message)) {
+		size_t size = message->size();
+		if (!trySendMessage(message)) { // replaces message
 			mSendQueue.exchange(message);
+			updateBufferedAmount(-ptrdiff_t(size) + ptrdiff_t(message->size()));
 			return false;
 		}
+
 		mSendQueue.pop();
+		updateBufferedAmount(-ptrdiff_t(size));
 	}
 
 	return true;
@@ -281,6 +292,7 @@ bool TcpTransport::trySendQueue() {
 
 bool TcpTransport::trySendMessage(message_ptr &message) {
 	// mSendMutex must be locked
+
 	auto data = reinterpret_cast<const char *>(message->data());
 	auto size = message->size();
 	while (size) {
@@ -305,6 +317,26 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 	}
 	message = nullptr;
 	return true;
+}
+
+void TcpTransport::updateBufferedAmount(ptrdiff_t delta) {
+	// Requires mSendMutex to be locked
+
+	if (delta == 0)
+		return;
+
+	mBufferedAmount = size_t(std::max(ptrdiff_t(mBufferedAmount) + delta, ptrdiff_t(0)));
+
+	// Synchronously call the buffered amount callback
+	triggerBufferedAmount(mBufferedAmount);
+}
+
+void TcpTransport::triggerBufferedAmount(size_t amount) {
+	try {
+		mBufferedAmountCallback(amount);
+	} catch (const std::exception &e) {
+		PLOG_WARNING << "TCP buffered amount callback: " << e.what();
+	}
 }
 
 void TcpTransport::process(PollService::Event event) {

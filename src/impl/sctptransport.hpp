@@ -53,6 +53,8 @@ public:
 	              state_callback stateChangeCallback);
 	~SctpTransport();
 
+	void onBufferedAmount(amount_callback callback);
+
 	void start() override;
 	bool stop() override;
 	bool send(message_ptr message) override; // false if buffered
@@ -60,10 +62,6 @@ public:
 	void closeStream(unsigned int stream);
 
 	unsigned int maxStream() const;
-
-	void onBufferedAmount(amount_callback callback) {
-		mBufferedAmountCallback = std::move(callback);
-	}
 
 	// Stats
 	void clearStats();

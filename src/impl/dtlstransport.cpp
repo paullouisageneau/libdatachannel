@@ -137,7 +137,10 @@ bool DtlsTransport::send(message_ptr message) {
 	if (ret == GNUTLS_E_LARGE_PACKET)
 		return false;
 
-	return gnutls::check(ret);
+	if (!gnutls::check(ret))
+		return false;
+
+	return mOutgoingResult;
 }
 
 void DtlsTransport::incoming(message_ptr message) {
@@ -161,7 +164,10 @@ bool DtlsTransport::outgoing(message_ptr message) {
 			message->dscp = mCurrentDscp;
 		}
 	}
-	return Transport::outgoing(std::move(message));
+
+	bool result = Transport::outgoing(std::move(message));
+	mOutgoingResult = result;
+	return result;
 }
 
 bool DtlsTransport::demuxMessage(message_ptr) {
@@ -492,7 +498,10 @@ bool DtlsTransport::send(message_ptr message) {
 
 	mCurrentDscp = message->dscp;
 	int ret = SSL_write(mSsl, message->data(), int(message->size()));
-	return openssl::check(mSsl, ret);
+	if (!openssl::check(mSsl, ret))
+		return false;
+
+	return mOutgoingResult;
 }
 
 void DtlsTransport::incoming(message_ptr message) {
@@ -516,7 +525,9 @@ bool DtlsTransport::outgoing(message_ptr message) {
 			message->dscp = mCurrentDscp;
 		}
 	}
-	return Transport::outgoing(std::move(message));
+	bool result = Transport::outgoing(std::move(message));
+	mOutgoingResult = result;
+	return result;
 }
 
 bool DtlsTransport::demuxMessage(message_ptr) {
