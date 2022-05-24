@@ -18,10 +18,12 @@ If you only need Data Channels, the option `NO_MEDIA` allows to make the library
 
 For the sake of performance, the library should be compiled in `Release` mode if you don't plan to debug it.
 
+The CMake build exports the targets with namespace `LibDataChannel::LibDataChannel` and `LibDataChannel::LibDataChannelStatic` to link the library from another CMake project.
+
 ### POSIX-compliant operating systems (including Linux and Apple macOS)
 
 ```bash
-$ cmake -B build -DUSE_GNUTLS=1 -DUSE_NICE=0 -DCMAKE_BUILD_TYPE=Release
+$ cmake -B build -DUSE_GNUTLS=0 -DUSE_NICE=0 -DCMAKE_BUILD_TYPE=Release
 $ cd build
 $ make -j2
 ```
@@ -71,6 +73,6 @@ The option `USE_GNUTLS` allows to switch between OpenSSL (default) and GnuTLS, a
 If you only need Data Channels, the option `NO_MEDIA` removes media support. Similarly, `NO_WEBSOCKET` removes WebSocket support.
 
 ```bash
-$ make USE_GNUTLS=1 USE_NICE=0
+$ make USE_GNUTLS=0 USE_NICE=0
 ```
 
