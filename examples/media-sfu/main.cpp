@@ -90,7 +90,7 @@ int main() {
 		while (true) {
 			auto r = std::make_shared<Receiver>();
 			r->conn = std::make_shared<rtc::PeerConnection>();
-			r->conn->onStateChange([session](rtc::PeerConnection::State state) {
+			r->conn->onStateChange([](rtc::PeerConnection::State state) {
 				std::cout << "State: " << state << std::endl;
 			});
 			r->conn->onGatheringStateChange([r](rtc::PeerConnection::GatheringState state) {
