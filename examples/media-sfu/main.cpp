@@ -92,7 +92,7 @@ int main() {
 		while (true) {
 			auto pc = std::make_shared<Receiver>();
 			pc->conn = std::make_shared<rtc::PeerConnection>();
-			pc->conn->onStateChange([](rtc::PeerConnection::State state) {
+			pc->conn->onStateChange([session](rtc::PeerConnection::State state) {
 				std::cout << "State: " << state << std::endl;
 			});
 			pc->conn->onGatheringStateChange([pc](rtc::PeerConnection::GatheringState state) {
@@ -115,6 +115,9 @@ int main() {
 			pc->track = pc->conn->addTrack(media);
 			pc->conn->setLocalDescription();
 
+			pc->track->onOpen([session]() {
+				session->requestKeyframe(); // So the receiver can start playing immediately
+			});
 			pc->track->onMessage([](rtc::binary var) {}, nullptr);
 
 			std::cout << "Please copy/paste the answer provided by the RECEIVER: " << std::endl;
