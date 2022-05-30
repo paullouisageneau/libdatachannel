@@ -2,84 +2,95 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>libdatachannel media example</title>
+    <title>libdatachannel media SFU example</title>
 </head>
 <body>
 
 <div style="display:inline-block; width:40%;">
     <h1>SENDER</h1>
     <p id="send-help">Please enter the offer provided to you by the application: </p>
-    <textarea style="width:100%;" id=send-text rows="50"></textarea>
-    <button id=send-btn>Submit</button>
+    <textarea style="width:100%;" id="send-text" cols="40" rows="25"></textarea>
+    <button id="send-button">Submit</button>
 </div>
 <div style="display:inline-block; width:40%;">
     <h1>RECEIVER</h1>
     <p id="recv-help">Please enter the offer provided to you by the application: </p>
-    <textarea id=recv-text style="width:100%;" rows="50"></textarea>
-    <button id=recv-btn>Submit</button>
+    <textarea id="recv-text" style="width:100%;" cols="40" rows="25"></textarea>
+    <button id="recv-button">Submit</button>
 </div>
-<div id="videos">
 
+<div id="videos">
 </div>
+
 <script>
-    document.querySelector('#send-btn').addEventListener('click',  async () => {
-        let offer = JSON.parse(document.querySelector('#send-text').value);
-        rtc = new RTCPeerConnection({
+    document.getElementById('send-button').addEventListener('click',  async () => {
+        const pc = new RTCPeerConnection({
             // Recommended for libdatachannel
-            bundlePolicy: "max-bundle",
+            bundlePolicy: 'max-bundle',
         });
 
-        rtc.onicegatheringstatechange = (state) => {
-            if (rtc.iceGatheringState === 'complete') {
+        pc.onicegatheringstatechange = (state) => {
+            if (pc.iceGatheringState === 'complete') {
                 // We only want to provide an answer once all of our candidates have been added to the SDP.
-                let answer = rtc.localDescription;
-                document.querySelector('#send-text').value = JSON.stringify({"type": answer.type, sdp: answer.sdp});
-                document.querySelector('#send-help').value = 'Please paste the answer in the application.';
+                const answer = pc.localDescription;
+                document.getElementById('send-text').value = JSON.stringify({
+                    type: answer.type,
+                    sdp: answer.sdp
+                });
+                document.getElementById('send-help').value = 'Please paste the answer in the application.';
                 alert('Please paste the answer in the application.');
             }
         }
-        await rtc.setRemoteDescription(offer);
 
-        let media = await navigator.mediaDevices.getUserMedia({
+        const offer = JSON.parse(document.getElementById('send-text').value);
+        await pc.setRemoteDescription(offer);
+
+        const media = await navigator.mediaDevices.getUserMedia({
             video: {
                 width: 1280,
                 height: 720
             }
         });
-        media.getTracks().forEach(track => rtc.addTrack(track, media));
-        let answer = await rtc.createAnswer();
-        await rtc.setLocalDescription(answer);
+        media.getTracks().forEach(track => pc.addTrack(track, media));
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
     });
 
-    document.querySelector('#recv-btn').addEventListener('click',  async () => {
-        let offer = JSON.parse(document.querySelector('#recv-text').value);
-        rtc = new RTCPeerConnection({
+    document.getElementById('recv-button').addEventListener('click',  async () => {
+        const pc = new RTCPeerConnection({
             // Recommended for libdatachannel
-            bundlePolicy: "max-bundle",
+            bundlePolicy: 'max-bundle',
         });
 
-        rtc.onicegatheringstatechange = (state) => {
-            if (rtc.iceGatheringState === 'complete') {
+        pc.onicegatheringstatechange = (state) => {
+            if (pc.iceGatheringState === 'complete') {
                 // We only want to provide an answer once all of our candidates have been added to the SDP.
-                let answer = rtc.localDescription;
-                document.querySelector('#recv-text').value = JSON.stringify({"type": answer.type, sdp: answer.sdp});
-                document.querySelector('#recv-help').value = 'Please paste the answer in the application.';
+                const answer = pc.localDescription;
+                document.getElementById('recv-text').value = JSON.stringify({
+                    type: answer.type,
+                    sdp: answer.sdp
+                });
+                document.getElementById('recv-help').value = 'Please paste the answer in the application.';
                 alert('Please paste the answer in the application.');
             }
         }
-        let trackCount = 0;
-        rtc.ontrack = (ev) => {
-            let thisID = trackCount++;
 
-            document.querySelector("#videos").innerHTML += "<video width=100% height=100% id='video-" + thisID + "'></video>";
-            let tracks = [];
-            rtc.getReceivers().forEach(recv => tracks.push(recv.track));
-            document.querySelector("#video-" + thisID).srcObject = new MediaStream(tracks);
-            document.querySelector("#video-" + thisID).play();
+        let trackCount = 0;
+        pc.ontrack = (evt) => {
+            const id = trackCount++;
+            document.getElementById('videos').innerHTML += `<video width="100%" height="100%" id="video-${id}"></video>`;
+
+            const video = document.getElementById(`video-${id}`);
+			video.srcObject = evt.streams[0];
+            video.play();
         };
-        await rtc.setRemoteDescription(offer);
-        let answer = await rtc.createAnswer();
-        await rtc.setLocalDescription(answer);
+
+        const offer = JSON.parse(document.getElementById('recv-text').value);
+        await pc.setRemoteDescription(offer);
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
     });
 </script>
 

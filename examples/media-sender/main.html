@@ -17,7 +17,7 @@
         const offer = JSON.parse(document.querySelector('textarea').value);
         const pc = new RTCPeerConnection({
             // Recommended for libdatachannel
-            bundlePolicy: "max-bundle",
+            bundlePolicy: 'max-bundle',
         });
 
         pc.onicegatheringstatechange = (state) => {

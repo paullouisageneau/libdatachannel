@@ -57,13 +57,11 @@ int main() {
 		    3000); // Request 3Mbps (Browsers do not encode more than 2.5MBps from a webcam)
 
 		auto track = pc->addTrack(media);
-		pc->setLocalDescription();
 
 		auto session = std::make_shared<rtc::RtcpReceivingSession>();
 		track->setMediaHandler(session);
 
-		const rtc::SSRC targetSSRC = 4;
-
+		const rtc::SSRC targetSSRC = 42;
 		track->onMessage(
 		    [&receivers, targetSSRC](rtc::binary message) {
 			    // This is an RTP packet
@@ -77,28 +75,28 @@ int main() {
 		    },
 		    nullptr);
 
+		pc->setLocalDescription();
+
 		// Set the sender's answer
-		{
-			std::cout << "Please copy/paste the answer provided by the SENDER: " << std::endl;
-			std::string sdp;
-			std::getline(std::cin, sdp);
-			std::cout << "Got answer" << sdp << std::endl;
-			json j = json::parse(sdp);
-			rtc::Description answer(j["sdp"].get<std::string>(), j["type"].get<std::string>());
-			pc->setRemoteDescription(answer);
-		}
+		std::cout << "Please copy/paste the answer provided by the SENDER: " << std::endl;
+		std::string sdp;
+		std::getline(std::cin, sdp);
+		std::cout << "Got answer" << sdp << std::endl;
+		json j = json::parse(sdp);
+		rtc::Description answer(j["sdp"].get<std::string>(), j["type"].get<std::string>());
+		pc->setRemoteDescription(answer);
 
 		// For each receiver
 		while (true) {
-			auto pc = std::make_shared<Receiver>();
-			pc->conn = std::make_shared<rtc::PeerConnection>();
-			pc->conn->onStateChange([session](rtc::PeerConnection::State state) {
+			auto r = std::make_shared<Receiver>();
+			r->conn = std::make_shared<rtc::PeerConnection>();
+			r->conn->onStateChange([session](rtc::PeerConnection::State state) {
 				std::cout << "State: " << state << std::endl;
 			});
-			pc->conn->onGatheringStateChange([pc](rtc::PeerConnection::GatheringState state) {
+			r->conn->onGatheringStateChange([r](rtc::PeerConnection::GatheringState state) {
 				std::cout << "Gathering State: " << state << std::endl;
 				if (state == rtc::PeerConnection::GatheringState::Complete) {
-					auto description = pc->conn->localDescription();
+					auto description = r->conn->localDescription();
 					json message = {{"type", description->typeString()},
 					                {"sdp", std::string(description.value())}};
 					std::cout << "Please copy/paste this offer to the RECEIVER: " << message
@@ -107,18 +105,17 @@ int main() {
 			});
 			rtc::Description::Video media("video", rtc::Description::Direction::SendOnly);
 			media.addH264Codec(96);
-			media.setBitrate(
-			    3000); // Request 3Mbps (Browsers do not encode more than 2.5MBps from a webcam)
-
+			media.setBitrate(3000);
 			media.addSSRC(targetSSRC, "video-send");
 
-			pc->track = pc->conn->addTrack(media);
-			pc->conn->setLocalDescription();
+			r->track = r->conn->addTrack(media);
 
-			pc->track->onOpen([session]() {
+			r->track->onOpen([session]() {
 				session->requestKeyframe(); // So the receiver can start playing immediately
 			});
-			pc->track->onMessage([](rtc::binary var) {}, nullptr);
+			r->track->onMessage([](rtc::binary var) {}, nullptr);
+
+			r->conn->setLocalDescription();
 
 			std::cout << "Please copy/paste the answer provided by the RECEIVER: " << std::endl;
 			std::string sdp;
@@ -126,9 +123,9 @@ int main() {
 			std::cout << "Got answer" << sdp << std::endl;
 			json j = json::parse(sdp);
 			rtc::Description answer(j["sdp"].get<std::string>(), j["type"].get<std::string>());
-			pc->conn->setRemoteDescription(answer);
+			r->conn->setRemoteDescription(answer);
 
-			receivers.push_back(pc);
+			receivers.push_back(r);
 		}
 
 	} catch (const std::exception &e) {
