@@ -273,7 +273,7 @@ string Description::generateSdp(string_view eol) const {
 	sdp << "s=-" << eol;
 	sdp << "t=0 0" << eol;
 
-	// Bundle (RFC8843 Negotiating Media Multiplexing Using the Session Description Protocol)
+	// BUNDLE (RFC 8843 Negotiating Media Multiplexing Using the Session Description Protocol)
 	// https://www.rfc-editor.org/rfc/rfc8843.html
 	sdp << "a=group:BUNDLE";
 	for (const auto &entry : mEntries)
@@ -523,6 +523,9 @@ Description::Entry::Entry(const string &mline, string mid, Direction dir)
 
 	// RFC 3264: Existing media streams are removed by creating a new SDP with the port number for
 	// that stream set to zero.
+	// RFC 8843: If the offerer assigns a zero port value to a bundled "m=" section, but does not
+	// include an SDP 'bundle-only' attribute in the "m=" section, it is an indication that the
+	// offerer wants to disable the "m=" section.
 	mIsRemoved = (port == 0);
 }
 
@@ -583,7 +586,6 @@ string Description::Entry::generateSdp(string_view eol, string_view addr, uint16
 
 string Description::Entry::generateSdpLines(string_view eol) const {
 	std::ostringstream sdp;
-	sdp << "a=bundle-only" << eol;
 	sdp << "a=mid:" << mMid << eol;
 
 	for (auto it = mExtMaps.begin(); it != mExtMaps.end(); ++it) {
@@ -661,9 +663,13 @@ void Description::Entry::parseSdpLine(string_view line) {
 		else if (key == "inactive")
 			mDirection = Direction::Inactive;
 		else if (key == "bundle-only") {
-			// always added
-		} else
+			// RFC 8843: When an offerer generates a subsequent offer, in which it wants to disable
+			// a bundled "m=" section from a BUNDLE group, the offerer [...] MUST NOT assign an SDP
+			// 'bundle-only' attribute to the "m=" section.
+			mIsRemoved = false;
+		} else {
 			mAttributes.emplace_back(attr);
+		}
 	}
 }
 
@@ -951,7 +957,7 @@ void Description::Media::removeRtpMap(int payloadType) {
 void Description::Media::removeFormat(const string &format) {
 	std::vector<int> payloadTypes;
 	for (const auto &it : mRtpMaps) {
-		if( it.second.format == format)
+		if (it.second.format == format)
 			payloadTypes.push_back(it.first);
 	}
 	for (int pt : payloadTypes)
