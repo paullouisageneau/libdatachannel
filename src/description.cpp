@@ -950,14 +950,10 @@ void Description::Media::removeRtpMap(int payloadType) {
 
 void Description::Media::removeFormat(const string &format) {
 	std::vector<int> payloadTypes;
-	auto it = mRtpMaps.begin();
-	while (it != mRtpMaps.end()) {
-		if (it->second.format == format)
-			payloadTypes.push_back(it->first);
-		else
-			++it;
+	for (const auto &it : mRtpMaps) {
+		if( it.second.format == format)
+			payloadTypes.push_back(it.first);
 	}
-
 	for (int pt : payloadTypes)
 		removeRtpMap(pt);
 }
