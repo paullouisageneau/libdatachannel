@@ -89,18 +89,17 @@ void wsOnMessage(json message, Configuration config, shared_ptr<WebSocket> ws) {
     if (it == message.end())
         return;
     string id = it->get<string>();
+
     it = message.find("type");
     if (it == message.end())
         return;
     string type = it->get<string>();
 
-    if (type == "streamRequest") {
-        shared_ptr<Client> c = createPeerConnection(config, make_weak_ptr(ws), id);
-        clients.emplace(id, c);
+    if (type == "request") {
+        clients.emplace(id, createPeerConnection(config, make_weak_ptr(ws), id));
     } else if (type == "answer") {
-        shared_ptr<Client> c;
         if (auto jt = clients.find(id); jt != clients.end()) {
-            auto pc = clients.at(id)->peerConnection;
+            auto pc = jt->second->peerConnection;
             auto sdp = message["sdp"].get<string>();
             auto description = Description(sdp, type);
             pc->setRemoteDescription(description);
