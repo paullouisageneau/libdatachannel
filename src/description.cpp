@@ -180,8 +180,12 @@ string Description::typeString() const { return typeToString(mType); }
 Description::Role Description::role() const { return mRole; }
 
 string Description::bundleMid() const {
-	// Get the mid of the first media
-	return !mEntries.empty() ? mEntries[0]->mid() : "0";
+	// Get the mid of the first non-removed media
+	for (const auto &entry : mEntries)
+		if (!entry->isRemoved())
+			return entry->mid();
+
+	return "0";
 }
 
 optional<string> Description::iceUfrag() const { return mIceUfrag; }
@@ -275,15 +279,18 @@ string Description::generateSdp(string_view eol) const {
 
 	// BUNDLE (RFC 8843 Negotiating Media Multiplexing Using the Session Description Protocol)
 	// https://www.rfc-editor.org/rfc/rfc8843.html
-	sdp << "a=group:BUNDLE";
+	std::ostringstream bundleGroup;
 	for (const auto &entry : mEntries)
-		sdp << ' ' << entry->mid();
-	sdp << eol;
+		if (!entry->isRemoved())
+			bundleGroup << ' ' << entry->mid();
+
+	if (!bundleGroup.str().empty())
+		sdp << "a=group:BUNDLE" << bundleGroup.str() << eol;
 
 	// Lip-sync
 	std::ostringstream lsGroup;
 	for (const auto &entry : mEntries)
-		if (entry != mApplication)
+		if (!entry->isRemoved() && entry != mApplication)
 			lsGroup << ' ' << entry->mid();
 
 	if (!lsGroup.str().empty())
@@ -318,7 +325,7 @@ string Description::generateSdp(string_view eol) const {
 	for (const auto &entry : mEntries) {
 		sdp << entry->generateSdp(eol, addr, port);
 
-		if (std::exchange(first, false)) {
+		if (!entry->isRemoved() && std::exchange(first, false)) {
 			// Candidates
 			for (const auto &candidate : mCandidates)
 				sdp << string(candidate) << eol;
