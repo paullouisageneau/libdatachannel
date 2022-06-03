@@ -25,37 +25,30 @@
             max-width: 1280px;
         }
     </style>
+	<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
 </head>
 <body>
-<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+<h1>libdatachannel streamer example client</h1>
 
 <h2>Options</h2>
-
 <div class="option">
     <input id="use-stun" type="checkbox"/>
     <label for="use-stun">Use STUN server</label>
 </div>
-
 <button id="start" onclick="start()" disabled>Start</button>
 <button id="stop" style="display: none" onclick="stop()">Stop</button>
 
 <h2>State</h2>
-<p>
-    ICE gathering state: <span id="ice-gathering-state"></span>
-</p>
-<p>
-    ICE connection state: <span id="ice-connection-state"></span>
-</p>
-<p>
-    Signaling state: <span id="signaling-state"></span>
-</p>
+<p>ICE Connection state: <span id="ice-connection-state"></span></p>
+<p>ICE Gathering state: <span id="ice-gathering-state"></span></p>
+<p>Signaling state: <span id="signaling-state"></span></p>
 
 <div id="media" style="display: none">
     <h2>Media</h2>
     <video id="video" autoplay playsinline></video>
 </div>
 
-<h2>Data channel</h2>
+<h2>Data Channel</h2>
 <pre id="data-channel" style="height: 200px;"></pre>
 
 <h2>SDP</h2>
@@ -67,6 +60,5 @@
 <pre id="answer-sdp"></pre>
 
 <script src="client.js"></script>
-
 </body>
 </html>
