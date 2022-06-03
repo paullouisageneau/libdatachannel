@@ -180,8 +180,12 @@ string Description::typeString() const { return typeToString(mType); }
 Description::Role Description::role() const { return mRole; }
 
 string Description::bundleMid() const {
-	// Get the mid of the first media
-	return !mEntries.empty() ? mEntries[0]->mid() : "0";
+	// Get the mid of the first non-removed media
+	for (const auto &entry : mEntries)
+		if (!entry->isRemoved())
+			return entry->mid();
+
+	return "0";
 }
 
 optional<string> Description::iceUfrag() const { return mIceUfrag; }
@@ -321,7 +325,7 @@ string Description::generateSdp(string_view eol) const {
 	for (const auto &entry : mEntries) {
 		sdp << entry->generateSdp(eol, addr, port);
 
-		if (std::exchange(first, false)) {
+		if (!entry->isRemoved() && std::exchange(first, false)) {
 			// Candidates
 			for (const auto &candidate : mCandidates)
 				sdp << string(candidate) << eol;
