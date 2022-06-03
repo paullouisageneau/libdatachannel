@@ -275,15 +275,18 @@ string Description::generateSdp(string_view eol) const {
 
 	// BUNDLE (RFC 8843 Negotiating Media Multiplexing Using the Session Description Protocol)
 	// https://www.rfc-editor.org/rfc/rfc8843.html
-	sdp << "a=group:BUNDLE";
+	std::ostringstream bundleGroup;
 	for (const auto &entry : mEntries)
-		sdp << ' ' << entry->mid();
-	sdp << eol;
+		if (!entry->isRemoved())
+			bundleGroup << ' ' << entry->mid();
+
+	if (!bundleGroup.str().empty())
+		sdp << "a=group:BUNDLE" << bundleGroup.str() << eol;
 
 	// Lip-sync
 	std::ostringstream lsGroup;
 	for (const auto &entry : mEntries)
-		if (entry != mApplication)
+		if (!entry->isRemoved() && entry != mApplication)
 			lsGroup << ' ' << entry->mid();
 
 	if (!lsGroup.str().empty())
