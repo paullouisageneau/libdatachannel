@@ -379,17 +379,13 @@ shared_ptr<Stream> createStream(const string h264Samples, const unsigned fps, co
                 if (rtpConfig->timestampToSeconds(reportElapsedTimestamp) > 1) {
                     trackData->sender->setNeedsToReport();
                 }
+
                 cout << "Sending " << streamType << " sample with size: " << to_string(sample.size()) << " to " << client << endl;
-                bool send = false;
                 try {
                     // send sample
-                    send = trackData->track->send(sample);
-                } catch (...) {
-                    send = false;
-                }
-                if (!send) {
-                    cerr << "Unable to send "<< streamType << " packet" << endl;
-                    break;
+                    trackData->track->send(sample);
+                } catch (const std::exception &e) {
+                    cerr << "Unable to send "<< streamType << " packet: " << e.what() << endl;
                 }
             }
         }
