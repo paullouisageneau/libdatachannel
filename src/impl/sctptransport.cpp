@@ -187,9 +187,6 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 
 	PLOG_DEBUG << "Initializing SCTP transport";
 
-	usrsctp_register_address(this);
-	Instances->insert(this);
-
 	mSock = usrsctp_socket(AF_CONN, SOCK_STREAM, IPPROTO_SCTP, nullptr, nullptr, 0, nullptr);
 	if (!mSock)
 		throw std::runtime_error("Could not create SCTP socket, errno=" + std::to_string(errno));
@@ -323,14 +320,14 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 	if (usrsctp_setsockopt(mSock, SOL_SOCKET, SO_SNDBUF, &sndBuf, sizeof(sndBuf)))
 		throw std::runtime_error("Could not set SCTP send buffer size, errno=" +
 		                         std::to_string(errno));
+
+	usrsctp_register_address(this);
+	Instances->insert(this);
 }
 
 SctpTransport::~SctpTransport() {
 	stop();
 	close();
-
-	usrsctp_deregister_address(this);
-	Instances->erase(this);
 }
 
 void SctpTransport::start() {
@@ -353,14 +350,6 @@ bool SctpTransport::stop() {
 	flush();
 	shutdown();
 	return true;
-}
-
-void SctpTransport::close() {
-	if (mSock) {
-		mProcessor.join();
-		usrsctp_close(mSock);
-		mSock = nullptr;
-	}
 }
 
 struct sockaddr_conn SctpTransport::getSockAddrConn(uint16_t port) {
@@ -410,6 +399,18 @@ void SctpTransport::shutdown() {
 	PLOG_INFO << "SCTP disconnected";
 	changeState(State::Disconnected);
 	mWrittenCondition.notify_all();
+}
+
+void SctpTransport::close() {
+	if (!mSock)
+		return;
+
+	usrsctp_deregister_address(this);
+	Instances->erase(this);
+
+	mProcessor.join();
+	usrsctp_close(mSock);
+	mSock = nullptr;
 }
 
 bool SctpTransport::send(message_ptr message) {
