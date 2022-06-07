@@ -701,21 +701,26 @@ void SctpTransport::sendReset(uint16_t streamId) {
 }
 
 void SctpTransport::handleUpcall() {
-	if (!mSock)
-		return;
+	try {
+		if (!mSock)
+			return;
 
-	PLOG_VERBOSE << "Handle upcall";
+		PLOG_VERBOSE << "Handle upcall";
 
-	int events = usrsctp_get_events(mSock);
+		int events = usrsctp_get_events(mSock);
 
-	if (events & SCTP_EVENT_READ && mPendingRecvCount == 0) {
-		++mPendingRecvCount;
-		mProcessor.enqueue(&SctpTransport::doRecv, shared_from_this());
-	}
+		if (events & SCTP_EVENT_READ && mPendingRecvCount == 0) {
+			++mPendingRecvCount;
+			mProcessor.enqueue(&SctpTransport::doRecv, shared_from_this());
+		}
 
-	if (events & SCTP_EVENT_WRITE && mPendingFlushCount == 0) {
-		++mPendingFlushCount;
-		mProcessor.enqueue(&SctpTransport::doFlush, shared_from_this());
+		if (events & SCTP_EVENT_WRITE && mPendingFlushCount == 0) {
+			++mPendingFlushCount;
+			mProcessor.enqueue(&SctpTransport::doFlush, shared_from_this());
+		}
+
+	} catch (const std::exception &e) {
+		PLOG_ERROR << "SCTP upcall: " << e.what();
 	}
 }
 
