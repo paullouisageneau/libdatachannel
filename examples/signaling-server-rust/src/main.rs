@@ -96,7 +96,7 @@ async fn main() -> Result<(), std::io::Error> {
 
 	println!("Listening on {}", endpoint);
 
-    let mut listener = TcpListener::bind(endpoint)
+    let listener = TcpListener::bind(endpoint)
     	.await.expect("Listener binding failed");
 
     let clients = ClientsMap::new(Mutex::new(HashMap::new()));
