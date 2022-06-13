@@ -405,12 +405,12 @@ void SctpTransport::close() {
 	if (!mSock)
 		return;
 
-	usrsctp_deregister_address(this);
-	Instances->erase(this);
-
 	mProcessor.join();
 	usrsctp_close(mSock);
 	mSock = nullptr;
+
+	usrsctp_deregister_address(this);
+	Instances->erase(this);
 }
 
 bool SctpTransport::send(message_ptr message) {
