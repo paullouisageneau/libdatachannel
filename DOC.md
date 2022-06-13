@@ -305,7 +305,7 @@ If `buffer` is `NULL`, the description is not copied but the size is still retur
 int rtcGetLocalAddress(int pc, char *buffer, int size)
 ```
 
-Retrieves the current local address, i.e. the network address of the currently selected local candidate. The address will have the format `"IP_ADDRESS:PORT"`, where `IP_ADDRESS` may be either IPv4 or IPv6. The call might fail if the PeerConnection is not in state `RTC_CONNECTED`, and the address might change if the state is not `RTC_COMPLETED`.
+Retrieves the current local address, i.e. the network address of the currently selected local candidate. The address will have the format `"IP_ADDRESS:PORT"`, where `IP_ADDRESS` may be either IPv4 or IPv6. The call might fail if the PeerConnection is not in state `RTC_CONNECTED`, and the address might change after connection.
 
 Arguments:
 
@@ -323,7 +323,7 @@ If `buffer` is `NULL`, the address is not copied but the size is still returned.
 int rtcGetRemoteAddress(int pc, char *buffer, int size)
 ```
 
-Retrieves the current remote address, i.e. the network address of the currently selected remote candidate. The address will have the format `"IP_ADDRESS:PORT"`, where `IP_ADDRESS` may be either IPv4 or IPv6. The call may fail if the state is not `RTC_CONNECTED`, and the address might change if the state is not `RTC_COMPLETED`.
+Retrieves the current remote address, i.e. the network address of the currently selected remote candidate. The address will have the format `"IP_ADDRESS:PORT"`, where `IP_ADDRESS` may be either IPv4 or IPv6. The call may fail if the state is not `RTC_CONNECTED`, and the address might change after connection.
 
 Arguments:
 
@@ -341,7 +341,7 @@ If `buffer` is `NULL`, the address is not copied but the size is still returned.
 int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote, int remoteSize)
 ```
 
-Retrieves the currently selected candidate pair. The call may fail if the state is not `RTC_CONNECTED`, and the selected candidate pair might change if the state is not `RTC_COMPLETED`.
+Retrieves the currently selected candidate pair. The call may fail if the state is not `RTC_CONNECTED`, and the selected candidate pair might change after connection.
 
 Arguments:
 
