@@ -43,8 +43,7 @@ enum MessageType : uint8_t {
 	MESSAGE_OPEN_REQUEST = 0x00,
 	MESSAGE_OPEN_RESPONSE = 0x01,
 	MESSAGE_ACK = 0x02,
-	MESSAGE_OPEN = 0x03,
-	MESSAGE_CLOSE = 0x04
+	MESSAGE_OPEN = 0x03
 };
 
 enum ChannelType : uint8_t {
@@ -70,9 +69,6 @@ struct AckMessage {
 	uint8_t type = MESSAGE_ACK;
 };
 
-struct CloseMessage {
-	uint8_t type = MESSAGE_CLOSE;
-};
 #pragma pack(pop)
 
 bool DataChannel::IsOpenMessage(message_ptr message) {
@@ -120,33 +116,13 @@ void DataChannel::remoteClose() {
 }
 
 optional<message_variant> DataChannel::receive() {
-	while (auto next = mRecvQueue.tryPop()) {
-		message_ptr message = *next;
-		if (message->type != Message::Control)
-			return to_variant(std::move(*message));
-
-		auto raw = reinterpret_cast<const uint8_t *>(message->data());
-		if (!message->empty() && raw[0] == MESSAGE_CLOSE)
-			remoteClose();
-	}
-
-	return nullopt;
+	auto next = mRecvQueue.tryPop();
+	return next ? std::make_optional(to_variant(std::move(**next))) : nullopt;
 }
 
 optional<message_variant> DataChannel::peek() {
-	while (auto next = mRecvQueue.peek()) {
-		message_ptr message = *next;
-		if (message->type != Message::Control)
-			return to_variant(std::move(*message));
-
-		auto raw = reinterpret_cast<const uint8_t *>(message->data());
-		if (!message->empty() && raw[0] == MESSAGE_CLOSE)
-			remoteClose();
-
-		mRecvQueue.tryPop();
-	}
-
-	return nullopt;
+	auto next = mRecvQueue.peek();
+	return next ? std::make_optional(to_variant(std::move(**next))) : nullopt;
 }
 
 size_t DataChannel::availableAmount() const { return mRecvQueue.amount(); }
@@ -244,17 +220,15 @@ void DataChannel::incoming(message_ptr message) {
 				triggerOpen();
 			}
 			break;
-		case MESSAGE_CLOSE:
-			// The close message will be processed in-order in receive()
-			mRecvQueue.push(message);
-			triggerAvailable(mRecvQueue.size());
-			break;
 		default:
 			// Ignore
 			break;
 		}
 		break;
 	}
+	case Message::Reset:
+		remoteClose();
+		break;
 	case Message::String:
 	case Message::Binary:
 		mRecvQueue.push(message);
