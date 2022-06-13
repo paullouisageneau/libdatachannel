@@ -454,8 +454,8 @@ void PeerConnection::forwardMessage(message_ptr message) {
 	}
 
 	if (!channel) {
-		if (message->type == Message::Control) // ignore control messages like Close
-			return;
+		if (message->type == Message::Reset)
+			return; // ignore
 
 		// Invalid, close the DataChannel
 		PLOG_WARNING << "Got unexpected message on stream " << stream;
@@ -682,7 +682,7 @@ void PeerConnection::assignDataChannels() {
 			stream += 2;
 		}
 
-		PLOG_DEBUG << "Assigning stream " << stream  << " to DataChannel";
+		PLOG_DEBUG << "Assigning stream " << stream << " to DataChannel";
 
 		channel->assignStream(stream);
 		mDataChannels.emplace(std::make_pair(stream, channel));

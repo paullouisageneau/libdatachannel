@@ -886,11 +886,9 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 		// corresponding outgoing stream.
 		// See https://www.rfc-editor.org/rfc/rfc8831.html#section-6.7
 		if (flags & SCTP_STREAM_RESET_INCOMING_SSN) {
-			const byte dataChannelCloseMessage{0x04};
 			for (int i = 0; i < count; ++i) {
 				uint16_t streamId = reset_event.strreset_stream_list[i];
-				recv(make_message(&dataChannelCloseMessage, &dataChannelCloseMessage + 1,
-				                  Message::Control, streamId));
+				recv(make_message(0, Message::Reset, streamId));
 			}
 		}
 		break;
