@@ -454,6 +454,9 @@ void PeerConnection::forwardMessage(message_ptr message) {
 	}
 
 	if (!channel) {
+		if (message->type == Message::Control) // ignore control messages like Close
+			return;
+
 		// Invalid, close the DataChannel
 		PLOG_WARNING << "Got unexpected message on stream " << stream;
 		if (auto sctpTransport = getSctpTransport())
