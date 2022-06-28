@@ -81,6 +81,7 @@ void test_track() {
 
 	shared_ptr<Track> t2;
 	string newTrackMid;
+	Description::Video media;
 	pc2.onTrack([&t2, &newTrackMid](shared_ptr<Track> t) {
 		string mid = t->mid();
 		cout << "Track 2: Received track with mid \"" << mid << "\"" << endl;
@@ -99,7 +100,13 @@ void test_track() {
 
 	// Test opening a track
 	newTrackMid = "test";
-	auto t1 = pc1.addTrack(Description::Video(newTrackMid));
+
+	media = Description::Video(newTrackMid, Description::Direction::SendOnly);
+	media.addH264Codec(96);
+	media.setBitrate(3000);
+	media.addSSRC(1234, "video-send");
+
+	auto t1 = pc1.addTrack(media);
 
 	pc1.setLocalDescription();
 
@@ -117,7 +124,15 @@ void test_track() {
 
 	// Test renegotiation
 	newTrackMid = "added";
-	t1 = pc1.addTrack(Description::Video(newTrackMid));
+
+	media = Description::Video(newTrackMid, Description::Direction::SendOnly);
+	media.addH264Codec(96);
+	media.setBitrate(3000);
+	media.addSSRC(2468, "video-send");
+
+	// NOTE: Overwriting the old shared_ptr for t1 will cause it's respective
+	//       track to be dropped (so it's SSRCs won't be on the description next time)
+	t1 = pc1.addTrack(media);
 
 	pc1.setLocalDescription();
 
