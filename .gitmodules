@@ -1,15 +1,19 @@
 [submodule "deps/plog"]
 	path = deps/plog
 	url = https://github.com/SergiusTheBest/plog.git
+	shallow = true
 [submodule "deps/usrsctp"]
 	path = deps/usrsctp
 	url = https://github.com/sctplab/usrsctp.git
+	shallow = true
 [submodule "deps/libjuice"]
 	path = deps/libjuice
 	url = https://github.com/paullouisageneau/libjuice.git
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/nlohmann/json.git
+	shallow = true
 [submodule "deps/libsrtp"]
 	path = deps/libsrtp
 	url = https://github.com/cisco/libsrtp.git
+	shallow = true
