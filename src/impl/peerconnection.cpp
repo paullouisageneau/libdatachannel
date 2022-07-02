@@ -506,8 +506,11 @@ void PeerConnection::forwardMedia(message_ptr message) {
 					ssrcs.insert(chunk->ssrc());
 				}
 			} else {
+				// PT=203 == Goodbye
+				// PT=204 == Application Specific
 				// PT=207 == Extended Report
-				if (header->payloadType() != 207) {
+				if (header->payloadType() != 203 && header->payloadType() != 204 &&
+				    header->payloadType() != 207) {
 					COUNTER_UNKNOWN_PACKET_TYPE++;
 				}
 			}
