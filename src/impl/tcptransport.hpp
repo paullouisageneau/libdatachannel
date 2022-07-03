@@ -51,6 +51,7 @@ public:
 private:
 	void connect();
 	void prepare(const sockaddr *addr, socklen_t addrlen);
+	void configureSocket();
 	void setPoll(PollService::Direction direction);
 	void close();
 
