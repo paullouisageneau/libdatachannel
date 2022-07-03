@@ -40,7 +40,7 @@ See [BUILDING.md](https://github.com/paullouisageneau/libdatachannel/blob/master
 
 See [examples](https://github.com/paullouisageneau/libdatachannel/blob/master/examples/) for complete usage examples with signaling server (under GPLv2).
 
-Additionnaly, you might want to have a look at the [C API documentation](https://github.com/paullouisageneau/libdatachannel/blob/master/DOC.md).
+Additionally, you might want to have a look at the [C API documentation](https://github.com/paullouisageneau/libdatachannel/blob/master/DOC.md).
 
 ### Signal a PeerConnection
 
