@@ -369,8 +369,13 @@ bool WsTransport::sendFrame(const Frame &frame) {
 			frame.payload[i] ^= maskingKey[i % 4];
 	}
 
-	outgoing(make_message(buffer, cur));                                        // header
-	return outgoing(make_message(frame.payload, frame.payload + frame.length)); // payload
+	const size_t length = cur - buffer; // header length
+	auto message = make_message(length + frame.length);
+	std::copy(buffer, buffer + length, message->begin()); // header
+	std::copy(frame.payload, frame.payload + frame.length,
+	          message->begin() + length); // payload
+
+	return outgoing(std::move(message));
 }
 
 } // namespace rtc::impl
