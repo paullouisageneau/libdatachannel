@@ -81,6 +81,7 @@ private:
 	binary mPartial;
 	Opcode mPartialOpcode;
 	int mOutstandingPings = 0;
+	std::mutex mSendMutex;
 };
 
 } // namespace rtc::impl

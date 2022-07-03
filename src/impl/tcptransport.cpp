@@ -47,10 +47,8 @@ TcpTransport::TcpTransport(socket_t sock, state_callback callback)
 
 	PLOG_DEBUG << "Initializing TCP transport with socket";
 
-	// Set non-blocking
-	ctl_t nbio = 1;
-	if (::ioctlsocket(mSock, FIONBIO, &nbio) < 0)
-		throw std::runtime_error("Failed to set socket non-blocking mode");
+	// Configure socket
+	configureSocket();
 
 	// Retrieve hostname and service
 	struct sockaddr_storage addr;
@@ -226,17 +224,8 @@ void TcpTransport::prepare(const sockaddr *addr, socklen_t addrlen) {
 		if (mSock == INVALID_SOCKET)
 			throw std::runtime_error("TCP socket creation failed");
 
-		// Set non-blocking
-		ctl_t nbio = 1;
-		if (::ioctlsocket(mSock, FIONBIO, &nbio) < 0)
-			throw std::runtime_error("Failed to set socket non-blocking mode");
-
-#ifdef __APPLE__
-		// MacOS lacks MSG_NOSIGNAL and requires SO_NOSIGPIPE instead
-		const sockopt_t enabled = 1;
-		if (::setsockopt(mSock, SOL_SOCKET, SO_NOSIGPIPE, &enabled, sizeof(enabled)) < 0)
-			throw std::runtime_error("Failed to disable SIGPIPE for socket");
-#endif
+		// Configure socket
+		configureSocket();
 
 		// Initiate connection
 		int ret = ::connect(mSock, addr, addrlen);
@@ -253,6 +242,25 @@ void TcpTransport::prepare(const sockaddr *addr, socklen_t addrlen) {
 		}
 		throw;
 	}
+}
+
+void TcpTransport::configureSocket() {
+	// Set non-blocking
+	ctl_t nbio = 1;
+	if (::ioctlsocket(mSock, FIONBIO, &nbio) < 0)
+		throw std::runtime_error("Failed to set socket non-blocking mode");
+
+	// Disable the Nagle algorithm
+	int nodelay = 1;
+	::setsockopt(mSock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char *>(&nodelay),
+	             sizeof(nodelay));
+
+#ifdef __APPLE__
+	// MacOS lacks MSG_NOSIGNAL and requires SO_NOSIGPIPE instead
+	const sockopt_t enabled = 1;
+	if (::setsockopt(mSock, SOL_SOCKET, SO_NOSIGPIPE, &enabled, sizeof(enabled)) < 0)
+		throw std::runtime_error("Failed to disable SIGPIPE for socket");
+#endif
 }
 
 void TcpTransport::setPoll(PollService::Direction direction) {
