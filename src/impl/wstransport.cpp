@@ -333,6 +333,8 @@ void WsTransport::recvFrame(const Frame &frame) {
 }
 
 bool WsTransport::sendFrame(const Frame &frame) {
+	std::lock_guard lock(mSendMutex);
+
 	PLOG_DEBUG << "WebSocket sending frame: opcode=" << int(frame.opcode)
 	           << ", length=" << frame.length;
 
