@@ -173,8 +173,13 @@ void WsTransport::incoming(message_ptr message) {
 
 void WsTransport::close() {
 	if (state() == State::Connected) {
-		sendFrame({CLOSE, NULL, 0, true, mIsClient});
 		PLOG_INFO << "WebSocket closing";
+		try {
+			sendFrame({CLOSE, NULL, 0, true, mIsClient});
+		} catch (const std::exception &e) {
+			// Ignore error as the connection might not be open anymore
+			PLOG_DEBUG << "Unable to send WebSocket close frame: " << e.what();
+		}
 		changeState(State::Disconnected);
 	}
 }
