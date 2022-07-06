@@ -126,6 +126,8 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	synchronized_callback<shared_ptr<rtc::Track>> trackCallback;
 
 private:
+	void updateTrackSsrcCache(const Description &description);
+
 	const init_token mInitToken = Init::Instance().token();
 	const future_certificate_ptr mCertificate;
 
@@ -142,8 +144,9 @@ private:
 	std::vector<weak_ptr<DataChannel>> mUnassignedDataChannels;
 	std::shared_mutex mDataChannelsMutex;
 
-	std::unordered_map<string, weak_ptr<Track>> mTracks; // by mid
-	std::vector<weak_ptr<Track>> mTrackLines;            // by SDP order
+	std::unordered_map<string, weak_ptr<Track>> mTracks;         // by mid
+	std::unordered_map<uint32_t, weak_ptr<Track>> mTracksBySsrc; // by SSRC
+	std::vector<weak_ptr<Track>> mTrackLines;                    // by SDP order
 	std::shared_mutex mTracksMutex;
 
 	Queue<shared_ptr<DataChannel>> mPendingDataChannels;
