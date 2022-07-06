@@ -546,57 +546,6 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	}
 }
 
-optional<std::string> PeerConnection::getMidFromSsrc(uint32_t ssrc) {
-	if (auto it = mMidFromSsrc.find(ssrc); it != mMidFromSsrc.end())
-		return it->second;
-
-	{
-		std::lock_guard lock(mRemoteDescriptionMutex);
-		if (!mRemoteDescription)
-			return nullopt;
-
-		for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
-			if (auto found =
-			        std::visit(rtc::overloaded{[&](Description::Application *) -> optional<string> {
-				                                   return std::nullopt;
-			                                   },
-			                                   [&](Description::Media *media) -> optional<string> {
-				                                   return media->hasSSRC(ssrc)
-				                                              ? std::make_optional(media->mid())
-				                                              : nullopt;
-			                                   }},
-			                   mRemoteDescription->media(i))) {
-
-				mMidFromSsrc.emplace(ssrc, *found);
-				return *found;
-			}
-		}
-	}
-	{
-		std::lock_guard lock(mLocalDescriptionMutex);
-		if (!mLocalDescription)
-			return nullopt;
-		for (unsigned int i = 0; i < mLocalDescription->mediaCount(); ++i) {
-			if (auto found =
-			        std::visit(rtc::overloaded{[&](Description::Application *) -> optional<string> {
-				                                   return std::nullopt;
-			                                   },
-			                                   [&](Description::Media *media) -> optional<string> {
-				                                   return media->hasSSRC(ssrc)
-				                                              ? std::make_optional(media->mid())
-				                                              : nullopt;
-			                                   }},
-			                   mLocalDescription->media(i))) {
-
-				mMidFromSsrc.emplace(ssrc, *found);
-				return *found;
-			}
-		}
-	}
-
-	return nullopt;
-}
-
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
 	if (auto channel = findDataChannel(stream))
 		channel->triggerBufferedAmount(amount);

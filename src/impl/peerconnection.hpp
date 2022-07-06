@@ -65,7 +65,6 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void forwardMessage(message_ptr message);
 	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
-	optional<string> getMidFromSsrc(uint32_t ssrc);
 
 	shared_ptr<DataChannel> emplaceDataChannel(string label, DataChannelInit init);
 	shared_ptr<DataChannel> findDataChannel(uint16_t stream);
@@ -151,8 +150,6 @@ private:
 
 	Queue<shared_ptr<DataChannel>> mPendingDataChannels;
 	Queue<shared_ptr<Track>> mPendingTracks;
-
-	std::unordered_map<uint32_t, string> mMidFromSsrc; // cache
 };
 
 } // namespace rtc::impl
