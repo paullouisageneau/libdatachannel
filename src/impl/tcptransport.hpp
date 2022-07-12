@@ -27,11 +27,13 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
+#include <list>
 #include <mutex>
+#include <tuple>
 
 namespace rtc::impl {
 
-class TcpTransport : public Transport {
+class TcpTransport final : public Transport, public std::enable_shared_from_this<TcpTransport> {
 public:
 	TcpTransport(string hostname, string service, state_callback callback); // active
 	TcpTransport(socket_t sock, state_callback callback);                   // passive
@@ -44,13 +46,14 @@ public:
 	void incoming(message_ptr message) override;
 	bool outgoing(message_ptr message) override;
 
-	bool isActive() const { return mIsActive; }
-
+	bool isActive() const;
 	string remoteAddress() const;
 
 private:
 	void connect();
-	void prepare(const sockaddr *addr, socklen_t addrlen);
+	void resolve();
+	void attempt();
+	void createSocket(const struct sockaddr *addr, socklen_t addrlen);
 	void configureSocket();
 	void setPoll(PollService::Direction direction);
 	void close();
@@ -62,6 +65,8 @@ private:
 
 	const bool mIsActive;
 	string mHostname, mService;
+
+	std::list<std::tuple<struct sockaddr_storage, socklen_t>> mResolved;
 
 	socket_t mSock;
 	Queue<message_ptr> mSendQueue;
