@@ -517,12 +517,11 @@ void PeerConnection::forwardMedia(message_ptr message) {
 		}
 
 		if (!ssrcs.empty()) {
+			std::shared_lock lock(mTracksMutex); // read-only
 			for (uint32_t ssrc : ssrcs) {
-				if (auto mid = getMidFromSsrc(ssrc)) {
-					std::shared_lock lock(mTracksMutex); // read-only
-					if (auto it = mTracks.find(*mid); it != mTracks.end())
-						if (auto track = it->second.lock())
-							track->incoming(message);
+				if (auto it = mTracksBySsrc.find(ssrc); it != mTracksBySsrc.end()) {
+					if (auto track = it->second.lock())
+						track->incoming(message);
 				}
 			}
 			return;
@@ -530,11 +529,11 @@ void PeerConnection::forwardMedia(message_ptr message) {
 	}
 
 	uint32_t ssrc = uint32_t(message->stream);
-	if (auto mid = getMidFromSsrc(ssrc)) {
-		std::shared_lock lock(mTracksMutex); // read-only
-		if (auto it = mTracks.find(*mid); it != mTracks.end())
-			if (auto track = it->second.lock())
-				track->incoming(message);
+
+	std::shared_lock lock(mTracksMutex); // read-only
+	if (auto it = mTracksBySsrc.find(ssrc); it != mTracksBySsrc.end()) {
+		if (auto track = it->second.lock())
+			track->incoming(message);
 	} else {
 		/*
 		 * TODO: So the problem is that when stop sending streams, we stop getting report blocks for
@@ -545,57 +544,6 @@ void PeerConnection::forwardMedia(message_ptr message) {
 		// PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
 		return;
 	}
-}
-
-optional<std::string> PeerConnection::getMidFromSsrc(uint32_t ssrc) {
-	if (auto it = mMidFromSsrc.find(ssrc); it != mMidFromSsrc.end())
-		return it->second;
-
-	{
-		std::lock_guard lock(mRemoteDescriptionMutex);
-		if (!mRemoteDescription)
-			return nullopt;
-
-		for (unsigned int i = 0; i < mRemoteDescription->mediaCount(); ++i) {
-			if (auto found =
-			        std::visit(rtc::overloaded{[&](Description::Application *) -> optional<string> {
-				                                   return std::nullopt;
-			                                   },
-			                                   [&](Description::Media *media) -> optional<string> {
-				                                   return media->hasSSRC(ssrc)
-				                                              ? std::make_optional(media->mid())
-				                                              : nullopt;
-			                                   }},
-			                   mRemoteDescription->media(i))) {
-
-				mMidFromSsrc.emplace(ssrc, *found);
-				return *found;
-			}
-		}
-	}
-	{
-		std::lock_guard lock(mLocalDescriptionMutex);
-		if (!mLocalDescription)
-			return nullopt;
-		for (unsigned int i = 0; i < mLocalDescription->mediaCount(); ++i) {
-			if (auto found =
-			        std::visit(rtc::overloaded{[&](Description::Application *) -> optional<string> {
-				                                   return std::nullopt;
-			                                   },
-			                                   [&](Description::Media *media) -> optional<string> {
-				                                   return media->hasSSRC(ssrc)
-				                                              ? std::make_optional(media->mid())
-				                                              : nullopt;
-			                                   }},
-			                   mLocalDescription->media(i))) {
-
-				mMidFromSsrc.emplace(ssrc, *found);
-				return *found;
-			}
-		}
-	}
-
-	return nullopt;
 }
 
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
@@ -993,6 +941,8 @@ void PeerConnection::processLocalDescription(Description description) {
 	if (description.mediaCount() == 0)
 		throw std::logic_error("Local description has no media line");
 
+	updateTrackSsrcCache(description);
+
 	{
 		// Set as local description
 		std::lock_guard lock(mLocalDescriptionMutex);
@@ -1037,6 +987,8 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 }
 
 void PeerConnection::processRemoteDescription(Description description) {
+	updateTrackSsrcCache(description);
+
 	{
 		// Set as remote description
 		std::lock_guard lock(mRemoteDescriptionMutex);
@@ -1216,6 +1168,41 @@ void PeerConnection::resetCallbacks() {
 	localCandidateCallback = nullptr;
 	stateChangeCallback = nullptr;
 	gatheringStateChangeCallback = nullptr;
+}
+
+void PeerConnection::updateTrackSsrcCache(const Description &description) {
+	std::unique_lock lock(mTracksMutex); // for safely writing to mTracksBySsrc
+
+	// Setup SSRC -> Track mapping
+	for (unsigned int i = 0; i < description.mediaCount(); ++i)
+		std::visit( // ssrc -> track mapping
+		    rtc::overloaded{
+		        [&](Description::Application const *) { return; },
+		        [&](Description::Media const *media) {
+			        const auto ssrcs = media->getSSRCs();
+
+			        // Note: We don't want to lock (or do any other lookups), if we
+			        // already know there's no SSRCs to loop over.
+			        if (ssrcs.size() <= 0) {
+				        return;
+			        }
+
+			        std::shared_ptr<Track> track{nullptr};
+			        if (auto it = mTracks.find(media->mid()); it != mTracks.end())
+				        if (auto track_for_mid = it->second.lock())
+					        track = track_for_mid;
+
+			        if (!track) {
+				        // Unable to find track for MID
+				        return;
+			        }
+
+			        for (auto ssrc : ssrcs) {
+				        mTracksBySsrc.emplace(ssrc, track);
+			        }
+		        },
+		    },
+		    description.media(i));
 }
 
 } // namespace rtc::impl

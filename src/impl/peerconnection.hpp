@@ -65,7 +65,6 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void forwardMessage(message_ptr message);
 	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
-	optional<string> getMidFromSsrc(uint32_t ssrc);
 
 	shared_ptr<DataChannel> emplaceDataChannel(string label, DataChannelInit init);
 	shared_ptr<DataChannel> findDataChannel(uint16_t stream);
@@ -126,6 +125,8 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	synchronized_callback<shared_ptr<rtc::Track>> trackCallback;
 
 private:
+	void updateTrackSsrcCache(const Description &description);
+
 	const init_token mInitToken = Init::Instance().token();
 	const future_certificate_ptr mCertificate;
 
@@ -142,14 +143,13 @@ private:
 	std::vector<weak_ptr<DataChannel>> mUnassignedDataChannels;
 	std::shared_mutex mDataChannelsMutex;
 
-	std::unordered_map<string, weak_ptr<Track>> mTracks; // by mid
-	std::vector<weak_ptr<Track>> mTrackLines;            // by SDP order
+	std::unordered_map<string, weak_ptr<Track>> mTracks;         // by mid
+	std::unordered_map<uint32_t, weak_ptr<Track>> mTracksBySsrc; // by SSRC
+	std::vector<weak_ptr<Track>> mTrackLines;                    // by SDP order
 	std::shared_mutex mTracksMutex;
 
 	Queue<shared_ptr<DataChannel>> mPendingDataChannels;
 	Queue<shared_ptr<Track>> mPendingTracks;
-
-	std::unordered_map<uint32_t, string> mMidFromSsrc; // cache
 };
 
 } // namespace rtc::impl

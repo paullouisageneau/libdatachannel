@@ -776,7 +776,7 @@ void Description::Media::replaceSSRC(uint32_t old, uint32_t ssrc, optional<strin
 	addSSRC(ssrc, std::move(name), std::move(msid), std::move(trackID));
 }
 
-bool Description::Media::hasSSRC(uint32_t ssrc) {
+bool Description::Media::hasSSRC(uint32_t ssrc) const {
 	return std::find(mSsrcs.begin(), mSsrcs.end(), ssrc) != mSsrcs.end();
 }
 
@@ -905,9 +905,9 @@ Description::Media Description::Media::reciprocate() const {
 	return reciprocated;
 }
 
-std::vector<uint32_t> Description::Media::getSSRCs() { return mSsrcs; }
+std::vector<uint32_t> Description::Media::getSSRCs() const { return mSsrcs; }
 
-optional<string> Description::Media::getCNameForSsrc(uint32_t ssrc) {
+optional<string> Description::Media::getCNameForSsrc(uint32_t ssrc) const {
 	auto it = mCNameMap.find(ssrc);
 	if (it != mCNameMap.end()) {
 		return it->second;

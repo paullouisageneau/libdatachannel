@@ -191,9 +191,9 @@ public:
 		void removeSSRC(uint32_t ssrc);
 		void replaceSSRC(uint32_t old, uint32_t ssrc, optional<string> name,
 		                 optional<string> msid = nullopt, optional<string> trackID = nullopt);
-		bool hasSSRC(uint32_t ssrc);
-		std::vector<uint32_t> getSSRCs();
-		std::optional<std::string> getCNameForSsrc(uint32_t ssrc);
+		bool hasSSRC(uint32_t ssrc) const;
+		std::vector<uint32_t> getSSRCs() const;
+		std::optional<std::string> getCNameForSsrc(uint32_t ssrc) const;
 
 		int bitrate() const;
 		void setBitrate(int bitrate);
