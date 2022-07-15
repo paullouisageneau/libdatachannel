@@ -887,6 +887,9 @@ void PeerConnection::processLocalDescription(Description description) {
 			        },
 			    },
 			    remote->media(i));
+
+		// We need to update the SSRC cache for newly-created incoming tracks
+		updateTrackSsrcCache(*remote);
 	}
 
 	if (description.type() == Description::Type::Offer) {
@@ -987,6 +990,7 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 }
 
 void PeerConnection::processRemoteDescription(Description description) {
+	// Update the SSRC cache for existing tracks
 	updateTrackSsrcCache(description);
 
 	{
