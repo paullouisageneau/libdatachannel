@@ -26,6 +26,8 @@
 #include "rtc/datachannel.hpp"
 #include "rtc/track.hpp"
 
+#include <algorithm>
+
 #ifdef _WIN32
 #include <winsock2.h>
 #else
@@ -259,8 +261,8 @@ void DataChannel::incoming(message_ptr message) {
 	}
 }
 
-OutgoingDataChannel::OutgoingDataChannel(weak_ptr<PeerConnection> pc, uint16_t stream,
-                                             string label, string protocol, Reliability reliability)
+OutgoingDataChannel::OutgoingDataChannel(weak_ptr<PeerConnection> pc, uint16_t stream, string label,
+                                         string protocol, Reliability reliability)
     : DataChannel(pc, stream, std::move(label), std::move(protocol), std::move(reliability)) {}
 
 OutgoingDataChannel::~OutgoingDataChannel() {}

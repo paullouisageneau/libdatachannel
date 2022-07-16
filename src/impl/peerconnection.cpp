@@ -33,9 +33,11 @@
 #include "dtlssrtptransport.hpp"
 #endif
 
+#include <algorithm>
 #include <array>
 #include <iomanip>
 #include <set>
+#include <sstream>
 #include <thread>
 
 using namespace std::placeholders;

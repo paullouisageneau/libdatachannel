@@ -20,10 +20,10 @@
 #include "icetransport.hpp"
 #include "internals.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <exception>
-#include <iostream>
 
 #if !USE_GNUTLS
 #ifdef _WIN32
