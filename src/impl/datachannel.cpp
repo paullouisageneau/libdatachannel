@@ -26,6 +26,8 @@
 #include "rtc/datachannel.hpp"
 #include "rtc/track.hpp"
 
+#include <algorithm>
+
 #ifdef _WIN32
 #include <winsock2.h>
 #else

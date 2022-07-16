@@ -21,6 +21,7 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
+#include <algorithm>
 #include <cassert>
 
 namespace rtc::impl {

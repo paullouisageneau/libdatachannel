@@ -21,6 +21,7 @@
 #include "internals.hpp"
 #include "logcounter.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdarg>
 #include <cstdio>
