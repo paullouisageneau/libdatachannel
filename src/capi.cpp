@@ -21,6 +21,7 @@
 
 #include "impl/internals.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <exception>
 #include <mutex>
