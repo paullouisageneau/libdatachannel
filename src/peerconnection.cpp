@@ -249,6 +249,12 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 	impl()->processRemoteCandidate(std::move(candidate));
 }
 
+void PeerConnection::setMediaHandler(shared_ptr<MediaHandler> handler) {
+	impl()->setMediaHandler(std::move(handler));
+};
+
+shared_ptr<MediaHandler> PeerConnection::getMediaHandler() { return impl()->getMediaHandler(); };
+
 optional<string> PeerConnection::localAddress() const {
 	auto iceTransport = impl()->getIceTransport();
 	return iceTransport ? iceTransport->getLocalAddress() : nullopt;
