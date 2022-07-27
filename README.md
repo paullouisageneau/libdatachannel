@@ -148,7 +148,7 @@ Features:
 - Trickle ICE ([RFC8838](https://www.rfc-editor.org/rfc/rfc8838.html))
 - JSEP-compatible session establishment with SDP ([RFC8829](https://www.rfc-editor.org/rfc/rfc8829.html))
 - SCTP over DTLS with SDP offer/answer ([RFC8841](https://www.rfc-editor.org/rfc/rfc8841.html))
-- DTLS with ECDSA or RSA keys ([RFC8824](https://www.rfc-editor.org/rfc/rfc8827.html))
+- DTLS with ECDSA or RSA keys ([RFC8827](https://www.rfc-editor.org/rfc/rfc8827.html))
 - SRTP and SRTCP key derivation from DTLS ([RFC5764](https://www.rfc-editor.org/rfc/rfc5764.html))
 - Differentiated Services QoS ([RFC8837](https://www.rfc-editor.org/rfc/rfc8837.html)) where possible
 - Multicast DNS candidates ([draft-ietf-rtcweb-mdns-ice-candidates-04](https://datatracker.ietf.org/doc/html/draft-ietf-rtcweb-mdns-ice-candidates-04))
