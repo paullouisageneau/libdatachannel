@@ -73,11 +73,6 @@ PeerConnection::PeerConnection(Configuration config_)
 	}
 }
 
-PeerConnection::~PeerConnection() {
-	PLOG_VERBOSE << "Destroying PeerConnection";
-	mProcessor.join();
-}
-
 void PeerConnection::close() {
 	PLOG_VERBOSE << "Closing PeerConnection";
 
@@ -88,6 +83,11 @@ void PeerConnection::close() {
 	mProcessor.enqueue(&PeerConnection::closeTracks, shared_from_this());
 
 	closeTransports();
+
+	// We must join all tasks here, in order to ensure all references to 'this' are freed.
+	// otherwise the destructor will never be called, causing async callbacks to fire after the base
+	// PeerConnection was freed.
+	mProcessor.join();
 }
 
 optional<Description> PeerConnection::localDescription() const {

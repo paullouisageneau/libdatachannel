@@ -43,7 +43,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	using SignalingState = rtc::PeerConnection::SignalingState;
 
 	PeerConnection(Configuration config_);
-	~PeerConnection();
+	~PeerConnection() = default;
 
 	void close();
 
