@@ -102,6 +102,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	bool changeGatheringState(GatheringState newState);
 	bool changeSignalingState(SignalingState newState);
 
+	void join();
 	void resetCallbacks();
 
 	// Helper method for asynchronous callback invocation

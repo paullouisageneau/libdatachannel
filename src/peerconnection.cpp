@@ -53,6 +53,10 @@ PeerConnection::~PeerConnection() {
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
 	}
+
+	// Force callbacks to run in impl() so that the shared references to it will free
+	// before our dtor ends, otherwise it won't be freed until after this dtor runs.
+	impl()->join();
 }
 
 void PeerConnection::close() { impl()->close(); }

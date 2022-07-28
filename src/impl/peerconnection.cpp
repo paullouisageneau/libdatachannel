@@ -83,11 +83,6 @@ void PeerConnection::close() {
 	mProcessor.enqueue(&PeerConnection::closeTracks, shared_from_this());
 
 	closeTransports();
-
-	// We must join all tasks here, in order to ensure all references to 'this' are freed.
-	// otherwise the destructor will never be called, causing async callbacks to fire after the base
-	// PeerConnection was freed.
-	mProcessor.join();
 }
 
 optional<Description> PeerConnection::localDescription() const {
@@ -1165,6 +1160,11 @@ bool PeerConnection::changeSignalingState(SignalingState newState) {
 	                   signalingStateChangeCallback, newState);
 
 	return true;
+}
+
+void PeerConnection::join() {
+	// Allows the wrapping PC to wait for callbacks to finish in it's dtor.
+	mProcessor.join();
 }
 
 void PeerConnection::resetCallbacks() {
