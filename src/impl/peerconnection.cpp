@@ -1174,6 +1174,8 @@ void PeerConnection::resetCallbacks() {
 	localCandidateCallback = nullptr;
 	stateChangeCallback = nullptr;
 	gatheringStateChangeCallback = nullptr;
+	signalingStateChangeCallback = nullptr;
+	trackCallback = nullptr;
 }
 
 void PeerConnection::updateTrackSsrcCache(const Description &description) {
