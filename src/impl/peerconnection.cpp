@@ -1193,6 +1193,8 @@ void PeerConnection::resetCallbacks() {
 	localCandidateCallback = nullptr;
 	stateChangeCallback = nullptr;
 	gatheringStateChangeCallback = nullptr;
+	signalingStateChangeCallback = nullptr;
+	trackCallback = nullptr;
 }
 
 } // namespace rtc::impl
