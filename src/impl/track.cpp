@@ -73,16 +73,24 @@ void Track::close() {
 }
 
 optional<message_variant> Track::receive() {
-	if (auto next = mRecvQueue.tryPop())
-		return to_variant(std::move(**next));
-
+	if (auto next = mRecvQueue.tryPop()) {
+		message_ptr message = *next;
+		if (message->type == Message::Control)
+			return to_variant(**next); // The same message may be frowarded into multiple Tracks
+		else
+			return to_variant(std::move(*message));
+	}
 	return nullopt;
 }
 
 optional<message_variant> Track::peek() {
-	if (auto next = mRecvQueue.peek())
-		return to_variant(std::move(**next));
-
+	if (auto next = mRecvQueue.peek()) {
+		message_ptr message = *next;
+		if (message->type == Message::Control)
+			return to_variant(**next); // The same message may be forwarded into multiple Tracks
+		else
+			return to_variant(std::move(*message));
+	}
 	return nullopt;
 }
 
