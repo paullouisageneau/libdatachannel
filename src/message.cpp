@@ -57,4 +57,13 @@ message_variant to_variant(Message &&message) {
 	}
 }
 
+message_variant to_variant(const Message &message) {
+	switch (message.type) {
+	case Message::String:
+		return string(reinterpret_cast<const char *>(message.data()), message.size());
+	default:
+		return message;
+	}
+}
+
 } // namespace rtc
