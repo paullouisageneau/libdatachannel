@@ -105,8 +105,8 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void resetCallbacks();
 
 	// Helper method for asynchronous callback invocation
-	template <typename... Args> void trigger(synchronized_callback<Args...> &cb, Args... args) {
-		cb(std::move(args...));
+	template <typename... Args> void trigger(synchronized_callback<Args...> *cb, Args... args) {
+		(*cb)(std::move(args...));
 	}
 
 	const Configuration config;
