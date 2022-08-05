@@ -70,6 +70,14 @@ RTC_CPP_EXPORT message_ptr make_message(binary &&data, Message::Type type = Mess
 
 RTC_CPP_EXPORT message_ptr make_message(message_variant data);
 
+#if RTC_ENABLE_MEDIA
+
+// Reconstructs a message_ptr from an opaque rtcMessage pointer that
+// was allocated by rtcCreateOpaqueMessage().
+message_ptr make_message_from_opaque_ptr(rtcMessage *&&message);
+
+#endif
+
 RTC_CPP_EXPORT message_variant to_variant(Message &&message);
 RTC_CPP_EXPORT message_variant to_variant(const Message &message);
 

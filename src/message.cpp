@@ -48,6 +48,15 @@ message_ptr make_message(message_variant data) {
 	    std::move(data));
 }
 
+#if RTC_ENABLE_MEDIA
+
+message_ptr make_message_from_opaque_ptr(rtcMessage *&&message) {
+	auto ptr = std::unique_ptr<Message>(reinterpret_cast<Message *>(message));
+	return message_ptr(std::move(ptr));
+}
+
+#endif
+
 message_variant to_variant(Message &&message) {
 	switch (message.type) {
 	case Message::String:
