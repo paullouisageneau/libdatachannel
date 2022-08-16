@@ -1206,7 +1206,7 @@ void PeerConnection::updateTrackSsrcCache(const Description &description) {
 			        }
 
 			        for (auto ssrc : ssrcs) {
-				        mTracksBySsrc.emplace(ssrc, track);
+				        mTracksBySsrc.insert_or_assign(ssrc, track);
 			        }
 		        },
 		    },
