@@ -24,19 +24,15 @@
 
 class StreamSource {
 protected:
-    uint64_t sampleTime_us = 0;
-    rtc::binary sample = {};
 
 public:
-    StreamSource() { }
     virtual void start() = 0;
-    virtual void stop();
+    virtual void stop() = 0;
     virtual void loadNextSample() = 0;
 
-    inline uint64_t getSampleTime_us() { return sampleTime_us; }
-    inline rtc::binary getSample() { return sample; }
-
-    ~StreamSource();
+    virtual uint64_t getSampleTime_us() = 0;
+    virtual uint64_t getSampleDuration_us() = 0;
+	virtual rtc::binary getSample() = 0;
 };
 
 class Stream: std::enable_shared_from_this<Stream> {
@@ -48,12 +44,14 @@ class Stream: std::enable_shared_from_this<Stream> {
 public:
     const std::shared_ptr<StreamSource> audio;
     const std::shared_ptr<StreamSource> video;
+
     Stream(std::shared_ptr<StreamSource> video, std::shared_ptr<StreamSource> audio);
+    ~Stream();
+
     enum class StreamSourceType {
         Audio,
         Video
     };
-    ~Stream();
 
 private:
     rtc::synchronized_callback<StreamSourceType, uint64_t, rtc::binary> sampleHandler;

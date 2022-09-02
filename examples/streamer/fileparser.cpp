@@ -21,10 +21,15 @@
 
 using namespace std;
 
-FileParser::FileParser(string directory, string extension, uint32_t samplesPerSecond, bool loop): sampleDuration_us(1000 * 1000 / samplesPerSecond), StreamSource() {
+FileParser::FileParser(string directory, string extension, uint32_t samplesPerSecond, bool loop) {
     this->directory = directory;
     this->extension = extension;
     this->loop = loop;
+    this->sampleDuration_us = 1000 * 1000 / samplesPerSecond;
+}
+
+FileParser::~FileParser() {
+	stop();
 }
 
 void FileParser::start() {
@@ -33,7 +38,8 @@ void FileParser::start() {
 }
 
 void FileParser::stop() {
-    StreamSource::stop();
+    sample = {};
+    sampleTime_us = 0;
     counter = -1;
 }
 
@@ -57,3 +63,16 @@ void FileParser::loadNextSample() {
     sample = *reinterpret_cast<vector<byte> *>(&fileContents);
     sampleTime_us += sampleDuration_us;
 }
+
+rtc::binary FileParser::getSample() {
+	return sample;
+}
+
+uint64_t FileParser::getSampleTime_us() {
+	return sampleTime_us;
+}
+
+uint64_t FileParser::getSampleDuration_us() {
+	return sampleDuration_us;
+}
+
