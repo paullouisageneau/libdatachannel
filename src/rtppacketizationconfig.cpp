@@ -25,35 +25,13 @@
 namespace rtc {
 
 RtpPacketizationConfig::RtpPacketizationConfig(SSRC ssrc, string cname, uint8_t payloadType,
-                                               uint32_t clockRate,
-                                               optional<uint16_t> sequenceNumber,
-                                               optional<uint32_t> timestamp,
-                                               uint8_t videoOrientationId)
-    : ssrc(ssrc), cname(cname), payloadType(payloadType), clockRate(clockRate), videoOrientationId(videoOrientationId) {
+                                               uint32_t clockRate, uint8_t videoOrientationId)
+    : ssrc(ssrc), cname(cname), payloadType(payloadType), clockRate(clockRate),
+      videoOrientationId(videoOrientationId) {
 	assert(clockRate > 0);
-	srand((unsigned)time(NULL));
-	if (sequenceNumber.has_value()) {
-		this->sequenceNumber = sequenceNumber.value();
-	} else {
-		this->sequenceNumber = rand();
-	}
-	if (timestamp.has_value()) {
-		this->timestamp = timestamp.value();
-	} else {
-		this->timestamp = rand();
-	}
-	this->mStartTimestamp = this->timestamp;
-}
-
-void RtpPacketizationConfig::setStartTime(double startTime, EpochStart epochStart,
-                                          optional<uint32_t> startTimestamp) {
-	this->mStartTime = startTime + double(static_cast<uint64_t>(epochStart));
-	if (startTimestamp.has_value()) {
-		this->mStartTimestamp = startTimestamp.value();
-		timestamp = this->startTimestamp;
-	} else {
-		this->mStartTimestamp = timestamp;
-	}
+	// TODO: random sequence ans timetamp
+	sequenceNumber = 0;
+	timestamp = startTimestamp = 0;
 }
 
 double RtpPacketizationConfig::getSecondsFromTimestamp(uint32_t timestamp, uint32_t clockRate) {
@@ -70,6 +48,15 @@ uint32_t RtpPacketizationConfig::getTimestampFromSeconds(double seconds, uint32_
 
 uint32_t RtpPacketizationConfig::secondsToTimestamp(double seconds) {
 	return RtpPacketizationConfig::getTimestampFromSeconds(seconds, clockRate);
+}
+
+void RtpPacketizationConfig::setStartTime(double startTime,
+										  EpochStart epochStart,
+                                          optional<uint32_t> startTimestamp) {
+	// Deprecated dummy function
+	this->startTime = startTime + double(static_cast<uint64_t>(epochStart));
+	if (startTimestamp.has_value())
+		this->timestamp = this->startTimestamp = startTimestamp.value();
 }
 
 } // namespace rtc
