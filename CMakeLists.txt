@@ -124,6 +124,7 @@ set(LIBDATACHANNEL_IMPL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcpserver.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcptransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tlstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/transport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/verifiedtlstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocket.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocketserver.cpp
@@ -155,6 +156,7 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcpserver.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcptransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tlstransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/transport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/verifiedtlstransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocket.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocketserver.hpp
