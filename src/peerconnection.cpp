@@ -49,7 +49,7 @@ PeerConnection::PeerConnection(Configuration config)
 
 PeerConnection::~PeerConnection() {
 	try {
-		close();
+		impl()->remoteClose();
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
 	}

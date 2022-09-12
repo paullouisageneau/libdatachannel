@@ -50,7 +50,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
       mVerifierCallback(std::move(verifierCallback)),
-      mIsClient(lower->role() == Description::Role::Active), mCurrentDscp(0) {
+      mIsClient(lower->role() == Description::Role::Active) {
 
 	PLOG_DEBUG << "Initializing DTLS transport (GnuTLS)";
 
@@ -99,26 +99,27 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 DtlsTransport::~DtlsTransport() {
 	stop();
 
+	PLOG_DEBUG << "Destroying DTLS transport";
 	gnutls_deinit(mSession);
 }
 
 void DtlsTransport::start() {
-	Transport::start();
-
-	registerIncoming();
+	if(mStarted.exchange(true))
+		return;
 
 	PLOG_DEBUG << "Starting DTLS recv thread";
+	registerIncoming();
 	mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
 }
 
-bool DtlsTransport::stop() {
-	if (!Transport::stop())
-		return false;
+void DtlsTransport::stop() {
+	if(!mStarted.exchange(false))
+		return;
 
 	PLOG_DEBUG << "Stopping DTLS recv thread";
+	unregisterIncoming();
 	mIncomingQueue.stop();
 	mRecvThread.join();
-	return true;
 }
 
 bool DtlsTransport::send(message_ptr message) {
@@ -126,6 +127,7 @@ bool DtlsTransport::send(message_ptr message) {
 		return false;
 
 	PLOG_VERBOSE << "Send size=" << message->size();
+
 
 	ssize_t ret;
 	do {
@@ -385,7 +387,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
       mVerifierCallback(std::move(verifierCallback)),
-      mIsClient(lower->role() == Description::Role::Active), mCurrentDscp(0) {
+      mIsClient(lower->role() == Description::Role::Active) {
 	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
 
 	if (!mCertificate)
@@ -466,28 +468,29 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 DtlsTransport::~DtlsTransport() {
 	stop();
 
+	PLOG_DEBUG << "Destroying DTLS transport";
 	SSL_free(mSsl);
 	SSL_CTX_free(mCtx);
 }
 
 void DtlsTransport::start() {
-	Transport::start();
-
-	registerIncoming();
+	if(mStarted.exchange(true))
+		return;
 
 	PLOG_DEBUG << "Starting DTLS recv thread";
+	registerIncoming();
 	mRecvThread = std::thread(&DtlsTransport::runRecvLoop, this);
 }
 
-bool DtlsTransport::stop() {
-	if (!Transport::stop())
-		return false;
+void DtlsTransport::stop() {
+	if(!mStarted.exchange(false))
+		return;
 
 	PLOG_DEBUG << "Stopping DTLS recv thread";
+	unregisterIncoming();
 	mIncomingQueue.stop();
 	mRecvThread.join();
 	SSL_shutdown(mSsl);
-	return true;
 }
 
 bool DtlsTransport::send(message_ptr message) {

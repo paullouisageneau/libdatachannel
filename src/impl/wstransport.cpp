@@ -18,6 +18,7 @@
 
 #include "wstransport.hpp"
 #include "tcptransport.hpp"
+#include "threadpool.hpp"
 #include "tlstransport.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
@@ -69,11 +70,9 @@ WsTransport::WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TlsTranspo
 	PLOG_DEBUG << "Initializing WebSocket transport";
 }
 
-WsTransport::~WsTransport() { stop(); }
+WsTransport::~WsTransport() { unregisterIncoming(); }
 
 void WsTransport::start() {
-	Transport::start();
-
 	registerIncoming();
 
 	changeState(State::Connecting);
@@ -81,13 +80,7 @@ void WsTransport::start() {
 		sendHttpRequest();
 }
 
-bool WsTransport::stop() {
-	if (!Transport::stop())
-		return false;
-
-	close();
-	return true;
-}
+void WsTransport::stop() { close(); }
 
 bool WsTransport::send(message_ptr message) {
 	if (!message || state() != State::Connected)
@@ -96,6 +89,29 @@ bool WsTransport::send(message_ptr message) {
 	PLOG_VERBOSE << "Send size=" << message->size();
 	return sendFrame({message->type == Message::String ? TEXT_FRAME : BINARY_FRAME, message->data(),
 	                  message->size(), true, mIsClient});
+}
+
+void WsTransport::close() {
+	if (state() != State::Connected)
+		return;
+
+	PLOG_INFO << "WebSocket closing";
+	try {
+		sendFrame({CLOSE, NULL, 0, true, mIsClient});
+	} catch (const std::exception &e) {
+		// The connection might not be open anymore
+		PLOG_DEBUG << "Unable to send WebSocket close frame: " << e.what();
+		changeState(State::Disconnected);
+		return;
+	}
+
+	ThreadPool::Instance().schedule(std::chrono::milliseconds(10),
+	                                [this, weak_this = weak_from_this()]() {
+		                                if (auto shared_this = weak_this.lock()) {
+			                                PLOG_DEBUG << "WebSocket close timeout";
+			                                changeState(State::Disconnected);
+		                                }
+	                                });
 }
 
 void WsTransport::incoming(message_ptr message) {
@@ -169,19 +185,6 @@ void WsTransport::incoming(message_ptr message) {
 	} else {
 		PLOG_ERROR << "WebSocket handshake failed";
 		changeState(State::Failed);
-	}
-}
-
-void WsTransport::close() {
-	if (state() == State::Connected) {
-		PLOG_INFO << "WebSocket closing";
-		try {
-			sendFrame({CLOSE, NULL, 0, true, mIsClient});
-		} catch (const std::exception &e) {
-			// Ignore error as the connection might not be open anymore
-			PLOG_DEBUG << "Unable to send WebSocket close frame: " << e.what();
-		}
-		changeState(State::Disconnected);
 	}
 }
 

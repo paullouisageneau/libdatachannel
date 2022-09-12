@@ -124,17 +124,16 @@ void WebSocket::close() {
 		PLOG_VERBOSE << "Closing WebSocket";
 		changeState(State::Closing);
 		if (auto transport = std::atomic_load(&mWsTransport))
-			transport->close();
+			transport->stop();
 		else
 			remoteClose();
 	}
 }
 
 void WebSocket::remoteClose() {
-	if (state != State::Closed) {
-		close();
+	close();
+	if (state.load() != State::Closed)
 		closeTransports();
-	}
 }
 
 bool WebSocket::isOpen() const { return state == State::Open; }
@@ -424,9 +423,12 @@ void WebSocket::closeTransports() {
 
 	TearDownProcessor::Instance().enqueue(
 	    [transports = std::move(transports), token = Init::Instance().token()]() mutable {
-		    for (const auto &t : transports)
-			    if (t)
+		    for (const auto &t : transports) {
+			    if (t) {
 				    t->stop();
+				    break;
+			    }
+		    }
 
 		    for (auto &t : transports)
 			    t.reset();

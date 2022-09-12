@@ -79,15 +79,23 @@ PeerConnection::~PeerConnection() {
 }
 
 void PeerConnection::close() {
-	PLOG_VERBOSE << "Closing PeerConnection";
-
 	negotiationNeeded = false;
+	if (!closing.exchange(true)) {
+		PLOG_VERBOSE << "Closing PeerConnection";
+		if (auto transport = std::atomic_load(&mSctpTransport))
+			transport->stop();
+		else
+			remoteClose();
+	}
+}
 
-	// Close data channels and tracks asynchronously
-	mProcessor.enqueue(&PeerConnection::closeDataChannels, shared_from_this());
-	mProcessor.enqueue(&PeerConnection::closeTracks, shared_from_this());
-
-	closeTransports();
+void PeerConnection::remoteClose() {
+	close();
+	if (state.load() != State::Closed) {
+		closeDataChannels();
+		closeTracks();
+		closeTransports();
+	}
 }
 
 optional<Description> PeerConnection::localDescription() const {
@@ -125,11 +133,10 @@ shared_ptr<T> emplaceTransport(PeerConnection *pc, shared_ptr<T> *member, shared
 		transport->start();
 	} catch (...) {
 		std::atomic_store(member, decltype(transport)(nullptr));
-		transport->stop();
 		throw;
 	}
 
-	if (pc->state.load() == PeerConnection::State::Closed) {
+	if (pc->closing.load() || pc->state.load() == PeerConnection::State::Closed) {
 		std::atomic_store(member, decltype(transport)(nullptr));
 		transport->stop();
 		return nullptr;
@@ -226,11 +233,11 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 				    break;
 			    case DtlsTransport::State::Failed:
 				    changeState(State::Failed);
-				    mProcessor.enqueue(&PeerConnection::closeTracks, shared_from_this());
+				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
 				    break;
 			    case DtlsTransport::State::Disconnected:
 				    changeState(State::Disconnected);
-				    mProcessor.enqueue(&PeerConnection::closeTracks, shared_from_this());
+				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
 				    break;
 			    default:
 				    // Ignore
@@ -299,6 +306,7 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 			    auto shared_this = weak_this.lock();
 			    if (!shared_this)
 				    return;
+
 			    switch (transportState) {
 			    case SctpTransport::State::Connected:
 				    changeState(State::Connected);
@@ -308,13 +316,12 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 			    case SctpTransport::State::Failed:
 				    LOG_WARNING << "SCTP transport failed";
 				    changeState(State::Failed);
-				    mProcessor.enqueue(&PeerConnection::remoteCloseDataChannels,
-				                       shared_from_this());
+				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
 				    break;
 			    case SctpTransport::State::Disconnected:
+				    LOG_INFO << "SCTP transport disconnected";
 				    changeState(State::Disconnected);
-				    mProcessor.enqueue(&PeerConnection::remoteCloseDataChannels,
-				                       shared_from_this());
+				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
 				    break;
 			    default:
 				    // Ignore
@@ -370,18 +377,18 @@ void PeerConnection::closeTransports() {
 		if (t)
 			t->onStateChange(nullptr);
 
-	// Initiate transport stop on the processor after closing the data channels
-	mProcessor.enqueue([self = shared_from_this(), transports = std::move(transports)]() {
-		TearDownProcessor::Instance().enqueue(
-		    [transports = std::move(transports), token = Init::Instance().token()]() mutable {
-			    for (const auto &t : transports)
-				    if (t)
-					    t->stop();
+	TearDownProcessor::Instance().enqueue(
+	    [transports = std::move(transports), token = Init::Instance().token()]() mutable {
+		    for (const auto &t : transports) {
+			    if (t) {
+				    t->stop();
+				    break;
+			    }
+		    }
 
-			    for (auto &t : transports)
-				    t.reset();
-		    });
-	});
+		    for (auto &t : transports)
+			    t.reset();
+	    });
 }
 
 void PeerConnection::endLocalCandidates() {

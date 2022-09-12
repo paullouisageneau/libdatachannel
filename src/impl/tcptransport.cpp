@@ -69,7 +69,6 @@ TcpTransport::TcpTransport(socket_t sock, state_callback callback)
 }
 
 TcpTransport::~TcpTransport() {
-	stop();
 	close();
 }
 
@@ -82,22 +81,12 @@ void TcpTransport::setReadTimeout(std::chrono::milliseconds readTimeout) {
 }
 
 void TcpTransport::start() {
-	Transport::start();
-
 	if (mSock == INVALID_SOCKET) {
 		connect();
 	} else {
 		changeState(State::Connected);
 		setPoll(PollService::Direction::In);
 	}
-}
-
-bool TcpTransport::stop() {
-	if (!Transport::stop())
-		return false;
-
-	close();
-	return true;
 }
 
 bool TcpTransport::send(message_ptr message) {

@@ -23,26 +23,26 @@ namespace rtc::impl {
 Transport::Transport(shared_ptr<Transport> lower, state_callback callback)
     : mLower(std::move(lower)), mStateChangeCallback(std::move(callback)) {}
 
-Transport::~Transport() { stop(); }
+Transport::~Transport() {
+	unregisterIncoming();
 
-void Transport::start() { mStopped = false; }
-
-bool Transport::stop() {
-	if (mStopped.exchange(true))
-		return false;
-
-	// We don't want incoming() to be called by the lower layer anymore
 	if (mLower) {
-		PLOG_VERBOSE << "Unregistering incoming callback";
-		mLower->onRecv(nullptr);
+		mLower->stop();
+		mLower.reset();
 	}
-	return true;
 }
 
 void Transport::registerIncoming() {
 	if (mLower) {
 		PLOG_VERBOSE << "Registering incoming callback";
 		mLower->onRecv(std::bind(&Transport::incoming, this, std::placeholders::_1));
+	}
+}
+
+void Transport::unregisterIncoming() {
+	if (mLower) {
+		PLOG_VERBOSE << "Unregistering incoming callback";
+		mLower->onRecv(nullptr);
 	}
 }
 
@@ -53,6 +53,10 @@ void Transport::onRecv(message_callback callback) { mRecvCallback = std::move(ca
 void Transport::onStateChange(state_callback callback) {
 	mStateChangeCallback = std::move(callback);
 }
+
+void Transport::start() { registerIncoming(); }
+
+void Transport::stop() { unregisterIncoming(); }
 
 bool Transport::send(message_ptr message) { return outgoing(message); }
 
@@ -83,4 +87,3 @@ bool Transport::outgoing(message_ptr message) {
 }
 
 } // namespace rtc::impl
-

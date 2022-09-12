@@ -56,10 +56,11 @@ public:
 	void onBufferedAmount(amount_callback callback);
 
 	void start() override;
-	bool stop() override;
+	void stop() override;
 	bool send(message_ptr message) override; // false if buffered
 	bool flush();
 	void closeStream(unsigned int stream);
+	void close();
 
 	unsigned int maxStream() const;
 
@@ -86,7 +87,6 @@ private:
 
 	void connect();
 	void shutdown();
-	void close();
 	void incoming(message_ptr message) override;
 	bool outgoing(message_ptr message) override;
 

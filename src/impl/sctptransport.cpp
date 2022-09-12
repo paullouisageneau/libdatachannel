@@ -327,8 +327,20 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 }
 
 SctpTransport::~SctpTransport() {
-	stop();
-	close();
+	PLOG_DEBUG << "Destroying SCTP transport";
+
+	// Before unregistering incoming() from the lower layer, we need to make sure the thread from
+	// lower layers is not blocked in incoming() by the WrittenOnce condition.
+	mWrittenOnce = true;
+	mWrittenCondition.notify_all();
+
+	unregisterIncoming();
+
+	mProcessor.join();
+	usrsctp_close(mSock);
+
+	usrsctp_deregister_address(this);
+	Instances->erase(this);
 }
 
 void SctpTransport::onBufferedAmount(amount_callback callback) {
@@ -336,26 +348,11 @@ void SctpTransport::onBufferedAmount(amount_callback callback) {
 }
 
 void SctpTransport::start() {
-	Transport::start();
-
 	registerIncoming();
 	connect();
 }
 
-bool SctpTransport::stop() {
-	// Transport::stop() will unregister incoming() from the lower layer, therefore we need to make
-	// sure the thread from lower layers is not blocked in incoming() by the WrittenOnce condition.
-	mWrittenOnce = true;
-	mWrittenCondition.notify_all();
-
-	if (!Transport::stop())
-		return false;
-
-	mSendQueue.stop();
-	flush();
-	shutdown();
-	return true;
-}
+void SctpTransport::stop() { close(); }
 
 struct sockaddr_conn SctpTransport::getSockAddrConn(uint16_t port) {
 	struct sockaddr_conn sconn = {};
@@ -398,24 +395,6 @@ void SctpTransport::shutdown() {
 	if (usrsctp_shutdown(mSock, SHUT_RDWR) != 0 && errno != ENOTCONN) {
 		PLOG_WARNING << "SCTP shutdown failed, errno=" << errno;
 	}
-
-	close();
-
-	PLOG_INFO << "SCTP disconnected";
-	changeState(State::Disconnected);
-	mWrittenCondition.notify_all();
-}
-
-void SctpTransport::close() {
-	if (!mSock)
-		return;
-
-	mProcessor.join();
-	usrsctp_close(mSock);
-	mSock = nullptr;
-
-	usrsctp_deregister_address(this);
-	Instances->erase(this);
 }
 
 bool SctpTransport::send(message_ptr message) {
@@ -456,6 +435,11 @@ void SctpTransport::closeStream(unsigned int stream) {
 	mSendQueue.push(make_message(0, Message::Reset, to_uint16(stream)));
 
 	// This method must not call the buffered callback synchronously
+	mProcessor.enqueue(&SctpTransport::flush, shared_from_this());
+}
+
+void SctpTransport::close() {
+	mSendQueue.stop();
 	mProcessor.enqueue(&SctpTransport::flush, shared_from_this());
 }
 
@@ -511,6 +495,8 @@ void SctpTransport::doRecv() {
 					break;
 				else
 					throw std::runtime_error("SCTP recv failed, errno=" + std::to_string(errno));
+			} else if (len == 0) {
+				break;
 			}
 
 			PLOG_VERBOSE << "SCTP recv, len=" << len;
@@ -566,6 +552,12 @@ bool SctpTransport::trySendQueue() {
 		mSendQueue.pop();
 		updateBufferedAmount(to_uint16(message->stream), -ptrdiff_t(message_size_func(message)));
 	}
+
+	if (!mSendQueue.running()) {
+		shutdown();
+		return false;
+	}
+
 	return true;
 }
 
@@ -918,7 +910,6 @@ optional<milliseconds> SctpTransport::rtt() {
 	socklen_t len = sizeof(status);
 	if (usrsctp_getsockopt(mSock, IPPROTO_SCTP, SCTP_STATUS, &status, &len)) {
 		COUNTER_BAD_SCTP_STATUS++;
-
 		return nullopt;
 	}
 	return milliseconds(status.sstat_primary.spinfo_srtt);

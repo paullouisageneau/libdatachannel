@@ -46,6 +46,7 @@ struct WebSocket final : public Channel, public std::enable_shared_from_this<Web
 
 	void open(const string &url);
 	void close();
+	void remoteClose();
 	bool outgoing(message_ptr message);
 	void incoming(message_ptr message);
 
@@ -58,7 +59,6 @@ struct WebSocket final : public Channel, public std::enable_shared_from_this<Web
 	size_t maxMessageSize() const;
 
 	bool changeState(State state);
-	void remoteClose();
 
 	shared_ptr<TcpTransport> setTcpTransport(shared_ptr<TcpTransport> transport);
 	shared_ptr<TlsTransport> initTlsTransport();

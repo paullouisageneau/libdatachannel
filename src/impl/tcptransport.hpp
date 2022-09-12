@@ -46,7 +46,6 @@ public:
 	void setReadTimeout(std::chrono::milliseconds readTimeout);
 
 	void start() override;
-	bool stop() override;
 	bool send(message_ptr message) override;
 
 	void incoming(message_ptr message) override;

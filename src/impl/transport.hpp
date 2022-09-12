@@ -20,6 +20,7 @@
 #define RTC_IMPL_TRANSPORT_H
 
 #include "common.hpp"
+#include "init.hpp"
 #include "internals.hpp"
 #include "message.hpp"
 
@@ -37,15 +38,15 @@ public:
 	Transport(shared_ptr<Transport> lower = nullptr, state_callback callback = nullptr);
 	virtual ~Transport();
 
-	virtual void start();
-	virtual bool stop();
-
 	void registerIncoming();
+	void unregisterIncoming();
 	State state() const;
 
 	void onRecv(message_callback callback);
 	void onStateChange(state_callback callback);
 
+	virtual void start();
+	virtual void stop();
 	virtual bool send(message_ptr message);
 
 protected:
@@ -55,12 +56,13 @@ protected:
 	virtual bool outgoing(message_ptr message);
 
 private:
-	const shared_ptr<Transport> mLower;
+	const init_token mInitToken = Init::Instance().token();
+
+	shared_ptr<Transport> mLower;
 	synchronized_callback<State> mStateChangeCallback;
 	synchronized_callback<message_ptr> mRecvCallback;
 
 	std::atomic<State> mState = State::Disconnected;
-	std::atomic<bool> mStopped = true;
 };
 
 } // namespace rtc::impl
