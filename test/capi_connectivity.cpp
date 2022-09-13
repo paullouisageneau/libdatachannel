@@ -200,8 +200,7 @@ int test_capi_connectivity_main() {
 	}
 
 	// STUN server example (not necessary to connect locally)
-	// Please do not use outside of libdatachannel tests
-	const char *iceServers[1] = {"stun:stun.ageneau.net:3478"};
+	const char *iceServers[1] = {"stun:stun.l.google.com:19302"};
 
 	// Create peer 1
 	rtcConfiguration config1;
