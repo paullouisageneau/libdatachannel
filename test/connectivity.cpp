@@ -36,8 +36,7 @@ void test_connectivity() {
 
 	Configuration config1;
 	// STUN server example (not necessary to connect locally)
-	// Please do not use outside of libdatachannel tests
-	config1.iceServers.emplace_back("stun:stun.ageneau.net:3478");
+	config1.iceServers.emplace_back("stun:stun.l.google.com:19302");
 	// Custom MTU example
 	config1.mtu = 1500;
 	// Custom max message size
@@ -47,8 +46,7 @@ void test_connectivity() {
 
 	Configuration config2;
 	// STUN server example (not necessary to connect locally)
-	// Please do not use outside of libdatachannel tests
-	config2.iceServers.emplace_back("stun:stun.ageneau.net:3478");
+	config2.iceServers.emplace_back("stun:stun.l.google.com:19302");
 	// Custom MTU example
 	config2.mtu = 1500;
 	// Custom max message size
