@@ -35,24 +35,16 @@ void test_turn_connectivity() {
 	Configuration config1;
 	config1.iceTransportPolicy = TransportPolicy::Relay; // force relay
 
-	// STUN server example (not necessary, just here for testing)
-	// Please do not use outside of libdatachannel tests
-	config1.iceServers.emplace_back("stun:stun.ageneau.net:3478");
-	// TURN server example
-	// Please do not use outside of libdatachannel tests
-	config1.iceServers.emplace_back("turn:datachannel_test:14018314739877@stun.ageneau.net:3478");
+	// TURN server example (use your own server in production)
+	config1.iceServers.emplace_back(
+	    "turn:openrelayproject:openrelayproject@openrelay.metered.ca:80");
 
 	PeerConnection pc1(config1);
 
 	Configuration config2;
-	config2.iceTransportPolicy = TransportPolicy::Relay; // force relay
 
-	// STUN server example (not necessary, just here for testing)
-	// Please do not use outside of libdatachannel tests
-	config1.iceServers.emplace_back("stun:stun.ageneau.net:3478");
-	// TURN server example (note that the reserved special character '@' is percent-encoded)
-	// Please do not use outside of libdatachannel tests
-	config2.iceServers.emplace_back("turn:datachannel_test_speci%40l:14018314739877@stun.ageneau.net:3478");
+	// STUN server example (use your own server in production)
+	config2.iceServers.emplace_back("stun:openrelay.metered.ca:80");
 
 	PeerConnection pc2(config2);
 
@@ -82,6 +74,10 @@ void test_turn_connectivity() {
 	});
 
 	pc2.onLocalCandidate([&pc1](Candidate candidate) {
+		// Filter server reflexive candidates
+		if (candidate.type() != rtc::Candidate::Type::ServerReflexive)
+			return;
+
 		cout << "Candidate 2: " << candidate << endl;
 		pc1.addRemoteCandidate(string(candidate));
 	});
@@ -130,10 +126,7 @@ void test_turn_connectivity() {
 		dc1->send("Hello from 1");
 	});
 
-
-	dc1->onClosed([]() {
-		cout << "DataChannel 1: Closed" << endl;
-	});
+	dc1->onClosed([]() { cout << "DataChannel 1: Closed" << endl; });
 
 	dc1->onMessage([](const variant<binary, string> &message) {
 		if (holds_alternative<string>(message)) {
@@ -165,21 +158,12 @@ void test_turn_connectivity() {
 
 	Candidate local, remote;
 	if (!pc1.getSelectedCandidatePair(&local, &remote))
-		throw runtime_error("getSelectedCabndidatePair failed");
+		throw runtime_error("getSelectedCandidatePair failed");
 
 	cout << "Local candidate 1:  " << local << endl;
 	cout << "Remote candidate 1: " << remote << endl;
 
-	if (local.type() != Candidate::Type::Relayed || remote.type() != Candidate::Type::Relayed)
-		throw runtime_error("Connection is not relayed as expected");
-
-	if (!pc2.getSelectedCandidatePair(&local, &remote))
-		throw runtime_error("getSelectedCabndidatePair failed");
-
-	cout << "Local candidate 2:  " << local << endl;
-	cout << "Remote candidate 2: " << remote << endl;
-
-	if (local.type() != Candidate::Type::Relayed || remote.type() != Candidate::Type::Relayed)
+	if (local.type() != Candidate::Type::Relayed)
 		throw runtime_error("Connection is not relayed as expected");
 
 	// Try to open a second data channel with another label
@@ -216,9 +200,7 @@ void test_turn_connectivity() {
 		second1->send("Second hello from 1");
 	});
 
-	second1->onClosed([]() {
-		cout << "Second DataChannel 1: Closed" << endl;
-	});
+	second1->onClosed([]() { cout << "Second DataChannel 1: Closed" << endl; });
 
 	second1->onMessage([](const variant<binary, string> &message) {
 		if (holds_alternative<string>(message)) {

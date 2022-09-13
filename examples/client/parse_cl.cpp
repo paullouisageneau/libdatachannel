@@ -151,9 +151,9 @@ libdatachannel client implementing WebRTC Data Channels with WebSocket signaling
    [ -n ] [ --noStun ] (type=FLAG)\n\
           Do NOT use a stun server (overrides -s and -t).\n\
    [ -s ] [ --stunServer ] (type=STRING, default=stun.l.google.com)\n\
-          Stun server URL or IP address.\n\
+          STUN server URL or IP address.\n\
    [ -t ] [ --stunPort ] (type=INTEGER, range=0...65535, default=19302)\n\
-          Stun server port.\n\
+          STUN server port.\n\
    [ -w ] [ --webSocketServer ] (type=STRING, default=localhost)\n\
           Web socket server URL or IP address.\n\
    [ -x ] [ --webSocketPort ] (type=INTEGER, range=0...65535, default=8000)\n\

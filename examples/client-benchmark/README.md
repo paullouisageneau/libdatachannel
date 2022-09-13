@@ -3,7 +3,7 @@
 This directory contains a native client to open Data Channels with WebSocket signaling using libdatachannel and benchmark functionalities. It offers three functionalities;
 - Benchmark: Bi-directional data transfer benchmark (Also supports One-Way testing)
 - Constant Throughput Set: Send desired amount of data per second
-- Multiple Data Channel: Create desired amount of data channel 
+- Multiple Data Channel: Create desired amount of data channel
 
 ## Start Signaling Server
 - Start one of the signaling server from the examples folder. For example start  `signaling-server-nodejs` like;
@@ -19,13 +19,13 @@ Start 2 applications by using example calls below. Then copy one of the client's
 
 ### Benchmark for 300 seconds
 
-> `./client-benchmark -d 300` 
+> `./client-benchmark -d 300`
 
 Example Output (Offering Peer's Output);
 ```bash
-Stun server is stun:stun.l.google.com:19302
+STUN server is stun:stun.l.google.com:19302
 The local ID is: H1E3
-Url is ws://localhost:8000/H1E3
+URL is ws://localhost:8000/H1E3
 Waiting for signaling to be connected...
 2021-04-10 19:51:31.319 INFO  [16449] [rtc::impl::TcpTransport::connect@163] Connected to localhost:8000
 2021-04-10 19:51:31.319 INFO  [16449] [rtc::impl::TcpTransport::runLoop@331] TCP connected
@@ -113,17 +113,17 @@ Stats# Received Total: 655 MB   Sent Total: 558 MB   RTT: 13 ms
 ### Benchmark for 300 seconds (Only Send, One Way)
 
 Start first peer as;
-> `./client-benchmark -d 300 -o` 
+> `./client-benchmark -d 300 -o`
 
 Start second peer as;
-> `./client-benchmark -d 300` 
+> `./client-benchmark -d 300`
 
 Example Output (Offering Peer's Output);
 ```bash
 Not Sending data. (One way benchmark).
-Stun server is stun:stun.l.google.com:19302
+STUN server is stun:stun.l.google.com:19302
 The local ID is: 7EaP
-Url is ws://localhost:8000/7EaP
+URL is ws://localhost:8000/7EaP
 Waiting for signaling to be connected...
 2021-04-10 19:54:36.857 INFO  [16632] [rtc::impl::TcpTransport::connect@163] Connected to localhost:8000
 2021-04-10 19:54:36.857 INFO  [16632] [rtc::impl::TcpTransport::runLoop@331] TCP connected
@@ -210,13 +210,13 @@ Stats# Received Total: 1362 MB   Sent Total: 0 MB   RTT: 2 ms
 
 ### Constant Throughput Set 8000 byte, for 300 seconds, send buffer 10000 byte
 
-> `./client-benchmark -p -d 300 -r 8000 -b 10000` 
+> `./client-benchmark -p -d 300 -r 8000 -b 10000`
 
 Example Output (Offering Peer's Output);
 ```bash
-Stun server is stun:stun.l.google.com:19302
+STUN server is stun:stun.l.google.com:19302
 The local ID is: 5zkC
-Url is ws://localhost:8000/5zkC
+URL is ws://localhost:8000/5zkC
 Waiting for signaling to be connected...
 2021-04-10 19:52:49.788 INFO  [16530] [rtc::impl::TcpTransport::connect@163] Connected to localhost:8000
 2021-04-10 19:52:49.788 INFO  [16530] [rtc::impl::TcpTransport::runLoop@331] TCP connected
@@ -303,13 +303,13 @@ Stats# Received Total: 122 MB   Sent Total: 122 MB   RTT: 0 ms
 
 ### Constant Throughput Set 8000 byte, for 300 seconds, send buffer 10000 byte, 5 Data Channel
 
-> `./client-benchmark -p -d 300 -r 8000 -b 10000 -c 5` 
+> `./client-benchmark -p -d 300 -r 8000 -b 10000 -c 5`
 
 Example Output (Offering Peer's Output);
 ```bash
-Stun server is stun:stun.l.google.com:19302
+STUN server is stun:stun.l.google.com:19302
 The local ID is: QZ46
-Url is ws://localhost:8000/QZ46
+URL is ws://localhost:8000/QZ46
 Waiting for signaling to be connected...
 2021-04-10 19:57:28.562 INFO  [17117] [rtc::impl::TcpTransport::connect@163] Connected to localhost:8000
 2021-04-10 19:57:28.562 INFO  [17117] [rtc::impl::TcpTransport::runLoop@331] TCP connected
