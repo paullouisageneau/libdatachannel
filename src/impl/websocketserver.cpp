@@ -30,10 +30,10 @@ using namespace std::placeholders;
 const string PemBeginCertificateTag = "-----BEGIN CERTIFICATE-----";
 
 WebSocketServer::WebSocketServer(Configuration config_)
-    : config(std::move(config_)), tcpServer(std::make_unique<TcpServer>(config.port)),
-      mStopped(false) {
+    : config(std::move(config_)), mStopped(false) {
 	PLOG_VERBOSE << "Creating WebSocketServer";
 
+	// Create certificate
 	if (config.enableTls) {
 		if (config.certificatePemFile && config.keyPemFile) {
 			mCertificate = std::make_shared<Certificate>(
@@ -51,6 +51,10 @@ WebSocketServer::WebSocketServer(Configuration config_)
 		}
 	}
 
+	// Create TCP server
+	tcpServer = std::make_unique<TcpServer>(config.port);
+
+	// Create server thread
 	mThread = std::thread(&WebSocketServer::runLoop, this);
 }
 
