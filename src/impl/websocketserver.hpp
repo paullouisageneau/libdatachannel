@@ -45,8 +45,7 @@ struct WebSocketServer final : public std::enable_shared_from_this<WebSocketServ
 	void stop();
 
 	const Configuration config;
-	const unique_ptr<TcpServer> tcpServer;
-
+	unique_ptr<TcpServer> tcpServer;
 	synchronized_callback<shared_ptr<rtc::WebSocket>> clientCallback;
 
 private:
