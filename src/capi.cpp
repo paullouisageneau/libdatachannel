@@ -693,13 +693,10 @@ int rtcSendMessage(int id, const char *data, int size) {
 		if (size >= 0) {
 			auto b = reinterpret_cast<const byte *>(data);
 			channel->send(binary(b, b + size));
-			return size;
 		} else {
-			string str(data);
-			int len = int(str.size());
-			channel->send(std::move(str));
-			return len;
+			channel->send(string(data));
 		}
+		return RTC_ERR_SUCCESS;
 	});
 }
 
