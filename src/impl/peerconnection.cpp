@@ -239,7 +239,8 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		    };
 
 		shared_ptr<DtlsTransport> transport;
-		if (auto local = localDescription(); local && local->hasAudioOrVideo()) {
+		auto local = localDescription();
+		if (config.forceMediaTransport || (local && local->hasAudioOrVideo())) {
 #if RTC_ENABLE_MEDIA
 			PLOG_INFO << "This connection requires media support";
 
