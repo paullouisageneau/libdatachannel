@@ -1259,3 +1259,25 @@ std::ostream &operator<<(std::ostream &out, rtc::Description::Role role) {
 	}
 	return out;
 }
+
+std::ostream &operator<<(std::ostream &out, const rtc::Description::Direction &direction) {
+	switch (direction) {
+	case rtc::Description::Direction::RecvOnly:
+		out << "RecvOnly";
+		break;
+	case rtc::Description::Direction::SendOnly:
+		out << "SendOnly";
+		break;
+	case rtc::Description::Direction::SendRecv:
+		out << "SendRecv";
+		break;
+	case rtc::Description::Direction::Inactive:
+		out << "Inactive";
+		break;
+	case rtc::Description::Direction::Unknown:
+	default:
+		out << "Unknown";
+		break;
+	}
+	return out;
+}
