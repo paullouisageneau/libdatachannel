@@ -717,7 +717,7 @@ shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
 		mTrackLines.emplace_back(track);
 	}
 
-	if (description.isRemoved())
+	if (track->description().isRemoved())
 		track->close();
 
 	return track;
