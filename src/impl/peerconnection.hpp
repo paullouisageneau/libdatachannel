@@ -77,7 +77,6 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void remoteCloseDataChannels();
 
 	shared_ptr<Track> emplaceTrack(Description::Media description);
-	void incomingTrack(Description::Media description);
 	void iterateTracks(std::function<void(shared_ptr<Track> track)> func);
 	void openTracks();
 	void closeTracks();

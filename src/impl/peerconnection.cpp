@@ -723,23 +723,6 @@ shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
 	return track;
 }
 
-void PeerConnection::incomingTrack(Description::Media description) {
-	std::unique_lock lock(mTracksMutex); // we are going to emplace
-	shared_ptr<Track> track;
-	if (auto it = mTracks.find(description.mid()); it != mTracks.end()) {
-		if (track = it->second.lock(); track)
-			track->setDescription(std::move(description));
-	} else {
-		track = std::make_shared<Track>(weak_from_this(), std::move(description));
-		mTracks.emplace(std::make_pair(track->mid(), track));
-		mTrackLines.emplace_back(track);
-		triggerTrack(track);
-	}
-
-	if (track && description.isRemoved())
-		track->close();
-}
-
 void PeerConnection::iterateTracks(std::function<void(shared_ptr<Track> track)> func) {
 	std::shared_lock lock(mTracksMutex); // read-only
 	for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it) {
@@ -878,7 +861,6 @@ void PeerConnection::processLocalDescription(Description description) {
 					        }
 					        return;
 				        }
-				        lock.unlock(); // we are going to call incomingTrack()
 
 				        auto reciprocated = remoteMedia->reciprocate();
 #if !RTC_ENABLE_MEDIA
@@ -888,13 +870,22 @@ void PeerConnection::processLocalDescription(Description description) {
 					        reciprocated.markRemoved();
 				        }
 #endif
-				        incomingTrack(reciprocated);
 
 				        PLOG_DEBUG << "Reciprocating media in local description, mid=\""
 				                   << reciprocated.mid() << "\", removed=" << std::boolalpha
 				                   << reciprocated.isRemoved();
 
-				        description.addMedia(std::move(reciprocated));
+				        // Create incoming track
+				        auto track =
+				            std::make_shared<Track>(weak_from_this(), std::move(reciprocated));
+				        mTracks.emplace(std::make_pair(track->mid(), track));
+				        mTrackLines.emplace_back(track);
+				        triggerTrack(track); // The user may modify the track description
+
+				        if (track->description().isRemoved())
+					        track->close();
+
+				        description.addMedia(track->description());
 			        },
 			    },
 			    remote->media(i));
