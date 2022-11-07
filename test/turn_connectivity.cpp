@@ -48,20 +48,15 @@ void test_turn_connectivity() {
 
 	PeerConnection pc2(config2);
 
-	pc1.onLocalDescription([&pc2](Description sdp) {
-		cout << "Description 1: " << sdp << endl;
-		pc2.setRemoteDescription(string(sdp));
-	});
-
-	pc1.onLocalCandidate([&pc2](Candidate candidate) {
-		cout << "Candidate 1: " << candidate << endl;
-		pc2.addRemoteCandidate(string(candidate));
-	});
-
 	pc1.onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
 
-	pc1.onGatheringStateChange([](PeerConnection::GatheringState state) {
+	pc1.onGatheringStateChange([&pc1, &pc2](PeerConnection::GatheringState state) {
 		cout << "Gathering state 1: " << state << endl;
+		if (state == PeerConnection::GatheringState::Complete) {
+			auto sdp = pc1.localDescription().value();
+			cout << "Description 1: " << sdp << endl;
+			pc2.setRemoteDescription(string(sdp));
+		}
 	});
 
 	pc1.onSignalingStateChange([](PeerConnection::SignalingState state) {
