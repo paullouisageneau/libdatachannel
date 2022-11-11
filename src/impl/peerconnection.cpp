@@ -162,14 +162,16 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport() {
 			    case IceTransport::State::Connecting:
 				    changeState(State::Connecting);
 				    break;
-			    case IceTransport::State::Failed:
-				    changeState(State::Failed);
-				    break;
 			    case IceTransport::State::Connected:
 				    initDtlsTransport();
 				    break;
+			    case IceTransport::State::Failed:
+				    changeState(State::Failed);
+				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
+				    break;
 			    case IceTransport::State::Disconnected:
 				    changeState(State::Disconnected);
+				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
 				    break;
 			    default:
 				    // Ignore
