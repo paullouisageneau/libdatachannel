@@ -47,7 +47,7 @@ public:
 	~DtlsTransport();
 
 	virtual void start() override;
-	virtual bool stop() override;
+	virtual void stop() override;
 	virtual bool send(message_ptr message) override; // false if dropped
 
 	bool isClient() const { return mIsClient; }
@@ -57,6 +57,7 @@ protected:
 	virtual bool outgoing(message_ptr message) override;
 	virtual bool demuxMessage(message_ptr message);
 	virtual void postHandshake();
+
 	void runRecvLoop();
 
 	const optional<size_t> mMtu;
@@ -66,7 +67,8 @@ protected:
 
 	Queue<message_ptr> mIncomingQueue;
 	std::thread mRecvThread;
-	std::atomic<unsigned int> mCurrentDscp;
+	std::atomic<bool> mStarted = false;
+	std::atomic<unsigned int> mCurrentDscp = 0;
 	std::atomic<bool> mOutgoingResult = true;
 
 #if USE_GNUTLS

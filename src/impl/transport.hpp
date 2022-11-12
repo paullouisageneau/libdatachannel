@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2019-2022 Paul-Louis Ageneau
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,6 +20,7 @@
 #define RTC_IMPL_TRANSPORT_H
 
 #include "common.hpp"
+#include "init.hpp"
 #include "internals.hpp"
 #include "message.hpp"
 
@@ -34,70 +35,34 @@ public:
 	enum class State { Disconnected, Connecting, Connected, Completed, Failed };
 	using state_callback = std::function<void(State state)>;
 
-	Transport(shared_ptr<Transport> lower = nullptr, state_callback callback = nullptr)
-	    : mLower(std::move(lower)), mStateChangeCallback(std::move(callback)) {}
+	Transport(shared_ptr<Transport> lower = nullptr, state_callback callback = nullptr);
+	virtual ~Transport();
 
-	virtual ~Transport() { stop(); }
+	void registerIncoming();
+	void unregisterIncoming();
+	State state() const;
 
-	virtual void start() { mStopped = false; }
+	void onRecv(message_callback callback);
+	void onStateChange(state_callback callback);
 
-	virtual bool stop() {
-		if (mStopped.exchange(true))
-			return false;
-
-		// We don't want incoming() to be called by the lower layer anymore
-		if (mLower) {
-			PLOG_VERBOSE << "Unregistering incoming callback";
-			mLower->onRecv(nullptr);
-		}
-		return true;
-	}
-
-	void registerIncoming() {
-		if (mLower) {
-			PLOG_VERBOSE << "Registering incoming callback";
-			mLower->onRecv(std::bind(&Transport::incoming, this, std::placeholders::_1));
-		}
-	}
-
-	void onRecv(message_callback callback) { mRecvCallback = std::move(callback); }
-	void onStateChange(state_callback callback) { mStateChangeCallback = std::move(callback); }
-	State state() const { return mState; }
-
-	virtual bool send(message_ptr message) { return outgoing(message); }
+	virtual void start();
+	virtual void stop();
+	virtual bool send(message_ptr message);
 
 protected:
-	void recv(message_ptr message) {
-		try {
-			mRecvCallback(message);
-		} catch (const std::exception &e) {
-			PLOG_WARNING << e.what();
-		}
-	}
-	void changeState(State state) {
-		try {
-			if (mState.exchange(state) != state)
-				mStateChangeCallback(state);
-		} catch (const std::exception &e) {
-			PLOG_WARNING << e.what();
-		}
-	}
-
-	virtual void incoming(message_ptr message) { recv(message); }
-	virtual bool outgoing(message_ptr message) {
-		if (mLower)
-			return mLower->send(message);
-		else
-			return false;
-	}
+	void recv(message_ptr message);
+	void changeState(State state);
+	virtual void incoming(message_ptr message);
+	virtual bool outgoing(message_ptr message);
 
 private:
-	const shared_ptr<Transport> mLower;
+	const init_token mInitToken = Init::Instance().token();
+
+	shared_ptr<Transport> mLower;
 	synchronized_callback<State> mStateChangeCallback;
 	synchronized_callback<message_ptr> mRecvCallback;
 
 	std::atomic<State> mState = State::Disconnected;
-	std::atomic<bool> mStopped = true;
 };
 
 } // namespace rtc::impl

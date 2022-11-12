@@ -95,27 +95,26 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, optional<string> host
 
 TlsTransport::~TlsTransport() {
 	stop();
-
 	gnutls_deinit(mSession);
 }
 
 void TlsTransport::start() {
-	Transport::start();
-
-	registerIncoming();
+	if (mStarted.exchange(true))
+		return;
 
 	PLOG_DEBUG << "Starting TLS recv thread";
+	registerIncoming();
 	mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
 }
 
-bool TlsTransport::stop() {
-	if (!Transport::stop())
-		return false;
+void TlsTransport::stop() {
+	if (!mStarted.exchange(false))
+		return;
 
 	PLOG_DEBUG << "Stopping TLS recv thread";
+	unregisterIncoming();
 	mIncomingQueue.stop();
 	mRecvThread.join();
-	return true;
 }
 
 bool TlsTransport::send(message_ptr message) {
@@ -375,29 +374,28 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, optional<string> host
 
 TlsTransport::~TlsTransport() {
 	stop();
-
 	SSL_free(mSsl);
 	SSL_CTX_free(mCtx);
 }
 
 void TlsTransport::start() {
-	Transport::start();
-
-	registerIncoming();
+	if (mStarted.exchange(true))
+		return;
 
 	PLOG_DEBUG << "Starting TLS recv thread";
+	registerIncoming();
 	mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
 }
 
-bool TlsTransport::stop() {
-	if (!Transport::stop())
-		return false;
+void TlsTransport::stop() {
+	if (!mStarted.exchange(false))
+		return;
 
 	PLOG_DEBUG << "Stopping TLS recv thread";
+	unregisterIncoming();
 	mIncomingQueue.stop();
 	mRecvThread.join();
 	SSL_shutdown(mSsl);
-	return true;
 }
 
 bool TlsTransport::send(message_ptr message) {

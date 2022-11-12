@@ -30,7 +30,7 @@ namespace rtc::impl {
 class TcpTransport;
 class TlsTransport;
 
-class WsTransport final : public Transport {
+class WsTransport final : public Transport, public std::enable_shared_from_this<WsTransport> {
 public:
 	WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TlsTransport>> lower,
 	            shared_ptr<WsHandshake> handshake, int maxOutstandingPings,
@@ -38,10 +38,10 @@ public:
 	~WsTransport();
 
 	void start() override;
-	bool stop() override;
+	void stop() override;
 	bool send(message_ptr message) override;
-	void incoming(message_ptr message) override;
 	void close();
+	void incoming(message_ptr message) override;
 
 	bool isClient() const { return mIsClient; }
 

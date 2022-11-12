@@ -37,7 +37,7 @@ VerifiedTlsTransport::VerifiedTlsTransport(shared_ptr<TcpTransport> lower, strin
 #endif
 }
 
-VerifiedTlsTransport::~VerifiedTlsTransport() {}
+VerifiedTlsTransport::~VerifiedTlsTransport() { stop(); }
 
 } // namespace rtc::impl
 

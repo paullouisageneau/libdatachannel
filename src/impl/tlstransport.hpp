@@ -44,7 +44,7 @@ public:
 	virtual ~TlsTransport();
 
 	void start() override;
-	bool stop() override;
+	void stop() override;
 	bool send(message_ptr message) override;
 
 	bool isClient() const { return mIsClient; }
@@ -53,6 +53,7 @@ protected:
 	virtual void incoming(message_ptr message) override;
 	virtual bool outgoing(message_ptr message) override;
 	virtual void postHandshake();
+
 	void runRecvLoop();
 
 	const optional<string> mHost;
@@ -60,6 +61,7 @@ protected:
 
 	Queue<message_ptr> mIncomingQueue;
 	std::thread mRecvThread;
+	std::atomic<bool> mStarted = false;
 
 #if USE_GNUTLS
 	gnutls_session_t mSession;

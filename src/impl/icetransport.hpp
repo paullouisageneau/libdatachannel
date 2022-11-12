@@ -62,7 +62,6 @@ public:
 	optional<string> getLocalAddress() const;
 	optional<string> getRemoteAddress() const;
 
-	bool stop() override;
 	bool send(message_ptr message) override; // false if dropped
 
 	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
