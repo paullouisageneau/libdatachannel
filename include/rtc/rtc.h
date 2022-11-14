@@ -166,6 +166,7 @@ typedef struct {
 } rtcConfiguration;
 
 RTC_EXPORT int rtcCreatePeerConnection(const rtcConfiguration *config); // returns pc id
+RTC_EXPORT int rtcClosePeerConnection(int pc);
 RTC_EXPORT int rtcDeletePeerConnection(int pc);
 
 RTC_EXPORT int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb);

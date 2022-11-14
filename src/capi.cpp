@@ -382,6 +382,14 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 	});
 }
 
+int rtcClosePeerConnection(int pc) {
+	return wrap([pc] {
+		auto peerConnection = getPeerConnection(pc);
+		peerConnection->close();
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcDeletePeerConnection(int pc) {
 	return wrap([pc] {
 		auto peerConnection = getPeerConnection(pc);
