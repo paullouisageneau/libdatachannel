@@ -201,6 +201,7 @@ RTC_EXPORT int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb);
 RTC_EXPORT int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb);
 RTC_EXPORT int rtcSendMessage(int id, const char *data, int size);
 RTC_EXPORT int rtcClose(int id);
+RTC_EXPORT int rtcDelete(int id);
 RTC_EXPORT bool rtcIsOpen(int id);
 RTC_EXPORT bool rtcIsClosed(int id);
 
