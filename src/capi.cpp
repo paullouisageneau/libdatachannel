@@ -395,6 +395,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 		c.enableIceTcp = config->enableIceTcp;
 		c.enableIceUdpMux = config->enableIceUdpMux;
 		c.disableAutoNegotiation = config->disableAutoNegotiation;
+		c.forceMediaTransport = config->forceMediaTransport;
 
 		if (config->mtu > 0)
 			c.mtu = size_t(config->mtu);
