@@ -350,6 +350,10 @@ int test_capi_connectivity_main() {
 		goto error;
 	}
 
+	rtcClose(peer1->dc); // optional
+
+	rtcClosePeerConnection(peer1->pc); // optional
+
 	deletePeer(peer1);
 	sleep(1);
 	deletePeer(peer2);

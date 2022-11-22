@@ -170,6 +170,30 @@ shared_ptr<Channel> getChannel(int id) {
 	throw std::invalid_argument("DataChannel, Track, or WebSocket ID does not exist");
 }
 
+void eraseChannel(int id) {
+	std::lock_guard lock(mutex);
+	if (dataChannelMap.erase(id) != 0) {
+		userPointerMap.erase(id);
+		return;
+	}
+	if (trackMap.erase(id) != 0) {
+		userPointerMap.erase(id);
+#if RTC_ENABLE_MEDIA
+		rtcpSrReporterMap.erase(id);
+		rtcpChainableHandlerMap.erase(id);
+		rtpConfigMap.erase(id);
+#endif
+		return;
+	}
+#if RTC_ENABLE_WEBSOCKET
+	if (webSocketMap.erase(id) != 0) {
+		userPointerMap.erase(id);
+		return;
+	}
+#endif
+	throw std::invalid_argument("DataChannel, Track, or WebSocket ID does not exist");
+}
+
 int copyAndReturn(string s, char *buffer, int size) {
 	if (!buffer)
 		return int(s.size() + 1);
@@ -379,6 +403,14 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 			c.maxMessageSize = size_t(config->maxMessageSize);
 
 		return emplacePeerConnection(std::make_shared<PeerConnection>(std::move(c)));
+	});
+}
+
+int rtcClosePeerConnection(int pc) {
+	return wrap([pc] {
+		auto peerConnection = getPeerConnection(pc);
+		peerConnection->close();
+		return RTC_ERR_SUCCESS;
 	});
 }
 
@@ -704,6 +736,15 @@ int rtcClose(int id) {
 	return wrap([&] {
 		auto channel = getChannel(id);
 		channel->close();
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcDelete(int id) {
+	return wrap([id] {
+		auto channel = getChannel(id);
+		channel->close();
+		eraseChannel(id);
 		return RTC_ERR_SUCCESS;
 	});
 }
