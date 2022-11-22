@@ -674,12 +674,18 @@ Description::Entry::removeExtMap(std::map<int, Description::Entry::ExtMap>::iter
 	return mExtMaps.erase(iterator);
 }
 
-Description::Entry::ExtMap::ExtMap(string_view description) { setDescription(description); }
-
 int Description::Entry::ExtMap::parseId(string_view description) {
 	size_t p = description.find(' ');
 	return to_integer<int>(description.substr(0, p));
 }
+
+Description::Entry::ExtMap::ExtMap(int id, string uri, Direction direction) {
+	this->id = id;
+	this->uri = std::move(uri);
+	this->direction = direction;
+}
+
+Description::Entry::ExtMap::ExtMap(string_view description) { setDescription(description); }
 
 void Description::Entry::ExtMap::setDescription(string_view description) {
 	const size_t uriStart = description.find(' ');
