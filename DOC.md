@@ -84,6 +84,7 @@ typedef struct {
 	bool enableIceTcp;
 	bool enableIceUdpMux;
 	bool disableAutoNegotiation;
+	bool forceMediaTransport;
 	uint16_t portRangeBegin;
 	uint16_t portRangeEnd;
 	int mtu;
@@ -105,6 +106,7 @@ Arguments:
   - `enableIceTcp`: if true, generate TCP candidates for ICE (ignored with libjuice as ICE backend)
   - `enableIceUdpMux`: if true, connections are multiplexed on the same UDP port (should be combined with `portRangeBegin` and `portRangeEnd`, ignored with libnice as ICE backend)
   - `disableAutoNegotiation`: if true, the user is responsible for calling `rtcSetLocalDescription` after creating a Data Channel and after setting the remote description
+  - `forceMediaTransport`: if true, the connection allocates the SRTP media transport even if no tracks are present (necessary to add tracks during later renegotiation)
   - `portRangeBegin` (optional): first port (included) of the allowed local port range (0 if unused)
   - `portRangeEnd` (optional): last port (included) of the allowed local port (0 if unused)
   - `mtu` (optional): manually set the Maximum Transfer Unit (MTU) for the connection (0 if automatic)
