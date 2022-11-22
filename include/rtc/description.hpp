@@ -105,6 +105,7 @@ public:
 		struct RTC_CPP_EXPORT ExtMap {
 			static int parseId(string_view description);
 
+			ExtMap(int id, string uri, Direction direction = Direction::Unknown);
 			ExtMap(string_view description);
 
 			void setDescription(string_view description);

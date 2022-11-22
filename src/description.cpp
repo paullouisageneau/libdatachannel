@@ -599,46 +599,18 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 		auto &map = it->second;
 
 		sdp << "a=extmap:" << map.id;
-		switch (map.direction) {
-		case Direction::SendOnly:
-			sdp << "/sendonly";
-			break;
-		case Direction::RecvOnly:
-			sdp << "/recvonly";
-			break;
-		case Direction::SendRecv:
-			sdp << "/sendrecv";
-			break;
-		case Direction::Inactive:
-			sdp << "/inactive";
-			break;
-		default:
-			// Ignore
-			break;
-		}
+		if (map.direction != Direction::Unknown)
+			sdp << '/' << map.direction;
+
 		sdp << ' ' << map.uri;
 		if (!map.attributes.empty())
 			sdp << ' ' << map.attributes;
+
 		sdp << eol;
 	}
 
-	switch (mDirection) {
-	case Direction::SendOnly:
-		sdp << "a=sendonly" << eol;
-		break;
-	case Direction::RecvOnly:
-		sdp << "a=recvonly" << eol;
-		break;
-	case Direction::SendRecv:
-		sdp << "a=sendrecv" << eol;
-		break;
-	case Direction::Inactive:
-		sdp << "a=inactive" << eol;
-		break;
-	default:
-		// Ignore
-		break;
-	}
+	if (mDirection != Direction::Unknown)
+		sdp << "a=" << mDirection << eol;
 
 	for (const auto &attr : mAttributes)
 		sdp << "a=" << attr << eol;
@@ -702,12 +674,18 @@ Description::Entry::removeExtMap(std::map<int, Description::Entry::ExtMap>::iter
 	return mExtMaps.erase(iterator);
 }
 
-Description::Entry::ExtMap::ExtMap(string_view description) { setDescription(description); }
-
 int Description::Entry::ExtMap::parseId(string_view description) {
 	size_t p = description.find(' ');
 	return to_integer<int>(description.substr(0, p));
 }
+
+Description::Entry::ExtMap::ExtMap(int id, string uri, Direction direction) {
+	this->id = id;
+	this->uri = std::move(uri);
+	this->direction = direction;
+}
+
+Description::Entry::ExtMap::ExtMap(string_view description) { setDescription(description); }
 
 void Description::Entry::ExtMap::setDescription(string_view description) {
 	const size_t uriStart = description.find(' ');
@@ -1261,22 +1239,23 @@ std::ostream &operator<<(std::ostream &out, rtc::Description::Role role) {
 }
 
 std::ostream &operator<<(std::ostream &out, const rtc::Description::Direction &direction) {
+	// Used for SDP generation, do not change
 	switch (direction) {
 	case rtc::Description::Direction::RecvOnly:
-		out << "RecvOnly";
+		out << "recvonly";
 		break;
 	case rtc::Description::Direction::SendOnly:
-		out << "SendOnly";
+		out << "sendonly";
 		break;
 	case rtc::Description::Direction::SendRecv:
-		out << "SendRecv";
+		out << "sendrecv";
 		break;
 	case rtc::Description::Direction::Inactive:
-		out << "Inactive";
+		out << "inactive";
 		break;
 	case rtc::Description::Direction::Unknown:
 	default:
-		out << "Unknown";
+		out << "unknown";
 		break;
 	}
 	return out;

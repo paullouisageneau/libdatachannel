@@ -751,12 +751,16 @@ void PeerConnection::openTracks() {
 	if (auto transport = std::atomic_load(&mDtlsTransport)) {
 		auto srtpTransport = std::dynamic_pointer_cast<DtlsSrtpTransport>(transport);
 
-		iterateTracks([&](const shared_ptr<Track>& track) {
+		iterateTracks([&](const shared_ptr<Track> &track) {
 			if (!track->isOpen()) {
 				if (srtpTransport) {
 					track->open(srtpTransport);
 				} else {
-					auto errorMsg = "addTrack() was called, but srtp transport was not initialized. This is an optimization for use of the library with data channels only. Set config.forceMediaTransport to 'true' to get the transport initialized before dynamically adding tracks.";
+					// A track was added during a latter renegotiation, whereas SRTP transport was
+					// not initialized. This is an optimization to use the library with data
+					// channels only. Set forceMediaTransport to true to initialize the transport
+					// before dynamically adding tracks.
+					auto errorMsg = "The connection has no media transport";
 					PLOG_ERROR << errorMsg;
 					track->triggerError(errorMsg);
 				}
