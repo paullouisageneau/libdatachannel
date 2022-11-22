@@ -159,6 +159,7 @@ typedef struct {
 	bool enableIceTcp;    // libnice only
 	bool enableIceUdpMux; // libjuice only
 	bool disableAutoNegotiation;
+	bool forceMediaTransport;
 	uint16_t portRangeBegin; // 0 means automatic
 	uint16_t portRangeEnd;   // 0 means automatic
 	int mtu;                 // <= 0 means automatic
