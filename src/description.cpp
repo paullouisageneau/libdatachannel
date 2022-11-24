@@ -1095,7 +1095,7 @@ void Description::Media::RtpMap::setDescription(string_view description) {
 
 void Description::Media::RtpMap::addFeedback(string fb) {
 	if (std::find(rtcpFbs.begin(), rtcpFbs.end(), fb) == rtcpFbs.end())
-		fmtps.emplace_back(std::move(fb));
+		rtcpFbs.emplace_back(std::move(fb));
 }
 
 void Description::Media::RtpMap::removeFeedback(const string &str) {
