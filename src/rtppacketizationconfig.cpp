@@ -21,6 +21,8 @@
 #include "rtppacketizationconfig.hpp"
 
 #include <cassert>
+#include <limits>
+#include <random>
 
 namespace rtc {
 
@@ -29,9 +31,14 @@ RtpPacketizationConfig::RtpPacketizationConfig(SSRC ssrc, string cname, uint8_t 
     : ssrc(ssrc), cname(cname), payloadType(payloadType), clockRate(clockRate),
       videoOrientationId(videoOrientationId) {
 	assert(clockRate > 0);
-	// TODO: random sequence ans timetamp
-	sequenceNumber = 0;
-	timestamp = startTimestamp = 0;
+
+	// RFC 3550: The initial value of the sequence number SHOULD be random (unpredictable) to make
+	// known-plaintext attacks on encryption more difficult [...] The initial value of the timestamp
+	// SHOULD be random, as for the sequence number.
+	std::default_random_engine rng(std::random_device{}());
+	std::uniform_int_distribution<uint32_t> dist(0, std::numeric_limits<uint32_t>::max());
+	sequenceNumber = static_cast<uint16_t>(dist(rng));
+	timestamp = startTimestamp = dist(rng);
 }
 
 double RtpPacketizationConfig::getSecondsFromTimestamp(uint32_t timestamp, uint32_t clockRate) {
@@ -50,8 +57,7 @@ uint32_t RtpPacketizationConfig::secondsToTimestamp(double seconds) {
 	return RtpPacketizationConfig::getTimestampFromSeconds(seconds, clockRate);
 }
 
-void RtpPacketizationConfig::setStartTime(double startTime,
-										  EpochStart epochStart,
+void RtpPacketizationConfig::setStartTime(double startTime, EpochStart epochStart,
                                           optional<uint32_t> startTimestamp) {
 	// Deprecated dummy function
 	this->startTime = startTime + double(static_cast<uint64_t>(epochStart));
