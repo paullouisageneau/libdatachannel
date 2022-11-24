@@ -39,16 +39,8 @@ void usleep(__int64 usec)
 #include <unistd.h>
 #endif
 
-void StreamSource::stop() {
-    sampleTime_us = 0;
-    sample = {};
-}
-
-StreamSource::~StreamSource() {
-    stop();
-}
-
-Stream::Stream(std::shared_ptr<StreamSource> video, std::shared_ptr<StreamSource> audio): std::enable_shared_from_this<Stream>(), video(video), audio(audio) { }
+Stream::Stream(std::shared_ptr<StreamSource> video, std::shared_ptr<StreamSource> audio):
+	std::enable_shared_from_this<Stream>(), video(video), audio(audio) { }
 
 Stream::~Stream() {
     stop();

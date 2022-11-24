@@ -25,26 +25,23 @@
 
 namespace rtc {
 
-/// RTP configuration used in packetization process
+// RTP configuration used in packetization process
 class RTC_CPP_EXPORT RtpPacketizationConfig {
-	uint32_t mStartTimestamp = 0;
-	double mStartTime = 0;
-	RtpPacketizationConfig(const RtpPacketizationConfig &) = delete;
-
 public:
 	const SSRC ssrc;
 	const std::string cname;
 	const uint8_t payloadType;
 	const uint32_t clockRate;
-	const double &startTime = mStartTime;
-	const uint32_t &startTimestamp = mStartTimestamp;
 	const uint8_t videoOrientationId;
 
-	/// current sequence number
+	// current sequence number
 	uint16_t sequenceNumber;
 
-	/// current timestamp
+	// current timestamp
 	uint32_t timestamp;
+
+	// start timestamp
+	uint32_t startTimestamp;
 
 	/// Current video orientation
 	///
@@ -66,34 +63,17 @@ public:
 	///   3 - 270 degrees
 	uint8_t videoOrientation = 0;
 
-	// For backward compatibility, do not use
-	const double &startTime_s = mStartTime;
-
-	enum class EpochStart : uint64_t {
-		T1970 = 2208988800, // number of seconds between 1970 and 1900
-		T1900 = 0
-	};
-
-	/// Creates relation between time and timestamp mapping given start time and start timestamp
-	/// @param startTime Start time of the stream
-	/// @param epochStart Type of used epoch
-	/// @param startTimestamp Corresponding timestamp for given start time (current timestamp will
-	/// be used if value is nullopt)
-	void setStartTime(double startTime, EpochStart epochStart,
-	                  optional<uint32_t> startTimestamp = std::nullopt);
-
 	/// Construct RTP configuration used in packetization process
 	/// @param ssrc SSRC of source
 	/// @param cname CNAME of source
 	/// @param payloadType Payload type of source
 	/// @param clockRate Clock rate of source used in timestamps
-	/// @param sequenceNumber Initial sequence number of RTP packets (random number is choosed if
 	/// nullopt)
-	/// @param timestamp Initial timastamp of RTP packets (random number is choosed if nullopt)
+	/// @param videoOrientationId Video orientation (see above)
 	RtpPacketizationConfig(SSRC ssrc, std::string cname, uint8_t payloadType, uint32_t clockRate,
-	                       optional<uint16_t> sequenceNumber = std::nullopt,
-	                       optional<uint32_t> timestamp = std::nullopt,
 	                       uint8_t videoOrientationId = 0);
+
+	RtpPacketizationConfig(const RtpPacketizationConfig &) = delete;
 
 	/// Convert timestamp to seconds
 	/// @param timestamp Timestamp
@@ -112,6 +92,15 @@ public:
 	/// Convert seconds to timestamp
 	/// @param seconds Number of seconds
 	uint32_t secondsToTimestamp(double seconds);
+
+	// deprecated, do not use
+	double startTime = 0.;
+	enum class EpochStart : uint64_t {
+		T1970 = 2208988800, // number of seconds between 1970 and 1900
+		T1900 = 0
+	};
+	[[deprecated]] void setStartTime(double startTime, EpochStart epochStart,
+	                                 optional<uint32_t> startTimestamp = std::nullopt);
 };
 
 } // namespace rtc

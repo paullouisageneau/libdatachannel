@@ -293,13 +293,6 @@ typedef struct {
 } rtcPacketizationHandlerInit;
 
 typedef struct {
-	double seconds;     // Start time in seconds
-	bool since1970;     // true if seconds since 1970
-	                    // false if seconds since 1900
-	uint32_t timestamp; // Start timestamp
-} rtcStartTime;
-
-typedef struct {
 	uint32_t ssrc;
 	const char *name;    // optional
 	const char *msid;    // optional
@@ -318,12 +311,6 @@ RTC_EXPORT int rtcChainRtcpSrReporter(int tr);
 // Chain RtcpNackResponder to handler chain for given track
 RTC_EXPORT int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount);
 
-/// Set start time for RTP stream
-RTC_EXPORT int rtcSetRtpConfigurationStartTime(int id, const rtcStartTime *startTime);
-
-// Start stats recording for RTCP Sender Reporter
-RTC_EXPORT int rtcStartRtcpSenderReporterRecording(int id);
-
 // Transform seconds to timestamp using track's clock rate, result is written to timestamp
 RTC_EXPORT int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp);
 
@@ -332,9 +319,6 @@ RTC_EXPORT int rtcTransformTimestampToSeconds(int id, uint32_t timestamp, double
 
 // Get current timestamp, result is written to timestamp
 RTC_EXPORT int rtcGetCurrentTrackTimestamp(int id, uint32_t *timestamp);
-
-// Get start timestamp for track identified by given id, result is written to timestamp
-RTC_EXPORT int rtcGetTrackStartTimestamp(int id, uint32_t *timestamp);
 
 // Set RTP timestamp for track identified by given id
 RTC_EXPORT int rtcSetTrackRtpTimestamp(int id, uint32_t timestamp);
