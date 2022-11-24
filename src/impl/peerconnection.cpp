@@ -92,8 +92,10 @@ void PeerConnection::close() {
 void PeerConnection::remoteClose() {
 	close();
 	if (state.load() != State::Closed) {
-		closeDataChannels();
-		closeTracks();
+		// Close data channels and tracks asynchronously
+		mProcessor.enqueue(&PeerConnection::closeDataChannels, shared_from_this());
+		mProcessor.enqueue(&PeerConnection::closeTracks, shared_from_this());
+
 		closeTransports();
 	}
 }
