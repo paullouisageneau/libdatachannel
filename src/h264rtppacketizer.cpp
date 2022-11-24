@@ -63,12 +63,16 @@ NalUnitStartSequenceMatch StartSequenceMatchSucc(NalUnitStartSequenceMatch match
 	case NUSM_secondZero:
 		if (byte == 0x00 && detectLong) {
 			return NUSM_thirdZero;
+		} else if (byte == 0x00 && detectShort) {
+			return NUSM_secondZero;
 		} else if (byte == 0x01 && detectShort) {
 			return NUSM_shortMatch;
 		}
 		break;
 	case NUSM_thirdZero:
-		if (byte == 0x01 && detectLong) {
+		if (byte == 0x00 && detectLong) {
+			return NUSM_thirdZero;
+		} else if (byte == 0x01 && detectLong) {
 			return NUSM_longMatch;
 		}
 		break;
