@@ -21,6 +21,7 @@
 #include "impl/internals.hpp"
 
 #include <cctype>
+#include <chrono>
 #include <functional>
 #include <iterator>
 #include <sstream>
@@ -108,6 +109,25 @@ string base64_encode(const binary &data) {
 	}
 
 	return out;
+}
+
+std::seed_seq random_seed() {
+	std::vector<unsigned int> seed;
+
+	// Seed with random device
+	try {
+		// On some systems an exception might be thrown if the random_device can't be initialized
+		std::random_device device;
+		seed.push_back(device());
+	} catch (const std::exception &) {
+		// Ignore
+	}
+
+	// Seed with current time
+	using std::chrono::system_clock;
+	seed.push_back(static_cast<unsigned int>(system_clock::now().time_since_epoch().count()));
+
+	return std::seed_seq(seed.begin(), seed.end());
 }
 
 } // namespace rtc::impl::utils

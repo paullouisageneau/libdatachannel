@@ -28,6 +28,7 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <future>
 #include <iostream>
 #include <memory>
@@ -263,11 +264,13 @@ shared_ptr<rtc::PeerConnection> createPeerConnection(const rtc::Configuration &c
 
 // Helper function to generate a random ID
 std::string randomId(size_t length) {
+	using std::chrono::system_clock;
+	static thread_local std::mt19937 rng(
+	    static_cast<unsigned int>(system_clock::now().time_since_epoch().count()));
 	static const std::string characters(
 	    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
 	std::string id(length, '0');
-	std::default_random_engine rng(std::random_device{}());
-	std::uniform_int_distribution<int> dist(0, int(characters.size() - 1));
-	std::generate(id.begin(), id.end(), [&]() { return characters.at(dist(rng)); });
+	std::uniform_int_distribution<int> uniform(0, int(characters.size() - 1));
+	std::generate(id.begin(), id.end(), [&]() { return characters.at(uniform(rng)); });
 	return id;
 }

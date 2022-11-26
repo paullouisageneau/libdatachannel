@@ -36,8 +36,6 @@ namespace rtc::impl {
 
 using std::to_string;
 using std::chrono::system_clock;
-using random_bytes_engine =
-    std::independent_bits_engine<std::default_random_engine, CHAR_BIT, unsigned short>;
 
 WsHandshake::WsHandshake() {}
 
@@ -240,11 +238,9 @@ string WsHandshake::generateKey() {
 	// RFC 6455: The request MUST include a header field with the name Sec-WebSocket-Key.  The value
 	// of this header field MUST be a nonce consisting of a randomly selected 16-byte value that has
 	// been base64-encoded. [...] The nonce MUST be selected randomly for each connection.
-	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
-	random_bytes_engine generator(seed);
 	binary key(16);
 	auto k = reinterpret_cast<uint8_t *>(key.data());
-	std::generate(k, k + key.size(), [&]() { return uint8_t(generator()); });
+	std::generate(k, k + key.size(), utils::random_bytes_engine());
 	return utils::base64_encode(key);
 }
 

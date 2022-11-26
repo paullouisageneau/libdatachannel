@@ -20,6 +20,7 @@
 #include "tcptransport.hpp"
 #include "threadpool.hpp"
 #include "tlstransport.hpp"
+#include "utils.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -50,8 +51,6 @@ namespace rtc::impl {
 using std::to_integer;
 using std::to_string;
 using std::chrono::system_clock;
-using random_bytes_engine =
-    std::independent_bits_engine<std::default_random_engine, CHAR_BIT, unsigned short>;
 
 WsTransport::WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TlsTransport>> lower,
                          shared_ptr<WsHandshake> handshake, int maxOutstandingPings,
@@ -366,13 +365,10 @@ bool WsTransport::sendFrame(const Frame &frame) {
 	}
 
 	if (frame.mask) {
-		auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
-		random_bytes_engine generator(seed);
-
 		byte *maskingKey = reinterpret_cast<byte *>(cur);
 
 		auto u = reinterpret_cast<uint8_t *>(maskingKey);
-		std::generate(u, u + 4, [&]() { return uint8_t(generator()); });
+		std::generate(u, u + 4, utils::random_bytes_engine());
 		cur += 4;
 
 		for (size_t i = 0; i < frame.length; ++i)

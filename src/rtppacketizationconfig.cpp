@@ -20,11 +20,15 @@
 
 #include "rtppacketizationconfig.hpp"
 
+#include "impl/utils.hpp"
+
 #include <cassert>
 #include <limits>
 #include <random>
 
 namespace rtc {
+
+namespace utils = impl::utils;
 
 RtpPacketizationConfig::RtpPacketizationConfig(SSRC ssrc, string cname, uint8_t payloadType,
                                                uint32_t clockRate, uint8_t videoOrientationId)
@@ -35,10 +39,9 @@ RtpPacketizationConfig::RtpPacketizationConfig(SSRC ssrc, string cname, uint8_t 
 	// RFC 3550: The initial value of the sequence number SHOULD be random (unpredictable) to make
 	// known-plaintext attacks on encryption more difficult [...] The initial value of the timestamp
 	// SHOULD be random, as for the sequence number.
-	std::default_random_engine rng(std::random_device{}());
-	std::uniform_int_distribution<uint32_t> dist(0, std::numeric_limits<uint32_t>::max());
-	sequenceNumber = static_cast<uint16_t>(dist(rng));
-	timestamp = startTimestamp = dist(rng);
+	auto uniform = std::bind(std::uniform_int_distribution<uint32_t>(), utils::random_engine());
+	sequenceNumber = static_cast<uint16_t>(uniform());
+	timestamp = startTimestamp = uniform();
 }
 
 double RtpPacketizationConfig::getSecondsFromTimestamp(uint32_t timestamp, uint32_t clockRate) {
