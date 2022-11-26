@@ -264,9 +264,9 @@ shared_ptr<rtc::PeerConnection> createPeerConnection(const rtc::Configuration &c
 
 // Helper function to generate a random ID
 std::string randomId(size_t length) {
-	using std::chrono::system_clock;
+	using std::chrono::high_resolution_clock;
 	static thread_local std::mt19937 rng(
-	    static_cast<unsigned int>(system_clock::now().time_since_epoch().count()));
+	    static_cast<unsigned int>(high_resolution_clock::now().time_since_epoch().count()));
 	static const std::string characters(
 	    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
 	std::string id(length, '0');
