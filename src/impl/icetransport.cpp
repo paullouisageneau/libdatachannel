@@ -20,6 +20,7 @@
 #include "configuration.hpp"
 #include "internals.hpp"
 #include "transport.hpp"
+#include "utils.hpp"
 
 #include <iostream>
 #include <random>
@@ -103,8 +104,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 
 	// Randomize servers order
 	std::vector<IceServer> servers = config.iceServers;
-	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
-	std::shuffle(servers.begin(), servers.end(), std::default_random_engine(seed));
+	std::shuffle(servers.begin(), servers.end(), utils::random_engine());
 
 	// Pick a STUN server
 	for (auto &server : servers) {
@@ -451,8 +451,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 
 	// Randomize order
 	std::vector<IceServer> servers = config.iceServers;
-	auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
-	std::shuffle(servers.begin(), servers.end(), std::default_random_engine(seed));
+	std::shuffle(servers.begin(), servers.end(), utils::random_engine());
 
 	// Add one STUN server
 	bool success = false;

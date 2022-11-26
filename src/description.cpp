@@ -162,10 +162,8 @@ Description::Description(const string &sdp, Type type, Role role)
 		mUsername = "rtc";
 
 	if (mSessionId.empty()) {
-		auto seed = static_cast<unsigned int>(system_clock::now().time_since_epoch().count());
-		std::default_random_engine generator(seed);
-		std::uniform_int_distribution<uint32_t> uniform;
-		mSessionId = std::to_string(uniform(generator));
+		auto uniform = std::bind(std::uniform_int_distribution<uint32_t>(), utils::random_engine());
+		mSessionId = std::to_string(uniform());
 	}
 }
 
