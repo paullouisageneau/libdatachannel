@@ -94,6 +94,9 @@ void WsTransport::close() {
 	if (state() != State::Connected)
 		return;
 
+	if (mCloseSent.exchange(true))
+		return;
+
 	PLOG_INFO << "WebSocket closing";
 	try {
 		sendFrame({CLOSE, NULL, 0, true, mIsClient});
@@ -329,14 +332,14 @@ void WsTransport::recvFrame(const Frame &frame) {
 		break;
 	}
 	case CLOSE: {
-		close();
 		PLOG_INFO << "WebSocket closed";
+		close();
 		changeState(State::Disconnected);
 		break;
 	}
 	default: {
+		PLOG_WARNING << "Unknown WebSocket opcode: " + to_string(frame.opcode);
 		close();
-		throw std::invalid_argument("Unknown WebSocket opcode: " + to_string(frame.opcode));
 	}
 	}
 }

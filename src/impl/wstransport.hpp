@@ -25,6 +25,8 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
+#include <atomic>
+
 namespace rtc::impl {
 
 class TcpTransport;
@@ -80,8 +82,9 @@ private:
 	binary mBuffer;
 	binary mPartial;
 	Opcode mPartialOpcode;
-	int mOutstandingPings = 0;
 	std::mutex mSendMutex;
+	int mOutstandingPings = 0;
+	std::atomic<bool> mCloseSent = false;
 };
 
 } // namespace rtc::impl
