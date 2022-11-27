@@ -104,7 +104,7 @@ void WsTransport::close() {
 		return;
 	}
 
-	ThreadPool::Instance().schedule(std::chrono::milliseconds(10),
+	ThreadPool::Instance().schedule(std::chrono::seconds(10),
 	                                [this, weak_this = weak_from_this()]() {
 		                                if (auto shared_this = weak_this.lock()) {
 			                                PLOG_DEBUG << "WebSocket close timeout";
