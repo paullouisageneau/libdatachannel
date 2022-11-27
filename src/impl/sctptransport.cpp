@@ -179,7 +179,7 @@ void SctpTransport::SetSettings(const SctpSettings &s) {
 }
 
 void SctpTransport::Cleanup() {
-	while (usrsctp_finish() != 0)
+	while (usrsctp_finish())
 		std::this_thread::sleep_for(100ms);
 }
 
@@ -371,9 +371,6 @@ struct sockaddr_conn SctpTransport::getSockAddrConn(uint16_t port) {
 }
 
 void SctpTransport::connect() {
-	if (!mSock)
-		throw std::logic_error("Attempted SCTP connect with closed socket");
-
 	PLOG_DEBUG << "SCTP connecting (local port=" << mPorts.local
 	           << ", remote port=" << mPorts.remote << ")";
 	changeState(State::Connecting);
@@ -389,17 +386,6 @@ void SctpTransport::connect() {
 	int ret = usrsctp_connect(mSock, reinterpret_cast<struct sockaddr *>(&remote), sizeof(remote));
 	if (ret && errno != EINPROGRESS)
 		throw std::runtime_error("Connection attempt failed, errno=" + std::to_string(errno));
-}
-
-void SctpTransport::shutdown() {
-	if (!mSock)
-		return;
-
-	PLOG_DEBUG << "SCTP shutdown";
-
-	if (usrsctp_shutdown(mSock, SHUT_RDWR) != 0 && errno != ENOTCONN) {
-		PLOG_WARNING << "SCTP shutdown failed, errno=" << errno;
-	}
 }
 
 bool SctpTransport::send(message_ptr message) {
@@ -564,9 +550,17 @@ bool SctpTransport::trySendQueue() {
 		updateBufferedAmount(to_uint16(message->stream), -ptrdiff_t(message_size_func(message)));
 	}
 
-	if (!mSendQueue.running()) {
-		shutdown();
-		return false;
+	if (!mSendQueue.running() && !std::exchange(mSendShutdown, true)) {
+		PLOG_DEBUG << "SCTP shutdown";
+		if (usrsctp_shutdown(mSock, SHUT_WR)) {
+			if (errno == ENOTCONN) {
+				PLOG_VERBOSE << "SCTP already shut down";
+			} else {
+				PLOG_WARNING << "SCTP shutdown failed, errno=" << errno;
+				changeState(State::Disconnected);
+				recv(nullptr);
+			}
+		}
 	}
 
 	return true;
@@ -711,9 +705,6 @@ void SctpTransport::sendReset(uint16_t streamId) {
 
 void SctpTransport::handleUpcall() noexcept {
 	try {
-		if (!mSock)
-			return;
-
 		PLOG_VERBOSE << "Handle upcall";
 
 		int events = usrsctp_get_events(mSock);
