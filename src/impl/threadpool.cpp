@@ -57,6 +57,12 @@ void ThreadPool::join() {
 	mJoining = false;
 }
 
+void ThreadPool::clear() {
+	std::unique_lock lock(mMutex);
+	while (!mTasks.empty())
+		mTasks.pop();
+}
+
 void ThreadPool::run() {
 	++mBusyWorkers;
 	scope_guard guard([&]() { --mBusyWorkers; });
