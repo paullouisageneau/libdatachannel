@@ -20,11 +20,13 @@
 
 #include "impl/internals.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <chrono>
 #include <functional>
 #include <iterator>
 #include <sstream>
+#include <thread>
 
 namespace rtc::impl::utils {
 
@@ -118,14 +120,20 @@ std::seed_seq random_seed() {
 	try {
 		// On some systems an exception might be thrown if the random_device can't be initialized
 		std::random_device device;
-		seed.push_back(device());
-	} catch (const std::exception &) {
+		// 128 bits should be more than enough
+		std::generate_n(std::back_inserter(seed), 4, std::ref(device));
+	} catch (...) {
 		// Ignore
 	}
 
-	// Seed with current time
-	using std::chrono::system_clock;
-	seed.push_back(static_cast<unsigned int>(system_clock::now().time_since_epoch().count()));
+	// Seed with high-resolution clock
+	using std::chrono::high_resolution_clock;
+	seed.push_back(
+	    static_cast<unsigned int>(high_resolution_clock::now().time_since_epoch().count()));
+
+	// Seed with thread id
+	seed.push_back(
+	    static_cast<unsigned int>(std::hash<std::thread::id>{}(std::this_thread::get_id())));
 
 	return std::seed_seq(seed.begin(), seed.end());
 }
