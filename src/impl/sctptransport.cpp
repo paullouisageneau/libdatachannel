@@ -102,10 +102,14 @@ public:
 		mSet.erase(instance);
 	}
 
-	using shared_lock = std::shared_lock<std::shared_mutex>;
-	optional<shared_lock> lock(SctpTransport *instance) {
-		shared_lock lock(mMutex);
-		return mSet.find(instance) != mSet.end() ? std::make_optional(std::move(lock)) : nullopt;
+	shared_ptr<SctpTransport> lock(SctpTransport *instance) noexcept {
+		try {
+			std::shared_lock lock(mMutex);
+			return mSet.find(instance) != mSet.end() ? instance->weak_from_this().lock() : nullptr;
+		} catch (const std::exception &e) {
+			PLOG_ERROR << e.what();
+			return nullptr;
+		}
 	}
 
 private:
@@ -329,6 +333,8 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 SctpTransport::~SctpTransport() {
 	PLOG_DEBUG << "Destroying SCTP transport";
 
+	mProcessor.join(); // if we are here, the processor must be empty
+
 	// Before unregistering incoming() from the lower layer, we need to make sure the thread from
 	// lower layers is not blocked in incoming() by the WrittenOnce condition.
 	mWrittenOnce = true;
@@ -336,7 +342,6 @@ SctpTransport::~SctpTransport() {
 
 	unregisterIncoming();
 
-	mProcessor.join();
 	usrsctp_close(mSock);
 
 	usrsctp_deregister_address(this);
@@ -399,6 +404,12 @@ void SctpTransport::shutdown() {
 
 bool SctpTransport::send(message_ptr message) {
 	std::lock_guard lock(mSendMutex);
+
+	if (state() != State::Connected)
+		throw std::runtime_error("Connection is not open");
+
+	if (!mSendQueue.running())
+		throw std::runtime_error("Connection is closing");
 
 	if (!message)
 		return trySendQueue();
@@ -698,7 +709,7 @@ void SctpTransport::sendReset(uint16_t streamId) {
 	}
 }
 
-void SctpTransport::handleUpcall() {
+void SctpTransport::handleUpcall() noexcept {
 	try {
 		if (!mSock)
 			return;
@@ -722,7 +733,8 @@ void SctpTransport::handleUpcall() {
 	}
 }
 
-int SctpTransport::handleWrite(byte *data, size_t len, uint8_t /*tos*/, uint8_t /*set_df*/) {
+int SctpTransport::handleWrite(byte *data, size_t len, uint8_t /*tos*/,
+                               uint8_t /*set_df*/) noexcept {
 	try {
 		std::unique_lock lock(mWriteMutex);
 		PLOG_VERBOSE << "Handle write, len=" << len;
@@ -919,7 +931,7 @@ void SctpTransport::UpcallCallback(struct socket *, void *arg, int /* flags */) 
 	auto *transport = static_cast<SctpTransport *>(arg);
 
 	if (auto locked = Instances->lock(transport))
-		transport->handleUpcall();
+		locked->handleUpcall();
 }
 
 int SctpTransport::WriteCallback(void *ptr, void *data, size_t len, uint8_t tos, uint8_t set_df) {
@@ -935,7 +947,7 @@ int SctpTransport::WriteCallback(void *ptr, void *data, size_t len, uint8_t tos,
 	// Workaround for sctplab/usrsctp#405: Send callback is invoked on already closed socket
 	// https://github.com/sctplab/usrsctp/issues/405
 	if (auto locked = Instances->lock(transport))
-		return transport->handleWrite(static_cast<byte *>(data), len, tos, set_df);
+		return locked->handleWrite(static_cast<byte *>(data), len, tos, set_df);
 	else
 		return -1;
 }
