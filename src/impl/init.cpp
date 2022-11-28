@@ -158,6 +158,7 @@ void Init::doCleanup() {
 	PLOG_DEBUG << "Global cleanup";
 
 	ThreadPool::Instance().join();
+	ThreadPool::Instance().clear();
 #if RTC_ENABLE_WEBSOCKET
 	PollService::Instance().join();
 #endif

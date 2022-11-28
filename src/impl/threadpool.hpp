@@ -54,6 +54,7 @@ public:
 	int count() const;
 	void spawn(int count = 1);
 	void join();
+	void clear();
 	void run();
 	bool runOne();
 
@@ -115,7 +116,7 @@ auto ThreadPool::schedule(clock::time_point time, F &&f, Args &&...args)
 	});
 	std::future<R> result = task->get_future();
 
-	mTasks.push({time, [task = std::move(task), token = Init::Instance().token()]() { return (*task)(); }});
+	mTasks.push({time, [task = std::move(task)]() { return (*task)(); }});
 	mTasksCondition.notify_one();
 	return result;
 }

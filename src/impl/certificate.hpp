@@ -21,6 +21,7 @@
 
 #include "common.hpp"
 #include "configuration.hpp" // for CertificateType
+#include "init.hpp"
 #include "tls.hpp"
 
 #include <future>
@@ -46,6 +47,8 @@ public:
 	string fingerprint() const;
 
 private:
+	const init_token mInitToken = Init::Instance().token();
+
 #if USE_GNUTLS
 	Certificate(shared_ptr<gnutls_certificate_credentials_t> creds);
 	const shared_ptr<gnutls_certificate_credentials_t> mCredentials;
