@@ -338,8 +338,9 @@ void WsTransport::recvFrame(const Frame &frame) {
 		break;
 	}
 	default: {
-		PLOG_WARNING << "Unknown WebSocket opcode: " + to_string(frame.opcode);
+		PLOG_ERROR << "Unknown WebSocket opcode: " + to_string(frame.opcode);
 		close();
+		break;
 	}
 	}
 }
