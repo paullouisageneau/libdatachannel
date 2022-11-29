@@ -41,12 +41,6 @@ typedef std::function<void(LogLevel level, string message)> LogCallback;
 
 RTC_CPP_EXPORT void InitLogger(LogLevel level, LogCallback callback = nullptr);
 
-#ifdef PLOG_DEFAULT_INSTANCE_ID
-// Deprecated, kept for retro-compatibility
-[[deprecated]]
-RTC_CPP_EXPORT void InitLogger(plog::Severity severity, plog::IAppender *appender = nullptr);
-#endif
-
 RTC_CPP_EXPORT void Preload();
 RTC_CPP_EXPORT std::shared_future<void> Cleanup();
 

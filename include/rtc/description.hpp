@@ -127,16 +127,6 @@ public:
 
 		virtual void parseSdpLine(string_view line);
 
-		// For backward compatibility, do not use
-		[[deprecated]] std::vector<string>::iterator beginAttributes();
-		[[deprecated]] std::vector<string>::iterator endAttributes();
-		[[deprecated]] std::vector<string>::iterator
-		removeAttribute(std::vector<string>::iterator iterator);
-		[[deprecated]] std::map<int, ExtMap>::iterator beginExtMaps();
-		[[deprecated]] std::map<int, ExtMap>::iterator endExtMaps();
-		[[deprecated]] std::map<int, ExtMap>::iterator
-		removeExtMap(std::map<int, ExtMap>::iterator iterator);
-
 	protected:
 		Entry(const string &mline, string mid, Direction dir = Direction::Unknown);
 		virtual string generateSdpLines(string_view eol) const;
@@ -219,11 +209,6 @@ public:
 
 			std::vector<string> rtcpFbs;
 			std::vector<string> fmtps;
-
-			// For backward compatibility, do not use
-			[[deprecated]] void addFB(string fb) { addFeedback(std::move(fb)); }
-			[[deprecated]] void removeFB(const string &str) { removeFeedback(str); }
-			[[deprecated]] void addAttribute(string attr) { addParameter(std::move(attr)); }
 		};
 
 		bool hasPayloadType(int payloadType) const;
@@ -236,18 +221,6 @@ public:
 		void addRtxCodec(int payloadType, int origPayloadType, unsigned int clockRate);
 
 		virtual void parseSdpLine(string_view line) override;
-
-		// For backward compatibility, do not use
-		using RTPMap = RtpMap;
-		[[deprecated]] int getBitrate() const { return bitrate(); }
-		[[deprecated]] inline void addRTPMap(RtpMap map) { addRtpMap(std::move(map)); }
-		[[deprecated]] inline void addRTXCodec(int pt, int origpt, unsigned int clk) {
-			addRtxCodec(pt, origpt, clk);
-		}
-		[[deprecated]] std::map<int, RtpMap>::iterator beginMaps();
-		[[deprecated]] std::map<int, RtpMap>::iterator endMaps();
-		[[deprecated]] std::map<int, RtpMap>::iterator
-		removeMap(std::map<int, RtpMap>::iterator iterator);
 
 	private:
 		virtual string generateSdpLines(string_view eol) const override;
