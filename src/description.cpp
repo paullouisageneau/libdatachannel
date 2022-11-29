@@ -650,28 +650,6 @@ void Description::Entry::parseSdpLine(string_view line) {
 	}
 }
 
-std::vector<string>::iterator Description::Entry::beginAttributes() { return mAttributes.begin(); }
-
-std::vector<string>::iterator Description::Entry::endAttributes() { return mAttributes.end(); }
-
-std::vector<string>::iterator
-Description::Entry::removeAttribute(std::vector<string>::iterator it) {
-	return mAttributes.erase(it);
-}
-
-std::map<int, Description::Entry::ExtMap>::iterator Description::Entry::beginExtMaps() {
-	return mExtMaps.begin();
-}
-
-std::map<int, Description::Entry::ExtMap>::iterator Description::Entry::endExtMaps() {
-	return mExtMaps.end();
-}
-
-std::map<int, Description::Entry::ExtMap>::iterator
-Description::Entry::removeExtMap(std::map<int, Description::Entry::ExtMap>::iterator iterator) {
-	return mExtMaps.erase(iterator);
-}
-
 int Description::Entry::ExtMap::parseId(string_view description) {
 	size_t p = description.find(' ');
 	return to_integer<int>(description.substr(0, p));
@@ -1037,19 +1015,6 @@ void Description::Media::parseSdpLine(string_view line) {
 	} else {
 		Entry::parseSdpLine(line);
 	}
-}
-
-std::map<int, Description::Media::RtpMap>::iterator Description::Media::beginMaps() {
-	return mRtpMaps.begin();
-}
-
-std::map<int, Description::Media::RtpMap>::iterator Description::Media::endMaps() {
-	return mRtpMaps.end();
-}
-
-std::map<int, Description::Media::RtpMap>::iterator
-Description::Media::removeMap(std::map<int, Description::Media::RtpMap>::iterator iterator) {
-	return mRtpMaps.erase(iterator);
 }
 
 Description::Media::RtpMap::RtpMap(int payloadType) {
