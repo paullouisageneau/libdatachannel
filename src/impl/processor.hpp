@@ -44,7 +44,7 @@ public:
 
 	void join();
 
-	template <class F, class... Args> void enqueue(F &&f, Args &&...args);
+	template <class F, class... Args> void enqueue(F &&f, Args &&...args) noexcept;
 
 private:
 	void schedule();
@@ -65,7 +65,7 @@ private:
 	~TearDownProcessor();
 };
 
-template <class F, class... Args> void Processor::enqueue(F &&f, Args &&...args) {
+template <class F, class... Args> void Processor::enqueue(F &&f, Args &&...args) noexcept {
 	std::unique_lock lock(mMutex);
 	auto bound = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
 	auto task = [this, bound = std::move(bound)]() mutable {
