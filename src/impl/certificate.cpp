@@ -329,7 +329,7 @@ string make_fingerprint(X509 *x509) {
 // Common for GnuTLS and OpenSSL
 
 future_certificate_ptr make_certificate(CertificateType type) {
-	return ThreadPool::Instance().enqueue([type]() {
+	return ThreadPool::Instance().enqueue([type, token = Init::Instance().token()]() {
 		return std::make_shared<Certificate>(Certificate::Generate(type, "libdatachannel"));
 	});
 }
