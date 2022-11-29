@@ -103,7 +103,7 @@ public:
 	}
 
 	using shared_lock = std::shared_lock<std::shared_mutex>;
-	optional<shared_lock> lock(SctpTransport *instance) {
+	optional<shared_lock> lock(SctpTransport *instance) noexcept {
 		shared_lock lock(mMutex);
 		return mSet.find(instance) != mSet.end() ? std::make_optional(std::move(lock)) : nullopt;
 	}
@@ -529,6 +529,28 @@ void SctpTransport::doFlush() {
 	}
 }
 
+void SctpTransport::enqueueRecv() {
+	if (mPendingRecvCount > 0)
+		return;
+
+	if (auto shared_this = weak_from_this().lock()) {
+		// This is called from the upcall callback, we must not release the shared ptr here
+		++mPendingRecvCount;
+		mProcessor.enqueue(&SctpTransport::doRecv, std::move(shared_this));
+	}
+}
+
+void SctpTransport::enqueueFlush() {
+	if (mPendingFlushCount > 0)
+		return;
+
+	if (auto shared_this = weak_from_this().lock()) {
+		// This is called from the upcall callback, we must not release the shared ptr here
+		++mPendingFlushCount;
+		mProcessor.enqueue(&SctpTransport::doFlush, std::move(shared_this));
+	}
+}
+
 bool SctpTransport::trySendQueue() {
 	// Requires mSendMutex to be locked
 	while (auto next = mSendQueue.peek()) {
@@ -693,28 +715,25 @@ void SctpTransport::sendReset(uint16_t streamId) {
 	}
 }
 
-void SctpTransport::handleUpcall() {
+void SctpTransport::handleUpcall() noexcept {
 	try {
 		PLOG_VERBOSE << "Handle upcall";
 
 		int events = usrsctp_get_events(mSock);
 
-		if (events & SCTP_EVENT_READ && mPendingRecvCount == 0) {
-			++mPendingRecvCount;
-			mProcessor.enqueue(&SctpTransport::doRecv, shared_from_this());
-		}
+		if (events & SCTP_EVENT_READ)
+			enqueueRecv();
 
-		if (events & SCTP_EVENT_WRITE && mPendingFlushCount == 0) {
-			++mPendingFlushCount;
-			mProcessor.enqueue(&SctpTransport::doFlush, shared_from_this());
-		}
+		if (events & SCTP_EVENT_WRITE)
+			enqueueFlush();
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "SCTP upcall: " << e.what();
 	}
 }
 
-int SctpTransport::handleWrite(byte *data, size_t len, uint8_t /*tos*/, uint8_t /*set_df*/) {
+int SctpTransport::handleWrite(byte *data, size_t len, uint8_t /*tos*/,
+                               uint8_t /*set_df*/) noexcept {
 	try {
 		std::unique_lock lock(mWriteMutex);
 		PLOG_VERBOSE << "Handle write, len=" << len;

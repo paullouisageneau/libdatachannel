@@ -59,13 +59,15 @@ public:
 	bool runOne();
 
 	template <class F, class... Args>
-	auto enqueue(F &&f, Args &&...args) -> invoke_future_t<F, Args...>;
+	auto enqueue(F &&f, Args &&...args) noexcept -> invoke_future_t<F, Args...>;
 
 	template <class F, class... Args>
-	auto schedule(clock::duration delay, F &&f, Args &&...args) -> invoke_future_t<F, Args...>;
+	auto schedule(clock::duration delay, F &&f, Args &&...args) noexcept
+	    -> invoke_future_t<F, Args...>;
 
 	template <class F, class... Args>
-	auto schedule(clock::time_point time, F &&f, Args &&...args) -> invoke_future_t<F, Args...>;
+	auto schedule(clock::time_point time, F &&f, Args &&...args) noexcept
+	    -> invoke_future_t<F, Args...>;
 
 private:
 	ThreadPool();
@@ -90,18 +92,18 @@ private:
 };
 
 template <class F, class... Args>
-auto ThreadPool::enqueue(F &&f, Args &&...args) -> invoke_future_t<F, Args...> {
+auto ThreadPool::enqueue(F &&f, Args &&...args) noexcept -> invoke_future_t<F, Args...> {
 	return schedule(clock::now(), std::forward<F>(f), std::forward<Args>(args)...);
 }
 
 template <class F, class... Args>
-auto ThreadPool::schedule(clock::duration delay, F &&f, Args &&...args)
+auto ThreadPool::schedule(clock::duration delay, F &&f, Args &&...args) noexcept
     -> invoke_future_t<F, Args...> {
 	return schedule(clock::now() + delay, std::forward<F>(f), std::forward<Args>(args)...);
 }
 
 template <class F, class... Args>
-auto ThreadPool::schedule(clock::time_point time, F &&f, Args &&...args)
+auto ThreadPool::schedule(clock::time_point time, F &&f, Args &&...args) noexcept
     -> invoke_future_t<F, Args...> {
 	std::unique_lock lock(mMutex);
 	using R = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;

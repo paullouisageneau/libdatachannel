@@ -92,14 +92,16 @@ private:
 
 	void doRecv();
 	void doFlush();
+	void enqueueRecv();
+	void enqueueFlush();
 	bool trySendQueue();
 	bool trySendMessage(message_ptr message);
 	void updateBufferedAmount(uint16_t streamId, ptrdiff_t delta);
 	void triggerBufferedAmount(uint16_t streamId, size_t amount);
 	void sendReset(uint16_t streamId);
 
-	void handleUpcall();
-	int handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_df);
+	void handleUpcall() noexcept;
+	int handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_df) noexcept;
 
 	void processData(binary &&data, uint16_t streamId, PayloadId ppid);
 	void processNotification(const union sctp_notification *notify, size_t len);
