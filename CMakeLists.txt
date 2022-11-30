@@ -227,19 +227,23 @@ add_library(datachannel SHARED
 	${LIBDATACHANNEL_HEADERS}
 	${LIBDATACHANNEL_IMPL_SOURCES}
 	${LIBDATACHANNEL_IMPL_HEADERS})
+set_target_properties(datachannel PROPERTIES
+	VERSION ${PROJECT_VERSION}
+	SOVERSION ${PROJECT_VERSION}
+	CXX_STANDARD 17
+	CXX_VISIBILITY_PRESET default)
+target_compile_definitions(datachannel PRIVATE datachannel_EXPORTS)
+
 add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
 	${LIBDATACHANNEL_SOURCES}
 	${LIBDATACHANNEL_HEADERS}
 	${LIBDATACHANNEL_IMPL_SOURCES}
 	${LIBDATACHANNEL_IMPL_HEADERS})
-
-set_target_properties(datachannel PROPERTIES
-	VERSION ${PROJECT_VERSION}
-	CXX_STANDARD 17
-	CXX_VISIBILITY_PRESET default)
 set_target_properties(datachannel-static PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
+target_compile_definitions(datachannel-static PRIVATE datachannel_EXPORTS)
+target_compile_definitions(datachannel-static PUBLIC RTC_STATIC)
 
 target_include_directories(datachannel PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

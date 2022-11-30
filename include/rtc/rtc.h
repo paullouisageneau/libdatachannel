@@ -23,15 +23,27 @@
 extern "C" {
 #endif
 
+#ifdef RTC_STATIC
+#define RTC_EXPORT
+#else // dynamic library
 #ifdef _WIN32
-#define RTC_EXPORT __declspec(dllexport)
+#ifdef datachannel_EXPORTS
+#define RTC_EXPORT __declspec(dllexport) // building the library
+#else
+#define RTC_EXPORT __declspec(dllimport) // using the library
+#endif
+#else // not WIN32
+#define RTC_EXPORT
+#endif
+#endif
+
+#ifdef _WIN32
 #ifdef CAPI_STDCALL
 #define RTC_API __stdcall
 #else
 #define RTC_API
 #endif
 #else // not WIN32
-#define RTC_EXPORT
 #define RTC_API
 #endif
 
