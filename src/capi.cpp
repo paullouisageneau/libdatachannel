@@ -984,6 +984,8 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 				mid = "video";
 				break;
 			case RTC_CODEC_OPUS:
+            case RTC_CODEC_PCMU:
+            case RTC_CODEC_PCMA:
 				mid = "audio";
 				break;
 			default:
@@ -1015,12 +1017,20 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 			optDescription = desc;
 			break;
 		}
-		case RTC_CODEC_OPUS: {
+		case RTC_CODEC_OPUS:
+        case RTC_CODEC_PCMU:
+        case RTC_CODEC_PCMA:{
 			auto desc = Description::Audio(mid, direction);
 			switch (init->codec) {
 			case RTC_CODEC_OPUS:
 				desc.addOpusCodec(init->payloadType);
 				break;
+            case RTC_CODEC_PCMU:
+                desc.addPCMUCodec(init->payloadType);
+                break;
+            case RTC_CODEC_PCMA:
+                desc.addPCMACodec(init->payloadType);
+                break;
 			default:
 				break;
 			}

@@ -1086,8 +1086,13 @@ Description::Audio::Audio(string mid, Direction dir)
     : Media("audio 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
 
 void Description::Audio::addAudioCodec(int payloadType, string codec, optional<string> profile) {
-	if (codec.find('/') == string::npos)
-		codec += "/48000/2";
+	if (codec.find('/') == string::npos){
+        if(0 == codec.compare("OPUS"))
+            codec += "/48000/2";
+        else if(0 == codec.compare("PCMA") || 0 == codec.compare("PCMU"))
+            codec += "/8000/1";
+    }
+
 
 	RtpMap map(std::to_string(payloadType) + ' ' + codec);
 
@@ -1099,6 +1104,14 @@ void Description::Audio::addAudioCodec(int payloadType, string codec, optional<s
 
 void Description::Audio::addOpusCodec(int payloadType, optional<string> profile) {
 	addAudioCodec(payloadType, "OPUS", profile);
+}
+
+void Description::Audio::addPCMACodec(int payloadType, optional<string> profile) {
+    addAudioCodec(payloadType, "PCMA", profile);
+}
+
+void Description::Audio::addPCMUCodec(int payloadType, optional<string> profile) {
+    addAudioCodec(payloadType, "PCMU", profile);
 }
 
 Description::Video::Video(string mid, Direction dir)
