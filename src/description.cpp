@@ -1087,10 +1087,10 @@ Description::Audio::Audio(string mid, Direction dir)
 
 void Description::Audio::addAudioCodec(int payloadType, string codec, optional<string> profile) {
 	if (codec.find('/') == string::npos){
-        if(0 == codec.compare("OPUS"))
-            codec += "/48000/2";
-        else if(0 == codec.compare("PCMA") || 0 == codec.compare("PCMU"))
+        if(codec == "PCMA" || codec == "PCMU")
             codec += "/8000/1";
+        else
+            codec += "/48000/2";
     }
 
 
