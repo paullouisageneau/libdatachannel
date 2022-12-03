@@ -102,7 +102,9 @@ typedef enum {
 	RTC_CODEC_VP9 = 2,
 
 	// audio
-	RTC_CODEC_OPUS = 128
+	RTC_CODEC_OPUS = 128,
+    RTC_CODEC_PCMU = 129,
+    RTC_CODEC_PCMA = 130
 } rtcCodec;
 
 typedef enum {
