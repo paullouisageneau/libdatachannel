@@ -24,16 +24,16 @@ extern "C" {
 #endif
 
 #ifdef RTC_STATIC
-#define RTC_EXPORT
+#define RTC_C_EXPORT
 #else // dynamic library
 #ifdef _WIN32
 #ifdef RTC_EXPORTS
-#define RTC_EXPORT __declspec(dllexport) // building the library
+#define RTC_C_EXPORT __declspec(dllexport) // building the library
 #else
-#define RTC_EXPORT __declspec(dllimport) // using the library
+#define RTC_C_EXPORT __declspec(dllimport) // using the library
 #endif
 #else // not WIN32
-#define RTC_EXPORT
+#define RTC_C_EXPORT
 #endif
 #endif
 
@@ -153,11 +153,11 @@ typedef void(RTC_API *rtcAvailableCallbackFunc)(int id, void *ptr);
 // Log
 
 // NULL cb on the first call will log to stdout
-RTC_EXPORT void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb);
+RTC_C_EXPORT void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb);
 
 // User pointer
-RTC_EXPORT void rtcSetUserPointer(int id, void *ptr);
-RTC_EXPORT void *rtcGetUserPointer(int i);
+RTC_C_EXPORT void rtcSetUserPointer(int id, void *ptr);
+RTC_C_EXPORT void *rtcGetUserPointer(int i);
 
 // PeerConnection
 
@@ -178,55 +178,55 @@ typedef struct {
 	int maxMessageSize;      // <= 0 means default
 } rtcConfiguration;
 
-RTC_EXPORT int rtcCreatePeerConnection(const rtcConfiguration *config); // returns pc id
-RTC_EXPORT int rtcClosePeerConnection(int pc);
-RTC_EXPORT int rtcDeletePeerConnection(int pc);
+RTC_C_EXPORT int rtcCreatePeerConnection(const rtcConfiguration *config); // returns pc id
+RTC_C_EXPORT int rtcClosePeerConnection(int pc);
+RTC_C_EXPORT int rtcDeletePeerConnection(int pc);
 
-RTC_EXPORT int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb);
-RTC_EXPORT int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb);
-RTC_EXPORT int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb);
-RTC_EXPORT int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb);
-RTC_EXPORT int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb);
+RTC_C_EXPORT int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb);
+RTC_C_EXPORT int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb);
+RTC_C_EXPORT int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb);
+RTC_C_EXPORT int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb);
+RTC_C_EXPORT int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb);
 
-RTC_EXPORT int rtcSetLocalDescription(int pc, const char *type);
-RTC_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
-RTC_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
+RTC_C_EXPORT int rtcSetLocalDescription(int pc, const char *type);
+RTC_C_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
+RTC_C_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
 
-RTC_EXPORT int rtcGetLocalDescription(int pc, char *buffer, int size);
-RTC_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);
+RTC_C_EXPORT int rtcGetLocalDescription(int pc, char *buffer, int size);
+RTC_C_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);
 
-RTC_EXPORT int rtcGetLocalDescriptionType(int pc, char *buffer, int size);
-RTC_EXPORT int rtcGetRemoteDescriptionType(int pc, char *buffer, int size);
+RTC_C_EXPORT int rtcGetLocalDescriptionType(int pc, char *buffer, int size);
+RTC_C_EXPORT int rtcGetRemoteDescriptionType(int pc, char *buffer, int size);
 
-RTC_EXPORT int rtcGetLocalAddress(int pc, char *buffer, int size);
-RTC_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
+RTC_C_EXPORT int rtcGetLocalAddress(int pc, char *buffer, int size);
+RTC_C_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 
-RTC_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote,
+RTC_C_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote,
                                            int remoteSize);
 
-RTC_EXPORT int rtcGetMaxDataChannelStream(int pc);
+RTC_C_EXPORT int rtcGetMaxDataChannelStream(int pc);
 
 // DataChannel, Track, and WebSocket common API
 
-RTC_EXPORT int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb);
-RTC_EXPORT int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb);
-RTC_EXPORT int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb);
-RTC_EXPORT int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb);
-RTC_EXPORT int rtcSendMessage(int id, const char *data, int size);
-RTC_EXPORT int rtcClose(int id);
-RTC_EXPORT int rtcDelete(int id);
-RTC_EXPORT bool rtcIsOpen(int id);
-RTC_EXPORT bool rtcIsClosed(int id);
+RTC_C_EXPORT int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb);
+RTC_C_EXPORT int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb);
+RTC_C_EXPORT int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb);
+RTC_C_EXPORT int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb);
+RTC_C_EXPORT int rtcSendMessage(int id, const char *data, int size);
+RTC_C_EXPORT int rtcClose(int id);
+RTC_C_EXPORT int rtcDelete(int id);
+RTC_C_EXPORT bool rtcIsOpen(int id);
+RTC_C_EXPORT bool rtcIsClosed(int id);
 
-RTC_EXPORT int rtcGetBufferedAmount(int id); // total size buffered to send
-RTC_EXPORT int rtcSetBufferedAmountLowThreshold(int id, int amount);
-RTC_EXPORT int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb);
+RTC_C_EXPORT int rtcGetBufferedAmount(int id); // total size buffered to send
+RTC_C_EXPORT int rtcSetBufferedAmountLowThreshold(int id, int amount);
+RTC_C_EXPORT int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb);
 
 // DataChannel, Track, and WebSocket common extended API
 
-RTC_EXPORT int rtcGetAvailableAmount(int id); // total size available to receive
-RTC_EXPORT int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb);
-RTC_EXPORT int rtcReceiveMessage(int id, char *buffer, int *size);
+RTC_C_EXPORT int rtcGetAvailableAmount(int id); // total size available to receive
+RTC_C_EXPORT int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb);
+RTC_C_EXPORT int rtcReceiveMessage(int id, char *buffer, int *size);
 
 // DataChannel
 
@@ -245,16 +245,16 @@ typedef struct {
 	uint16_t stream; // numeric ID 0-65534, ignored if manualStream is false
 } rtcDataChannelInit;
 
-RTC_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
-RTC_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
-RTC_EXPORT int rtcCreateDataChannelEx(int pc, const char *label,
+RTC_C_EXPORT int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb);
+RTC_C_EXPORT int rtcCreateDataChannel(int pc, const char *label); // returns dc id
+RTC_C_EXPORT int rtcCreateDataChannelEx(int pc, const char *label,
                                       const rtcDataChannelInit *init); // returns dc id
-RTC_EXPORT int rtcDeleteDataChannel(int dc);
+RTC_C_EXPORT int rtcDeleteDataChannel(int dc);
 
-RTC_EXPORT int rtcGetDataChannelStream(int dc);
-RTC_EXPORT int rtcGetDataChannelLabel(int dc, char *buffer, int size);
-RTC_EXPORT int rtcGetDataChannelProtocol(int dc, char *buffer, int size);
-RTC_EXPORT int rtcGetDataChannelReliability(int dc, rtcReliability *reliability);
+RTC_C_EXPORT int rtcGetDataChannelStream(int dc);
+RTC_C_EXPORT int rtcGetDataChannelLabel(int dc, char *buffer, int size);
+RTC_C_EXPORT int rtcGetDataChannelProtocol(int dc, char *buffer, int size);
+RTC_C_EXPORT int rtcGetDataChannelReliability(int dc, rtcReliability *reliability);
 
 // Track
 
@@ -269,14 +269,14 @@ typedef struct {
 	const char *trackId; // optional, track ID used in MSID
 } rtcTrackInit;
 
-RTC_EXPORT int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb);
-RTC_EXPORT int rtcAddTrack(int pc, const char *mediaDescriptionSdp); // returns tr id
-RTC_EXPORT int rtcAddTrackEx(int pc, const rtcTrackInit *init);      // returns tr id
-RTC_EXPORT int rtcDeleteTrack(int tr);
+RTC_C_EXPORT int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb);
+RTC_C_EXPORT int rtcAddTrack(int pc, const char *mediaDescriptionSdp); // returns tr id
+RTC_C_EXPORT int rtcAddTrackEx(int pc, const rtcTrackInit *init);      // returns tr id
+RTC_C_EXPORT int rtcDeleteTrack(int tr);
 
-RTC_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
-RTC_EXPORT int rtcGetTrackMid(int tr, char *buffer, int size);
-RTC_EXPORT int rtcGetTrackDirection(int tr, rtcDirection *direction);
+RTC_C_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
+RTC_C_EXPORT int rtcGetTrackMid(int tr, char *buffer, int size);
+RTC_C_EXPORT int rtcGetTrackDirection(int tr, rtcDirection *direction);
 
 #if RTC_ENABLE_MEDIA
 
@@ -312,34 +312,34 @@ typedef struct {
 } rtcSsrcForTypeInit;
 
 // Set H264PacketizationHandler for track
-RTC_EXPORT int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
+RTC_C_EXPORT int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
 
 // Set OpusPacketizationHandler for track
-RTC_EXPORT int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
+RTC_C_EXPORT int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
 
 // Chain RtcpSrReporter to handler chain for given track
-RTC_EXPORT int rtcChainRtcpSrReporter(int tr);
+RTC_C_EXPORT int rtcChainRtcpSrReporter(int tr);
 
 // Chain RtcpNackResponder to handler chain for given track
-RTC_EXPORT int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount);
+RTC_C_EXPORT int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount);
 
 // Transform seconds to timestamp using track's clock rate, result is written to timestamp
-RTC_EXPORT int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp);
+RTC_C_EXPORT int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp);
 
 // Transform timestamp to seconds using track's clock rate, result is written to seconds
-RTC_EXPORT int rtcTransformTimestampToSeconds(int id, uint32_t timestamp, double *seconds);
+RTC_C_EXPORT int rtcTransformTimestampToSeconds(int id, uint32_t timestamp, double *seconds);
 
 // Get current timestamp, result is written to timestamp
-RTC_EXPORT int rtcGetCurrentTrackTimestamp(int id, uint32_t *timestamp);
+RTC_C_EXPORT int rtcGetCurrentTrackTimestamp(int id, uint32_t *timestamp);
 
 // Set RTP timestamp for track identified by given id
-RTC_EXPORT int rtcSetTrackRtpTimestamp(int id, uint32_t timestamp);
+RTC_C_EXPORT int rtcSetTrackRtpTimestamp(int id, uint32_t timestamp);
 
 // Get timestamp of previous RTCP SR, result is written to timestamp
-RTC_EXPORT int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t *timestamp);
+RTC_C_EXPORT int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t *timestamp);
 
 // Set NeedsToReport flag in RtcpSrReporter handler identified by given track id
-RTC_EXPORT int rtcSetNeedsToSendRtcpSr(int id);
+RTC_C_EXPORT int rtcSetNeedsToSendRtcpSr(int id);
 
 // Get all available payload types for given codec and stores them in buffer, does nothing if
 // buffer is NULL
@@ -373,12 +373,12 @@ typedef struct {
 	int maxOutstandingPings; // 0 means default, < 0 means disabled
 } rtcWsConfiguration;
 
-RTC_EXPORT int rtcCreateWebSocket(const char *url); // returns ws id
-RTC_EXPORT int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config);
-RTC_EXPORT int rtcDeleteWebSocket(int ws);
+RTC_C_EXPORT int rtcCreateWebSocket(const char *url); // returns ws id
+RTC_C_EXPORT int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config);
+RTC_C_EXPORT int rtcDeleteWebSocket(int ws);
 
-RTC_EXPORT int rtcGetWebSocketRemoteAddress(int ws, char *buffer, int size);
-RTC_EXPORT int rtcGetWebSocketPath(int ws, char *buffer, int size);
+RTC_C_EXPORT int rtcGetWebSocketRemoteAddress(int ws, char *buffer, int size);
+RTC_C_EXPORT int rtcGetWebSocketPath(int ws, char *buffer, int size);
 
 // WebSocketServer
 
@@ -392,18 +392,18 @@ typedef struct {
 	const char *keyPemPass;         // NULL if no pass
 } rtcWsServerConfiguration;
 
-RTC_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
+RTC_C_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
                                         rtcWebSocketClientCallbackFunc cb); // returns wsserver id
-RTC_EXPORT int rtcDeleteWebSocketServer(int wsserver);
+RTC_C_EXPORT int rtcDeleteWebSocketServer(int wsserver);
 
-RTC_EXPORT int rtcGetWebSocketServerPort(int wsserver);
+RTC_C_EXPORT int rtcGetWebSocketServerPort(int wsserver);
 
 #endif
 
 // Optional global preload and cleanup
 
-RTC_EXPORT void rtcPreload(void);
-RTC_EXPORT void rtcCleanup(void);
+RTC_C_EXPORT void rtcPreload(void);
+RTC_C_EXPORT void rtcCleanup(void);
 
 // SCTP global settings
 
@@ -423,7 +423,7 @@ typedef struct {
 } rtcSctpSettings;
 
 // Note: SCTP settings apply to newly-created PeerConnections only
-RTC_EXPORT int rtcSetSctpSettings(const rtcSctpSettings *settings);
+RTC_C_EXPORT int rtcSetSctpSettings(const rtcSctpSettings *settings);
 
 #ifdef __cplusplus
 } // extern "C"
