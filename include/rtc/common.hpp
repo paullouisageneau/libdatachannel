@@ -23,7 +23,7 @@
 #define RTC_CPP_EXPORT
 #else // dynamic library
 #ifdef _WIN32
-#ifdef datachannel_EXPORTS
+#ifdef RTC_EXPORTS
 #define RTC_CPP_EXPORT __declspec(dllexport) // building the library
 #else
 #define RTC_CPP_EXPORT __declspec(dllimport) // using the library

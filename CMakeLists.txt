@@ -232,7 +232,7 @@ set_target_properties(datachannel PROPERTIES
 	SOVERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17
 	CXX_VISIBILITY_PRESET default)
-target_compile_definitions(datachannel PRIVATE datachannel_EXPORTS)
+target_compile_definitions(datachannel PRIVATE RTC_EXPORTS)
 
 add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
 	${LIBDATACHANNEL_SOURCES}
@@ -242,7 +242,7 @@ add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
 set_target_properties(datachannel-static PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 17)
-target_compile_definitions(datachannel-static PRIVATE datachannel_EXPORTS)
+target_compile_definitions(datachannel-static PRIVATE RTC_EXPORTS)
 target_compile_definitions(datachannel-static PUBLIC RTC_STATIC)
 
 target_include_directories(datachannel PUBLIC
