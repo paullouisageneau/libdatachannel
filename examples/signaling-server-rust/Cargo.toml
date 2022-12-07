@@ -1,7 +1,8 @@
 [package]
 name = "libdatachannel_signaling_server_example"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Paul-Louis Ageneau"]
+license = "MPL-2.0"
 edition = "2018"
 
 [dependencies]

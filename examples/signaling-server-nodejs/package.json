@@ -1,6 +1,6 @@
 {
   "name": "libdatachannel-signaling-server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Signaling server example for libdatachannel",
   "main": "signaling-server.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "url": "git+https://github.com/paullouisageneau/libdatachannel.git"
   },
   "author": "Paul-Louis Ageneau",
-  "license": "GPL-2.0",
+  "license": "MPL-2.0",
   "bugs": {
     "url": "https://github.com/paullouisageneau/libdatachannel/issues"
   },

@@ -4,7 +4,7 @@ save_as: index.html
 
 <div id="home">
 	<header>
-		<p>libdatachannel is an open-source software library implementing WebRTC Data Channels, WebRTC Media Transport, and WebSockets. It is written in C++17 and offers C bindings. The <a href="https://github.com/paullouisageneau/libdatachannel">source code</a> is available under LGPL, and the library is on <a href="https://aur.archlinux.org/packages/libdatachannel/">AUR</a>, <a href="https://github.com/Microsoft/vcpkg/tree/master/ports/libdatachannel">Vcpkg</a>, and <a href="https://github.com/Microsoft/vcpkg/tree/master/ports/libdatachannel">FreeBSD Ports</a>.</p>
+		<p>libdatachannel is an open-source software library implementing WebRTC Data Channels, WebRTC Media Transport, and WebSockets. It is written in C++17 and offers C bindings. The <a href="https://github.com/paullouisageneau/libdatachannel">source code</a> is available under MPL 2.0, and the library is on <a href="https://aur.archlinux.org/packages/libdatachannel/">AUR</a>, <a href="https://github.com/Microsoft/vcpkg/tree/master/ports/libdatachannel">Vcpkg</a>, and <a href="https://github.com/Microsoft/vcpkg/tree/master/ports/libdatachannel">FreeBSD Ports</a>.</p>
 		<div class="social">
 			<a href="https://github.com/paullouisageneau/libdatachannel"><img src="/images/icon_github.png" alt="GitHub"></a>
 			<a href="https://gitter.im/libdatachannel/community"><img src="/images/icon_gitter.png" alt="Gitter"></a>
@@ -25,7 +25,7 @@ save_as: index.html
 		<h3>Compatible</h3>
 		<ul>
 			<li>Compatible with browsers Firefox, Chromium, and Safari, and other WebRTC libraries (see <a href="https://github.com/sipsorcery/webrtc-echoes">webrtc-echoes</a>)</li>
-			<li>Licensed under <a href="https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html">LGPLv2.1 or later</a>, meaning software with any license may link against the library</li>
+			<li>Licensed under <a href="https://www.mozilla.org/en-US/MPL/2.0/FAQ/">MPL 2.0</a>, meaning software with any license may use the library</li>
 			<li>Community-maintained bindings available for <a href="https://github.com/lerouxrgd/datachannel-rs">Rust</a>, <a href="https://github.com/murat-dogan/node-datachannel">Node.js</a>, and <a href="https://github.com/hanseuljun/datachannel-unity">Unity</a></li>
 		</ul>
 	</section>
