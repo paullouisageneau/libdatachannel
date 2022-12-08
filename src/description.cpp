@@ -842,17 +842,6 @@ Description::Media Description::Media::reciprocate() const {
 		}
 	}
 
-	// Clear all ssrc attributes as they are individual
-	auto it = reciprocated.mAttributes.begin();
-	while (it != reciprocated.mAttributes.end()) {
-		if (match_prefix(*it, "ssrc:"))
-			it = reciprocated.mAttributes.erase(it);
-		else
-			++it;
-	}
-	reciprocated.mSsrcs.clear();
-	reciprocated.mCNameMap.clear();
-
 	// Remove rtcp-rsize attribute as Reduced-Size RTCP is not supported (see RFC 5506)
 	reciprocated.removeAttribute("rtcp-rsize");
 
