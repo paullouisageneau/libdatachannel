@@ -140,6 +140,24 @@ void Candidate::hintMid(string mid) {
 		mMid.emplace(std::move(mid));
 }
 
+void Candidate::changeAddress(string addr) { changeAddress(std::move(addr), mService); }
+
+void Candidate::changeAddress(string addr, uint16_t port) {
+	changeAddress(std::move(addr), std::to_string(port));
+}
+
+void Candidate::changeAddress(string addr, string service) {
+	mNode = std::move(addr);
+	mService = std::move(service);
+
+	mFamily = Family::Unresolved;
+	mAddress.clear();
+	mPort = 0;
+
+	if (!resolve(ResolveMode::Simple))
+		throw std::invalid_argument("Invalid candidate address \"" + addr + ":" + service + "\"");
+}
+
 bool Candidate::resolve(ResolveMode mode) {
 	PLOG_VERBOSE << "Resolving candidate (mode="
 	             << (mode == ResolveMode::Simple ? "simple" : "lookup") << "): " << mNode << ' '

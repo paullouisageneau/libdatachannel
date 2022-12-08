@@ -36,6 +36,9 @@ public:
 	Candidate(string candidate, string mid);
 
 	void hintMid(string mid);
+	void changeAddress(string addr);
+	void changeAddress(string addr, uint16_t port);
+	void changeAddress(string addr, string service);
 
 	enum class ResolveMode { Simple, Lookup };
 	bool resolve(ResolveMode mode = ResolveMode::Simple);
