@@ -19,24 +19,35 @@
 #ifndef RTC_COMMON_H
 #define RTC_COMMON_H
 
-#ifndef RTC_ENABLE_WEBSOCKET
-#define RTC_ENABLE_WEBSOCKET 1
+#ifdef RTC_STATIC
+#define RTC_CPP_EXPORT
+#else // dynamic library
+#ifdef _WIN32
+#ifdef RTC_EXPORTS
+#define RTC_CPP_EXPORT __declspec(dllexport) // building the library
+#else
+#define RTC_CPP_EXPORT __declspec(dllimport) // using the library
 #endif
-
-#ifndef RTC_ENABLE_MEDIA
-#define RTC_ENABLE_MEDIA 1
+#else // not WIN32
+#define RTC_CPP_EXPORT
+#endif
 #endif
 
 #ifdef _WIN32
-#define RTC_CPP_EXPORT __declspec(dllexport)
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0602 // Windows 8
 #endif
 #ifdef _MSC_VER
 #pragma warning(disable : 4251) // disable "X needs to have dll-interface..."
 #endif
-#else
-#define RTC_CPP_EXPORT
+#endif
+
+#ifndef RTC_ENABLE_WEBSOCKET
+#define RTC_ENABLE_WEBSOCKET 1
+#endif
+
+#ifndef RTC_ENABLE_MEDIA
+#define RTC_ENABLE_MEDIA 1
 #endif
 
 #include "rtc.h" // for C API defines

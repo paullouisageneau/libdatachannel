@@ -94,6 +94,10 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		gnutls_deinit(mSession);
 		throw;
 	}
+
+	// Set recommended medium-priority DSCP value for handshake
+	// See https://www.rfc-editor.org/rfc/rfc8837.html#section-5
+	mCurrentDscp = 10; // AF11: Assured Forwarding class 1, low drop probability
 }
 
 DtlsTransport::~DtlsTransport() {
@@ -156,16 +160,7 @@ void DtlsTransport::incoming(message_ptr message) {
 }
 
 bool DtlsTransport::outgoing(message_ptr message) {
-	if (message->dscp == 0) {
-		// DTLS handshake packet
-		if (state() == State::Connecting) {
-			// Set recommended high-priority DSCP value
-			// See https://www.rfc-editor.org/rfc/rfc8837.html#section-5
-			message->dscp = 18; // AF21(18), Assured Forwarding class 2, low drop probability
-		} else {
-			message->dscp = mCurrentDscp;
-		}
-	}
+	message->dscp = mCurrentDscp;
 
 	bool result = Transport::outgoing(std::move(message));
 	mOutgoingResult = result;
@@ -463,6 +458,10 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 			SSL_CTX_free(mCtx);
 		throw;
 	}
+
+	// Set recommended medium-priority DSCP value for handshake
+	// See https://www.rfc-editor.org/rfc/rfc8837.html#section-5
+	mCurrentDscp = 10; // AF11: Assured Forwarding class 1, low drop probability
 }
 
 DtlsTransport::~DtlsTransport() {
@@ -518,16 +517,8 @@ void DtlsTransport::incoming(message_ptr message) {
 }
 
 bool DtlsTransport::outgoing(message_ptr message) {
-	if (message->dscp == 0) {
-		// DTLS handshake packet
-		if (state() == State::Connecting) {
-			// Set recommended high-priority DSCP value
-			// See https://www.rfc-editor.org/rfc/rfc8837.html#section-5
-			message->dscp = 18; // AF21(18), Assured Forwarding class 2, low drop probability
-		} else {
-			message->dscp = mCurrentDscp;
-		}
-	}
+	message->dscp = mCurrentDscp;
+
 	bool result = Transport::outgoing(std::move(message));
 	mOutgoingResult = result;
 	return result;

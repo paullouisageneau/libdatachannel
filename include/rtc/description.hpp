@@ -183,6 +183,7 @@ public:
 		void replaceSSRC(uint32_t old, uint32_t ssrc, optional<string> name,
 		                 optional<string> msid = nullopt, optional<string> trackID = nullopt);
 		bool hasSSRC(uint32_t ssrc) const;
+		void clearSSRCs();
 		std::vector<uint32_t> getSSRCs() const;
 		std::optional<std::string> getCNameForSsrc(uint32_t ssrc) const;
 

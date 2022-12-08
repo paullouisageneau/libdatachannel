@@ -53,6 +53,10 @@ gnutls_datum_t make_datum(char *data, size_t size);
 #include <winsock2.h>
 #endif
 
+#ifndef OPENSSL_API_COMPAT
+#define OPENSSL_API_COMPAT 0x10100000L
+#endif
+
 #include <openssl/ssl.h>
 
 #include <openssl/bio.h>

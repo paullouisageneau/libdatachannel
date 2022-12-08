@@ -21,9 +21,17 @@
 #if RTC_ENABLE_WEBSOCKET
 
 #if USE_GNUTLS
+
 #include <nettle/sha1.h>
-#else
+
+#else // USE_GNUTLS==0
+
+#ifndef OPENSSL_API_COMPAT
+#define OPENSSL_API_COMPAT 0x10100000L
+#endif
+
 #include <openssl/sha.h>
+
 #endif
 
 namespace rtc::impl {

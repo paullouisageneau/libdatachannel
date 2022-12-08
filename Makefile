@@ -62,6 +62,8 @@ else
         CPPFLAGS+=-DRTC_ENABLE_WEBSOCKET=0
 endif
 
+CPPFLAGS+=-DRTC_EXPORTS
+
 INCLUDES+=$(if $(LIBS),$(shell pkg-config --cflags $(LIBS)),)
 LDLIBS+=$(LOCALLIBS) $(if $(LIBS),$(shell pkg-config --libs $(LIBS)),)
 

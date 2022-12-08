@@ -734,6 +734,29 @@ bool Description::Media::hasSSRC(uint32_t ssrc) const {
 	return std::find(mSsrcs.begin(), mSsrcs.end(), ssrc) != mSsrcs.end();
 }
 
+void Description::Media::clearSSRCs() {
+	auto it = mAttributes.begin();
+	while (it != mAttributes.end()) {
+		if (match_prefix(*it, "ssrc:"))
+			it = mAttributes.erase(it);
+		else
+			++it;
+	}
+
+	mSsrcs.clear();
+	mCNameMap.clear();
+}
+
+std::vector<uint32_t> Description::Media::getSSRCs() const { return mSsrcs; }
+
+optional<string> Description::Media::getCNameForSsrc(uint32_t ssrc) const {
+	auto it = mCNameMap.find(ssrc);
+	if (it != mCNameMap.end()) {
+		return it->second;
+	}
+	return nullopt;
+}
+
 Description::Application::Application(string mid)
     : Entry("application 9 UDP/DTLS/SCTP", std::move(mid), Direction::SendRecv) {}
 
@@ -827,7 +850,8 @@ Description::Media Description::Media::reciprocate() const {
 	}
 
 	// Invert directions of extmap
-	for (auto it = reciprocated.mExtMaps.begin(); it != reciprocated.mExtMaps.end(); ++it) {
+	auto &extMaps = reciprocated.mExtMaps;
+	for (auto it = extMaps.begin(); it != extMaps.end(); ++it) {
 		auto &map = it->second;
 		switch (map.direction) {
 		case Direction::RecvOnly:
@@ -842,31 +866,13 @@ Description::Media Description::Media::reciprocate() const {
 		}
 	}
 
-	// Clear all ssrc attributes as they are individual
-	auto it = reciprocated.mAttributes.begin();
-	while (it != reciprocated.mAttributes.end()) {
-		if (match_prefix(*it, "ssrc:"))
-			it = reciprocated.mAttributes.erase(it);
-		else
-			++it;
-	}
-	reciprocated.mSsrcs.clear();
-	reciprocated.mCNameMap.clear();
+	// Clear sent SSRCs
+	reciprocated.clearSSRCs();
 
 	// Remove rtcp-rsize attribute as Reduced-Size RTCP is not supported (see RFC 5506)
 	reciprocated.removeAttribute("rtcp-rsize");
 
 	return reciprocated;
-}
-
-std::vector<uint32_t> Description::Media::getSSRCs() const { return mSsrcs; }
-
-optional<string> Description::Media::getCNameForSsrc(uint32_t ssrc) const {
-	auto it = mCNameMap.find(ssrc);
-	if (it != mCNameMap.end()) {
-		return it->second;
-	}
-	return nullopt;
 }
 
 int Description::Media::bitrate() const { return mBas; }
@@ -1086,13 +1092,12 @@ Description::Audio::Audio(string mid, Direction dir)
     : Media("audio 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
 
 void Description::Audio::addAudioCodec(int payloadType, string codec, optional<string> profile) {
-	if (codec.find('/') == string::npos){
-        if(codec == "PCMA" || codec == "PCMU")
-            codec += "/8000/1";
-        else
-            codec += "/48000/2";
-    }
-
+	if (codec.find('/') == string::npos) {
+		if (codec == "PCMA" || codec == "PCMU")
+			codec += "/8000/1";
+		else
+			codec += "/48000/2";
+	}
 
 	RtpMap map(std::to_string(payloadType) + ' ' + codec);
 
@@ -1107,11 +1112,11 @@ void Description::Audio::addOpusCodec(int payloadType, optional<string> profile)
 }
 
 void Description::Audio::addPCMACodec(int payloadType, optional<string> profile) {
-    addAudioCodec(payloadType, "PCMA", profile);
+	addAudioCodec(payloadType, "PCMA", profile);
 }
 
 void Description::Audio::addPCMUCodec(int payloadType, optional<string> profile) {
-    addAudioCodec(payloadType, "PCMU", profile);
+	addAudioCodec(payloadType, "PCMU", profile);
 }
 
 Description::Video::Video(string mid, Direction dir)
