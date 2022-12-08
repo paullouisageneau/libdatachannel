@@ -40,11 +40,13 @@ public:
 
 	bool requestKeyframe() override;
 
-protected:
-	void pushREMB(unsigned int bitrate);
-	void pushRR(unsigned int lastSR_delay);
+    void pushREMB(unsigned int bitrate);
+    void pushRR(unsigned int lastSR_delay);
 
-	void pushPLI();
+    void pushPLI();
+
+protected:
+
 
 	unsigned int mRequestedBitrate = 0;
 	SSRC mSsrc = 0;
