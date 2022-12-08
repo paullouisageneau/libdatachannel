@@ -83,10 +83,10 @@ message_ptr RtcpReceivingSession::incoming(message_ptr ptr) {
 		mSyncNTPTS = sr->ntpTimestamp();
 		sr->log();
 
-		// TODO For the time being, we will send RR's/REMB's when we get an SR
-		pushRR(0);
-		if (mRequestedBitrate > 0)
-			pushREMB(mRequestedBitrate);
+//		// TODO For the time being, we will send RR's/REMB's when we get an SR
+//		pushRR(0);
+//		if (mRequestedBitrate > 0)
+//			pushREMB(mRequestedBitrate);
 	}
 	return nullptr;
 }
