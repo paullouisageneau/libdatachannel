@@ -79,6 +79,9 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void processRemoteCandidate(Candidate candidate);
 	string localBundleMid() const;
 
+	void setMediaHandler(shared_ptr<MediaHandler> handler);
+	shared_ptr<MediaHandler> getMediaHandler();
+
 	void triggerDataChannel(weak_ptr<DataChannel> weakDataChannel);
 	void triggerTrack(weak_ptr<Track> weakTrack);
 
@@ -125,6 +128,10 @@ private:
 	optional<Description> mLocalDescription, mRemoteDescription;
 	optional<Description> mCurrentLocalDescription;
 	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
+
+	shared_ptr<MediaHandler> mMediaHandler;
+
+	mutable std::shared_mutex mMediaHandlerMutex;
 
 	shared_ptr<IceTransport> mIceTransport;
 	shared_ptr<DtlsTransport> mDtlsTransport;

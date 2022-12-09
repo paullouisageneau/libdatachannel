@@ -349,7 +349,8 @@ void PeerConnection::closeTransports() {
 	if (!changeState(State::Closed))
 		return; // already closed
 
-	// Reset callbacks now that state is changed
+	// Reset intercceptor and callbacks now that state is changed
+	setMediaHandler(nullptr);
 	resetCallbacks();
 
 	// Pass the pointers to a thread, allowing to terminate a transport from its own thread
@@ -474,6 +475,14 @@ void PeerConnection::forwardMessage(message_ptr message) {
 void PeerConnection::forwardMedia(message_ptr message) {
 	if (!message)
 		return;
+
+	auto handler = getMediaHandler();
+
+	if (handler) {
+		message = handler->incoming(message);
+		if (!message)
+			return;
+	}
 
 	// Browsers like to compound their packets with a random SSRC.
 	// we have to do this monstrosity to distribute the report blocks
@@ -1067,6 +1076,18 @@ void PeerConnection::processRemoteCandidate(Candidate candidate) {
 string PeerConnection::localBundleMid() const {
 	std::lock_guard lock(mLocalDescriptionMutex);
 	return mLocalDescription ? mLocalDescription->bundleMid() : "0";
+}
+
+void PeerConnection::setMediaHandler(shared_ptr<MediaHandler> handler) {
+	std::unique_lock lock(mMediaHandlerMutex);
+	if (mMediaHandler)
+		mMediaHandler->onOutgoing(nullptr);
+	mMediaHandler = handler;
+}
+
+shared_ptr<MediaHandler> PeerConnection::getMediaHandler() {
+	std::shared_lock lock(mMediaHandlerMutex);
+	return mMediaHandler;
 }
 
 void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {

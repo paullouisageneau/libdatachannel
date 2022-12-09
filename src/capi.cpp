@@ -297,6 +297,43 @@ createRtpPacketizationConfig(const rtcPacketizationHandlerInit *init) {
 	return config;
 }
 
+class MediaInterceptor final : public MediaHandler {
+public:
+	using MessageCallback = std::function<void *(void *data, int size)>;
+
+	MediaInterceptor(MessageCallback cb) : incomingCallback(cb) {}
+
+	// Called when there is traffic coming from the peer
+	message_ptr incoming(message_ptr msg) override {
+		// If no callback is provided, just forward the message on
+		if (!incomingCallback) {
+			return msg;
+		}
+
+		auto res = incomingCallback(reinterpret_cast<void *>(msg->data()), msg->size());
+
+		// If a null pointer was returned, drop the incoming message
+		if (res == nullptr) {
+			return nullptr;
+		}
+
+		// If the original data pointer was returned, forward the incoming message
+		if (res == msg->data()) {
+			return msg;
+		}
+
+		// Construct a true message_ptr from the returned opaque pointer
+		return make_message_from_opaque_ptr(std::move(reinterpret_cast<rtcMessage *>(res)));
+	};
+
+	// Called when there is traffic that needs to be sent to the peer
+	// This is a no-op for media interceptors
+	message_ptr outgoing(message_ptr ptr) override { return ptr; };
+
+private:
+	MessageCallback incomingCallback;
+};
+
 #endif // RTC_ENABLE_MEDIA
 
 #if RTC_ENABLE_WEBSOCKET
@@ -1103,6 +1140,39 @@ void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, 
 	}
 
 	description->addSSRC(ssrc, name, msid, trackID);
+}
+
+rtcMessage *rtcCreateOpaqueMessage(void *data, int size) {
+	auto src = reinterpret_cast<std::byte *>(data);
+	auto msg = new Message(src, src + size);
+	// Downgrade the message pointer to the opaque rtcMessage* type
+	return reinterpret_cast<rtcMessage *>(msg);
+}
+
+void rtcDeleteOpaqueMessage(rtcMessage *msg) {
+	// Cast the opaque pointer back to it's true type before deleting
+	delete reinterpret_cast<Message *>(msg);
+}
+
+int rtcSetMediaInterceptorCallback(int pc, rtcInterceptorCallbackFunc cb) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		if (cb == nullptr) {
+			peerConnection->setMediaHandler(nullptr);
+			return RTC_ERR_SUCCESS;
+		}
+
+		auto interceptor = std::make_shared<MediaInterceptor>([pc, cb](void *data, int size) {
+			if (auto ptr = getUserPointer(pc))
+				return cb(pc, reinterpret_cast<const char *>(data), size, *ptr);
+			return data;
+		});
+
+		peerConnection->setMediaHandler(interceptor);
+
+		return RTC_ERR_SUCCESS;
+	});
 }
 
 int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {

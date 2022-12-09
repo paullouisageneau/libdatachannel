@@ -139,6 +139,8 @@ typedef void(RTC_API *rtcOpenCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcClosedCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcErrorCallbackFunc)(int id, const char *error, void *ptr);
 typedef void(RTC_API *rtcMessageCallbackFunc)(int id, const char *message, int size, void *ptr);
+typedef void *(RTC_API *rtcInterceptorCallbackFunc)(int pc, const char *message, int size,
+                                                    void *ptr);
 typedef void(RTC_API *rtcBufferedAmountLowCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcAvailableCallbackFunc)(int id, void *ptr);
 
@@ -302,6 +304,20 @@ typedef struct {
 	const char *msid;    // optional
 	const char *trackId; // optional, track ID used in MSID
 } rtcSsrcForTypeInit;
+
+// Opaque message
+
+// Opaque type used (via rtcMessage*) to reference an rtc::Message
+typedef void* rtcMessage;
+
+// Allocate a new opaque message.
+// Must be explicitly freed by rtcDeleteOpaqueMessage() unless
+// explicitly returned by a media interceptor callback;
+RTC_EXPORT rtcMessage *rtcCreateOpaqueMessage(void *data, int size);
+RTC_EXPORT void rtcDeleteOpaqueMessage(rtcMessage *msg);
+
+// Set MediaInterceptor for peer connection
+RTC_EXPORT int rtcSetMediaInterceptorCallback(int id, rtcInterceptorCallbackFunc cb);
 
 // Set H264PacketizationHandler for track
 RTC_C_EXPORT int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
