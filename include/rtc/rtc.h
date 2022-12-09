@@ -313,11 +313,11 @@ typedef void* rtcMessage;
 // Allocate a new opaque message.
 // Must be explicitly freed by rtcDeleteOpaqueMessage() unless
 // explicitly returned by a media interceptor callback;
-RTC_EXPORT rtcMessage *rtcCreateOpaqueMessage(void *data, int size);
-RTC_EXPORT void rtcDeleteOpaqueMessage(rtcMessage *msg);
+RTC_C_EXPORT rtcMessage *rtcCreateOpaqueMessage(void *data, int size);
+RTC_C_EXPORT void rtcDeleteOpaqueMessage(rtcMessage *msg);
 
 // Set MediaInterceptor for peer connection
-RTC_EXPORT int rtcSetMediaInterceptorCallback(int id, rtcInterceptorCallbackFunc cb);
+RTC_C_EXPORT int rtcSetMediaInterceptorCallback(int id, rtcInterceptorCallbackFunc cb);
 
 // Set H264PacketizationHandler for track
 RTC_C_EXPORT int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
