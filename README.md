@@ -18,7 +18,7 @@ It can be compiled with multiple backends:
 
 The WebRTC stack is fully compatible with browsers like Firefox and Chromium, see [Compatibility](#Compatibility) below. Additionally, code using Data Channels and WebSockets from the library may be compiled as is to WebAssembly for browsers with [datachannel-wasm](https://github.com/paullouisageneau/datachannel-wasm).
 
-libdatachannel is licensed under MPL 2.0 or later, see [LICENSE](https://github.com/paullouisageneau/libdatachannel/blob/master/LICENSE).
+libdatachannel is licensed under MPL 2.0 since version 0.18, see [LICENSE](https://github.com/paullouisageneau/libdatachannel/blob/master/LICENSE) (previous versions were licensed under LGPLv2.1 or later).
 
 libdatachannel is available on [AUR](https://aur.archlinux.org/packages/libdatachannel/), [vcpkg](https://vcpkg.info/port/libdatachannel), and [FreeBSD ports](https://www.freshports.org/www/libdatachannel). Bindings are available for [Rust](https://crates.io/crates/datachannel) and [Node.js](https://www.npmjs.com/package/node-datachannel).
 
