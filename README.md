@@ -1,6 +1,6 @@
 # libdatachannel - C/C++ WebRTC network library
 
-[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0_or_later-blue.svg)](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html)
+[![License: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0_or_later-blue.svg)](https://www.mozilla.org/en-US/MPL/2.0/)
 [![Build with OpenSSL](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-openssl.yml/badge.svg)](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-openssl.yml)
 [![Build with GnuTLS](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-gnutls.yml/badge.svg)](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-gnutls.yml)
 [![Gitter](https://badges.gitter.im/libdatachannel/community.svg)](https://gitter.im/libdatachannel/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
