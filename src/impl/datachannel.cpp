@@ -108,7 +108,7 @@ void DataChannel::remoteClose() {
 }
 
 optional<message_variant> DataChannel::receive() {
-	auto next = mRecvQueue.tryPop();
+	auto next = mRecvQueue.pop();
 	return next ? std::make_optional(to_variant(std::move(**next))) : nullopt;
 }
 

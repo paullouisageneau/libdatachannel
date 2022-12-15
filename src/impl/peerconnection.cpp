@@ -1110,7 +1110,7 @@ void PeerConnection::triggerTrack(weak_ptr<Track> weakTrack) {
 
 void PeerConnection::triggerPendingDataChannels() {
 	while (dataChannelCallback) {
-		auto next = mPendingDataChannels.tryPop();
+		auto next = mPendingDataChannels.pop();
 		if (!next)
 			break;
 
@@ -1128,7 +1128,7 @@ void PeerConnection::triggerPendingDataChannels() {
 
 void PeerConnection::triggerPendingTracks() {
 	while (trackCallback) {
-		auto next = mPendingTracks.tryPop();
+		auto next = mPendingTracks.pop();
 		if (!next)
 			break;
 

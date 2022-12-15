@@ -63,7 +63,7 @@ void Track::close() {
 }
 
 optional<message_variant> Track::receive() {
-	if (auto next = mRecvQueue.tryPop()) {
+	if (auto next = mRecvQueue.pop()) {
 		message_ptr message = *next;
 		if (message->type == Message::Control)
 			return to_variant(**next); // The same message may be frowarded into multiple Tracks
