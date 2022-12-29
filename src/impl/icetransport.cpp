@@ -344,6 +344,15 @@ void IceTransport::LogCallback(juice_log_level_t level, const char *message) {
 
 #else // USE_NICE == 1
 
+static void closeNiceAgentCallback(GObject *niceAgent, GAsyncResult *, gpointer) {
+	g_object_unref(niceAgent);
+}
+
+static void closeNiceAgent(NiceAgent *niceAgent) {
+	// close the agent to prune alive TURN refreshes, before releasing it
+	nice_agent_close_async(niceAgent, closeNiceAgentCallback, nullptr);
+}
+
 IceTransport::IceTransport(const Configuration &config, candidate_callback candidateCallback,
                            state_callback stateChangeCallback,
                            gathering_state_callback gatheringStateChangeCallback)
@@ -377,7 +386,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	        g_main_loop_get_context(mMainLoop.get()),
 	        NICE_COMPATIBILITY_RFC5245, // RFC 5245 was obsoleted by RFC 8445 but this should be OK
 	        flags),
-	    g_object_unref);
+	    closeNiceAgent);
 
 	if (!mNiceAgent)
 		throw std::runtime_error("Failed to create the nice agent");

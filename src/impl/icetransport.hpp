@@ -84,7 +84,7 @@ private:
 	static void LogCallback(juice_log_level_t level, const char *message);
 #else
 	uint32_t mStreamId = 0;
-	unique_ptr<NiceAgent, void (*)(gpointer)> mNiceAgent;
+	unique_ptr<NiceAgent, void (*)(NiceAgent *)> mNiceAgent;
 	unique_ptr<GMainLoop, void (*)(GMainLoop *)> mMainLoop;
 	std::thread mMainLoopThread;
 	guint mTimeoutId = 0;
