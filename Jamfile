@@ -21,6 +21,8 @@ lib libdatachannel
 	<define>RTC_ENABLE_MEDIA=0
 	<define>RTC_ENABLE_WEBSOCKET=0
 	<define>USE_NICE=0
+	<define>RTC_EXPORTS
+	<define>RTC_STATIC
 	<toolset>msvc:<define>WIN32_LEAN_AND_MEAN
 	<toolset>msvc:<define>NOMINMAX
 	<toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS
