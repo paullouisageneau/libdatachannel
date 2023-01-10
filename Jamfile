@@ -79,7 +79,6 @@ alias juice
     <include>./deps/libjuice/include
     <define>JUICE_STATIC
     <gnutls>on:<library>libjuice-gnutls.a
-    <gnutls>on:<library>nettle/<link>shared
     <gnutls>off:<library>libjuice-openssl.a
     ;
 
@@ -263,5 +262,4 @@ lib ssl : : <name>ssl <use>crypto <conditional>@openssl-lib-path : :
 
 # GnuTLS
 lib gnutls : : <link>shared <name>gnutls ;
-lib nettle : : <link>shared <name>nettle ;
 
