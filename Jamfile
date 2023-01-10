@@ -89,6 +89,7 @@ alias juice
     : # no default build
     : # usage requirements
     <include>./deps/libjuice/include
+    <define>JUICE_STATIC
     <library>juice-static.lib
     ;
 
