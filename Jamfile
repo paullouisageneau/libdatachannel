@@ -39,6 +39,7 @@ lib libdatachannel
 	<include>./include
 	<define>RTC_ENABLE_MEDIA=0
 	<define>RTC_ENABLE_WEBSOCKET=0
+	<define>RTC_STATIC
 	<library>/libdatachannel//plog
 	<toolset>gcc:<cxxflags>"-pthread -Wno-pedantic -Wno-unused-parameter -Wno-unused-variable"
 	<toolset>clang:<cxxflags>"-pthread -Wno-pedantic -Wno-unused-parameter -Wno-unused-variable"
@@ -76,8 +77,8 @@ alias juice
     : # no default build
     : # usage requirements
     <include>./deps/libjuice/include
+    <define>JUICE_STATIC
     <gnutls>on:<library>libjuice-gnutls.a
-    <gnutls>on:<library>nettle/<link>shared
     <gnutls>off:<library>libjuice-openssl.a
     ;
 
@@ -261,5 +262,4 @@ lib ssl : : <name>ssl <use>crypto <conditional>@openssl-lib-path : :
 
 # GnuTLS
 lib gnutls : : <link>shared <name>gnutls ;
-lib nettle : : <link>shared <name>nettle ;
 
