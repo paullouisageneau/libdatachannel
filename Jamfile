@@ -21,6 +21,8 @@ lib libdatachannel
 	<define>RTC_ENABLE_MEDIA=0
 	<define>RTC_ENABLE_WEBSOCKET=0
 	<define>USE_NICE=0
+	<define>RTC_EXPORTS
+	<define>RTC_STATIC
 	<toolset>msvc:<define>WIN32_LEAN_AND_MEAN
 	<toolset>msvc:<define>NOMINMAX
 	<toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS
@@ -37,6 +39,7 @@ lib libdatachannel
 	<include>./include
 	<define>RTC_ENABLE_MEDIA=0
 	<define>RTC_ENABLE_WEBSOCKET=0
+	<define>RTC_STATIC
 	<library>/libdatachannel//plog
 	<toolset>gcc:<cxxflags>"-pthread -Wno-pedantic -Wno-unused-parameter -Wno-unused-variable"
 	<toolset>clang:<cxxflags>"-pthread -Wno-pedantic -Wno-unused-parameter -Wno-unused-variable"
@@ -74,6 +77,7 @@ alias juice
     : # no default build
     : # usage requirements
     <include>./deps/libjuice/include
+    <define>JUICE_STATIC
     <gnutls>on:<library>libjuice-gnutls.a
     <gnutls>on:<library>nettle/<link>shared
     <gnutls>off:<library>libjuice-openssl.a
@@ -85,6 +89,7 @@ alias juice
     : # no default build
     : # usage requirements
     <include>./deps/libjuice/include
+    <define>JUICE_STATIC
     <library>juice-static.lib
     ;
 
