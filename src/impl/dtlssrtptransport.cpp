@@ -147,10 +147,10 @@ void DtlsSrtpTransport::recvMedia(message_ptr message) {
 				PLOG_VERBOSE << "Incoming SRTCP packet is a replay";
 				COUNTER_SRTCP_REPLAY++;
 			} else if (err == srtp_err_status_auth_fail) {
-				PLOG_VERBOSE << "Incoming SRTCP packet failed authentication check";
+				PLOG_DEBUG << "Incoming SRTCP packet failed authentication check";
 				COUNTER_SRTCP_AUTH_FAIL++;
 			} else {
-				PLOG_VERBOSE << "SRTCP unprotect error, status=" << err;
+				PLOG_DEBUG << "SRTCP unprotect error, status=" << err;
 				COUNTER_SRTCP_FAIL++;
 			}
 
@@ -167,10 +167,10 @@ void DtlsSrtpTransport::recvMedia(message_ptr message) {
 				PLOG_VERBOSE << "Incoming SRTP packet is a replay";
 				COUNTER_SRTP_REPLAY++;
 			} else if (err == srtp_err_status_auth_fail) {
-				PLOG_VERBOSE << "Incoming SRTP packet failed authentication check";
+				PLOG_DEBUG << "Incoming SRTP packet failed authentication check";
 				COUNTER_SRTP_AUTH_FAIL++;
 			} else {
-				PLOG_VERBOSE << "SRTP unprotect error, status=" << err;
+				PLOG_DEBUG << "SRTP unprotect error, status=" << err;
 				COUNTER_SRTP_FAIL++;
 			}
 			return;
@@ -212,7 +212,7 @@ bool DtlsSrtpTransport::demuxMessage(message_ptr message) {
 
 	} else {
 		COUNTER_UNKNOWN_PACKET_TYPE++;
-		PLOG_VERBOSE << "Unknown packet type, value=" << unsigned(value1)
+		PLOG_DEBUG << "Unknown packet type, value=" << unsigned(value1)
 		             << ", size=" << message->size();
 		return true;
 	}
