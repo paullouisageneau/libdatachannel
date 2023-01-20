@@ -40,9 +40,13 @@ WebSocketServer::WebSocketServer(Configuration config_)
 			    "Either none or both certificate and key PEM files must be specified");
 		}
 	}
-
+	
+	const char* bindAddress = nullptr;
+	if(config.bindAddress){
+		bindAddress = config.bindAddress->data();
+	}
 	// Create TCP server
-	tcpServer = std::make_unique<TcpServer>(config.port);
+	tcpServer = std::make_unique<TcpServer>(config.port, bindAddress);
 
 	// Create server thread
 	mThread = std::thread(&WebSocketServer::runLoop, this);
