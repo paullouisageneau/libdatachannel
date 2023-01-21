@@ -26,6 +26,17 @@ struct ConnectedClients
     char* client[MAX_CLIENTS];
 } my_ConnectedClients;
 
+char* last_path_segment(char* path,  const char* delim){
+    char * last_segment = NULL;
+    char * segment = strtok(path, delim);
+    if(segment == NULL) return path;
+    while(segment != NULL){
+        last_segment = (char*)segment;
+        segment = strtok(NULL, delim);
+    }
+    return last_segment;
+}
+
 static void RTC_API my_rtcOpenCallbackFunc(int id, void *ptr){
     fprintf(stdout, "websocket #%d opened\n", id);
     
@@ -35,13 +46,7 @@ static void RTC_API my_rtcOpenCallbackFunc(int id, void *ptr){
     path[size] = 0;
     fprintf(stdout, "path:%s\n", path);
 
-    char* user = "";
-    const char* delim = "/";
-    char * segment = strtok(path, delim);
-    while(segment != NULL){
-        user = (char*)segment;
-        segment = strtok(NULL, delim);
-    }
+    char* user = last_path_segment(path, "/");
     fprintf(stdout, "new user login:%s\n", user);
     
     // login user
@@ -135,25 +140,60 @@ static void RTC_API my_rtcWebSocketClientCallbackFunc(int wsserver, int ws, void
 
 int main(int argc, char* argv[])
 {
-    // Check command line arguments.
-    if (argc != 2)
-    {
-        fprintf( stderr, 
-         "Usage: %s <port>\n" 
-         "Example:\n"
-         "    %s 8000 \n"
-        , argv[0], argv[0]);
-        return EXIT_FAILURE;
-    }
-    const auto port = atoi(argv[1]);
-    memset(&my_ConnectedClients, 0, sizeof(my_ConnectedClients));
-
     rtcWsServerConfiguration config;
-    config.port = port;
+    config.port = 8000;
     config.enableTls = false;
     config.certificatePemFile = NULL;
     config.keyPemFile = NULL;
     config.keyPemPass = NULL;
+    config.bindAddress = NULL;
+
+    // Check command line arguments.
+    for (int i = 1; i < argc; i++)
+    {
+        if( strcmp(argv[i], "--help") == 0 ){
+            const size_t len = strlen(argv[0]);
+            char* path = (char*) malloc(len+1);
+            strcpy(path, argv[0]);
+            path[len] = 0;
+
+            char* app_name = NULL;
+            app_name = last_path_segment(path, "\\/");
+            fprintf( stderr, 
+                "Usage: %s [-p <port>] [-a <bind-address>] [--enable-tls] [--certificatePemFile <file>] [--keyPemFile <keyPemFile>] [--keyPemPass <pass>]\n" 
+                "Example:\n"
+                "    %s -p 8000 -a 127.0.0.1 \n"
+                , app_name, app_name);
+            free(path);
+            return EXIT_FAILURE;
+        }
+        if( strcmp(argv[i], "-p") == 0 ){
+            config.port = atoi(argv[++i]);
+            continue;
+        }
+        if( strcmp(argv[i], "-a") == 0 ){
+            config.bindAddress = argv[++i];
+            continue;
+        }
+        if( strcmp(argv[i], "--enable-tls") == 0 ){
+            config.enableTls = true;
+            continue;
+        }
+        if( strcmp(argv[i], "--certificatePemFile") == 0 ){
+            config.certificatePemFile = argv[++i];
+            continue;
+        }
+        if( strcmp(argv[i], "--keyPemFile") == 0 ){
+            config.keyPemFile = argv[++i];
+            continue;
+        }
+        if( strcmp(argv[i], "--keyPemPass") == 0 ){
+            config.keyPemPass = argv[++i];
+            continue;
+        }
+    }
+
+    memset(&my_ConnectedClients, 0, sizeof(my_ConnectedClients));
 
     int wsserver = rtcCreateWebSocketServer(&config, my_rtcWebSocketClientCallbackFunc);
 
@@ -161,6 +201,8 @@ int main(int argc, char* argv[])
         fprintf(stderr, "Error creating WebsocketServer");
         return EXIT_FAILURE;
     }
+
+    fprintf(stdout, "Started signaling-server on %s://%s:%d\n", config.enableTls?"wss":"ws", config.bindAddress, config.port);
 
     printf("press any key to exit...\n");
     int c = getchar();
