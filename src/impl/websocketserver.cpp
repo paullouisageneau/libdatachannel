@@ -43,7 +43,7 @@ WebSocketServer::WebSocketServer(Configuration config_)
 	
 	const char* bindAddress = nullptr;
 	if(config.bindAddress){
-		bindAddress = config.bindAddress->data();
+		bindAddress = config.bindAddress->c_str();
 	}
 	// Create TCP server
 	tcpServer = std::make_unique<TcpServer>(config.port, bindAddress);
