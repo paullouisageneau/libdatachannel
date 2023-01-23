@@ -21,9 +21,9 @@
 
 namespace rtc::impl {
 
-TcpServer::TcpServer(uint16_t port) {
+TcpServer::TcpServer(uint16_t port, const char* bindAddress) {
 	PLOG_DEBUG << "Initializing TCP server";
-	listen(port);
+	listen(port, bindAddress);
 }
 
 TcpServer::~TcpServer() { close(); }
@@ -89,7 +89,7 @@ void TcpServer::close() {
 	}
 }
 
-void TcpServer::listen(uint16_t port) {
+void TcpServer::listen(uint16_t port, const char* bindAddress) {
 	PLOG_DEBUG << "Listening on port " << port;
 
 	struct addrinfo hints = {};
@@ -99,7 +99,7 @@ void TcpServer::listen(uint16_t port) {
 	hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
 
 	struct addrinfo *result = nullptr;
-	if (getaddrinfo(nullptr, std::to_string(port).c_str(), &hints, &result))
+	if (getaddrinfo(bindAddress, std::to_string(port).c_str(), &hints, &result))
 		throw std::runtime_error("Resolution failed for local address");
 
 	try {

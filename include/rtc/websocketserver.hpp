@@ -30,6 +30,7 @@ public:
 		optional<string> certificatePemFile;
 		optional<string> keyPemFile;
 		optional<string> keyPemPass;
+		optional<string> bindAddress;
 	};
 
 	WebSocketServer();

@@ -21,7 +21,7 @@ namespace rtc::impl {
 
 class TcpServer final {
 public:
-	TcpServer(uint16_t port);
+	TcpServer(uint16_t port, const char* bindAddress = nullptr);
 	~TcpServer();
 
 	TcpServer(const TcpServer &other) = delete;
@@ -33,7 +33,7 @@ public:
 	uint16_t port() const { return mPort; }
 
 private:
-	void listen(uint16_t port);
+	void listen(uint16_t port, const char* bindAddress);
 
 	uint16_t mPort;
 	socket_t mSock = INVALID_SOCKET;
