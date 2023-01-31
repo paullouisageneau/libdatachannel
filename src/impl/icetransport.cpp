@@ -169,9 +169,21 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {
+	// RFC 5763: The answerer MUST use either a setup attribute value of setup:active or
+	// setup:passive.
+	// See https://www.rfc-editor.org/rfc/rfc5763.html#section-5
+	if (description.type() == Description::Type::Answer &&
+	    description.role() == Description::Role::ActPass)
+		throw std::logic_error("Illegal role actpass in remote answer description");
+
+	// RFC 5763: Note that if the answerer uses setup:passive, then the DTLS handshake
+	// will not begin until the answerer is received, which adds additional latency.
+	// setup:active allows the answer and the DTLS handshake to occur in parallel. Thus,
+	// setup:active is RECOMMENDED.
 	if (mRole == Description::Role::ActPass)
 		mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 		                                                        : Description::Role::Active;
+
 	if (mRole == description.role())
 		throw std::logic_error("Incompatible roles with remote description");
 
@@ -604,9 +616,21 @@ Description IceTransport::getLocalDescription(Description::Type type) const {
 }
 
 void IceTransport::setRemoteDescription(const Description &description) {
+	// RFC 5763: The answerer MUST use either a setup attribute value of setup:active or
+	// setup:passive.
+	// See https://www.rfc-editor.org/rfc/rfc5763.html#section-5
+	if (description.type() == Description::Type::Answer &&
+	    description.role() == Description::Role::ActPass)
+		throw std::logic_error("Illegal role actpass in remote answer description");
+
+	// RFC 5763: Note that if the answerer uses setup:passive, then the DTLS handshake
+	// will not begin until the answerer is received, which adds additional latency.
+	// setup:active allows the answer and the DTLS handshake to occur in parallel. Thus,
+	// setup:active is RECOMMENDED.
 	if (mRole == Description::Role::ActPass)
 		mRole = description.role() == Description::Role::Active ? Description::Role::Passive
 		                                                        : Description::Role::Active;
+
 	if (mRole == description.role())
 		throw std::logic_error("Incompatible roles with remote description");
 
