@@ -437,10 +437,12 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		// RFC 8827: The DTLS-SRTP protection profile SRTP_AES128_CM_HMAC_SHA1_80 MUST be supported
 		// See https://www.rfc-editor.org/rfc/rfc8827.html#section-6.5 Warning:
 		// SSL_set_tlsext_use_srtp() returns 0 on success and 1 on error
-		if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"))
-			throw std::runtime_error("Failed to set SRTP profile: " +
-			                         openssl::error_string(ERR_get_error()));
-
+		// Try to use GCM suite
+		if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AEAD_AES_256_GCM:SRTP_AEAD_AES_128_GCM:SRTP_AES128_CM_SHA1_80")) {
+			if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"))
+				throw std::runtime_error("Failed to set SRTP profile: " +
+							openssl::error_string(ERR_get_error()));
+		}
 	} catch (...) {
 		if (mSsl)
 			SSL_free(mSsl);
