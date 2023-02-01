@@ -7,22 +7,44 @@
  */
 
 #include "channel.hpp"
+#include "internals.hpp"
 
 namespace rtc::impl {
 
 void Channel::triggerOpen() {
 	mOpenTriggered = true;
-	openCallback();
+	try {
+		openCallback();
+	} catch (const std::exception &e) {
+		PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+	}
 	flushPendingMessages();
 }
 
-void Channel::triggerClosed() { closedCallback(); }
+void Channel::triggerClosed() {
+	try {
+		closedCallback();
+	} catch (const std::exception &e) {
+		PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+	}
+}
 
-void Channel::triggerError(string error) { errorCallback(std::move(error)); }
+void Channel::triggerError(string error) {
+	try {
+		errorCallback(std::move(error));
+	} catch (const std::exception &e) {
+		PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+	}
+}
 
 void Channel::triggerAvailable(size_t count) {
-	if (count == 1)
-		availableCallback();
+	if (count == 1) {
+		try {
+			availableCallback();
+		} catch (const std::exception &e) {
+			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+		}
+	}
 
 	flushPendingMessages();
 }
@@ -30,8 +52,13 @@ void Channel::triggerAvailable(size_t count) {
 void Channel::triggerBufferedAmount(size_t amount) {
 	size_t previous = bufferedAmount.exchange(amount);
 	size_t threshold = bufferedAmountLowThreshold.load();
-	if (previous > threshold && amount <= threshold)
-		bufferedAmountLowCallback();
+	if (previous > threshold && amount <= threshold) {
+		try {
+			bufferedAmountLowCallback();
+		} catch (const std::exception &e) {
+			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+		}
+	}
 }
 
 void Channel::flushPendingMessages() {
@@ -43,7 +70,11 @@ void Channel::flushPendingMessages() {
 		if (!next)
 			break;
 
-		messageCallback(*next);
+		try {
+			messageCallback(*next);
+		} catch (const std::exception &e) {
+			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+		}
 	}
 }
 

@@ -187,11 +187,8 @@ optional<string> Description::fingerprint() const { return mFingerprint; }
 bool Description::ended() const { return mEnded; }
 
 void Description::hintType(Type type) {
-	if (mType == Type::Unspec) {
+	if (mType == Type::Unspec)
 		mType = type;
-		if (mType == Type::Answer && mRole == Role::ActPass)
-			mRole = Role::Passive; // ActPass is illegal for an answer, so default to passive
-	}
 }
 
 void Description::setFingerprint(string fingerprint) {
