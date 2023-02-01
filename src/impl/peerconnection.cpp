@@ -1094,7 +1094,13 @@ void PeerConnection::triggerPendingDataChannels() {
 			break;
 
 		auto impl = std::move(*next);
-		dataChannelCallback(std::make_shared<rtc::DataChannel>(impl));
+
+		try {
+			dataChannelCallback(std::make_shared<rtc::DataChannel>(impl));
+		} catch (const std::exception &e) {
+			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+		}
+
 		impl->triggerOpen();
 	}
 }
@@ -1106,7 +1112,13 @@ void PeerConnection::triggerPendingTracks() {
 			break;
 
 		auto impl = std::move(*next);
-		trackCallback(std::make_shared<rtc::Track>(impl));
+
+		try {
+			trackCallback(std::make_shared<rtc::Track>(impl));
+		} catch (const std::exception &e) {
+			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+		}
+
 		// Do not trigger open immediately for tracks as it'll be done later
 	}
 }
