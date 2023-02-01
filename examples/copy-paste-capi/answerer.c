@@ -70,7 +70,6 @@ int main(int argc, char **argv) {
 	rtcSetStateChangeCallback(peer->pc, stateChangeCallback);
 	rtcSetGatheringStateChangeCallback(peer->pc, gatheringStateCallback);
 
-	rtcSetUserPointer(peer->dc, NULL);
 	rtcSetDataChannelCallback(peer->pc, dataChannelCallback);
 
 	sleep(1);
