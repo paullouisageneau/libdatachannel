@@ -176,6 +176,11 @@ static void deletePeer(Peer *peer) {
 
 int test_capi_connectivity_main() {
 	int attempts;
+	char buffer[BUFFER_SIZE];
+	char buffer2[BUFFER_SIZE];
+	const char *test = "foo";
+	const int testLen = 3;
+	int size = 0;
 
 	rtcInitLogger(RTC_LOG_DEBUG, nullptr);
 
@@ -245,9 +250,6 @@ int test_capi_connectivity_main() {
 		fprintf(stderr, "DataChannel is not connected\n");
 		goto error;
 	}
-
-	char buffer[BUFFER_SIZE];
-	char buffer2[BUFFER_SIZE];
 
 	if (rtcGetLocalDescriptionType(peer1->pc, buffer, BUFFER_SIZE) < 0) {
 		fprintf(stderr, "rtcGetLocalDescriptionType failed\n");
@@ -337,6 +339,22 @@ int test_capi_connectivity_main() {
 
 	if (rtcGetMaxDataChannelStream(peer1->pc) <= 0 || rtcGetMaxDataChannelStream(peer2->pc) <= 0) {
 		fprintf(stderr, "rtcGetMaxDataChannelStream failed\n");
+		goto error;
+	}
+
+	rtcSetMessageCallback(peer2->dc, NULL);
+	if (rtcSendMessage(peer1->dc, test, testLen) < 0) {
+		fprintf(stderr, "rtcSendMessage failed\n");
+		goto error;
+	}
+	sleep(1);
+	size = 0;
+	if (rtcReceiveMessage(peer2->dc, NULL, &size) < 0 || size != testLen) {
+		fprintf(stderr, "rtcReceiveMessage failed to peek message size\n");
+		goto error;
+	}
+	if (rtcReceiveMessage(peer2->dc, buffer, &size) < 0 || size != testLen) {
+		fprintf(stderr, "rtcReceiveMessage failed to get the message\n");
 		goto error;
 	}
 
