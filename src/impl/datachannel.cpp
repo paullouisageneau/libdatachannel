@@ -114,7 +114,7 @@ optional<message_variant> DataChannel::receive() {
 
 optional<message_variant> DataChannel::peek() {
 	auto next = mRecvQueue.peek();
-	return next ? std::make_optional(to_variant(std::move(**next))) : nullopt;
+	return next ? std::make_optional(to_variant(**next)) : nullopt;
 }
 
 size_t DataChannel::availableAmount() const { return mRecvQueue.amount(); }
