@@ -300,7 +300,7 @@ void DtlsSrtpTransport::postHandshake() {
 
 	srtp_policy_t inbound = {};
 	srtp_crypto_policy_set_from_profile_for_rtp(&inbound.rtp, srtpProfile);
-	srtp_crypto_policy_set_from_profile_for_rtcp(&inbound.rtp, srtpProfile);
+	srtp_crypto_policy_set_from_profile_for_rtcp(&inbound.rtcp, srtpProfile);
 	inbound.ssrc.type = ssrc_any_inbound;
 	inbound.key = mIsClient ? mServerSessionKey.data() : mClientSessionKey.data();
 
@@ -314,7 +314,7 @@ void DtlsSrtpTransport::postHandshake() {
 
 	srtp_policy_t outbound = {};
 	srtp_crypto_policy_set_from_profile_for_rtp(&outbound.rtp, srtpProfile);
-	srtp_crypto_policy_set_from_profile_for_rtcp(&outbound.rtp, srtpProfile);
+	srtp_crypto_policy_set_from_profile_for_rtcp(&outbound.rtcp, srtpProfile);
 	outbound.ssrc.type = ssrc_any_outbound;
 	outbound.key = mIsClient ? mClientSessionKey.data() : mServerSessionKey.data();
 	outbound.window_size = 1024;
