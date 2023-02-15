@@ -8,6 +8,7 @@
 
 #include "tlstransport.hpp"
 #include "tcptransport.hpp"
+#include "threadpool.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -19,6 +20,16 @@
 using namespace std::chrono;
 
 namespace rtc::impl {
+
+void TlsTransport::enqueueRecv() {
+	if (mPendingRecvCount > 0)
+		return;
+
+	if (auto shared_this = weak_from_this().lock()) {
+		++mPendingRecvCount;
+		ThreadPool::Instance().enqueue(&TlsTransport::doRecv, std::move(shared_this));
+	}
+}
 
 #if USE_GNUTLS
 
@@ -54,7 +65,8 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, optional<string> host
 
 	PLOG_DEBUG << "Initializing TLS transport (GnuTLS)";
 
-	gnutls::check(gnutls_init(&mSession, mIsClient ? GNUTLS_CLIENT : GNUTLS_SERVER));
+	unsigned int flags = GNUTLS_NONBLOCK | (mIsClient ? GNUTLS_CLIENT : GNUTLS_SERVER);
+	gnutls::check(gnutls_init(&mSession, flags));
 
 	try {
 		const char *priorities = "SECURE128:-VERS-SSL3.0:-ARCFOUR-128";
@@ -89,22 +101,17 @@ TlsTransport::~TlsTransport() {
 }
 
 void TlsTransport::start() {
-	if (mStarted.exchange(true))
-		return;
-
-	PLOG_DEBUG << "Starting TLS recv thread";
+	PLOG_DEBUG << "Starting TLS transport";
 	registerIncoming();
-	mRecvThread = std::thread(&TlsTransport::runRecvLoop, this);
+	changeState(State::Connecting);
+	enqueueRecv(); // to initiate the handshake
 }
 
 void TlsTransport::stop() {
-	if (!mStarted.exchange(false))
-		return;
-
-	PLOG_DEBUG << "Stopping TLS recv thread";
+	PLOG_DEBUG << "Stopping TLS transport";
 	unregisterIncoming();
 	mIncomingQueue.stop();
-	mRecvThread.join();
+	enqueueRecv();
 }
 
 bool TlsTransport::send(message_ptr message) {
@@ -135,6 +142,7 @@ void TlsTransport::incoming(message_ptr message) {
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
 	mIncomingQueue.push(message);
+	enqueueRecv();
 }
 
 bool TlsTransport::outgoing(message_ptr message) {
@@ -147,52 +155,52 @@ void TlsTransport::postHandshake() {
 	// Dummy
 }
 
-void TlsTransport::runRecvLoop() {
+void TlsTransport::doRecv() {
+	std::lock_guard lock(mRecvMutex);
+	--mPendingRecvCount;
+
 	const size_t bufferSize = 4096;
 	char buffer[bufferSize];
 
-	// Handshake loop
 	try {
-		changeState(State::Connecting);
-
-		int ret;
-		do {
-			ret = gnutls_handshake(mSession);
-		} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN ||
-		         !gnutls::check(ret, "TLS handshake failed"));
-
-	} catch (const std::exception &e) {
-		PLOG_ERROR << "TLS handshake: " << e.what();
-		changeState(State::Failed);
-		return;
-	}
-
-	// Receive loop
-	try {
-		PLOG_INFO << "TLS handshake finished";
-		changeState(State::Connected);
-		postHandshake();
-
-		while (true) {
-			ssize_t ret;
+		// Handle handshake if connecting
+		if (state() == State::Connecting) {
+			int ret;
 			do {
-				ret = gnutls_record_recv(mSession, buffer, bufferSize);
-			} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
+				ret = gnutls_handshake(mSession);
 
-			// Consider premature termination as remote closing
-			if (ret == GNUTLS_E_PREMATURE_TERMINATION) {
-				PLOG_DEBUG << "TLS connection terminated";
-				break;
-			}
+				if (ret == GNUTLS_E_AGAIN)
+					return;
 
-			if (gnutls::check(ret)) {
-				if (ret == 0) {
-					// Closed
-					PLOG_DEBUG << "TLS connection cleanly closed";
+			} while (!gnutls::check(ret, "TLS handshake failed")); // Re-call on non-fatal error
+
+			PLOG_INFO << "TLS handshake finished";
+			changeState(State::Connected);
+			postHandshake();
+		}
+
+		if (state() == State::Connected) {
+			while (true) {
+				ssize_t ret = gnutls_record_recv(mSession, buffer, bufferSize);
+
+				if (ret == GNUTLS_E_AGAIN)
+					return;
+
+				// Consider premature termination as remote closing
+				if (ret == GNUTLS_E_PREMATURE_TERMINATION) {
+					PLOG_DEBUG << "TLS connection terminated";
 					break;
 				}
-				auto *b = reinterpret_cast<byte *>(buffer);
-				recv(make_message(b, b + ret));
+
+				if (gnutls::check(ret)) {
+					if (ret == 0) {
+						// Closed
+						PLOG_DEBUG << "TLS connection cleanly closed";
+						break;
+					}
+					auto *b = reinterpret_cast<byte *>(buffer);
+					recv(make_message(b, b + ret));
+				}
 			}
 		}
 	} catch (const std::exception &e) {
@@ -250,6 +258,9 @@ ssize_t TlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_
 			position += len;
 			gnutls_transport_set_errno(t->mSession, 0);
 			return len;
+		} else if (t->mIncomingQueue.running()) {
+			gnutls_transport_set_errno(t->mSession, EAGAIN);
+			return -1;
 		} else {
 			// Closed
 			gnutls_transport_set_errno(t->mSession, 0);
@@ -263,7 +274,7 @@ ssize_t TlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_
 	}
 }
 
-int TlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) {
+int TlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int /* ms */) {
 	TlsTransport *t = static_cast<TlsTransport *>(ptr);
 	try {
 		message_ptr &message = t->mIncomingMessage;
@@ -272,9 +283,7 @@ int TlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms) {
 		if(message && position < message->size())
 			return 1;
 
-		bool isReadable = t->mIncomingQueue.wait(
-		    ms != GNUTLS_INDEFINITE_TIMEOUT ? std::make_optional(milliseconds(ms)) : nullopt);
-		return isReadable ? 1 : 0;
+		return !t->mIncomingQueue.empty() ? 1 : 0;
 
 	} catch (const std::exception &e) {
 		PLOG_WARNING << e.what();
