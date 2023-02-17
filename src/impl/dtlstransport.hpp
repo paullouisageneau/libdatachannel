@@ -75,6 +75,8 @@ protected:
 	SSL *mSsl = NULL;
 	BIO *mInBio, *mOutBio;
 
+	void handleTimeout();
+
 	static BIO_METHOD *BioMethods;
 	static int TransportExIndex;
 	static std::mutex GlobalMutex;
