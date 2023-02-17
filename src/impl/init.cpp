@@ -11,9 +11,9 @@
 
 #include "certificate.hpp"
 #include "dtlstransport.hpp"
+#include "icetransport.hpp"
 #include "pollservice.hpp"
 #include "sctptransport.hpp"
-#include "icetransport.hpp"
 #include "threadpool.hpp"
 #include "tls.hpp"
 
@@ -28,6 +28,8 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #endif
+
+#include <thread>
 
 namespace rtc::impl {
 
@@ -115,7 +117,11 @@ void Init::doInit() {
 		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
 #endif
 
-	ThreadPool::Instance().spawn(THREADPOOL_SIZE);
+	int concurrency = std::thread::hardware_concurrency();
+	int count = std::max(concurrency, MIN_THREADPOOL_SIZE);
+	PLOG_DEBUG << "Spawning " << count << " threads";
+	ThreadPool::Instance().spawn(count);
+
 #if RTC_ENABLE_WEBSOCKET
 	PollService::Instance().start();
 #endif
