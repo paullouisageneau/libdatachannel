@@ -25,7 +25,7 @@ namespace rtc::impl {
 
 class IceTransport;
 
-class DtlsTransport : public Transport {
+class DtlsTransport : public Transport, public std::enable_shared_from_this<DtlsTransport> {
 public:
 	static void Init();
 	static void Cleanup();
@@ -48,7 +48,8 @@ protected:
 	virtual bool demuxMessage(message_ptr message);
 	virtual void postHandshake();
 
-	void runRecvLoop();
+	void enqueueRecv();
+	void doRecv();
 
 	const optional<size_t> mMtu;
 	const certificate_ptr mCertificate;
@@ -56,8 +57,8 @@ protected:
 	const bool mIsClient;
 
 	Queue<message_ptr> mIncomingQueue;
-	std::thread mRecvThread;
-	std::atomic<bool> mStarted = false;
+	std::atomic<int> mPendingRecvCount = 0;
+	std::mutex mRecvMutex;
 	std::atomic<unsigned int> mCurrentDscp = 0;
 	std::atomic<bool> mOutgoingResult = true;
 
@@ -73,6 +74,8 @@ protected:
 	SSL_CTX *mCtx = NULL;
 	SSL *mSsl = NULL;
 	BIO *mInBio, *mOutBio;
+
+	void handleTimeout();
 
 	static BIO_METHOD *BioMethods;
 	static int TransportExIndex;

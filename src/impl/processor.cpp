@@ -21,7 +21,7 @@ void Processor::join() {
 
 void Processor::schedule() {
 	std::unique_lock lock(mMutex);
-	if (auto next = mTasks.tryPop()) {
+	if (auto next = mTasks.pop()) {
 		ThreadPool::Instance().enqueue(std::move(*next));
 	} else {
 		// No more tasks

@@ -34,19 +34,14 @@ public:
 	size_t amount() const; // amount
 	void push(T element);
 	optional<T> pop();
-	optional<T> tryPop();
 	optional<T> peek();
 	optional<T> exchange(T element);
-	bool wait(const optional<std::chrono::milliseconds> &duration = nullopt);
 
 private:
-	void pushImpl(T element);
-	optional<T> popImpl();
-
 	const size_t mLimit;
 	size_t mAmount;
 	std::queue<T> mQueue;
-	std::condition_variable mPopCondition, mPushCondition;
+	std::condition_variable mPushCondition;
 	amount_function mAmountFunction;
 	bool mStopping = false;
 
@@ -66,7 +61,6 @@ template <typename T> Queue<T>::~Queue() { stop(); }
 template <typename T> void Queue<T>::stop() {
 	std::lock_guard lock(mMutex);
 	mStopping = true;
-	mPopCondition.notify_all();
 	mPushCondition.notify_all();
 }
 
@@ -98,18 +92,22 @@ template <typename T> size_t Queue<T>::amount() const {
 template <typename T> void Queue<T>::push(T element) {
 	std::unique_lock lock(mMutex);
 	mPushCondition.wait(lock, [this]() { return !mLimit || mQueue.size() < mLimit || mStopping; });
-	pushImpl(std::move(element));
+	if (mStopping)
+		return;
+
+	mAmount += mAmountFunction(element);
+	mQueue.emplace(std::move(element));
 }
 
 template <typename T> optional<T> Queue<T>::pop() {
 	std::unique_lock lock(mMutex);
-	mPopCondition.wait(lock, [this]() { return !mQueue.empty() || mStopping; });
-	return popImpl();
-}
+	if (mQueue.empty())
+		return nullopt;
 
-template <typename T> optional<T> Queue<T>::tryPop() {
-	std::unique_lock lock(mMutex);
-	return popImpl();
+	mAmount -= mAmountFunction(mQueue.front());
+	optional<T> element{std::move(mQueue.front())};
+	mQueue.pop();
+	return element;
 }
 
 template <typename T> optional<T> Queue<T>::peek() {
@@ -124,36 +122,6 @@ template <typename T> optional<T> Queue<T>::exchange(T element) {
 
 	std::swap(mQueue.front(), element);
 	return std::make_optional(std::move(element));
-}
-
-template <typename T> bool Queue<T>::wait(const optional<std::chrono::milliseconds> &duration) {
-	std::unique_lock lock(mMutex);
-	if (duration) {
-		return mPopCondition.wait_for(lock, *duration,
-		                              [this]() { return !mQueue.empty() || mStopping; });
-	} else {
-		mPopCondition.wait(lock, [this]() { return !mQueue.empty() || mStopping; });
-		return true;
-	}
-}
-
-template <typename T> void Queue<T>::pushImpl(T element) {
-	if (mStopping)
-		return;
-
-	mAmount += mAmountFunction(element);
-	mQueue.emplace(std::move(element));
-	mPopCondition.notify_one();
-}
-
-template <typename T> optional<T> Queue<T>::popImpl() {
-	if (mQueue.empty())
-		return nullopt;
-
-	mAmount -= mAmountFunction(mQueue.front());
-	optional<T> element{std::move(mQueue.front())};
-	mQueue.pop();
-	return element;
 }
 
 } // namespace rtc::impl

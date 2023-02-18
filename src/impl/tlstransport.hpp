@@ -24,7 +24,7 @@ namespace rtc::impl {
 
 class TcpTransport;
 
-class TlsTransport : public Transport {
+class TlsTransport : public Transport, public std::enable_shared_from_this<TlsTransport> {
 public:
 	static void Init();
 	static void Cleanup();
@@ -44,14 +44,15 @@ protected:
 	virtual bool outgoing(message_ptr message) override;
 	virtual void postHandshake();
 
-	void runRecvLoop();
+	void enqueueRecv();
+	void doRecv();
 
 	const optional<string> mHost;
 	const bool mIsClient;
 
 	Queue<message_ptr> mIncomingQueue;
-	std::thread mRecvThread;
-	std::atomic<bool> mStarted = false;
+	std::atomic<int> mPendingRecvCount = 0;
+	std::mutex mRecvMutex;
 
 #if USE_GNUTLS
 	gnutls_session_t mSession;
@@ -68,10 +69,19 @@ protected:
 	SSL *mSsl;
 	BIO *mInBio, *mOutBio;
 
+	bool flushOutput();
+
+	static BIO_METHOD *BioMethods;
 	static int TransportExIndex;
+	static std::mutex GlobalMutex;
 
 	static int CertificateCallback(int preverify_ok, X509_STORE_CTX *ctx);
 	static void InfoCallback(const SSL *ssl, int where, int ret);
+
+	static int BioMethodNew(BIO *bio);
+	static int BioMethodFree(BIO *bio);
+	static int BioMethodWrite(BIO *bio, const char *in, int inl);
+	static long BioMethodCtrl(BIO *bio, int cmd, long num, void *ptr);
 #endif
 };
 
