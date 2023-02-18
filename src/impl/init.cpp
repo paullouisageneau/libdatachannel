@@ -141,6 +141,7 @@ void Init::doInit() {
 #if RTC_ENABLE_MEDIA
 	DtlsSrtpTransport::Init();
 #endif
+	IceTransport::Init();
 }
 
 void Init::doCleanup() {
@@ -167,6 +168,7 @@ void Init::doCleanup() {
 #if RTC_ENABLE_MEDIA
 	DtlsSrtpTransport::Cleanup();
 #endif
+	IceTransport::Cleanup();
 
 #ifdef _WIN32
 	WSACleanup();

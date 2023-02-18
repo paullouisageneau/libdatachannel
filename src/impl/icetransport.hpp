@@ -32,6 +32,9 @@ namespace rtc::impl {
 
 class IceTransport : public Transport {
 public:
+	static void Init();
+	static void Cleanup();
+
 	enum class GatheringState { New = 0, InProgress = 1, Complete = 2 };
 
 	using candidate_callback = std::function<void(const Candidate &candidate)>;
@@ -83,10 +86,11 @@ private:
 	static void RecvCallback(juice_agent_t *agent, const char *data, size_t size, void *user_ptr);
 	static void LogCallback(juice_log_level_t level, const char *message);
 #else
-	uint32_t mStreamId = 0;
+	static unique_ptr<GMainLoop, void (*)(GMainLoop *)> MainLoop;
+	static std::thread MainLoopThread;
+
 	unique_ptr<NiceAgent, void (*)(NiceAgent *)> mNiceAgent;
-	unique_ptr<GMainLoop, void (*)(GMainLoop *)> mMainLoop;
-	std::thread mMainLoopThread;
+	uint32_t mStreamId = 0;
 	guint mTimeoutId = 0;
 	std::mutex mOutgoingMutex;
 	unsigned int mOutgoingDscp;
