@@ -11,6 +11,8 @@
 
 #include "common.hpp"
 
+#include <chrono>
+
 #if USE_GNUTLS
 
 #include <gnutls/gnutls.h>
@@ -36,7 +38,30 @@ gnutls_datum_t make_datum(char *data, size_t size);
 
 } // namespace rtc::gnutls
 
-#else // USE_GNUTLS==0
+#elif USE_MBEDTLS
+
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/ecdsa.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/error.h"
+#include "mbedtls/pk.h"
+#include "mbedtls/rsa.h"
+#include "mbedtls/sha256.h"
+#include "mbedtls/ssl.h"
+#include "mbedtls/x509_crt.h"
+
+namespace rtc::mbedtls {
+
+void check(int ret, const string &message = "MbedTLS error");
+
+string format_time(const std::chrono::system_clock::time_point &tp);
+
+std::shared_ptr<mbedtls_pk_context> new_pk_context();
+std::shared_ptr<mbedtls_x509_crt> new_x509_crt();
+
+} // namespace rtc::mbedtls
+
+#else // OPENSSL
 
 #ifdef _WIN32
 // Include winsock2.h header first since OpenSSL may include winsock.h

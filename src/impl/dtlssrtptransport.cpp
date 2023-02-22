@@ -213,7 +213,7 @@ bool DtlsSrtpTransport::demuxMessage(message_ptr message) {
 	} else {
 		COUNTER_UNKNOWN_PACKET_TYPE++;
 		PLOG_DEBUG << "Unknown packet type, value=" << unsigned(value1)
-		             << ", size=" << message->size();
+		           << ", size=" << message->size();
 		return true;
 	}
 }
@@ -263,12 +263,46 @@ void DtlsSrtpTransport::postHandshake() {
 
 	serverKey = reinterpret_cast<const unsigned char *>(serverKeyDatum.data);
 	serverSalt = reinterpret_cast<const unsigned char *>(serverSaltDatum.data);
+#elif USE_MBEDTLS
+	PLOG_INFO << "Deriving SRTP keying material (Mbed TLS)";
+	unsigned int keySize = SRTP_AES_128_KEY_LEN;
+	unsigned int saltSize = SRTP_SALT_LEN;
+	auto srtpProfile = srtp_profile_aes128_cm_sha1_80;
+	auto keySizeWithSalt = SRTP_AES_ICM_128_KEY_LEN_WSALT;
+	mbedtls_dtls_srtp_info srtpInfo;
+
+	mbedtls_ssl_get_dtls_srtp_negotiation_result(&mSsl, &srtpInfo);
+	if (srtpInfo.private_chosen_dtls_srtp_profile != MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80) {
+		throw std::runtime_error("Failed to get SRTP profile");
+	}
+
+	const size_t materialLen = keySizeWithSalt * 2;
+	std::vector<unsigned char> material(materialLen);
+	// The extractor provides the client write master key, the server write master key, the client
+	// write master salt and the server write master salt in that order.
+	const string label = "EXTRACTOR-dtls_srtp";
+
+	if (mTlsProfile == MBEDTLS_SSL_TLS_PRF_NONE) {
+		throw std::logic_error("Failed to get SRTP profile");
+	}
+
+	if (mbedtls_ssl_tls_prf(mTlsProfile, reinterpret_cast<const unsigned char *>(mMasterSecret), 32,
+	                        label.c_str(), reinterpret_cast<const unsigned char *>(mRandBytes), 32,
+	                        material.data(), materialLen) != 0) {
+		throw std::runtime_error("Failed to derive SRTP keys");
+	}
+
+	// Order is client key, server key, client salt, and server salt
+	clientKey = material.data();
+	serverKey = clientKey + keySize;
+	clientSalt = serverKey + keySize;
+	serverSalt = clientSalt + saltSize;
 #else
 	PLOG_INFO << "Deriving SRTP keying material (OpenSSL)";
 	auto profile = SSL_get_selected_srtp_profile(mSsl);
 	if (!profile)
 		throw std::runtime_error("Failed to get SRTP profile: " +
-					openssl::error_string(ERR_get_error()));
+		                         openssl::error_string(ERR_get_error()));
 	PLOG_DEBUG << "srtp profile used is: " << profile->name;
 	auto [keySize, saltSize, srtpProfile] = getEncryptionParams(profile->name);
 	auto keySizeWithSalt = keySize + saltSize;

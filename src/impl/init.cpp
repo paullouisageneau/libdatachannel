@@ -128,6 +128,8 @@ void Init::doInit() {
 
 #if USE_GNUTLS
 	// Nothing to do
+#elif USE_MBEDTLS
+	// Nothing to do
 #else
 	openssl::init();
 #endif

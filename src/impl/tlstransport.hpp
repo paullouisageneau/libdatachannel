@@ -65,6 +65,21 @@ protected:
 	static ssize_t WriteCallback(gnutls_transport_ptr_t ptr, const void *data, size_t len);
 	static ssize_t ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_t maxlen);
 	static int TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms);
+#elif USE_MBEDTLS
+	std::mutex mSendMutex;
+	std::atomic<bool> mOutgoingResult = true;
+
+	mbedtls_entropy_context mEntropy;
+	mbedtls_ctr_drbg_context mDrbg;
+	mbedtls_ssl_config mConf;
+	mbedtls_ssl_context mSsl;
+
+	message_ptr mIncomingMessage;
+	size_t mIncomingMessagePosition = 0;
+
+	static int WriteCallback(void *ctx, const unsigned char *buf, size_t len);
+	static int ReadCallback(void *ctx, unsigned char *buf, size_t len);
+
 #else
 	SSL_CTX *mCtx;
 	SSL *mSsl;
