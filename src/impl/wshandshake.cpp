@@ -262,7 +262,11 @@ std::multimap<string, string> WsHandshake::parseHttpHeaders(const std::list<stri
 	for (const auto &line : lines) {
 		if (size_t pos = line.find_first_of(':'); pos != string::npos) {
 			string key = line.substr(0, pos);
-			string value = line.substr(line.find_first_not_of(' ', pos + 1));
+			string value = "";
+			if (size_t subPos = line.find_first_not_of(' ', pos + 1); subPos != string::npos )
+			{
+				value = line.substr(subPos);
+			}
 			std::transform(key.begin(), key.end(), key.begin(),
 			               [](char c) { return std::tolower(c); });
 			headers.emplace(std::move(key), std::move(value));
