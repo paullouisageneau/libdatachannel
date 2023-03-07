@@ -1,9 +1,16 @@
 # libdatachannel - Building instructions
 
-## Clone repository and submodules
+## Clone repository
 
 ```bash
 $ git clone https://github.com/paullouisageneau/libdatachannel.git
+```
+
+## Init submodules
+
+This step is optional if `PREFER_SYSTEM_LIB` CMake option will be enabled.
+
+```bash
 $ cd libdatachannel
 $ git submodule update --init --recursive --depth 1
 ```
@@ -12,7 +19,10 @@ $ git submodule update --init --recursive --depth 1
 
 The CMake library targets `libdatachannel` and `libdatachannel-static` respectively correspond to the shared and static libraries. The default target will build tests and examples.
 
-The option `USE_GNUTLS` allows to switch between OpenSSL (default) and GnuTLS, and the option `USE_NICE` allows to switch between libjuice as submodule (default) and libnice. The options `USE_SYSTEM_SRTP` and `USE_SYSTEM_JUICE` allow to link against the system library rather than building the submodule, for libsrtp and libjuice respectively.
+The option `USE_GNUTLS` allows to switch between OpenSSL (default) and GnuTLS, and the option `USE_NICE` allows to switch between libjuice as submodule (default) and libnice.
+
+The option `PREFER_SYSTEM_LIB` allow to link against the system library rather than building all the submodule.
+Options `USE_SYSTEM_SRTP`, `USE_SYSTEM_JUICE`, `USE_SYSTEM_USRSCTP`, `USE_SYSTEM_PLOG` and `USE_SYSTEM_JSON` allow to do the same but per submodule, for libsrtp, libjuice, libusrsctp, Plog and Nlohmann JSON respectively.
 
 If you only need Data Channels, the option `NO_MEDIA` allows to make the library lighter by removing media support. Similarly, `NO_WEBSOCKET` removes WebSocket support.
 
