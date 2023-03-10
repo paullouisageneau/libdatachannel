@@ -208,7 +208,7 @@ void TlsTransport::doRecv() {
 		PLOG_ERROR << "TLS recv: " << e.what();
 	}
 
-	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
+	gnutls_bye(mSession, GNUTLS_SHUT_WR);
 
 	PLOG_INFO << "TLS closed";
 	changeState(State::Disconnected);
