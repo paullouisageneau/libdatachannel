@@ -243,7 +243,7 @@ void DtlsTransport::runRecvLoop() {
 		PLOG_ERROR << "DTLS recv: " << e.what();
 	}
 
-	gnutls_bye(mSession, GNUTLS_SHUT_RDWR);
+	gnutls_bye(mSession, GNUTLS_SHUT_WR);
 
 	PLOG_INFO << "DTLS closed";
 	changeState(State::Disconnected);
