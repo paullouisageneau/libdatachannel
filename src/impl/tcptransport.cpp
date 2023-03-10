@@ -385,6 +385,9 @@ void TcpTransport::triggerBufferedAmount(size_t amount) {
 
 void TcpTransport::process(PollService::Event event) {
 	auto self = weak_from_this().lock();
+	if (!self)
+		return;
+
 	try {
 		switch (event) {
 		case PollService::Event::Error: {
