@@ -12,28 +12,6 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
-// #include <algorithm>
-// #include <chrono>
-// #include <iostream>
-// #include <numeric>
-// #include <random>
-// #include <regex>
-// #include <sstream>
-
-// #ifdef _WIN32
-// #include <winsock2.h>
-// #else
-// #include <arpa/inet.h>
-// #endif
-
-#ifndef htonll
-#define htonll(x)                                                                                  \
-	((uint64_t)(((uint64_t)htonl((uint32_t)(x))) << 32) | (uint64_t)htonl((uint32_t)((x) >> 32)))
-#endif
-#ifndef ntohll
-#define ntohll(x) htonll(x)
-#endif
-
 namespace rtc::impl {
 
 using std::to_integer;
@@ -124,30 +102,10 @@ std::string TcpProxyTransport::generateHttpRequest()
 	return out;
 }
 
-//TODO move to utils?
-size_t parseHttpLines(const byte *buffer, size_t size, std::list<string> &lines) {
-	lines.clear();
-	auto begin = reinterpret_cast<const char *>(buffer);
-	auto end = begin + size;
-	auto cur = begin;
-	while (true) {
-		auto last = cur;
-		cur = std::find(cur, end, '\n');
-		if (cur == end)
-			return 0;
-		string line(last, cur != begin && *std::prev(cur) == '\r' ? std::prev(cur++) : cur++);
-		if (line.empty())
-			break;
-		lines.emplace_back(std::move(line));
-	}
-
-	return cur - begin;
-}
-
 size_t TcpProxyTransport::parseHttpResponse( std::byte* buffer, size_t size )
 {
 	std::list<string> lines;
-	size_t length = parseHttpLines(buffer, size, lines);
+	size_t length = utils::parseHttpLines(buffer, size, lines);
 	if (length == 0)
 		return 0;
 

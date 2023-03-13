@@ -103,7 +103,7 @@ void WebSocket::open(const string &url) {
 	if (string query = m[15]; !query.empty())
 		path += "?" + query;
 
-	mHostname = hostname; // for TLS SNI
+	mHostname = hostname; // for TLS SNI and Proxy
 	mService = service; //For proxy
 	std::atomic_store(&mWsHandshake, std::make_shared<WsHandshake>(host, path, config.protocols));
 
@@ -111,7 +111,6 @@ void WebSocket::open(const string &url) {
 
 	if (mIsProxied)
 	{
-		//TODO catch bad convert
 		setTcpTransport(std::make_shared<TcpTransport>(mProxy.value().hostname, std::to_string(mProxy.value().port), nullptr));
 	}
 	else
@@ -299,7 +298,6 @@ shared_ptr<TcpProxyTransport> WebSocket::initProxyTransport() {
 			}
 		};
 
-		//TODO check optionals?
 		auto transport = std::make_shared<TcpProxyTransport>( lower, mHostname.value(), mService.value(), stateChangeCallback );
 
 		return emplaceTransport(this, &mProxyTransport, std::move(transport));

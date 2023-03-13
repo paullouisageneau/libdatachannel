@@ -74,7 +74,7 @@ private:
 	bool mIsProxied{false};
 
 	optional<ProxyServer> mProxy;
-	optional<string> mHostname; // for TLS SNI
+	optional<string> mHostname; // for TLS SNI and Proxy
 	optional<string> mService; // for Proxy
 
 	shared_ptr<TcpTransport> mTcpTransport;
