@@ -70,6 +70,10 @@ void TcpProxyTransport::incoming(message_ptr message) {
 					mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
 				}
 			}
+			else if (state() == State::Connected)
+			{
+				recv(std::move(message));
+			}
 
 			return;
 		} catch (const std::exception &e) {
