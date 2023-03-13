@@ -8,6 +8,7 @@
 
 #include "tlstransport.hpp"
 #include "tcptransport.hpp"
+#include "tcpproxytransport.hpp"
 #include "threadpool.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
@@ -58,10 +59,15 @@ void TlsTransport::Cleanup() {
 	// Nothing to do
 }
 
-TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, optional<string> host,
+TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TcpProxyTransport>> lower, optional<string> host,
                            certificate_ptr certificate, state_callback callback)
-    : Transport(lower, std::move(callback)), mHost(std::move(host)), mIsClient(lower->isActive()),
-      mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func) {
+    : Transport(std::visit([](auto l) { return std::static_pointer_cast<Transport>(l); }, lower),
+			    std::move(callback)), mHost(std::move(host))
+	, mIsClient(
+		std::visit(rtc::overloaded{[](shared_ptr<TcpTransport> l) { return l->isActive(); },
+                                   [](shared_ptr<TcpProxyTransport> l) { return l->isClient(); }},
+                   lower))
+	, mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func) {
 
 	PLOG_DEBUG << "Initializing TLS transport (GnuTLS)";
 
@@ -308,10 +314,15 @@ void TlsTransport::Cleanup() {
 	// Nothing to do
 }
 
-TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, optional<string> host,
+TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TcpProxyTransport>> lower, optional<string> host,
                            certificate_ptr certificate, state_callback callback)
-    : Transport(lower, std::move(callback)), mHost(std::move(host)), mIsClient(lower->isActive()),
-      mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func) {
+    : Transport(std::visit([](auto l) { return std::static_pointer_cast<Transport>(l); }, lower),
+				std::move(callback)), mHost(std::move(host))
+	, mIsClient(
+          std::visit(rtc::overloaded{[](shared_ptr<TcpTransport> l) { return l->isActive(); },
+                                     [](shared_ptr<TcpProxyTransport> l) { return l->isActive(); }},
+                     lower))
+	, mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func) {
 
 	PLOG_DEBUG << "Initializing TLS transport (OpenSSL)";
 

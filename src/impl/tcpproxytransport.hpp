@@ -15,12 +15,9 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
-#include <atomic>
-
 namespace rtc::impl {
 
 class TcpTransport;
-class TlsTransport;
 
 class TcpProxyTransport final : public Transport, public std::enable_shared_from_this<TcpProxyTransport> {
 public:
@@ -32,12 +29,15 @@ public:
 	void stop() override;
 	bool send(message_ptr message) override;
 
+	bool isActive() const;
+
 private:
 	void incoming(message_ptr message) override;
 	bool sendHttpRequest();
 	std::string generateHttpRequest();
 	size_t parseHttpResponse( std::byte* buffer, size_t size );
 
+	const bool mIsActive;
 	std::string mHostname;
 	std::string mService;
 	binary mBuffer;

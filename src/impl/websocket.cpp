@@ -316,9 +316,20 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 		if (auto transport = std::atomic_load(&mTlsTransport))
 			return transport;
 
-		auto lower = std::atomic_load(&mTcpTransport);
-		if (!lower)
-			throw std::logic_error("No underlying TCP transport for TLS transport");
+		variant<shared_ptr<TcpTransport>, shared_ptr<TcpProxyTransport>> lower;
+		if (mIsProxied) {
+			auto transport = std::atomic_load(&mProxyTransport);
+			if (!transport)
+				throw std::logic_error("No underlying TLS transport for WebSocket transport");
+
+			lower = transport;
+		} else {
+			auto transport = std::atomic_load(&mTcpTransport);
+			if (!transport)
+				throw std::logic_error("No underlying TCP transport for WebSocket transport");
+
+			lower = transport;
+		}
 
 		auto stateChangeCallback = [this, weak_this = weak_from_this()](State transportState) {
 			auto shared_this = weak_this.lock();

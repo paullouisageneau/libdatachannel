@@ -14,12 +14,12 @@
 
 namespace rtc::impl {
 
-using std::to_integer;
 using std::to_string;
 using std::chrono::system_clock;
 
 TcpProxyTransport::TcpProxyTransport(shared_ptr<TcpTransport> lower, std::string hostname, std::string service, state_callback stateCallback)
     : Transport(lower, std::move(stateCallback))
+	, mIsActive( lower->isActive() )
 	, mHostname( std::move(hostname) )
 	, mService( std::move(service) )
 {
@@ -48,6 +48,8 @@ bool TcpProxyTransport::send(message_ptr message) {
 	PLOG_VERBOSE << "Send size=" << message->size();
 	return outgoing(message);
 }
+
+bool TcpProxyTransport::isActive() const { return mIsActive; }
 
 void TcpProxyTransport::incoming(message_ptr message) {
 	auto s = state();
