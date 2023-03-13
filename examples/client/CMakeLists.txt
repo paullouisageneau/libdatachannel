@@ -43,7 +43,7 @@ set_target_properties(datachannel-client PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.client)
 
 find_package(Threads REQUIRED)
-target_link_libraries(datachannel-client LibDataChannel::LibDataChannel Threads::Threads nlohmann_json)
+target_link_libraries(datachannel-client LibDataChannel::LibDataChannel Threads::Threads nlohmann_json::nlohmann_json)
 
 if(MSVC)
 	add_custom_command(TARGET datachannel-client POST_BUILD

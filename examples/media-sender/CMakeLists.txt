@@ -24,7 +24,7 @@ set_target_properties(datachannel-media-sender PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.media-sender)
 
 find_package(Threads REQUIRED)
-target_link_libraries(datachannel-media-sender LibDataChannel::LibDataChannel Threads::Threads nlohmann_json)
+target_link_libraries(datachannel-media-sender LibDataChannel::LibDataChannel Threads::Threads nlohmann_json::nlohmann_json)
 
 if(MSVC)
 	add_custom_command(TARGET datachannel-media-sender POST_BUILD
