@@ -50,6 +50,7 @@ void WebSocket::open(const string &url) {
 
 	if (config.proxyServer) {
 		mIsProxied = true;
+		mProxy = config.proxyServer;
 	}
 
 	// Modified regex from RFC 3986, see https://www.rfc-editor.org/rfc/rfc3986.html#appendix-B
