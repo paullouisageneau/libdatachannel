@@ -15,6 +15,7 @@
 #include "utils.hpp"
 
 #include "tcptransport.hpp"
+#include "tcpproxytransport.hpp"
 #include "tlstransport.hpp"
 #include "verifiedtlstransport.hpp"
 #include "wstransport.hpp"
@@ -48,7 +49,7 @@ void WebSocket::open(const string &url) {
 		throw std::logic_error("WebSocket must be closed before opening");
 
 	if (config.proxyServer) {
-		PLOG_WARNING << "Proxy server support for WebSocket is not implemented";
+		mIsProxied = true;
 	}
 
 	// Modified regex from RFC 3986, see https://www.rfc-editor.org/rfc/rfc3986.html#appendix-B
@@ -102,10 +103,20 @@ void WebSocket::open(const string &url) {
 		path += "?" + query;
 
 	mHostname = hostname; // for TLS SNI
+	mService = service; //For proxy
 	std::atomic_store(&mWsHandshake, std::make_shared<WsHandshake>(host, path, config.protocols));
 
 	changeState(State::Connecting);
-	setTcpTransport(std::make_shared<TcpTransport>(hostname, service, nullptr));
+
+	if (mIsProxied)
+	{
+		//TODO catch bad convert
+		setTcpTransport(std::make_shared<TcpTransport>(mProxy.value().hostname, std::to_string(mProxy.value().port), nullptr));
+	}
+	else
+	{
+		setTcpTransport(std::make_shared<TcpTransport>(hostname, service, nullptr));
+	}
 }
 
 void WebSocket::close() {
@@ -218,7 +229,9 @@ shared_ptr<TcpTransport> WebSocket::setTcpTransport(shared_ptr<TcpTransport> tra
 				return;
 			switch (transportState) {
 			case State::Connected:
-				if (mIsSecure)
+				if (mIsProxied)
+					initProxyTransport();
+				else if (mIsSecure)
 					initTlsTransport();
 				else
 					initWsTransport();
@@ -247,6 +260,53 @@ shared_ptr<TcpTransport> WebSocket::setTcpTransport(shared_ptr<TcpTransport> tra
 		PLOG_ERROR << e.what();
 		remoteClose();
 		throw std::runtime_error("TCP transport initialization failed");
+	}
+}
+
+shared_ptr<TcpProxyTransport> WebSocket::initProxyTransport() {
+	PLOG_VERBOSE << "Starting Tcp Proxy transport";
+	using State = TcpProxyTransport::State;
+	try {
+		if (auto transport = std::atomic_load(&mProxyTransport))
+			return transport;
+
+		auto lower = std::atomic_load(&mTcpTransport);
+		if (!lower)
+			throw std::logic_error("No underlying TCP transport for Proxy transport");
+
+		auto stateChangeCallback = [this, weak_this = weak_from_this()](State transportState) {
+			auto shared_this = weak_this.lock();
+			if (!shared_this)
+				return;
+			switch (transportState) {
+			case State::Connected:
+				if (mIsSecure)
+					initTlsTransport();
+				else
+					initWsTransport();
+				break;
+			case State::Failed:
+				triggerError("Proxy connection failed");
+				remoteClose();
+				break;
+			case State::Disconnected:
+				remoteClose();
+				break;
+			default:
+				// Ignore
+				break;
+			}
+		};
+
+		//TODO check optionals?
+		auto transport = std::make_shared<TcpProxyTransport>( lower, mHostname.value(), mService.value(), stateChangeCallback );
+
+		return emplaceTransport(this, &mProxyTransport, std::move(transport));
+
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+		remoteClose();
+		throw std::runtime_error("Tcp Proxy transport initialization failed");
 	}
 }
 
