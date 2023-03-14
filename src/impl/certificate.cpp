@@ -314,6 +314,10 @@ Certificate::credentials() const {
 
 #else // OPENSSL
 
+#include <openssl/bn.h>
+#include <openssl/ec.h>
+#include <openssl/rsa.h>
+
 namespace {
 
 // Dummy password callback that copies the password from user data
@@ -376,12 +380,12 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	PLOG_DEBUG << "Generating certificate (OpenSSL)";
 
 	shared_ptr<X509> x509(X509_new(), X509_free);
-	shared_ptr<EVP_PKEY> pkey(EVP_PKEY_new(), EVP_PKEY_free);
 	unique_ptr<BIGNUM, decltype(&BN_free)> serial_number(BN_new(), BN_free);
 	unique_ptr<X509_NAME, decltype(&X509_NAME_free)> name(X509_NAME_new(), X509_NAME_free);
-	if (!x509 || !pkey || !serial_number || !name)
+	if (!x509 || !serial_number || !name)
 		throw std::runtime_error("Unable to allocate structures for certificate generation");
 
+	shared_ptr<EVP_PKEY> pkey;
 	switch (type) {
 	// RFC 8827 WebRTC Security Architecture 6.5. Communications Security
 	// All implementations MUST support DTLS 1.2 with the TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
@@ -390,35 +394,44 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	case CertificateType::Default:
 	case CertificateType::Ecdsa: {
 		PLOG_VERBOSE << "Generating ECDSA P-256 key pair";
-
+#if OPENSSL_VERSION_NUMBER >= 0x30000000
+		pkey = shared_ptr<EVP_PKEY>(EVP_EC_gen("P-256"), EVP_PKEY_free);
+#else
+		pkey = shared_ptr<EVP_PKEY>(EVP_PKEY_new(), EVP_PKEY_free);
 		unique_ptr<EC_KEY, decltype(&EC_KEY_free)> ecc(
 		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
-		if (!ecc)
+		if (!pkey || !ecc)
 			throw std::runtime_error("Unable to allocate structure for ECDSA P-256 key pair");
 
 		EC_KEY_set_asn1_flag(ecc.get(), OPENSSL_EC_NAMED_CURVE); // Set ASN1 OID
 		if (!EC_KEY_generate_key(ecc.get()) ||
 		    !EVP_PKEY_assign_EC_KEY(pkey.get(),
 		                            ecc.release())) // the key will be freed when pkey is freed
+#endif
+		if (!pkey)
 			throw std::runtime_error("Unable to generate ECDSA P-256 key pair");
 
 		break;
 	}
 	case CertificateType::Rsa: {
 		PLOG_VERBOSE << "Generating RSA key pair";
-
-		const int bits = 2048;
-		const unsigned int e = 65537; // 2^16 + 1
-
+		const unsigned int bits = 2048;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000
+		pkey = shared_ptr<EVP_PKEY>(EVP_RSA_gen(bits), EVP_PKEY_free);
+#else
+		pkey = shared_ptr<EVP_PKEY>(EVP_PKEY_new(), EVP_PKEY_free);
 		unique_ptr<RSA, decltype(&RSA_free)> rsa(RSA_new(), RSA_free);
 		unique_ptr<BIGNUM, decltype(&BN_free)> exponent(BN_new(), BN_free);
-		if (!rsa || !exponent)
+		if (!pkey || !rsa || !exponent)
 			throw std::runtime_error("Unable to allocate structures for RSA key pair");
 
+		const unsigned int e = 65537;               // 2^16 + 1
 		if (!BN_set_word(exponent.get(), e) ||
 		    !RSA_generate_key_ex(rsa.get(), bits, exponent.get(), NULL) ||
 		    !EVP_PKEY_assign_RSA(pkey.get(),
 		                         rsa.release())) // the key will be freed when pkey is freed
+#endif
+		if (!pkey)
 			throw std::runtime_error("Unable to generate RSA key pair");
 
 		break;
@@ -436,8 +449,7 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 
 	if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 3600 * -1) ||
 	    !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 3600 * 24 * 365) ||
-	    !X509_set_version(x509.get(), 1) ||
-	    !BN_pseudo_rand(serial_number.get(), serialSize, 0, 0) ||
+	    !X509_set_version(x509.get(), 1) || !BN_rand(serial_number.get(), serialSize, 0, 0) ||
 	    !BN_to_ASN1_INTEGER(serial_number.get(), X509_get_serialNumber(x509.get())) ||
 	    !X509_NAME_add_entry_by_NID(name.get(), NID_commonName, MBSTRING_UTF8, commonNameBytes, -1,
 	                                -1, 0) ||

@@ -418,7 +418,8 @@ void TlsTransport::doRecv() {
 				auto ret = mbedtls_ssl_handshake(&mSsl);
 				if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
 					return;
-				} else if ( ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS || ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
+				} else if (ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+				           ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
 					continue;
 				}
 
@@ -443,7 +444,8 @@ void TlsTransport::doRecv() {
 
 				if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
 					return;
-				} else if ( ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS || ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
+				} else if (ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+				           ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
 					continue;
 				}
 				mbedtls::check(ret);
@@ -540,6 +542,15 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 		openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
 		               "Failed to set SSL priorities");
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000
+		openssl::check(SSL_CTX_set1_groups_list(mCtx, "P-256"), "Failed to set SSL groups");
+#else
+		auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
+		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
+		SSL_CTX_set_tmp_ecdh(mCtx, ecdh.get());
+		SSL_CTX_set_options(mCtx, SSL_OP_SINGLE_ECDH_USE);
+#endif
+
 		if (certificate) {
 			auto [x509, pkey] = certificate->credentials();
 			SSL_CTX_use_certificate(mCtx, x509);
@@ -581,11 +592,6 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 		BIO_set_mem_eof_return(mInBio, BIO_EOF);
 		BIO_set_mem_eof_return(mOutBio, BIO_EOF);
 		SSL_set_bio(mSsl, mInBio, mOutBio);
-
-		auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
-		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
-		SSL_set_options(mSsl, SSL_OP_SINGLE_ECDH_USE);
-		SSL_set_tmp_ecdh(mSsl, ecdh.get());
 
 	} catch (...) {
 		if (mSsl)
