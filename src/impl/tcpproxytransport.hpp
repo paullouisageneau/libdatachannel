@@ -12,7 +12,6 @@
 
 #include "common.hpp"
 #include "transport.hpp"
-#include "wshandshake.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
