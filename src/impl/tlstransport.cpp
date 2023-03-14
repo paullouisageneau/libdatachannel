@@ -65,7 +65,7 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<TcpProxy
 			    std::move(callback)), mHost(std::move(host))
 	, mIsClient(
 		std::visit(rtc::overloaded{[](shared_ptr<TcpTransport> l) { return l->isActive(); },
-                                   [](shared_ptr<TcpProxyTransport> l) { return l->isClient(); }},
+                                   [](shared_ptr<TcpProxyTransport> l) { return l->isActive(); }},
                    lower))
 	, mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func) {
 
