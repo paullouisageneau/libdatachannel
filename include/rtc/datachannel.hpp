@@ -27,7 +27,7 @@ struct PeerConnection;
 class RTC_CPP_EXPORT DataChannel final : private CheshireCat<impl::DataChannel>, public Channel {
 public:
 	DataChannel(impl_ptr<impl::DataChannel> impl);
-	virtual ~DataChannel();
+	~DataChannel() override;
 
 	optional<uint16_t> stream() const;
 	optional<uint16_t> id() const;

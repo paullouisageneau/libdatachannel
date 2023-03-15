@@ -16,6 +16,8 @@ namespace rtc {
 Track::Track(impl_ptr<impl::Track> impl)
     : CheshireCat<impl::Track>(impl), Channel(std::dynamic_pointer_cast<impl::Channel>(impl)) {}
 
+Track::~Track() {}
+
 string Track::mid() const { return impl()->mid(); }
 
 Description::Direction Track::direction() const { return impl()->direction(); }

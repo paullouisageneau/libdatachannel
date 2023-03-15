@@ -25,7 +25,7 @@ class Track;
 class RTC_CPP_EXPORT Track final : private CheshireCat<impl::Track>, public Channel {
 public:
 	Track(impl_ptr<impl::Track> impl);
-	~Track() = default;
+	~Track() override;
 
 	string mid() const;
 	Description::Direction direction() const;

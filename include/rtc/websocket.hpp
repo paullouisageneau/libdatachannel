@@ -43,7 +43,7 @@ public:
 	WebSocket();
 	WebSocket(Configuration config);
 	WebSocket(impl_ptr<impl::WebSocket> impl);
-	~WebSocket();
+	~WebSocket() override;
 
 	State readyState() const;
 
