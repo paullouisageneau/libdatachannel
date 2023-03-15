@@ -34,7 +34,7 @@ string base64_encode(const binary &data);
 // Return a random seed sequence
 std::seed_seq random_seed();
 
-// Parse an http packet into lines
+// Parse an http message into lines
 size_t parseHttpLines(const byte *buffer, size_t size, std::list<string> &lines);
 
 // Parse headers of a http message

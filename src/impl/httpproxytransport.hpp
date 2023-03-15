@@ -19,11 +19,11 @@ namespace rtc::impl {
 
 class TcpTransport;
 
-class TcpProxyTransport final : public Transport, public std::enable_shared_from_this<TcpProxyTransport> {
+class HttpProxyTransport final : public Transport, public std::enable_shared_from_this<HttpProxyTransport> {
 public:
-	TcpProxyTransport(shared_ptr<TcpTransport> lower, std::string hostname, std::string service,
+	HttpProxyTransport(shared_ptr<TcpTransport> lower, std::string hostname, std::string service,
 				state_callback stateCallback);
-	~TcpProxyTransport();
+	~HttpProxyTransport();
 
 	void start() override;
 	void stop() override;
@@ -37,7 +37,6 @@ private:
 	std::string generateHttpRequest();
 	size_t parseHttpResponse( std::byte* buffer, size_t size );
 
-	const bool mIsActive;
 	std::string mHostname;
 	std::string mService;
 	binary mBuffer;

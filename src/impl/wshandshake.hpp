@@ -13,8 +13,6 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
-#include <list>
-#include <map>
 #include <vector>
 
 namespace rtc::impl {

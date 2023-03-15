@@ -15,7 +15,7 @@
 #include "utils.hpp"
 
 #include "tcptransport.hpp"
-#include "tcpproxytransport.hpp"
+#include "httpproxytransport.hpp"
 #include "tlstransport.hpp"
 #include "verifiedtlstransport.hpp"
 #include "wstransport.hpp"
@@ -47,11 +47,6 @@ void WebSocket::open(const string &url) {
 
 	if (state != State::Closed)
 		throw std::logic_error("WebSocket must be closed before opening");
-
-	if (config.proxyServer) {
-		mIsProxied = true;
-		mProxy = config.proxyServer;
-	}
 
 	// Modified regex from RFC 3986, see https://www.rfc-editor.org/rfc/rfc3986.html#appendix-B
 	static const char *rs =
@@ -109,9 +104,9 @@ void WebSocket::open(const string &url) {
 
 	changeState(State::Connecting);
 
-	if (mIsProxied)
+	if (config.proxyServer)
 	{
-		setTcpTransport(std::make_shared<TcpTransport>(mProxy.value().hostname, std::to_string(mProxy.value().port), nullptr));
+		setTcpTransport(std::make_shared<TcpTransport>(config.proxyServer->hostname, std::to_string(config.proxyServer->port), nullptr));
 	}
 	else
 	{
@@ -229,7 +224,7 @@ shared_ptr<TcpTransport> WebSocket::setTcpTransport(shared_ptr<TcpTransport> tra
 				return;
 			switch (transportState) {
 			case State::Connected:
-				if (mIsProxied)
+				if (config.proxyServer)
 					initProxyTransport();
 				else if (mIsSecure)
 					initTlsTransport();
@@ -263,9 +258,9 @@ shared_ptr<TcpTransport> WebSocket::setTcpTransport(shared_ptr<TcpTransport> tra
 	}
 }
 
-shared_ptr<TcpProxyTransport> WebSocket::initProxyTransport() {
+shared_ptr<HttpProxyTransport> WebSocket::initProxyTransport() {
 	PLOG_VERBOSE << "Starting Tcp Proxy transport";
-	using State = TcpProxyTransport::State;
+	using State = HttpProxyTransport::State;
 	try {
 		if (auto transport = std::atomic_load(&mProxyTransport))
 			return transport;
@@ -298,7 +293,7 @@ shared_ptr<TcpProxyTransport> WebSocket::initProxyTransport() {
 			}
 		};
 
-		auto transport = std::make_shared<TcpProxyTransport>( lower, mHostname.value(), mService.value(), stateChangeCallback );
+		auto transport = std::make_shared<HttpProxyTransport>( lower, mHostname.value(), mService.value(), stateChangeCallback );
 
 		return emplaceTransport(this, &mProxyTransport, std::move(transport));
 
@@ -316,17 +311,17 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 		if (auto transport = std::atomic_load(&mTlsTransport))
 			return transport;
 
-		variant<shared_ptr<TcpTransport>, shared_ptr<TcpProxyTransport>> lower;
-		if (mIsProxied) {
+		variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>> lower;
+		if (config.proxyServer) {
 			auto transport = std::atomic_load(&mProxyTransport);
 			if (!transport)
-				throw std::logic_error("No underlying TLS transport for WebSocket transport");
+				throw std::logic_error("No underlying proxy transport for TLS transport");
 
 			lower = transport;
 		} else {
 			auto transport = std::atomic_load(&mTcpTransport);
 			if (!transport)
-				throw std::logic_error("No underlying TCP transport for WebSocket transport");
+				throw std::logic_error("No underlying TCP transport for TLS transport");
 
 			lower = transport;
 		}
