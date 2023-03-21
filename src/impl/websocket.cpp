@@ -379,11 +379,18 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 		if (auto transport = std::atomic_load(&mWsTransport))
 			return transport;
 
-		variant<shared_ptr<TcpTransport>, shared_ptr<TlsTransport>> lower;
+		variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>, shared_ptr<TlsTransport>> lower;
 		if (mIsSecure) {
 			auto transport = std::atomic_load(&mTlsTransport);
 			if (!transport)
 				throw std::logic_error("No underlying TLS transport for WebSocket transport");
+
+			lower = transport;
+		} 
+		else if (config.proxyServer) {
+			auto transport = std::atomic_load(&mProxyTransport);
+			if (!transport)
+				throw std::logic_error("No underlying proxy transport for WebSocket transport");
 
 			lower = transport;
 		} else {
