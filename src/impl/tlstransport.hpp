@@ -23,13 +23,14 @@
 namespace rtc::impl {
 
 class TcpTransport;
+class HttpProxyTransport;
 
 class TlsTransport : public Transport, public std::enable_shared_from_this<TlsTransport> {
 public:
 	static void Init();
 	static void Cleanup();
 
-	TlsTransport(shared_ptr<TcpTransport> lower, optional<string> host, certificate_ptr certificate,
+	TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>> lower, optional<string> host, certificate_ptr certificate,
 	             state_callback callback);
 	virtual ~TlsTransport();
 

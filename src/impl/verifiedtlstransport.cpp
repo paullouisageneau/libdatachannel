@@ -13,7 +13,7 @@
 
 namespace rtc::impl {
 
-VerifiedTlsTransport::VerifiedTlsTransport(shared_ptr<TcpTransport> lower, string host,
+VerifiedTlsTransport::VerifiedTlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>> lower, string host,
                                            certificate_ptr certificate, state_callback callback)
     : TlsTransport(std::move(lower), std::move(host), std::move(certificate), std::move(callback)) {
 

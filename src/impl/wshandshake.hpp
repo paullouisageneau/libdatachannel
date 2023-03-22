@@ -13,8 +13,6 @@
 
 #if RTC_ENABLE_WEBSOCKET
 
-#include <list>
-#include <map>
 #include <vector>
 
 namespace rtc::impl {
@@ -52,8 +50,6 @@ public:
 private:
 	static string generateKey();
 	static string computeAcceptKey(const string &key);
-	static size_t parseHttpLines(const byte *buffer, size_t size, std::list<string> &lines);
-	static std::multimap<string, string> parseHttpHeaders(const std::list<string> &lines);
 
 	string mHost;
 	string mPath;

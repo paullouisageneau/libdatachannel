@@ -374,7 +374,7 @@ int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, cons
 
 typedef struct {
 	bool disableTlsVerification; // if true, don't verify the TLS certificate
-	const char *proxyServer;     // unsupported for now
+	const char *proxyServer;
 	const char **protocols;
 	int protocolsCount;
 	int pingInterval;        // in milliseconds, 0 means default, < 0 means disabled
