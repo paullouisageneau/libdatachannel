@@ -18,11 +18,10 @@ namespace rtc::impl {
 using std::to_string;
 using std::chrono::system_clock;
 
-HttpProxyTransport::HttpProxyTransport(shared_ptr<TcpTransport> lower, std::string hostname, std::string service, state_callback stateCallback)
-    : Transport(lower, std::move(stateCallback))
-	, mHostname( std::move(hostname) )
-	, mService( std::move(service) )
-{
+HttpProxyTransport::HttpProxyTransport(shared_ptr<TcpTransport> lower, std::string hostname,
+                                       std::string service, state_callback stateCallback)
+    : Transport(lower, std::move(stateCallback)), mHostname(std::move(hostname)),
+      mService(std::move(service)) {
 	if (!lower->isActive())
 		throw std::logic_error("Http proxy creation failed, expects lower transport to be active");
 
@@ -38,9 +37,7 @@ void HttpProxyTransport::start() {
 	sendHttpRequest();
 }
 
-void HttpProxyTransport::stop() {
-	unregisterIncoming();
-}
+void HttpProxyTransport::stop() { unregisterIncoming(); }
 
 bool HttpProxyTransport::send(message_ptr message) {
 	std::lock_guard lock(mSendMutex);
@@ -70,15 +67,12 @@ void HttpProxyTransport::incoming(message_ptr message) {
 					changeState(State::Connected);
 					mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
 
-					if( !mBuffer.empty() )
-					{
+					if (!mBuffer.empty()) {
 						recv(make_message(mBuffer));
 						mBuffer.clear();
 					}
 				}
-			}
-			else if (state() == State::Connected)
-			{
+			} else if (state() == State::Connected) {
 				recv(std::move(message));
 			}
 
@@ -106,18 +100,13 @@ bool HttpProxyTransport::sendHttpRequest() {
 	return outgoing(make_message(data, data + request.size()));
 }
 
-std::string HttpProxyTransport::generateHttpRequest()
-{
+std::string HttpProxyTransport::generateHttpRequest() {
 	std::string out =
-		"CONNECT " +
-		mHostname + ":" + mService +
-		" HTTP/1.1\r\nHost: " +
-		mHostname + "\r\n\r\n";
+	    "CONNECT " + mHostname + ":" + mService + " HTTP/1.1\r\nHost: " + mHostname + "\r\n\r\n";
 	return out;
 }
 
-size_t HttpProxyTransport::parseHttpResponse( std::byte* buffer, size_t size )
-{
+size_t HttpProxyTransport::parseHttpResponse(std::byte *buffer, size_t size) {
 	std::list<string> lines;
 	size_t length = utils::parseHttpLines(buffer, size, lines);
 	if (length == 0)

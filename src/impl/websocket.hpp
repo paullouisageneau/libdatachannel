@@ -13,11 +13,11 @@
 
 #include "channel.hpp"
 #include "common.hpp"
+#include "httpproxytransport.hpp"
 #include "init.hpp"
 #include "message.hpp"
 #include "queue.hpp"
 #include "tcptransport.hpp"
-#include "httpproxytransport.hpp"
 #include "tlstransport.hpp"
 #include "wstransport.hpp"
 
@@ -73,7 +73,7 @@ private:
 	bool mIsSecure;
 
 	optional<string> mHostname; // for TLS SNI and Proxy
-	optional<string> mService; // for Proxy
+	optional<string> mService;  // for Proxy
 
 	shared_ptr<TcpTransport> mTcpTransport;
 	shared_ptr<HttpProxyTransport> mProxyTransport;

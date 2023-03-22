@@ -25,9 +25,11 @@ class TlsTransport;
 
 class WsTransport final : public Transport, public std::enable_shared_from_this<WsTransport> {
 public:
-	WsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>, shared_ptr<TlsTransport>> lower,
-	            shared_ptr<WsHandshake> handshake, int maxOutstandingPings,
-	            message_callback recvCallback, state_callback stateCallback);
+	WsTransport(
+	    variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>, shared_ptr<TlsTransport>>
+	        lower,
+	    shared_ptr<WsHandshake> handshake, int maxOutstandingPings, message_callback recvCallback,
+	    state_callback stateCallback);
 	~WsTransport();
 
 	void start() override;

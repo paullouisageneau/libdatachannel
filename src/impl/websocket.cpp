@@ -14,8 +14,8 @@
 #include "processor.hpp"
 #include "utils.hpp"
 
-#include "tcptransport.hpp"
 #include "httpproxytransport.hpp"
+#include "tcptransport.hpp"
 #include "tlstransport.hpp"
 #include "verifiedtlstransport.hpp"
 #include "wstransport.hpp"
@@ -99,17 +99,15 @@ void WebSocket::open(const string &url) {
 		path += "?" + query;
 
 	mHostname = hostname; // for TLS SNI and Proxy
-	mService = service; //For proxy
+	mService = service;   // For proxy
 	std::atomic_store(&mWsHandshake, std::make_shared<WsHandshake>(host, path, config.protocols));
 
 	changeState(State::Connecting);
 
-	if (config.proxyServer)
-	{
-		setTcpTransport(std::make_shared<TcpTransport>(config.proxyServer->hostname, std::to_string(config.proxyServer->port), nullptr));
-	}
-	else
-	{
+	if (config.proxyServer) {
+		setTcpTransport(std::make_shared<TcpTransport>(
+		    config.proxyServer->hostname, std::to_string(config.proxyServer->port), nullptr));
+	} else {
 		setTcpTransport(std::make_shared<TcpTransport>(hostname, service, nullptr));
 	}
 }
@@ -293,7 +291,8 @@ shared_ptr<HttpProxyTransport> WebSocket::initProxyTransport() {
 			}
 		};
 
-		auto transport = std::make_shared<HttpProxyTransport>( lower, mHostname.value(), mService.value(), stateChangeCallback );
+		auto transport = std::make_shared<HttpProxyTransport>(
+		    lower, mHostname.value(), mService.value(), stateChangeCallback);
 
 		return emplaceTransport(this, &mProxyTransport, std::move(transport));
 
@@ -379,15 +378,15 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 		if (auto transport = std::atomic_load(&mWsTransport))
 			return transport;
 
-		variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>, shared_ptr<TlsTransport>> lower;
+		variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>, shared_ptr<TlsTransport>>
+		    lower;
 		if (mIsSecure) {
 			auto transport = std::atomic_load(&mTlsTransport);
 			if (!transport)
 				throw std::logic_error("No underlying TLS transport for WebSocket transport");
 
 			lower = transport;
-		} 
-		else if (config.proxyServer) {
+		} else if (config.proxyServer) {
 			auto transport = std::atomic_load(&mProxyTransport);
 			if (!transport)
 				throw std::logic_error("No underlying proxy transport for WebSocket transport");

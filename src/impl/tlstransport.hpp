@@ -30,8 +30,8 @@ public:
 	static void Init();
 	static void Cleanup();
 
-	TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>> lower, optional<string> host, certificate_ptr certificate,
-	             state_callback callback);
+	TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>> lower,
+	             optional<string> host, certificate_ptr certificate, state_callback callback);
 	virtual ~TlsTransport();
 
 	void start() override;

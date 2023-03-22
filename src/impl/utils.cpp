@@ -153,8 +153,7 @@ std::multimap<string, string> parseHttpHeaders(const std::list<string> &lines) {
 		if (size_t pos = line.find_first_of(':'); pos != string::npos) {
 			string key = line.substr(0, pos);
 			string value = "";
-			if (size_t subPos = line.find_first_not_of(' ', pos + 1); subPos != string::npos )
-			{
+			if (size_t subPos = line.find_first_not_of(' ', pos + 1); subPos != string::npos) {
 				value = line.substr(subPos);
 			}
 			std::transform(key.begin(), key.end(), key.begin(),
