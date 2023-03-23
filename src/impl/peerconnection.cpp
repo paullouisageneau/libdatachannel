@@ -1010,12 +1010,6 @@ void PeerConnection::processRemoteDescription(Description description) {
 		mRemoteDescription->addCandidates(std::move(existingCandidates));
 	}
 
-	auto iceTransport = initIceTransport();
-	if (!iceTransport)
-		return; // closed
-
-	iceTransport->setRemoteDescription(std::move(description));
-
 	if (description.hasApplication()) {
 		auto dtlsTransport = std::atomic_load(&mDtlsTransport);
 		auto sctpTransport = std::atomic_load(&mSctpTransport);

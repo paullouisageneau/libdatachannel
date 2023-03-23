@@ -218,8 +218,14 @@ void PeerConnection::setRemoteDescription(Description description) {
 	// Candidates will be added at the end, extract them for now
 	auto remoteCandidates = description.extractCandidates();
 	auto type = description.type();
-	impl()->processRemoteDescription(std::move(description));
 
+	auto iceTransport = impl()->initIceTransport();
+	if (!iceTransport)
+		return; // closed
+
+	iceTransport->setRemoteDescription(description); // ICE transport might reject the description
+
+	impl()->processRemoteDescription(std::move(description));
 	impl()->changeSignalingState(newSignalingState);
 	signalingLock.unlock();
 
