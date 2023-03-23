@@ -423,15 +423,15 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		return;
 	}
 
+	auto iceTransport = std::atomic_load(&mIceTransport);
+	auto sctpTransport = std::atomic_load(&mSctpTransport);
+	if (!iceTransport || !sctpTransport)
+		return;
+
 	const uint16_t stream = uint16_t(message->stream);
 	auto channel = findDataChannel(stream);
 
 	if (DataChannel::IsOpenMessage(message)) {
-		auto iceTransport = getIceTransport();
-		auto sctpTransport = getSctpTransport();
-		if (!iceTransport || !sctpTransport)
-			return;
-
 		const uint16_t remoteParity = (iceTransport->role() == Description::Role::Active) ? 1 : 0;
 		if (stream % 2 != remoteParity) {
 			// The odd/even rule is violated, close the DataChannel
@@ -461,9 +461,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 
 		// Invalid, close the DataChannel
 		PLOG_WARNING << "Got unexpected message on stream " << stream;
-		if (auto sctpTransport = getSctpTransport())
-			sctpTransport->closeStream(message->stream);
-
+		sctpTransport->closeStream(message->stream);
 		return;
 	}
 
@@ -582,7 +580,7 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(string label, DataCha
 	lock.unlock(); // we are going to call assignDataChannels()
 
 	// If SCTP is connected, assign and open now
-	auto sctpTransport = getSctpTransport();
+	auto sctpTransport = std::atomic_load(&mSctpTransport);
 	if (sctpTransport && sctpTransport->state() == SctpTransport::State::Connected) {
 		assignDataChannels();
 		channel->open(sctpTransport);
@@ -608,7 +606,7 @@ uint16_t PeerConnection::maxDataChannelStream() const {
 void PeerConnection::assignDataChannels() {
 	std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
 
-	auto iceTransport = getIceTransport();
+	auto iceTransport = std::atomic_load(&mIceTransport);
 	if (!iceTransport)
 		throw std::logic_error("Attempted to assign DataChannels without ICE transport");
 
