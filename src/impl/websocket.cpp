@@ -47,6 +47,11 @@ void WebSocket::open(const string &url) {
 
 	if (state != State::Closed)
 		throw std::logic_error("WebSocket must be closed before opening");
+	
+	if (config.proxyServer) {		
+		if( config.proxyServer->type == ProxyServer::Type::Socks5)
+			throw std::invalid_argument("Proxy server support for WebSocket is not implemented for Socks5");
+	}
 
 	// Modified regex from RFC 3986, see https://www.rfc-editor.org/rfc/rfc3986.html#appendix-B
 	static const char *rs =
