@@ -51,8 +51,9 @@ void WebSocket::open(const string &url) {
 	if (config.proxyServer) {		
 		if( config.proxyServer->type == ProxyServer::Type::Socks5)
 			throw std::invalid_argument("Proxy server support for WebSocket is not implemented for Socks5");
-		if (config.proxyServer->username || config.proxyServer->password)
+		if (config.proxyServer->username || config.proxyServer->password) {
 			PLOG_WARNING << "HTTP authentication support for proxy is not implemented";
+		}
 	}
 
 	// Modified regex from RFC 3986, see https://www.rfc-editor.org/rfc/rfc3986.html#appendix-B
