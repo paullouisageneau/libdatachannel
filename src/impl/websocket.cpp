@@ -38,6 +38,13 @@ WebSocket::WebSocket(optional<Configuration> optConfig, certificate_ptr certific
       mCertificate(std::move(certificate)), mIsSecure(mCertificate != nullptr),
       mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
 	PLOG_VERBOSE << "Creating WebSocket";
+	if (config.proxyServer) {		
+		if( config.proxyServer->type == ProxyServer::Type::Socks5)
+			throw std::invalid_argument("Proxy server support for WebSocket is not implemented for Socks5");
+		if (config.proxyServer->username || config.proxyServer->password) {
+			PLOG_WARNING << "HTTP authentication support for proxy is not implemented";
+		}
+	}
 }
 
 WebSocket::~WebSocket() { PLOG_VERBOSE << "Destroying WebSocket"; }
@@ -47,14 +54,6 @@ void WebSocket::open(const string &url) {
 
 	if (state != State::Closed)
 		throw std::logic_error("WebSocket must be closed before opening");
-	
-	if (config.proxyServer) {		
-		if( config.proxyServer->type == ProxyServer::Type::Socks5)
-			throw std::invalid_argument("Proxy server support for WebSocket is not implemented for Socks5");
-		if (config.proxyServer->username || config.proxyServer->password) {
-			PLOG_WARNING << "HTTP authentication support for proxy is not implemented";
-		}
-	}
 
 	// Modified regex from RFC 3986, see https://www.rfc-editor.org/rfc/rfc3986.html#appendix-B
 	static const char *rs =
