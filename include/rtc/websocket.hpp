@@ -34,7 +34,7 @@ public:
 
 	struct Configuration {
 		bool disableTlsVerification = false; // if true, don't verify the TLS certificate
-		optional<ProxyServer> proxyServer;
+		optional<ProxyServer> proxyServer;   // only non-authenticated http supported for now
 		std::vector<string> protocols;
 		optional<std::chrono::milliseconds> pingInterval; // zero to disable
 		optional<int> maxOutstandingPings;
