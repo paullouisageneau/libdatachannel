@@ -5,6 +5,7 @@ project(libdatachannel
 set(PROJECT_DESCRIPTION "C/C++ WebRTC network library featuring Data Channels, Media Transport, and WebSockets")
 
 # Options
+option(USE_MBEDTLS "Use Mbed TLS instead of OpenSSL" OFF)
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 option(USE_NICE "Use libnice instead of libjuice" OFF)
 option(PREFER_SYSTEM_LIB "Prefer system libraries over deps folder" OFF)
@@ -21,12 +22,22 @@ option(WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
 option(SCTP_DEBUG "Enable SCTP debugging output to verbose log" OFF)
 
+if (USE_MBEDTLS AND USE_GNUTLS)
+	message(FATAL_ERROR "Both USE_MBEDTLS and USE_GNUTLS can not be enabled at the same time")
+endif()
+
+
 if(USE_GNUTLS)
 	option(USE_NETTLE "Use Nettle in libjuice" ON)
 else()
 	option(USE_NETTLE "Use Nettle in libjuice" OFF)
+
 	if(NOT USE_SYSTEM_SRTP)
-		option(ENABLE_OPENSSL "Enable OpenSSL crypto engine for SRTP" ON)
+		if (USE_MBEDTLS)
+			option(ENABLE_MBEDTLS "Enable Mbed TLS crypto engine for SRTP" ON)
+		else()
+			option(ENABLE_OPENSSL "Enable OpenSSL crypto engine for SRTP" ON)
+		endif()
 	endif()
 endif()
 
@@ -337,6 +348,13 @@ if (USE_GNUTLS)
 		target_link_libraries(datachannel PRIVATE Nettle::Nettle)
 		target_link_libraries(datachannel-static PRIVATE Nettle::Nettle)
 	endif()
+elseif(USE_MBEDTLS)
+	find_package(MbedTLS 3 REQUIRED)
+
+	target_compile_definitions(datachannel PRIVATE USE_MBEDTLS)
+	target_compile_definitions(datachannel-static PRIVATE USE_MBEDTLS)
+	target_link_libraries(datachannel PRIVATE MbedTLS::MbedTLS)
+	target_link_libraries(datachannel-static PRIVATE MbedTLS::MbedTLS)
 else()
 	if(APPLE)
 		# This is a bug in CMake that causes it to prefer the system version over

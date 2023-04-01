@@ -14,7 +14,11 @@
 
 #include <nettle/sha1.h>
 
-#else // USE_GNUTLS==0
+#elif USE_MBEDTLS
+
+#include <mbedtls/sha1.h>
+
+#else
 
 #ifndef OPENSSL_API_COMPAT
 #define OPENSSL_API_COMPAT 0x10100000L
@@ -38,7 +42,14 @@ binary Sha1(const byte *data, size_t size) {
 	sha1_digest(&ctx, SHA1_DIGEST_SIZE, reinterpret_cast<uint8_t *>(output.data()));
 	return output;
 
-#else // USE_GNUTLS==0
+#elif USE_MBEDTLS
+
+	binary output(20);
+	mbedtls_sha1(reinterpret_cast<const unsigned char *>(data), size,
+	             reinterpret_cast<unsigned char *>(output.data()));
+	return output;
+
+#else
 
 	binary output(SHA_DIGEST_LENGTH);
 	SHA_CTX ctx;

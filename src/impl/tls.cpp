@@ -70,7 +70,81 @@ gnutls_datum_t make_datum(char *data, size_t size) {
 
 } // namespace rtc::gnutls
 
-#else // USE_GNUTLS==0
+#elif USE_MBEDTLS
+
+#include <time.h>
+
+namespace {
+
+// Safe gmtime
+int my_gmtime(const time_t *t, struct tm *buf) {
+#ifdef _WIN32
+	return ::gmtime_s(buf, t) == 0 ? 0 : -1;
+#else // POSIX
+	return ::gmtime_r(t, buf) != NULL ? 0 : -1;
+#endif
+}
+
+// Format time_t as UTC
+size_t my_strftme(char *buf, size_t size, const char *format, const time_t *t) {
+	struct tm g;
+	if (my_gmtime(t, &g) != 0)
+		return 0;
+
+	return ::strftime(buf, size, format, &g);
+}
+
+} // namespace
+
+namespace rtc::mbedtls {
+
+void check(int ret, const string &message) {
+	if (ret < 0) {
+		const size_t bufferSize = 1024;
+		char buffer[bufferSize];
+		mbedtls_strerror(ret, reinterpret_cast<char *>(buffer), bufferSize);
+		PLOG_ERROR << message << ": " << buffer;
+		throw std::runtime_error(message + ": " + std::string(buffer));
+	}
+}
+
+string format_time(const std::chrono::system_clock::time_point &tp) {
+	time_t t = std::chrono::system_clock::to_time_t(tp);
+	const size_t bufferSize = 256;
+	char buffer[bufferSize];
+	if (my_strftme(buffer, bufferSize, "%Y%m%d%H%M%S", &t) == 0)
+		throw std::runtime_error("Time conversion failed");
+
+	return string(buffer);
+};
+
+std::shared_ptr<mbedtls_pk_context> new_pk_context() {
+	return std::shared_ptr<mbedtls_pk_context>{[]() {
+		                                           auto p = new mbedtls_pk_context;
+		                                           mbedtls_pk_init(p);
+		                                           return p;
+	                                           }(),
+	                                           [](mbedtls_pk_context *p) {
+		                                           mbedtls_pk_free(p);
+		                                           delete p;
+	                                           }};
+}
+
+std::shared_ptr<mbedtls_x509_crt> new_x509_crt() {
+	return std::shared_ptr<mbedtls_x509_crt>{[]() {
+		                                         auto p = new mbedtls_x509_crt;
+		                                         mbedtls_x509_crt_init(p);
+		                                         return p;
+	                                         }(),
+	                                         [](mbedtls_x509_crt *crt) {
+		                                         mbedtls_x509_crt_free(crt);
+		                                         delete crt;
+	                                         }};
+}
+
+} // namespace rtc::mbedtls
+
+#else // OPENSSL
 
 namespace rtc::openssl {
 
