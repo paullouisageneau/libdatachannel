@@ -525,12 +525,14 @@ void DtlsTransport::doRecv() {
 			while (true) {
 				auto ret = mbedtls_ssl_handshake(&mSsl);
 				if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
-				ThreadPool::Instance().schedule(mTimerSetAt + milliseconds(mFinMs), [weak_this = weak_from_this()]() {
-					if (auto locked = weak_this.lock())
-						locked->doRecv();
-					});
-				return;
-				} else if ( ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS || ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
+					ThreadPool::Instance().schedule(mTimerSetAt + milliseconds(mFinMs),
+					                                [weak_this = weak_from_this()]() {
+						                                if (auto locked = weak_this.lock())
+							                                locked->doRecv();
+					                                });
+					return;
+				} else if (ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+				           ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
 					continue;
 				}
 
@@ -710,8 +712,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 
 		SSL_CTX_set_min_proto_version(mCtx, DTLS1_VERSION);
 		SSL_CTX_set_read_ahead(mCtx, 1);
-		// sent the dtls close_notify alert
-		// SSL_CTX_set_quiet_shutdown(mCtx, 1);
+		SSL_CTX_set_quiet_shutdown(mCtx, 0); // sent the dtls close_notify alert
 		SSL_CTX_set_info_callback(mCtx, InfoCallback);
 
 		SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
@@ -721,10 +722,18 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
 		               "Failed to set SSL priorities");
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000
+		openssl::check(SSL_CTX_set1_groups_list(mCtx, "P-256"), "Failed to set SSL groups");
+#else
+		auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
+		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
+		SSL_CTX_set_tmp_ecdh(mCtx, ecdh.get());
+		SSL_CTX_set_options(mCtx, SSL_OP_SINGLE_ECDH_USE);
+#endif
+
 		auto [x509, pkey] = mCertificate->credentials();
 		SSL_CTX_use_certificate(mCtx, x509);
 		SSL_CTX_use_PrivateKey(mCtx, pkey);
-
 		openssl::check(SSL_CTX_check_private_key(mCtx), "SSL local private key check failed");
 
 		mSsl = SSL_new(mCtx);
@@ -746,11 +755,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		BIO_set_mem_eof_return(mInBio, BIO_EOF);
 		BIO_set_data(mOutBio, this);
 		SSL_set_bio(mSsl, mInBio, mOutBio);
-
-		auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
-		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
-		SSL_set_options(mSsl, SSL_OP_SINGLE_ECDH_USE);
-		SSL_set_tmp_ecdh(mSsl, ecdh.get());
 
 		// RFC 8827: The DTLS-SRTP protection profile SRTP_AES128_CM_HMAC_SHA1_80 MUST be supported
 		// See https://www.rfc-editor.org/rfc/rfc8827.html#section-6.5 Warning:

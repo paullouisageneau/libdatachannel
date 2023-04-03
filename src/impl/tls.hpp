@@ -68,18 +68,11 @@ std::shared_ptr<mbedtls_x509_crt> new_x509_crt();
 #include <winsock2.h>
 #endif
 
-#ifndef OPENSSL_API_COMPAT
-#define OPENSSL_API_COMPAT 0x10100000L
-#endif
-
 #include <openssl/ssl.h>
 
 #include <openssl/bio.h>
-#include <openssl/bn.h>
-#include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
-#include <openssl/rsa.h>
 #include <openssl/x509.h>
 
 #ifndef BIO_EOF
