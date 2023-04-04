@@ -717,6 +717,7 @@ void TlsTransport::doRecv() {
 
 	if (state() == State::Connected) {
 		PLOG_INFO << "TLS closed";
+		changeState(State::Disconnected);
 		recv(nullptr);
 	} else {
 		PLOG_ERROR << "TLS handshake failed";
