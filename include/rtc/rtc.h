@@ -328,7 +328,7 @@ RTC_C_EXPORT int rtcGetCurrentTrackTimestamp(int id, uint32_t *timestamp);
 RTC_C_EXPORT int rtcSetTrackRtpTimestamp(int id, uint32_t timestamp);
 
 // Get timestamp of previous RTCP SR, result is written to timestamp
-RTC_C_EXPORT int rtcGetPreviousTrackSenderReportTimestamp(int id, uint32_t *timestamp);
+RTC_C_EXPORT int rtcGetLastTrackSenderReportTimestamp(int id, uint32_t *timestamp);
 
 // Set NeedsToReport flag in RtcpSrReporter handler identified by given track id
 RTC_C_EXPORT int rtcSetNeedsToSendRtcpSr(int id);
