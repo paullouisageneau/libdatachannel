@@ -487,6 +487,7 @@ void TlsTransport::runRecvLoop() {
 		recv(nullptr);
 	} else {
 		PLOG_ERROR << "TLS handshake failed";
+		changeState(State::Failed);
 	}
 }
 
