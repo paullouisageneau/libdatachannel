@@ -286,8 +286,8 @@ void DtlsSrtpTransport::postHandshake() {
 		throw std::logic_error("Failed to get SRTP profile");
 	}
 
-	if (mbedtls_ssl_tls_prf(mTlsProfile, reinterpret_cast<const unsigned char *>(mMasterSecret), 32,
-	                        label.c_str(), reinterpret_cast<const unsigned char *>(mRandBytes), 32,
+	if (mbedtls_ssl_tls_prf(mTlsProfile, reinterpret_cast<const unsigned char *>(mMasterSecret), 48,
+	                        label.c_str(), reinterpret_cast<const unsigned char *>(mRandBytes), 64,
 	                        material.data(), materialLen) != 0) {
 		throw std::runtime_error("Failed to derive SRTP keys");
 	}
