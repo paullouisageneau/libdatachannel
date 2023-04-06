@@ -127,7 +127,7 @@ MediaHandlerElement::formIncomingControlMessage(message_ptr message,
 ChainedMessagesProduct
 MediaHandlerElement::formIncomingBinaryMessage(ChainedMessagesProduct messages,
                                                std::function<bool(ChainedOutgoingProduct)> send) {
-	assert(messages && !messages->empty());
+	assert(messages);
 	auto product = processIncomingBinaryMessage(messages);
 	prepareAndSendResponse(product.outgoing, send);
 	if (product.incoming) {
