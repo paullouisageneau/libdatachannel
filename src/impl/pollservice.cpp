@@ -182,12 +182,13 @@ void PollService::runLoop() {
 				ret = ::poll(pfds.data(), static_cast<nfds_t>(pfds.size()), timeout);
 
 				PLOG_VERBOSE << "Exiting poll";
-#ifdef _WIN32
-				if (ret == WSAENOTSOCK)
-					continue; // prepare again as the fd has been removed
-#endif
+
 			} while (ret < 0 && (sockerrno == SEINTR || sockerrno == SEAGAIN));
 
+#ifdef _WIN32
+			if (ret == WSAENOTSOCK)
+				continue; // prepare again as the fd has been removed
+#endif
 			if (ret < 0)
 				throw std::runtime_error("poll failed, errno=" + std::to_string(sockerrno));
 
