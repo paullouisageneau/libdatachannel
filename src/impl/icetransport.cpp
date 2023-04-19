@@ -63,7 +63,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 		level = JUICE_LOG_LEVEL_NONE;
 		break;
 	case plog::fatal:
-		level = JUICE_LOG_LEVEL_VERBOSE;
+		level = JUICE_LOG_LEVEL_FATAL;
 		break;
 	case plog::error:
 		level = JUICE_LOG_LEVEL_ERROR;
