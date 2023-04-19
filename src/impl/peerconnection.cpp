@@ -499,11 +499,16 @@ void PeerConnection::forwardMedia(message_ptr message) {
 				ssrcs.insert(rtcpfb->packetSenderSSRC());
 				ssrcs.insert(rtcpfb->mediaSourceSSRC());
 
-			} else if (header->payloadType() == 200 || header->payloadType() == 201) {
+			} else if (header->payloadType() == 200) {
 				auto rtcpsr = reinterpret_cast<RtcpSr *>(header);
 				ssrcs.insert(rtcpsr->senderSSRC());
 				for (int i = 0; i < rtcpsr->header.reportCount(); ++i)
 					ssrcs.insert(rtcpsr->getReportBlock(i)->getSSRC());
+			} else if (header->payloadType() == 201) {
+				auto rtcprr = reinterpret_cast<RtcpRr *>(header);
+				ssrcs.insert(rtcprr->senderSSRC());
+				for (int i = 0; i < rtcprr->header.reportCount(); ++i)
+					ssrcs.insert(rtcprr->getReportBlock(i)->getSSRC());
 			} else if (header->payloadType() == 202) {
 				auto sdes = reinterpret_cast<RtcpSdes *>(header);
 				if (!sdes->isValid()) {
