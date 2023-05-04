@@ -124,13 +124,14 @@ void PollService::process(std::vector<struct pollfd> &pfds) {
 					mSocks->erase(sock);
 					callback(Event::Error);
 
-				} else if (it->revents & POLLIN || it->revents & POLLOUT) {
+				} else if (it->revents & POLLIN || it->revents & POLLOUT || it->revents & POLLHUP) {
 					entry.until = params.timeout
 					                  ? std::make_optional(clock::now() + *params.timeout)
 					                  : nullopt;
 
 					auto callback = params.callback;
-					if (it->revents & POLLIN) {
+					if (it->revents & POLLIN ||
+					    it->revents & POLLHUP) { // Windows does not set POLLIN on close
 						PLOG_VERBOSE << "Poll in event";
 						callback(Event::In);
 					}
