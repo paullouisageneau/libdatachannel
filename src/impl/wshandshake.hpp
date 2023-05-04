@@ -15,6 +15,7 @@
 
 #include <list>
 #include <map>
+#include <stdexcept>
 #include <vector>
 
 namespace rtc::impl {
