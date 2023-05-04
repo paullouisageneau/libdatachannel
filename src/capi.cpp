@@ -1035,7 +1035,7 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 				desc.addVP8Codec(init->payloadType);
 				break;
 			case RTC_CODEC_VP9:
-				desc.addVP8Codec(init->payloadType);
+				desc.addVP9Codec(init->payloadType);
 				break;
 			default:
 				break;
