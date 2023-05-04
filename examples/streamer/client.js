@@ -52,10 +52,9 @@ function createPeerConnection() {
     pc.ontrack = (evt) => {
         document.getElementById('media').style.display = 'block';
         const video = document.getElementById('video');
-        if (!video.srcObject) {
-          video.srcObject = evt.streams[0]; // The stream groups audio and video tracks
-          video.play();
-        }
+        // always overrite the last stream - you may want to do something more clever in practice
+        video.srcObject = evt.streams[0]; // The stream groups audio and video tracks
+        video.play();
     };
 
     // Receive data channel
@@ -175,10 +174,8 @@ function stop() {
     });
 
     // close peer connection
-    setTimeout(() => {
-        pc.close();
-        pc = null;
-    }, 500);
+    pc.close();
+    pc = null;
 }
 
 // Helper function to generate a random ID
