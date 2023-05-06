@@ -128,4 +128,16 @@ std::seed_seq random_seed() {
 	return std::seed_seq(seed.begin(), seed.end());
 }
 
+bool IsHttpRequest(const byte *buffer, size_t size) {
+	// Check the buffer starts with a valid-looking HTTP method
+	for (size_t i = 0; i < size; ++i) {
+		char c = static_cast<char>(buffer[i]);
+		if (i > 0 && c == ' ')
+			break;
+		else if (i >= 8 || c < 'A' || c > 'Z')
+			return false;
+	}
+	return true;
+}
+
 } // namespace rtc::impl::utils
