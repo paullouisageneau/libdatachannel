@@ -412,7 +412,19 @@ void SctpTransport::closeStream(unsigned int stream) {
 
 void SctpTransport::close() {
 	mSendQueue.stop();
-	mProcessor.enqueue(&SctpTransport::flush, shared_from_this());
+	if (state() == State::Connected) {
+		mProcessor.enqueue(&SctpTransport::flush, shared_from_this());
+	} else if (state() == State::Connecting) {
+		PLOG_DEBUG << "SCTP early shutdown";
+		if (usrsctp_shutdown(mSock, SHUT_RDWR)) {
+			if (errno == ENOTCONN) {
+				PLOG_VERBOSE << "SCTP already shut down";
+			} else {
+				PLOG_WARNING << "SCTP shutdown failed, errno=" << errno;
+			}
+		}
+		changeState(State::Failed);
+	}
 }
 
 unsigned int SctpTransport::maxStream() const {
