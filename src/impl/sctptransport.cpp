@@ -371,6 +371,8 @@ void SctpTransport::connect() {
 
 bool SctpTransport::send(message_ptr message) {
 	std::lock_guard lock(mSendMutex);
+	if (state() != State::Connected)
+		return false;
 
 	if (!message)
 		return trySendQueue();
@@ -389,6 +391,9 @@ bool SctpTransport::send(message_ptr message) {
 bool SctpTransport::flush() {
 	try {
 		std::lock_guard lock(mSendMutex);
+		if (state() != State::Connected)
+			return false;
+
 		trySendQueue();
 		return true;
 
@@ -424,6 +429,7 @@ void SctpTransport::close() {
 			}
 		}
 		changeState(State::Failed);
+		mWrittenCondition.notify_all();
 	}
 }
 
@@ -438,8 +444,11 @@ void SctpTransport::incoming(message_ptr message) {
 	// to be sent on our side (i.e. the local INIT) before proceeding.
 	if (!mWrittenOnce) { // test the atomic boolean is not set first to prevent a lock contention
 		std::unique_lock lock(mWriteMutex);
-		mWrittenCondition.wait(lock, [&]() { return mWrittenOnce.load(); });
+		mWrittenCondition.wait(lock, [&]() { return mWrittenOnce || state() == State::Failed; });
 	}
+
+	if(state() == State::Failed)
+		return;
 
 	if (!message) {
 		PLOG_INFO << "SCTP disconnected";
@@ -577,7 +586,7 @@ bool SctpTransport::trySendQueue() {
 
 bool SctpTransport::trySendMessage(message_ptr message) {
 	// Requires mSendMutex to be locked
-	if (!mSock || state() != State::Connected)
+	if (state() != State::Connected)
 		return false;
 
 	uint32_t ppid;
@@ -687,7 +696,7 @@ void SctpTransport::triggerBufferedAmount(uint16_t streamId, size_t amount) {
 
 void SctpTransport::sendReset(uint16_t streamId) {
 	// Requires mSendMutex to be locked
-	if (!mSock || state() != State::Connected)
+	if (state() != State::Connected)
 		return;
 
 	PLOG_DEBUG << "SCTP resetting stream " << streamId;
@@ -835,12 +844,13 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 			PLOG_INFO << "SCTP connected";
 			changeState(State::Connected);
 		} else {
-			if (state() == State::Connecting) {
-				PLOG_ERROR << "SCTP connection failed";
-				changeState(State::Failed);
-			} else {
+			if (state() == State::Connected) {
 				PLOG_INFO << "SCTP disconnected";
 				changeState(State::Disconnected);
+				recv(nullptr);
+			} else {
+				PLOG_ERROR << "SCTP connection failed";
+				changeState(State::Failed);
 			}
 			mWrittenCondition.notify_all();
 		}
@@ -912,7 +922,7 @@ size_t SctpTransport::bytesSent() { return mBytesSent; }
 size_t SctpTransport::bytesReceived() { return mBytesReceived; }
 
 optional<milliseconds> SctpTransport::rtt() {
-	if (!mSock || state() != State::Connected)
+	if (state() != State::Connected)
 		return nullopt;
 
 	struct sctp_status status = {};
