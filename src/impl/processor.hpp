@@ -13,6 +13,7 @@
 #include "queue.hpp"
 #include "threadpool.hpp"
 
+#include <atomic>
 #include <condition_variable>
 #include <future>
 #include <memory>
@@ -40,7 +41,7 @@ private:
 	void schedule();
 
 	Queue<std::function<void()>> mTasks;
-	bool mPending = false; // true iff a task is pending in the thread pool
+	std::atomic_bool mPending = false; // true iff a task is pending in the thread pool
 
 	mutable std::mutex mMutex;
 	std::condition_variable mCondition;
