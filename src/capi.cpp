@@ -1391,9 +1391,9 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 		else if (config->connectionTimeoutMs < 0)
 			c.connectionTimeout = milliseconds::zero(); // setting to 0 disables,
 			                                            // not setting keeps default
-		if (config->pingInterval > 0)
-			c.pingInterval = milliseconds(config->pingInterval);
-		else if (config->pingInterval < 0)
+		if (config->pingIntervalMs > 0)
+			c.pingInterval = milliseconds(config->pingIntervalMs);
+		else if (config->pingIntervalMs < 0)
 			c.pingInterval = milliseconds::zero(); // setting to 0 disables,
 			                                       // not setting keeps default
 		if (config->maxOutstandingPings > 0)
