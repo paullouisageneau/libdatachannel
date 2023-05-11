@@ -31,6 +31,7 @@ public:
 		optional<string> keyPemFile;
 		optional<string> keyPemPass;
 		optional<string> bindAddress;
+		optional<std::chrono::milliseconds> connectionTimeout;
 	};
 
 	WebSocketServer();

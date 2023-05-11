@@ -40,7 +40,7 @@ WebSocketServer::WebSocketServer(Configuration config_)
 			    "Either none or both certificate and key PEM files must be specified");
 		}
 	}
-	
+
 	const char* bindAddress = nullptr;
 	if(config.bindAddress){
 		bindAddress = config.bindAddress->c_str();
@@ -75,7 +75,10 @@ void WebSocketServer::runLoop() {
 				if (!clientCallback)
 					continue;
 
-				auto impl = std::make_shared<WebSocket>(nullopt, mCertificate);
+				WebSocket::Configuration clientConfig;
+				clientConfig.connectionTimeout = config.connectionTimeout;
+
+				auto impl = std::make_shared<WebSocket>(std::move(clientConfig), mCertificate);
 				impl->changeState(WebSocket::State::Connecting);
 				impl->setTcpTransport(incoming);
 				clientCallback(std::make_shared<rtc::WebSocket>(impl));
