@@ -15,6 +15,7 @@
 #include <condition_variable>
 #include <queue>
 #include <functional>
+#include <string>
 
 class DispatchQueue {
     typedef std::function<void(void)> fp_t;

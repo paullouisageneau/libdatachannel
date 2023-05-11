@@ -131,6 +131,9 @@ string WsHandshake::generateHttpError(int responseCode) {
 }
 
 size_t WsHandshake::parseHttpRequest(const byte *buffer, size_t size) {
+	if (!utils::IsHttpRequest(buffer, size))
+		throw RequestError("Invalid HTTP request for WebSocket", 400);
+
 	std::unique_lock lock(mMutex);
 	std::list<string> lines;
 	size_t length = utils::parseHttpLines(buffer, size, lines);
