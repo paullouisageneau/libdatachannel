@@ -32,15 +32,17 @@ namespace rtc::impl {
 
 using namespace std::placeholders;
 using namespace std::chrono_literals;
+using std::chrono::milliseconds;
 
 WebSocket::WebSocket(optional<Configuration> optConfig, certificate_ptr certificate)
     : config(optConfig ? std::move(*optConfig) : Configuration()),
       mCertificate(std::move(certificate)), mIsSecure(mCertificate != nullptr),
       mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
 	PLOG_VERBOSE << "Creating WebSocket";
-	if (config.proxyServer) {		
-		if( config.proxyServer->type == ProxyServer::Type::Socks5)
-			throw std::invalid_argument("Proxy server support for WebSocket is not implemented for Socks5");
+	if (config.proxyServer) {
+		if (config.proxyServer->type == ProxyServer::Type::Socks5)
+			throw std::invalid_argument(
+			    "Proxy server support for WebSocket is not implemented for Socks5");
 		if (config.proxyServer->username || config.proxyServer->password) {
 			PLOG_WARNING << "HTTP authentication support for proxy is not implemented";
 		}
@@ -251,8 +253,10 @@ shared_ptr<TcpTransport> WebSocket::setTcpTransport(shared_ptr<TcpTransport> tra
 
 		// WS transport sends a ping on read timeout
 		auto pingInterval = config.pingInterval.value_or(10000ms);
-		if (pingInterval > std::chrono::milliseconds::zero())
+		if (pingInterval > milliseconds::zero())
 			transport->setReadTimeout(pingInterval);
+
+		scheduleConnectionTimeout();
 
 		return emplaceTransport(this, &mTcpTransport, std::move(transport));
 
@@ -503,6 +507,22 @@ void WebSocket::closeTransports() {
 	    });
 
 	triggerClosed();
+}
+
+void WebSocket::scheduleConnectionTimeout() {
+	auto defaultTimeout = 30s;
+	auto timeout = config.connectionTimeout.value_or(milliseconds(defaultTimeout));
+	if (timeout > milliseconds::zero()) {
+		ThreadPool::Instance().schedule(timeout, [weak_this = weak_from_this()]() {
+			if (auto locked = weak_this.lock()) {
+				if (locked->state == WebSocket::State::Connecting) {
+					PLOG_WARNING << "WebSocket connection timed out";
+					locked->triggerError("Connection timed out");
+					locked->remoteClose();
+				}
+			}
+		});
+	}
 }
 
 } // namespace rtc::impl

@@ -35,6 +35,8 @@ void test_websocket() {
 		ws.send(myMessage);
 	});
 
+	ws.onError([](string error) { cout << "WebSocket: Error: " << error << endl; });
+
 	ws.onClosed([]() { cout << "WebSocket: Closed" << endl; });
 
 	std::atomic<bool> received = false;
