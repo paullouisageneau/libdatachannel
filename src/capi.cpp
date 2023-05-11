@@ -1010,8 +1010,8 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 				mid = "video";
 				break;
 			case RTC_CODEC_OPUS:
-            case RTC_CODEC_PCMU:
-            case RTC_CODEC_PCMA:
+			case RTC_CODEC_PCMU:
+			case RTC_CODEC_PCMA:
 				mid = "audio";
 				break;
 			default:
@@ -1044,19 +1044,19 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 			break;
 		}
 		case RTC_CODEC_OPUS:
-        case RTC_CODEC_PCMU:
-        case RTC_CODEC_PCMA:{
+		case RTC_CODEC_PCMU:
+		case RTC_CODEC_PCMA: {
 			auto desc = Description::Audio(mid, direction);
 			switch (init->codec) {
 			case RTC_CODEC_OPUS:
 				desc.addOpusCodec(init->payloadType);
 				break;
-            case RTC_CODEC_PCMU:
-                desc.addPCMUCodec(init->payloadType);
-                break;
-            case RTC_CODEC_PCMA:
-                desc.addPCMACodec(init->payloadType);
-                break;
+			case RTC_CODEC_PCMU:
+				desc.addPCMUCodec(init->payloadType);
+				break;
+			case RTC_CODEC_PCMA:
+				desc.addPCMACodec(init->payloadType);
+				break;
 			default:
 				break;
 			}
@@ -1386,12 +1386,16 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 		for (int i = 0; i < config->protocolsCount; ++i)
 			c.protocols.emplace_back(string(config->protocols[i]));
 
+		if (config->connectionTimeoutMs > 0)
+			c.connectionTimeout = milliseconds(config->connectionTimeoutMs);
+		else if (config->connectionTimeoutMs < 0)
+			c.connectionTimeout = milliseconds::zero(); // setting to 0 disables,
+			                                            // not setting keeps default
 		if (config->pingInterval > 0)
-			c.pingInterval = std::chrono::milliseconds(config->pingInterval);
+			c.pingInterval = milliseconds(config->pingInterval);
 		else if (config->pingInterval < 0)
-			c.pingInterval = std::chrono::milliseconds::zero(); // setting to 0 disables,
-			                                                    // not setting keeps default
-
+			c.pingInterval = milliseconds::zero(); // setting to 0 disables,
+			                                       // not setting keeps default
 		if (config->maxOutstandingPings > 0)
 			c.maxOutstandingPings = config->maxOutstandingPings;
 		else if (config->maxOutstandingPings < 0)
@@ -1434,7 +1438,7 @@ int rtcGetWebSocketPath(int ws, char *buffer, int size) {
 }
 
 RTC_C_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
-                                        rtcWebSocketClientCallbackFunc cb) {
+                                          rtcWebSocketClientCallbackFunc cb) {
 	return wrap([&] {
 		if (!config)
 			throw std::invalid_argument("Unexpected null pointer for config");
@@ -1534,25 +1538,24 @@ int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 			s.congestionControlModule = unsigned(settings->congestionControlModule);
 
 		if (settings->delayedSackTimeMs > 0)
-			s.delayedSackTime = std::chrono::milliseconds(settings->delayedSackTimeMs);
+			s.delayedSackTime = milliseconds(settings->delayedSackTimeMs);
 		else if (settings->delayedSackTimeMs < 0)
-			s.delayedSackTime = std::chrono::milliseconds(0);
+			s.delayedSackTime = milliseconds(0);
 
 		if (settings->minRetransmitTimeoutMs > 0)
-			s.minRetransmitTimeout = std::chrono::milliseconds(settings->minRetransmitTimeoutMs);
+			s.minRetransmitTimeout = milliseconds(settings->minRetransmitTimeoutMs);
 
 		if (settings->maxRetransmitTimeoutMs > 0)
-			s.maxRetransmitTimeout = std::chrono::milliseconds(settings->maxRetransmitTimeoutMs);
+			s.maxRetransmitTimeout = milliseconds(settings->maxRetransmitTimeoutMs);
 
 		if (settings->initialRetransmitTimeoutMs > 0)
-			s.initialRetransmitTimeout =
-			    std::chrono::milliseconds(settings->initialRetransmitTimeoutMs);
+			s.initialRetransmitTimeout = milliseconds(settings->initialRetransmitTimeoutMs);
 
 		if (settings->maxRetransmitAttempts > 0)
 			s.maxRetransmitAttempts = settings->maxRetransmitAttempts;
 
 		if (settings->heartbeatIntervalMs > 0)
-			s.heartbeatInterval = std::chrono::milliseconds(settings->heartbeatIntervalMs);
+			s.heartbeatInterval = milliseconds(settings->heartbeatIntervalMs);
 
 		SetSctpSettings(std::move(s));
 		return RTC_ERR_SUCCESS;
