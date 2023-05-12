@@ -33,10 +33,6 @@ public:
 	uint32_t lastReportedTimestamp() const;
 	void setNeedsToReport();
 
-	// deprecated, do not call
-	[[deprecated]] void startRecording();
-	[[deprecated]] uint32_t previousReportedTimestamp() const { return lastReportedTimestamp(); }
-
 private:
 	uint32_t mPacketCount = 0;
 	uint32_t mPayloadOctets = 0;

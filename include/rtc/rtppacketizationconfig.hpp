@@ -82,15 +82,6 @@ public:
 	/// Convert seconds to timestamp
 	/// @param seconds Number of seconds
 	uint32_t secondsToTimestamp(double seconds);
-
-	// deprecated, do not use
-	double startTime = 0.;
-	enum class EpochStart : uint64_t {
-		T1970 = 2208988800, // number of seconds between 1970 and 1900
-		T1900 = 0
-	};
-	[[deprecated]] void setStartTime(double startTime, EpochStart epochStart,
-	                                 optional<uint32_t> startTimestamp = std::nullopt);
 };
 
 } // namespace rtc

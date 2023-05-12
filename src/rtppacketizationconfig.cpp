@@ -50,14 +50,6 @@ uint32_t RtpPacketizationConfig::secondsToTimestamp(double seconds) {
 	return RtpPacketizationConfig::getTimestampFromSeconds(seconds, clockRate);
 }
 
-void RtpPacketizationConfig::setStartTime(double startTime, EpochStart epochStart,
-                                          optional<uint32_t> startTimestamp) {
-	// Deprecated dummy function
-	this->startTime = startTime + double(static_cast<uint64_t>(epochStart));
-	if (startTimestamp.has_value())
-		this->timestamp = this->startTimestamp = startTimestamp.value();
-}
-
 } // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */
