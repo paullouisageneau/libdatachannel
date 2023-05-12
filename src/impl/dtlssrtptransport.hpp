@@ -24,10 +24,10 @@
 
 namespace rtc::impl {
 
-struct EncryptionParams {
-	unsigned int keySize;
-	unsigned int saltSize;
+struct ProfileParams {
 	srtp_profile_t srtpProfile;
+	size_t keySize;
+	size_t saltSize;
 };
 
 class DtlsSrtpTransport final : public DtlsTransport {
@@ -46,11 +46,13 @@ private:
 	void recvMedia(message_ptr message);
 	bool demuxMessage(message_ptr message) override;
 	void postHandshake() override;
-	EncryptionParams getEncryptionParams(string_view suite);
+
+#if !USE_GNUTLS && !USE_MBEDTLS
+	ProfileParams getProfileParamsFromName(string_view name);
+#endif
+
 	message_callback mSrtpRecvCallback;
-
 	srtp_t mSrtpIn, mSrtpOut;
-
 	std::atomic<bool> mInitDone = false;
 	std::vector<unsigned char> mClientSessionKey;
 	std::vector<unsigned char> mServerSessionKey;
