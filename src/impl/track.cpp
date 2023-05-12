@@ -21,7 +21,7 @@ static LogCounter COUNTER_QUEUE_FULL(plog::warning,
 
 Track::Track(weak_ptr<PeerConnection> pc, Description::Media description)
     : mPeerConnection(pc), mMediaDescription(std::move(description)),
-      mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {}
+      mRecvQueue(RECV_QUEUE_LIMIT, [](const message_ptr &m) { return m->size(); }) {}
 
 Track::~Track() {
 	PLOG_VERBOSE << "Destroying Track";
