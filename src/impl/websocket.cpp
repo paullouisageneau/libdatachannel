@@ -146,23 +146,13 @@ bool WebSocket::isClosed() const { return state == State::Closed; }
 size_t WebSocket::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
 
 optional<message_variant> WebSocket::receive() {
-	while (auto next = mRecvQueue.pop()) {
-		message_ptr message = *next;
-		if (message->type != Message::Control)
-			return to_variant(std::move(*message));
-	}
-	return nullopt;
+	auto next = mRecvQueue.pop();
+	return next ? std::make_optional(to_variant(std::move(**next))) : nullopt;
 }
 
 optional<message_variant> WebSocket::peek() {
-	while (auto next = mRecvQueue.peek()) {
-		message_ptr message = *next;
-		if (message->type != Message::Control)
-			return to_variant(std::move(*message));
-
-		mRecvQueue.pop();
-	}
-	return nullopt;
+	auto next = mRecvQueue.peek();
+	return next ? std::make_optional(to_variant(std::move(**next))) : nullopt;
 }
 
 size_t WebSocket::availableAmount() const { return mRecvQueue.amount(); }
