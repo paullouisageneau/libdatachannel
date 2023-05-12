@@ -41,7 +41,6 @@ private:
 	string mHostname;
 	string mService;
 	binary mBuffer;
-	std::mutex mSendMutex;
 };
 
 } // namespace rtc::impl

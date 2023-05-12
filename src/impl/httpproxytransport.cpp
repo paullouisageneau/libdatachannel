@@ -39,8 +39,6 @@ void HttpProxyTransport::start() {
 void HttpProxyTransport::stop() { unregisterIncoming(); }
 
 bool HttpProxyTransport::send(message_ptr message) {
-	std::lock_guard lock(mSendMutex);
-
 	if (state() != State::Connected)
 		throw std::runtime_error("HTTP proxy connection is not open");
 
