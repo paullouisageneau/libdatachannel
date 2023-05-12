@@ -35,11 +35,11 @@ public:
 private:
 	void incoming(message_ptr message) override;
 	bool sendHttpRequest();
-	std::string generateHttpRequest();
+	string generateHttpRequest();
 	size_t parseHttpResponse(std::byte *buffer, size_t size);
 
-	std::string mHostname;
-	std::string mService;
+	string mHostname;
+	string mService;
 	binary mBuffer;
 	std::mutex mSendMutex;
 };

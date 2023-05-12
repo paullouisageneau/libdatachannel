@@ -22,10 +22,9 @@ HttpProxyTransport::HttpProxyTransport(shared_ptr<TcpTransport> lower, std::stri
                                        std::string service, state_callback stateCallback)
     : Transport(lower, std::move(stateCallback)), mHostname(std::move(hostname)),
       mService(std::move(service)) {
+	PLOG_DEBUG << "Initializing HTTP proxy transport";
 	if (!lower->isActive())
-		throw std::logic_error("Http proxy creation failed, expects lower transport to be active");
-
-	PLOG_DEBUG << "Initializing http Proxy transport";
+		throw std::logic_error("HTTP proxy transport expects the lower transport to be active");
 }
 
 HttpProxyTransport::~HttpProxyTransport() { unregisterIncoming(); }
@@ -43,7 +42,7 @@ bool HttpProxyTransport::send(message_ptr message) {
 	std::lock_guard lock(mSendMutex);
 
 	if (state() != State::Connected)
-		throw std::runtime_error("Http proxy connection is not open");
+		throw std::runtime_error("HTTP proxy connection is not open");
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 	return outgoing(message);
@@ -63,7 +62,7 @@ void HttpProxyTransport::incoming(message_ptr message) {
 			if (state() == State::Connecting) {
 				mBuffer.insert(mBuffer.end(), message->begin(), message->end());
 				if (size_t len = parseHttpResponse(mBuffer.data(), mBuffer.size())) {
-					PLOG_INFO << "Http proxy connection open";
+					PLOG_INFO << "HTTP proxy connection open";
 					changeState(State::Connected);
 					mBuffer.erase(mBuffer.begin(), mBuffer.begin() + len);
 
@@ -83,27 +82,25 @@ void HttpProxyTransport::incoming(message_ptr message) {
 	}
 
 	if (state() == State::Connected) {
-		PLOG_INFO << "Http Proxy disconnected";
+		PLOG_INFO << "HTTP proxy disconnected";
 		changeState(State::Disconnected);
 		recv(nullptr);
 	} else {
-		PLOG_ERROR << "Http Proxy failed";
+		PLOG_ERROR << "HTTP proxy connection failed";
 		changeState(State::Failed);
 	}
 }
 
 bool HttpProxyTransport::sendHttpRequest() {
-	PLOG_DEBUG << "Sending proxy http request";
+	PLOG_DEBUG << "Sending HTTP request to proxy";
 
 	const string request = generateHttpRequest();
 	auto data = reinterpret_cast<const byte *>(request.data());
 	return outgoing(make_message(data, data + request.size()));
 }
 
-std::string HttpProxyTransport::generateHttpRequest() {
-	std::string out =
-	    "CONNECT " + mHostname + ":" + mService + " HTTP/1.1\r\nHost: " + mHostname + "\r\n\r\n";
-	return out;
+string HttpProxyTransport::generateHttpRequest() {
+	return "CONNECT " + mHostname + ":" + mService + " HTTP/1.1\r\nHost: " + mHostname + "\r\n\r\n";
 }
 
 size_t HttpProxyTransport::parseHttpResponse(std::byte *buffer, size_t size) {
@@ -113,7 +110,7 @@ size_t HttpProxyTransport::parseHttpResponse(std::byte *buffer, size_t size) {
 		return 0;
 
 	if (lines.empty())
-		throw std::runtime_error("Invalid http request for proxy");
+		throw std::runtime_error("Invalid response from HTTP proxy");
 
 	std::istringstream status(std::move(lines.front()));
 	lines.pop_front();
@@ -123,7 +120,7 @@ size_t HttpProxyTransport::parseHttpResponse(std::byte *buffer, size_t size) {
 	status >> protocol >> code;
 
 	if (code != 200)
-		throw std::runtime_error("Unexpected response code " + to_string(code) + " for proxy");
+		throw std::runtime_error("Unexpected response code " + to_string(code) + " from HTTP proxy");
 
 	return length;
 }
