@@ -83,10 +83,6 @@ void RtcpSrReporter::setNeedsToReport() {
 	mNeedsToReport = true;
 }
 
-void RtcpSrReporter::startRecording() {
-	// Dummy
-}
-
 uint32_t RtcpSrReporter::lastReportedTimestamp() const {
 	return mLastReportedTimestamp;
 }
