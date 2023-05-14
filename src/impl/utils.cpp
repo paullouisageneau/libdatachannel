@@ -18,6 +18,13 @@
 #include <sstream>
 #include <thread>
 
+#if defined(__linux__)
+#include <sys/prctl.h> // for prctl(PR_SET_NAME)
+#endif
+#if defined(__FreeBSD__)
+#include <pthread_np.h> // for pthread_set_name_np
+#endif
+
 namespace rtc::impl::utils {
 
 using std::to_integer;
@@ -177,6 +184,30 @@ std::multimap<string, string> parseHttpHeaders(const std::list<string> &lines) {
 	}
 
 	return headers;
+}
+
+namespace {
+
+void thread_set_name_self(const char *name) {
+#if defined(_WIN32)
+	(void)name;
+#elif defined(__linux__)
+	prctl(PR_SET_NAME, name);
+#elif defined(__APPLE__)
+	pthread_setname_np(name);
+#elif defined(__FreeBSD__)
+	pthread_set_name_np(pthread_self(), name);
+#else
+	(void)name;
+#endif
+}
+
+} // namespace
+
+namespace this_thread {
+	void set_name(const string &name) {
+		thread_set_name_self(name.c_str());
+	}
 }
 
 } // namespace rtc::impl::utils

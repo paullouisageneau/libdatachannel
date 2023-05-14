@@ -19,7 +19,6 @@
 #include <functional>
 #include <memory>
 #include <mutex>
-#include <thread>
 
 namespace rtc::impl {
 

@@ -12,6 +12,7 @@
 #include "common.hpp"
 #include "internals.hpp"
 #include "threadpool.hpp"
+#include "utils.hpp"
 
 namespace rtc::impl {
 
@@ -41,8 +42,8 @@ WebSocketServer::WebSocketServer(Configuration config_)
 		}
 	}
 
-	const char* bindAddress = nullptr;
-	if(config.bindAddress){
+	const char *bindAddress = nullptr;
+	if (config.bindAddress) {
 		bindAddress = config.bindAddress->c_str();
 	}
 	// Create TCP server
@@ -67,6 +68,7 @@ void WebSocketServer::stop() {
 }
 
 void WebSocketServer::runLoop() {
+	utils::this_thread::set_name("RTC server");
 	PLOG_INFO << "Starting WebSocketServer";
 
 	try {

@@ -7,15 +7,15 @@
  */
 
 #include "init.hpp"
-#include "internals.hpp"
-
 #include "certificate.hpp"
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
+#include "internals.hpp"
 #include "pollservice.hpp"
 #include "sctptransport.hpp"
 #include "threadpool.hpp"
 #include "tls.hpp"
+#include "utils.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 #include "tlstransport.hpp"
@@ -43,6 +43,7 @@ struct Init::TokenPayload {
 	~TokenPayload() {
 		std::thread t(
 		    [](std::promise<void> promise) {
+				utils::this_thread::set_name("RTC cleanup");
 			    try {
 				    Init::Instance().doCleanup();
 				    promise.set_value();
