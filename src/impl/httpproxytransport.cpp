@@ -9,7 +9,7 @@
 
 #include "httpproxytransport.hpp"
 #include "tcptransport.hpp"
-#include "utils.hpp"
+#include "http.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -103,7 +103,7 @@ string HttpProxyTransport::generateHttpRequest() {
 
 size_t HttpProxyTransport::parseHttpResponse(std::byte *buffer, size_t size) {
 	std::list<string> lines;
-	size_t length = utils::parseHttpLines(buffer, size, lines);
+	size_t length = parseHttpLines(buffer, size, lines);
 	if (length == 0)
 		return 0;
 

@@ -13,7 +13,6 @@
 
 #include <climits>
 #include <limits>
-#include <list>
 #include <map>
 #include <random>
 #include <vector>
@@ -33,15 +32,6 @@ string base64_encode(const binary &data);
 
 // Return a random seed sequence
 std::seed_seq random_seed();
-
-// Check the buffer contains the beginning of an HTTP request
-bool IsHttpRequest(const byte *buffer, size_t size);
-
-// Parse an http message into lines
-size_t parseHttpLines(const byte *buffer, size_t size, std::list<string> &lines);
-
-// Parse headers of a http message
-std::multimap<string, string> parseHttpHeaders(const std::list<string> &lines);
 
 template <typename Generator, typename Result = typename Generator::result_type>
 struct random_engine_wrapper {
@@ -71,8 +61,10 @@ template <typename Generator = std::mt19937> auto random_bytes_engine() {
 }
 
 namespace this_thread {
+
 void set_name(const string &name);
-}
+
+} // namespace this_thread
 
 } // namespace rtc::impl::utils
 
