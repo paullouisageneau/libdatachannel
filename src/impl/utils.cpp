@@ -135,57 +135,6 @@ std::seed_seq random_seed() {
 	return std::seed_seq(seed.begin(), seed.end());
 }
 
-bool IsHttpRequest(const byte *buffer, size_t size) {
-	// Check the buffer starts with a valid-looking HTTP method
-	for (size_t i = 0; i < size; ++i) {
-		char c = static_cast<char>(buffer[i]);
-		if (i > 0 && c == ' ')
-			break;
-		else if (i >= 8 || c < 'A' || c > 'Z')
-			return false;
-	}
-	return true;
-}
-
-size_t parseHttpLines(const byte *buffer, size_t size, std::list<string> &lines) {
-	lines.clear();
-	auto begin = reinterpret_cast<const char *>(buffer);
-	auto end = begin + size;
-	auto cur = begin;
-	while (true) {
-		auto last = cur;
-		cur = std::find(cur, end, '\n');
-		if (cur == end)
-			return 0;
-		string line(last, cur != begin && *std::prev(cur) == '\r' ? std::prev(cur++) : cur++);
-		if (line.empty())
-			break;
-		lines.emplace_back(std::move(line));
-	}
-
-	return cur - begin;
-}
-
-std::multimap<string, string> parseHttpHeaders(const std::list<string> &lines) {
-	std::multimap<string, string> headers;
-	for (const auto &line : lines) {
-		if (size_t pos = line.find_first_of(':'); pos != string::npos) {
-			string key = line.substr(0, pos);
-			string value = "";
-			if (size_t subPos = line.find_first_not_of(' ', pos + 1); subPos != string::npos) {
-				value = line.substr(subPos);
-			}
-			std::transform(key.begin(), key.end(), key.begin(),
-			               [](char c) { return std::tolower(c); });
-			headers.emplace(std::move(key), std::move(value));
-		} else {
-			headers.emplace(line, "");
-		}
-	}
-
-	return headers;
-}
-
 namespace {
 
 void thread_set_name_self(const char *name) {
@@ -205,9 +154,9 @@ void thread_set_name_self(const char *name) {
 } // namespace
 
 namespace this_thread {
-	void set_name(const string &name) {
-		thread_set_name_self(name.c_str());
-	}
-}
+
+void set_name(const string &name) { thread_set_name_self(name.c_str()); }
+
+} // namespace this_thread
 
 } // namespace rtc::impl::utils

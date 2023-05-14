@@ -10,6 +10,7 @@
 #include "internals.hpp"
 #include "sha.hpp"
 #include "utils.hpp"
+#include "http.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -131,12 +132,12 @@ string WsHandshake::generateHttpError(int responseCode) {
 }
 
 size_t WsHandshake::parseHttpRequest(const byte *buffer, size_t size) {
-	if (!utils::IsHttpRequest(buffer, size))
+	if (!isHttpRequest(buffer, size))
 		throw RequestError("Invalid HTTP request for WebSocket", 400);
 
 	std::unique_lock lock(mMutex);
 	std::list<string> lines;
-	size_t length = utils::parseHttpLines(buffer, size, lines);
+	size_t length = parseHttpLines(buffer, size, lines);
 	if (length == 0)
 		return 0;
 
@@ -154,7 +155,7 @@ size_t WsHandshake::parseHttpRequest(const byte *buffer, size_t size) {
 
 	mPath = std::move(path);
 
-	auto headers = utils::parseHttpHeaders(lines);
+	auto headers = parseHttpHeaders(lines);
 
 	auto h = headers.find("host");
 	if (h == headers.end())
@@ -188,7 +189,7 @@ size_t WsHandshake::parseHttpRequest(const byte *buffer, size_t size) {
 size_t WsHandshake::parseHttpResponse(const byte *buffer, size_t size) {
 	std::unique_lock lock(mMutex);
 	std::list<string> lines;
-	size_t length = utils::parseHttpLines(buffer, size, lines);
+	size_t length = parseHttpLines(buffer, size, lines);
 	if (length == 0)
 		return 0;
 
@@ -205,7 +206,7 @@ size_t WsHandshake::parseHttpResponse(const byte *buffer, size_t size) {
 	if (code != 101)
 		throw std::runtime_error("Unexpected response code " + to_string(code) + " for WebSocket");
 
-	auto headers = utils::parseHttpHeaders(lines);
+	auto headers = parseHttpHeaders(lines);
 
 	auto h = headers.find("upgrade");
 	if (h == headers.end())
