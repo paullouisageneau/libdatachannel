@@ -8,6 +8,7 @@
 
 #include "pollservice.hpp"
 #include "internals.hpp"
+#include "utils.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -158,10 +159,11 @@ void PollService::process(std::vector<struct pollfd> &pfds) {
 }
 
 void PollService::runLoop() {
-	try {
-		PLOG_DEBUG << "Poll service started";
-		assert(mSocks);
+	utils::this_thread::set_name("RTC poll");
+	PLOG_DEBUG << "Poll service started";
 
+	try {
+		assert(mSocks);
 		std::vector<struct pollfd> pfds;
 		optional<clock::time_point> next;
 		while (!mStopped) {

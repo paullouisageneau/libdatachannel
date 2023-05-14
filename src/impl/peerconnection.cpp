@@ -9,7 +9,6 @@
 
 #include "peerconnection.hpp"
 #include "certificate.hpp"
-#include "common.hpp"
 #include "dtlstransport.hpp"
 #include "icetransport.hpp"
 #include "internals.hpp"
@@ -18,6 +17,7 @@
 #include "processor.hpp"
 #include "rtp.hpp"
 #include "sctptransport.hpp"
+#include "utils.hpp"
 
 #if RTC_ENABLE_MEDIA
 #include "dtlssrtptransport.hpp"
@@ -1061,6 +1061,7 @@ void PeerConnection::processRemoteCandidate(Candidate candidate) {
 		if ((iceTransport = std::atomic_load(&mIceTransport))) {
 			weak_ptr<IceTransport> weakIceTransport{iceTransport};
 			std::thread t([weakIceTransport, candidate = std::move(candidate)]() mutable {
+				utils::this_thread::set_name("RTC resolver");
 				if (candidate.resolve(Candidate::ResolveMode::Lookup))
 					if (auto iceTransport = weakIceTransport.lock())
 						iceTransport->addRemoteCandidate(std::move(candidate));

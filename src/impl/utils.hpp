@@ -70,6 +70,10 @@ template <typename Generator = std::mt19937> auto random_bytes_engine() {
 	return random_engine<char_independent_bits_engine, uint8_t>();
 }
 
+namespace this_thread {
+void set_name(const string &name);
+}
+
 } // namespace rtc::impl::utils
 
 #endif
