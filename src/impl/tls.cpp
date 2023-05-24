@@ -8,9 +8,8 @@
 
 #include "tls.hpp"
 
-#include "internals.hpp"
-
 #include <fstream>
+#include <stdexcept>
 
 #if USE_GNUTLS
 
@@ -19,10 +18,8 @@ namespace rtc::gnutls {
 bool check(int ret, const string &message) {
 	if (ret < 0) {
 		if (!gnutls_error_is_fatal(ret)) {
-			PLOG_INFO << gnutls_strerror(ret);
 			return false;
 		}
-		PLOG_ERROR << message << ": " << gnutls_strerror(ret);
 		throw std::runtime_error(message + ": " + gnutls_strerror(ret));
 	}
 	return true;
@@ -103,7 +100,6 @@ void check(int ret, const string &message) {
 		const size_t bufferSize = 1024;
 		char buffer[bufferSize];
 		mbedtls_strerror(ret, reinterpret_cast<char *>(buffer), bufferSize);
-		PLOG_ERROR << message << ": " << buffer;
 		throw std::runtime_error(message + ": " + std::string(buffer));
 	}
 }
@@ -171,7 +167,6 @@ bool check(int success, const string &message) {
 		return true;
 
 	string str = error_string(ERR_get_error());
-	PLOG_ERROR << message << ": " << str;
 	throw std::runtime_error(message + ": " + str);
 }
 
@@ -181,11 +176,9 @@ bool check(SSL *ssl, int ret, const string &message) {
 		return true;
 	}
 	if (err == SSL_ERROR_ZERO_RETURN) {
-		PLOG_DEBUG << "OpenSSL connection cleanly closed";
 		return false;
 	}
 	string str = error_string(err);
-	PLOG_ERROR << str;
 	throw std::runtime_error(message + ": " + str);
 }
 
