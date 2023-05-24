@@ -15,6 +15,7 @@
 
 namespace rtc::gnutls {
 
+// Return false on non-fatal error
 bool check(int ret, const string &message) {
 	if (ret < 0) {
 		if (!gnutls_error_is_fatal(ret)) {
@@ -95,13 +96,20 @@ size_t my_strftme(char *buf, size_t size, const char *format, const time_t *t) {
 
 namespace rtc::mbedtls {
 
-void check(int ret, const string &message) {
+// Return false on non-fatal error
+bool check(int ret, const string &message) {
 	if (ret < 0) {
+		if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE ||
+		    ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS || ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS ||
+		    ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)
+			return false;
+
 		const size_t bufferSize = 1024;
 		char buffer[bufferSize];
 		mbedtls_strerror(ret, reinterpret_cast<char *>(buffer), bufferSize);
 		throw std::runtime_error(message + ": " + std::string(buffer));
 	}
+	return true;
 }
 
 string format_time(const std::chrono::system_clock::time_point &tp) {
@@ -170,6 +178,7 @@ bool check(int success, const string &message) {
 	throw std::runtime_error(message + ": " + str);
 }
 
+// Return false on EOF
 bool check(SSL *ssl, int ret, const string &message) {
 	unsigned long err = SSL_get_error(ssl, ret);
 	if (err == SSL_ERROR_NONE || err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
