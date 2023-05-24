@@ -411,10 +411,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 
 		mbedtls::check(mbedtls_ssl_setup(&mSsl, &mConf), "Failed creating Mbed TLS Context");
 
-		size_t mtu = mMtu.value_or(DEFAULT_MTU) - 8 - 40; // UDP/IPv6
-		mbedtls_ssl_set_mtu(&mSsl, static_cast<unsigned int>(mtu));
-		PLOG_VERBOSE << "DTLS MTU set to " << mtu;
-
 		mbedtls_ssl_set_export_keys_cb(&mSsl, DtlsTransport::ExportKeysCallback, this);
 		mbedtls_ssl_set_bio(&mSsl, this, WriteCallback, ReadCallback, NULL);
 		mbedtls_ssl_set_timer_cb(&mSsl, this, SetTimerCallback, GetTimerCallback);
@@ -454,6 +450,13 @@ void DtlsTransport::start() {
 	PLOG_DEBUG << "Starting DTLS transport";
 	registerIncoming();
 	changeState(State::Connecting);
+
+	{
+		std::lock_guard lock(mSslMutex);
+		size_t mtu = mMtu.value_or(DEFAULT_MTU) - 8 - 40; // UDP/IPv6
+		mbedtls_ssl_set_mtu(&mSsl, static_cast<unsigned int>(mtu));
+		PLOG_VERBOSE << "DTLS MTU set to " << mtu;
+	}
 
 	enqueueRecv(); // to initiate the handshake
 }
@@ -542,7 +545,14 @@ void DtlsTransport::doRecv() {
 					return;
 				}
 
-				if(mbedtls::check(ret, "Handshake failed")) {
+				if (mbedtls::check(ret, "Handshake failed")) {
+					// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
+					// See https://www.rfc-editor.org/rfc/rfc8261.html#section-5
+					{
+						std::lock_guard lock(mSslMutex);
+						mbedtls_ssl_set_mtu(&mSsl, static_cast<unsigned int>(bufferSize + 1));
+					}
+
 					PLOG_INFO << "DTLS handshake finished";
 					changeState(State::Connected);
 					postHandshake();
@@ -569,8 +579,8 @@ void DtlsTransport::doRecv() {
 					break;
 				}
 
-				if(mbedtls::check(ret)) {
-					if(ret == 0) {
+				if (mbedtls::check(ret)) {
+					if (ret == 0) {
 						PLOG_DEBUG << "DTLS connection terminated";
 						break;
 					}
@@ -905,8 +915,8 @@ void DtlsTransport::doRecv() {
 					break;
 
 				if (SSL_is_init_finished(mSsl)) {
-					// RFC 8261: DTLS MUST support sending messages larger than the current path
-					// MTU See https://www.rfc-editor.org/rfc/rfc8261.html#section-5
+					// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
+					// See https://www.rfc-editor.org/rfc/rfc8261.html#section-5
 					SSL_set_mtu(mSsl, bufferSize + 1);
 
 					PLOG_INFO << "DTLS handshake finished";
