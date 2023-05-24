@@ -367,7 +367,7 @@ int DtlsTransport::TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int /* m
 
 #elif USE_MBEDTLS
 
-mbedtls_ssl_srtp_profile srtpSupportedProtectionProfiles[] = {
+const mbedtls_ssl_srtp_profile srtpSupportedProtectionProfiles[] = {
     MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80,
     MBEDTLS_TLS_SRTP_UNSET,
 };
@@ -473,16 +473,14 @@ bool DtlsTransport::send(message_ptr message) {
 
 	int ret;
 	do {
-		std::lock_guard lock(mMutex);
-		mCurrentDscp = message->dscp;
-
+		std::lock_guard lock(mSslMutex);
 		if (message->size() > size_t(mbedtls_ssl_get_max_out_record_payload(&mSsl)))
 			return false;
 
+		mCurrentDscp = message->dscp;
 		ret = mbedtls_ssl_write(&mSsl, reinterpret_cast<const unsigned char *>(message->data()),
 		                        message->size());
-	} while (ret == MBEDTLS_ERR_SSL_WANT_WRITE);
-	mbedtls::check(ret);
+	} while (!mbedtls::check(ret));
 
 	return mOutgoingResult;
 }
@@ -529,9 +527,13 @@ void DtlsTransport::doRecv() {
 		// Handle handshake if connecting
 		if (state() == State::Connecting) {
 			while (true) {
-				auto ret = mbedtls_ssl_handshake(&mSsl);
+				int ret;
+				{
+					std::lock_guard lock(mSslMutex);
+					ret = mbedtls_ssl_handshake(&mSsl);
+				}
 
-				if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
+				if (ret == MBEDTLS_ERR_SSL_WANT_READ) {
 					ThreadPool::Instance().schedule(mTimerSetAt + milliseconds(mFinMs),
 					                                [weak_this = weak_from_this()]() {
 						                                if (auto locked = weak_this.lock())
@@ -540,45 +542,41 @@ void DtlsTransport::doRecv() {
 					return;
 				}
 
-				if (ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
-				           ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS)
-					continue;
-
-				mbedtls::check(ret, "Handshake failed");
-
-				PLOG_INFO << "DTLS handshake finished";
-				changeState(State::Connected);
-				postHandshake();
-				break;
+				if(mbedtls::check(ret, "Handshake failed")) {
+					PLOG_INFO << "DTLS handshake finished";
+					changeState(State::Connected);
+					postHandshake();
+					break;
+				}
 			}
 		}
 
 		if (state() == State::Connected) {
 			while (true) {
-				mMutex.lock();
-				auto ret =
-				    mbedtls_ssl_read(&mSsl, reinterpret_cast<unsigned char *>(buffer), bufferSize);
-				mMutex.unlock();
+				int ret;
+				{
+					std::lock_guard lock(mSslMutex);
+					ret = mbedtls_ssl_read(&mSsl, reinterpret_cast<unsigned char *>(buffer),
+					                       bufferSize);
+				}
 
-				if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
+				if (ret == MBEDTLS_ERR_SSL_WANT_READ) {
 					return;
 				}
 
-				if (ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
-				           ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
-					continue;
-				}
-
-				if (ret == 0 || ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
-					// Closed
+				if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
 					PLOG_DEBUG << "DTLS connection cleanly closed";
 					break;
 				}
 
-				mbedtls::check(ret);
-
-				auto *b = reinterpret_cast<byte *>(buffer);
-				recv(make_message(b, b + ret));
+				if(mbedtls::check(ret)) {
+					if(ret == 0) {
+						PLOG_DEBUG << "DTLS connection terminated";
+						break;
+					}
+					auto *b = reinterpret_cast<byte *>(buffer);
+					recv(make_message(b, b + ret));
+				}
 			}
 		}
 	} catch (const std::exception &e) {

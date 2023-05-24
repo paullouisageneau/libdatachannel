@@ -52,7 +52,7 @@ gnutls_datum_t make_datum(char *data, size_t size);
 
 namespace rtc::mbedtls {
 
-void check(int ret, const string &message = "MbedTLS error");
+bool check(int ret, const string &message = "MbedTLS error");
 
 string format_time(const std::chrono::system_clock::time_point &tp);
 
