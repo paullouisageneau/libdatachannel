@@ -379,8 +379,14 @@ bool TlsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
-	mbedtls::check(mbedtls_ssl_write(
-	    &mSsl, reinterpret_cast<const unsigned char *>(message->data()), int(message->size())));
+	int ret;
+	do {
+		std::lock_guard lock(mSslMutex);
+		ret = mbedtls_ssl_write(&mSsl, reinterpret_cast<const unsigned char *>(message->data()),
+		                        int(message->size()));
+	} while (ret == MBEDTLS_ERR_SSL_WANT_WRITE);
+
+	mbedtls::check(ret);
 
 	return mOutgoingResult;
 }
@@ -421,7 +427,11 @@ void TlsTransport::doRecv() {
 		// Handle handshake if connecting
 		if (state() == State::Connecting) {
 			while (true) {
-				auto ret = mbedtls_ssl_handshake(&mSsl);
+				int ret;
+				{
+					std::lock_guard lock(mSslMutex);
+					ret = mbedtls_ssl_handshake(&mSsl);
+				}
 
 				if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
 					return;
@@ -443,8 +453,12 @@ void TlsTransport::doRecv() {
 
 		if (state() == State::Connected) {
 			while (true) {
-				auto ret =
-				    mbedtls_ssl_read(&mSsl, reinterpret_cast<unsigned char *>(buffer), bufferSize);
+				int ret;
+				{
+					std::lock_guard lock(mSslMutex);
+					ret = mbedtls_ssl_read(&mSsl, reinterpret_cast<unsigned char *>(buffer),
+					                       bufferSize);
+				}
 
 				if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
 					return;
