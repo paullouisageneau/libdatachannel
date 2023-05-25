@@ -489,8 +489,13 @@ bool DtlsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
-	mCurrentDscp = message->dscp;
-	int ret = SSL_write(mSsl, message->data(), int(message->size()));
+	int ret;
+	{
+		std::lock_guard lock(mSslMutex);
+		mCurrentDscp = message->dscp;
+		ret = SSL_write(mSsl, message->data(), int(message->size()));
+	}
+
 	if (!openssl::check(mSsl, ret))
 		return false;
 
@@ -529,13 +534,18 @@ void DtlsTransport::runRecvLoop() {
 	try {
 		changeState(State::Connecting);
 
-		size_t mtu = mMtu.value_or(DEFAULT_MTU) - 8 - 40; // UDP/IPv6
-		SSL_set_mtu(mSsl, static_cast<unsigned int>(mtu));
-		PLOG_VERBOSE << "SSL MTU set to " << mtu;
-
 		// Initiate the handshake
-		int ret = SSL_do_handshake(mSsl);
-		openssl::check(mSsl, ret, "Handshake failed");
+		{
+			std::lock_guard lock(mSslMutex);
+
+			size_t mtu = mMtu.value_or(DEFAULT_MTU) - 8 - 40; // UDP/IPv6
+			SSL_set_mtu(mSsl, static_cast<unsigned int>(mtu));
+			PLOG_VERBOSE << "SSL MTU set to " << mtu;
+
+			int ret = SSL_do_handshake(mSsl);
+
+			openssl::check(mSsl, ret, "Handshake failed");
+		}
 
 		byte buffer[bufferSize];
 		while (mIncomingQueue.running()) {
@@ -549,23 +559,38 @@ void DtlsTransport::runRecvLoop() {
 
 				if (state() == State::Connecting) {
 					// Continue the handshake
-					ret = SSL_do_handshake(mSsl);
-					if (!openssl::check(mSsl, ret, "Handshake failed"))
-						break;
+					bool finished;
+					{
+						std::lock_guard lock(mSslMutex);
+						int ret = SSL_do_handshake(mSsl);
 
-					if (SSL_is_init_finished(mSsl)) {
+						if (!openssl::check(mSsl, ret, "Handshake failed"))
+							break;
+
+						finished = (SSL_is_init_finished(mSsl) != 0);
+					}
+
+					if (finished) {
 						// RFC 8261: DTLS MUST support sending messages larger than the current path
 						// MTU See https://www.rfc-editor.org/rfc/rfc8261.html#section-5
-						SSL_set_mtu(mSsl, bufferSize + 1);
+						{
+							std::lock_guard lock(mSslMutex);
+							SSL_set_mtu(mSsl, bufferSize + 1);
+						}
 
 						PLOG_INFO << "DTLS handshake finished";
 						postHandshake();
 						changeState(State::Connected);
 					}
 				} else {
-					ret = SSL_read(mSsl, buffer, bufferSize);
-					if (!openssl::check(mSsl, ret))
-						break;
+					int ret;
+					{
+						std::lock_guard lock(mSslMutex);
+						ret = SSL_read(mSsl, buffer, bufferSize);
+
+						if (!openssl::check(mSsl, ret))
+							break;
+					}
 
 					if (ret > 0)
 						recv(make_message(buffer, buffer + ret));
@@ -575,8 +600,9 @@ void DtlsTransport::runRecvLoop() {
 			// No more messages pending, retransmit and rearm timeout if connecting
 			optional<milliseconds> duration;
 			if (state() == State::Connecting) {
+				std::lock_guard lock(mSslMutex);
 				// Warning: This function breaks the usual return value convention
-				ret = DTLSv1_handle_timeout(mSsl);
+				int ret = DTLSv1_handle_timeout(mSsl);
 				if (ret < 0) {
 					throw std::runtime_error("Handshake timeout"); // write BIO can't fail
 				} else if (ret > 0) {

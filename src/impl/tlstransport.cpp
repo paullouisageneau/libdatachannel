@@ -403,15 +403,12 @@ bool TlsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
+	std::lock_guard lock(mSslMutex);
 	int ret = SSL_write(mSsl, message->data(), int(message->size()));
+	bool result = flushOutput();
+
 	if (!openssl::check(mSsl, ret))
 		throw std::runtime_error("TLS send failed");
-
-	const size_t bufferSize = 4096;
-	byte buffer[bufferSize];
-	bool result = true;
-	while ((ret = BIO_read(mOutBio, buffer, bufferSize)) > 0)
-		result = outgoing(make_message(buffer, buffer + ret));
 
 	return result;
 }
@@ -439,19 +436,22 @@ void TlsTransport::runRecvLoop() {
 	try {
 		changeState(State::Connecting);
 
-		int ret;
 		while (true) {
 			if (state() == State::Connecting) {
 				// Initiate or continue the handshake
-				ret = SSL_do_handshake(mSsl);
-				if (!openssl::check(mSsl, ret, "Handshake failed"))
-					break;
+				bool finished;
+				{
+					std::lock_guard lock(mSslMutex);
+					int ret = SSL_do_handshake(mSsl);
+					flushOutput();
 
-				// Output
-				while ((ret = BIO_read(mOutBio, buffer, bufferSize)) > 0)
-					outgoing(make_message(buffer, buffer + ret));
+					if (!openssl::check(mSsl, ret, "Handshake failed"))
+						break;
 
-				if (SSL_is_init_finished(mSsl)) {
+					finished = (SSL_is_init_finished(mSsl) != 0);
+				}
+
+				if (finished) {
 					PLOG_INFO << "TLS handshake finished";
 					changeState(State::Connected);
 					postHandshake();
@@ -459,12 +459,20 @@ void TlsTransport::runRecvLoop() {
 			}
 
 			if (state() == State::Connected) {
-				// Input
-				while ((ret = SSL_read(mSsl, buffer, bufferSize)) > 0)
-					recv(make_message(buffer, buffer + ret));
+				int ret;
+				{
+					std::lock_guard lock(mSslMutex);
+					ret = SSL_read(mSsl, buffer, bufferSize);
+					flushOutput(); // SSL_read() can also cause write operations
 
-				if (!openssl::check(mSsl, ret))
-					break;
+					if (!openssl::check(mSsl, ret))
+						break;
+				}
+
+				if (ret > 0) {
+					recv(make_message(buffer, buffer + ret));
+					continue;
+				}
 			}
 
 			auto next = mIncomingQueue.pop();
@@ -490,6 +498,18 @@ void TlsTransport::runRecvLoop() {
 		PLOG_ERROR << "TLS handshake failed";
 		changeState(State::Failed);
 	}
+}
+
+bool TlsTransport::flushOutput() {
+	// Requires mSslMutex to be locked
+	bool result = true;
+	const size_t bufferSize = 4096;
+	byte buffer[bufferSize];
+	int len;
+	while ((len = BIO_read(mOutBio, buffer, bufferSize)) > 0)
+		result = outgoing(make_message(buffer, buffer + len));
+
+	return result;
 }
 
 void TlsTransport::InfoCallback(const SSL *ssl, int where, int ret) {

@@ -67,11 +67,13 @@ protected:
 	SSL_CTX *mCtx;
 	SSL *mSsl;
 	BIO *mInBio, *mOutBio;
+	std::mutex mSslMutex;
+
+	bool flushOutput();
 
 	static int TransportExIndex;
-
-	static int CertificateCallback(int preverify_ok, X509_STORE_CTX *ctx);
 	static void InfoCallback(const SSL *ssl, int where, int ret);
+
 #endif
 };
 
