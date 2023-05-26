@@ -130,12 +130,20 @@ void RtpExtensionHeader::setHeaderLength(uint16_t headerLength) {
 
 void RtpExtensionHeader::clearBody() { std::memset(getBody(), 0, getSize()); }
 
-void RtpExtensionHeader::writeCurrentVideoOrientation(size_t offset, uint8_t id, uint8_t value) {
-	if ((id == 0) || (id > 14) || ((offset + 2) > getSize()))
+void RtpExtensionHeader::writeOneByteHeader(size_t offset, uint8_t id, const byte *value, size_t size) {
+	if ((id == 0) || (id > 14) || (size == 0) || (size > 16) || ((offset + 1 + size) > getSize()))
 		return;
 	auto buf = getBody() + offset;
 	buf[0] = id << 4;
-	buf[1] = value;
+	if (size != 1) {
+		buf[0] |= (uint8_t(size) - 1);
+	}
+	std::memcpy(buf + 1, value, size);
+}
+
+void RtpExtensionHeader::writeCurrentVideoOrientation(size_t offset, const uint8_t id, uint8_t value) {
+	auto v = std::byte{value};
+	writeOneByteHeader(offset, id, &v, 1);
 }
 
 SSRC RtcpReportBlock::getSSRC() const { return ntohl(_ssrc); }

@@ -91,6 +91,7 @@ public:
 		std::vector<string> attributes() const;
 		void addAttribute(string attr);
 		void removeAttribute(const string &attr);
+		void addRid(string rid);
 
 		struct RTC_CPP_EXPORT ExtMap {
 			static int parseId(string_view description);
@@ -119,6 +120,7 @@ public:
 
 	protected:
 		Entry(const string &mline, string mid, Direction dir = Direction::Unknown);
+
 		virtual string generateSdpLines(string_view eol) const;
 
 		std::vector<string> mAttributes;
@@ -128,6 +130,7 @@ public:
 		string mType;
 		string mDescription;
 		string mMid;
+		std::vector<string> mRids;
 		Direction mDirection;
 		bool mIsRemoved;
 	};

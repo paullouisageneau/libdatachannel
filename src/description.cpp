@@ -532,6 +532,10 @@ void Description::addAttribute(string attr) {
 		mAttributes.emplace_back(std::move(attr));
 }
 
+void Description::Entry::addRid(string rid) {
+	mRids.emplace_back(rid);
+}
+
 void Description::removeAttribute(const string &attr) {
 	mAttributes.erase(
 	    std::remove_if(mAttributes.begin(), mAttributes.end(),
@@ -597,8 +601,34 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 	if (mDirection != Direction::Unknown)
 		sdp << "a=" << mDirection << eol;
 
-	for (const auto &attr : mAttributes)
+	for (const auto &attr : mAttributes) {
+		if (mRids.size() != 0 && match_prefix(attr, "ssrc:")) {
+			continue;
+		}
+
 		sdp << "a=" << attr << eol;
+	}
+
+	for (const auto &rid : mRids) {
+		sdp << "a=rid:" << rid << " send" << eol;
+	}
+
+	if (mRids.size() != 0) {
+		sdp << "a=simulcast:send ";
+
+		bool first = true;
+		for (const auto &rid : mRids) {
+			if (first) {
+				first = false;
+			} else {
+				sdp << ";";
+			}
+
+			sdp << rid;
+		}
+
+		sdp << eol;
+	}
 
 	return sdp.str();
 }
@@ -695,9 +725,12 @@ void Description::Media::addSSRC(uint32_t ssrc, optional<string> name, optional<
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc));
 	}
 
-	if (msid)
+	if (msid) {
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " msid:" + *msid + " " +
 		                         trackId.value_or(*msid));
+		mAttributes.emplace_back("msid:" + *msid + " " +
+				trackId.value_or(*msid));
+	}
 
 	mSsrcs.emplace_back(ssrc);
 }
