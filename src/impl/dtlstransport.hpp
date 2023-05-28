@@ -73,6 +73,7 @@ protected:
 	SSL_CTX *mCtx = NULL;
 	SSL *mSsl = NULL;
 	BIO *mInBio, *mOutBio;
+	std::mutex mSslMutex;
 
 	static BIO_METHOD *BioMethods;
 	static int TransportExIndex;
