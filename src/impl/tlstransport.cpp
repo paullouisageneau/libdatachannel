@@ -405,12 +405,10 @@ bool TlsTransport::send(message_ptr message) {
 
 	std::lock_guard lock(mSslMutex);
 	int ret = SSL_write(mSsl, message->data(), int(message->size()));
-	bool result = flushOutput();
-
 	if (!openssl::check(mSsl, ret))
 		throw std::runtime_error("TLS send failed");
 
-	return result;
+	return flushOutput();
 }
 
 void TlsTransport::incoming(message_ptr message) {
@@ -443,11 +441,10 @@ void TlsTransport::runRecvLoop() {
 				{
 					std::lock_guard lock(mSslMutex);
 					int ret = SSL_do_handshake(mSsl);
-					flushOutput();
-
 					if (!openssl::check(mSsl, ret, "Handshake failed"))
 						break;
 
+					flushOutput();
 					finished = (SSL_is_init_finished(mSsl) != 0);
 				}
 
@@ -463,10 +460,10 @@ void TlsTransport::runRecvLoop() {
 				{
 					std::lock_guard lock(mSslMutex);
 					ret = SSL_read(mSsl, buffer, bufferSize);
-					flushOutput(); // SSL_read() can also cause write operations
-
 					if (!openssl::check(mSsl, ret))
 						break;
+
+					flushOutput(); // SSL_read() can also cause write operations
 				}
 
 				if (ret > 0) {

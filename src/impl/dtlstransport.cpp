@@ -489,15 +489,14 @@ bool DtlsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
-	int ret;
 	{
 		std::lock_guard lock(mSslMutex);
 		mCurrentDscp = message->dscp;
-		ret = SSL_write(mSsl, message->data(), int(message->size()));
-	}
+		int ret = SSL_write(mSsl, message->data(), int(message->size()));
 
-	if (!openssl::check(mSsl, ret))
-		return false;
+		if (!openssl::check(mSsl, ret))
+			return false;
+	}
 
 	return mOutgoingResult;
 }
