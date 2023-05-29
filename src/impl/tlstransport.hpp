@@ -85,20 +85,13 @@ protected:
 	SSL_CTX *mCtx;
 	SSL *mSsl;
 	BIO *mInBio, *mOutBio;
+	std::mutex mSslMutex;
 
 	bool flushOutput();
 
-	static BIO_METHOD *BioMethods;
 	static int TransportExIndex;
-	static std::mutex GlobalMutex;
 
-	static int CertificateCallback(int preverify_ok, X509_STORE_CTX *ctx);
 	static void InfoCallback(const SSL *ssl, int where, int ret);
-
-	static int BioMethodNew(BIO *bio);
-	static int BioMethodFree(BIO *bio);
-	static int BioMethodWrite(BIO *bio, const char *in, int inl);
-	static long BioMethodCtrl(BIO *bio, int cmd, long num, void *ptr);
 #endif
 };
 

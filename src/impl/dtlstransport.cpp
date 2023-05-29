@@ -819,13 +819,18 @@ void DtlsTransport::start() {
 	registerIncoming();
 	changeState(State::Connecting);
 
-	size_t mtu = mMtu.value_or(DEFAULT_MTU) - 8 - 40; // UDP/IPv6
-	SSL_set_mtu(mSsl, static_cast<unsigned int>(mtu));
-	PLOG_VERBOSE << "DTLS MTU set to " << mtu;
+	{
+		std::lock_guard lock(mSslMutex);
 
-	// Initiate the handshake
-	int ret = SSL_do_handshake(mSsl);
-	openssl::check(mSsl, ret, "Handshake initiation failed");
+		size_t mtu = mMtu.value_or(DEFAULT_MTU) - 8 - 40; // UDP/IPv6
+		SSL_set_mtu(mSsl, static_cast<unsigned int>(mtu));
+		PLOG_VERBOSE << "DTLS MTU set to " << mtu;
+
+		// Initiate the handshake
+		int ret = SSL_do_handshake(mSsl);
+
+		openssl::check(mSsl, ret, "Handshake initiation failed");
+	}
 
 	handleTimeout();
 }
@@ -843,8 +848,10 @@ bool DtlsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
+	std::lock_guard lock(mSslMutex);
 	mCurrentDscp = message->dscp;
 	int ret = SSL_write(mSsl, message->data(), int(message->size()));
+
 	if (!openssl::check(mSsl, ret))
 		return false;
 
@@ -910,23 +917,39 @@ void DtlsTransport::doRecv() {
 
 			if (state() == State::Connecting) {
 				// Continue the handshake
-				int ret = SSL_do_handshake(mSsl);
-				if (!openssl::check(mSsl, ret, "Handshake failed"))
-					break;
+				bool finished;
+				{
+					std::lock_guard lock(mSslMutex);
+					int ret = SSL_do_handshake(mSsl);
 
-				if (SSL_is_init_finished(mSsl)) {
+					if (!openssl::check(mSsl, ret, "Handshake failed"))
+						break;
+
+					finished = (SSL_is_init_finished(mSsl) != 0);
+				}
+				if (finished) {
 					// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
 					// See https://www.rfc-editor.org/rfc/rfc8261.html#section-5
-					SSL_set_mtu(mSsl, bufferSize + 1);
+					{
+						std::lock_guard lock(mSslMutex);
+						SSL_set_mtu(mSsl, bufferSize + 1);
+					}
 
 					PLOG_INFO << "DTLS handshake finished";
 					postHandshake();
 					changeState(State::Connected);
 				}
-			} else {
-				int ret = SSL_read(mSsl, buffer, bufferSize);
-				if (!openssl::check(mSsl, ret))
-					break;
+			}
+
+			if (state() == State::Connected) {
+				int ret;
+				{
+					std::lock_guard lock(mSslMutex);
+					ret = SSL_read(mSsl, buffer, bufferSize);
+
+					if (!openssl::check(mSsl, ret))
+						break;
+				}
 
 				if (ret > 0)
 					recv(make_message(buffer, buffer + ret));
@@ -937,8 +960,6 @@ void DtlsTransport::doRecv() {
 		PLOG_ERROR << "DTLS recv: " << e.what();
 	}
 
-	SSL_shutdown(mSsl);
-
 	if (state() == State::Connected) {
 		PLOG_INFO << "DTLS closed";
 		changeState(State::Disconnected);
@@ -947,9 +968,16 @@ void DtlsTransport::doRecv() {
 		PLOG_ERROR << "DTLS handshake failed";
 		changeState(State::Failed);
 	}
+
+	{
+		std::lock_guard lock(mSslMutex);
+		SSL_shutdown(mSsl);
+	}
 }
 
 void DtlsTransport::handleTimeout() {
+	std::lock_guard lock(mSslMutex);
+
 	// Warning: This function breaks the usual return value convention
 	int ret = DTLSv1_handle_timeout(mSsl);
 	if (ret < 0) {

@@ -99,6 +99,7 @@ protected:
 	SSL_CTX *mCtx = NULL;
 	SSL *mSsl = NULL;
 	BIO *mInBio, *mOutBio;
+	std::mutex mSslMutex;
 
 	void handleTimeout();
 
