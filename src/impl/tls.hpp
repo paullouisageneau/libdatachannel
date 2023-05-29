@@ -85,7 +85,7 @@ void init();
 string error_string(unsigned long error);
 
 bool check(int success, const string &message = "OpenSSL error");
-bool check(SSL *ssl, int ret, const string &message = "OpenSSL error");
+bool check_error(int err, const string &message = "OpenSSL error");
 
 BIO *BIO_new_from_file(const string &filename);
 

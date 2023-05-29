@@ -819,6 +819,7 @@ void DtlsTransport::start() {
 	registerIncoming();
 	changeState(State::Connecting);
 
+	int ret, err;
 	{
 		std::lock_guard lock(mSslMutex);
 
@@ -827,10 +828,11 @@ void DtlsTransport::start() {
 		PLOG_VERBOSE << "DTLS MTU set to " << mtu;
 
 		// Initiate the handshake
-		int ret = SSL_do_handshake(mSsl);
-
-		openssl::check(mSsl, ret, "Handshake initiation failed");
+		ret = SSL_do_handshake(mSsl);
+		err = SSL_get_error(mSsl, ret);
 	}
+
+	openssl::check_error(err, "Handshake failed");
 
 	handleTimeout();
 }
@@ -848,11 +850,15 @@ bool DtlsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
-	std::lock_guard lock(mSslMutex);
-	mCurrentDscp = message->dscp;
-	int ret = SSL_write(mSsl, message->data(), int(message->size()));
+	int ret, err;
+	{
+		std::lock_guard lock(mSslMutex);
+		mCurrentDscp = message->dscp;
+		ret = SSL_write(mSsl, message->data(), int(message->size()));
+		err = SSL_get_error(mSsl, ret);
+	}
 
-	if (!openssl::check(mSsl, ret))
+	if (!openssl::check_error(err))
 		return false;
 
 	return mOutgoingResult;
@@ -917,17 +923,14 @@ void DtlsTransport::doRecv() {
 
 			if (state() == State::Connecting) {
 				// Continue the handshake
-				bool finished;
+				int ret, err;
 				{
 					std::lock_guard lock(mSslMutex);
-					int ret = SSL_do_handshake(mSsl);
-
-					if (!openssl::check(mSsl, ret, "Handshake failed"))
-						break;
-
-					finished = (SSL_is_init_finished(mSsl) != 0);
+					ret = SSL_do_handshake(mSsl);
+					err = SSL_get_error(mSsl, ret);
 				}
-				if (finished) {
+
+				if (openssl::check_error(err, "Handshake failed")) {
 					// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
 					// See https://www.rfc-editor.org/rfc/rfc8261.html#section-5
 					{
@@ -942,16 +945,19 @@ void DtlsTransport::doRecv() {
 			}
 
 			if (state() == State::Connected) {
-				int ret;
+				int ret, err;
 				{
 					std::lock_guard lock(mSslMutex);
 					ret = SSL_read(mSsl, buffer, bufferSize);
-
-					if (!openssl::check(mSsl, ret))
-						break;
+					err = SSL_get_error(mSsl, ret);
 				}
 
-				if (ret > 0)
+				if (err == SSL_ERROR_ZERO_RETURN) {
+					PLOG_DEBUG << "TLS connection cleanly closed";
+					break;
+				}
+
+				if (openssl::check_error(err))
 					recv(make_message(buffer, buffer + ret));
 			}
 		}
