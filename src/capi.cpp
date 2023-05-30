@@ -309,7 +309,7 @@ public:
 			return msg;
 		}
 
-		auto res = incomingCallback(reinterpret_cast<void *>(msg->data()), msg->size());
+		auto res = incomingCallback(reinterpret_cast<void *>(msg->data()), int(msg->size()));
 
 		// If a null pointer was returned, drop the incoming message
 		if (res == nullptr) {
