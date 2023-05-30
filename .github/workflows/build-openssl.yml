@@ -45,7 +45,7 @@ jobs:
     - name: submodules
       run: git submodule update --init --recursive --depth 1
     - name: cmake
-      run: cmake -B build -G "NMake Makefiles" -DUSE_GNUTLS=0 -WARNINGS_AS_ERRORS=1
+      run: cmake -B build -G "NMake Makefiles" -DUSE_GNUTLS=0 -DWARNINGS_AS_ERRORS=1
     - name: nmake
       run: |
         cd build
