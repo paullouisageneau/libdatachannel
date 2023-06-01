@@ -174,6 +174,7 @@ Features:
 - Unity bindings for Windows 10 and Hololens: [datachannel-unity](https://github.com/hanseuljun/datachannel-unity)
 - WebAssembly wrapper compatible with libdatachannel: [datachannel-wasm](https://github.com/paullouisageneau/datachannel-wasm)
 - Lightweight STUN/TURN server: [Violet](https://github.com/paullouisageneau/violet)
+- Native platform (Android/iOS/macOS) wrapper for libdatachannel: [datachannel-native](https://github.com/swarm-cloud/datachannel-native)
 
 ## Thanks
 
