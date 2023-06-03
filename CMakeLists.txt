@@ -34,11 +34,15 @@ else()
 
 	if(NOT USE_SYSTEM_SRTP)
 		if (USE_MBEDTLS)
-			option(ENABLE_MBEDTLS "Enable Mbed TLS crypto engine for SRTP" ON)
+			option(ENABLE_MBEDTLS "Enable Mbed TLS crypto engine for libSRTP" ON)
 		else()
-			option(ENABLE_OPENSSL "Enable OpenSSL crypto engine for SRTP" ON)
+			option(ENABLE_OPENSSL "Enable OpenSSL crypto engine for libSRTP" ON)
 		endif()
 	endif()
+endif()
+
+if(NOT WARNINGS_AS_ERRORS AND NOT USE_SYSTEM_SRTP)
+	option(BUILD_WITH_WARNINGS "Add warning as error flags for libSRTP" OFF)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
