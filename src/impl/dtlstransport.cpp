@@ -400,6 +400,8 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		               "Failed creating Mbed TLS Context");
 
 		mbedtls_ssl_conf_authmode(&mConf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+		mbedtls_ssl_conf_verify(&mConf, DtlsTransport::CertificateCallback, this);
+
 		mbedtls_ssl_conf_rng(&mConf, mbedtls_ctr_drbg_random, &mDrbg);
 
 		auto [crt, pk] = mCertificate->credentials();
@@ -601,6 +603,13 @@ void DtlsTransport::doRecv() {
 		PLOG_ERROR << "DTLS handshake failed";
 		changeState(State::Failed);
 	}
+}
+
+int DtlsTransport::CertificateCallback(void *ctx, mbedtls_x509_crt *crt, int /*depth*/, uint32_t */*flags*/) {
+	auto this_ = static_cast<DtlsTransport *>(ctx);
+	string fingerprint = make_fingerprint(crt);
+	std::transform(fingerprint.begin(), fingerprint.end(), fingerprint.begin(), [](char c) { return char(std::toupper(c)); });
+	return this_->mVerifierCallback(fingerprint) ? 0 : 1;
 }
 
 void DtlsTransport::ExportKeysCallback(void *ctx, mbedtls_ssl_key_export_type /*type*/,

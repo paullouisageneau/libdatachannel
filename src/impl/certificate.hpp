@@ -60,7 +60,7 @@ private:
 string make_fingerprint(gnutls_certificate_credentials_t credentials);
 string make_fingerprint(gnutls_x509_crt_t crt);
 #elif USE_MBEDTLS
-string make_fingerprint(shared_ptr<mbedtls_x509_crt> crt);
+string make_fingerprint(mbedtls_x509_crt* crt);
 #else
 string make_fingerprint(X509 *x509);
 #endif
