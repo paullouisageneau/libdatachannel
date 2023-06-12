@@ -391,7 +391,6 @@ void TlsTransport::stop() {
 	unregisterIncoming();
 	mIncomingQueue.stop();
 	mRecvThread.join();
-	SSL_shutdown(mSsl);
 }
 
 bool TlsTransport::send(message_ptr message) {
@@ -482,6 +481,9 @@ void TlsTransport::runRecvLoop() {
 			else
 				recv(message); // Pass zero-sized messages through
 		}
+
+		std::lock_guard lock(mSslMutex);
+		SSL_shutdown(mSsl);
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "TLS recv: " << e.what();

@@ -479,7 +479,6 @@ void DtlsTransport::stop() {
 	unregisterIncoming();
 	mIncomingQueue.stop();
 	mRecvThread.join();
-	SSL_shutdown(mSsl);
 }
 
 bool DtlsTransport::send(message_ptr message) {
@@ -624,6 +623,10 @@ void DtlsTransport::runRecvLoop() {
 
 			mIncomingQueue.wait(duration);
 		}
+
+		std::lock_guard lock(mSslMutex);
+		SSL_shutdown(mSsl);
+
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "DTLS recv: " << e.what();
 	}
