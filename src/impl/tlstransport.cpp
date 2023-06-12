@@ -325,7 +325,7 @@ TlsTransport::TlsTransport(shared_ptr<TcpTransport> lower, optional<string> host
 		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3 | SSL_OP_NO_RENEGOTIATION);
 		SSL_CTX_set_min_proto_version(mCtx, TLS1_VERSION);
 		SSL_CTX_set_read_ahead(mCtx, 1);
-		SSL_CTX_set_quiet_shutdown(mCtx, 1);
+		SSL_CTX_set_quiet_shutdown(mCtx, 0); // send the close_notify alert
 		SSL_CTX_set_info_callback(mCtx, InfoCallback);
 		SSL_CTX_set_verify(mCtx, SSL_VERIFY_NONE, NULL);
 
