@@ -24,7 +24,7 @@ Track::Track(weak_ptr<PeerConnection> pc, Description::Media description)
       mRecvQueue(RECV_QUEUE_LIMIT, [](const message_ptr &m) { return m->size(); }) {
 
 	// Discard messages by default if track is send only
-	if(mMediaDescription.direction() == Description::Direction::SendOnly)
+	if (mMediaDescription.direction() == Description::Direction::SendOnly)
 		messageCallback = [](message_variant) {};
 }
 
@@ -201,11 +201,12 @@ bool Track::transportSend([[maybe_unused]] message_ptr message) {
 }
 
 void Track::setMediaHandler(shared_ptr<MediaHandler> handler) {
+	auto currentHandler = getMediaHandler();
+	if (currentHandler)
+		currentHandler->onOutgoing(nullptr);
+
 	{
 		std::unique_lock lock(mMutex);
-		if (mMediaHandler)
-			mMediaHandler->onOutgoing(nullptr);
-
 		mMediaHandler = handler;
 	}
 
