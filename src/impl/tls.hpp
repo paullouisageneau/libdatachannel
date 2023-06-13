@@ -64,7 +64,7 @@ gnutls_datum_t make_datum(char *data, size_t size);
 namespace rtc::openssl {
 
 void init();
-string error_string(unsigned long err);
+string error_string(unsigned long error);
 
 bool check(int success, const string &message = "OpenSSL error");
 bool check(SSL *ssl, int ret, const string &message = "OpenSSL error");
