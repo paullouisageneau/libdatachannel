@@ -163,32 +163,48 @@ void init() {
 	}
 }
 
-string error_string(unsigned long err) {
+string error_string(unsigned long error) {
 	const size_t bufferSize = 256;
 	char buffer[bufferSize];
-	ERR_error_string_n(err, buffer, bufferSize);
+	ERR_error_string_n(error, buffer, bufferSize);
 	return string(buffer);
 }
 
 bool check(int success, const string &message) {
-	if (success)
+	unsigned long last_error = ERR_peek_last_error();
+	ERR_clear_error();
+
+	if (success > 0)
 		return true;
 
-	string str = error_string(ERR_get_error());
-	throw std::runtime_error(message + ": " + str);
+	string str = message;
+	if (last_error != 0)
+		str += ": " + error_string(last_error);
+
+	throw std::runtime_error(str);
 }
 
 // Return false on EOF
 bool check(SSL *ssl, int ret, const string &message) {
-	unsigned long err = SSL_get_error(ssl, ret);
+	unsigned long last_error = ERR_peek_last_error();
+	ERR_clear_error();
+
+	int err = SSL_get_error(ssl, ret);
 	if (err == SSL_ERROR_NONE || err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
 		return true;
 	}
 	if (err == SSL_ERROR_ZERO_RETURN) {
 		return false;
 	}
-	string str = error_string(err);
-	throw std::runtime_error(message + ": " + str);
+
+	string str = message;
+	if (err == SSL_ERROR_SYSCALL) {
+		str += ": fatal I/O error";
+	} else if (err == SSL_ERROR_SSL) {
+		if (last_error != 0)
+			str += ": " + error_string(last_error);
+	}
+	throw std::runtime_error(str);
 }
 
 BIO *BIO_new_from_file(const string &filename) {

@@ -738,7 +738,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 
 		SSL_CTX_set_min_proto_version(mCtx, DTLS1_VERSION);
 		SSL_CTX_set_read_ahead(mCtx, 1);
-		SSL_CTX_set_quiet_shutdown(mCtx, 0); // sent the dtls close_notify alert
+		SSL_CTX_set_quiet_shutdown(mCtx, 0); // send the close_notify alert
 		SSL_CTX_set_info_callback(mCtx, InfoCallback);
 
 		SSL_CTX_set_verify(mCtx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
@@ -956,6 +956,9 @@ void DtlsTransport::doRecv() {
 			}
 		}
 
+		std::lock_guard lock(mSslMutex);
+		SSL_shutdown(mSsl);
+
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "DTLS recv: " << e.what();
 	}
@@ -967,11 +970,6 @@ void DtlsTransport::doRecv() {
 	} else {
 		PLOG_ERROR << "DTLS handshake failed";
 		changeState(State::Failed);
-	}
-
-	{
-		std::lock_guard lock(mSslMutex);
-		SSL_shutdown(mSsl);
 	}
 }
 
