@@ -148,7 +148,7 @@ string make_fingerprint(gnutls_x509_crt_t crt) {
 }
 
 #elif USE_MBEDTLS
-string make_fingerprint(shared_ptr<mbedtls_x509_crt> crt) {
+string make_fingerprint(mbedtls_x509_crt* crt) {
 	const int size = 32;
 	uint8_t buffer[size];
 	std::stringstream fingerprint;
@@ -168,7 +168,7 @@ string make_fingerprint(shared_ptr<mbedtls_x509_crt> crt) {
 }
 
 Certificate::Certificate(shared_ptr<mbedtls_x509_crt> crt, shared_ptr<mbedtls_pk_context> pk)
-    : mCrt(crt), mPk(pk), mFingerprint(make_fingerprint(crt)) {}
+    : mCrt(crt), mPk(pk), mFingerprint(make_fingerprint(crt.get())) {}
 
 Certificate Certificate::FromString(string crt_pem, string key_pem) {
 	PLOG_DEBUG << "Importing certificate from PEM string (MbedTLS)";

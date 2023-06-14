@@ -21,7 +21,7 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-void test_connectivity() {
+void test_connectivity(bool signal_wrong_fingerprint) {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
@@ -47,8 +47,17 @@ void test_connectivity() {
 
 	PeerConnection pc2(config2);
 
-	pc1.onLocalDescription([&pc2](Description sdp) {
+	pc1.onLocalDescription([&pc2, signal_wrong_fingerprint](Description sdp) {
 		cout << "Description 1: " << sdp << endl;
+		if (signal_wrong_fingerprint) {
+			auto f = sdp.fingerprint();
+			if (f.has_value()) {
+				auto s = f.value();
+				auto& c = s[0];
+				if (c == 'F' || c == 'f') c = '0'; else c++;
+				sdp.setFingerprint(s);
+			}
+		}
 		pc2.setRemoteDescription(string(sdp));
 	});
 

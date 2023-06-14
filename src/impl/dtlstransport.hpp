@@ -85,6 +85,7 @@ protected:
 	char mRandBytes[64];
 	mbedtls_tls_prf_types mTlsProfile = MBEDTLS_SSL_TLS_PRF_NONE;
 
+	static int CertificateCallback(void *ctx, mbedtls_x509_crt *crt, int depth, uint32_t *flags);
 	static int WriteCallback(void *ctx, const unsigned char *buf, size_t len);
 	static int ReadCallback(void *ctx, unsigned char *buf, size_t len);
 	static void ExportKeysCallback(void *ctx, mbedtls_ssl_key_export_type type,
