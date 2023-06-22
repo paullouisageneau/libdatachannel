@@ -253,14 +253,21 @@ RTC_C_EXPORT int rtcGetDataChannelReliability(int dc, rtcReliability *reliabilit
 // Track
 
 typedef struct {
+	int id;
+	char *uri;
+} rtcExtMapInit;
+
+typedef struct {
 	rtcDirection direction;
 	rtcCodec codec;
 	int payloadType;
 	uint32_t ssrc;
 	const char *mid;
-	const char *name;    // optional
-	const char *msid;    // optional
-	const char *trackId; // optional, track ID used in MSID
+	const char *name;             // optional
+	const char *msid;             // optional
+	const char *trackId;          // optional, track ID used in MSID
+	const rtcExtMapInit **extMaps; // optional
+	const char **rids;             // optional
 } rtcTrackInit;
 
 RTC_C_EXPORT int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb);

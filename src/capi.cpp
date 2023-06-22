@@ -1075,6 +1075,18 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 		             init->msid ? std::make_optional(string(init->msid)) : nullopt,
 		             init->trackId ? std::make_optional(string(init->trackId)) : nullopt);
 
+		auto currentRid = init->rids;
+		while (*currentRid != NULL) {
+			desc.addRid(*currentRid);
+			currentRid++;
+		}
+
+		auto currentExtMap = init->extMaps;
+		while (*currentExtMap != NULL) {
+			desc.addExtMap(rtc::Description::Entry::ExtMap((*currentExtMap)->id, (*currentExtMap)->uri));
+			currentExtMap++;
+		}
+
 		int tr = emplaceTrack(peerConnection->addTrack(std::move(desc)));
 
 		if (auto ptr = getUserPointer(pc))
