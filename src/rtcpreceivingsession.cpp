@@ -119,7 +119,7 @@ bool RtcpReceivingSession::send(message_ptr msg) {
 }
 
 bool RtcpReceivingSession::requestKeyframe() {
-	pushPLI(); 
+	pushPLI();
 	return true;
 }
 
