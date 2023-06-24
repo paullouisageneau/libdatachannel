@@ -45,9 +45,12 @@ void Track::setMediaHandler(shared_ptr<MediaHandler> handler) {
 }
 
 bool Track::requestKeyframe() {
-	if (auto handler = impl()->getMediaHandler())
-		return handler->requestKeyframe();
-
+	// only push PLI for video
+	if (description().type() == "video") {
+		if (auto handler = impl()->getMediaHandler()) {
+			return handler->requestKeyframe();
+		}
+	}
 	return false;
 }
 
