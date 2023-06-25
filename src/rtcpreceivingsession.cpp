@@ -120,7 +120,7 @@ bool RtcpReceivingSession::send(message_ptr msg) {
 
 bool RtcpReceivingSession::requestKeyframe() {
 	pushPLI();
-	return true; // TODO Make this false when it is impossible (i.e. Opus).
+	return true;
 }
 
 void RtcpReceivingSession::pushPLI() {

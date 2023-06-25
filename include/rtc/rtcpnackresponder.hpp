@@ -44,7 +44,7 @@ class RTC_CPP_EXPORT RtcpNackResponder final : public MediaHandlerElement {
 		/// Maximum storage size
 		const unsigned maximumSize;
 
-		/// Returnst current size
+		/// Returns current size
 		unsigned size();
 
 	public:
