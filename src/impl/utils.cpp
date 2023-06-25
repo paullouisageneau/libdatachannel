@@ -18,6 +18,11 @@
 #include <sstream>
 #include <thread>
 
+#if defined(_WIN32)
+#include <Windows.h>
+
+typedef HRESULT(WINAPI *pfnSetThreadDescription)(HANDLE, PCWSTR);
+#endif
 #if defined(__linux__)
 #include <sys/prctl.h> // for prctl(PR_SET_NAME)
 #endif
@@ -139,7 +144,23 @@ namespace {
 
 void thread_set_name_self(const char *name) {
 #if defined(_WIN32)
-	(void)name;
+	int name_length = (int)strlen(name);
+	int wname_length =
+	    MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, name, name_length, nullptr, 0);
+	if (wname_length > 0) {
+		std::wstring wname(wname_length, L'\0');
+		wname_length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, name, name_length,
+		                                   &wname[0], wname_length + 1);
+
+		HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
+		if (kernel32 != nullptr) {
+			auto pSetThreadDescription =
+			    (pfnSetThreadDescription)GetProcAddress(kernel32, "SetThreadDescription");
+			if (pSetThreadDescription != nullptr) {
+				pSetThreadDescription(GetCurrentThread(), wname.c_str());
+			}
+		}
+	}
 #elif defined(__linux__)
 	prctl(PR_SET_NAME, name);
 #elif defined(__APPLE__)
