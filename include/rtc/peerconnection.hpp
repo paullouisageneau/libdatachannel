@@ -67,6 +67,7 @@ public:
 	void close();
 
 	const Configuration *config() const;
+	void setConfiguration(const Configuration& config);
 	State state() const;
 	GatheringState gatheringState() const;
 	SignalingState signalingState() const;

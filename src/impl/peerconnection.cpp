@@ -1247,4 +1247,11 @@ void PeerConnection::updateTrackSsrcCache(const Description &description) {
 		    description.media(i));
 }
 
+void PeerConnection::setConfiguration(const Configuration& config_) {
+	if (state!=State::New)
+		throw std::invalid_argument("Cannot chante configuration if the ICE transport has already been started");
+
+	config = config_;
+}
+
 } // namespace rtc::impl

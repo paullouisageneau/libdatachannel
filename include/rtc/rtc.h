@@ -176,6 +176,8 @@ RTC_C_EXPORT int rtcCreatePeerConnection(const rtcConfiguration *config); // ret
 RTC_C_EXPORT int rtcClosePeerConnection(int pc);
 RTC_C_EXPORT int rtcDeletePeerConnection(int pc);
 
+RTC_C_EXPORT int rtcSetConfiguration(int pc, const rtcConfiguration *config);
+
 RTC_C_EXPORT int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb);
 RTC_C_EXPORT int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb);
 RTC_C_EXPORT int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb);
