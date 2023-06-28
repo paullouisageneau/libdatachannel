@@ -362,6 +362,10 @@ void IceTransport::LogCallback(juice_log_level_t level, const char *message) {
 	PLOG(severity) << "juice: " << message;
 }
 
+void IceTransport::addIceServers(std::vector<IceServer> servers) {
+	//TODO
+}
+
 #else // USE_NICE == 1
 
 unique_ptr<GMainLoop, void (*)(GMainLoop *)> IceTransport::MainLoop(nullptr, nullptr);
@@ -486,106 +490,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	std::vector<IceServer> servers = config.iceServers;
 	std::shuffle(servers.begin(), servers.end(), utils::random_engine());
 
-	// Add one STUN server
-	bool success = false;
-	for (auto &server : servers) {
-		if (server.hostname.empty())
-			continue;
-		if (server.type != IceServer::Type::Stun)
-			continue;
-		if (server.port == 0)
-			server.port = 3478; // STUN UDP port
-
-		struct addrinfo hints = {};
-		hints.ai_family = AF_INET; // IPv4
-		hints.ai_socktype = SOCK_DGRAM;
-		hints.ai_protocol = IPPROTO_UDP;
-		hints.ai_flags = AI_ADDRCONFIG;
-		struct addrinfo *result = nullptr;
-		if (getaddrinfo(server.hostname.c_str(), std::to_string(server.port).c_str(), &hints,
-		                &result) != 0) {
-			PLOG_WARNING << "Unable to resolve STUN server address: " << server.hostname << ':'
-			             << server.port;
-			continue;
-		}
-
-		for (auto p = result; p; p = p->ai_next) {
-			if (p->ai_family == AF_INET) {
-				char nodebuffer[MAX_NUMERICNODE_LEN];
-				char servbuffer[MAX_NUMERICSERV_LEN];
-				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
-				                servbuffer, MAX_NUMERICSERV_LEN,
-				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-					PLOG_INFO << "Using STUN server \"" << server.hostname << ":" << server.port
-					          << "\"";
-					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server", nodebuffer, nullptr);
-					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server-port",
-					             std::stoul(servbuffer), nullptr);
-					success = true;
-					break;
-				}
-			}
-		}
-
-		freeaddrinfo(result);
-		if (success)
-			break;
-	}
-
-	// Add TURN servers
-	for (auto &server : servers) {
-		if (server.hostname.empty())
-			continue;
-		if (server.type != IceServer::Type::Turn)
-			continue;
-		if (server.port == 0)
-			server.port = server.relayType == IceServer::RelayType::TurnTls ? 5349 : 3478;
-
-		struct addrinfo hints = {};
-		hints.ai_family = AF_UNSPEC;
-		hints.ai_socktype =
-		    server.relayType == IceServer::RelayType::TurnUdp ? SOCK_DGRAM : SOCK_STREAM;
-		hints.ai_protocol =
-		    server.relayType == IceServer::RelayType::TurnUdp ? IPPROTO_UDP : IPPROTO_TCP;
-		hints.ai_flags = AI_ADDRCONFIG;
-		struct addrinfo *result = nullptr;
-		if (getaddrinfo(server.hostname.c_str(), std::to_string(server.port).c_str(), &hints,
-		                &result) != 0) {
-			PLOG_WARNING << "Unable to resolve TURN server address: " << server.hostname << ':'
-			             << server.port;
-			continue;
-		}
-
-		for (auto p = result; p; p = p->ai_next) {
-			if (p->ai_family == AF_INET || p->ai_family == AF_INET6) {
-				char nodebuffer[MAX_NUMERICNODE_LEN];
-				char servbuffer[MAX_NUMERICSERV_LEN];
-				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
-				                servbuffer, MAX_NUMERICSERV_LEN,
-				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-					PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port
-					          << "\"";
-					NiceRelayType niceRelayType;
-					switch (server.relayType) {
-					case IceServer::RelayType::TurnTcp:
-						niceRelayType = NICE_RELAY_TYPE_TURN_TCP;
-						break;
-					case IceServer::RelayType::TurnTls:
-						niceRelayType = NICE_RELAY_TYPE_TURN_TLS;
-						break;
-					default:
-						niceRelayType = NICE_RELAY_TYPE_TURN_UDP;
-						break;
-					}
-					nice_agent_set_relay_info(mNiceAgent.get(), mStreamId, 1, nodebuffer,
-					                          std::stoul(servbuffer), server.username.c_str(),
-					                          server.password.c_str(), niceRelayType);
-				}
-			}
-		}
-
-		freeaddrinfo(result);
-	}
+	addIceServers(servers);
 
 	g_signal_connect(G_OBJECT(mNiceAgent.get()), "component-state-changed",
 	                 G_CALLBACK(StateChangeCallback), this);
@@ -887,6 +792,112 @@ bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote)
 	if (remote)
 		remote->resolve(Candidate::ResolveMode::Simple);
 	return true;
+}
+
+
+
+void IceTransport::addIceServers(std::vector<IceServer> servers) {
+
+	// Add one STUN server
+	bool success = false;
+	for (auto &server : servers) {
+		if (server.hostname.empty())
+			continue;
+		if (server.type != IceServer::Type::Stun)
+			continue;
+		if (server.port == 0)
+			server.port = 3478; // STUN UDP port
+
+		struct addrinfo hints = {};
+		hints.ai_family = AF_INET; // IPv4
+		hints.ai_socktype = SOCK_DGRAM;
+		hints.ai_protocol = IPPROTO_UDP;
+		hints.ai_flags = AI_ADDRCONFIG;
+		struct addrinfo *result = nullptr;
+		if (getaddrinfo(server.hostname.c_str(), std::to_string(server.port).c_str(), &hints,
+		                &result) != 0) {
+			PLOG_WARNING << "Unable to resolve STUN server address: " << server.hostname << ':'
+			             << server.port;
+			continue;
+		}
+
+		for (auto p = result; p; p = p->ai_next) {
+			if (p->ai_family == AF_INET) {
+				char nodebuffer[MAX_NUMERICNODE_LEN];
+				char servbuffer[MAX_NUMERICSERV_LEN];
+				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
+				                servbuffer, MAX_NUMERICSERV_LEN,
+				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+					PLOG_INFO << "Using STUN server \"" << server.hostname << ":" << server.port
+					          << "\"";
+					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server", nodebuffer, nullptr);
+					g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server-port",
+					             std::stoul(servbuffer), nullptr);
+					success = true;
+					break;
+				}
+			}
+		}
+
+		freeaddrinfo(result);
+		if (success)
+			break;
+	}
+
+	// Add TURN servers
+	for (auto &server : servers) {
+		if (server.hostname.empty())
+			continue;
+		if (server.type != IceServer::Type::Turn)
+			continue;
+		if (server.port == 0)
+			server.port = server.relayType == IceServer::RelayType::TurnTls ? 5349 : 3478;
+
+		struct addrinfo hints = {};
+		hints.ai_family = AF_UNSPEC;
+		hints.ai_socktype =
+		    server.relayType == IceServer::RelayType::TurnUdp ? SOCK_DGRAM : SOCK_STREAM;
+		hints.ai_protocol =
+		    server.relayType == IceServer::RelayType::TurnUdp ? IPPROTO_UDP : IPPROTO_TCP;
+		hints.ai_flags = AI_ADDRCONFIG;
+		struct addrinfo *result = nullptr;
+		if (getaddrinfo(server.hostname.c_str(), std::to_string(server.port).c_str(), &hints,
+		                &result) != 0) {
+			PLOG_WARNING << "Unable to resolve TURN server address: " << server.hostname << ':'
+			             << server.port;
+			continue;
+		}
+
+		for (auto p = result; p; p = p->ai_next) {
+			if (p->ai_family == AF_INET || p->ai_family == AF_INET6) {
+				char nodebuffer[MAX_NUMERICNODE_LEN];
+				char servbuffer[MAX_NUMERICSERV_LEN];
+				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
+				                servbuffer, MAX_NUMERICSERV_LEN,
+				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+					PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port
+					          << "\"";
+					NiceRelayType niceRelayType;
+					switch (server.relayType) {
+					case IceServer::RelayType::TurnTcp:
+						niceRelayType = NICE_RELAY_TYPE_TURN_TCP;
+						break;
+					case IceServer::RelayType::TurnTls:
+						niceRelayType = NICE_RELAY_TYPE_TURN_TLS;
+						break;
+					default:
+						niceRelayType = NICE_RELAY_TYPE_TURN_UDP;
+						break;
+					}
+					nice_agent_set_relay_info(mNiceAgent.get(), mStreamId, 1, nodebuffer,
+					                          std::stoul(servbuffer), server.username.c_str(),
+					                          server.password.c_str(), niceRelayType);
+				}
+			}
+		}
+
+		freeaddrinfo(result);
+	}
 }
 
 #endif
