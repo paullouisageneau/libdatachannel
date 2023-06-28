@@ -1251,7 +1251,7 @@ void PeerConnection::setConfiguration(Configuration config_) {
 	if (state!=State::New)
 		throw std::invalid_argument("Cannot chante configuration if the ICE transport has already been started");
 
-	config = config_;
+	config = std::move(config_);
 }
 
 } // namespace rtc::impl
