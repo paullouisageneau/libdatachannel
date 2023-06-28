@@ -18,7 +18,7 @@ namespace rtc {
 // RTP configuration used in packetization process
 class RTC_CPP_EXPORT RtpPacketizationConfig {
 public:
-	const SSRC ssrc;
+	SSRC ssrc;
 	const std::string cname;
 	const uint8_t payloadType;
 	const uint32_t clockRate;
@@ -52,6 +52,15 @@ public:
 	///   2 - 180 degrees
 	///   3 - 270 degrees
 	uint8_t videoOrientation = 0;
+
+
+	// MID Extension Header
+	uint8_t midId = 0;
+	optional<std::string> mid;
+
+	// RID Extension Header
+	uint8_t ridId = 0;
+	optional<std::string> rid;
 
 	/// Construct RTP configuration used in packetization process
 	/// @param ssrc SSRC of source
