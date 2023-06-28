@@ -1248,8 +1248,8 @@ void PeerConnection::updateTrackSsrcCache(const Description &description) {
 }
 
 void PeerConnection::setConfiguration(Configuration config_) {
-	if (state!=State::New)
-		throw std::invalid_argument("Cannot chante configuration if the ICE transport has already been started");
+	if (state != State::New)
+		throw std::logic_error("Cannot change configuration if the ICE transport has already been started");
 
 	config = std::move(config_);
 }
