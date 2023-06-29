@@ -38,6 +38,12 @@ struct RTC_CPP_EXPORT IceServer {
 	string username;
 	string password;
 	RelayType relayType;
+
+	bool operator==(const IceServer &other) const {
+		return other.hostname == hostname && other.port == port && other.type == type &&
+		       other.username == username && other.password == password &&
+		       other.relayType == relayType;
+	}
 };
 
 struct RTC_CPP_EXPORT ProxyServer {
@@ -53,6 +59,11 @@ struct RTC_CPP_EXPORT ProxyServer {
 	uint16_t port;
 	optional<string> username;
 	optional<string> password;
+
+	bool operator==(const ProxyServer &other) const {
+		return other.hostname == hostname && other.port == port && other.type == type &&
+		       other.username == username && other.password == password;
+	}
 };
 
 enum class CertificateType {
@@ -86,6 +97,18 @@ struct RTC_CPP_EXPORT Configuration {
 
 	// Local maximum message size for Data Channels
 	optional<size_t> maxMessageSize;
+
+	bool equalsIgnoreIceServers(const Configuration &other) const {
+		return other.proxyServer == proxyServer && other.bindAddress == bindAddress &&
+		       other.certificateType == certificateType &&
+		       other.iceTransportPolicy == iceTransportPolicy &&
+		       other.enableIceTcp == enableIceTcp && other.enableIceUdpMux == enableIceUdpMux &&
+		       other.enableIceUdpMux == enableIceUdpMux &&
+		       other.disableAutoNegotiation == disableAutoNegotiation &&
+		       other.forceMediaTransport == forceMediaTransport &&
+		       other.portRangeBegin == portRangeEnd && other.mtu == mtu &&
+		       other.maxMessageSize == maxMessageSize;
+	}
 };
 
 } // namespace rtc
