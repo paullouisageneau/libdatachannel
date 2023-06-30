@@ -109,6 +109,7 @@ public:
 
 		std::vector<int> extIds();
 		ExtMap *extMap(int id);
+		const ExtMap *extMap(int id) const;
 		void addExtMap(ExtMap map);
 		void removeExtMap(int id);
 
@@ -208,6 +209,7 @@ public:
 		bool hasPayloadType(int payloadType) const;
 		std::vector<int> payloadTypes() const;
 		RtpMap *rtpMap(int payloadType);
+		const RtpMap *rtpMap(int payloadType) const;
 		void addRtpMap(RtpMap map);
 		void removeRtpMap(int payloadType);
 		void removeFormat(const string &format);
@@ -233,7 +235,9 @@ public:
 		void addAudioCodec(int payloadType, string codec, optional<string> profile = std::nullopt);
 
 		void addOpusCodec(int payloadType, optional<string> profile = DEFAULT_OPUS_AUDIO_PROFILE);
+
 		void addPCMACodec(int payloadType, optional<string> profile = std::nullopt);
+
 		void addPCMUCodec(int payloadType, optional<string> profile = std::nullopt);
 		void addAacCodec(int payloadType, optional<string> profile = std::nullopt);
 	};

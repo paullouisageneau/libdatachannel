@@ -6,34 +6,33 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#ifndef RTC_RTCP_SENDER_REPORTABLE_H
-#define RTC_RTCP_SENDER_REPORTABLE_H
+#ifndef RTC_RTCP_SR_REPORTER_H
+#define RTC_RTCP_SR_REPORTER_H
 
 #if RTC_ENABLE_MEDIA
 
-#include "mediahandlerelement.hpp"
-#include "message.hpp"
+#include "mediahandler.hpp"
 #include "rtppacketizationconfig.hpp"
+#include "rtp.hpp"
 
 namespace rtc {
 
-class RTC_CPP_EXPORT RtcpSrReporter final : public MediaHandlerElement {
-	void addToReport(RtpHeader *rtp, uint32_t rtpSize);
-	message_ptr getSenderReport(uint32_t timestamp);
-
+class RTC_CPP_EXPORT RtcpSrReporter final : public MediaHandler {
 public:
-	/// RTP configuration
-	const shared_ptr<RtpPacketizationConfig> rtpConfig;
-
 	RtcpSrReporter(shared_ptr<RtpPacketizationConfig> rtpConfig);
-
-	ChainedOutgoingProduct processOutgoingBinaryMessage(ChainedMessagesProduct messages,
-	                                                    message_ptr control) override;
 
 	uint32_t lastReportedTimestamp() const;
 	void setNeedsToReport();
 
+	void outgoing(message_vector &messages, const message_callback &send) override;
+
+	// TODO: remove this
+	const shared_ptr<RtpPacketizationConfig> rtpConfig;
+
 private:
+	void addToReport(RtpHeader *rtp, uint32_t rtpSize);
+	message_ptr getSenderReport(uint32_t timestamp);
+
 	uint32_t mPacketCount = 0;
 	uint32_t mPayloadOctets = 0;
 	uint32_t mLastReportedTimestamp = 0;
@@ -44,4 +43,4 @@ private:
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* RTC_RTCP_SENDER_REPORTABLE_H */
+#endif /* RTC_RTCP_SR_REPORTER_H */

@@ -17,40 +17,37 @@ namespace rtc {
 
 RtpPacketizer::RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig) : rtpConfig(rtpConfig) {}
 
-binary_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool setMark) {
+RtpPacketizer::~RtpPacketizer() {}
+
+message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 	size_t rtpExtHeaderSize = 0;
 
 	const bool setVideoRotation = (rtpConfig->videoOrientationId != 0) &&
 	                              (rtpConfig->videoOrientationId <
 	                               15) && // needs fixing if longer extension headers are supported
-	                              setMark &&
+	                              mark &&
 	                              (rtpConfig->videoOrientation != 0);
 
-	if (setVideoRotation) {
+	if (setVideoRotation)
 		rtpExtHeaderSize += 2;
-	}
 
-	if (rtpConfig->mid.has_value()) {
+	if (rtpConfig->mid.has_value())
 		rtpExtHeaderSize += (1 + rtpConfig->mid->length());
-	}
 
-	if (rtpConfig->rid.has_value()) {
+	if (rtpConfig->rid.has_value())
 		rtpExtHeaderSize += (1 + rtpConfig->rid->length());
-	}
 
-	if (rtpExtHeaderSize != 0) {
+	if (rtpExtHeaderSize != 0)
 		rtpExtHeaderSize += 4;
-	}
 
-	auto msg = std::make_shared<binary>(rtpHeaderSize + rtpExtHeaderSize + payload->size());
-	auto *rtp = (RtpHeader *)msg->data();
+	auto message = make_message(RtpHeaderSize + rtpExtHeaderSize + payload->size());
+	auto *rtp = (RtpHeader *)message->data();
 	rtp->setPayloadType(rtpConfig->payloadType);
-	// increase sequence number
-	rtp->setSeqNumber(rtpConfig->sequenceNumber++);
+	rtp->setSeqNumber(rtpConfig->sequenceNumber++); // increase sequence number
 	rtp->setTimestamp(rtpConfig->timestamp);
 	rtp->setSsrc(rtpConfig->ssrc);
 
-	if (setMark) {
+	if (mark) {
 		rtp->setMarker(true);
 	}
 
@@ -90,8 +87,20 @@ binary_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool setMark) {
 	}
 
 	rtp->preparePacket();
-	std::memcpy(msg->data() + rtpHeaderSize + rtpExtHeaderSize, payload->data(), payload->size());
-	return msg;
+
+	std::memcpy(message->data() + RtpHeaderSize + rtpExtHeaderSize, payload->data(),
+	            payload->size());
+
+	return message;
+}
+
+void RtpPacketizer::media([[maybe_unused]] const Description::Media &desc) {}
+
+void RtpPacketizer::outgoing([[maybe_unused]] message_vector &messages,
+                             [[maybe_unused]] const message_callback &send) {
+	// Default implementation
+	for (auto &message : messages)
+		message = packetize(message, false);
 }
 
 } // namespace rtc

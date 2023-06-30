@@ -7,38 +7,39 @@
  */
 
 #include "plihandler.hpp"
+#include "rtp.hpp"
 
 #if RTC_ENABLE_MEDIA
 
 namespace rtc {
 
-ChainedIncomingControlProduct PliHandler::processIncomingControlMessage(message_ptr message) {
-	size_t offset = 0;
+PliHandler::PliHandler(std::function<void(void)> onPli) : mOnPli(onPli) {}
 
-	while ((sizeof(RtcpHeader) + offset) <= message->size()) {
-		auto header = reinterpret_cast<rtc::RtcpHeader*>(message->data() + offset);
-		uint8_t payload_type = header->payloadType();
+void PliHandler::incoming(message_vector &messages, [[maybe_unused]] const message_callback &send) {
+	for (const auto &message : messages) {
+		size_t offset = 0;
+		while ((sizeof(RtcpHeader) + offset) <= message->size()) {
+			auto header = reinterpret_cast<RtcpHeader *>(message->data() + offset);
+			uint8_t payload_type = header->payloadType();
 
-		if (payload_type == 196) { 
-			// FIR message, call pli handler anyway
-			mOnPli();
-			break;
-		} else if (payload_type == 206) {
-			// On a payload specific fb message, there is a "feedback message type" (FMT) in the
-			// header instead of a report count. PT = 206, FMT = 1 means a PLI message
-			uint8_t feedback_message_type = header->reportCount();
-			if (feedback_message_type == 1) {
+			if (payload_type == 196) {
+				// FIR message, call pli handler anyway
 				mOnPli();
 				break;
+			} else if (payload_type == 206) {
+				// On a payload specific fb message, there is a "feedback message type" (FMT) in the
+				// header instead of a report count. PT = 206, FMT = 1 means a PLI message
+				uint8_t feedback_message_type = header->reportCount();
+				if (feedback_message_type == 1) {
+					mOnPli();
+					break;
+				}
 			}
+			offset += header->lengthInBytes();
 		}
-		offset += header->lengthInBytes();
 	}
-	return { message, std::nullopt };
 }
 
-PliHandler::PliHandler(std::function<void(void)> onPli) : mOnPli(onPli) { }
-
-}
+} // namespace rtc
 
 #endif // RTC_ENABLE_MEDIA

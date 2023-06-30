@@ -493,18 +493,32 @@ void PeerConnection::forwardMessage(message_ptr message) {
 	}
 }
 
-void PeerConnection::forwardMedia(message_ptr message) {
+void PeerConnection::forwardMedia([[maybe_unused]] message_ptr message) {
+#if RTC_ENABLE_MEDIA
 	if (!message)
 		return;
 
-	auto handler = getMediaHandler();
+	// TODO: outgoing
+	if (auto handler = getMediaHandler()) {
+		message_vector messages{std::move(message)};
 
-	if (handler) {
-		message = handler->incoming(message);
-		if (!message)
-			return;
+		handler->incoming(messages, [this](message_ptr message) {
+			auto transport = std::atomic_load(&mDtlsTransport);
+			if (auto srtpTransport = std::dynamic_pointer_cast<DtlsSrtpTransport>(transport))
+				srtpTransport->send(std::move(message));
+		});
+
+		for (auto &m : messages)
+			dispatchMedia(std::move(m));
+
+	} else {
+		dispatchMedia(std::move(message));
 	}
+#endif
+}
 
+void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
+#if RTC_ENABLE_MEDIA
 	// Browsers like to compound their packets with a random SSRC.
 	// we have to do this monstrosity to distribute the report blocks
 	if (message->type == Message::Control) {
@@ -581,6 +595,7 @@ void PeerConnection::forwardMedia(message_ptr message) {
 		// PLOG_WARNING << "Track not found for SSRC " << ssrc << ", dropping";
 		return;
 	}
+#endif
 }
 
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
@@ -740,6 +755,10 @@ shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
 		mTracks.emplace(std::make_pair(track->mid(), track));
 		mTrackLines.emplace_back(track);
 	}
+
+	auto handler = getMediaHandler();
+	if (handler)
+		handler->media(track->description());
 
 	if (track->description().isRemoved())
 		track->close();
@@ -909,6 +928,10 @@ void PeerConnection::processLocalDescription(Description description) {
 				        mTracks.emplace(std::make_pair(track->mid(), track));
 				        mTrackLines.emplace_back(track);
 				        triggerTrack(track); // The user may modify the track description
+
+				        auto handler = getMediaHandler();
+				        if (handler)
+					        handler->media(track->description());
 
 				        if (track->description().isRemoved())
 					        track->close();
@@ -1091,8 +1114,6 @@ string PeerConnection::localBundleMid() const {
 
 void PeerConnection::setMediaHandler(shared_ptr<MediaHandler> handler) {
 	std::unique_lock lock(mMediaHandlerMutex);
-	if (mMediaHandler)
-		mMediaHandler->onOutgoing(nullptr);
 	mMediaHandler = handler;
 }
 

@@ -127,6 +127,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	synchronized_callback<shared_ptr<rtc::Track>> trackCallback;
 
 private:
+	void dispatchMedia(message_ptr message);
 	void updateTrackSsrcCache(const Description &description);
 
 	const init_token mInitToken = Init::Instance().token();
