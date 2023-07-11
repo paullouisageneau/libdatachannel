@@ -1127,7 +1127,7 @@ void Description::Audio::addAudioCodec(int payloadType, string codec, optional<s
 }
 
 void Description::Audio::addOpusCodec(int payloadType, optional<string> profile) {
-	addAudioCodec(payloadType, "OPUS", profile);
+	addAudioCodec(payloadType, "opus", profile);
 }
 
 void Description::Audio::addPCMACodec(int payloadType, optional<string> profile) {
