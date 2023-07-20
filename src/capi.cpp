@@ -1019,6 +1019,7 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 		} else {
 			switch (init->codec) {
 			case RTC_CODEC_H264:
+			case RTC_CODEC_H265:
 			case RTC_CODEC_VP8:
 			case RTC_CODEC_VP9:
 				mid = "video";
@@ -1038,12 +1039,16 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 
 		switch (init->codec) {
 		case RTC_CODEC_H264:
+		case RTC_CODEC_H265:
 		case RTC_CODEC_VP8:
 		case RTC_CODEC_VP9: {
 			auto desc = Description::Video(mid, direction);
 			switch (init->codec) {
 			case RTC_CODEC_H264:
 				desc.addH264Codec(init->payloadType);
+				break;
+			case RTC_CODEC_H265:
+				desc.addH265Codec(init->payloadType);
 				break;
 			case RTC_CODEC_VP8:
 				desc.addVP8Codec(init->payloadType);
@@ -1206,6 +1211,28 @@ int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 		emplaceRtpConfig(rtpConfig, tr);
 		// set handler
 		track->setMediaHandler(h264Handler);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetH265PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		// create RTP configuration
+		auto rtpConfig = createRtpPacketizationConfig(init);
+		// create packetizer
+		auto nalSeparator = init ? init->nalSeparator : RTC_NAL_SEPARATOR_LENGTH;
+		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
+		                                                     : RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE;
+		auto packetizer = std::make_shared<H265RtpPacketizer>(
+		    static_cast<rtc::H265RtpPacketizer::Separator>(nalSeparator), rtpConfig,
+		    maxFragmentSize);
+		// create H265 handler
+		auto h265Handler = std::make_shared<H265PacketizationHandler>(packetizer);
+		emplaceMediaChainableHandler(h265Handler, tr);
+		emplaceRtpConfig(rtpConfig, tr);
+		// set handler
+		track->setMediaHandler(h265Handler);
 		return RTC_ERR_SUCCESS;
 	});
 }

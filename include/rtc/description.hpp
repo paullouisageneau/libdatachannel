@@ -246,6 +246,7 @@ public:
 		void addVideoCodec(int payloadType, string codec, optional<string> profile = std::nullopt);
 
 		void addH264Codec(int payloadType, optional<string> profile = DEFAULT_H264_VIDEO_PROFILE);
+		void addH265Codec(int payloadType, optional<string> profile = std::nullopt);
 		void addVP8Codec(int payloadType);
 		void addVP9Codec(int payloadType);
 		void addAV1Codec(int payloadType);

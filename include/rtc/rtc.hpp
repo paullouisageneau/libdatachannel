@@ -33,8 +33,9 @@
 #include "rtcpreceivingsession.hpp"
 #include "rtcpsrreporter.hpp"
 
-// Opus/h264/AV1 streaming
+// Opus/h264/AV1/h265 streaming
 #include "h264packetizationhandler.hpp"
+#include "h265packetizationhandler.hpp"
 #include "av1packetizationhandler.hpp"
 #include "opuspacketizationhandler.hpp"
 
