@@ -248,6 +248,7 @@ public:
 		void addH264Codec(int payloadType, optional<string> profile = DEFAULT_H264_VIDEO_PROFILE);
 		void addVP8Codec(int payloadType);
 		void addVP9Codec(int payloadType);
+		void addAV1Codec(int payloadType);
 	};
 
 	bool hasApplication() const;
