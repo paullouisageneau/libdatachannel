@@ -276,6 +276,12 @@ RTC_C_EXPORT int rtcGetTrackDirection(int tr, rtcDirection *direction);
 
 // Media
 
+// Define how OBUs are packetizied in a AV1 Sample
+typedef enum {
+	RTC_OBU_PACKETIZED_OBU = 0,
+	RTC_OBU_PACKETIZED_TEMPORAL_UNIT = 1,
+} rtcObuPacketization;
+
 // Define how NAL units are separated in a H264 sample
 typedef enum {
 	RTC_NAL_SEPARATOR_LENGTH = 0,               // first 4 bytes are NAL unit length

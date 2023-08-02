@@ -1183,6 +1183,10 @@ void Description::Video::addVP9Codec(int payloadType) {
 	addVideoCodec(payloadType, "VP9", nullopt);
 }
 
+void Description::Video::addAV1Codec(int pt) {
+	addVideoCodec(pt, "AV1", nullopt);
+}
+
 Description::Type Description::stringToType(const string &typeString) {
 	using TypeMap_t = std::unordered_map<string, Type>;
 	static const TypeMap_t TypeMap = {{"unspec", Type::Unspec},
