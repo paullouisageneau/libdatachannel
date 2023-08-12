@@ -23,6 +23,7 @@ static void sleep(unsigned int secs) { Sleep(secs * 1000); }
 
 typedef struct {
 	rtcState state;
+	rtcIceState iceState;
 	rtcGatheringState gatheringState;
 	rtcSignalingState signalingState;
 	int pc;
@@ -51,6 +52,12 @@ static void RTC_API stateChangeCallback(int pc, rtcState state, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->state = state;
 	printf("State %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
+}
+
+static void RTC_API iceStateChangeCallback(int pc, rtcIceState state, void *ptr) {
+	Peer *peer = (Peer *)ptr;
+	peer->iceState = state;
+	printf("ICE state %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
 }
 
 static void RTC_API gatheringStateCallback(int pc, rtcGatheringState state, void *ptr) {
@@ -158,6 +165,7 @@ static Peer *createPeer(const rtcConfiguration *config) {
 	rtcSetLocalDescriptionCallback(peer->pc, descriptionCallback);
 	rtcSetLocalCandidateCallback(peer->pc, candidateCallback);
 	rtcSetStateChangeCallback(peer->pc, stateChangeCallback);
+	rtcSetIceStateChangeCallback(peer->pc, iceStateChangeCallback);
 	rtcSetGatheringStateChangeCallback(peer->pc, gatheringStateCallback);
 	rtcSetSignalingStateChangeCallback(peer->pc, signalingStateCallback);
 
@@ -242,6 +250,12 @@ int test_capi_connectivity_main() {
 		sleep(1);
 
 	if (peer1->state != RTC_CONNECTED || peer2->state != RTC_CONNECTED) {
+		fprintf(stderr, "PeerConnection is not connected\n");
+		goto error;
+	}
+
+	if ((peer1->iceState != RTC_ICE_CONNECTED && peer1->iceState != RTC_ICE_COMPLETED) ||
+	    (peer2->iceState != RTC_ICE_CONNECTED && peer2->iceState != RTC_ICE_COMPLETED)) {
 		fprintf(stderr, "PeerConnection is not connected\n");
 		goto error;
 	}

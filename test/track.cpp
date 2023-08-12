@@ -104,7 +104,7 @@ void test_track() {
 	while ((!(at2 = std::atomic_load(&t2)) || !at2->isOpen() || !t1->isOpen()) && attempts--)
 		this_thread::sleep_for(1s);
 
-	if (pc1.state() != PeerConnection::State::Connected &&
+	if (pc1.state() != PeerConnection::State::Connected ||
 	    pc2.state() != PeerConnection::State::Connected)
 		throw runtime_error("PeerConnection is not connected");
 

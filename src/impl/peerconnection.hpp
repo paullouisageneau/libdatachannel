@@ -29,6 +29,7 @@ namespace rtc::impl {
 
 struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	using State = rtc::PeerConnection::State;
+	using IceState = rtc::PeerConnection::IceState;
 	using GatheringState = rtc::PeerConnection::GatheringState;
 	using SignalingState = rtc::PeerConnection::SignalingState;
 
@@ -92,6 +93,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void flushPendingTracks();
 
 	bool changeState(State newState);
+	bool changeIceState(IceState newState);
 	bool changeGatheringState(GatheringState newState);
 	bool changeSignalingState(SignalingState newState);
 
@@ -108,6 +110,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	const Configuration config;
 	std::atomic<State> state = State::New;
+	std::atomic<IceState> iceState = IceState::New;
 	std::atomic<GatheringState> gatheringState = GatheringState::New;
 	std::atomic<SignalingState> signalingState = SignalingState::Stable;
 	std::atomic<bool> negotiationNeeded = false;
@@ -118,6 +121,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	synchronized_callback<Description> localDescriptionCallback;
 	synchronized_callback<Candidate> localCandidateCallback;
 	synchronized_callback<State> stateChangeCallback;
+	synchronized_callback<IceState> iceStateChangeCallback;
 	synchronized_callback<GatheringState> gatheringStateChangeCallback;
 	synchronized_callback<SignalingState> signalingStateChangeCallback;
 	synchronized_callback<shared_ptr<rtc::Track>> trackCallback;
