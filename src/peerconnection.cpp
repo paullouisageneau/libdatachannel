@@ -51,6 +51,10 @@ const Configuration *PeerConnection::config() const { return &impl()->config; }
 
 PeerConnection::State PeerConnection::state() const { return impl()->state; }
 
+PeerConnection::IceState PeerConnection::iceState() const {
+	return impl()->iceState;
+}
+
 PeerConnection::GatheringState PeerConnection::gatheringState() const {
 	return impl()->gatheringState;
 }
@@ -311,6 +315,10 @@ void PeerConnection::onStateChange(std::function<void(State state)> callback) {
 	impl()->stateChangeCallback = callback;
 }
 
+void PeerConnection::onIceStateChange(std::function<void(IceState state)> callback) {
+	impl()->iceStateChangeCallback = callback;
+}
+
 void PeerConnection::onGatheringStateChange(std::function<void(GatheringState state)> callback) {
 	impl()->gatheringStateChangeCallback = callback;
 }
@@ -368,6 +376,38 @@ std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::State state) {
 		str = "failed";
 		break;
 	case State::Closed:
+		str = "closed";
+		break;
+	default:
+		str = "unknown";
+		break;
+	}
+	return out << str;
+}
+
+std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::IceState state) {
+	using IceState = rtc::PeerConnection::IceState;
+	const char *str;
+	switch (state) {
+	case IceState::New:
+		str = "new";
+		break;
+	case IceState::Checking:
+		str = "checking";
+		break;
+	case IceState::Connected:
+		str = "connected";
+		break;
+	case IceState::Completed:
+		str = "completed";
+		break;
+	case IceState::Failed:
+		str = "failed";
+		break;
+	case IceState::Disconnected:
+		str = "disconnected";
+		break;
+	case IceState::Closed:
 		str = "closed";
 		break;
 	default:

@@ -68,6 +68,16 @@ typedef enum {
 } rtcState;
 
 typedef enum {
+	RTC_ICE_NEW = 0,
+	RTC_ICE_CHECKING = 1,
+	RTC_ICE_CONNECTED = 2,
+	RTC_ICE_COMPLETED = 3,
+	RTC_ICE_FAILED = 4,
+	RTC_ICE_DISCONNECTED = 5,
+	RTC_ICE_CLOSED = 6
+} rtcIceState;
+
+typedef enum {
 	RTC_GATHERING_NEW = 0,
 	RTC_GATHERING_INPROGRESS = 1,
 	RTC_GATHERING_COMPLETE = 2
@@ -131,6 +141,7 @@ typedef void(RTC_API *rtcDescriptionCallbackFunc)(int pc, const char *sdp, const
 typedef void(RTC_API *rtcCandidateCallbackFunc)(int pc, const char *cand, const char *mid,
                                                 void *ptr);
 typedef void(RTC_API *rtcStateChangeCallbackFunc)(int pc, rtcState state, void *ptr);
+typedef void(RTC_API *rtcIceStateChangeCallbackFunc)(int pc, rtcIceState state, void *ptr);
 typedef void(RTC_API *rtcGatheringStateCallbackFunc)(int pc, rtcGatheringState state, void *ptr);
 typedef void(RTC_API *rtcSignalingStateCallbackFunc)(int pc, rtcSignalingState state, void *ptr);
 typedef void(RTC_API *rtcDataChannelCallbackFunc)(int pc, int dc, void *ptr);
@@ -179,6 +190,7 @@ RTC_C_EXPORT int rtcDeletePeerConnection(int pc);
 RTC_C_EXPORT int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb);
 RTC_C_EXPORT int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb);
 RTC_C_EXPORT int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb);
+RTC_C_EXPORT int rtcSetIceStateChangeCallback(int pc, rtcIceStateChangeCallbackFunc cb);
 RTC_C_EXPORT int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb);
 RTC_C_EXPORT int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb);
 

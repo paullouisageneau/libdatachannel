@@ -152,16 +152,23 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport() {
 				    return;
 			    switch (transportState) {
 			    case IceTransport::State::Connecting:
+				    changeIceState(IceState::Checking);
 				    changeState(State::Connecting);
 				    break;
 			    case IceTransport::State::Connected:
+				    changeIceState(IceState::Connected);
 				    initDtlsTransport();
 				    break;
+			    case IceTransport::State::Completed:
+				    changeIceState(IceState::Completed);
+				    break;
 			    case IceTransport::State::Failed:
+				    changeIceState(IceState::Failed);
 				    changeState(State::Failed);
 				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
 				    break;
 			    case IceTransport::State::Disconnected:
+				    changeIceState(IceState::Disconnected);
 				    changeState(State::Disconnected);
 				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
 				    break;
@@ -345,11 +352,14 @@ shared_ptr<SctpTransport> PeerConnection::getSctpTransport() const {
 void PeerConnection::closeTransports() {
 	PLOG_VERBOSE << "Closing transports";
 
+	// Change ICE state to sink state Closed
+	changeIceState(IceState::Closed);
+
 	// Change state to sink state Closed
 	if (!changeState(State::Closed))
 		return; // already closed
 
-	// Reset intercceptor and callbacks now that state is changed
+	// Reset interceptor and callbacks now that state is changed
 	setMediaHandler(nullptr);
 	resetCallbacks();
 
@@ -1175,6 +1185,24 @@ bool PeerConnection::changeState(State newState) {
 	return true;
 }
 
+bool PeerConnection::changeIceState(IceState newState) {
+	if (iceState.exchange(newState) == newState)
+		return false;
+
+	std::ostringstream s;
+	s << newState;
+	PLOG_INFO << "Changed ICE state to " << s.str();
+
+	if (newState == IceState::Closed) {
+		auto callback = std::move(iceStateChangeCallback); // steal the callback
+		callback(IceState::Closed);                        // call it synchronously
+	} else {
+		mProcessor.enqueue(&PeerConnection::trigger<IceState>, shared_from_this(),
+		                   &iceStateChangeCallback, newState);
+	}
+	return true;
+}
+
 bool PeerConnection::changeGatheringState(GatheringState newState) {
 	if (gatheringState.exchange(newState) == newState)
 		return false;
@@ -1207,6 +1235,7 @@ void PeerConnection::resetCallbacks() {
 	localDescriptionCallback = nullptr;
 	localCandidateCallback = nullptr;
 	stateChangeCallback = nullptr;
+	iceStateChangeCallback = nullptr;
 	gatheringStateChangeCallback = nullptr;
 	signalingStateChangeCallback = nullptr;
 	trackCallback = nullptr;

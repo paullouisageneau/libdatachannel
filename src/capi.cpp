@@ -494,6 +494,20 @@ int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb) {
 	});
 }
 
+int rtcSetIceStateChangeCallback(int pc, rtcIceStateChangeCallbackFunc cb) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onIceStateChange([pc, cb](PeerConnection::IceState state) {
+				if (auto ptr = getUserPointer(pc))
+					cb(pc, static_cast<rtcIceState>(state), *ptr);
+			});
+		else
+			peerConnection->onIceStateChange(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb) {
 	return wrap([&] {
 		auto peerConnection = getPeerConnection(pc);
