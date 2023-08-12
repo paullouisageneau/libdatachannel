@@ -50,8 +50,9 @@ void FileParser::loadNextSample() {
         return;
     }
 
-    vector<uint8_t> fileContents((std::istreambuf_iterator<char>(source)), std::istreambuf_iterator<char>());
-    sample = *reinterpret_cast<vector<byte> *>(&fileContents);
+    vector<char> contents((std::istreambuf_iterator<char>(source)), std::istreambuf_iterator<char>());
+    auto *b = reinterpret_cast<const std::byte*>(contents.data());
+    sample.assign(b, b + contents.size());
     sampleTime_us += sampleDuration_us;
 }
 
