@@ -455,6 +455,12 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		mDataChannels.emplace(stream, channel);
 	}
 
+	if (message->type == Message::Reset) {
+		// Incoming stream is reset, unregister it
+		std::unique_lock lock(mDataChannelsMutex); // we are going to erase
+		mDataChannels.erase(stream);
+	}
+
 	if (!channel) {
 		if (message->type == Message::Reset)
 			return; // ignore
@@ -557,7 +563,6 @@ void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
 }
 
 shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(string label, DataChannelInit init) {
-	cleanupDataChannels();
 	std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
 
 	// If the DataChannel is user-negotiated, do not negotiate it in-band
@@ -631,8 +636,7 @@ void PeerConnection::assignDataChannels() {
 			if (stream > maxStream)
 				throw std::runtime_error("Too many DataChannels");
 
-			auto it = mDataChannels.find(stream);
-			if (it == mDataChannels.end() || !it->second.lock())
+			if (mDataChannels.find(stream) == mDataChannels.end())
 				break;
 
 			stream += 2;
@@ -669,19 +673,6 @@ void PeerConnection::iterateDataChannels(
 		} catch (const std::exception &e) {
 			PLOG_WARNING << e.what();
 		}
-	}
-}
-
-void PeerConnection::cleanupDataChannels() {
-	std::unique_lock lock(mDataChannelsMutex); // we are going to erase
-	auto it = mDataChannels.begin();
-	while (it != mDataChannels.end()) {
-		if (!it->second.lock()) {
-			it = mDataChannels.erase(it);
-			continue;
-		}
-
-		++it;
 	}
 }
 
