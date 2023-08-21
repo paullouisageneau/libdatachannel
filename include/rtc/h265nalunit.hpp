@@ -12,6 +12,7 @@
 #if RTC_ENABLE_MEDIA
 
 #include "common.hpp"
+#include "nalunit.hpp"
 
 #include <cassert>
 
@@ -19,7 +20,6 @@ namespace rtc {
 
 #pragma pack(push, 1)
 
-#define H265_NAL_HEADER_SIZE 2
 #define H265_FU_HEADER_SIZE 1
 /// Nalu header
 struct RTC_CPP_EXPORT H265NalUnitHeader {
@@ -31,16 +31,6 @@ struct RTC_CPP_EXPORT H265NalUnitHeader {
 * nuh_temporal_id_plus1	u(3)
 }
 */
-	//H265NalUnitHeader(uint16_t nalHeader)
-	//	: _first((nalHeader & 0xff00) >> 8)
-	//	, _second(nalHeader & 0xff)
-	//{}
-
-	//H265NalUnitHeader(uint8_t nalHeaderHi, unit8_t nalHeaderLow)
-	//	: _first(nalHeaderHi)
-	//	, _second(nalHeaderLow)
-	//{}
-
 	uint8_t _first = 0; // high byte of header
 	uint8_t _second = 0; // low byte of header
 
@@ -80,12 +70,13 @@ struct RTC_CPP_EXPORT H265NalUnitFragmentHeader {
 #pragma pack(pop)
 
 /// Nal unit
-struct RTC_CPP_EXPORT H265NalUnit : binary {
+struct RTC_CPP_EXPORT H265NalUnit : NalUnit {
 	H265NalUnit(const H265NalUnit &unit) = default;
-	H265NalUnit(size_t size, bool includingHeader = true) : binary(size + (includingHeader ? 0 : H265_NAL_HEADER_SIZE)) {}
-	H265NalUnit(binary &&data) : binary(std::move(data)) {}
-	H265NalUnit() : binary(H265_NAL_HEADER_SIZE) {}
-	template <typename Iterator> H265NalUnit(Iterator begin_, Iterator end_) : binary(begin_, end_) {}
+	H265NalUnit(size_t size, bool includingHeader = true) : NalUnit(size, includingHeader, NalUnit::Type::H265) {}
+	H265NalUnit(binary &&data) : NalUnit(std::move(data)) {}
+	H265NalUnit() : NalUnit(NalUnit::Type::H265) {}
+
+	template <typename Iterator> H265NalUnit(Iterator begin_, Iterator end_) : NalUnit(begin_, end_) {}
 
 	bool forbiddenBit() const { return header()->forbiddenBit(); }
 	uint8_t unitType() const { return header()->unitType(); }

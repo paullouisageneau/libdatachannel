@@ -1203,7 +1203,7 @@ int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
 		                                                     : RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE;
 		auto packetizer = std::make_shared<H264RtpPacketizer>(
-		    static_cast<rtc::H264RtpPacketizer::Separator>(nalSeparator), rtpConfig,
+		    static_cast<rtc::NalUnit::Separator>(nalSeparator), rtpConfig,
 		    maxFragmentSize);
 		// create H264 handler
 		auto h264Handler = std::make_shared<H264PacketizationHandler>(packetizer);
@@ -1225,7 +1225,7 @@ int rtcSetH265PacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
 		                                                     : RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE;
 		auto packetizer = std::make_shared<H265RtpPacketizer>(
-		    static_cast<rtc::H265RtpPacketizer::Separator>(nalSeparator), rtpConfig,
+		    static_cast<rtc::NalUnit::Separator>(nalSeparator), rtpConfig,
 		    maxFragmentSize);
 		// create H265 handler
 		auto h265Handler = std::make_shared<H265PacketizationHandler>(packetizer);

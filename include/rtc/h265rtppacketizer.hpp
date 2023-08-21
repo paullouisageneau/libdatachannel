@@ -27,15 +27,7 @@ public:
 	/// Default clock rate for H265 in RTP
 	inline static const uint32_t defaultClockRate = 90 * 1000;
 
-	/// NAL unit separator
-	enum class Separator {
-		Length = RTC_NAL_SEPARATOR_LENGTH, // first 4 bytes are NAL unit length
-		LongStartSequence = RTC_NAL_SEPARATOR_LONG_START_SEQUENCE,   // 0x00, 0x00, 0x00, 0x01
-		ShortStartSequence = RTC_NAL_SEPARATOR_SHORT_START_SEQUENCE, // 0x00, 0x00, 0x01
-		StartSequence = RTC_NAL_SEPARATOR_START_SEQUENCE, // LongStartSequence or ShortStartSequence
-	};
-
-	H265RtpPacketizer(H265RtpPacketizer::Separator separator,
+	H265RtpPacketizer(NalUnit::Separator separator,
 	                  shared_ptr<RtpPacketizationConfig> rtpConfig,
 	                  uint16_t maximumFragmentSize = H265NalUnits::defaultMaximumFragmentSize);
 
@@ -51,7 +43,7 @@ public:
 	                                                    message_ptr control) override;
 
 private:
-	const Separator separator;
+	const NalUnit::Separator separator;
 };
 
 } // namespace rtc
