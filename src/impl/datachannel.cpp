@@ -102,9 +102,7 @@ void DataChannel::close() {
 }
 
 void DataChannel::remoteClose() {
-	mIsOpen = false;
-	if (!mIsClosed.exchange(true))
-		triggerClosed();
+	close();
 }
 
 optional<message_variant> DataChannel::receive() {
