@@ -79,8 +79,11 @@ DataChannel::DataChannel(weak_ptr<PeerConnection> pc, string label, string proto
 
 DataChannel::~DataChannel() {
 	PLOG_VERBOSE << "Destroying DataChannel";
-
-	close();
+	try {
+		close();
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+	}
 }
 
 void DataChannel::close() {
