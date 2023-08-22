@@ -30,8 +30,11 @@ Track::Track(weak_ptr<PeerConnection> pc, Description::Media description)
 
 Track::~Track() {
 	PLOG_VERBOSE << "Destroying Track";
-
-	close();
+	try {
+		close();
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+	}
 }
 
 string Track::mid() const {
