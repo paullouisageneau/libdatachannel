@@ -26,13 +26,7 @@ DataChannel::DataChannel(impl_ptr<impl::DataChannel> impl)
     : CheshireCat<impl::DataChannel>(impl),
       Channel(std::dynamic_pointer_cast<impl::Channel>(impl)) {}
 
-DataChannel::~DataChannel() {
-	try {
-		close();
-	} catch (const std::exception &e) {
-		PLOG_ERROR << e.what();
-	}
-}
+DataChannel::~DataChannel() {}
 
 void DataChannel::close() { return impl()->close(); }
 
