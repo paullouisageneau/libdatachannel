@@ -432,17 +432,21 @@ void PeerConnection::forwardMessage(message_ptr message) {
 	auto [channel, found] = findDataChannel(stream);
 
 	if (DataChannel::IsOpenMessage(message)) {
+		if (found) {
+			// The stream is already used, the receiver must close the DataChannel
+			PLOG_WARNING << "Got open message on already used stream " << stream;
+			if(channel && channel->isOpen())
+				channel->close();
+			else
+				sctpTransport->closeStream(message->stream);
+
+			return;
+		}
+
 		const uint16_t remoteParity = (iceTransport->role() == Description::Role::Active) ? 1 : 0;
 		if (stream % 2 != remoteParity) {
 			// The odd/even rule is violated, the receiver must close the DataChannel
 			PLOG_WARNING << "Got open message violating the odd/even rule on stream " << stream;
-			sctpTransport->closeStream(message->stream);
-			return;
-		}
-
-		if (found) {
-			// The stream is already used, the receiver must close the DataChannel
-			PLOG_WARNING << "Got open message on already used stream " << stream;
 			sctpTransport->closeStream(message->stream);
 			return;
 		}
