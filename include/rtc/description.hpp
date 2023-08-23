@@ -237,6 +237,8 @@ public:
 		void addPCMACodec(int payloadType, optional<string> profile = std::nullopt);
 
 		void addPCMUCodec(int payloadType, optional<string> profile = std::nullopt);
+		
+		void addAacCodec(int payloadType, optional<string> profile = std::nullopt);
 	};
 
 	class RTC_CPP_EXPORT Video : public Media {

@@ -116,7 +116,8 @@ typedef enum {
 	// audio
 	RTC_CODEC_OPUS = 128,
 	RTC_CODEC_PCMU = 129,
-	RTC_CODEC_PCMA = 130
+	RTC_CODEC_PCMA = 130,
+	RTC_CODEC_AAC = 131,
 } rtcCodec;
 
 typedef enum {
@@ -273,6 +274,10 @@ typedef struct {
 	const char *name;    // optional
 	const char *msid;    // optional
 	const char *trackId; // optional, track ID used in MSID
+
+	//indicate the coder capability and configuration
+	//e.g: aac latm streammuxconfig
+	const char *profile;
 } rtcTrackInit;
 
 RTC_C_EXPORT int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb);
@@ -342,6 +347,9 @@ RTC_C_EXPORT int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHa
 
 // Set OpusPacketizationHandler for track
 RTC_C_EXPORT int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
+
+// Set AACPacketizationHandler for track
+RTC_C_EXPORT int rtcSetAACPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
 
 // Chain RtcpSrReporter to handler chain for given track
 RTC_C_EXPORT int rtcChainRtcpSrReporter(int tr);
