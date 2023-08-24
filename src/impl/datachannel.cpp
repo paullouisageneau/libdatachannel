@@ -95,11 +95,12 @@ void DataChannel::close() {
 		transport = mSctpTransport.lock();
 	}
 
-	if (mIsOpen.exchange(false) && transport && mStream.has_value())
-		transport->closeStream(mStream.value());
+	if (!mIsClosed.exchange(true)) {
+		if (transport && mStream.has_value())
+			transport->closeStream(mStream.value());
 
-	if (!mIsClosed.exchange(true))
 		triggerClosed();
+	}
 
 	resetCallbacks();
 }
@@ -140,7 +141,7 @@ Reliability DataChannel::reliability() const {
 	return *mReliability;
 }
 
-bool DataChannel::isOpen(void) const { return mIsOpen; }
+bool DataChannel::isOpen(void) const { return !mIsClosed && mIsOpen; }
 
 bool DataChannel::isClosed(void) const { return mIsClosed; }
 
