@@ -7,6 +7,7 @@
  */
 
 #include "plog/Appenders/ColorConsoleAppender.h"
+#include "plog/Converters/UTF8Converter.h"
 #include "plog/Formatters/FuncMessageFormatter.h"
 #include "plog/Formatters/TxtFormatter.h"
 #include "plog/Init.h"
@@ -18,11 +19,6 @@
 #include "impl/init.hpp"
 
 #include <mutex>
-
-#ifdef _WIN32
-#include <codecvt>
-#include <locale>
-#endif
 
 namespace {
 
@@ -58,16 +54,10 @@ struct LogAppender : public plog::IAppender {
 		auto formatted = plog::FuncMessageFormatter::format(record);
 		formatted.pop_back(); // remove newline
 
-#ifdef _WIN32
-		using convert_type = std::codecvt_utf8<wchar_t>;
-		std::wstring_convert<convert_type, wchar_t> converter;
-		std::string str = converter.to_bytes(formatted);
-#else
-		std::string str = formatted;
-#endif
+		const auto& converted = plog::UTF8Converter::convert(formatted); // does nothing on non-Windows systems
 
-		if (!callback(static_cast<LogLevel>(severity), str))
-			std::cout << plog::severityToString(severity) << " " << str << std::endl;
+		if (!callback(static_cast<LogLevel>(severity), converted))
+			std::cout << plog::severityToString(severity) << " " << converted << std::endl;
 	}
 };
 
