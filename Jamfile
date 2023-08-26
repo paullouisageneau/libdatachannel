@@ -26,7 +26,6 @@ lib libdatachannel
 	<toolset>msvc:<define>WIN32_LEAN_AND_MEAN
 	<toolset>msvc:<define>NOMINMAX
 	<toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS
-	<toolset>msvc:<define>_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 	<library>/libdatachannel//usrsctp
 	<library>/libdatachannel//juice
 	<library>/libdatachannel//plog
