@@ -1138,6 +1138,15 @@ void Description::Audio::addPCMUCodec(int payloadType, optional<string> profile)
 	addAudioCodec(payloadType, "PCMU", profile);
 }
 
+void Description::Audio::addAacCodec(int payloadType, optional<string> profile) {
+	if (profile) {
+		addAudioCodec(payloadType, "MP4A-LATM", profile);
+	} else {
+		addAudioCodec(payloadType, "MP4A-LATM", "cpresent=1");
+	}
+	
+}
+
 Description::Video::Video(string mid, Direction dir)
     : Media("video 9 UDP/TLS/RTP/SAVPF", std::move(mid), dir) {}
 

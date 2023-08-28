@@ -1026,6 +1026,7 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 			case RTC_CODEC_OPUS:
 			case RTC_CODEC_PCMU:
 			case RTC_CODEC_PCMA:
+			case RTC_CODEC_AAC:
 				mid = "audio";
 				break;
 			default:
@@ -1059,7 +1060,8 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 		}
 		case RTC_CODEC_OPUS:
 		case RTC_CODEC_PCMU:
-		case RTC_CODEC_PCMA: {
+		case RTC_CODEC_PCMA:
+		case RTC_CODEC_AAC: {
 			auto desc = Description::Audio(mid, direction);
 			switch (init->codec) {
 			case RTC_CODEC_OPUS:
@@ -1071,6 +1073,9 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 			case RTC_CODEC_PCMA:
 				desc.addPCMACodec(init->payloadType);
 				break;
+			case RTC_CODEC_AAC:
+					desc.addAacCodec(init->payloadType, init->profile ? std::make_optional(string(init->profile)) : nullopt);
+					break;
 			default:
 				break;
 			}
@@ -1225,6 +1230,23 @@ int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 		track->setMediaHandler(opusHandler);
 		return RTC_ERR_SUCCESS;
 	});
+}
+
+int rtcSetAACPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		// create RTP configuration
+		auto rtpConfig = createRtpPacketizationConfig(init);
+		// create packetizer
+		auto packetizer = std::make_shared<AACRtpPacketizer>(rtpConfig);
+		// create AAC handler
+		auto aacHandler = std::make_shared<AACPacketizationHandler>(packetizer);
+		emplaceMediaChainableHandler(aacHandler, tr);
+		emplaceRtpConfig(rtpConfig, tr);
+		// set handler
+		track->setMediaHandler(aacHandler);
+		return RTC_ERR_SUCCESS;
+  });
 }
 
 int rtcChainRtcpSrReporter(int tr) {
