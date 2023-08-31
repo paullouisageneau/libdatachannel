@@ -24,7 +24,7 @@ namespace rtc {
 
 shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 	auto nalus = std::make_shared<NalUnits>();
-	if (separator == NalUnit::Separator::Length) {
+	if (separator == Separator::Length) {
 		size_t index = 0;
 		while (index < message->size()) {
 			assert(index + 4 < message->size());
@@ -83,9 +83,9 @@ shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 H264RtpPacketizer::H264RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig,
                                      uint16_t maximumFragmentSize)
     : RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize),
-      separator(NalUnit::Separator::Length) {}
+      separator(Separator::Length) {}
 
-H264RtpPacketizer::H264RtpPacketizer(NalUnit::Separator separator,
+H264RtpPacketizer::H264RtpPacketizer(Separator separator,
                                      shared_ptr<RtpPacketizationConfig> rtpConfig,
                                      uint16_t maximumFragmentSize)
     : RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize),

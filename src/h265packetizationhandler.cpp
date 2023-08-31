@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Filip Klembara (in2core)
+ * Copyright (c) 2023 Zita Liao (Dolby)
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this

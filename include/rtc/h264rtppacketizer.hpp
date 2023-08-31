@@ -23,11 +23,13 @@ class RTC_CPP_EXPORT H264RtpPacketizer final : public RtpPacketizer,
 	shared_ptr<NalUnits> splitMessage(binary_ptr message);
 	const uint16_t maximumFragmentSize;
 
+using Separator=NalUnit::Separator;
+
 public:
 	/// Default clock rate for H264 in RTP
 	inline static const uint32_t defaultClockRate = 90 * 1000;
 
-	H264RtpPacketizer(NalUnit::Separator separator,
+	H264RtpPacketizer(Separator separator,
 	                  shared_ptr<RtpPacketizationConfig> rtpConfig,
 	                  uint16_t maximumFragmentSize = NalUnits::defaultMaximumFragmentSize);
 
@@ -43,7 +45,7 @@ public:
 	                                                    message_ptr control) override;
 
 private:
-	const NalUnit::Separator separator;
+	const Separator separator;
 };
 
 } // namespace rtc
