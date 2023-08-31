@@ -1184,6 +1184,10 @@ void Description::Video::addH264Codec(int pt, optional<string> profile) {
 	addVideoCodec(pt, "H264", profile);
 }
 
+void Description::Video::addH265Codec(int pt, optional<string> profile) {
+	addVideoCodec(pt, "H265", profile);
+}
+
 void Description::Video::addVP8Codec(int payloadType) {
 	addVideoCodec(payloadType, "VP8", nullopt);
 }

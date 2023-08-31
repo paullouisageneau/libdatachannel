@@ -112,6 +112,7 @@ typedef enum {
 	RTC_CODEC_H264 = 0,
 	RTC_CODEC_VP8 = 1,
 	RTC_CODEC_VP9 = 2,
+	RTC_CODEC_H265 = 3,
 
 	// audio
 	RTC_CODEC_OPUS = 128,
@@ -299,7 +300,7 @@ typedef enum {
 	RTC_OBU_PACKETIZED_TEMPORAL_UNIT = 1,
 } rtcObuPacketization;
 
-// Define how NAL units are separated in a H264 sample
+// Define how NAL units are separated in a H264/H265 sample
 typedef enum {
 	RTC_NAL_SEPARATOR_LENGTH = 0,               // first 4 bytes are NAL unit length
 	RTC_NAL_SEPARATOR_LONG_START_SEQUENCE = 1,  // 0x00, 0x00, 0x00, 0x01
@@ -315,7 +316,7 @@ typedef struct {
 	uint16_t sequenceNumber;
 	uint32_t timestamp;
 
-	// H264
+	// H264/H265
 	rtcNalUnitSeparator nalSeparator; // NAL unit separator
 	uint16_t maxFragmentSize;         // Maximum NAL unit fragment size
 
@@ -344,6 +345,9 @@ RTC_C_EXPORT int rtcSetMediaInterceptorCallback(int id, rtcInterceptorCallbackFu
 
 // Set H264PacketizationHandler for track
 RTC_C_EXPORT int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
+
+// Set H265PacketizationHandler for track
+RTC_C_EXPORT int rtcSetH265PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
 
 // Set OpusPacketizationHandler for track
 RTC_C_EXPORT int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);

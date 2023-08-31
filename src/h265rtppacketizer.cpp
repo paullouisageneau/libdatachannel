@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2020 Filip Klembara (in2core)
+ * Copyright (c) 2023 Zita Liao (Dolby)
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,7 +8,7 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "h264rtppacketizer.hpp"
+#include "h265rtppacketizer.hpp"
 
 #include "impl/internals.hpp"
 
@@ -22,9 +22,9 @@
 
 namespace rtc {
 
-shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
-	auto nalus = std::make_shared<NalUnits>();
-	if (separator == Separator::Length) {
+shared_ptr<H265NalUnits> H265RtpPacketizer::splitMessage(binary_ptr message) {
+	auto nalus = std::make_shared<H265NalUnits>();
+	if (separator == NalUnit::Separator::Length) {
 		size_t index = 0;
 		while (index < message->size()) {
 			assert(index + 4 < message->size());
@@ -44,7 +44,7 @@ shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 			}
 			auto begin = message->begin() + naluStartIndex;
 			auto end = message->begin() + naluEndIndex;
-			nalus->push_back(std::make_shared<NalUnit>(begin, end));
+			nalus->push_back(std::make_shared<H265NalUnit>(begin, end));
 			index = naluEndIndex;
 		}
 	} else {
@@ -68,31 +68,31 @@ shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 				match = NUSM_noMatch;
 				auto begin = message->begin() + naluStartIndex;
 				auto end = message->begin() + naluEndIndex + 1;
-				nalus->push_back(std::make_shared<NalUnit>(begin, end));
+				nalus->push_back(std::make_shared<H265NalUnit>(begin, end));
 				naluStartIndex = index + 1;
 			}
 			index++;
 		}
 		auto begin = message->begin() + naluStartIndex;
 		auto end = message->end();
-		nalus->push_back(std::make_shared<NalUnit>(begin, end));
+		nalus->push_back(std::make_shared<H265NalUnit>(begin, end));
 	}
 	return nalus;
 }
 
-H264RtpPacketizer::H264RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig,
+H265RtpPacketizer::H265RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig,
                                      uint16_t maximumFragmentSize)
     : RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize),
-      separator(Separator::Length) {}
+      separator(NalUnit::Separator::Length) {}
 
-H264RtpPacketizer::H264RtpPacketizer(Separator separator,
+H265RtpPacketizer::H265RtpPacketizer(NalUnit::Separator separator,
                                      shared_ptr<RtpPacketizationConfig> rtpConfig,
                                      uint16_t maximumFragmentSize)
     : RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize),
       separator(separator) {}
 
 ChainedOutgoingProduct
-H264RtpPacketizer::processOutgoingBinaryMessage(ChainedMessagesProduct messages,
+H265RtpPacketizer::processOutgoingBinaryMessage(ChainedMessagesProduct messages,
                                                 message_ptr control) {
 	ChainedMessagesProduct packets = std::make_shared<std::vector<binary_ptr>>();
 	for (auto message : *messages) {
