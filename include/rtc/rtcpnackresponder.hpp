@@ -37,9 +37,9 @@ class RTC_CPP_EXPORT RtcpNackResponder final : public MediaHandlerElement {
 		shared_ptr<Element> oldest = nullptr;
 		/// Newest packet in storage
 		shared_ptr<Element> newest = nullptr;
-
 		/// Inner storage
 		std::unordered_map<uint16_t, shared_ptr<Element>> storage{};
+		std::mutex mutex;
 
 		/// Maximum storage size
 		const unsigned maximumSize;
