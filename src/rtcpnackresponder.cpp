@@ -28,6 +28,7 @@ RtcpNackResponder::Storage::Storage(unsigned _maximumSize) : maximumSize(_maximu
 }
 
 optional<binary_ptr> RtcpNackResponder::Storage::get(uint16_t sequenceNumber) {
+	std::lock_guard lock(mutex);
 	auto position = storage.find(sequenceNumber);
 	return position != storage.end() ? std::make_optional(storage.at(sequenceNumber)->packet)
 	                                 : nullopt;
@@ -40,6 +41,7 @@ void RtcpNackResponder::Storage::store(binary_ptr packet) {
 	auto rtp = reinterpret_cast<RtpHeader *>(packet->data());
 	auto sequenceNumber = rtp->seqNumber();
 
+	std::lock_guard lock(mutex);
 	assert((storage.empty() && !oldest && !newest) || (!storage.empty() && oldest && newest));
 
 	if (size() == 0) {
