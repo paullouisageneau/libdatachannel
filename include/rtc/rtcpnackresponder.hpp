@@ -61,7 +61,6 @@ class RTC_CPP_EXPORT RtcpNackResponder final : public MediaHandlerElement {
 	};
 
 	const shared_ptr<Storage> storage;
-	std::mutex reportMutex;
 
 public:
 	RtcpNackResponder(unsigned maxStoredPacketCount = Storage::defaultMaximumSize);
