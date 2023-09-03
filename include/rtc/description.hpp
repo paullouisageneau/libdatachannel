@@ -78,14 +78,14 @@ public:
 	public:
 		virtual ~Entry() = default;
 
-		virtual string type() const { return mType; }
-		virtual string description() const { return mDescription; }
-		virtual string mid() const { return mMid; }
+		virtual string type() const;
+		virtual string description() const;
+		virtual string mid() const;
 
-		Direction direction() const { return mDirection; }
+		Direction direction() const;
 		void setDirection(Direction dir);
 
-		bool isRemoved() const { return mIsRemoved; }
+		bool isRemoved() const;
 		void markRemoved();
 
 		std::vector<string> attributes() const;
@@ -144,12 +144,12 @@ public:
 		string description() const override;
 		Application reciprocate() const;
 
-		void setSctpPort(uint16_t port) { mSctpPort = port; }
-		void hintSctpPort(uint16_t port) { mSctpPort = mSctpPort.value_or(port); }
-		void setMaxMessageSize(size_t size) { mMaxMessageSize = size; }
+		void setSctpPort(uint16_t port);
+		void hintSctpPort(uint16_t port);
+		void setMaxMessageSize(size_t size);
 
-		optional<uint16_t> sctpPort() const { return mSctpPort; }
-		optional<size_t> maxMessageSize() const { return mMaxMessageSize; }
+		optional<uint16_t> sctpPort() const;
+		optional<size_t> maxMessageSize() const;
 
 		virtual void parseSdpLine(string_view line) override;
 
@@ -178,7 +178,7 @@ public:
 		bool hasSSRC(uint32_t ssrc) const;
 		void clearSSRCs();
 		std::vector<uint32_t> getSSRCs() const;
-		std::optional<std::string> getCNameForSsrc(uint32_t ssrc) const;
+		optional<std::string> getCNameForSsrc(uint32_t ssrc) const;
 
 		int bitrate() const;
 		void setBitrate(int bitrate);
@@ -233,11 +233,8 @@ public:
 		void addAudioCodec(int payloadType, string codec, optional<string> profile = std::nullopt);
 
 		void addOpusCodec(int payloadType, optional<string> profile = DEFAULT_OPUS_AUDIO_PROFILE);
-
 		void addPCMACodec(int payloadType, optional<string> profile = std::nullopt);
-
 		void addPCMUCodec(int payloadType, optional<string> profile = std::nullopt);
-		
 		void addAacCodec(int payloadType, optional<string> profile = std::nullopt);
 	};
 

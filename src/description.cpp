@@ -521,7 +521,17 @@ Description::Entry::Entry(const string &mline, string mid, Direction dir)
 	mIsRemoved = (port == 0);
 }
 
+string Description::Entry::type() const { return mType; }
+
+string Description::Entry::description() const { return mDescription; }
+
+string Description::Entry::mid() const { return mMid; }
+
+Description::Direction Description::Entry::direction() const { return mDirection; }
+
 void Description::Entry::setDirection(Direction dir) { mDirection = dir; }
+
+bool Description::Entry::isRemoved() const { return mIsRemoved; }
 
 void Description::Entry::markRemoved() { mIsRemoved = true; }
 
@@ -532,9 +542,7 @@ void Description::addAttribute(string attr) {
 		mAttributes.emplace_back(std::move(attr));
 }
 
-void Description::Entry::addRid(string rid) {
-	mRids.emplace_back(rid);
-}
+void Description::Entry::addRid(string rid) { mRids.emplace_back(rid); }
 
 void Description::removeAttribute(const string &attr) {
 	mAttributes.erase(
@@ -728,8 +736,7 @@ void Description::Media::addSSRC(uint32_t ssrc, optional<string> name, optional<
 	if (msid) {
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " msid:" + *msid + " " +
 		                         trackId.value_or(*msid));
-		mAttributes.emplace_back("msid:" + *msid + " " +
-				trackId.value_or(*msid));
+		mAttributes.emplace_back("msid:" + *msid + " " + trackId.value_or(*msid));
 	}
 
 	mSsrcs.emplace_back(ssrc);
@@ -794,6 +801,16 @@ Description::Application Description::Application::reciprocate() const {
 
 	return reciprocated;
 }
+
+void Description::Application::setSctpPort(uint16_t port) { mSctpPort = port; }
+
+void Description::Application::hintSctpPort(uint16_t port) { mSctpPort = mSctpPort.value_or(port); }
+
+void Description::Application::setMaxMessageSize(size_t size) { mMaxMessageSize = size; }
+
+optional<uint16_t> Description::Application::sctpPort() const { return mSctpPort; }
+
+optional<size_t> Description::Application::maxMessageSize() const { return mMaxMessageSize; }
 
 string Description::Application::generateSdpLines(string_view eol) const {
 	std::ostringstream sdp;
@@ -1144,7 +1161,6 @@ void Description::Audio::addAacCodec(int payloadType, optional<string> profile) 
 	} else {
 		addAudioCodec(payloadType, "MP4A-LATM", "cpresent=1");
 	}
-	
 }
 
 Description::Video::Video(string mid, Direction dir)
@@ -1196,9 +1212,7 @@ void Description::Video::addVP9Codec(int payloadType) {
 	addVideoCodec(payloadType, "VP9", nullopt);
 }
 
-void Description::Video::addAV1Codec(int pt) {
-	addVideoCodec(pt, "AV1", nullopt);
-}
+void Description::Video::addAV1Codec(int pt) { addVideoCodec(pt, "AV1", nullopt); }
 
 Description::Type Description::stringToType(const string &typeString) {
 	using TypeMap_t = std::unordered_map<string, Type>;
