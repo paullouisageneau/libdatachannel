@@ -46,7 +46,7 @@ char *rtcGatheringState_print(rtcGatheringState state);
 int all_space(const char *str);
 
 int main(int argc, char **argv) {
-	rtcInitLogger(RTC_LOG_DEBUG, NULL);
+	rtcInitLogger(RTC_LOG_WARNING, NULL);
 
 	// Create peer
 	rtcConfiguration config;
