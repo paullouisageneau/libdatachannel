@@ -1196,23 +1196,25 @@ void Description::Video::addVideoCodec(int payloadType, string codec, optional<s
 	// ";rtx-time=3000"); addFormat(rtx);
 }
 
-void Description::Video::addH264Codec(int pt, optional<string> profile) {
-	addVideoCodec(pt, "H264", profile);
+void Description::Video::addH264Codec(int payloadType, optional<string> profile) {
+	addVideoCodec(payloadType, "H264", profile);
 }
 
-void Description::Video::addH265Codec(int pt, optional<string> profile) {
-	addVideoCodec(pt, "H265", profile);
+void Description::Video::addH265Codec(int payloadType, optional<string> profile) {
+	addVideoCodec(payloadType, "H265", profile);
 }
 
-void Description::Video::addVP8Codec(int payloadType) {
-	addVideoCodec(payloadType, "VP8", nullopt);
+void Description::Video::addVP8Codec(int payloadType, optional<string> profile) {
+	addVideoCodec(payloadType, "VP8", profile);
 }
 
-void Description::Video::addVP9Codec(int payloadType) {
-	addVideoCodec(payloadType, "VP9", nullopt);
+void Description::Video::addVP9Codec(int payloadType, optional<string> profile) {
+	addVideoCodec(payloadType, "VP9", profile);
 }
 
-void Description::Video::addAV1Codec(int pt) { addVideoCodec(pt, "AV1", nullopt); }
+void Description::Video::addAV1Codec(int payloadType, optional<string> profile) {
+	addVideoCodec(payloadType, "AV1", profile);
+}
 
 Description::Type Description::stringToType(const string &typeString) {
 	using TypeMap_t = std::unordered_map<string, Type>;
