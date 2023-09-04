@@ -11,15 +11,14 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "mediahandlerrootelement.hpp"
 #include "mediachainablehandler.hpp"
+#include "mediahandlerrootelement.hpp"
 #include "rtppacketizer.hpp"
 
 namespace rtc {
 
 /// RTP packetizer for aac
-class RTC_CPP_EXPORT AACRtpPacketizer final : public RtpPacketizer,
-                                               public MediaHandlerRootElement {
+class RTC_CPP_EXPORT AACRtpPacketizer final : public RtpPacketizer, public MediaHandlerRootElement {
 public:
 	/// default clock rate used in aac RTP communication
 	inline static const uint32_t defaultClockRate = 48 * 1000;
@@ -48,10 +47,10 @@ public:
 class RTC_CPP_EXPORT AACPacketizationHandler final : public MediaChainableHandler {
 
 public:
-  /// Construct handler for aac packetization.
-  /// @param packetizer RTP packetizer for aac
-  AACPacketizationHandler(shared_ptr<AACRtpPacketizer> packetizer)
-      : MediaChainableHandler(packetizer) {}
+	/// Construct handler for aac packetization.
+	/// @param packetizer RTP packetizer for aac
+	AACPacketizationHandler(shared_ptr<AACRtpPacketizer> packetizer)
+	    : MediaChainableHandler(packetizer) {}
 };
 
 } // namespace rtc

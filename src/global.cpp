@@ -54,7 +54,8 @@ struct LogAppender : public plog::IAppender {
 		auto formatted = plog::FuncMessageFormatter::format(record);
 		formatted.pop_back(); // remove newline
 
-		const auto& converted = plog::UTF8Converter::convert(formatted); // does nothing on non-Windows systems
+		const auto &converted =
+		    plog::UTF8Converter::convert(formatted); // does nothing on non-Windows systems
 
 		if (!callback(static_cast<LogLevel>(severity), converted))
 			std::cout << plog::severityToString(severity) << " " << converted << std::endl;

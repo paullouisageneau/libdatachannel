@@ -1079,8 +1079,10 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 				desc.addPCMACodec(init->payloadType);
 				break;
 			case RTC_CODEC_AAC:
-					desc.addAacCodec(init->payloadType, init->profile ? std::make_optional(string(init->profile)) : nullopt);
-					break;
+				desc.addAacCodec(init->payloadType, init->profile
+				                                        ? std::make_optional(string(init->profile))
+				                                        : nullopt);
+				break;
 			default:
 				break;
 			}
@@ -1208,8 +1210,7 @@ int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
 		                                                     : RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE;
 		auto packetizer = std::make_shared<H264RtpPacketizer>(
-		    static_cast<rtc::NalUnit::Separator>(nalSeparator), rtpConfig,
-		    maxFragmentSize);
+		    static_cast<rtc::NalUnit::Separator>(nalSeparator), rtpConfig, maxFragmentSize);
 		// create H264 handler
 		auto h264Handler = std::make_shared<H264PacketizationHandler>(packetizer);
 		emplaceMediaChainableHandler(h264Handler, tr);
@@ -1230,8 +1231,7 @@ int rtcSetH265PacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
 		                                                     : RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE;
 		auto packetizer = std::make_shared<H265RtpPacketizer>(
-		    static_cast<rtc::NalUnit::Separator>(nalSeparator), rtpConfig,
-		    maxFragmentSize);
+		    static_cast<rtc::NalUnit::Separator>(nalSeparator), rtpConfig, maxFragmentSize);
 		// create H265 handler
 		auto h265Handler = std::make_shared<H265PacketizationHandler>(packetizer);
 		emplaceMediaChainableHandler(h265Handler, tr);
@@ -1273,7 +1273,7 @@ int rtcSetAACPacketizationHandler(int tr, const rtcPacketizationHandlerInit *ini
 		// set handler
 		track->setMediaHandler(aacHandler);
 		return RTC_ERR_SUCCESS;
-  });
+	});
 }
 
 int rtcChainRtcpSrReporter(int tr) {

@@ -58,9 +58,7 @@ TcpTransport::TcpTransport(socket_t sock, state_callback callback)
 	mService = serv;
 }
 
-TcpTransport::~TcpTransport() {
-	close();
-}
+TcpTransport::~TcpTransport() { close(); }
 
 void TcpTransport::onBufferedAmount(amount_callback callback) {
 	mBufferedAmountCallback = std::move(callback);

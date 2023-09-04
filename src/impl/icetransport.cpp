@@ -407,7 +407,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 
 	PLOG_DEBUG << "Initializing ICE transport (libnice)";
 
-	if(!MainLoop)
+	if (!MainLoop)
 		throw std::logic_error("Main loop for nice agent is not created");
 
 	// RFC 8445: The nomination process that was referred to as "aggressive nomination" in RFC 5245

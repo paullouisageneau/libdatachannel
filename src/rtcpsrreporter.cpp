@@ -79,13 +79,9 @@ message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
 	return msg;
 }
 
-void RtcpSrReporter::setNeedsToReport() {
-	mNeedsToReport = true;
-}
+void RtcpSrReporter::setNeedsToReport() { mNeedsToReport = true; }
 
-uint32_t RtcpSrReporter::lastReportedTimestamp() const {
-	return mLastReportedTimestamp;
-}
+uint32_t RtcpSrReporter::lastReportedTimestamp() const { return mLastReportedTimestamp; }
 
 } // namespace rtc
 

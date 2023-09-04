@@ -96,7 +96,8 @@ public:
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
 	shared_ptr<MediaHandler> getMediaHandler();
 
-	[[nodiscard]] shared_ptr<DataChannel> createDataChannel(string label, DataChannelInit init = {});
+	[[nodiscard]] shared_ptr<DataChannel> createDataChannel(string label,
+	                                                        DataChannelInit init = {});
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
 
 	[[nodiscard]] shared_ptr<Track> addTrack(Description::Media description);

@@ -11,8 +11,8 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "mediahandlerrootelement.hpp"
 #include "h265nalunit.hpp"
+#include "mediahandlerrootelement.hpp"
 #include "rtppacketizer.hpp"
 
 namespace rtc {
@@ -27,8 +27,7 @@ public:
 	/// Default clock rate for H265 in RTP
 	inline static const uint32_t defaultClockRate = 90 * 1000;
 
-	H265RtpPacketizer(NalUnit::Separator separator,
-	                  shared_ptr<RtpPacketizationConfig> rtpConfig,
+	H265RtpPacketizer(NalUnit::Separator separator, shared_ptr<RtpPacketizationConfig> rtpConfig,
 	                  uint16_t maximumFragmentSize = H265NalUnits::defaultMaximumFragmentSize);
 
 	/// Constructs h265 payload packetizer with given RTP configuration.

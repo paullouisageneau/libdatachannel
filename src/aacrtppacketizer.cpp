@@ -24,7 +24,7 @@ binary_ptr AACRtpPacketizer::packetize(binary_ptr payload, [[maybe_unused]] bool
 
 ChainedOutgoingProduct
 AACRtpPacketizer::processOutgoingBinaryMessage(ChainedMessagesProduct messages,
-                                                message_ptr control) {
+                                               message_ptr control) {
 	ChainedMessagesProduct packets = make_chained_messages_product();
 	packets->reserve(messages->size());
 	for (auto message : *messages) {

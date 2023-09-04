@@ -447,7 +447,7 @@ void SctpTransport::incoming(message_ptr message) {
 		mWrittenCondition.wait(lock, [&]() { return mWrittenOnce || state() == State::Failed; });
 	}
 
-	if(state() == State::Failed)
+	if (state() == State::Failed)
 		return;
 
 	if (!message) {

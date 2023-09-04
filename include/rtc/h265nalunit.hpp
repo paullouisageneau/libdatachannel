@@ -23,39 +23,42 @@ namespace rtc {
 #define H265_FU_HEADER_SIZE 1
 /// Nalu header
 struct RTC_CPP_EXPORT H265NalUnitHeader {
-/*
-* nal_unit_header( ) { 
-* forbidden_zero_bit	f(1)
-* nal_unit_type			u(6)
-* nuh_layer_id			u(6)
-* nuh_temporal_id_plus1	u(3)
-}
-*/
-	uint8_t _first = 0; // high byte of header
+	/*
+	* nal_unit_header( ) {
+	* forbidden_zero_bit	f(1)
+	* nal_unit_type			u(6)
+	* nuh_layer_id			u(6)
+	* nuh_temporal_id_plus1	u(3)
+	}
+	*/
+	uint8_t _first = 0;  // high byte of header
 	uint8_t _second = 0; // low byte of header
 
 	bool forbiddenBit() const { return _first >> 7; }
 	uint8_t unitType() const { return (_first & 0b0111'1110) >> 1; }
 	uint8_t nuhLayerId() const { return ((_first & 0x1) << 5) | ((_second & 0b1111'1000) >> 3); }
-	uint8_t nuhTempIdPlus1() const { return _second & 0b111;}
+	uint8_t nuhTempIdPlus1() const { return _second & 0b111; }
 
 	void setForbiddenBit(bool isSet) { _first = (_first & 0x7F) | (isSet << 7); }
 	void setUnitType(uint8_t type) { _first = (_first & 0b1000'0001) | ((type & 0b11'1111) << 1); }
-	void setNuhLayerId(uint8_t nuhLayerId) { 
-			_first = (_first & 0b1111'1110) | ((nuhLayerId & 0b10'0000) >> 5);
-			_second = (_second & 0b0000'0111)	| ((nuhLayerId & 0b01'1111) << 3); }
-	void setNuhTempIdPlus1(uint8_t nuhTempIdPlus1) { _second = (_second & 0b1111'1000) | (nuhTempIdPlus1 & 0b111); }
+	void setNuhLayerId(uint8_t nuhLayerId) {
+		_first = (_first & 0b1111'1110) | ((nuhLayerId & 0b10'0000) >> 5);
+		_second = (_second & 0b0000'0111) | ((nuhLayerId & 0b01'1111) << 3);
+	}
+	void setNuhTempIdPlus1(uint8_t nuhTempIdPlus1) {
+		_second = (_second & 0b1111'1000) | (nuhTempIdPlus1 & 0b111);
+	}
 };
 
 /// Nalu fragment header
 struct RTC_CPP_EXPORT H265NalUnitFragmentHeader {
 	/*
-	* +---------------+
-	* |0|1|2|3|4|5|6|7|
-	* +-+-+-+-+-+-+-+-+
-	* |S|E|  FuType   |
-	* +---------------+
-	*/
+	 * +---------------+
+	 * |0|1|2|3|4|5|6|7|
+	 * +-+-+-+-+-+-+-+-+
+	 * |S|E|  FuType   |
+	 * +---------------+
+	 */
 	uint8_t _first = 0;
 
 	bool isStart() const { return _first >> 7; }
@@ -72,16 +75,18 @@ struct RTC_CPP_EXPORT H265NalUnitFragmentHeader {
 /// Nal unit
 struct RTC_CPP_EXPORT H265NalUnit : NalUnit {
 	H265NalUnit(const H265NalUnit &unit) = default;
-	H265NalUnit(size_t size, bool includingHeader = true) : NalUnit(size, includingHeader, NalUnit::Type::H265) {}
+	H265NalUnit(size_t size, bool includingHeader = true)
+	    : NalUnit(size, includingHeader, NalUnit::Type::H265) {}
 	H265NalUnit(binary &&data) : NalUnit(std::move(data)) {}
 	H265NalUnit() : NalUnit(NalUnit::Type::H265) {}
 
-	template <typename Iterator> H265NalUnit(Iterator begin_, Iterator end_) : NalUnit(begin_, end_) {}
+	template <typename Iterator>
+	H265NalUnit(Iterator begin_, Iterator end_) : NalUnit(begin_, end_) {}
 
 	bool forbiddenBit() const { return header()->forbiddenBit(); }
 	uint8_t unitType() const { return header()->unitType(); }
 	uint8_t nuhLayerId() const { return header()->nuhLayerId(); }
-	uint8_t nuhTempIdPlus1() const { return header()->nuhTempIdPlus1();}
+	uint8_t nuhTempIdPlus1() const { return header()->nuhTempIdPlus1(); }
 
 	binary payload() const {
 		assert(size() >= H265_NAL_HEADER_SIZE);
@@ -114,12 +119,12 @@ protected:
 /// Nal unit fragment A
 struct RTC_CPP_EXPORT H265NalUnitFragment : H265NalUnit {
 	static std::vector<shared_ptr<H265NalUnitFragment>> fragmentsFrom(shared_ptr<H265NalUnit> nalu,
-	                                                               uint16_t maximumFragmentSize);
+	                                                                  uint16_t maximumFragmentSize);
 
 	enum class FragmentType { Start, Middle, End };
 
 	H265NalUnitFragment(FragmentType type, bool forbiddenBit, uint8_t nuhLayerId,
-					 uint8_t nuhTempIdPlus1, uint8_t unitType, binary data);
+	                    uint8_t nuhTempIdPlus1, uint8_t unitType, binary data);
 
 	uint8_t unitType() const { return fragmentHeader()->unitType(); }
 
@@ -158,11 +163,13 @@ protected:
 	}
 
 	H265NalUnitFragmentHeader *fragmentHeader() {
-		return reinterpret_cast<H265NalUnitFragmentHeader *>(fragmentIndicator() + H265_NAL_HEADER_SIZE);
+		return reinterpret_cast<H265NalUnitFragmentHeader *>(fragmentIndicator() +
+		                                                     H265_NAL_HEADER_SIZE);
 	}
 
 	const H265NalUnitFragmentHeader *fragmentHeader() const {
-		return reinterpret_cast<const H265NalUnitFragmentHeader *>(fragmentIndicator() + H265_NAL_HEADER_SIZE);
+		return reinterpret_cast<const H265NalUnitFragmentHeader *>(fragmentIndicator() +
+		                                                           H265_NAL_HEADER_SIZE);
 	}
 };
 

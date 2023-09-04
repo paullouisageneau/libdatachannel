@@ -7,10 +7,10 @@
  */
 
 #include "wshandshake.hpp"
+#include "http.hpp"
 #include "internals.hpp"
 #include "sha.hpp"
 #include "utils.hpp"
-#include "http.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 

@@ -105,9 +105,7 @@ void DataChannel::close() {
 	resetCallbacks();
 }
 
-void DataChannel::remoteClose() {
-	close();
-}
+void DataChannel::remoteClose() { close(); }
 
 optional<message_variant> DataChannel::receive() {
 	auto next = mRecvQueue.pop();
