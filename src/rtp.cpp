@@ -130,7 +130,8 @@ void RtpExtensionHeader::setHeaderLength(uint16_t headerLength) {
 
 void RtpExtensionHeader::clearBody() { std::memset(getBody(), 0, getSize()); }
 
-void RtpExtensionHeader::writeOneByteHeader(size_t offset, uint8_t id, const byte *value, size_t size) {
+void RtpExtensionHeader::writeOneByteHeader(size_t offset, uint8_t id, const byte *value,
+                                            size_t size) {
 	if ((id == 0) || (id > 14) || (size == 0) || (size > 16) || ((offset + 1 + size) > getSize()))
 		return;
 	auto buf = getBody() + offset;
@@ -141,7 +142,8 @@ void RtpExtensionHeader::writeOneByteHeader(size_t offset, uint8_t id, const byt
 	std::memcpy(buf + 1, value, size);
 }
 
-void RtpExtensionHeader::writeCurrentVideoOrientation(size_t offset, const uint8_t id, uint8_t value) {
+void RtpExtensionHeader::writeCurrentVideoOrientation(size_t offset, const uint8_t id,
+                                                      uint8_t value) {
 	auto v = std::byte{value};
 	writeOneByteHeader(offset, id, &v, 1);
 }

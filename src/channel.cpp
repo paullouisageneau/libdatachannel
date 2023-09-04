@@ -49,9 +49,7 @@ void Channel::setBufferedAmountLowThreshold(size_t amount) {
 	impl()->bufferedAmountLowThreshold = amount;
 }
 
-void Channel::resetCallbacks() {
-	impl()->resetCallbacks();
-}
+void Channel::resetCallbacks() { impl()->resetCallbacks(); }
 
 optional<message_variant> Channel::receive() { return impl()->receive(); }
 

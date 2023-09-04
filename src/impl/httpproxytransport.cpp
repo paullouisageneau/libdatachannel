@@ -8,8 +8,8 @@
  */
 
 #include "httpproxytransport.hpp"
-#include "tcptransport.hpp"
 #include "http.hpp"
+#include "tcptransport.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -118,7 +118,8 @@ size_t HttpProxyTransport::parseHttpResponse(std::byte *buffer, size_t size) {
 	status >> protocol >> code;
 
 	if (code != 200)
-		throw std::runtime_error("Unexpected response code " + to_string(code) + " from HTTP proxy");
+		throw std::runtime_error("Unexpected response code " + to_string(code) +
+		                         " from HTTP proxy");
 
 	return length;
 }

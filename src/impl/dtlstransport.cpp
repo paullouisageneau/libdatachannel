@@ -605,10 +605,12 @@ void DtlsTransport::doRecv() {
 	}
 }
 
-int DtlsTransport::CertificateCallback(void *ctx, mbedtls_x509_crt *crt, int /*depth*/, uint32_t */*flags*/) {
+int DtlsTransport::CertificateCallback(void *ctx, mbedtls_x509_crt *crt, int /*depth*/,
+                                       uint32_t * /*flags*/) {
 	auto this_ = static_cast<DtlsTransport *>(ctx);
 	string fingerprint = make_fingerprint(crt);
-	std::transform(fingerprint.begin(), fingerprint.end(), fingerprint.begin(), [](char c) { return char(std::toupper(c)); });
+	std::transform(fingerprint.begin(), fingerprint.end(), fingerprint.begin(),
+	               [](char c) { return char(std::toupper(c)); });
 	return this_->mVerifierCallback(fingerprint) ? 0 : 1;
 }
 

@@ -51,9 +51,7 @@ const Configuration *PeerConnection::config() const { return &impl()->config; }
 
 PeerConnection::State PeerConnection::state() const { return impl()->state; }
 
-PeerConnection::IceState PeerConnection::iceState() const {
-	return impl()->iceState;
-}
+PeerConnection::IceState PeerConnection::iceState() const { return impl()->iceState; }
 
 PeerConnection::GatheringState PeerConnection::gatheringState() const {
 	return impl()->gatheringState;

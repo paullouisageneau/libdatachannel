@@ -446,7 +446,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 		if (found) {
 			// The stream is already used, the receiver must close the DataChannel
 			PLOG_WARNING << "Got open message on already used stream " << stream;
-			if(channel && !channel->isClosed())
+			if (channel && !channel->isClosed())
 				channel->close();
 			else
 				sctpTransport->closeStream(message->stream);
@@ -469,8 +469,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 
 		std::unique_lock lock(mDataChannelsMutex); // we are going to emplace
 		mDataChannels.emplace(stream, channel);
-	}
-	else if (!found) {
+	} else if (!found) {
 		if (message->type == Message::Reset)
 			return; // ignore
 
@@ -636,8 +635,8 @@ std::pair<shared_ptr<DataChannel>, bool> PeerConnection::findDataChannel(uint16_
 }
 
 bool PeerConnection::removeDataChannel(uint16_t stream) {
-		std::unique_lock lock(mDataChannelsMutex); // we are going to erase
-		return mDataChannels.erase(stream) != 0;
+	std::unique_lock lock(mDataChannelsMutex); // we are going to erase
+	return mDataChannels.erase(stream) != 0;
 }
 
 uint16_t PeerConnection::maxDataChannelStream() const {

@@ -53,7 +53,6 @@ public:
 	///   3 - 270 degrees
 	uint8_t videoOrientation = 0;
 
-
 	// MID Extension Header
 	uint8_t midId = 0;
 	optional<std::string> mid;

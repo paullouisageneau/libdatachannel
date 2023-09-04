@@ -148,7 +148,7 @@ string make_fingerprint(gnutls_x509_crt_t crt) {
 }
 
 #elif USE_MBEDTLS
-string make_fingerprint(mbedtls_x509_crt* crt) {
+string make_fingerprint(mbedtls_x509_crt *crt) {
 	const int size = 32;
 	uint8_t buffer[size];
 	std::stringstream fingerprint;
@@ -425,7 +425,7 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		if (!pkey || !rsa || !exponent)
 			throw std::runtime_error("Unable to allocate structures for RSA key pair");
 
-		const unsigned int e = 65537;               // 2^16 + 1
+		const unsigned int e = 65537; // 2^16 + 1
 		if (!BN_set_word(exponent.get(), e) ||
 		    !RSA_generate_key_ex(rsa.get(), bits, exponent.get(), NULL) ||
 		    !EVP_PKEY_assign_RSA(pkey.get(),

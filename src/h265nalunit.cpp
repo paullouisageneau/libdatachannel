@@ -17,7 +17,7 @@
 namespace rtc {
 
 H265NalUnitFragment::H265NalUnitFragment(FragmentType type, bool forbiddenBit, uint8_t nuhLayerId,
-									uint8_t nuhTempIdPlus1, uint8_t unitType, binary data)
+                                         uint8_t nuhTempIdPlus1, uint8_t unitType, binary data)
     : H265NalUnit(data.size() + H265_NAL_HEADER_SIZE + H265_FU_HEADER_SIZE) {
 	setForbiddenBit(forbiddenBit);
 	setNuhLayerId(nuhLayerId);
@@ -37,9 +37,9 @@ H265NalUnitFragment::fragmentsFrom(shared_ptr<H265NalUnit> nalu, uint16_t maximu
 	// 3 bytes for FU indicator and FU header
 	maximumFragmentSize -= (H265_NAL_HEADER_SIZE + H265_FU_HEADER_SIZE);
 	auto f = nalu->forbiddenBit();
-	uint8_t nuhLayerId = nalu->nuhLayerId() & 0x3F; // 6 bits
+	uint8_t nuhLayerId = nalu->nuhLayerId() & 0x3F;        // 6 bits
 	uint8_t nuhTempIdPlus1 = nalu->nuhTempIdPlus1() & 0xE; // 3 bits
-	uint8_t naluType = nalu->unitType() & 0x3F; // 6 bits
+	uint8_t naluType = nalu->unitType() & 0x3F;            // 6 bits
 	auto payload = nalu->payload();
 	vector<shared_ptr<H265NalUnitFragment>> result{};
 	uint64_t offset = 0;
@@ -57,8 +57,8 @@ H265NalUnitFragment::fragmentsFrom(shared_ptr<H265NalUnit> nalu, uint16_t maximu
 			fragmentType = FragmentType::End;
 		}
 		fragmentData = {payload.begin() + offset, payload.begin() + offset + maximumFragmentSize};
-		auto fragment =
-		    std::make_shared<H265NalUnitFragment>(fragmentType, f, nuhLayerId, nuhTempIdPlus1, naluType, fragmentData);
+		auto fragment = std::make_shared<H265NalUnitFragment>(
+		    fragmentType, f, nuhLayerId, nuhTempIdPlus1, naluType, fragmentData);
 		result.push_back(fragment);
 		offset += maximumFragmentSize;
 	}

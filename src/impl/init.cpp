@@ -43,7 +43,7 @@ struct Init::TokenPayload {
 	~TokenPayload() {
 		std::thread t(
 		    [](std::promise<void> promise) {
-				utils::this_thread::set_name("RTC cleanup");
+			    utils::this_thread::set_name("RTC cleanup");
 			    try {
 				    Init::Instance().doCleanup();
 				    promise.set_value();
