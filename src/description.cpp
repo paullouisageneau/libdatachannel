@@ -691,7 +691,7 @@ Description::Entry::ExtMap::ExtMap(string_view description) { setDescription(des
 void Description::Entry::ExtMap::setDescription(string_view description) {
 	const size_t uriStart = description.find(' ');
 	if (uriStart == string::npos)
-		throw std::invalid_argument("Invalid description");
+		throw std::invalid_argument("Invalid description for extmap");
 
 	const string_view idAndDirection = description.substr(0, uriStart);
 	const size_t idSplit = idAndDirection.find('/');
@@ -710,7 +710,7 @@ void Description::Entry::ExtMap::setDescription(string_view description) {
 		else if (directionStr == "inactive")
 			this->direction = Direction::Inactive;
 		else
-			throw std::invalid_argument("Invalid direction");
+			throw std::invalid_argument("Invalid direction for extmap");
 	}
 
 	const string_view uriAndAttributes = description.substr(uriStart + 1);
@@ -855,7 +855,7 @@ Description::Media::Media(const string &sdp) : Entry(sdp, "", Direction::Unknown
 	}
 
 	if (mid().empty())
-		throw std::invalid_argument("Missing mid in media SDP");
+		throw std::invalid_argument("Missing mid in media description");
 }
 
 Description::Media::Media(const string &mline, string mid, Direction dir)
@@ -1074,14 +1074,14 @@ Description::Media::RtpMap::RtpMap(string_view description) { setDescription(des
 void Description::Media::RtpMap::setDescription(string_view description) {
 	size_t p = description.find(' ');
 	if (p == string::npos)
-		throw std::invalid_argument("Invalid format description");
+		throw std::invalid_argument("Invalid format description for rtpmap");
 
 	this->payloadType = to_integer<int>(description.substr(0, p));
 
 	string_view line = description.substr(p + 1);
 	size_t spl = line.find('/');
 	if (spl == string::npos)
-		throw std::invalid_argument("Invalid format description");
+		throw std::invalid_argument("Invalid format description for rtpmap");
 
 	this->format = line.substr(0, spl);
 
