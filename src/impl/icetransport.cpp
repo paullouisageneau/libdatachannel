@@ -182,7 +182,7 @@ void IceTransport::setRemoteDescription(const Description &description) {
 	// See https://www.rfc-editor.org/rfc/rfc5763.html#section-5
 	if (description.type() == Description::Type::Answer &&
 	    description.role() == Description::Role::ActPass)
-		throw std::logic_error("Illegal role actpass in remote answer description");
+		throw std::invalid_argument("Illegal role actpass in remote answer description");
 
 	// RFC 5763: Note that if the answerer uses setup:passive, then the DTLS handshake
 	// will not begin until the answerer is received, which adds additional latency.
@@ -193,12 +193,12 @@ void IceTransport::setRemoteDescription(const Description &description) {
 		                                                        : Description::Role::Active;
 
 	if (mRole == description.role())
-		throw std::logic_error("Incompatible roles with remote description");
+		throw std::invalid_argument("Incompatible roles with remote description");
 
 	mMid = description.bundleMid();
 	if (juice_set_remote_description(mAgent.get(),
 	                                 description.generateApplicationSdp("\r\n").c_str()) < 0)
-		throw std::runtime_error("Failed to parse ICE settings from remote SDP");
+		throw std::invalid_argument("Invalid ICE settings from remote SDP");
 }
 
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
@@ -641,7 +641,7 @@ void IceTransport::setRemoteDescription(const Description &description) {
 	// See https://www.rfc-editor.org/rfc/rfc5763.html#section-5
 	if (description.type() == Description::Type::Answer &&
 	    description.role() == Description::Role::ActPass)
-		throw std::logic_error("Illegal role actpass in remote answer description");
+		throw std::invalid_argument("Illegal role actpass in remote answer description");
 
 	// RFC 5763: Note that if the answerer uses setup:passive, then the DTLS handshake
 	// will not begin until the answerer is received, which adds additional latency.
@@ -652,7 +652,7 @@ void IceTransport::setRemoteDescription(const Description &description) {
 		                                                        : Description::Role::Active;
 
 	if (mRole == description.role())
-		throw std::logic_error("Incompatible roles with remote description");
+		throw std::invalid_argument("Incompatible roles with remote description");
 
 	mMid = description.bundleMid();
 	mTrickleTimeout = !description.ended() ? 30s : 0s;
@@ -660,7 +660,7 @@ void IceTransport::setRemoteDescription(const Description &description) {
 	// Warning: libnice expects "\n" as end of line
 	if (nice_agent_parse_remote_sdp(mNiceAgent.get(),
 	                                description.generateApplicationSdp("\n").c_str()) < 0)
-		throw std::runtime_error("Failed to parse ICE settings from remote SDP");
+		throw std::invalid_argument("Invalid ICE settings from remote SDP");
 }
 
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
