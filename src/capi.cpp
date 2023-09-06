@@ -1036,72 +1036,72 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 			}
 		}
 
-		optional<Description::Media> optDescription = nullopt;
+		int pt = init->payloadType;
+		auto profile = init->profile ? std::make_optional(string(init->profile)) : nullopt;
 
+		unique_ptr<Description::Media> description;
 		switch (init->codec) {
 		case RTC_CODEC_H264:
 		case RTC_CODEC_H265:
 		case RTC_CODEC_VP8:
 		case RTC_CODEC_VP9: {
-			auto desc = Description::Video(mid, direction);
+			auto video = std::make_unique<Description::Video>(mid, direction);
 			switch (init->codec) {
 			case RTC_CODEC_H264:
-				desc.addH264Codec(init->payloadType);
+				video->addH264Codec(pt, profile);
 				break;
 			case RTC_CODEC_H265:
-				desc.addH265Codec(init->payloadType);
+				video->addH265Codec(pt, profile);
 				break;
 			case RTC_CODEC_VP8:
-				desc.addVP8Codec(init->payloadType);
+				video->addVP8Codec(pt, profile);
 				break;
 			case RTC_CODEC_VP9:
-				desc.addVP9Codec(init->payloadType);
+				video->addVP9Codec(pt, profile);
 				break;
 			default:
 				break;
 			}
-			optDescription = desc;
+			description = std::move(video);
 			break;
 		}
 		case RTC_CODEC_OPUS:
 		case RTC_CODEC_PCMU:
 		case RTC_CODEC_PCMA:
 		case RTC_CODEC_AAC: {
-			auto desc = Description::Audio(mid, direction);
+			auto audio = std::make_unique<Description::Audio>(mid, direction);
 			switch (init->codec) {
 			case RTC_CODEC_OPUS:
-				desc.addOpusCodec(init->payloadType);
+				audio->addOpusCodec(pt, profile);
 				break;
 			case RTC_CODEC_PCMU:
-				desc.addPCMUCodec(init->payloadType);
+				audio->addPCMUCodec(pt, profile);
 				break;
 			case RTC_CODEC_PCMA:
-				desc.addPCMACodec(init->payloadType);
+				audio->addPCMACodec(pt, profile);
 				break;
 			case RTC_CODEC_AAC:
-				desc.addAacCodec(init->payloadType, init->profile
-				                                        ? std::make_optional(string(init->profile))
-				                                        : nullopt);
+				audio->addAacCodec(pt, profile);
 				break;
 			default:
 				break;
 			}
-			optDescription = desc;
+			description = std::move(audio);
 			break;
 		}
 		default:
 			break;
 		}
 
-		if (!optDescription)
+		if (!description)
 			throw std::invalid_argument("Unexpected codec");
 
-		auto desc = std::move(*optDescription);
-		desc.addSSRC(init->ssrc, init->name ? std::make_optional(string(init->name)) : nullopt,
-		             init->msid ? std::make_optional(string(init->msid)) : nullopt,
-		             init->trackId ? std::make_optional(string(init->trackId)) : nullopt);
+		description->addSSRC(init->ssrc,
+		                     init->name ? std::make_optional(string(init->name)) : nullopt,
+		                     init->msid ? std::make_optional(string(init->msid)) : nullopt,
+		                     init->trackId ? std::make_optional(string(init->trackId)) : nullopt);
 
-		int tr = emplaceTrack(peerConnection->addTrack(std::move(desc)));
+		int tr = emplaceTrack(peerConnection->addTrack(std::move(*description)));
 
 		if (auto ptr = getUserPointer(pc))
 			rtcSetUserPointer(tr, *ptr);

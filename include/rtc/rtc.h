@@ -275,10 +275,7 @@ typedef struct {
 	const char *name;    // optional
 	const char *msid;    // optional
 	const char *trackId; // optional, track ID used in MSID
-
-	//indicate the coder capability and configuration
-	//e.g: aac latm streammuxconfig
-	const char *profile;
+	const char *profile; // optional, codec profile
 } rtcTrackInit;
 
 RTC_C_EXPORT int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb);
