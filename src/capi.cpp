@@ -1036,6 +1036,12 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 			}
 		}
 
+		int pt = init->payloadType;
+
+		optional<string> profile;
+		if (init->profile)
+			profile.emplace(string(init->profile));
+
 		optional<Description::Media> optDescription = nullopt;
 
 		switch (init->codec) {
@@ -1046,16 +1052,16 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 			auto desc = Description::Video(mid, direction);
 			switch (init->codec) {
 			case RTC_CODEC_H264:
-				desc.addH264Codec(init->payloadType);
+				desc.addH264Codec(pt, profile);
 				break;
 			case RTC_CODEC_H265:
-				desc.addH265Codec(init->payloadType);
+				desc.addH265Codec(pt, profile);
 				break;
 			case RTC_CODEC_VP8:
-				desc.addVP8Codec(init->payloadType);
+				desc.addVP8Codec(pt, profile);
 				break;
 			case RTC_CODEC_VP9:
-				desc.addVP9Codec(init->payloadType);
+				desc.addVP9Codec(pt, profile);
 				break;
 			default:
 				break;
@@ -1070,18 +1076,16 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 			auto desc = Description::Audio(mid, direction);
 			switch (init->codec) {
 			case RTC_CODEC_OPUS:
-				desc.addOpusCodec(init->payloadType);
+				desc.addOpusCodec(pt, profile);
 				break;
 			case RTC_CODEC_PCMU:
-				desc.addPCMUCodec(init->payloadType);
+				desc.addPCMUCodec(pt, profile);
 				break;
 			case RTC_CODEC_PCMA:
-				desc.addPCMACodec(init->payloadType);
+				desc.addPCMACodec(pt, profile);
 				break;
 			case RTC_CODEC_AAC:
-				desc.addAacCodec(init->payloadType, init->profile
-				                                        ? std::make_optional(string(init->profile))
-				                                        : nullopt);
+				desc.addAacCodec(pt, profile);
 				break;
 			default:
 				break;
