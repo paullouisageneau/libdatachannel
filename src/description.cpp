@@ -120,7 +120,7 @@ Description::Description(const string &sdp, Type type, Role role)
 					mRole = Role::ActPass;
 
 			} else if (key == "fingerprint") {
-				if (match_prefix(value, "sha-256 ")) {
+				if (match_prefix(value, "sha-256 ") || match_prefix(value, "SHA-256 ")) {
 					string fingerprint{value.substr(8)};
 					trim_begin(fingerprint);
 					setFingerprint(std::move(fingerprint));
