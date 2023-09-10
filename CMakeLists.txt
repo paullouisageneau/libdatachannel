@@ -4,6 +4,8 @@ project(libdatachannel
 	LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "C/C++ WebRTC network library featuring Data Channels, Media Transport, and WebSockets")
 
+include(GNUInstallDirs)
+
 # Options
 option(USE_MBEDTLS "Use Mbed TLS instead of OpenSSL" OFF)
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
@@ -445,13 +447,13 @@ if(WARNINGS_AS_ERRORS)
 endif()
 
 install(TARGETS datachannel EXPORT LibDataChannelTargets
-	RUNTIME DESTINATION bin
-	LIBRARY DESTINATION lib
-	ARCHIVE DESTINATION lib
+	RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
 install(FILES ${LIBDATACHANNEL_HEADERS}
-	DESTINATION include/rtc
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rtc
 )
 
 # Export targets
@@ -459,13 +461,13 @@ install(
 	EXPORT LibDataChannelTargets
 	FILE LibDataChannelTargets.cmake
 	NAMESPACE LibDataChannel::
-	DESTINATION lib/cmake/LibDataChannel
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/LibDataChannel
 )
 
 # Export config
 install(
 	FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/LibDataChannelConfig.cmake
-	DESTINATION lib/cmake/LibDataChannel
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/LibDataChannel
 )
 
 # Export config version
@@ -475,7 +477,7 @@ write_basic_package_version_file(
 	VERSION ${PROJECT_VERSION}
 	COMPATIBILITY SameMajorVersion)
 install(FILES ${CMAKE_BINARY_DIR}/LibDataChannelConfigVersion.cmake
-	DESTINATION lib/cmake/LibDataChannel)
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/LibDataChannel)
 
 # Tests
 if(NOT NO_TESTS)
