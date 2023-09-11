@@ -118,7 +118,9 @@ void PollService::process(std::vector<struct pollfd> &pfds) {
 				auto &entry = jt->second;
 				const auto &params = entry.params;
 
-				if (it->revents & POLLNVAL || it->revents & POLLERR) {
+				if (it->revents & POLLNVAL || it->revents & POLLERR ||
+				    (it->revents & POLLHUP &&
+				     !(it->events & POLLIN))) { // MacOS sets POLLHUP on connection failure
 					PLOG_VERBOSE << "Poll error event";
 					auto callback = std::move(params.callback);
 					mSocks->erase(sock);
