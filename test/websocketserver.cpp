@@ -31,6 +31,7 @@ void test_websocketserver() {
 	serverConfig.enableTls = true;
 	// serverConfig.certificatePemFile = ...
 	// serverConfig.keyPemFile = ...
+	serverConfig.bindAddress = "127.0.0.1"; // to test IPv4 fallback
 	WebSocketServer server(std::move(serverConfig));
 
 	shared_ptr<WebSocket> client;
