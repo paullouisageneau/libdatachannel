@@ -7,6 +7,7 @@
  */
 
 #include "dtlstransport.hpp"
+#include "dtlssrtptransport.hpp"
 #include "icetransport.hpp"
 #include "internals.hpp"
 #include "threadpool.hpp"
@@ -794,16 +795,23 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		SSL_set_bio(mSsl, mInBio, mOutBio);
 
 		// RFC 8827: The DTLS-SRTP protection profile SRTP_AES128_CM_HMAC_SHA1_80 MUST be supported
-		// See https://www.rfc-editor.org/rfc/rfc8827.html#section-6.5 Warning:
-		// SSL_set_tlsext_use_srtp() returns 0 on success and 1 on error
+		// See https://www.rfc-editor.org/rfc/rfc8827.html#section-6.5
+		// Warning: SSL_set_tlsext_use_srtp() returns 0 on success and 1 on error
+#if RTC_ENABLE_MEDIA
 		// Try to use GCM suite
-		if (SSL_set_tlsext_use_srtp(
+		if (!DtlsSrtpTransport::IsGcmSupported() ||
+		    SSL_set_tlsext_use_srtp(
 		        mSsl, "SRTP_AEAD_AES_256_GCM:SRTP_AEAD_AES_128_GCM:SRTP_AES128_CM_SHA1_80")) {
+			PLOG_WARNING << "AES-GCM for SRTP is not supported, falling back to default profile";
 			if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"))
 				throw std::runtime_error("Failed to set SRTP profile: " +
 				                         openssl::error_string(ERR_get_error()));
 		}
-
+#else
+		if (SSL_set_tlsext_use_srtp(mSsl, "SRTP_AES128_CM_SHA1_80"))
+			throw std::runtime_error("Failed to set SRTP profile: " +
+			                         openssl::error_string(ERR_get_error()));
+#endif
 	} catch (...) {
 		if (mSsl)
 			SSL_free(mSsl);
