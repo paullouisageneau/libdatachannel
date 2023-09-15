@@ -24,16 +24,11 @@
 
 namespace rtc::impl {
 
-struct ProfileParams {
-	srtp_profile_t srtpProfile;
-	size_t keySize;
-	size_t saltSize;
-};
-
 class DtlsSrtpTransport final : public DtlsTransport {
 public:
 	static void Init();
 	static void Cleanup();
+	static bool IsGcmSupported();
 
 	DtlsSrtpTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
 	                  optional<size_t> mtu, verifier_callback verifierCallback,
@@ -48,6 +43,12 @@ private:
 	void postHandshake() override;
 
 #if !USE_GNUTLS && !USE_MBEDTLS
+	struct ProfileParams {
+		srtp_profile_t srtpProfile;
+		size_t keySize;
+		size_t saltSize;
+	};
+
 	ProfileParams getProfileParamsFromName(string_view name);
 #endif
 

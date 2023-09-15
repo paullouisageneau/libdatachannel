@@ -45,6 +45,17 @@ void DtlsSrtpTransport::Init() { srtp_init(); }
 
 void DtlsSrtpTransport::Cleanup() { srtp_shutdown(); }
 
+bool DtlsSrtpTransport::IsGcmSupported() {
+#if RTC_SYSTEM_SRTP
+	// system libSRTP may not have GCM support
+	srtp_policy_t policy = {};
+	return srtp_crypto_policy_set_from_profile_for_rtp(
+	           &policy.rtp, srtp_profile_aead_aes_256_gcm) == srtp_err_status_ok;
+#else
+	return true;
+#endif
+}
+
 DtlsSrtpTransport::DtlsSrtpTransport(shared_ptr<IceTransport> lower,
                                      shared_ptr<Certificate> certificate, optional<size_t> mtu,
                                      verifier_callback verifierCallback,
@@ -326,9 +337,9 @@ void DtlsSrtpTransport::postHandshake() {
 	std::memcpy(mServerSessionKey.data() + keySize, serverSalt, saltSize);
 
 	srtp_policy_t inbound = {};
-	if(srtp_crypto_policy_set_from_profile_for_rtp(&inbound.rtp, srtpProfile))
+	if (srtp_crypto_policy_set_from_profile_for_rtp(&inbound.rtp, srtpProfile))
 		throw std::runtime_error("SRTP profile is not supported");
-	if(srtp_crypto_policy_set_from_profile_for_rtcp(&inbound.rtcp, srtpProfile))
+	if (srtp_crypto_policy_set_from_profile_for_rtcp(&inbound.rtcp, srtpProfile))
 		throw std::runtime_error("SRTP profile is not supported");
 
 	inbound.ssrc.type = ssrc_any_inbound;
@@ -342,9 +353,9 @@ void DtlsSrtpTransport::postHandshake() {
 		                         to_string(static_cast<int>(err)));
 
 	srtp_policy_t outbound = {};
-	if(srtp_crypto_policy_set_from_profile_for_rtp(&outbound.rtp, srtpProfile))
+	if (srtp_crypto_policy_set_from_profile_for_rtp(&outbound.rtp, srtpProfile))
 		throw std::runtime_error("SRTP profile is not supported");
-	if(srtp_crypto_policy_set_from_profile_for_rtcp(&outbound.rtcp, srtpProfile))
+	if (srtp_crypto_policy_set_from_profile_for_rtcp(&outbound.rtcp, srtpProfile))
 		throw std::runtime_error("SRTP profile is not supported");
 
 	outbound.ssrc.type = ssrc_any_outbound;
@@ -361,7 +372,7 @@ void DtlsSrtpTransport::postHandshake() {
 }
 
 #if !USE_GNUTLS && !USE_MBEDTLS
-ProfileParams DtlsSrtpTransport::getProfileParamsFromName(string_view name) {
+DtlsSrtpTransport::ProfileParams DtlsSrtpTransport::getProfileParamsFromName(string_view name) {
 	if (name == "SRTP_AES128_CM_SHA1_80")
 		return {srtp_profile_aes128_cm_sha1_80, SRTP_AES_128_KEY_LEN, SRTP_SALT_LEN};
 	if (name == "SRTP_AES128_CM_SHA1_32")
