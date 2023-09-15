@@ -11,6 +11,7 @@ LIBS=
 LOCALLIBS=libusrsctp.a
 USRSCTP_DIR=deps/usrsctp
 SRTP_DIR=deps/libsrtp
+SRTP_CONFIGURE_FLAGS=
 JUICE_DIR=deps/libjuice
 PLOG_DIR=deps/plog
 
@@ -24,6 +25,7 @@ ifneq ($(USE_GNUTLS), 0)
 else
         CPPFLAGS+=-DUSE_GNUTLS=0
         LIBS+=openssl
+        SRTP_CONFIGURE_FLAGS+=--enable-openssl
 endif
 
 USE_NICE ?= 0
@@ -122,7 +124,7 @@ libusrsctp.a:
 
 libsrtp2.a:
 	cd $(SRTP_DIR) && \
-		./configure && \
+		./configure $(SRTP_CONFIGURE_FLAGS) && \
 		make
 	cp $(SRTP_DIR)/libsrtp2.a .
 
