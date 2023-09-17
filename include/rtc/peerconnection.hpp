@@ -84,6 +84,7 @@ public:
 	bool hasMedia() const;
 	optional<Description> localDescription() const;
 	optional<Description> remoteDescription() const;
+	size_t remoteMaxMessageSize() const;
 	optional<string> localAddress() const;
 	optional<string> remoteAddress() const;
 	uint16_t maxDataChannelId() const;
