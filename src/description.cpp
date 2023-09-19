@@ -128,11 +128,22 @@ Description::Description(const string &sdp, Type type, Role role)
 					PLOG_WARNING << "Unknown SDP fingerprint format: " << value;
 				}
 			} else if (key == "ice-ufrag") {
-				mIceUfrag = value;
+				// RFC 8839: The "ice-pwd" and "ice-ufrag" attributes can appear at either the
+				// session-level or media-level. When present in both, the value in the media-level
+				// takes precedence.
+				if (!mIceUfrag || index == 0) // media-level for first media overrides session-level
+					mIceUfrag = value;
 			} else if (key == "ice-pwd") {
-				mIcePwd = value;
+				// RFC 8839: The "ice-pwd" and "ice-ufrag" attributes can appear at either the
+				// session-level or media-level. When present in both, the value in the media-level
+				// takes precedence.
+				if (!mIcePwd || index == 0) // media-level for first media overrides session-level
+					mIcePwd = value;
 			} else if (key == "ice-options") {
-				mIceOptions = utils::explode(string(value), ',');
+				// RFC 8839: The "ice-options" attribute is a session-level and media-level
+				// attribute.
+				if (mIceOptions.empty())
+					mIceOptions = utils::explode(string(value), ',');
 			} else if (key == "candidate") {
 				addCandidate(Candidate(attr, bundleMid()));
 			} else if (key == "end-of-candidates") {
