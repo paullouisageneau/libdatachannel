@@ -69,6 +69,8 @@ optional<Description> PeerConnection::remoteDescription() const {
 	return impl()->remoteDescription();
 }
 
+size_t PeerConnection::remoteMaxMessageSize() const { return impl()->remoteMaxMessageSize(); }
+
 bool PeerConnection::hasMedia() const {
 	auto local = localDescription();
 	return local && local->hasAudioOrVideo();

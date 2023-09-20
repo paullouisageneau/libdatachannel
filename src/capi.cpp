@@ -697,6 +697,13 @@ int rtcGetMaxDataChannelStream(int pc) {
 	});
 }
 
+int rtcGetRemoteMaxMessageSize(int pc) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		return int(peerConnection->remoteMaxMessageSize());
+	});
+}
+
 int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb) {
 	return wrap([&] {
 		auto channel = getChannel(id);
