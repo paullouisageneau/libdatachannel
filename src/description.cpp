@@ -120,12 +120,17 @@ Description::Description(const string &sdp, Type type, Role role)
 					mRole = Role::ActPass;
 
 			} else if (key == "fingerprint") {
-				if (match_prefix(value, "sha-256 ") || match_prefix(value, "SHA-256 ")) {
-					string fingerprint{value.substr(8)};
-					trim_begin(fingerprint);
-					setFingerprint(std::move(fingerprint));
-				} else {
-					PLOG_WARNING << "Unknown SDP fingerprint format: " << value;
+				// RFC 8122: The fingerprint attribute may be either a session-level or a
+				// media-level SDP attribute. If it is a session-level attribute, it applies to all
+				// TLS sessions for which no media-level fingerprint attribute is defined.
+				if (!mFingerprint || index == 0) { // first media overrides session-level
+					if (match_prefix(value, "sha-256 ") || match_prefix(value, "SHA-256 ")) {
+						string fingerprint{value.substr(8)};
+						trim_begin(fingerprint);
+						setFingerprint(std::move(fingerprint));
+					} else {
+						PLOG_WARNING << "Unknown SDP fingerprint format: " << value;
+					}
 				}
 			} else if (key == "ice-ufrag") {
 				// RFC 8839: The "ice-pwd" and "ice-ufrag" attributes can appear at either the
