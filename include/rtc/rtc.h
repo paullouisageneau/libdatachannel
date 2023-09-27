@@ -213,7 +213,6 @@ RTC_C_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize,
                                              int remoteSize);
 
 RTC_C_EXPORT int rtcGetMaxDataChannelStream(int pc);
-
 RTC_C_EXPORT int rtcGetRemoteMaxMessageSize(int pc);
 
 // DataChannel, Track, and WebSocket common API
@@ -228,6 +227,7 @@ RTC_C_EXPORT int rtcDelete(int id);
 RTC_C_EXPORT bool rtcIsOpen(int id);
 RTC_C_EXPORT bool rtcIsClosed(int id);
 
+RTC_C_EXPORT int rtcMaxMessageSize(int id);
 RTC_C_EXPORT int rtcGetBufferedAmount(int id); // total size buffered to send
 RTC_C_EXPORT int rtcSetBufferedAmountLowThreshold(int id, int amount);
 RTC_C_EXPORT int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb);

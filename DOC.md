@@ -383,6 +383,20 @@ Arguments:
 
 Return value: the maximum stream ID (`stream` for a Data Channel may be set from 0 to this value included) or a negative error code
 
+#### rtcGetRemoteMaxMessageSize
+
+```
+int rtcGetRemoteMaxMessageSize(int pc)
+```
+
+Retrieves the maximum message size for data channels on the peer connection as negotiated with the remote peer.
+
+Arguments:
+
+- `pc`: the Peer Connection identifier
+
+Return value: the maximum message size for data channels or a negative error code
+
 ### Channel (Common API for Data Channel, Track, and WebSocket)
 
 The following common functions might be called with a generic channel identifier. It may be the identifier of either a Data Channel, a Track, or a WebSocket.
@@ -518,6 +532,20 @@ Arguments:
 - `id`: the channel identifier
 
 Return value: `true` if the channel exists and is closed (not open and not connecting), `false` otherwise
+
+#### rtcGetMaxMessageSize
+
+```
+int rtcGetMaxMessageSize(int id)
+```
+
+Retrieves the maximum message size for the channel.
+
+Arguments:
+
+- `id`: the channel identifier
+
+Return value: the maximum message size or a negative error code
 
 #### rtcGetBufferedAmount
 

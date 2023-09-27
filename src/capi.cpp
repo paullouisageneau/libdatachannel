@@ -807,6 +807,13 @@ bool rtcIsClosed(int id) {
 	return wrap([id] { return getChannel(id)->isClosed() ? 0 : 1; }) == 0 ? true : false;
 }
 
+int rtcMaxMessageSize(int id) {
+	return wrap([id] {
+		auto channel = getChannel(id);
+		return int(channel->maxMessageSize());
+	});
+}
+
 int rtcGetBufferedAmount(int id) {
 	return wrap([id] {
 		auto channel = getChannel(id);
