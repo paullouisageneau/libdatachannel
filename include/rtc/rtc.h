@@ -113,6 +113,7 @@ typedef enum {
 	RTC_CODEC_VP8 = 1,
 	RTC_CODEC_VP9 = 2,
 	RTC_CODEC_H265 = 3,
+	RTC_CODEC_AV1 = 4,
 
 	// audio
 	RTC_CODEC_OPUS = 128,
@@ -315,9 +316,14 @@ typedef struct {
 	uint16_t sequenceNumber;
 	uint32_t timestamp;
 
-	// H264/H265
+	// H264/H265 only
 	rtcNalUnitSeparator nalSeparator; // NAL unit separator
-	uint16_t maxFragmentSize;         // Maximum NAL unit fragment size
+
+	// H264, H265, AV1
+	uint16_t maxFragmentSize; // Maximum fragment size
+
+	// AV1 only
+	rtcObuPacketization obuPacketization; // OBU paketization for AV1 samples
 
 } rtcPacketizationHandlerInit;
 
@@ -347,6 +353,9 @@ RTC_C_EXPORT int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHa
 
 // Set H265PacketizationHandler for track
 RTC_C_EXPORT int rtcSetH265PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
+
+// Set AV1PacketizationHandler for track
+RTC_C_EXPORT int rtcSetAV1PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
 
 // Set OpusPacketizationHandler for track
 RTC_C_EXPORT int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
