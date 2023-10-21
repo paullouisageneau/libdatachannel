@@ -101,6 +101,8 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 
 TlsTransport::~TlsTransport() {
 	stop();
+
+	PLOG_DEBUG << "Destroying TLS transport";
 	gnutls_deinit(mSession);
 }
 
@@ -638,6 +640,8 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 
 TlsTransport::~TlsTransport() {
 	stop();
+
+	PLOG_DEBUG << "Destroying TLS transport";
 	SSL_free(mSsl);
 	SSL_CTX_free(mCtx);
 }
