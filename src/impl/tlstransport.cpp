@@ -354,7 +354,15 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 	}
 }
 
-TlsTransport::~TlsTransport() {}
+TlsTransport::~TlsTransport() {
+	stop();
+
+	PLOG_DEBUG << "Destroying TLS transport";
+	mbedtls_entropy_free(&mEntropy);
+	mbedtls_ctr_drbg_free(&mDrbg);
+	mbedtls_ssl_free(&mSsl);
+	mbedtls_ssl_config_free(&mConf);
+}
 
 void TlsTransport::start() {
 	PLOG_DEBUG << "Starting TLS transport";
