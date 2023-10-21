@@ -13,9 +13,11 @@
 
 namespace rtc::impl {
 
+static const string PemBeginCertificateTag = "-----BEGIN CERTIFICATE-----";
+
 VerifiedTlsTransport::VerifiedTlsTransport(
     variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>> lower, string host,
-    certificate_ptr certificate, state_callback callback)
+    certificate_ptr certificate, state_callback callback, [[maybe_unused]] optional<string> cacert)
     : TlsTransport(std::move(lower), std::move(host), std::move(certificate), std::move(callback)) {
 
 	PLOG_DEBUG << "Setting up TLS certificate verification";
@@ -24,13 +26,36 @@ VerifiedTlsTransport::VerifiedTlsTransport(
 	gnutls_session_set_verify_cert(mSession, mHost->c_str(), 0);
 #elif USE_MBEDTLS
 	mbedtls_ssl_conf_authmode(&mConf, MBEDTLS_SSL_VERIFY_REQUIRED);
+	mbedtls_x509_crt_init(&mCaCert);
+	try {
+		if (cacert) {
+			if (cacert->find(PemBeginCertificateTag) == string::npos) {
+				// *cacert is a file path
+				mbedtls::check(mbedtls_x509_crt_parse_file(&mCaCert, cacert->c_str()));
+			} else {
+				// *cacert is a PEM content
+				mbedtls::check(mbedtls_x509_crt_parse(
+				    &mCaCert, reinterpret_cast<const unsigned char *>(cacert->c_str()),
+				    cacert->size()));
+			}
+			mbedtls_ssl_conf_ca_chain(&mConf, &mCaCert, NULL);
+		}
+	} catch (...) {
+		mbedtls_x509_crt_free(&mCaCert);
+		throw;
+	}
 #else
 	SSL_set_verify(mSsl, SSL_VERIFY_PEER, NULL);
 	SSL_set_verify_depth(mSsl, 4);
 #endif
 }
 
-VerifiedTlsTransport::~VerifiedTlsTransport() { stop(); }
+VerifiedTlsTransport::~VerifiedTlsTransport() {
+	stop();
+#if USE_MBEDTLS
+	mbedtls_x509_crt_free(&mCaCert);
+#endif
+}
 
 } // namespace rtc::impl
 
