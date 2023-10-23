@@ -92,7 +92,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtp.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/pliresponder.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/plihandler.cpp
 )
 
 set(LIBDATACHANNEL_HEADERS
@@ -133,7 +133,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandlerrootelement.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/utils.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/pliresponder.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/plihandler.hpp
 )
 
 set(LIBDATACHANNEL_IMPL_SOURCES

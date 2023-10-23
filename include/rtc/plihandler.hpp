@@ -18,13 +18,13 @@ namespace rtc {
 
 /// Responds to PLI and FIR messages sent by the receiver. The sender should respond to these
 /// messages by sending an intra. 
-class RTC_CPP_EXPORT PliResponder final : public MediaHandlerElement {
+class RTC_CPP_EXPORT PliHandler final : public MediaHandlerElement {
     std::function<void(void)> onPli;
 
 public:
 	/// Constructs the PLIResponder object to notify whenever a new intra frame is requested
 	/// @param onPli The callback that gets called whenever an intra frame is requested by the receiver
-    PliResponder(std::function<void(void)> onPli);
+    PliHandler(std::function<void(void)> onPli);
     ChainedIncomingControlProduct processIncomingControlMessage(message_ptr) override;
 };
 

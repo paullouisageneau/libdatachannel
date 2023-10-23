@@ -33,7 +33,7 @@
 #include "rtcpreceivingsession.hpp"
 #include "rtcpsrreporter.hpp"
 
-#include "pliresponder.hpp"
+#include "plihandler.hpp"
 
 // Opus/AAC/h264/h265/AV1 streaming
 #include "aacrtppacketizer.hpp"

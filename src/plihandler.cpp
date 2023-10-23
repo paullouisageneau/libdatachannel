@@ -6,13 +6,13 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#include "pliresponder.hpp"
+#include "plihandler.hpp"
 
 #if RTC_ENABLE_MEDIA
 
 namespace rtc {
 
-ChainedIncomingControlProduct PliResponder::processIncomingControlMessage(message_ptr message) {
+ChainedIncomingControlProduct PliHandler::processIncomingControlMessage(message_ptr message) {
 	size_t offset = 0;
 
 	while ((sizeof(RtcpHeader) + offset) <= message->size()) {
@@ -37,7 +37,7 @@ ChainedIncomingControlProduct PliResponder::processIncomingControlMessage(messag
 	return { message, std::nullopt };
 }
 
-PliResponder::PliResponder(std::function<void(void)> onPli) : onPli(onPli) { }
+PliHandler::PliHandler(std::function<void(void)> onPli) : onPli(onPli) { }
 
 }
 
