@@ -89,19 +89,20 @@ struct RTC_CPP_EXPORT RtcpReportBlock {
 
 	[[nodiscard]] uint16_t seqNoCycles() const;
 	[[nodiscard]] uint16_t highestSeqNo() const;
+	[[nodiscard]] uint32_t extendedHighestSeqNo() const;
 	[[nodiscard]] uint32_t jitter() const;
 	[[nodiscard]] uint32_t delaySinceSR() const;
 
 	[[nodiscard]] SSRC getSSRC() const;
 	[[nodiscard]] uint32_t getNTPOfSR() const;
-	[[nodiscard]] unsigned int getLossPercentage() const;
+	[[nodiscard]] uint8_t getLossPercentage() const;
 	[[nodiscard]] unsigned int getPacketLostCount() const;
 
 	void preparePacket(SSRC in_ssrc, unsigned int packetsLost, unsigned int totalPackets,
 	                   uint16_t highestSeqNo, uint16_t seqNoCycles, uint32_t jitter,
 	                   uint64_t lastSR_NTP, uint64_t lastSR_DELAY);
 	void setSSRC(SSRC in_ssrc);
-	void setPacketsLost(unsigned int packetsLost, unsigned int totalPackets);
+	void setPacketsLost(uint8_t packetsLost, unsigned int totalPackets);
 	void setSeqNo(uint16_t highestSeqNo, uint16_t seqNoCycles);
 	void setJitter(uint32_t jitter);
 	void setNTPOfSR(uint64_t ntp);
