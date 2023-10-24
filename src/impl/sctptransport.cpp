@@ -284,6 +284,16 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 		throw std::runtime_error("Could not disable SCTP fragmented interleave, errno=" +
 		                         std::to_string(errno));
 
+	// When using SCTP over DTLS, the data integrity is ensured by DTLS, so there's no need to
+	// additionally compute CRC32c.
+	// See https://datatracker.ietf.org/doc/html/draft-ietf-tsvwg-sctp-zero-checksum
+	if (config.sctpZeroChecksum) {
+		int on = 1;
+		if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_ACCEPT_ZERO_CHECKSUM, &on, sizeof(on)))
+			throw std::runtime_error("Could set socket option SCTP_ACCEPT_ZERO_CHECKSUM, errno=" +
+			                         std::to_string(errno));
+	}
+
 	int rcvBuf = 0;
 	socklen_t rcvBufLen = sizeof(rcvBuf);
 	if (usrsctp_getsockopt(mSock, SOL_SOCKET, SO_RCVBUF, &rcvBuf, &rcvBufLen))
