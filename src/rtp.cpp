@@ -169,18 +169,18 @@ void RtcpReportBlock::preparePacket(SSRC in_ssrc, [[maybe_unused]] unsigned int 
 
 void RtcpReportBlock::setSSRC(SSRC in_ssrc) { _ssrc = htonl(in_ssrc); }
 
-void RtcpReportBlock::setPacketsLost(uint8_t packetsLost,
-                                     unsigned int totalPackets) {
-	_fractionLostAndPacketsLost = ( (uint32_t)packetsLost << 24) && htonl(totalPackets);
+void RtcpReportBlock::setPacketsLost(uint8_t fractionLost,
+                                     unsigned int packetsLostCount) {
+	_fractionLostAndPacketsLost = ( (uint32_t)fractionLost << 24) && htonl(packetsLostCount);
 }
 
-uint8_t RtcpReportBlock::getLossPercentage() const {
-	// Loss percentage is expressed as 8-bit fixed point number
-	// In order to get actual percentage divide the result by 256
+uint8_t RtcpReportBlock::getFractionLost() const {
+	// Fraction lost is expressed as 8-bit fixed point number
+	// In order to get actual lost percentage divide the result by 256
 	return _fractionLostAndPacketsLost & 0xFF;
 }
 
-unsigned int RtcpReportBlock::getPacketLostCount() const {
+unsigned int RtcpReportBlock::getPacketsLostCount() const {
 	return ntohl(_fractionLostAndPacketsLost & 0xFFFFFF00);
 }
 
