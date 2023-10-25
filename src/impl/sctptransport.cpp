@@ -102,7 +102,6 @@ SctpTransport::InstancesSet *SctpTransport::Instances = new InstancesSet;
 
 void SctpTransport::Init() {
 	usrsctp_init(0, SctpTransport::WriteCallback, SctpTransport::DebugCallback);
-	usrsctp_enable_crc32c_offload();       // We'll compute CRC32 only for outgoing packets
 	usrsctp_sysctl_set_sctp_pr_enable(1);  // Enable Partial Reliability Extension (RFC 3758)
 	usrsctp_sysctl_set_sctp_ecn_enable(0); // Disable Explicit Congestion Notification
 #ifdef SCTP_DEBUG
@@ -284,15 +283,13 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 		throw std::runtime_error("Could not disable SCTP fragmented interleave, errno=" +
 		                         std::to_string(errno));
 
-	// When using SCTP over DTLS, the data integrity is ensured by DTLS, so there's no need to
-	// additionally compute CRC32c.
+	// When using SCTP over DTLS, the data integrity is ensured by DTLS. Therefore, there's no need
+	// to check CRC32c additionally when receiving.
 	// See https://datatracker.ietf.org/doc/html/draft-ietf-tsvwg-sctp-zero-checksum
-	if (config.sctpZeroChecksum) {
-		int on = 1;
-		if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_ACCEPT_ZERO_CHECKSUM, &on, sizeof(on)))
-			throw std::runtime_error("Could set socket option SCTP_ACCEPT_ZERO_CHECKSUM, errno=" +
-			                         std::to_string(errno));
-	}
+	int edmid = SCTP_EDMID_LOWER_LAYER_DTLS;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_ACCEPT_ZERO_CHECKSUM, &edmid, sizeof(edmid)))
+		throw std::runtime_error("Could set socket option SCTP_ACCEPT_ZERO_CHECKSUM, errno=" +
+		                         std::to_string(errno));
 
 	int rcvBuf = 0;
 	socklen_t rcvBufLen = sizeof(rcvBuf);
@@ -969,13 +966,6 @@ void SctpTransport::UpcallCallback(struct socket *, void *arg, int /* flags */) 
 
 int SctpTransport::WriteCallback(void *ptr, void *data, size_t len, uint8_t tos, uint8_t set_df) {
 	auto *transport = static_cast<SctpTransport *>(ptr);
-
-	// Set the CRC32 ourselves as we have enabled CRC32 offloading
-	if (len >= 12) {
-		uint32_t *checksum = reinterpret_cast<uint32_t *>(data) + 2;
-		*checksum = 0;
-		*checksum = usrsctp_crc32c(data, len);
-	}
 
 	// Workaround for sctplab/usrsctp#405: Send callback is invoked on already closed socket
 	// https://github.com/sctplab/usrsctp/issues/405

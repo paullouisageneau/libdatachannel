@@ -86,9 +86,6 @@ struct RTC_CPP_EXPORT Configuration {
 
 	// Local maximum message size for Data Channels
 	optional<size_t> maxMessageSize;
-
-	// SCTP settings
-	bool sctpZeroChecksum = false;
 };
 
 } // namespace rtc
