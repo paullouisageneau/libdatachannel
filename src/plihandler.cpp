@@ -37,7 +37,7 @@ ChainedIncomingControlProduct PliHandler::processIncomingControlMessage(message_
 	return { message, std::nullopt };
 }
 
-PliHandler::PliHandler(rtc::synchronized_callback<> onPli) : mOnPli(onPli) { }
+PliHandler::PliHandler(std::function<void(void)> onPli) : mOnPli(onPli) { }
 
 }
 
