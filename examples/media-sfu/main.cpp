@@ -49,8 +49,7 @@ int main() {
 
 		auto track = pc->addTrack(media);
 
-		auto session = std::make_shared<rtc::RtcpReceivingSession>();
-		track->setMediaHandler(session);
+		track->setMediaHandler(std::make_shared<rtc::RtcpReceivingSession>());
 
 		const rtc::SSRC targetSSRC = 42;
 		track->onMessage(
@@ -101,8 +100,8 @@ int main() {
 
 			r->track = r->conn->addTrack(media);
 
-			r->track->onOpen([session]() {
-				session->requestKeyframe(); // So the receiver can start playing immediately
+			r->track->onOpen([r]() {
+				r->track->requestKeyframe(); // So the receiver can start playing immediately
 			});
 			r->track->onMessage([](rtc::binary var) {}, nullptr);
 
