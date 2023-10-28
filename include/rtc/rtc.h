@@ -157,6 +157,7 @@ typedef void *(RTC_API *rtcInterceptorCallbackFunc)(int pc, const char *message,
                                                     void *ptr);
 typedef void(RTC_API *rtcBufferedAmountLowCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcAvailableCallbackFunc)(int id, void *ptr);
+typedef void(RTC_API *rtcPliHandlerCallbackFunc)();
 
 // Log
 
@@ -368,6 +369,9 @@ RTC_C_EXPORT int rtcChainRtcpSrReporter(int tr);
 
 // Chain RtcpNackResponder to handler chain for given track
 RTC_C_EXPORT int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount);
+
+// Chain PliHandler to handler chain for given track
+RTC_C_EXPORT int rtcChainPliHandler(int tr, rtcPliHandlerCallbackFunc onPli);
 
 // Transform seconds to timestamp using track's clock rate, result is written to timestamp
 RTC_C_EXPORT int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp);

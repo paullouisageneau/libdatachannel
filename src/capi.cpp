@@ -1338,6 +1338,15 @@ int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount) {
 	});
 }
 
+int rtcChainPliHandler(int tr, rtcPliHandlerCallbackFunc onPli) {
+	return wrap([tr, onPli] {
+		auto responder = std::make_shared<PliHandler>(onPli);
+		auto chainableHandler = getMediaChainableHandler(tr);
+		chainableHandler->addToChain(responder);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp) {
 	return wrap([&] {
 		auto config = getRtpConfig(id);
