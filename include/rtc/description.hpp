@@ -233,13 +233,15 @@ public:
 		Audio(string mid = "audio", Direction dir = Direction::SendOnly);
 
 		void addAudioCodec(int payloadType, string codec, optional<string> profile = std::nullopt);
-
 		void addOpusCodec(int payloadType, optional<string> profile = DEFAULT_OPUS_AUDIO_PROFILE);
-
 		void addPCMACodec(int payloadType, optional<string> profile = std::nullopt);
-
 		void addPCMUCodec(int payloadType, optional<string> profile = std::nullopt);
-		void addAacCodec(int payloadType, optional<string> profile = std::nullopt);
+		void addAACCodec(int payloadType, optional<string> profile = std::nullopt);
+
+		[[deprecated("Use addAACCodec")]] inline void
+		addAacCodec(int payloadType, optional<string> profile = std::nullopt) {
+			addAACCodec(payloadType, std::move(profile));
+		};
 	};
 
 	class RTC_CPP_EXPORT Video : public Media {

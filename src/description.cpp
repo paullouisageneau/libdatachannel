@@ -1187,7 +1187,7 @@ void Description::Audio::addPCMUCodec(int payloadType, optional<string> profile)
 	addAudioCodec(payloadType, "PCMU", profile);
 }
 
-void Description::Audio::addAacCodec(int payloadType, optional<string> profile) {
+void Description::Audio::addAACCodec(int payloadType, optional<string> profile) {
 	if (profile) {
 		addAudioCodec(payloadType, "MP4A-LATM", profile);
 	} else {
