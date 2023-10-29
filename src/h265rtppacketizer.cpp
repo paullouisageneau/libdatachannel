@@ -82,32 +82,30 @@ shared_ptr<H265NalUnits> H265RtpPacketizer::splitMessage(binary_ptr message) {
 
 H265RtpPacketizer::H265RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig,
                                      uint16_t maximumFragmentSize)
-    : RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize),
+    : RtpPacketizer(std::move(rtpConfig)), maximumFragmentSize(maximumFragmentSize),
       separator(NalUnit::Separator::Length) {}
 
 H265RtpPacketizer::H265RtpPacketizer(NalUnit::Separator separator,
                                      shared_ptr<RtpPacketizationConfig> rtpConfig,
                                      uint16_t maximumFragmentSize)
-    : RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize),
+    : RtpPacketizer(std::move(rtpConfig)), maximumFragmentSize(maximumFragmentSize),
       separator(separator) {}
 
-ChainedOutgoingProduct
-H265RtpPacketizer::processOutgoingBinaryMessage(ChainedMessagesProduct messages,
-                                                message_ptr control) {
-	ChainedMessagesProduct packets = std::make_shared<std::vector<binary_ptr>>();
-	for (auto message : *messages) {
+void H265RtpPacketizer::outgoing(message_vector &messages, [[maybe_unused]] const message_callback &send) {
+	message_vector result;
+	for (const auto &message : messages) {
 		auto nalus = splitMessage(message);
 		auto fragments = nalus->generateFragments(maximumFragmentSize);
-		if (fragments.size() == 0) {
-			return ChainedOutgoingProduct();
-		}
-		unsigned i = 0;
-		for (; i < fragments.size() - 1; i++) {
-			packets->push_back(packetize(fragments[i], false));
-		}
-		packets->push_back(packetize(fragments[i], true));
+		if (fragments.size() == 0)
+			continue;
+
+		for (size_t i = 0; i < fragments.size() - 1; i++)
+			result.push_back(packetize(fragments[i], false));
+
+		result.push_back(packetize(fragments[fragments.size() - 1], true));
 	}
-	return {packets, control};
+
+	messages.swap(result);
 }
 
 } // namespace rtc

@@ -16,6 +16,7 @@
 
 namespace {
 
+// TODO: move to utils
 uint64_t ntp_time() {
 	const auto now = std::chrono::system_clock::now();
 	const double secs = std::chrono::duration<double>(now.time_since_epoch()).count();
@@ -27,33 +28,38 @@ uint64_t ntp_time() {
 
 namespace rtc {
 
-ChainedOutgoingProduct RtcpSrReporter::processOutgoingBinaryMessage(ChainedMessagesProduct messages,
-                                                                    message_ptr control) {
-	if (std::exchange(mNeedsToReport, false)) {
-		auto timestamp = rtpConfig->timestamp;
-		auto sr = getSenderReport(timestamp);
-		if (control) {
-			control->insert(control->end(), sr->begin(), sr->end());
-		} else {
-			control = sr;
-		}
-	}
-	for (auto message : *messages) {
+RtcpSrReporter::RtcpSrReporter(shared_ptr<RtpPacketizationConfig> rtpConfig)
+    : rtpConfig(rtpConfig) {
+	mLastReportedTimestamp = rtpConfig->timestamp;
+}
+
+void RtcpSrReporter::setNeedsToReport() { mNeedsToReport = true; }
+
+uint32_t RtcpSrReporter::lastReportedTimestamp() const { return mLastReportedTimestamp; }
+
+void RtcpSrReporter::outgoing(message_vector &messages, const message_callback &send) {
+	for (const auto &message : messages) {
+		if (message->type == Message::Control)
+			continue;
+
+		if (message->size() < sizeof(RtpHeader))
+			continue;
+
 		auto rtp = reinterpret_cast<RtpHeader *>(message->data());
 		addToReport(rtp, uint32_t(message->size()));
 	}
-	return {messages, control};
+
+	if (std::exchange(mNeedsToReport, false)) {
+		auto timestamp = rtpConfig->timestamp;
+		auto sr = getSenderReport(timestamp);
+		send(sr);
+	}
 }
 
 void RtcpSrReporter::addToReport(RtpHeader *rtp, uint32_t rtpSize) {
 	mPacketCount += 1;
 	assert(!rtp->padding());
 	mPayloadOctets += rtpSize - uint32_t(rtp->getSize());
-}
-
-RtcpSrReporter::RtcpSrReporter(shared_ptr<RtpPacketizationConfig> rtpConfig)
-    : MediaHandlerElement(), rtpConfig(rtpConfig) {
-	mLastReportedTimestamp = rtpConfig->timestamp;
 }
 
 message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
@@ -78,10 +84,6 @@ message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
 	mLastReportedTimestamp = timestamp;
 	return msg;
 }
-
-void RtcpSrReporter::setNeedsToReport() { mNeedsToReport = true; }
-
-uint32_t RtcpSrReporter::lastReportedTimestamp() const { return mLastReportedTimestamp; }
 
 } // namespace rtc
 

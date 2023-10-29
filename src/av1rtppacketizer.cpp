@@ -188,41 +188,36 @@ std::vector<binary_ptr> AV1RtpPacketizer::packetizeObu(binary_ptr message,
 AV1RtpPacketizer::AV1RtpPacketizer(AV1RtpPacketizer::Packetization packetization,
                                    shared_ptr<RtpPacketizationConfig> rtpConfig,
                                    uint16_t maximumFragmentSize)
-    : RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize),
+    : RtpPacketizer(rtpConfig), maximumFragmentSize(maximumFragmentSize),
       packetization(packetization) {}
 
-ChainedOutgoingProduct
-AV1RtpPacketizer::processOutgoingBinaryMessage(ChainedMessagesProduct messages,
-                                               message_ptr control) {
-	ChainedMessagesProduct packets = std::make_shared<std::vector<binary_ptr>>();
-	for (auto message : *messages) {
+void AV1RtpPacketizer::outgoing(message_vector &messages,
+                                [[maybe_unused]] const message_callback &send) {
+	message_vector result;
+	for (const auto &message : messages) {
 		std::vector<binary_ptr> obus;
-
 		if (packetization == AV1RtpPacketizer::Packetization::TemporalUnit) {
 			obus = extractTemporalUnitObus(message);
 		} else {
 			obus.push_back(message);
 		}
 
+		std::vector<binary_ptr> fragments;
 		for (auto obu : obus) {
-			auto payloads = packetizeObu(obu, maximumFragmentSize);
-			if (payloads.size() == 0) {
-				continue;
-			}
-
-			unsigned i = 0;
-			for (; i < payloads.size() - 1; i++) {
-				packets->push_back(packetize(payloads[i], false));
-			}
-			packets->push_back(packetize(payloads[i], true));
+			auto p = packetizeObu(obu, maximumFragmentSize);
+			fragments.insert(fragments.end(), p.begin(), p.end());
 		}
+
+		if (fragments.size() == 0)
+			continue;
+
+		for (size_t i = 0; i < fragments.size() - 1; i++)
+			result.push_back(packetize(fragments[i], false));
+
+		result.push_back(packetize(fragments[fragments.size() - 1], true));
 	}
 
-	if (packets->size() == 0) {
-		return ChainedOutgoingProduct();
-	}
-
-	return {packets, control};
+	messages.swap(result);
 }
 
 } // namespace rtc

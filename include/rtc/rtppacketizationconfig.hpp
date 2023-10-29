@@ -19,10 +19,10 @@ namespace rtc {
 class RTC_CPP_EXPORT RtpPacketizationConfig {
 public:
 	SSRC ssrc;
-	const std::string cname;
-	const uint8_t payloadType;
-	const uint32_t clockRate;
-	const uint8_t videoOrientationId;
+	std::string cname;
+	uint8_t payloadType;
+	uint32_t clockRate;
+	uint8_t videoOrientationId;
 
 	// current sequence number
 	uint16_t sequenceNumber;

@@ -583,6 +583,14 @@ Description::Entry::ExtMap *Description::Entry::extMap(int id) {
 	return &it->second;
 }
 
+const Description::Entry::ExtMap *Description::Entry::extMap(int id) const {
+	auto it = mExtMaps.find(id);
+	if (it == mExtMaps.end())
+		throw std::invalid_argument("extmap not found");
+
+	return &it->second;
+}
+
 void Description::Entry::addExtMap(ExtMap map) {
 	auto id = map.id;
 	mExtMaps.emplace(id, std::move(map));
@@ -946,6 +954,14 @@ std::vector<int> Description::Media::payloadTypes() const {
 }
 
 Description::Media::RtpMap *Description::Media::rtpMap(int payloadType) {
+	auto it = mRtpMaps.find(payloadType);
+	if (it == mRtpMaps.end())
+		throw std::invalid_argument("rtpmap not found");
+
+	return &it->second;
+}
+
+const Description::Media::RtpMap *Description::Media::rtpMap(int payloadType) const {
 	auto it = mRtpMaps.find(payloadType);
 	if (it == mRtpMaps.end())
 		throw std::invalid_argument("rtpmap not found");
