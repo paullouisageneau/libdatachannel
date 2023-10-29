@@ -1081,7 +1081,7 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 				audio->addPCMACodec(pt, profile);
 				break;
 			case RTC_CODEC_AAC:
-				audio->addAacCodec(pt, profile);
+				audio->addAACCodec(pt, profile);
 				break;
 			default:
 				break;
