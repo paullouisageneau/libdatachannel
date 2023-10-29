@@ -586,6 +586,9 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 		if (auto track = it->second.lock())
 			track->incoming(message);
 	} else {
+		if (mTrackLines.size()==1) {
+			mTrackLines.front().lock()->incoming(message);
+		}
 		/*
 		 * TODO: So the problem is that when stop sending streams, we stop getting report blocks for
 		 * those streams Therefore when we get compound RTCP packets, they are empty, and we can't
