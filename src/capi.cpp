@@ -1319,7 +1319,7 @@ int rtcSetAACPacketizationHandler(int tr, const rtcPacketizationHandlerInit *ini
 }
 
 int rtcChainRtcpSrReporter(int tr) {
-	return wrap([tr] {
+	return wrap([&] {
 		auto config = getRtpConfig(tr);
 		auto reporter = std::make_shared<RtcpSrReporter>(config);
 		emplaceRtcpSrReporter(reporter, tr);
@@ -1330,7 +1330,7 @@ int rtcChainRtcpSrReporter(int tr) {
 }
 
 int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount) {
-	return wrap([tr, maxStoredPacketsCount] {
+	return wrap([&] {
 		auto responder = std::make_shared<RtcpNackResponder>(maxStoredPacketsCount);
 		auto chainableHandler = getMediaChainableHandler(tr);
 		chainableHandler->addToChain(responder);
@@ -1338,11 +1338,14 @@ int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount) {
 	});
 }
 
-int rtcChainPliHandler(int tr, rtcPliHandlerCallbackFunc onPli) {
-	return wrap([tr, onPli] {
-		auto responder = std::make_shared<PliHandler>(onPli);
+int rtcChainPliHandler(int tr, rtcPliHandlerCallbackFunc cb) {
+	return wrap([&] {
+		auto pliHandler = std::make_shared<PliHandler>([tr, cb] {
+			if (auto ptr = getUserPointer(tr))
+				cb(tr, *ptr);
+		});
 		auto chainableHandler = getMediaChainableHandler(tr);
-		chainableHandler->addToChain(responder);
+		chainableHandler->addToChain(pliHandler);
 		return RTC_ERR_SUCCESS;
 	});
 }
