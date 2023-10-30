@@ -46,7 +46,7 @@ std::shared_ptr<Client> createPeerConnection(
 
 	pc->onStateChange(
 		[id](rtc::PeerConnection::State state) {
-			std::cout << "state: ,peer: " << state << id << std::endl;
+			std::cout << "state: " << state << ", " << "peer: " << id << std::endl;
 
 			if (isDisconnectedState(state)) {
 				// remove disconnected client
@@ -83,6 +83,12 @@ std::shared_ptr<Client> createPeerConnection(
     });
 
 	// TODO(Jiawei): add video and audio
+	rtc::Description::Video media("video", rtc::Description::Direction::RecvOnly);
+	media.addH264Codec(96);
+	media.setBitrate(
+		3000); // Request 3Mbps (Browsers do not encode more than 2.5MBps from a webcam)
+
+	auto track = pc->addTrack(media);
 
 	pc->setLocalDescription();
 
@@ -141,12 +147,13 @@ void handleWSMsg(
 		// TODO
 	} else if (type == "useroffline") {
 		// TODO
+		std::cout << "connection failed due to peer is offline: " << type << std::endl;
 	} else {
 		std::cout << "unknown message type: " << type << std::endl;
 	}
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv) try {
 	std::cout << "hello world" << std::endl;
 
 	if (argc < 2) {
@@ -161,11 +168,9 @@ int main(int argc, char **argv) {
 	// config.iceServers.emplace_back(stunServer);
 
 	// parse the client id from the cmd line
-	auto peerid = std::string(argv[1]);
+	auto localid = std::string(argv[1]);
 
-	std::cout << "Client id is: " << peerid << std::endl;
-
-	const auto localid = std::string("gjw");
+	std::cout << "Client id is: " << localid << std::endl;
 
 	// open connection to the signal server using websockets
 	auto ws = std::make_shared<rtc::WebSocket>();
@@ -220,13 +225,39 @@ int main(int argc, char **argv) {
 	// connect to the singaling server
 	ws->open(url);
 
-	std::cout << "Waiting for signaling to be connected..." << std::endl;
+	std::cout << "waiting for signaling to be connected..." << std::endl;
 
 	while (!ws->isOpen()) {
-        if (ws->isClosed())
+        if (ws->isClosed()) {
+			std::cerr << "Failed to connect to the signal server" << std::endl;
             return 1;
+		}
         std::this_thread::sleep_for(100ms);
     }
 
+	auto quit = false;
+
+	while (!quit) {
+        std::string command;
+        std::cout << "Enter quit or q to exit" << std::endl;
+        std::cin >> command;
+        std::cin.ignore();
+
+		if (command == "quit" || command == "q") {
+        	std::cout << "exiting" << std::endl;
+        	quit = true;
+		} else if (command == "connect") {
+			std::string peerid;
+			std::cin >> peerid;
+			std::cout << "connecting to " << peerid << std::endl;
+			handleOffer(peerid, config, ws);
+		}
+    }
+
+    std::cout << "Cleaning up..." << std::endl;
+
 	return 0;
+} catch (const std::exception &e) {
+	std::cerr << "Error: " << e.what() << std::endl;
+	return 1;
 }
