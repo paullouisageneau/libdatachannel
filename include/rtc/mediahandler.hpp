@@ -21,6 +21,8 @@ protected:
 	synchronized_callback<message_ptr> outgoingCallback;
 
 public:
+	virtual ~MediaHandler() = default;
+
 	// Called when there is traffic coming from the peer
 	virtual message_ptr incoming(message_ptr ptr) = 0;
 
