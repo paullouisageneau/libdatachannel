@@ -583,12 +583,31 @@ void Description::removeAttribute(const string &attr) {
 	    mAttributes.end());
 }
 
-std::vector<int> Description::Entry::extIds() {
+std::vector<int> Description::Entry::extIds() const {
 	std::vector<int> result;
 	for (auto it = mExtMaps.begin(); it != mExtMaps.end(); ++it)
 		result.push_back(it->first);
 
 	return result;
+}
+
+int Description::Entry::nextExtId() const {
+	// RFC 8285: In the signaling section, the range 1-256 is referred to as the valid range, with
+	// the values 1-255 referring to extension elements and the value 256 referring to the 4-bit
+	// appbits field.
+	for (int i = 1; i < 255; ++i)
+		if (mExtMaps.find(i) == mExtMaps.end())
+			return i;
+
+	throw std::out_of_range("No more valid extension ID available");
+}
+
+optional<int> Description::Entry::findExtId(string_view uri) const {
+	for (auto it = mExtMaps.begin(); it != mExtMaps.end(); ++it)
+		if(it->second.uri == uri)
+			return std::make_optional(it->first);
+
+	return nullopt;
 }
 
 Description::Entry::ExtMap *Description::Entry::extMap(int id) {

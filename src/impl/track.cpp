@@ -20,8 +20,10 @@ static LogCounter COUNTER_QUEUE_FULL(plog::warning,
                                      "Number of media packets dropped due to a full queue");
 
 Track::Track(weak_ptr<PeerConnection> pc, Description::Media desc)
-    : mPeerConnection(pc), mMediaDescription(std::move(desc)),
+    : mPeerConnection(pc),
       mRecvQueue(RECV_QUEUE_LIMIT, [](const message_ptr &m) { return m->size(); }) {
+
+	setDescription(std::move(desc));
 
 	// Discard messages by default if track is send only
 	if (mMediaDescription.direction() == Description::Direction::SendOnly)
@@ -57,6 +59,16 @@ void Track::setDescription(Description::Media desc) {
 		std::unique_lock lock(mMutex);
 		if (desc.mid() != mMediaDescription.mid())
 			throw std::logic_error("Media description mid does not match track mid");
+
+		// RFC 8843: The RTP MID header extension MUST be enabled, by including an SDP 'extmap'
+		// attribute [RFC8285], with a 'urn:ietf:params:rtp-hdrext:sdes:mid' URI value, in each
+		// bundled RTP-based "m=" section in every offer and answer.
+		const string sdesMidExtUri = "urn:ietf:params:rtp-hdrext:sdes:mid";
+		mSdesMidExtId = desc.findExtId(sdesMidExtUri);
+		if (!mSdesMidExtId) {
+			mSdesMidExtId.emplace(desc.nextExtId());
+			desc.addExtMap({*mSdesMidExtId, sdesMidExtUri});
+		}
 
 		mMediaDescription = std::move(desc);
 	}
@@ -217,7 +229,7 @@ void Track::setMediaHandler(shared_ptr<MediaHandler> handler) {
 		mMediaHandler = handler;
 	}
 
-	if(handler)
+	if (handler)
 		handler->media(description());
 }
 

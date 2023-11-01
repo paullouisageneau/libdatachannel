@@ -64,6 +64,7 @@ private:
 #endif
 
 	Description::Media mMediaDescription;
+	optional<int> mSdesMidExtId;
 	shared_ptr<MediaHandler> mMediaHandler;
 
 	mutable std::shared_mutex mMutex;

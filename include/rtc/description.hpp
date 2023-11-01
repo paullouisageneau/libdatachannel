@@ -118,7 +118,9 @@ public:
 			Direction direction = Direction::Unknown;
 		};
 
-		std::vector<int> extIds();
+		std::vector<int> extIds() const;
+		optional<int> findExtId(string_view uri) const;
+		int nextExtId() const;
 		ExtMap *extMap(int id);
 		const ExtMap *extMap(int id) const;
 		void addExtMap(ExtMap map);
