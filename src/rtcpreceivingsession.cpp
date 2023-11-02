@@ -34,7 +34,6 @@ static impl::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning,
 
 void RtcpReceivingSession::incoming(message_vector &messages, const message_callback &send) {
 	message_vector result;
-	result.resize(messages.size());
 	for (auto message : messages) {
 		switch (message->type) {
 		case Message::Binary: {
