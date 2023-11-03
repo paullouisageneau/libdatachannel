@@ -4,12 +4,69 @@ const iceConnectionLog = document.getElementById('ice-connection-state'),
     dataChannelLog = document.getElementById('data-channel');
 
 const clientId = randomId(10);
-const websocket = new WebSocket('ws://127.0.0.1:8000/' + 'join' + clientId);
+document.getElementById("my-id").innerHTML = clientId;
+
+const websocket = new WebSocket('ws://127.0.0.1:8000/' + 'join/' + clientId);
 
 const remotePeer = null;
 
+let localstream = null;
+
 websocket.onopen = () => {
     document.getElementById('start').disabled = false;
+}
+
+let pc = null;
+let dc = null;
+
+async function hangup() {
+    if (pc) {
+      pc.close();;
+      pc = null;
+    }
+
+    // localStream.getTracks().forEach(track => track.stop());
+    // localStream = null;
+    // startButton.disabled = false;
+    // hangupButton.disabled = true;
+
+    // TODO stop track
+    // TODO show end session
+}
+
+function handleSignalingMsg(message) {
+
+    const peerId = message.id;
+
+    switch (message.type) {
+        case 'offer':
+          handleOffer({type : message.type, sdp : message.sdp}, peerId);
+          break;
+        case 'answer':
+          handleAnswer({type : message.type, sdp : message.sdp}, peerId);
+          break;
+        case 'candidate':
+          handleCandidate(message);
+          break;
+        case 'ready':
+          // A second tab joined. This tab will initiate a call unless in a call already.
+        //   if (pc) {
+        //     console.log('already in call, ignoring');
+        //     return;
+        //   }
+        //   makeCall();
+        //   break;
+        case 'bye':
+        case 'useroffline':
+        case 'userbusy':
+          if (pc) {
+            hangup();
+          }
+          break;
+        default:
+          console.log('unhandled', e);
+          break;
+    }
 }
 
 websocket.onmessage = async (evt) => {
@@ -17,18 +74,14 @@ websocket.onmessage = async (evt) => {
         return;
     }
     const message = JSON.parse(evt.data);
-    if (message.type == "offer") {
-        document.getElementById('offer-sdp').textContent = message.sdp;
-        await handleOffer(message)
-    }
+
+
+    handleSignalingMsg(message);
 }
 
-let pc = null;
-let dc = null;
-
-function createPeerConnection() {
+async function createPeerConnection() {
     const config = {
-        bundlePolicy: "max-bundle",
+        // bundlePolicy: "max-bundle",
     };
 
     if (document.getElementById('use-stun').checked) {
@@ -53,11 +106,13 @@ function createPeerConnection() {
     // Receive audio/video track
     pc.ontrack = (evt) => {
         document.getElementById('media').style.display = 'block';
-        const video = document.getElementById('video');
+        const peervideo = document.getElementById('video-peer');
         // always overrite the last stream - you may want to do something more clever in practice
-        video.srcObject = evt.streams[0]; // The stream groups audio and video tracks
-        video.play();
+        peervideo.srcObject = evt.streams[0]; // The stream groups audio and video tracks
+        peervideo.play();
     };
+
+    localstream.getTracks().forEach(track => pc.addTrack(track, localstream));
 
     // Receive data channel
     pc.ondatachannel = (evt) => {
@@ -113,7 +168,7 @@ async function waitGatheringComplete() {
     });
 }
 
-async function sendAnswer(pc) {
+async function sendAnswer(pc, peerId) {
     await pc.setLocalDescription(await pc.createAnswer());
     await waitGatheringComplete();
 
@@ -121,38 +176,63 @@ async function sendAnswer(pc) {
     document.getElementById('answer-sdp').textContent = answer.sdp;
 
     websocket.send(JSON.stringify({
-        id: "server",
+        id: peerId,
         type: answer.type,
         sdp: answer.sdp,
     }));
 }
 
-async function handleOffer(offer) {
-    pc = createPeerConnection();
+async function handleOffer(offer, peerId) {
+    if (pc) {
+        console.error('existing peerconnection');
+        return;
+    }
+
+    pc = await createPeerConnection();
+    document.getElementById('offer-sdp').textContent = offer.sdp;
+
     await pc.setRemoteDescription(offer);
-    await sendAnswer(pc);
+    await sendAnswer(pc, peerId);
 }
 
-function sendRequest() {
-    // websocket.send(JSON.stringify({
-    //     id: "server",
-    //     type: "request",
-    // }));
+async function handleAnswer(answer, peerId) {
+    if (!pc) {
+        console.log("No existing peerconn!");
+        return;
+    }
+
+    await pc.setRemoteDescription(answer);
+}
+
+async function sendRequest() {
+    if (!peerID) {
+        console.log("Failed to send videocall request, null peerID");
+    }
+
+    pc = await createPeerConnection();
+
+    myOffer = await pc.createOffer();
 
     // we should get generate our local sdp and send it to the remote end
+    websocket.send(JSON.stringify({
+        id : peerID,
+        type : "offer",
+        sdp : myOffer.sdp
+    }));
+
+    pc.setLocalDescription(myOffer);
 }
 
 async function getMedia(constraints) {
-    let stream = null;
-
     try {
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      localstream = await navigator.mediaDevices.getUserMedia(constraints);
       /* use the stream */
       console.log("Got user media");
 
+      document.getElementById('media').style.display = 'block';
       const myVideo = document.getElementById('video-me');
 
-      myVideo.srcObject = stream;
+      myVideo.srcObject = localstream;
       myVideo.play()
 
     } catch (err) {
@@ -161,7 +241,7 @@ async function getMedia(constraints) {
     }
 }
 
-function start() {
+async function start() {
     peerID = document.getElementById('peerID').value;
 
     if (!peerID) {
@@ -171,17 +251,10 @@ function start() {
 
     document.getElementById('start').style.display = 'none';
     document.getElementById('stop').style.display = 'inline-block';
-    document.getElementById('media').style.display = 'block';
 
-    sendRequest();
+    await sendRequest();
 
-    const constraints = {
-        video : true,
-        audio : true
-    }
-
-    // get user media for displaying the camera
-    getMedia(constraints);
+    console.log("3");
 }
 
 function stop() {
@@ -234,4 +307,11 @@ function currentTimestamp() {
         return Date.now() - startTime;
     }
 }
+
+const constraints = {
+    video : true,
+    audio : true
+}
+
+getMedia(constraints);
 

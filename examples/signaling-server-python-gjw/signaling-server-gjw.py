@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Python signaling server example for libdatachannel
 # Copyright (c) 2020 Paul-Louis Ageneau
@@ -34,7 +34,6 @@ peermap = {}
 # indicates a client attempts to negotiate a connection to a peer
 # reject if the peer is alread in connection or the peer hasn't joined
 #
-# TODO
 
 async def sendResponse(websocket, id, type):
     message = {}
@@ -73,7 +72,7 @@ async def handle_websocket(websocket, path):
 
         while True:
             data = await websocket.recv()
-            print('Client {} << {}'.format(client_id, data))
+            print('From Client {} >> {}'.format(client_id, data))
 
             message = json.loads(data)
 
@@ -93,9 +92,9 @@ async def handle_websocket(websocket, path):
                 await sendResponse(websocket, client_id, "userbusy")
                 continue
 
-            if request == "leave":
+            if request == "bye":
                 print('Client {} requests to leave'.format(client_id))
-                await sendResponse(destination_websocket, client_id, "leave")
+                await sendResponse(destination_websocket, client_id, "bye")
                 break
 
             # map the peer id to this client if necessary
@@ -107,7 +106,7 @@ async def handle_websocket(websocket, path):
             message['id'] = client_id
             data = json.dumps(message)
 
-            print('Client {} >> {}'.format(destination_id, data))
+            print('To Client {} << {}'.format(destination_id, data))
 
             await destination_websocket.send(data)
 
@@ -125,7 +124,7 @@ async def handle_websocket(websocket, path):
             destination_websocket = clients.get(destination_id)
 
             if destination_websocket:
-                await sendResponse(websocket, client_id, "leave")
+                await sendResponse(websocket, client_id, "bye")
 
             if destination_id in peermap:
                 del peermap[destination_id]
