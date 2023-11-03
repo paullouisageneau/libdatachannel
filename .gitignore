@@ -12,4 +12,4 @@ compile_commands.json
 /tests
 .DS_Store
 .idea
-
+build-host/

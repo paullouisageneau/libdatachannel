@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>libdatachannel media example</title>
+    <style>
+        button {
+            padding: 8px 16px;
+        }
+
+        pre {
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        video {
+            width: 100%;
+        }
+
+        .option {
+            margin-bottom: 8px;
+        }
+
+        #media {
+            max-width: 1280px;
+        }
+    </style>
+	<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+</head>
+<body>
+<h1>libdatachannel streamer example client</h1>
+
+<h2>Options</h2>
+<div class="option">
+    <input id="use-stun" type="checkbox"/>
+    <label for="use-stun">Use STUN server</label>
+</div>
+<label for="=peerID">PeerID:</label>
+<input type="text" id="peerID" name="peerID"><br><br>
+<button id="start" onclick="start()" disabled>Start</button>
+<button id="stop" style="display: none" onclick="stop()">Stop</button>
+
+<h2>State</h2>
+<p>ICE Connection state: <span id="ice-connection-state"></span></p>
+<p>ICE Gathering state: <span id="ice-gathering-state"></span></p>
+<p>Signaling state: <span id="signaling-state"></span></p>
+
+<div id="media" style="display: none">
+    <h2>Remote Peer</h2>
+    <video id="video-peer" width="640" height="480" autoplay playsinline></video>
+    <h2>Me</h2>
+    <video id="video-me" width="640" height="480" autoplay playsinline></video>
+</div>
+
+<h2>Data Channel</h2>
+<pre id="data-channel" style="height: 200px;"></pre>
+
+<h2>SDP</h2>
+
+<h3>Offer</h3>
+<pre id="offer-sdp"></pre>
+
+<h3>Answer</h3>
+<pre id="answer-sdp"></pre>
+
+<script src="webrtc-client.js"></script>
+</body>
+</html>
