@@ -387,7 +387,7 @@ bool SctpTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
-	if(message->size() > mMaxMessageSize)
+	if (message->size() > mMaxMessageSize)
 		throw std::invalid_argument("Message is too large");
 
 	// Flush the queue, and if nothing is pending, try to send directly
@@ -522,7 +522,7 @@ void SctpTransport::doRecv() {
 			} else {
 				// SCTP message
 				mPartialMessage.insert(mPartialMessage.end(), buffer, buffer + len);
-				if(mPartialMessage.size() > mMaxMessageSize) {
+				if (mPartialMessage.size() > mMaxMessageSize) {
 					PLOG_WARNING << "SCTP message is too large, truncating it";
 					mPartialMessage.resize(mMaxMessageSize);
 				}
@@ -646,7 +646,20 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 	if (reliability.unordered)
 		spa.sendv_sndinfo.snd_flags |= SCTP_UNORDERED;
 
-	switch (reliability.type) {
+	if (reliability.maxPacketLifeTime) {
+		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
+		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_TTL;
+		spa.sendv_prinfo.pr_value = to_uint32(reliability.maxPacketLifeTime->count());
+	} else if (reliability.maxRetransmits) {
+		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
+		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
+		spa.sendv_prinfo.pr_value = to_uint32(*reliability.maxRetransmits);
+	}
+	// else {
+	// 	spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_NONE;
+	// }
+	// Deprecated
+	else switch (reliability.typeDeprecated) {
 	case Reliability::Type::Rexmit:
 		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
 		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
