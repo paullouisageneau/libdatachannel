@@ -595,7 +595,7 @@ int Description::Entry::nextExtId() const {
 	// RFC 8285: In the signaling section, the range 1-256 is referred to as the valid range, with
 	// the values 1-255 referring to extension elements and the value 256 referring to the 4-bit
 	// appbits field.
-	for (int i = 1; i < 255; ++i)
+	for (int i = 1; i <= 255; ++i)
 		if (mExtMaps.find(i) == mExtMaps.end())
 			return i;
 

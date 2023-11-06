@@ -130,22 +130,52 @@ void RtpExtensionHeader::setHeaderLength(uint16_t headerLength) {
 
 void RtpExtensionHeader::clearBody() { std::memset(getBody(), 0, getSize()); }
 
-void RtpExtensionHeader::writeOneByteHeader(size_t offset, uint8_t id, const byte *value,
-                                            size_t size) {
+size_t RtpExtensionHeader::writeOneByteHeader(size_t offset, uint8_t id, const byte *value,
+                                              size_t size) {
 	if ((id == 0) || (id > 14) || (size == 0) || (size > 16) || ((offset + 1 + size) > getSize()))
-		return;
-	auto buf = getBody() + offset;
+		return offset;
+
+	auto *buf = getBody() + offset;
 	buf[0] = id << 4;
-	if (size != 1) {
-		buf[0] |= (uint8_t(size) - 1);
-	}
+	buf[0] |= (uint8_t(size) - 1);
 	std::memcpy(buf + 1, value, size);
+
+	return offset + 1 + size;
 }
 
-void RtpExtensionHeader::writeCurrentVideoOrientation(size_t offset, const uint8_t id,
-                                                      uint8_t value) {
+size_t RtpExtensionHeader::writeCurrentVideoOrientation(size_t offset, const uint8_t id,
+                                                        uint8_t value) {
 	auto v = std::byte{value};
-	writeOneByteHeader(offset, id, &v, 1);
+	return writeOneByteHeader(offset, id, &v, 1);
+}
+
+size_t RtpExtensionHeader::readOneByteHeader(size_t offset, uint8_t *id, const byte **value,
+                                             size_t *size) const {
+	do {
+		if (offset + 1 > getSize()) {
+			if (id)
+				*id = 0;
+			if (value)
+				*value = 0;
+			if (size)
+				*size = 0;
+			return offset;
+		}
+	} while (*(getBody() + offset) == 0); // padding
+
+	const auto *buf = getBody() + offset;
+	size_t s = buf[0] & 0x0F + 1;
+
+	if (offset + 1 + s > getSize())
+		throw std::invalid_argument("RTP one-byte extension overflows extension header");
+
+	if (id)
+		*id = buf[0] >> 4;
+	if (value)
+		*value = reinterpret_cast<const byte *>(buf + 1);
+	if (size)
+		*size = s;
+	return offset + 1 + s;
 }
 
 SSRC RtcpReportBlock::getSSRC() const { return ntohl(_ssrc); }
@@ -188,7 +218,9 @@ uint16_t RtcpReportBlock::seqNoCycles() const { return ntohs(_seqNoCycles); }
 
 uint16_t RtcpReportBlock::highestSeqNo() const { return ntohs(_highestSeqNo); }
 
-uint32_t RtcpReportBlock::extendedHighestSeqNo() const { return (seqNoCycles() <<  16) | highestSeqNo(); }
+uint32_t RtcpReportBlock::extendedHighestSeqNo() const {
+	return (seqNoCycles() << 16) | highestSeqNo();
+}
 
 uint32_t RtcpReportBlock::jitter() const { return ntohl(_jitter); }
 

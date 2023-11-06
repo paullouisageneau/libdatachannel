@@ -59,8 +59,10 @@ public:
 
 private:
 	const weak_ptr<PeerConnection> mPeerConnection;
+
 #if RTC_ENABLE_MEDIA
 	weak_ptr<DtlsSrtpTransport> mDtlsSrtpTransport;
+	void tagWithMid(message_ptr message);
 #endif
 
 	Description::Media mMediaDescription;

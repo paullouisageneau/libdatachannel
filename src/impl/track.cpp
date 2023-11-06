@@ -238,4 +238,41 @@ shared_ptr<MediaHandler> Track::getMediaHandler() {
 	return mMediaHandler;
 }
 
+
+void Track::tagWithMid(message_ptr message) {
+	// TODO: lock
+	if(IsRtcp(*message)) {
+
+	} else {
+		if(!mSdesMidExtId)
+			return;
+
+		if(message->size() < sizeof(RtpHeader)) {
+			const string mid =mMediaDescription.mid();
+			const size_t sdesMidExtLength = 1 + mid.size();
+
+			auto *header = reinterpret_cast<RtpHeader*>(message->data());
+			if(header->extension()) {
+				auto *extHeader = header->getExtensionHeader();
+				if(extHeader->profileSpecificId() != 0xbede) // TODO: check in RtpHeader
+					return;
+
+				size_t extHeaderLength = extHeader->headerLength(); // TODO: actually used length
+				size_t newExtHeaderLength = (extHeaderLength + sdesMidExtLength + 3) / 4;
+				message->insert(message->begin() + header->getSize(), newExtHeaderLength - extHeaderLength, byte(0));
+				extHeader->setHeaderLength(static_cast<uint16_t>(newExtHeaderLength));
+				extHeader->writeOneByteHeader(extHeaderLength, *mSdesMidExtId, reinterpret_cast<const std::byte *>(mid.c_str()), mid.size());
+			} else {
+				size_t extHeaderLength = (sdesMidExtLength + 3) / 4;
+				message->insert(message->begin() + header->getSize(), sizeof(RtpExtensionHeader) + extHeaderLength, byte(0));
+				header->setExtension(true);
+				auto *extHeader = header->getExtensionHeader();
+				extHeader->setProfileSpecificId(0xbede);
+				extHeader->setHeaderLength(static_cast<uint16_t>(extHeaderLength));
+				extHeader->writeOneByteHeader(0, *mSdesMidExtId, reinterpret_cast<const std::byte *>(mid.c_str()), mid.size());
+			}
+		}
+	}
+}
+
 } // namespace rtc::impl
