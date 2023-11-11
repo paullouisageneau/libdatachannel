@@ -15,6 +15,7 @@
 #include <limits>
 #include <map>
 #include <random>
+#include <stdexcept>
 #include <vector>
 
 namespace rtc::impl::utils {
@@ -58,6 +59,22 @@ template <typename Generator = std::mt19937> auto random_bytes_engine() {
 	static_assert(char_independent_bits_engine::min() == std::numeric_limits<uint8_t>::min());
 	static_assert(char_independent_bits_engine::max() == std::numeric_limits<uint8_t>::max());
 	return random_engine<char_independent_bits_engine, uint8_t>();
+}
+
+template <typename T> uint16_t to_uint16(T i) {
+	if (i >= 0 && static_cast<typename std::make_unsigned<T>::type>(i) <=
+	                  std::numeric_limits<uint16_t>::max())
+		return static_cast<uint16_t>(i);
+	else
+		throw std::invalid_argument("Integer out of range");
+}
+
+template <typename T> uint32_t to_uint32(T i) {
+	if (i >= 0 && static_cast<typename std::make_unsigned<T>::type>(i) <=
+	                  std::numeric_limits<uint32_t>::max())
+		return static_cast<uint32_t>(i);
+	else
+		throw std::invalid_argument("Integer out of range");
 }
 
 namespace this_thread {

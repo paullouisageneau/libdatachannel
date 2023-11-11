@@ -10,6 +10,7 @@
 #include "dtlstransport.hpp"
 #include "internals.hpp"
 #include "logcounter.hpp"
+#include "utils.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -50,27 +51,10 @@
 using namespace std::chrono_literals;
 using namespace std::chrono;
 
-namespace {
-
-template <typename T> uint16_t to_uint16(T i) {
-	if (i >= 0 && static_cast<typename std::make_unsigned<T>::type>(i) <=
-	                  std::numeric_limits<uint16_t>::max())
-		return static_cast<uint16_t>(i);
-	else
-		throw std::invalid_argument("Integer out of range");
-}
-
-template <typename T> uint32_t to_uint32(T i) {
-	if (i >= 0 && static_cast<typename std::make_unsigned<T>::type>(i) <=
-	                  std::numeric_limits<uint32_t>::max())
-		return static_cast<uint32_t>(i);
-	else
-		throw std::invalid_argument("Integer out of range");
-}
-
-} // namespace
-
 namespace rtc::impl {
+
+using utils::to_uint16;
+using utils::to_uint32;
 
 static LogCounter COUNTER_UNKNOWN_PPID(plog::warning,
                                        "Number of SCTP packets received with an unknown PPID");

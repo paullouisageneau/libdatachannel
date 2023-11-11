@@ -12,7 +12,7 @@
 #include "logcounter.hpp"
 #include "peerconnection.hpp"
 #include "sctptransport.hpp"
-
+#include "utils.hpp"
 #include "rtc/datachannel.hpp"
 #include "rtc/track.hpp"
 
@@ -27,6 +27,9 @@
 using std::chrono::milliseconds;
 
 namespace rtc::impl {
+
+using utils::to_uint16;
+using utils::to_uint32;
 
 // Messages for the DataChannel establishment protocol (RFC 8832)
 // See https://www.rfc-editor.org/rfc/rfc8832.html
@@ -254,10 +257,10 @@ void OutgoingDataChannel::open(shared_ptr<SctpTransport> transport) {
 	uint32_t reliabilityParameter;
 	if (mReliability->maxPacketLifeTime) {
 		channelType = CHANNEL_PARTIAL_RELIABLE_TIMED;
-		reliabilityParameter = uint32_t(mReliability->maxPacketLifeTime->count());
+		reliabilityParameter = to_uint32(mReliability->maxPacketLifeTime->count());
 	} else if (mReliability->maxRetransmits) {
 		channelType = CHANNEL_PARTIAL_RELIABLE_REXMIT;
-		reliabilityParameter = uint32_t(*mReliability->maxRetransmits);
+		reliabilityParameter = to_uint32(*mReliability->maxRetransmits);
 	}
 	// else {
 	//	channelType = CHANNEL_RELIABLE;
@@ -268,12 +271,12 @@ void OutgoingDataChannel::open(shared_ptr<SctpTransport> transport) {
 		switch (mReliability->typeDeprecated) {
 		case Reliability::Type::Rexmit:
 			channelType = CHANNEL_PARTIAL_RELIABLE_REXMIT;
-			reliabilityParameter = uint32_t(std::max(std::get<int>(mReliability->rexmit), 0));
+			reliabilityParameter = to_uint32(std::max(std::get<int>(mReliability->rexmit), 0));
 			break;
 
 		case Reliability::Type::Timed:
 			channelType = CHANNEL_PARTIAL_RELIABLE_TIMED;
-			reliabilityParameter = uint32_t(std::get<milliseconds>(mReliability->rexmit).count());
+			reliabilityParameter = to_uint32(std::get<milliseconds>(mReliability->rexmit).count());
 			break;
 
 		default:
@@ -292,8 +295,8 @@ void OutgoingDataChannel::open(shared_ptr<SctpTransport> transport) {
 	open.channelType = channelType;
 	open.priority = htons(0);
 	open.reliabilityParameter = htonl(reliabilityParameter);
-	open.labelLength = htons(uint16_t(mLabel.size()));
-	open.protocolLength = htons(uint16_t(mProtocol.size()));
+	open.labelLength = htons(to_uint16(mLabel.size()));
+	open.protocolLength = htons(to_uint16(mProtocol.size()));
 
 	auto end = reinterpret_cast<char *>(buffer.data() + sizeof(OpenMessage));
 	std::copy(mLabel.begin(), mLabel.end(), end);
