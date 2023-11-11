@@ -245,8 +245,8 @@ RTC_C_EXPORT int rtcReceiveMessage(int id, char *buffer, int *size);
 typedef struct {
 	bool unordered;
 	bool unreliable;
-	int maxPacketLifeTime; // ignored if reliable
-	int maxRetransmits;    // ignored if reliable
+	unsigned int maxPacketLifeTime; // ignored if reliable
+	unsigned int maxRetransmits;    // ignored if reliable
 } rtcReliability;
 
 typedef struct {

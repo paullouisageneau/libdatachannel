@@ -901,15 +901,10 @@ int rtcCreateDataChannelEx(int pc, const char *label, const rtcDataChannelInit *
 			auto *reliability = &init->reliability;
 			dci.reliability.unordered = reliability->unordered;
 			if (reliability->unreliable) {
-				if (reliability->maxPacketLifeTime > 0) {
-					dci.reliability.type = Reliability::Type::Timed;
-					dci.reliability.rexmit = milliseconds(reliability->maxPacketLifeTime);
-				} else {
-					dci.reliability.type = Reliability::Type::Rexmit;
-					dci.reliability.rexmit = reliability->maxRetransmits;
-				}
-			} else {
-				dci.reliability.type = Reliability::Type::Reliable;
+				if (reliability->maxPacketLifeTime > 0)
+					dci.reliability.maxPacketLifeTime.emplace(milliseconds(reliability->maxPacketLifeTime));
+				else
+					dci.reliability.maxRetransmits.emplace(reliability->maxRetransmits);
 			}
 
 			dci.negotiated = init->negotiated;
@@ -971,12 +966,12 @@ int rtcGetDataChannelReliability(int dc, rtcReliability *reliability) {
 		Reliability dcr = dataChannel->reliability();
 		std::memset(reliability, 0, sizeof(*reliability));
 		reliability->unordered = dcr.unordered;
-		if (dcr.type == Reliability::Type::Timed) {
+		if(dcr.maxPacketLifeTime) {
 			reliability->unreliable = true;
-			reliability->maxPacketLifeTime = int(std::get<milliseconds>(dcr.rexmit).count());
-		} else if (dcr.type == Reliability::Type::Rexmit) {
+			reliability->maxPacketLifeTime = static_cast<unsigned int>(dcr.maxPacketLifeTime->count());
+		} else if (dcr.maxRetransmits) {
 			reliability->unreliable = true;
-			reliability->maxRetransmits = std::get<int>(dcr.rexmit);
+			reliability->maxRetransmits = *dcr.maxRetransmits;
 		} else {
 			reliability->unreliable = false;
 		}
