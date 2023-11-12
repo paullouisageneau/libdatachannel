@@ -519,6 +519,12 @@ void PeerConnection::forwardMedia([[maybe_unused]] message_ptr message) {
 
 void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 #if RTC_ENABLE_MEDIA
+	std::shared_lock lock(mTracksMutex); // read-only
+	if (mTrackLines.size()==1) {
+		if (auto track = mTrackLines.front().lock())
+			track->incoming(message);
+		return;
+	}
 	// Browsers like to compound their packets with a random SSRC.
 	// we have to do this monstrosity to distribute the report blocks
 	if (message->type == Message::Control) {
@@ -568,7 +574,6 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 		}
 
 		if (!ssrcs.empty()) {
-			std::shared_lock lock(mTracksMutex); // read-only
 			for (uint32_t ssrc : ssrcs) {
 				if (auto it = mTracksBySsrc.find(ssrc); it != mTracksBySsrc.end()) {
 					if (auto track = it->second.lock())
@@ -581,14 +586,10 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 
 	uint32_t ssrc = uint32_t(message->stream);
 
-	std::shared_lock lock(mTracksMutex); // read-only
 	if (auto it = mTracksBySsrc.find(ssrc); it != mTracksBySsrc.end()) {
 		if (auto track = it->second.lock())
 			track->incoming(message);
 	} else {
-		if (mTrackLines.size()==1) {
-			mTrackLines.front().lock()->incoming(message);
-		}
 		/*
 		 * TODO: So the problem is that when stop sending streams, we stop getting report blocks for
 		 * those streams Therefore when we get compound RTCP packets, they are empty, and we can't
