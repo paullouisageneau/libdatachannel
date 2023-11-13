@@ -40,13 +40,19 @@ function handleSignalingMsg(message) {
 
     switch (message.type) {
         case 'offer':
+          console.log("start handling offer");
           handleOffer({type : message.type, sdp : message.sdp}, peerId);
+          console.log("end handling offer");
           break;
         case 'answer':
+          console.log("start handling answer");
           handleAnswer({type : message.type, sdp : message.sdp}, peerId);
+          console.log("end handling answer");
           break;
         case 'candidate':
-          handleCandidate(message);
+          console.log("start handling candidate");
+          handleCandidate({type : message.type, candidate : message.candidate}, peerId);
+          console.log("end handling candidate");
           break;
         case 'ready':
           // A second tab joined. This tab will initiate a call unless in a call already.
@@ -69,7 +75,7 @@ function handleSignalingMsg(message) {
     }
 }
 
-websocket.onmessage = async (evt) => {
+websocket.onmessage = (evt) => {
     if (typeof evt.data !== 'string') {
         return;
     }
@@ -81,7 +87,7 @@ websocket.onmessage = async (evt) => {
 
 let inboundStream = null;
 
-async function createPeerConnection() {
+function createPeerConnection(peerId) {
     const config = {
         // bundlePolicy: "max-bundle",
     };
@@ -104,6 +110,23 @@ async function createPeerConnection() {
     pc.addEventListener('signalingstatechange', () =>
         signalingLog.textContent += ' -> ' + pc.signalingState);
     signalingLog.textContent = pc.signalingState;
+
+    pc.addEventListener('icecandidate', (event) => {
+        if (event.candidate !== null) {
+            console.log("Sending candidate to peer: ", peerId);
+            console.log(event.candidate);
+
+            websocket.send(JSON.stringify({
+                id: peerId,
+                type: 'candidate',
+                candidate: event.candidate,
+            }));
+
+        } else {
+            /* there are no more candidates coming during this negotiation */
+            console.log("No candidates found!")
+        }
+    });
 
     const peervideo = document.getElementById('video-peer');
 
@@ -198,7 +221,7 @@ async function handleOffer(offer, peerId) {
         return;
     }
 
-    pc = await createPeerConnection();
+    pc = createPeerConnection(peerId);
     document.getElementById('offer-sdp').textContent = offer.sdp;
 
     await pc.setRemoteDescription(offer);
@@ -211,9 +234,18 @@ async function handleAnswer(answer, peerId) {
         return;
     }
 
-    await pc.setRemoteDescription(answer);
+    pc.setRemoteDescription(answer);
     console.log("set remote desc sdp done");
     document.getElementById('answer-sdp').textContent = answer.sdp;
+}
+
+async function handleCandidate(candidate, peerId) {
+    if (!pc) {
+        console.log("No existing peerconn!");
+        return;
+    }
+
+    pc.addIceCandidate(new RTCIceCandidate(candidate.candidate));
 }
 
 async function sendRequest() {
@@ -221,7 +253,7 @@ async function sendRequest() {
         console.log("Failed to send videocall request, null peerID");
     }
 
-    pc = await createPeerConnection();
+    pc = createPeerConnection(peerID);
 
     myOffer = await pc.createOffer();
 
@@ -232,7 +264,7 @@ async function sendRequest() {
         sdp : myOffer.sdp
     }));
 
-    pc.setLocalDescription(myOffer);
+    await pc.setLocalDescription(myOffer);
     document.getElementById('offer-sdp').textContent = myOffer.sdp;
 }
 
