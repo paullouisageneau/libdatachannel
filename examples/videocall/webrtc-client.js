@@ -6,7 +6,7 @@ const iceConnectionLog = document.getElementById('ice-connection-state'),
 const clientId = randomId(10);
 document.getElementById("my-id").innerHTML = clientId;
 
-const websocket = new WebSocket('ws://127.0.0.1:8000/' + 'join/' + clientId);
+const websocket = new WebSocket('ws://10.196.28.10:8888/' + 'join/' + clientId);
 
 const remotePeer = null;
 
@@ -108,8 +108,11 @@ async function createPeerConnection() {
         document.getElementById('media').style.display = 'block';
         const peervideo = document.getElementById('video-peer');
         // always overrite the last stream - you may want to do something more clever in practice
-        peervideo.srcObject = evt.streams[0]; // The stream groups audio and video tracks
-        peervideo.play();
+
+        if (!peervideo.srcObject) {
+            peervideo.srcObject = evt.streams[0]; // The stream groups audio and video tracks
+            peervideo.play();
+        }
     };
 
     localstream.getTracks().forEach(track => pc.addTrack(track, localstream));
@@ -202,6 +205,7 @@ async function handleAnswer(answer, peerId) {
     }
 
     await pc.setRemoteDescription(answer);
+    console.log("set remote desc sdp done");
 }
 
 async function sendRequest() {
