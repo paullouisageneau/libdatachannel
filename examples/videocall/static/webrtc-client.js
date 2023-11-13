@@ -89,11 +89,12 @@ let inboundStream = null;
 
 function createPeerConnection(peerId) {
     const config = {
-        // bundlePolicy: "max-bundle",
+        bundlePolicy: "max-bundle",
     };
 
     if (document.getElementById('use-stun').checked) {
         config.iceServers = [{urls: ['stun:stun.l.google.com:19302']}];
+        config.iceTransportPolicy = "all";
     }
 
     let pc = new RTCPeerConnection(config);
@@ -228,15 +229,23 @@ async function handleOffer(offer, peerId) {
     await sendAnswer(pc, peerId);
 }
 
+let candidates = [];
+
 async function handleAnswer(answer, peerId) {
     if (!pc) {
         console.log("No existing peerconn!");
         return;
     }
 
-    pc.setRemoteDescription(answer);
+    await pc.setRemoteDescription(answer);
     console.log("set remote desc sdp done");
     document.getElementById('answer-sdp').textContent = answer.sdp;
+
+    // After successfully received all answers, we check if any candidates
+    // need to be added!
+
+    candidates.forEach((c) => pc.addIceCandidate(c));
+    candidates = [];
 }
 
 async function handleCandidate(candidate, peerId) {
@@ -245,7 +254,15 @@ async function handleCandidate(candidate, peerId) {
         return;
     }
 
-    pc.addIceCandidate(new RTCIceCandidate(candidate.candidate));
+    // there might be a chance remote description hasn't been set yet!
+    // in that case we delay adding candidates!
+    if (!pc.setRemoteDescription) {
+        candidates.push(new RTCIceCandidate(candidate.candidate));
+    } else {
+        candidates.forEach((c) => pc.addIceCandidate(c));
+        candidates = [];
+    }
+
 }
 
 async function sendRequest() {
