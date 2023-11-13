@@ -79,6 +79,8 @@ websocket.onmessage = async (evt) => {
     handleSignalingMsg(message);
 }
 
+let inboundStream = null;
+
 async function createPeerConnection() {
     const config = {
         // bundlePolicy: "max-bundle",
@@ -103,19 +105,24 @@ async function createPeerConnection() {
         signalingLog.textContent += ' -> ' + pc.signalingState);
     signalingLog.textContent = pc.signalingState;
 
+    const peervideo = document.getElementById('video-peer');
+
     // Receive audio/video track
     pc.ontrack = (evt) => {
-        document.getElementById('media').style.display = 'block';
-        const peervideo = document.getElementById('video-peer');
         // always overrite the last stream - you may want to do something more clever in practice
+        if (evt.streams && evt.streams[0]) {
+            peervideo.srcObject = evt.streams[0];
+        } else {
+            if (!inboundStream) {
+                inboundStream = new MediaStream();
+                peervideo.srcObject = inboundStream;
+            }
 
-        if (!peervideo.srcObject) {
-            peervideo.srcObject = evt.streams[0]; // The stream groups audio and video tracks
-            peervideo.play();
+            inboundStream.addTrack(evt.track);
         }
     };
 
-    localstream.getTracks().forEach(track => pc.addTrack(track, localstream));
+    localstream.getTracks().forEach(track => pc.addTrack(track));
 
     // Receive data channel
     pc.ondatachannel = (evt) => {
@@ -206,6 +213,7 @@ async function handleAnswer(answer, peerId) {
 
     await pc.setRemoteDescription(answer);
     console.log("set remote desc sdp done");
+    document.getElementById('answer-sdp').textContent = answer.sdp;
 }
 
 async function sendRequest() {
@@ -225,6 +233,7 @@ async function sendRequest() {
     }));
 
     pc.setLocalDescription(myOffer);
+    document.getElementById('offer-sdp').textContent = myOffer.sdp;
 }
 
 async function getMedia(constraints) {
