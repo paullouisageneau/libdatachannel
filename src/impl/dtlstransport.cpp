@@ -179,6 +179,20 @@ void DtlsTransport::postHandshake() {
 	// Dummy
 }
 
+DtlsTransport::DtlsInfo DtlsTransport::getDtlsInfo() {
+	DtlsInfo info;
+	{
+		std::lock_guard lock(mSslMutex);
+		auto desc = gnutls_session_get_desc(mSession);
+		if (desc) {
+			info.version = "gnu";
+			info.suite = desc;
+			gnutls_free(desc);
+		}
+	}
+	return info;
+}
+
 void DtlsTransport::doRecv() {
 	std::lock_guard lock(mRecvMutex);
 	--mPendingRecvCount;
@@ -517,6 +531,20 @@ bool DtlsTransport::demuxMessage(message_ptr) {
 
 void DtlsTransport::postHandshake() {
 	// Dummy
+}
+
+DtlsTransport::DtlsInfo DtlsTransport::getDtlsInfo() {
+	DtlsInfo info;
+	{
+		std::lock_guard lock(mSslMutex);
+		auto version = mbedtls_ssl_get_version(&mSsl);
+		auto suite = mbedtls_ssl_get_ciphersuite(&mSsl);
+		if (version && suite) {
+			info.version = version;
+			info.suite = suite;
+		}
+	}
+	return info;
 }
 
 void DtlsTransport::doRecv() {
@@ -910,6 +938,20 @@ bool DtlsTransport::demuxMessage(message_ptr) {
 
 void DtlsTransport::postHandshake() {
 	// Dummy
+}
+
+DtlsTransport::DtlsInfo DtlsTransport::getDtlsInfo() {
+	DtlsInfo info;
+	{
+		std::lock_guard lock(mSslMutex);
+		auto version = SSL_get_version(mSsl);
+		auto suite = SSL_get_cipher(mSsl);
+		if (version && suite) {
+			info.version = version;
+			info.suite = suite;
+		}
+	}
+	return info;
 }
 
 void DtlsTransport::doRecv() {

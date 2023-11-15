@@ -110,6 +110,7 @@ public:
 	void onIceStateChange(std::function<void(IceState state)> callback);
 	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
 	void onSignalingStateChange(std::function<void(SignalingState state)> callback);
+	void onDtlsHandshakeDone(std::function<void(const std::string&, const std::string&)> callback);
 
 	void resetCallbacks();
 

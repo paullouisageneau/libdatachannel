@@ -41,6 +41,12 @@ public:
 
 	bool isClient() const { return mIsClient; }
 
+	struct DtlsInfo {
+		std::string version;
+		std::string suite;
+	};
+	DtlsInfo getDtlsInfo();
+
 protected:
 	virtual void incoming(message_ptr message) override;
 	virtual bool outgoing(message_ptr message) override;
@@ -58,6 +64,7 @@ protected:
 	Queue<message_ptr> mIncomingQueue;
 	std::atomic<int> mPendingRecvCount = 0;
 	std::mutex mRecvMutex;
+	std::mutex mSslMutex;
 	std::atomic<unsigned int> mCurrentDscp = 0;
 	std::atomic<bool> mOutgoingResult = true;
 
@@ -75,8 +82,6 @@ protected:
 	mbedtls_ctr_drbg_context mDrbg;
 	mbedtls_ssl_config mConf;
 	mbedtls_ssl_context mSsl;
-
-	std::mutex mSslMutex;
 
 	uint32_t mFinMs = 0, mIntMs = 0;
 	std::chrono::time_point<std::chrono::steady_clock> mTimerSetAt;
@@ -100,7 +105,6 @@ protected:
 	SSL_CTX *mCtx = NULL;
 	SSL *mSsl = NULL;
 	BIO *mInBio, *mOutBio;
-	std::mutex mSslMutex;
 
 	void handleTimeout();
 

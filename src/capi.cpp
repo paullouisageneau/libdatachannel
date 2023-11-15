@@ -475,6 +475,20 @@ int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb) {
 	});
 }
 
+int rtcSetDtlsHandshakeDoneCallback(int pc, rtcDTLSHandshakeDoneCallbackFunc cb) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		if (cb)
+			peerConnection->onDtlsHandshakeDone([pc, cb](const std::string& version, const std::string& cipher) {
+				if (auto ptr = getUserPointer(pc))
+					cb(pc, version.c_str(), cipher.c_str(), *ptr);
+			});
+		else
+			peerConnection->onDtlsHandshakeDone(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcSetIceStateChangeCallback(int pc, rtcIceStateChangeCallbackFunc cb) {
 	return wrap([&] {
 		auto peerConnection = getPeerConnection(pc);

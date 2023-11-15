@@ -80,6 +80,10 @@ void test_connectivity(bool signal_wrong_fingerprint) {
 		cout << "Signaling state 1: " << state << endl;
 	});
 
+	pc1.onDtlsHandshakeDone([](const std::string& ver, const std::string& cipher) {
+		cout << "DTLS handlshake 1 done with version: " << ver << " cipher: " << cipher << endl;
+	});
+
 	pc2.onLocalDescription([&pc1](Description sdp) {
 		cout << "Description 2: " << sdp << endl;
 		pc1.setRemoteDescription(string(sdp));
@@ -102,6 +106,10 @@ void test_connectivity(bool signal_wrong_fingerprint) {
 
 	pc2.onSignalingStateChange([](PeerConnection::SignalingState state) {
 		cout << "Signaling state 2: " << state << endl;
+	});
+
+	pc2.onDtlsHandshakeDone([](const std::string& ver, const std::string& cipher) {
+		cout << "DTLS handlshake 2 done with version: " << ver << " cipher: " << cipher << endl;
 	});
 
 	shared_ptr<DataChannel> dc2;

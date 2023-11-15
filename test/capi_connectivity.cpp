@@ -72,6 +72,11 @@ static void RTC_API signalingStateCallback(int pc, rtcSignalingState state, void
 	printf("Signaling state %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
 }
 
+static void RTC_API DtlsHandshakeDoneCallback(int pc, const char *dtlsVersion, const char* cipher, void *ptr) {
+	Peer *peer = (Peer *)ptr;
+	printf("Dtls info version: %s cipher: %s\n", dtlsVersion, cipher);
+}
+
 static void RTC_API openCallback(int id, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->connected = true;
@@ -168,6 +173,7 @@ static Peer *createPeer(const rtcConfiguration *config) {
 	rtcSetIceStateChangeCallback(peer->pc, iceStateChangeCallback);
 	rtcSetGatheringStateChangeCallback(peer->pc, gatheringStateCallback);
 	rtcSetSignalingStateChangeCallback(peer->pc, signalingStateCallback);
+	rtcSetDtlsHandshakeDoneCallback(peer->pc, DtlsHandshakeDoneCallback);	
 
 	return peer;
 }

@@ -204,6 +204,16 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport() {
 	}
 }
 
+void PeerConnection::printDtlsInfo() {
+	auto lower = std::atomic_load(&mDtlsTransport);
+	if (lower) {
+		auto info = lower->getDtlsInfo();
+		PLOG_INFO << "Connected with DTLS version " << info.version
+					<< ", cipher suite " << info.suite;
+		dtlsHandshakeDoneCallback(info.version, info.suite);
+	}
+}
+
 shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 	try {
 		if (auto transport = std::atomic_load(&mDtlsTransport))
@@ -225,6 +235,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 			    switch (transportState) {
 			    case DtlsTransport::State::Connected:
+				    printDtlsInfo();
 				    if (auto remote = remoteDescription(); remote && remote->hasApplication())
 					    initSctpTransport();
 				    else
@@ -1266,6 +1277,7 @@ void PeerConnection::resetCallbacks() {
 	iceStateChangeCallback = nullptr;
 	gatheringStateChangeCallback = nullptr;
 	signalingStateChangeCallback = nullptr;
+	dtlsHandshakeDoneCallback = nullptr;
 	trackCallback = nullptr;
 }
 

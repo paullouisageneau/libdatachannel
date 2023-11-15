@@ -144,6 +144,7 @@ typedef void(RTC_API *rtcDescriptionCallbackFunc)(int pc, const char *sdp, const
 typedef void(RTC_API *rtcCandidateCallbackFunc)(int pc, const char *cand, const char *mid,
                                                 void *ptr);
 typedef void(RTC_API *rtcStateChangeCallbackFunc)(int pc, rtcState state, void *ptr);
+typedef void(RTC_API *rtcDTLSHandshakeDoneCallbackFunc)(int pc, const char *dtlsVersion, const char* cipher, void *ptr);
 typedef void(RTC_API *rtcIceStateChangeCallbackFunc)(int pc, rtcIceState state, void *ptr);
 typedef void(RTC_API *rtcGatheringStateCallbackFunc)(int pc, rtcGatheringState state, void *ptr);
 typedef void(RTC_API *rtcSignalingStateCallbackFunc)(int pc, rtcSignalingState state, void *ptr);
@@ -201,6 +202,8 @@ RTC_C_EXPORT int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCal
 RTC_C_EXPORT int rtcSetLocalDescription(int pc, const char *type);
 RTC_C_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 RTC_C_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
+
+RTC_C_EXPORT int rtcSetDtlsHandshakeDoneCallback(int pc, rtcDTLSHandshakeDoneCallbackFunc cb);
 
 RTC_C_EXPORT int rtcGetLocalDescription(int pc, char *buffer, int size);
 RTC_C_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);

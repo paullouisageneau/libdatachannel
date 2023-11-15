@@ -327,6 +327,10 @@ void PeerConnection::onSignalingStateChange(std::function<void(SignalingState st
 	impl()->signalingStateChangeCallback = callback;
 }
 
+void PeerConnection::onDtlsHandshakeDone(std::function<void(const std::string&, const std::string&)> callback) {
+	impl()->dtlsHandshakeDoneCallback = callback;
+}
+
 void PeerConnection::resetCallbacks() { impl()->resetCallbacks(); }
 
 bool PeerConnection::getSelectedCandidatePair(Candidate *local, Candidate *remote) {

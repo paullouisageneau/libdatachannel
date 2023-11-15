@@ -35,6 +35,7 @@ static void RTC_API dataChannelCallback(int pc, int dc, void *ptr);
 static void RTC_API descriptionCallback(int pc, const char *sdp, const char *type, void *ptr);
 static void RTC_API candidateCallback(int pc, const char *cand, const char *mid, void *ptr);
 static void RTC_API stateChangeCallback(int pc, rtcState state, void *ptr);
+static void RTC_API DtlsHandshakeDoneCallback(int pc, const char *dtlsVersion, const char* cipher, void *ptr);
 static void RTC_API gatheringStateCallback(int pc, rtcGatheringState state, void *ptr);
 static void RTC_API closedCallback(int id, void *ptr);
 static void RTC_API messageCallback(int id, const char *message, int size, void *ptr);
@@ -69,6 +70,7 @@ int main(int argc, char **argv) {
 	rtcSetLocalCandidateCallback(peer->pc, candidateCallback);
 	rtcSetStateChangeCallback(peer->pc, stateChangeCallback);
 	rtcSetGatheringStateChangeCallback(peer->pc, gatheringStateCallback);
+	rtcSetDtlsHandshakeDoneCallback(peer->pc, DtlsHandshakeDoneCallback);	
 
 	rtcSetDataChannelCallback(peer->pc, dataChannelCallback);
 
@@ -194,6 +196,11 @@ static void RTC_API stateChangeCallback(int pc, rtcState state, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 	peer->state = state;
 	printf("State %s: %s\n", "answerer", state_print(state));
+}
+
+static void RTC_API DtlsHandshakeDoneCallback(int pc, const char *dtlsVersion, const char* cipher, void *ptr) {
+	Peer *peer = (Peer *)ptr;
+	printf("Dtls info version: %s cipher: %s\n", dtlsVersion, cipher);
 }
 
 static void RTC_API gatheringStateCallback(int pc, rtcGatheringState state, void *ptr) {

@@ -124,9 +124,11 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	synchronized_callback<IceState> iceStateChangeCallback;
 	synchronized_callback<GatheringState> gatheringStateChangeCallback;
 	synchronized_callback<SignalingState> signalingStateChangeCallback;
+	synchronized_callback<const std::string&, const std::string&> dtlsHandshakeDoneCallback;
 	synchronized_callback<shared_ptr<rtc::Track>> trackCallback;
 
 private:
+	void printDtlsInfo();
 	void dispatchMedia(message_ptr message);
 	void updateTrackSsrcCache(const Description &description);
 
