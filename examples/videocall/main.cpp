@@ -21,12 +21,12 @@ make_weak_ptr(std::shared_ptr<T> ptr) {
 	return ptr;
 }
 
-static std::unordered_map<std::string, std::shared_ptr<Client>> clients{};
+static std::unordered_map<std::string, std::shared_ptr<Client>> peerConnMap{};
 
 auto threadPool = DispatchQueue("Main", 1);
 
-const std::string signaling_serverip = "127.0.0.1";
-const int signaling_serverport = 8000;
+const std::string signaling_serverip = "10.196.28.10";
+const int signaling_serverport = 8888;
 
 static inline bool isDisconnectedState(const rtc::PeerConnection::State& state) {
 	return state == rtc::PeerConnection::State::Disconnected ||
@@ -51,11 +51,31 @@ std::shared_ptr<Client> createPeerConnection(
 			if (isDisconnectedState(state)) {
 				// remove disconnected client
 				threadPool.dispatch([id]() {
-					clients.erase(id);
+					peerConnMap.erase(id);
 				});
         	}
 		}
 	);
+
+	// pc->onLocalDescription(
+	// 	[wws, id](rtc::Description description) {
+	// 	json message = {{"id", id},
+	// 	                {"type", description.typeString()},
+	// 	                {"description", std::string(description)}};
+
+	// 	if (auto ws = wws.lock())
+	// 		ws->send(message.dump());
+	// });
+
+	pc->onLocalCandidate(
+		[wws, id](rtc::Candidate candidate) {
+		json message = {{"id", id},
+		                {"type", "candidate"},
+		                {"candidate", std::string(candidate)}};
+
+		if (auto ws = wws.lock())
+			ws->send(message.dump());
+	});
 
 	pc->onGatheringStateChange(
         [wpc = make_weak_ptr(pc), id, wws](rtc::PeerConnection::GatheringState state) {
@@ -100,8 +120,10 @@ void handleOffer(
 	const rtc::Configuration& config,
 	const std::shared_ptr<rtc::WebSocket> ws) {
 
+	std::cout << "Got offer request answering to " + id << std::endl;
+
 	// create peerconnection
-	clients.emplace(id, createPeerConnection(id, config, make_weak_ptr(ws)));
+	peerConnMap.emplace(id, createPeerConnection(id, config, make_weak_ptr(ws)));
 }
 
 void handleWSMsg(
@@ -128,26 +150,33 @@ void handleWSMsg(
 
 	auto type = it->get<std::string>();
 
-	if (type == "offer") {
-		// TODO handle offer
+	auto peer = std::shared_ptr<Client>();
+
+	if (auto jt = peerConnMap.find(id); jt != peerConnMap.end()) {
+		peer = jt->second;
+	} else if (type == "offer") {
 		handleOffer(id, config, ws);
+		peer = peerConnMap[id];
+	} else {
+		return;
+	}
 
-		// create peer connection
-
-		// gen local desc
-
-		// gen answer
-
-		// send answer
-	} else if (type == "answer") {
-		// TODO
+	if (type == "offer" || type == "answer") {
+		auto sdp = message["sdp"].get<std::string>();
+		peer->peerConnection->setRemoteDescription(rtc::Description(sdp, type));
+	} else if (type == "candidate") {
+		/* FIXME: avoid nested objects! */
+		auto candidates = message["candidate"]["candidate"].get<std::string>();
+		peer->peerConnection->addRemoteCandidate(rtc::Candidate(candidates, "0")); // 0 for now
 	} else if (type == "leave") {
 		// TODO
+		std::cout << "connection failed due to: " << type << std::endl;
 	} else if (type == "userbusy") {
 		// TODO
+		std::cout << "connection failed due to: " << type << std::endl;
 	} else if (type == "useroffline") {
 		// TODO
-		std::cout << "connection failed due to peer is offline: " << type << std::endl;
+		std::cout << "connection failed due to: " << type << std::endl;
 	} else {
 		std::cout << "unknown message type: " << type << std::endl;
 	}
@@ -164,8 +193,8 @@ int main(int argc, char **argv) try {
 	auto config = rtc::Configuration();
 	config.disableAutoNegotiation = true;
 	// not setting stun server for now
-	// auto stunServer = std::string("stun:stun.l.google.com:19302");
-	// config.iceServers.emplace_back(stunServer);
+	auto stunServer = std::string("stun:stun.l.google.com:19302");
+	config.iceServers.emplace_back(stunServer);
 
 	// parse the client id from the cmd line
 	auto localid = std::string(argv[1]);
