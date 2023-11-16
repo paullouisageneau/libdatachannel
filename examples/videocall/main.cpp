@@ -57,15 +57,15 @@ std::shared_ptr<Client> createPeerConnection(
 		}
 	);
 
-	// pc->onLocalDescription(
-	// 	[wws, id](rtc::Description description) {
-	// 	json message = {{"id", id},
-	// 	                {"type", description.typeString()},
-	// 	                {"description", std::string(description)}};
+	pc->onLocalDescription(
+		[wws, id](rtc::Description description) {
+		json message = {{"id", id},
+		                {"type", description.typeString()},
+		                {"description", std::string(description)}};
 
-	// 	if (auto ws = wws.lock())
-	// 		ws->send(message.dump());
-	// });
+		if (auto ws = wws.lock())
+			ws->send(message.dump());
+	});
 
 	pc->onLocalCandidate(
 		[wws, id](rtc::Candidate candidate) {
@@ -110,7 +110,7 @@ std::shared_ptr<Client> createPeerConnection(
 
 	auto track = pc->addTrack(media);
 
-	pc->setLocalDescription();
+	// pc->setLocalDescription();
 
 	return client;
 }
@@ -164,6 +164,8 @@ void handleWSMsg(
 	if (type == "offer" || type == "answer") {
 		auto sdp = message["sdp"].get<std::string>();
 		peer->peerConnection->setRemoteDescription(rtc::Description(sdp, type));
+		/* now create the answer */
+		peer->peerConnection->setLocalDescription();
 	} else if (type == "candidate") {
 		/* FIXME: avoid nested objects! */
 		auto candidates = message["candidate"]["candidate"].get<std::string>();
