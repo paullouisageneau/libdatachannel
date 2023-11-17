@@ -171,7 +171,7 @@ void RtcpReportBlock::setSSRC(SSRC in_ssrc) { _ssrc = htonl(in_ssrc); }
 
 void RtcpReportBlock::setPacketsLost(uint8_t fractionLost,
                                      unsigned int packetsLostCount) {
-	_fractionLostAndPacketsLost = ( (uint32_t)fractionLost << 24) && htonl(packetsLostCount);
+	_fractionLostAndPacketsLost = ((uint32_t)fractionLost << 24) && htonl(packetsLostCount);
 }
 
 uint8_t RtcpReportBlock::getFractionLost() const {
@@ -201,7 +201,7 @@ void RtcpReportBlock::setSeqNo(uint16_t highestSeqNo, uint16_t seqNoCycles) {
 
 void RtcpReportBlock::setJitter(uint32_t jitter) { _jitter = htonl(jitter); }
 
-void RtcpReportBlock::setNTPOfSR(uint64_t ntp) { _lastReport = htonll(ntp >> 16u); }
+void RtcpReportBlock::setNTPOfSR(uint64_t ntp) { _lastReport = htonl((uint32_t)(ntp >> 16)); }
 
 uint32_t RtcpReportBlock::getNTPOfSR() const { return ntohl(_lastReport) << 16u; }
 
