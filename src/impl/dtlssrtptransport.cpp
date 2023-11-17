@@ -269,7 +269,7 @@ void DtlsSrtpTransport::postHandshake() {
 
 	mbedtls_dtls_srtp_info srtpInfo;
 	mbedtls_ssl_get_dtls_srtp_negotiation_result(&mSsl, &srtpInfo);
-	if (srtpInfo.private_chosen_dtls_srtp_profile != MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80)
+	if (srtpInfo.MBEDTLS_PRIVATE(chosen_dtls_srtp_profile) != MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80)
 		throw std::runtime_error("Failed to get SRTP profile");
 
 	const srtp_profile_t srtpProfile = srtp_profile_aes128_cm_sha1_80;
