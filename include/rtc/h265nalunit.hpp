@@ -163,13 +163,11 @@ protected:
 	}
 
 	H265NalUnitFragmentHeader *fragmentHeader() {
-		return reinterpret_cast<H265NalUnitFragmentHeader *>(fragmentIndicator() +
-		                                                     H265_NAL_HEADER_SIZE);
+		return reinterpret_cast<H265NalUnitFragmentHeader *>(data() + H265_NAL_HEADER_SIZE);
 	}
 
 	const H265NalUnitFragmentHeader *fragmentHeader() const {
-		return reinterpret_cast<const H265NalUnitFragmentHeader *>(fragmentIndicator() +
-		                                                           H265_NAL_HEADER_SIZE);
+		return reinterpret_cast<const H265NalUnitFragmentHeader *>(data() + H265_NAL_HEADER_SIZE);
 	}
 };
 
