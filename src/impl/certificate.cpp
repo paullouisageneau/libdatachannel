@@ -396,6 +396,8 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		PLOG_VERBOSE << "Generating ECDSA P-256 key pair";
 #if OPENSSL_VERSION_NUMBER >= 0x30000000
 		pkey = shared_ptr<EVP_PKEY>(EVP_EC_gen("P-256"), EVP_PKEY_free);
+		if (!pkey)
+			throw std::runtime_error("Unable to generate ECDSA P-256 key pair");
 #else
 		pkey = shared_ptr<EVP_PKEY>(EVP_PKEY_new(), EVP_PKEY_free);
 		unique_ptr<EC_KEY, decltype(&EC_KEY_free)> ecc(
@@ -405,13 +407,10 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 
 		EC_KEY_set_asn1_flag(ecc.get(), OPENSSL_EC_NAMED_CURVE); // Set ASN1 OID
 		if (!EC_KEY_generate_key(ecc.get()) || !EVP_PKEY_assign_EC_KEY(pkey.get(), ecc.get()))
-			pkey.reset(); // failure
-		else
-			ecc.release(); // the key will be freed when pkey is freed
-#endif
-		if (!pkey)
 			throw std::runtime_error("Unable to generate ECDSA P-256 key pair");
 
+		ecc.release(); // the key will be freed when pkey is freed
+#endif
 		break;
 	}
 	case CertificateType::Rsa: {
@@ -419,6 +418,8 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		const unsigned int bits = 2048;
 #if OPENSSL_VERSION_NUMBER >= 0x30000000
 		pkey = shared_ptr<EVP_PKEY>(EVP_RSA_gen(bits), EVP_PKEY_free);
+		if (!pkey)
+			throw std::runtime_error("Unable to generate RSA key pair");
 #else
 		pkey = shared_ptr<EVP_PKEY>(EVP_PKEY_new(), EVP_PKEY_free);
 		unique_ptr<RSA, decltype(&RSA_free)> rsa(RSA_new(), RSA_free);
@@ -430,13 +431,10 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		if (!BN_set_word(exponent.get(), e) ||
 		    !RSA_generate_key_ex(rsa.get(), bits, exponent.get(), NULL) ||
 		    !EVP_PKEY_assign_RSA(pkey.get(), rsa.get()))
-			pkey.reset(); // failure
-		else
-			rsa.release(); // the key will be freed when pkey is freed
-#endif
-		if (!pkey)
 			throw std::runtime_error("Unable to generate RSA key pair");
 
+		rsa.release(); // the key will be freed when pkey is freed
+#endif
 		break;
 	}
 	default:
