@@ -404,9 +404,10 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 			throw std::runtime_error("Unable to allocate structure for ECDSA P-256 key pair");
 
 		EC_KEY_set_asn1_flag(ecc.get(), OPENSSL_EC_NAMED_CURVE); // Set ASN1 OID
-		if (!EC_KEY_generate_key(ecc.get()) ||
-		    !EVP_PKEY_assign_EC_KEY(pkey.get(),
-		                            ecc.release())) // the key will be freed when pkey is freed
+		if (!EC_KEY_generate_key(ecc.get()) || !EVP_PKEY_assign_EC_KEY(pkey.get(), ecc.get()))
+			pkey.reset(); // failure
+		else
+			ecc.release(); // the key will be freed when pkey is freed
 #endif
 		if (!pkey)
 			throw std::runtime_error("Unable to generate ECDSA P-256 key pair");
@@ -428,8 +429,10 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		const unsigned int e = 65537; // 2^16 + 1
 		if (!BN_set_word(exponent.get(), e) ||
 		    !RSA_generate_key_ex(rsa.get(), bits, exponent.get(), NULL) ||
-		    !EVP_PKEY_assign_RSA(pkey.get(),
-		                         rsa.release())) // the key will be freed when pkey is freed
+		    !EVP_PKEY_assign_RSA(pkey.get(), rsa.get()))
+			pkey.reset(); // failure
+		else
+			rsa.release(); // the key will be freed when pkey is freed
 #endif
 		if (!pkey)
 			throw std::runtime_error("Unable to generate RSA key pair");
