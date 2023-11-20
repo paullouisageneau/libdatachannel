@@ -344,6 +344,11 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 			mbedtls::check(mbedtls_ssl_conf_own_cert(&mConf, crt.get(), pk.get()));
 		}
 
+		if (mIsClient && mHost) {
+			PLOG_VERBOSE << "Server Name Indication: " << *mHost;
+			mbedtls_ssl_set_hostname(&mSsl, mHost->c_str());
+		}
+
 		mbedtls::check(mbedtls_ssl_setup(&mSsl, &mConf));
 		mbedtls_ssl_set_bio(&mSsl, static_cast<void *>(this), WriteCallback, ReadCallback, NULL);
 
