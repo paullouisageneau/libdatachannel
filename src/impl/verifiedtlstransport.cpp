@@ -45,6 +45,9 @@ VerifiedTlsTransport::VerifiedTlsTransport(
 		throw;
 	}
 #else
+	if (cacert) {
+		SSL_CTX_load_verify_file(mCtx,  reinterpret_cast<const char *>(cacert->c_str()));
+	}
 	SSL_set_verify(mSsl, SSL_VERIFY_PEER, NULL);
 	SSL_set_verify_depth(mSsl, 4);
 #endif
