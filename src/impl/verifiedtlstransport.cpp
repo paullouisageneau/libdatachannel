@@ -45,7 +45,6 @@ VerifiedTlsTransport::VerifiedTlsTransport(
 		throw;
 	}
 #else
-	#ifdef USE_SSL_LOAD_VERIFY
 	if (cacert) {
 		if (cacert->find(PemBeginCertificateTag) == string::npos) {
 			// *cacert is a file path
@@ -55,7 +54,6 @@ VerifiedTlsTransport::VerifiedTlsTransport(
 			PLOG_WARNING << "CA certificate as PEM is not supported for OpenSSL";
 		}
 	}
-	#endif
 	SSL_set_verify(mSsl, SSL_VERIFY_PEER, NULL);
 	SSL_set_verify_depth(mSsl, 4);
 #endif
