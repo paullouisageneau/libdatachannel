@@ -47,7 +47,13 @@ VerifiedTlsTransport::VerifiedTlsTransport(
 #else
 	#ifdef USE_SSL_LOAD_VERIFY
 	if (cacert) {
-		SSL_CTX_load_verify_file(mCtx,  reinterpret_cast<const char *>(cacert->c_str()));
+		if (cacert->find(PemBeginCertificateTag) == string::npos) {
+			// *cacert is a file path
+			openssl::check(SSL_CTX_load_verify_locations(mCtx, cacert->c_str(), NULL), "Failed to load CA certificate");
+		} else {
+			// *cacert is a PEM content
+			PLOG_WARNING << "CA certificate as PEM is not supported for OpenSSL";
+		}
 	}
 	#endif
 	SSL_set_verify(mSsl, SSL_VERIFY_PEER, NULL);
