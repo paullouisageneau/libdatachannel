@@ -20,6 +20,7 @@ namespace rtc {
 namespace impl {
 
 struct WebSocket;
+class Certificate;
 
 }
 
@@ -40,10 +41,13 @@ public:
 		optional<std::chrono::milliseconds> pingInterval;      // zero to disable
 		optional<int> maxOutstandingPings;
 		optional<string> caCertificatePemFile;
+		optional<string> certificatePemFile;
+		optional<string> keyPemFile;
+		optional<string> keyPemPass;
 	};
 
 	WebSocket();
-	WebSocket(Configuration config);
+	WebSocket(const Configuration& config);
 	WebSocket(impl_ptr<impl::WebSocket> impl);
 	~WebSocket() override;
 
@@ -63,6 +67,8 @@ public:
 	optional<string> path() const;
 
 private:
+	static shared_ptr<impl::Certificate> loadCertificate(const Configuration&);
+
 	using CheshireCat<impl::WebSocket>::impl;
 };
 
