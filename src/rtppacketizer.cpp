@@ -42,6 +42,8 @@ binary_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool setMark) {
 		rtpExtHeaderSize += 4;
 	}
 
+	rtpExtHeaderSize = (rtpExtHeaderSize + 3) & ~3;
+
 	auto msg = std::make_shared<binary>(rtpHeaderSize + rtpExtHeaderSize + payload->size());
 	auto *rtp = (RtpHeader *)msg->data();
 	rtp->setPayloadType(rtpConfig->payloadType);
@@ -60,8 +62,7 @@ binary_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool setMark) {
 		auto extHeader = rtp->getExtensionHeader();
 		extHeader->setProfileSpecificId(0xbede);
 
-		auto headerLength = static_cast<uint16_t>(rtpExtHeaderSize - 4);
-		headerLength = static_cast<uint16_t>((headerLength + 3) / 4);
+		auto headerLength = static_cast<uint16_t>(rtpExtHeaderSize / 4) - 1;
 
 		extHeader->setHeaderLength(headerLength);
 		extHeader->clearBody();
