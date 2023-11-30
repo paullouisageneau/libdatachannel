@@ -20,7 +20,6 @@ namespace rtc {
 namespace impl {
 
 struct WebSocket;
-class Certificate;
 
 }
 
@@ -47,7 +46,7 @@ public:
 	};
 
 	WebSocket();
-	WebSocket(const Configuration& config);
+	WebSocket(Configuration config);
 	WebSocket(impl_ptr<impl::WebSocket> impl);
 	~WebSocket() override;
 
@@ -67,8 +66,6 @@ public:
 	optional<string> path() const;
 
 private:
-	static shared_ptr<impl::Certificate> loadCertificate(const Configuration&);
-
 	using CheshireCat<impl::WebSocket>::impl;
 };
 

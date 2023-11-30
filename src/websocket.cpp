@@ -13,14 +13,13 @@
 
 #include "impl/internals.hpp"
 #include "impl/websocket.hpp"
-#include "impl/certificate.hpp"
 
 namespace rtc {
 
 WebSocket::WebSocket() : WebSocket(Configuration()) {}
 
-WebSocket::WebSocket(const Configuration& config)
-    : CheshireCat<impl::WebSocket>(config, loadCertificate(config)),
+WebSocket::WebSocket(Configuration config)
+    : CheshireCat<impl::WebSocket>(std::move(config)),
       Channel(std::dynamic_pointer_cast<impl::Channel>(CheshireCat<impl::WebSocket>::impl())) {}
 
 WebSocket::WebSocket(impl_ptr<impl::WebSocket> impl)
@@ -67,20 +66,6 @@ optional<string> WebSocket::path() const {
 	auto state = impl()->state.load();
 	auto handshake = impl()->getWsHandshake();
 	return state != State::Connecting && handshake ? make_optional(handshake->path()) : nullopt;
-}
-
-impl::certificate_ptr WebSocket::loadCertificate(const Configuration& config) {
-	if (!config.certificatePemFile && !config.keyPemFile)
-		return nullptr;
-
-	if (config.certificatePemFile && config.keyPemFile) {
-		return std::make_shared<impl::Certificate>(
-			impl::Certificate::FromFile(*config.certificatePemFile, *config.keyPemFile,
-										config.keyPemPass.value_or("")));
-	}
-
-	throw std::invalid_argument(
-		"Either none or both certificate and key PEM files must be specified");
 }
 
 } // namespace rtc
