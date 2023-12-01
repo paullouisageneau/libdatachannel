@@ -36,8 +36,8 @@ using std::chrono::milliseconds;
 
 WebSocket::WebSocket(optional<Configuration> optConfig, certificate_ptr certificate)
     : config(optConfig ? std::move(*optConfig) : Configuration()),
-      mCertificate(std::move(certificate)), mIsSecure(mCertificate != nullptr),
-      mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
+      mCertificate(certificate ? std::move(certificate) : std::move(loadCertificate(config))),
+      mIsSecure(mCertificate != nullptr), mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
 	PLOG_VERBOSE << "Creating WebSocket";
 	if (config.proxyServer) {
 		if (config.proxyServer->type == ProxyServer::Type::Socks5)
@@ -47,6 +47,19 @@ WebSocket::WebSocket(optional<Configuration> optConfig, certificate_ptr certific
 			PLOG_WARNING << "HTTP authentication support for proxy is not implemented";
 		}
 	}
+}
+
+certificate_ptr WebSocket::loadCertificate(const Configuration& config) {
+	if (!config.certificatePemFile)
+		return nullptr;
+
+	if (config.keyPemFile)
+		return std::make_shared<Certificate>(
+			Certificate::FromFile(*config.certificatePemFile, *config.keyPemFile,
+										config.keyPemPass.value_or("")));
+
+	throw std::invalid_argument(
+		"Either none or both certificate and key PEM files must be specified");
 }
 
 WebSocket::~WebSocket() { PLOG_VERBOSE << "Destroying WebSocket"; }

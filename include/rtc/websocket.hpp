@@ -40,6 +40,9 @@ public:
 		optional<std::chrono::milliseconds> pingInterval;      // zero to disable
 		optional<int> maxOutstandingPings;
 		optional<string> caCertificatePemFile;
+		optional<string> certificatePemFile;
+		optional<string> keyPemFile;
+		optional<string> keyPemPass;
 	};
 
 	WebSocket();

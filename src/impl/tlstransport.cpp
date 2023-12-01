@@ -592,14 +592,16 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 		SSL_CTX_set_options(mCtx, SSL_OP_SINGLE_ECDH_USE);
 #endif
 
+		if(mIsClient) {
+			if (!SSL_CTX_set_default_verify_paths(mCtx)) {
+				PLOG_WARNING << "SSL root CA certificates unavailable";
+			}
+		}
+
 		if (certificate) {
 			auto [x509, pkey] = certificate->credentials();
 			SSL_CTX_use_certificate(mCtx, x509);
 			SSL_CTX_use_PrivateKey(mCtx, pkey);
-		} else {
-			if (!SSL_CTX_set_default_verify_paths(mCtx)) {
-				PLOG_WARNING << "SSL root CA certificates unavailable";
-			}
 		}
 
 		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3 | SSL_OP_NO_RENEGOTIATION);
