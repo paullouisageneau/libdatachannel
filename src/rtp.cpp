@@ -171,7 +171,7 @@ void RtcpReportBlock::setSSRC(SSRC in_ssrc) { _ssrc = htonl(in_ssrc); }
 
 void RtcpReportBlock::setPacketsLost(uint8_t fractionLost,
                                      unsigned int packetsLostCount) {
-	_fractionLostAndPacketsLost = ((uint32_t)fractionLost << 24) && htonl(packetsLostCount);
+	_fractionLostAndPacketsLost = htonl((uint32_t(fractionLost) << 24) | (packetsLostCount & 0xFFFFFF));
 }
 
 uint8_t RtcpReportBlock::getFractionLost() const {
