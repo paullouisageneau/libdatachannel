@@ -395,7 +395,7 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	case CertificateType::Ecdsa: {
 		PLOG_VERBOSE << "Generating ECDSA P-256 key pair";
 #if OPENSSL_VERSION_NUMBER >= 0x30000000
-		pkey = shared_ptr<EVP_PKEY>(EVP_EC_gen("P-256"), EVP_PKEY_free);
+		pkey = shared_ptr<EVP_PKEY>(EVP_EC_gen("prime256v1"), EVP_PKEY_free);
 		if (!pkey)
 			throw std::runtime_error("Unable to generate ECDSA P-256 key pair");
 #else
