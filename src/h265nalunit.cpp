@@ -38,7 +38,7 @@ H265NalUnitFragment::fragmentsFrom(shared_ptr<H265NalUnit> nalu, uint16_t maximu
 	maximumFragmentSize -= (H265_NAL_HEADER_SIZE + H265_FU_HEADER_SIZE);
 	auto f = nalu->forbiddenBit();
 	uint8_t nuhLayerId = nalu->nuhLayerId() & 0x3F;        // 6 bits
-	uint8_t nuhTempIdPlus1 = nalu->nuhTempIdPlus1() & 0xE; // 3 bits
+	uint8_t nuhTempIdPlus1 = nalu->nuhTempIdPlus1() & 0x7; // 3 bits
 	uint8_t naluType = nalu->unitType() & 0x3F;            // 6 bits
 	auto payload = nalu->payload();
 	vector<shared_ptr<H265NalUnitFragment>> result{};
