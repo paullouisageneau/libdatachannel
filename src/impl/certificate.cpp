@@ -100,18 +100,20 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 
 Certificate::Certificate(gnutls_x509_crt_t crt, gnutls_x509_privkey_t privkey)
     : mCredentials(gnutls::new_credentials(), gnutls::free_credentials),
-      mFingerprint(make_fingerprint(crt)) {
+      mFingerprint(make_fingerprint(crt, CertificateFingerprint::Algorithm::Sha256)) {
 
 	gnutls::check(gnutls_certificate_set_x509_key(*mCredentials, &crt, 1, privkey),
 	              "Unable to set certificate and key pair in credentials");
 }
 
 Certificate::Certificate(shared_ptr<gnutls_certificate_credentials_t> creds)
-    : mCredentials(std::move(creds)), mFingerprint(make_fingerprint(*mCredentials)) {}
+    : mCredentials(std::move(creds)),
+      mFingerprint(make_fingerprint(*mCredentials, CertificateFingerprint::Algorithm::Sha256)) {}
 
 gnutls_certificate_credentials_t Certificate::credentials() const { return *mCredentials; }
 
-string make_fingerprint(gnutls_certificate_credentials_t credentials) {
+string make_fingerprint(gnutls_certificate_credentials_t credentials,
+                        CertificateFingerprint::Algorithm fingerprintAlgorithm) {
 	auto new_crt_list = [credentials]() -> gnutls_x509_crt_t * {
 		gnutls_x509_crt_t *crt_list = nullptr;
 		unsigned int crt_list_size = 0;
@@ -127,14 +129,37 @@ string make_fingerprint(gnutls_certificate_credentials_t credentials) {
 
 	unique_ptr<gnutls_x509_crt_t, decltype(free_crt_list)> crt_list(new_crt_list(), free_crt_list);
 
-	return make_fingerprint(*crt_list);
+	return make_fingerprint(*crt_list, fingerprintAlgorithm);
 }
 
-string make_fingerprint(gnutls_x509_crt_t crt) {
-	const size_t size = 32;
-	unsigned char buffer[size];
+string make_fingerprint(gnutls_x509_crt_t crt,
+                        CertificateFingerprint::Algorithm fingerprintAlgorithm) {
+	const size_t size = CertificateFingerprint::AlgorithmSize(fingerprintAlgorithm);
+	std::vector<unsigned char> buffer(size);
 	size_t len = size;
-	gnutls::check(gnutls_x509_crt_get_fingerprint(crt, GNUTLS_DIG_SHA256, buffer, &len),
+
+	gnutls_digest_algorithm_t hashFunc;
+	switch (fingerprintAlgorithm) {
+	case CertificateFingerprint::Algorithm::Sha1:
+		hashFunc = GNUTLS_DIG_SHA1;
+		break;
+	case CertificateFingerprint::Algorithm::Sha224:
+		hashFunc = GNUTLS_DIG_SHA224;
+		break;
+	case CertificateFingerprint::Algorithm::Sha256:
+		hashFunc = GNUTLS_DIG_SHA256;
+		break;
+	case CertificateFingerprint::Algorithm::Sha384:
+		hashFunc = GNUTLS_DIG_SHA384;
+		break;
+	case CertificateFingerprint::Algorithm::Sha512:
+		hashFunc = GNUTLS_DIG_SHA512;
+		break;
+	default:
+		throw std::invalid_argument("Unknown fingerprint algorithm");
+	}
+
+	gnutls::check(gnutls_x509_crt_get_fingerprint(crt, hashFunc, buffer.data(), &len),
 	              "X509 fingerprint error");
 
 	std::ostringstream oss;
@@ -142,23 +167,47 @@ string make_fingerprint(gnutls_x509_crt_t crt) {
 	for (size_t i = 0; i < len; ++i) {
 		if (i)
 			oss << std::setw(1) << ':';
-		oss << std::setw(2) << unsigned(buffer[i]);
+		oss << std::setw(2) << unsigned(buffer.at(i));
 	}
 	return oss.str();
 }
 
 #elif USE_MBEDTLS
-string make_fingerprint(mbedtls_x509_crt *crt) {
-	const int size = 32;
-	uint8_t buffer[size];
+string make_fingerprint(mbedtls_x509_crt *crt,
+                        CertificateFingerprint::Algorithm fingerprintAlgorithm) {
+	const int size = CertificateFingerprint::AlgorithmSize(fingerprintAlgorithm);
+	std::vector<unsigned char> buffer(size);
 	std::stringstream fingerprint;
 
-	mbedtls::check(
-	    mbedtls_sha256(crt->raw.p, crt->raw.len, reinterpret_cast<unsigned char *>(buffer), 0),
-	    "Failed to generate certificate fingerprint");
+	switch (fingerprintAlgorithm) {
+	case CertificateFingerprint::Algorithm::Sha1:
+		mbedtls::check(mbedtls_sha1(crt->raw.p, crt->raw.len, buffer.data()),
+		               "Failed to generate certificate fingerprint");
+		break;
+	case CertificateFingerprint::Algorithm::Sha224:
+		mbedtls::check(mbedtls_sha256(crt->raw.p, crt->raw.len, buffer.data(), 1),
+		               "Failed to generate certificate fingerprint");
+
+		break;
+	case CertificateFingerprint::Algorithm::Sha256:
+		mbedtls::check(mbedtls_sha256(crt->raw.p, crt->raw.len, buffer.data(), 0),
+		               "Failed to generate certificate fingerprint");
+		break;
+	case CertificateFingerprint::Algorithm::Sha384:
+		mbedtls::check(mbedtls_sha512(crt->raw.p, crt->raw.len, buffer.data(), 1),
+		               "Failed to generate certificate fingerprint");
+		break;
+	case CertificateFingerprint::Algorithm::Sha512:
+		mbedtls::check(mbedtls_sha512(crt->raw.p, crt->raw.len, buffer.data(), 0),
+		               "Failed to generate certificate fingerprint");
+		break;
+	default:
+		throw std::invalid_argument("Unknown fingerprint algorithm");
+	}
 
 	for (auto i = 0; i < size; i++) {
-		fingerprint << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(buffer[i]);
+		fingerprint << std::setfill('0') << std::setw(2) << std::hex
+		            << static_cast<int>(buffer.at(i));
 		if (i != (size - 1)) {
 			fingerprint << ":";
 		}
@@ -168,7 +217,8 @@ string make_fingerprint(mbedtls_x509_crt *crt) {
 }
 
 Certificate::Certificate(shared_ptr<mbedtls_x509_crt> crt, shared_ptr<mbedtls_pk_context> pk)
-    : mCrt(crt), mPk(pk), mFingerprint(make_fingerprint(crt.get())) {}
+    : mCrt(crt), mPk(pk),
+      mFingerprint(make_fingerprint(crt.get(), CertificateFingerprint::Algorithm::Sha256)) {}
 
 Certificate Certificate::FromString(string crt_pem, string key_pem) {
 	PLOG_DEBUG << "Importing certificate from PEM string (MbedTLS)";
@@ -465,17 +515,40 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 }
 
 Certificate::Certificate(shared_ptr<X509> x509, shared_ptr<EVP_PKEY> pkey)
-    : mX509(std::move(x509)), mPKey(std::move(pkey)), mFingerprint(make_fingerprint(mX509.get())) {}
+    : mX509(std::move(x509)), mPKey(std::move(pkey)),
+      mFingerprint(make_fingerprint(mX509.get(), CertificateFingerprint::Algorithm::Sha256)) {}
 
 std::tuple<X509 *, EVP_PKEY *> Certificate::credentials() const {
 	return {mX509.get(), mPKey.get()};
 }
 
-string make_fingerprint(X509 *x509) {
-	const size_t size = 32;
-	unsigned char buffer[size];
-	unsigned int len = size;
-	if (!X509_digest(x509, EVP_sha256(), buffer, &len))
+string make_fingerprint(X509 *x509, CertificateFingerprint::Algorithm fingerprintAlgorithm) {
+	size_t size = CertificateFingerprint::AlgorithmSize(fingerprintAlgorithm);
+	std::vector<unsigned char> buffer(size);
+	auto len = static_cast<unsigned int>(size);
+
+	const EVP_MD *hashFunc;
+	switch (fingerprintAlgorithm) {
+	case CertificateFingerprint::Algorithm::Sha1:
+		hashFunc = EVP_sha1();
+		break;
+	case CertificateFingerprint::Algorithm::Sha224:
+		hashFunc = EVP_sha224();
+		break;
+	case CertificateFingerprint::Algorithm::Sha256:
+		hashFunc = EVP_sha256();
+		break;
+	case CertificateFingerprint::Algorithm::Sha384:
+		hashFunc = EVP_sha384();
+		break;
+	case CertificateFingerprint::Algorithm::Sha512:
+		hashFunc = EVP_sha512();
+		break;
+	default:
+		throw std::invalid_argument("Unknown fingerprint algorithm");
+	}
+
+	if (!X509_digest(x509, hashFunc, buffer.data(), &len))
 		throw std::runtime_error("X509 fingerprint error");
 
 	std::ostringstream oss;
@@ -483,7 +556,7 @@ string make_fingerprint(X509 *x509) {
 	for (size_t i = 0; i < len; ++i) {
 		if (i)
 			oss << std::setw(1) << ':';
-		oss << std::setw(2) << unsigned(buffer[i]);
+		oss << std::setw(2) << unsigned(buffer.at(i));
 	}
 	return oss.str();
 }
@@ -498,6 +571,8 @@ future_certificate_ptr make_certificate(CertificateType type) {
 	});
 }
 
-string Certificate::fingerprint() const { return mFingerprint; }
+CertificateFingerprint Certificate::fingerprint() const {
+	return CertificateFingerprint{CertificateFingerprint::Algorithm::Sha256, mFingerprint};
+}
 
 } // namespace rtc::impl

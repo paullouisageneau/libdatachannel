@@ -211,6 +211,11 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 		PLOG_VERBOSE << "Starting DTLS transport";
 
+		auto fingerprintAlgorithm = CertificateFingerprint::Algorithm::Sha256;
+		if (auto remote = remoteDescription(); remote && remote->fingerprint()) {
+			fingerprintAlgorithm = remote->fingerprint()->algorithm;
+		}
+
 		auto lower = std::atomic_load(&mIceTransport);
 		if (!lower)
 			throw std::logic_error("No underlying ICE transport for DTLS transport");
@@ -254,7 +259,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 			// DTLS-SRTP
 			transport = std::make_shared<DtlsSrtpTransport>(
-			    lower, certificate, config.mtu, verifierCallback,
+			    lower, certificate, config.mtu, fingerprintAlgorithm, verifierCallback,
 			    weak_bind(&PeerConnection::forwardMedia, this, _1), dtlsStateChangeCallback);
 #else
 			PLOG_WARNING << "Ignoring media support (not compiled with media support)";
@@ -264,7 +269,8 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 		if (!transport) {
 			// DTLS only
 			transport = std::make_shared<DtlsTransport>(lower, certificate, config.mtu,
-			                                            verifierCallback, dtlsStateChangeCallback);
+			                                            fingerprintAlgorithm, verifierCallback,
+			                                            dtlsStateChangeCallback);
 		}
 
 		return emplaceTransport(this, &mDtlsTransport, std::move(transport));
@@ -417,14 +423,13 @@ void PeerConnection::rollbackLocalDescription() {
 
 bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
 	std::lock_guard lock(mRemoteDescriptionMutex);
-	auto expectedFingerprint = mRemoteDescription ? mRemoteDescription->fingerprint() : nullopt;
-	if (expectedFingerprint && *expectedFingerprint == fingerprint) {
+	auto expectedFingerprint = mRemoteDescription && mRemoteDescription->fingerprint() ? mRemoteDescription->fingerprint()->value : "";
+	if (expectedFingerprint == fingerprint) {
 		PLOG_VERBOSE << "Valid fingerprint \"" << fingerprint << "\"";
 		return true;
 	}
 
-	PLOG_ERROR << "Invalid fingerprint \"" << fingerprint << "\", expected \""
-	           << expectedFingerprint.value_or("[none]") << "\"";
+	PLOG_ERROR << "Invalid fingerprint \"" << fingerprint << "\", expected \"" << expectedFingerprint << "\"";
 	return false;
 }
 

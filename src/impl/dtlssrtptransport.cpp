@@ -58,10 +58,11 @@ bool DtlsSrtpTransport::IsGcmSupported() {
 
 DtlsSrtpTransport::DtlsSrtpTransport(shared_ptr<IceTransport> lower,
                                      shared_ptr<Certificate> certificate, optional<size_t> mtu,
+                                     CertificateFingerprint::Algorithm fingerprintAlgorithm,
                                      verifier_callback verifierCallback,
                                      message_callback srtpRecvCallback,
                                      state_callback stateChangeCallback)
-    : DtlsTransport(lower, certificate, mtu, std::move(verifierCallback),
+    : DtlsTransport(lower, certificate, mtu, fingerprintAlgorithm, std::move(verifierCallback),
                     std::move(stateChangeCallback)),
       mSrtpRecvCallback(std::move(srtpRecvCallback)) { // distinct from Transport recv callback
 

@@ -52,10 +52,9 @@ void test_connectivity(bool signal_wrong_fingerprint) {
 		if (signal_wrong_fingerprint) {
 			auto f = sdp.fingerprint();
 			if (f.has_value()) {
-				auto s = f.value();
-				auto& c = s[0];
+				auto& c = f.value().value[0];
 				if (c == 'F' || c == 'f') c = '0'; else c++;
-				sdp.setFingerprint(s);
+				sdp.setFingerprint(f.value());
 			}
 		}
 		pc2.setRemoteDescription(string(sdp));

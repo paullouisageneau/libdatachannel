@@ -31,8 +31,9 @@ public:
 	static bool IsGcmSupported();
 
 	DtlsSrtpTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
-	                  optional<size_t> mtu, verifier_callback verifierCallback,
-	                  message_callback srtpRecvCallback, state_callback stateChangeCallback);
+	                  optional<size_t> mtu, CertificateFingerprint::Algorithm fingerprintAlgorithm,
+	                  verifier_callback verifierCallback, message_callback srtpRecvCallback,
+	                  state_callback stateChangeCallback);
 	~DtlsSrtpTransport();
 
 	bool sendMedia(message_ptr message);
