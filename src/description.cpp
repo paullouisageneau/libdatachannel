@@ -44,6 +44,13 @@ inline void trim_end(string &str) {
 	    str.end());
 }
 
+inline string get_first_line(const string &str) {
+	string line;
+	std::istringstream ss(str);
+	std::getline(ss, line);
+	return line;
+}
+
 inline std::pair<string_view, string_view> parse_pair(string_view attr) {
 	string_view key, value;
 	if (size_t separator = attr.find(':'); separator != string::npos) {
@@ -523,11 +530,14 @@ unsigned int Description::mediaCount() const { return unsigned(mEntries.size());
 Description::Entry::Entry(const string &mline, string mid, Direction dir)
     : mMid(std::move(mid)), mDirection(dir) {
 
-	uint16_t port;
-	std::istringstream ss(mline);
+	uint16_t port = 0;
+	std::istringstream ss(match_prefix(mline, "m=") ? mline.substr(2) : mline);
 	ss >> mType;
 	ss >> port;
 	ss >> mDescription;
+
+	if (mType.empty() || mDescription.empty())
+		throw std::invalid_argument("Invalid media description line");
 
 	// RFC 3264: Existing media streams are removed by creating a new SDP with the port number for
 	// that stream set to zero.
@@ -866,10 +876,12 @@ void Description::Application::parseSdpLine(string_view line) {
 	}
 }
 
-Description::Media::Media(const string &sdp) : Entry(sdp, "", Direction::Unknown) {
+Description::Media::Media(const string &sdp)
+    : Entry(get_first_line(sdp), "", Direction::Unknown) {
+	string line;
 	std::istringstream ss(sdp);
+	std::getline(ss, line); // discard first line
 	while (ss) {
-		string line;
 		std::getline(ss, line);
 		trim_end(line);
 		if (line.empty())
