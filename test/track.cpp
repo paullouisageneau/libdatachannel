@@ -95,6 +95,11 @@ void test_track() {
 	media.setBitrate(3000);
 	media.addSSRC(1234, "video-send");
 
+	const auto mediaSdp1 = string(media);
+	const auto mediaSdp2 = string(Description::Media(mediaSdp1));
+	if (mediaSdp2 != mediaSdp1)
+		throw runtime_error("Media description parsing test failed");
+
 	auto t1 = pc1.addTrack(media);
 
 	pc1.setLocalDescription();
