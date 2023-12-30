@@ -25,6 +25,7 @@ struct RTC_CPP_EXPORT NalUnitHeader {
 
 	bool forbiddenBit() const { return _first >> 7; }
 	uint8_t nri() const { return _first >> 5 & 0x03; }
+	uint8_t idc() const { return _first & 0x60; }
 	uint8_t unitType() const { return _first & 0x1F; }
 
 	void setForbiddenBit(bool isSet) { _first = (_first & 0x7F) | (isSet << 7); }
