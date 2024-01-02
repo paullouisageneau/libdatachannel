@@ -21,7 +21,8 @@ static LogCounter COUNTER_QUEUE_FULL(plog::warning,
 
 Track::Track(weak_ptr<PeerConnection> pc, Description::Media desc)
     : mPeerConnection(pc), mMediaDescription(std::move(desc)),
-      mRecvQueue(RECV_QUEUE_LIMIT, [](const message_ptr &m) { return m->size(); }) {
+      mRecvQueue(RECV_QUEUE_LIMIT, [](const message_ptr &m) { return m->size(); }),
+      send_callback([this](message_ptr m) { transportSend(m); }) {
 
 	// Discard messages by default if track is send only
 	if (mMediaDescription.direction() == Description::Direction::SendOnly)
@@ -176,7 +177,7 @@ bool Track::outgoing(message_ptr message) {
 
 	if (handler) {
 		message_vector messages{std::move(message)};
-		handler->outgoingChain(messages, [this](message_ptr m) { transportSend(m); });
+		handler->outgoingChain(messages, send_callback);
 		bool ret = false;
 		for (auto &m : messages)
 			ret = transportSend(std::move(m));

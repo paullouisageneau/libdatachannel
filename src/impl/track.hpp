@@ -56,6 +56,7 @@ public:
 #endif
 
 	bool transportSend(message_ptr message);
+	const message_callback send_callback;
 
 private:
 	const weak_ptr<PeerConnection> mPeerConnection;

@@ -86,6 +86,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtp.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/plihandler.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/metronome.cpp
 )
 
 set(LIBDATACHANNEL_HEADERS
@@ -119,6 +120,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/utils.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/plihandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/metronome.hpp
 )
 
 set(LIBDATACHANNEL_IMPL_SOURCES

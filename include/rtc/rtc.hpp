@@ -37,5 +37,5 @@
 #include "rtcpreceivingsession.hpp"
 #include "rtcpsrreporter.hpp"
 #include "rtppacketizer.hpp"
-
+#include "metronome.hpp"
 #endif // RTC_ENABLE_MEDIA

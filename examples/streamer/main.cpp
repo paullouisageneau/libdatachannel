@@ -71,6 +71,32 @@ const uint16_t defaultPort = 8000;
 string ip_address = defaultIPAddress;
 uint16_t port = defaultPort;
 
+class BucketPacer final : public rtc::PacerAlgorithm {
+	using clock = std::chrono::steady_clock;
+	// Budget is remaining bitrate. Pace is the maximum bitrate.
+	unsigned int mBudget, mPaceInBytes;
+	clock::time_point mPrevTime;
+
+public:
+	BucketPacer(unsigned int paceInBytes) : mPaceInBytes(paceInBytes), mBudget(paceInBytes) {
+		mPrevTime = clock::now();
+	}
+
+	unsigned int getBudget() override {
+		auto now = clock::now();
+		if (now - mPrevTime > std::chrono::seconds(1)) {
+			mBudget = mPaceInBytes;
+			mPrevTime = now;
+		}
+		return mBudget;
+	}
+	unsigned int getPace() override { return mPaceInBytes; }
+	void setPace(unsigned int pace) override { mPaceInBytes = pace; };
+	void setBudget(unsigned int budget) override { mBudget = budget; };
+	void resetBudget() override { mBudget = mPaceInBytes; }
+};
+
+
 /// Incomming message handler for websocket
 /// @param message Incommint message
 /// @param config Configuration
@@ -217,6 +243,8 @@ shared_ptr<ClientTrackData> addVideo(const shared_ptr<PeerConnection> pc, const 
     // add RTCP NACK handler
     auto nackResponder = make_shared<RtcpNackResponder>();
     packetizer->addToChain(nackResponder);
+	auto pacer = make_shared<Metronome>(1000000, make_shared<BucketPacer>(300000), nullptr);
+	packetizer->addToChain(pacer);
     // set handler
     track->setMediaHandler(packetizer);
     track->onOpen(onOpen);
