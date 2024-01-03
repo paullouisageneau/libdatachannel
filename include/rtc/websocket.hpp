@@ -43,6 +43,7 @@ public:
 		optional<string> certificatePemFile;
 		optional<string> keyPemFile;
 		optional<string> keyPemPass;
+		optional<size_t> maxMessageSize;
 	};
 
 	WebSocket();
