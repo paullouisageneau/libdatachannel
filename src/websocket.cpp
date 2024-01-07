@@ -41,7 +41,7 @@ bool WebSocket::isOpen() const { return impl()->state.load() == State::Open; }
 
 bool WebSocket::isClosed() const { return impl()->state.load() == State::Closed; }
 
-size_t WebSocket::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
+size_t WebSocket::maxMessageSize() const { return impl()->maxMessageSize(); }
 
 void WebSocket::open(const string &url) { impl()->open(url); }
 
