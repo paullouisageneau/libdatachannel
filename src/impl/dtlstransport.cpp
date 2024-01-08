@@ -766,7 +766,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
 		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
 		SSL_CTX_set_tmp_ecdh(mCtx, ecdh.get());
-		SSL_CTX_set_options(mCtx, SSL_OP_SINGLE_ECDH_USE);
 #endif
 
 		auto [x509, pkey] = mCertificate->credentials();
