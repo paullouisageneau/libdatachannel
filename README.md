@@ -27,7 +27,7 @@ libdatachannel is available on [AUR](https://aur.archlinux.org/packages/libdatac
 
 - [GnuTLS](https://www.gnutls.org/), [Mbed TLS](https://www.trustedfirmware.org/projects/mbed-tls/), or [OpenSSL](https://www.openssl.org/)
 - [usrsctp](https://github.com/sctplab/usrsctp) (as submodule by default)
-- [Plog](https://github.com/SergiusTheBest/plog) (as submodule by default)
+- [plog](https://github.com/SergiusTheBest/plog) (as submodule by default)
 - [libjuice](https://github.com/paullouisageneau/libjuice) (as submodule by default) or [libnice](https://nice.freedesktop.org/) as an ICE backend.
 - [libsrtp](https://github.com/cisco/libsrtp) (as submodule by default) required if compiled with media support.
 - [nlohmann JSON](https://github.com/nlohmann/json) (as submodule by default) required to build examples.
