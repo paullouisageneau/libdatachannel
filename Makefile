@@ -19,11 +19,17 @@ INCLUDES=-Isrc -Iinclude/rtc -Iinclude -I$(PLOG_DIR)/include -I$(USRSCTP_DIR)/us
 LDLIBS=
 
 USE_GNUTLS ?= 0
+USE_MBEDTLS ?= 0
 ifneq ($(USE_GNUTLS), 0)
-        CPPFLAGS+=-DUSE_GNUTLS=1
+ifneq ($(USE_MBEDTLS), 0)
+$(error Both USE_MBEDTLS and USE_GNUTLS cannot be enabled at the same time)
+endif
+		CPPFLAGS+=-DUSE_GNUTLS=1
         LIBS+=gnutls
+else ifneq ($(USE_MBEDTLS), 0)
+        CPPFLAGS+=-DUSE_MBEDTLS=1
+        LIBS+=mbedtls
 else
-        CPPFLAGS+=-DUSE_GNUTLS=0
         LIBS+=openssl
         SRTP_CONFIGURE_FLAGS+=--enable-openssl
 endif
