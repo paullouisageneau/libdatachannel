@@ -589,7 +589,6 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 		auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
 		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
 		SSL_CTX_set_tmp_ecdh(mCtx, ecdh.get());
-		SSL_CTX_set_options(mCtx, SSL_OP_SINGLE_ECDH_USE);
 #endif
 
 		if(mIsClient) {

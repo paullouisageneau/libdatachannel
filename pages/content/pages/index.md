@@ -34,7 +34,7 @@ save_as: index.html
 		<h3>Portable</h3>
 		<ul>
 			<li>Support for POSIX platforms (including GNU/Linux, Android, FreeBSD, Apple macOS and iOS) and Microsoft Windows</li>
-			<li>Support for both <a href="https://www.openssl.org/">OpenSSL</a> and <a href="https://www.gnutls.org/">GnuTLS</a> as TLS backend
+			<li>Support for <a href="https://www.gnutls.org/">GnuTLS</a>, <a href="https://www.trustedfirmware.org/projects/mbed-tls/">Mbed TLS</a>, or <a href="https://www.openssl.org/">OpenSSL</a> as TLS backend
 			<li>Code using Data Channels and WebSockets may be compiled as-is to WebAssembly for browsers with <a href="https://github.com/paullouisageneau/datachannel-wasm">datachannel-wasm</a></li>
 		</ul>
 	</section>

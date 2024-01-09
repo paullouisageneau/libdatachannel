@@ -7,8 +7,8 @@ set(PROJECT_DESCRIPTION "C/C++ WebRTC network library featuring Data Channels, M
 include(GNUInstallDirs)
 
 # Options
-option(USE_MBEDTLS "Use Mbed TLS instead of OpenSSL" OFF)
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
+option(USE_MBEDTLS "Use Mbed TLS instead of OpenSSL" OFF)
 option(USE_NICE "Use libnice instead of libjuice" OFF)
 option(PREFER_SYSTEM_LIB "Prefer system libraries over deps folder" OFF)
 option(USE_SYSTEM_SRTP "Use system libSRTP" ${PREFER_SYSTEM_LIB})
@@ -24,10 +24,9 @@ option(WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
 option(SCTP_DEBUG "Enable SCTP debugging output to verbose log" OFF)
 
-if (USE_MBEDTLS AND USE_GNUTLS)
-	message(FATAL_ERROR "Both USE_MBEDTLS and USE_GNUTLS can not be enabled at the same time")
+if (USE_GNUTLS AND USE_MBEDTLS)
+	message(FATAL_ERROR "Both USE_MBEDTLS and USE_GNUTLS cannot be enabled at the same time")
 endif()
-
 
 if(USE_GNUTLS)
 	option(USE_NETTLE "Use Nettle in libjuice" ON)
@@ -355,9 +354,8 @@ if (USE_GNUTLS)
 	endif()
 elseif(USE_MBEDTLS)
 	find_package(MbedTLS 3 REQUIRED)
-
-	target_compile_definitions(datachannel PRIVATE USE_MBEDTLS)
-	target_compile_definitions(datachannel-static PRIVATE USE_MBEDTLS)
+	target_compile_definitions(datachannel PRIVATE USE_MBEDTLS=1)
+	target_compile_definitions(datachannel-static PRIVATE USE_MBEDTLS=1)
 	target_link_libraries(datachannel PRIVATE MbedTLS::MbedTLS)
 	target_link_libraries(datachannel-static PRIVATE MbedTLS::MbedTLS)
 else()
