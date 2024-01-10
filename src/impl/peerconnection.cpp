@@ -423,8 +423,11 @@ void PeerConnection::rollbackLocalDescription() {
 
 bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
 	std::lock_guard lock(mRemoteDescriptionMutex);
-	auto expectedFingerprint = mRemoteDescription && mRemoteDescription->fingerprint() ? mRemoteDescription->fingerprint()->value : "";
-	if (expectedFingerprint == fingerprint) {
+	if (!mRemoteDescription || !mRemoteDescription->fingerprint())
+		return false;
+
+	auto expectedFingerprint = mRemoteDescription->fingerprint()->value;
+	if (expectedFingerprint  == fingerprint) {
 		PLOG_VERBOSE << "Valid fingerprint \"" << fingerprint << "\"";
 		return true;
 	}
