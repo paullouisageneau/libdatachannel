@@ -28,6 +28,17 @@ const string DEFAULT_OPUS_AUDIO_PROFILE =
 const string DEFAULT_H264_VIDEO_PROFILE =
     "profile-level-id=42e01f;packetization-mode=1;level-asymmetry-allowed=1";
 
+struct CertificateFingerprint {
+	enum class Algorithm { Sha1, Sha224, Sha256, Sha384, Sha512 };
+	static string AlgorithmIdentifier(Algorithm algorithm);
+	static size_t AlgorithmSize(Algorithm algorithm);
+
+	bool isValid() const;
+
+	Algorithm algorithm;
+	string value;
+};
+
 class RTC_CPP_EXPORT Description {
 public:
 	enum class Type { Unspec, Offer, Answer, Pranswer, Rollback };
@@ -51,11 +62,11 @@ public:
 	std::vector<string> iceOptions() const;
 	optional<string> iceUfrag() const;
 	optional<string> icePwd() const;
-	optional<string> fingerprint() const;
+	optional<CertificateFingerprint> fingerprint() const;
 	bool ended() const;
 
 	void hintType(Type type);
-	void setFingerprint(string fingerprint);
+	void setFingerprint(CertificateFingerprint f);
 	void addIceOption(string option);
 	void removeIceOption(const string &option);
 
@@ -291,7 +302,7 @@ private:
 	string mSessionId;
 	std::vector<string> mIceOptions;
 	optional<string> mIceUfrag, mIcePwd;
-	optional<string> mFingerprint;
+	optional<CertificateFingerprint> mFingerprint;
 	std::vector<string> mAttributes; // other attributes
 
 	// Entries
@@ -308,6 +319,7 @@ private:
 RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const rtc::Description &description);
 RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::Description::Type type);
 RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::Description::Role role);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const rtc::Description::Direction &direction);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out,
+                                        const rtc::Description::Direction &direction);
 
 #endif

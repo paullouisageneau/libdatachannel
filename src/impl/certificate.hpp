@@ -9,6 +9,7 @@
 #ifndef RTC_IMPL_CERTIFICATE_H
 #define RTC_IMPL_CERTIFICATE_H
 
+#include "description.hpp" // for CertificateFingerprint
 #include "common.hpp"
 #include "configuration.hpp" // for CertificateType
 #include "init.hpp"
@@ -37,7 +38,7 @@ public:
 	std::tuple<X509 *, EVP_PKEY *> credentials() const;
 #endif
 
-	string fingerprint() const;
+	CertificateFingerprint fingerprint() const;
 
 private:
 	const init_token mInitToken = Init::Instance().token();
@@ -57,12 +58,12 @@ private:
 };
 
 #if USE_GNUTLS
-string make_fingerprint(gnutls_certificate_credentials_t credentials);
-string make_fingerprint(gnutls_x509_crt_t crt);
+string make_fingerprint(gnutls_certificate_credentials_t credentials, CertificateFingerprint::Algorithm fingerprintAlgorithm);
+string make_fingerprint(gnutls_x509_crt_t crt, CertificateFingerprint::Algorithm fingerprintAlgorithm);
 #elif USE_MBEDTLS
-string make_fingerprint(mbedtls_x509_crt *crt);
+string make_fingerprint(mbedtls_x509_crt *crt, CertificateFingerprint::Algorithm fingerprintAlgorithm);
 #else
-string make_fingerprint(X509 *x509);
+string make_fingerprint(X509 *x509, CertificateFingerprint::Algorithm fingerprintAlgorithm);
 #endif
 
 using certificate_ptr = shared_ptr<Certificate>;

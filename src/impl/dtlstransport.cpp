@@ -48,10 +48,11 @@ void DtlsTransport::Init() {
 void DtlsTransport::Cleanup() { gnutls_global_deinit(); }
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
-                             optional<size_t> mtu, verifier_callback verifierCallback,
-                             state_callback stateChangeCallback)
+                             optional<size_t> mtu,
+                             CertificateFingerprint::Algorithm fingerprintAlgorithm,
+                             verifier_callback verifierCallback, state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
-      mVerifierCallback(std::move(verifierCallback)),
+      mFingerprintAlgorithm(fingerprintAlgorithm), mVerifierCallback(std::move(verifierCallback)),
       mIsClient(lower->role() == Description::Role::Active) {
 
 	PLOG_DEBUG << "Initializing DTLS transport (GnuTLS)";
@@ -295,7 +296,7 @@ int DtlsTransport::CertificateCallback(gnutls_session_t session) {
 			return GNUTLS_E_CERTIFICATE_ERROR;
 		}
 
-		string fingerprint = make_fingerprint(crt);
+		string fingerprint = make_fingerprint(crt, t->mFingerprintAlgorithm);
 		gnutls_x509_crt_deinit(crt);
 
 		bool success = t->mVerifierCallback(fingerprint);
@@ -374,10 +375,11 @@ const mbedtls_ssl_srtp_profile srtpSupportedProtectionProfiles[] = {
 };
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
-                             optional<size_t> mtu, verifier_callback verifierCallback,
-                             state_callback stateChangeCallback)
+                             optional<size_t> mtu,
+                             CertificateFingerprint::Algorithm fingerprintAlgorithm,
+                             verifier_callback verifierCallback, state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
-      mVerifierCallback(std::move(verifierCallback)),
+      mFingerprintAlgorithm(fingerprintAlgorithm), mVerifierCallback(std::move(verifierCallback)),
       mIsClient(lower->role() == Description::Role::Active) {
 
 	PLOG_DEBUG << "Initializing DTLS transport (MbedTLS)";
@@ -609,7 +611,7 @@ void DtlsTransport::doRecv() {
 int DtlsTransport::CertificateCallback(void *ctx, mbedtls_x509_crt *crt, int /*depth*/,
                                        uint32_t * /*flags*/) {
 	auto this_ = static_cast<DtlsTransport *>(ctx);
-	string fingerprint = make_fingerprint(crt);
+	string fingerprint = make_fingerprint(crt, this_->mFingerprintAlgorithm);
 	std::transform(fingerprint.begin(), fingerprint.end(), fingerprint.begin(),
 	               [](char c) { return char(std::toupper(c)); });
 	return this_->mVerifierCallback(fingerprint) ? 0 : 1;
@@ -725,10 +727,11 @@ void DtlsTransport::Cleanup() {
 }
 
 DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
-                             optional<size_t> mtu, verifier_callback verifierCallback,
-                             state_callback stateChangeCallback)
+                             optional<size_t> mtu,
+                             CertificateFingerprint::Algorithm fingerprintAlgorithm,
+                             verifier_callback verifierCallback, state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
-      mVerifierCallback(std::move(verifierCallback)),
+      mFingerprintAlgorithm(fingerprintAlgorithm), mVerifierCallback(std::move(verifierCallback)),
       mIsClient(lower->role() == Description::Role::Active) {
 	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
 
@@ -1033,7 +1036,7 @@ int DtlsTransport::CertificateCallback(int /*preverify_ok*/, X509_STORE_CTX *ctx
 	    static_cast<DtlsTransport *>(SSL_get_ex_data(ssl, DtlsTransport::TransportExIndex));
 
 	X509 *crt = X509_STORE_CTX_get_current_cert(ctx);
-	string fingerprint = make_fingerprint(crt);
+	string fingerprint = make_fingerprint(crt, t->mFingerprintAlgorithm);
 
 	return t->mVerifierCallback(fingerprint) ? 1 : 0;
 }
