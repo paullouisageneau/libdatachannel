@@ -262,6 +262,13 @@ set_target_properties(datachannel PROPERTIES
 	SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
 	CXX_STANDARD 17
 	CXX_VISIBILITY_PRESET default)
+
+if(APPLE)
+	set_target_properties(datachannel PROPERTIES
+		VERSION ${PROJECT_VERSION_MAJOR}
+		SOVERSION ${PROJECT_VERSION_MAJOR})
+endif()
+
 target_compile_definitions(datachannel PRIVATE RTC_EXPORTS)
 
 add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
