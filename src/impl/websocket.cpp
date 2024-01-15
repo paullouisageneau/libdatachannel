@@ -443,8 +443,7 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 			}
 		};
 
-		auto maxOutstandingPings = config.maxOutstandingPings.value_or(0);
-		auto transport = std::make_shared<WsTransport>(lower, mWsHandshake, maxOutstandingPings,
+		auto transport = std::make_shared<WsTransport>(lower, mWsHandshake, config,
 		                                               weak_bind(&WebSocket::incoming, this, _1),
 		                                               stateChangeCallback);
 
