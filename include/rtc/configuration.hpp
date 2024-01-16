@@ -104,6 +104,16 @@ struct WebSocketConfiguration {
 	optional<size_t> maxMessageSize;
 };
 
+struct WebSocketServerConfiguration {
+	uint16_t port = 8080;
+	bool enableTls = false;
+	optional<string> certificatePemFile;
+	optional<string> keyPemFile;
+	optional<string> keyPemPass;
+	optional<string> bindAddress;
+	optional<std::chrono::milliseconds> connectionTimeout;
+};
+
 #endif
 
 } // namespace rtc
