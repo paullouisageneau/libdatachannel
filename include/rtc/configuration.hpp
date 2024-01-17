@@ -112,6 +112,7 @@ struct WebSocketServerConfiguration {
 	optional<string> keyPemPass;
 	optional<string> bindAddress;
 	optional<std::chrono::milliseconds> connectionTimeout;
+	optional<size_t> maxMessageSize;
 };
 
 #endif

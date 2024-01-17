@@ -1479,6 +1479,9 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 		else if (config->maxOutstandingPings < 0)
 			c.maxOutstandingPings = 0; // setting to 0 disables, not setting keeps default
 
+		if(config->maxMessageSize > 0)
+			c.maxMessageSize = size_t(config->maxMessageSize);
+
 		auto webSocket = std::make_shared<WebSocket>(std::move(c));
 		webSocket->open(url);
 		return emplaceWebSocket(webSocket);
@@ -1533,6 +1536,10 @@ RTC_C_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config
 		c.keyPemFile = config->keyPemFile ? make_optional(string(config->keyPemFile)) : nullopt;
 		c.keyPemPass = config->keyPemPass ? make_optional(string(config->keyPemPass)) : nullopt;
 		c.bindAddress = config->bindAddress ? make_optional(string(config->bindAddress)) : nullopt;
+
+		if(config->maxMessageSize > 0)
+			c.maxMessageSize = size_t(config->maxMessageSize);
+
 		auto webSocketServer = std::make_shared<WebSocketServer>(std::move(c));
 		int wsserver = emplaceWebSocketServer(webSocketServer);
 
