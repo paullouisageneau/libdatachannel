@@ -153,7 +153,7 @@ bool DataChannel::isClosed(void) const { return mIsClosed; }
 
 size_t DataChannel::maxMessageSize() const {
 	auto pc = mPeerConnection.lock();
-	return pc ? pc->remoteMaxMessageSize() : DEFAULT_MAX_MESSAGE_SIZE;
+	return pc ? pc->remoteMaxMessageSize() : DEFAULT_REMOTE_MAX_MESSAGE_SIZE;
 }
 
 void DataChannel::assignStream(uint16_t stream) {

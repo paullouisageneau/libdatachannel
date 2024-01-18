@@ -53,7 +53,7 @@ WsTransport::WsTransport(LowerTransport lower, shared_ptr<WsHandshake> handshake
           std::visit(rtc::overloaded{[](auto l) { return l->isActive(); },
                                      [](shared_ptr<TlsTransport> l) { return l->isClient(); }},
                      lower)),
-      mMaxMessageSize(config.maxMessageSize.value_or(DEFAULT_MAX_MESSAGE_SIZE)),
+      mMaxMessageSize(config.maxMessageSize.value_or(DEFAULT_WS_MAX_MESSAGE_SIZE)),
       mMaxOutstandingPings(config.maxOutstandingPings.value_or(0)) {
 
 	onRecv(std::move(recvCallback));
