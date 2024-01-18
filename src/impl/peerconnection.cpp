@@ -103,7 +103,7 @@ optional<Description> PeerConnection::remoteDescription() const {
 size_t PeerConnection::remoteMaxMessageSize() const {
 	const size_t localMax = config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE);
 
-	size_t remoteMax = DEFAULT_MAX_MESSAGE_SIZE;
+	size_t remoteMax = DEFAULT_REMOTE_MAX_MESSAGE_SIZE;
 	std::lock_guard lock(mRemoteDescriptionMutex);
 	if (mRemoteDescription)
 		if (auto *application = mRemoteDescription->application())

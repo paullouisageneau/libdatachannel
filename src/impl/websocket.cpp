@@ -156,7 +156,7 @@ bool WebSocket::isOpen() const { return state == State::Open; }
 
 bool WebSocket::isClosed() const { return state == State::Closed; }
 
-size_t WebSocket::maxMessageSize() const { return config.maxMessageSize.value_or(DEFAULT_MAX_MESSAGE_SIZE); }
+size_t WebSocket::maxMessageSize() const { return config.maxMessageSize.value_or(DEFAULT_WS_MAX_MESSAGE_SIZE); }
 
 optional<message_variant> WebSocket::receive() {
 	auto next = mRecvQueue.pop();
@@ -443,8 +443,7 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 			}
 		};
 
-		auto maxOutstandingPings = config.maxOutstandingPings.value_or(0);
-		auto transport = std::make_shared<WsTransport>(lower, mWsHandshake, maxOutstandingPings,
+		auto transport = std::make_shared<WsTransport>(lower, mWsHandshake, config,
 		                                               weak_bind(&WebSocket::incoming, this, _1),
 		                                               stateChangeCallback);
 

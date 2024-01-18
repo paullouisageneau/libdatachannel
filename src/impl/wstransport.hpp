@@ -11,6 +11,7 @@
 
 #include "common.hpp"
 #include "transport.hpp"
+#include "configuration.hpp"
 #include "wshandshake.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
@@ -25,11 +26,12 @@ class TlsTransport;
 
 class WsTransport final : public Transport, public std::enable_shared_from_this<WsTransport> {
 public:
-	WsTransport(
-	    variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>, shared_ptr<TlsTransport>>
-	        lower,
-	    shared_ptr<WsHandshake> handshake, int maxOutstandingPings, message_callback recvCallback,
-	    state_callback stateCallback);
+	using LowerTransport =
+	    variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>, shared_ptr<TlsTransport>>;
+
+	WsTransport(LowerTransport lower, shared_ptr<WsHandshake> handshake,
+	            const WebSocketConfiguration &config, message_callback recvCallback,
+	            state_callback stateCallback);
 	~WsTransport();
 
 	void start() override;
@@ -62,7 +64,7 @@ private:
 	bool sendHttpError(int code);
 	bool sendHttpResponse();
 
-	size_t readFrame(byte *buffer, size_t size, Frame &frame);
+	size_t parseFrame(byte *buffer, size_t size, Frame &frame);
 	void recvFrame(const Frame &frame);
 	bool sendFrame(const Frame &frame);
 
@@ -70,11 +72,13 @@ private:
 
 	const shared_ptr<WsHandshake> mHandshake;
 	const bool mIsClient;
+	const size_t mMaxMessageSize;
 	const int mMaxOutstandingPings;
 
 	binary mBuffer;
 	binary mPartial;
 	Opcode mPartialOpcode;
+	size_t mIgnoreLength = 0;
 	std::mutex mSendMutex;
 	int mOutstandingPings = 0;
 	std::atomic<bool> mCloseSent = false;

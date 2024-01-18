@@ -79,6 +79,7 @@ void WebSocketServer::runLoop() {
 
 				WebSocket::Configuration clientConfig;
 				clientConfig.connectionTimeout = config.connectionTimeout;
+				clientConfig.maxMessageSize = config.maxMessageSize;
 
 				auto impl = std::make_shared<WebSocket>(std::move(clientConfig), mCertificate);
 				impl->changeState(WebSocket::State::Connecting);
