@@ -26,6 +26,30 @@ using namespace std::chrono_literals;
 using std::chrono::duration_cast;
 using std::chrono::milliseconds;
 
+namespace {
+
+bool unmap_inet6_v4mapped(struct sockaddr *sa, socklen_t *len) {
+	if (sa->sa_family != AF_INET6)
+		return false;
+
+	const auto *sin6 = reinterpret_cast<struct sockaddr_in6 *>(sa);
+	if (!IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr))
+		return false;
+
+	struct sockaddr_in6 copy = *sin6;
+	sin6 = &copy;
+
+	auto *sin = reinterpret_cast<struct sockaddr_in *>(sa);
+	std::memset(sin, 0, sizeof(*sin));
+	sin->sin_family = AF_INET;
+	sin->sin_port = sin6->sin6_port;
+	std::memcpy(&sin->sin_addr, reinterpret_cast<const uint8_t *>(&sin6->sin6_addr) + 12, 4);
+	*len = sizeof(*sin);
+	return true;
+}
+
+}
+
 TcpTransport::TcpTransport(string hostname, string service, state_callback callback)
     : Transport(nullptr, std::move(callback)), mIsActive(true), mHostname(std::move(hostname)),
       mService(std::move(service)), mSock(INVALID_SOCKET) {
@@ -46,6 +70,8 @@ TcpTransport::TcpTransport(socket_t sock, state_callback callback)
 	socklen_t addrlen = sizeof(addr);
 	if (::getpeername(mSock, reinterpret_cast<struct sockaddr *>(&addr), &addrlen) < 0)
 		throw std::runtime_error("getsockname failed");
+
+	unmap_inet6_v4mapped(reinterpret_cast<struct sockaddr *>(&addr), &addrlen);
 
 	char node[MAX_NUMERICNODE_LEN];
 	char serv[MAX_NUMERICSERV_LEN];
