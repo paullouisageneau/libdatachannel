@@ -120,13 +120,11 @@ public:
 	optional<std::chrono::milliseconds> rtt();
 };
 
-} // namespace rtc
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, PeerConnection::State state);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, PeerConnection::IceState state);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, PeerConnection::GatheringState state);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, PeerConnection::SignalingState state);
 
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::State state);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::IceState state);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out,
-                                        rtc::PeerConnection::GatheringState state);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out,
-                                        rtc::PeerConnection::SignalingState state);
+} // namespace rtc
 
 #endif

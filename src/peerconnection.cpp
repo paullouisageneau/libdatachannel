@@ -354,10 +354,8 @@ optional<std::chrono::milliseconds> PeerConnection::rtt() {
 	return sctpTransport ? sctpTransport->rtt() : nullopt;
 }
 
-} // namespace rtc
-
-std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::State state) {
-	using State = rtc::PeerConnection::State;
+std::ostream &operator<<(std::ostream &out, PeerConnection::State state) {
+	using State = PeerConnection::State;
 	const char *str;
 	switch (state) {
 	case State::New:
@@ -385,8 +383,8 @@ std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::State state) {
 	return out << str;
 }
 
-std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::IceState state) {
-	using IceState = rtc::PeerConnection::IceState;
+std::ostream &operator<<(std::ostream &out, PeerConnection::IceState state) {
+	using IceState = PeerConnection::IceState;
 	const char *str;
 	switch (state) {
 	case IceState::New:
@@ -417,8 +415,8 @@ std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::IceState state)
 	return out << str;
 }
 
-std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::GatheringState state) {
-	using GatheringState = rtc::PeerConnection::GatheringState;
+std::ostream &operator<<(std::ostream &out, PeerConnection::GatheringState state) {
+	using GatheringState = PeerConnection::GatheringState;
 	const char *str;
 	switch (state) {
 	case GatheringState::New:
@@ -437,8 +435,8 @@ std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::GatheringState 
 	return out << str;
 }
 
-std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::SignalingState state) {
-	using SignalingState = rtc::PeerConnection::SignalingState;
+std::ostream &operator<<(std::ostream &out, PeerConnection::SignalingState state) {
+	using SignalingState = PeerConnection::SignalingState;
 	const char *str;
 	switch (state) {
 	case SignalingState::Stable:
@@ -462,3 +460,5 @@ std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::SignalingState 
 	}
 	return out << str;
 }
+
+} // namespace rtc
