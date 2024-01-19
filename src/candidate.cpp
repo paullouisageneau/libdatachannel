@@ -248,40 +248,40 @@ optional<uint16_t> Candidate::port() const {
 	return isResolved() ? std::make_optional(mPort) : nullopt;
 }
 
-} // namespace rtc
-
-std::ostream &operator<<(std::ostream &out, const rtc::Candidate &candidate) {
-	return out << std::string(candidate);
+std::ostream &operator<<(std::ostream &out, const Candidate &candidate) {
+	return out << string(candidate);
 }
 
-std::ostream &operator<<(std::ostream &out, const rtc::Candidate::Type &type) {
+std::ostream &operator<<(std::ostream &out, const Candidate::Type &type) {
 	switch (type) {
-	case rtc::Candidate::Type::Host:
+	case Candidate::Type::Host:
 		return out << "host";
-	case rtc::Candidate::Type::PeerReflexive:
+	case Candidate::Type::PeerReflexive:
 		return out << "prflx";
-	case rtc::Candidate::Type::ServerReflexive:
+	case Candidate::Type::ServerReflexive:
 		return out << "srflx";
-	case rtc::Candidate::Type::Relayed:
+	case Candidate::Type::Relayed:
 		return out << "relay";
 	default:
 		return out << "unknown";
 	}
 }
 
-std::ostream &operator<<(std::ostream &out, const rtc::Candidate::TransportType &transportType) {
+std::ostream &operator<<(std::ostream &out, const Candidate::TransportType &transportType) {
 	switch (transportType) {
-	case rtc::Candidate::TransportType::Udp:
+	case Candidate::TransportType::Udp:
 		return out << "UDP";
-	case rtc::Candidate::TransportType::TcpActive:
+	case Candidate::TransportType::TcpActive:
 		return out << "TCP_active";
-	case rtc::Candidate::TransportType::TcpPassive:
+	case Candidate::TransportType::TcpPassive:
 		return out << "TCP_passive";
-	case rtc::Candidate::TransportType::TcpSo:
+	case Candidate::TransportType::TcpSo:
 		return out << "TCP_so";
-	case rtc::Candidate::TransportType::TcpUnknown:
+	case Candidate::TransportType::TcpUnknown:
 		return out << "TCP_unknown";
 	default:
 		return out << "unknown";
 	}
 }
+
+} // namespace rtc

@@ -68,6 +68,29 @@ optional<string> WebSocket::path() const {
 	return state != State::Connecting && handshake ? make_optional(handshake->path()) : nullopt;
 }
 
+std::ostream &operator<<(std::ostream &out, WebSocket::State state) {
+	using State = WebSocket::State;
+	const char *str;
+	switch (state) {
+	case State::Connecting:
+		str = "connecting";
+		break;
+	case State::Open:
+		str = "open";
+		break;
+	case State::Closing:
+		str = "closing";
+		break;
+	case State::Closed:
+		str = "closed";
+		break;
+	default:
+		str = "unknown";
+		break;
+	}
+	return out << str;
+}
+
 } // namespace rtc
 
 #endif

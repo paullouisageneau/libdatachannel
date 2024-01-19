@@ -58,6 +58,8 @@ private:
 	using CheshireCat<impl::WebSocket>::impl;
 };
 
+std::ostream &operator<<(std::ostream &out, WebSocket::State state);
+
 } // namespace rtc
 
 #endif

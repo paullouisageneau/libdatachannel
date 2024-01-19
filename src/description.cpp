@@ -1347,18 +1347,16 @@ bool CertificateFingerprint::isValid() const {
 	return true;
 }
 
-} // namespace rtc
-
-std::ostream &operator<<(std::ostream &out, const rtc::Description &description) {
-	return out << std::string(description);
+std::ostream &operator<<(std::ostream &out, const Description &description) {
+	return out << string(description);
 }
 
-std::ostream &operator<<(std::ostream &out, rtc::Description::Type type) {
-	return out << rtc::Description::typeToString(type);
+std::ostream &operator<<(std::ostream &out, Description::Type type) {
+	return out << Description::typeToString(type);
 }
 
-std::ostream &operator<<(std::ostream &out, rtc::Description::Role role) {
-	using Role = rtc::Description::Role;
+std::ostream &operator<<(std::ostream &out, Description::Role role) {
+	using Role = Description::Role;
 	// Used for SDP generation, do not change
 	switch (role) {
 	case Role::Active:
@@ -1374,25 +1372,27 @@ std::ostream &operator<<(std::ostream &out, rtc::Description::Role role) {
 	return out;
 }
 
-std::ostream &operator<<(std::ostream &out, const rtc::Description::Direction &direction) {
+std::ostream &operator<<(std::ostream &out, const Description::Direction &direction) {
 	// Used for SDP generation, do not change
 	switch (direction) {
-	case rtc::Description::Direction::RecvOnly:
+	case Description::Direction::RecvOnly:
 		out << "recvonly";
 		break;
-	case rtc::Description::Direction::SendOnly:
+	case Description::Direction::SendOnly:
 		out << "sendonly";
 		break;
-	case rtc::Description::Direction::SendRecv:
+	case Description::Direction::SendRecv:
 		out << "sendrecv";
 		break;
-	case rtc::Description::Direction::Inactive:
+	case Description::Direction::Inactive:
 		out << "inactive";
 		break;
-	case rtc::Description::Direction::Unknown:
+	case Description::Direction::Unknown:
 	default:
 		out << "unknown";
 		break;
 	}
 	return out;
 }
+
+} // namespace rtc

@@ -314,12 +314,11 @@ private:
 	bool mEnded = false;
 };
 
-} // namespace rtc
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const Description &description);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, Description::Type type);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, Description::Role role);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const Description::Direction &direction);
 
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const rtc::Description &description);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::Description::Type type);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::Description::Role role);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out,
-                                        const rtc::Description::Direction &direction);
+} // namespace rtc
 
 #endif

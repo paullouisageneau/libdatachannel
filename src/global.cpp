@@ -88,26 +88,24 @@ std::shared_future<void> Cleanup() { return impl::Init::Instance().cleanup(); }
 
 void SetSctpSettings(SctpSettings s) { impl::Init::Instance().setSctpSettings(std::move(s)); }
 
-} // namespace rtc
-
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::LogLevel level) {
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, LogLevel level) {
 	switch (level) {
-	case rtc::LogLevel::Fatal:
+	case LogLevel::Fatal:
 		out << "fatal";
 		break;
-	case rtc::LogLevel::Error:
+	case LogLevel::Error:
 		out << "error";
 		break;
-	case rtc::LogLevel::Warning:
+	case LogLevel::Warning:
 		out << "warning";
 		break;
-	case rtc::LogLevel::Info:
+	case LogLevel::Info:
 		out << "info";
 		break;
-	case rtc::LogLevel::Debug:
+	case LogLevel::Debug:
 		out << "debug";
 		break;
-	case rtc::LogLevel::Verbose:
+	case LogLevel::Verbose:
 		out << "verbose";
 		break;
 	default:
@@ -116,3 +114,5 @@ RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::LogLevel level) 
 	}
 	return out;
 }
+
+} // namespace rtc
