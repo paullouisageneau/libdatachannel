@@ -30,21 +30,21 @@ public:
 	/// properties such as sequence number.
 	/// @param separator NAL unit separator
 	/// @param rtpConfig RTP configuration
-	/// @param maximumFragmentSize maximum size of one NALU fragment
+	/// @param maxFragmentSize maximum size of one NALU fragment
 	H264RtpPacketizer(Separator separator, shared_ptr<RtpPacketizationConfig> rtpConfig,
-	                  uint16_t maximumFragmentSize = NalUnits::defaultMaximumFragmentSize);
+	                  uint16_t maxFragmentSize = NalUnits::defaultMaximumFragmentSize);
 
 	// For backward compatibility, do not use
 	[[deprecated]] H264RtpPacketizer(
 	    shared_ptr<RtpPacketizationConfig> rtpConfig,
-	    uint16_t maximumFragmentSize = NalUnits::defaultMaximumFragmentSize);
+	    uint16_t maxFragmentSize = NalUnits::defaultMaximumFragmentSize);
 
 	void outgoing(message_vector &messages, const message_callback &send) override;
 
 private:
 	shared_ptr<NalUnits> splitMessage(binary_ptr message);
 
-	const uint16_t maximumFragmentSize;
+	const uint16_t maxFragmentSize;
 	const Separator separator;
 };
 

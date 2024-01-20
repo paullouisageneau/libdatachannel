@@ -13,6 +13,9 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #ifdef RTC_STATIC
 #define RTC_C_EXPORT
 #else // dynamic library
@@ -27,16 +30,6 @@ extern "C" {
 #endif
 #endif
 
-#ifdef _WIN32
-#ifdef CAPI_STDCALL
-#define RTC_API __stdcall
-#else
-#define RTC_API
-#endif
-#else // not WIN32
-#define RTC_API
-#endif
-
 #ifndef RTC_ENABLE_WEBSOCKET
 #define RTC_ENABLE_WEBSOCKET 1
 #endif
@@ -48,13 +41,30 @@ extern "C" {
 #define RTC_DEFAULT_MTU 1280 // IPv6 minimum guaranteed MTU
 
 #if RTC_ENABLE_MEDIA
-#define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE                                                          \
-	((uint16_t)(RTC_DEFAULT_MTU - 12 - 8 - 40)) // SRTP/UDP/IPv6
-#define RTC_DEFAULT_MAXIMUM_PACKET_COUNT_FOR_NACK_CACHE ((unsigned)512)
+#define RTC_DEFAULT_MAX_FRAGMENT_SIZE ((uint16_t)(RTC_DEFAULT_MTU - 12 - 8 - 40)) // SRTP/UDP/IPv6
+#define RTC_DEFAULT_MAX_STORED_PACKET_COUNT 512
+// Deprecated, do not use
+#define RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE RTC_DEFAULT_MAX_FRAGMENT_SIZE
+#define RTC_DEFAULT_MAXIMUM_PACKET_COUNT_FOR_NACK_CACHE RTC_DEFAULT_MAX_STORED_PACKET_COUNT
 #endif
 
-#include <stdbool.h>
-#include <stdint.h>
+#ifdef _WIN32
+#ifdef CAPI_STDCALL
+#define RTC_API __stdcall
+#else
+#define RTC_API
+#endif
+#else // not WIN32
+#define RTC_API
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
+#define RTC_DEPRECATED __attribute__((deprecated))
+#elif defined(_MSC_VER)
+#define RTC_DEPRECATED __declspec(deprecated)
+#else
+#define DEPRECATED
+#endif
 
 // libdatachannel C API
 
@@ -320,16 +330,19 @@ typedef struct {
 	uint16_t sequenceNumber;
 	uint32_t timestamp;
 
+	// H264, H265, AV1
+	uint16_t maxFragmentSize; // Maximum fragment size, 0 means default
+
 	// H264/H265 only
 	rtcNalUnitSeparator nalSeparator; // NAL unit separator
-
-	// H264, H265, AV1
-	uint16_t maxFragmentSize; // Maximum fragment size
 
 	// AV1 only
 	rtcObuPacketization obuPacketization; // OBU paketization for AV1 samples
 
-} rtcPacketizationHandlerInit;
+} rtcPacketizerInit;
+
+// Deprecated, do not use
+typedef rtcPacketizerInit rtcPacketizationHandlerInit;
 
 typedef struct {
 	uint32_t ssrc;
@@ -337,8 +350,6 @@ typedef struct {
 	const char *msid;    // optional
 	const char *trackId; // optional, track ID used in MSID
 } rtcSsrcForTypeInit;
-
-// Opaque message
 
 // Opaque type used (via rtcMessage*) to reference an rtc::Message
 typedef void *rtcMessage;
@@ -349,34 +360,48 @@ typedef void *rtcMessage;
 RTC_C_EXPORT rtcMessage *rtcCreateOpaqueMessage(void *data, int size);
 RTC_C_EXPORT void rtcDeleteOpaqueMessage(rtcMessage *msg);
 
-// Set MediaInterceptor for peer connection
+// Set MediaInterceptor on peer connection
 RTC_C_EXPORT int rtcSetMediaInterceptorCallback(int id, rtcInterceptorCallbackFunc cb);
 
-// Set H264PacketizationHandler for track
-RTC_C_EXPORT int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
+// Set a packetizer on track
+RTC_C_EXPORT int rtcSetH264Packetizer(int tr, const rtcPacketizerInit *init);
+RTC_C_EXPORT int rtcSetH265Packetizer(int tr, const rtcPacketizerInit *init);
+RTC_C_EXPORT int rtcSetAV1Packetizer(int tr, const rtcPacketizerInit *init);
+RTC_C_EXPORT int rtcSetOpusPacketizer(int tr, const rtcPacketizerInit *init);
+RTC_C_EXPORT int rtcSetAACPacketizer(int tr, const rtcPacketizerInit *init);
 
-// Set H265PacketizationHandler for track
-RTC_C_EXPORT int rtcSetH265PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
+// Deprecated, do not use
+RTC_DEPRECATED static inline int
+rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+	return rtcSetH264Packetizer(tr, init);
+}
+RTC_DEPRECATED static inline int
+rtcSetH265PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+	return rtcSetH265Packetizer(tr, init);
+}
+RTC_DEPRECATED static inline int
+rtcSetAV1PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+	return rtcSetAV1Packetizer(tr, init);
+}
+RTC_DEPRECATED static inline int
+rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+	return rtcSetOpusPacketizer(tr, init);
+}
+RTC_DEPRECATED static inline int
+rtcSetAACPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+	return rtcSetAACPacketizer(tr, init);
+}
 
-// Set AV1PacketizationHandler for track
-RTC_C_EXPORT int rtcSetAV1PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
-
-// Set OpusPacketizationHandler for track
-RTC_C_EXPORT int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
-
-// Set AACPacketizationHandler for track
-RTC_C_EXPORT int rtcSetAACPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
-
-// Set RtcpReceivingSession for track
+// Chain RtcpReceivingSession on track
 RTC_C_EXPORT int rtcChainRtcpReceivingSession(int tr);
 
-// Chain RtcpSrReporter to handler chain for given track
+// Chain RtcpSrReporter on track
 RTC_C_EXPORT int rtcChainRtcpSrReporter(int tr);
 
-// Chain RtcpNackResponder to handler chain for given track
+// Chain RtcpNackResponder on track
 RTC_C_EXPORT int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount);
 
-// Chain PliHandler to handler chain for given track
+// Chain PliHandler on track
 RTC_C_EXPORT int rtcChainPliHandler(int tr, rtcPliHandlerCallbackFunc cb);
 
 // Transform seconds to timestamp using track's clock rate, result is written to timestamp

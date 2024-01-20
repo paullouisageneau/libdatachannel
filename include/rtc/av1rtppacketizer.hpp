@@ -33,15 +33,15 @@ public:
 	// @note RTP configuration is used in packetization process which may change some configuration
 	// properties such as sequence number.
 	AV1RtpPacketizer(Packetization packetization, shared_ptr<RtpPacketizationConfig> rtpConfig,
-	                 uint16_t maximumFragmentSize = NalUnits::defaultMaximumFragmentSize);
+	                 uint16_t maxFragmentSize = NalUnits::defaultMaximumFragmentSize);
 
 	void outgoing(message_vector &messages, const message_callback &send) override;
 
 private:
 	shared_ptr<NalUnits> splitMessage(binary_ptr message);
-	std::vector<shared_ptr<binary>> packetizeObu(binary_ptr message, uint16_t maximumFragmentSize);
+	std::vector<shared_ptr<binary>> packetizeObu(binary_ptr message, uint16_t maxFragmentSize);
 
-	const uint16_t maximumFragmentSize;
+	const uint16_t maxFragmentSize;
 	const Packetization packetization;
 	std::shared_ptr<binary> sequenceHeader;
 };

@@ -1211,7 +1211,7 @@ int rtcSetMediaInterceptorCallback(int pc, rtcInterceptorCallbackFunc cb) {
 	});
 }
 
-int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+int rtcSetH264Packetizer(int tr, const rtcPacketizerInit *init) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		// create RTP configuration
@@ -1220,7 +1220,7 @@ int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 		// create packetizer
 		auto nalSeparator = init ? init->nalSeparator : RTC_NAL_SEPARATOR_LENGTH;
 		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
-		                                                     : RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE;
+		                                                     : RTC_DEFAULT_MAX_FRAGMENT_SIZE;
 		auto packetizer = std::make_shared<H264RtpPacketizer>(
 		    static_cast<rtc::NalUnit::Separator>(nalSeparator), rtpConfig, maxFragmentSize);
 		track->setMediaHandler(packetizer);
@@ -1228,7 +1228,7 @@ int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 	});
 }
 
-int rtcSetH265PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+int rtcSetH265Packetizer(int tr, const rtcPacketizerInit *init) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		// create RTP configuration
@@ -1236,7 +1236,7 @@ int rtcSetH265PacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 		// create packetizer
 		auto nalSeparator = init ? init->nalSeparator : RTC_NAL_SEPARATOR_LENGTH;
 		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
-		                                                     : RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE;
+		                                                     : RTC_DEFAULT_MAX_FRAGMENT_SIZE;
 		auto packetizer = std::make_shared<H265RtpPacketizer>(
 		    static_cast<rtc::NalUnit::Separator>(nalSeparator), rtpConfig, maxFragmentSize);
 		track->setMediaHandler(packetizer);
@@ -1244,14 +1244,14 @@ int rtcSetH265PacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 	});
 }
 
-int rtcSetAV1PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+int rtcSetAV1Packetizer(int tr, const rtcPacketizerInit *init) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		// create RTP configuration
 		auto rtpConfig = createRtpPacketizationConfig(init);
 		// create packetizer
 		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
-		                                                     : RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE;
+		                                                     : RTC_DEFAULT_MAX_FRAGMENT_SIZE;
 		auto packetization = init->obuPacketization == RTC_OBU_PACKETIZED_TEMPORAL_UNIT
 		                         ? AV1RtpPacketizer::Packetization::TemporalUnit
 		                         : AV1RtpPacketizer::Packetization::Obu;
@@ -1262,7 +1262,7 @@ int rtcSetAV1PacketizationHandler(int tr, const rtcPacketizationHandlerInit *ini
 	});
 }
 
-int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+int rtcSetOpusPacketizer(int tr, const rtcPacketizerInit *init) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		// create RTP configuration
@@ -1275,7 +1275,7 @@ int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 	});
 }
 
-int rtcSetAACPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+int rtcSetAACPacketizer(int tr, const rtcPacketizerInit *init) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		// create RTP configuration

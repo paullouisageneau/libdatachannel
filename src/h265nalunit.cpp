@@ -29,13 +29,13 @@ H265NalUnitFragment::H265NalUnitFragment(FragmentType type, bool forbiddenBit, u
 }
 
 std::vector<shared_ptr<H265NalUnitFragment>>
-H265NalUnitFragment::fragmentsFrom(shared_ptr<H265NalUnit> nalu, uint16_t maximumFragmentSize) {
-	assert(nalu->size() > maximumFragmentSize);
-	auto fragments_count = ceil(double(nalu->size()) / maximumFragmentSize);
-	maximumFragmentSize = uint16_t(int(ceil(nalu->size() / fragments_count)));
+H265NalUnitFragment::fragmentsFrom(shared_ptr<H265NalUnit> nalu, uint16_t maxFragmentSize) {
+	assert(nalu->size() > maxFragmentSize);
+	auto fragments_count = ceil(double(nalu->size()) / maxFragmentSize);
+	maxFragmentSize = uint16_t(int(ceil(nalu->size() / fragments_count)));
 
 	// 3 bytes for FU indicator and FU header
-	maximumFragmentSize -= (H265_NAL_HEADER_SIZE + H265_FU_HEADER_SIZE);
+	maxFragmentSize -= (H265_NAL_HEADER_SIZE + H265_FU_HEADER_SIZE);
 	auto f = nalu->forbiddenBit();
 	uint8_t nuhLayerId = nalu->nuhLayerId() & 0x3F;        // 6 bits
 	uint8_t nuhTempIdPlus1 = nalu->nuhTempIdPlus1() & 0x7; // 3 bits
@@ -48,19 +48,19 @@ H265NalUnitFragment::fragmentsFrom(shared_ptr<H265NalUnit> nalu, uint16_t maximu
 		FragmentType fragmentType;
 		if (offset == 0) {
 			fragmentType = FragmentType::Start;
-		} else if (offset + maximumFragmentSize < payload.size()) {
+		} else if (offset + maxFragmentSize < payload.size()) {
 			fragmentType = FragmentType::Middle;
 		} else {
-			if (offset + maximumFragmentSize > payload.size()) {
-				maximumFragmentSize = uint16_t(payload.size() - offset);
+			if (offset + maxFragmentSize > payload.size()) {
+				maxFragmentSize = uint16_t(payload.size() - offset);
 			}
 			fragmentType = FragmentType::End;
 		}
-		fragmentData = {payload.begin() + offset, payload.begin() + offset + maximumFragmentSize};
+		fragmentData = {payload.begin() + offset, payload.begin() + offset + maxFragmentSize};
 		auto fragment = std::make_shared<H265NalUnitFragment>(
 		    fragmentType, f, nuhLayerId, nuhTempIdPlus1, naluType, fragmentData);
 		result.push_back(fragment);
-		offset += maximumFragmentSize;
+		offset += maxFragmentSize;
 	}
 	return result;
 }
@@ -81,12 +81,12 @@ void H265NalUnitFragment::setFragmentType(FragmentType type) {
 	}
 }
 
-std::vector<shared_ptr<binary>> H265NalUnits::generateFragments(uint16_t maximumFragmentSize) {
+std::vector<shared_ptr<binary>> H265NalUnits::generateFragments(uint16_t maxFragmentSize) {
 	vector<shared_ptr<binary>> result{};
 	for (auto nalu : *this) {
-		if (nalu->size() > maximumFragmentSize) {
+		if (nalu->size() > maxFragmentSize) {
 			std::vector<shared_ptr<H265NalUnitFragment>> fragments =
-			    H265NalUnitFragment::fragmentsFrom(nalu, maximumFragmentSize);
+			    H265NalUnitFragment::fragmentsFrom(nalu, maxFragmentSize);
 			result.insert(result.end(), fragments.begin(), fragments.end());
 		} else {
 			result.push_back(nalu);
