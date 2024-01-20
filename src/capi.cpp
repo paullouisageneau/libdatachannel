@@ -1211,7 +1211,7 @@ int rtcSetMediaInterceptorCallback(int pc, rtcInterceptorCallbackFunc cb) {
 	});
 }
 
-int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+int rtcSetH264Packetizer(int tr, const rtcPacketizerInit *init) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		// create RTP configuration
@@ -1228,7 +1228,7 @@ int rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 	});
 }
 
-int rtcSetH265PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+int rtcSetH265Packetizer(int tr, const rtcPacketizerInit *init) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		// create RTP configuration
@@ -1244,7 +1244,7 @@ int rtcSetH265PacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 	});
 }
 
-int rtcSetAV1PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+int rtcSetAV1Packetizer(int tr, const rtcPacketizerInit *init) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		// create RTP configuration
@@ -1262,7 +1262,7 @@ int rtcSetAV1PacketizationHandler(int tr, const rtcPacketizationHandlerInit *ini
 	});
 }
 
-int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+int rtcSetOpusPacketizer(int tr, const rtcPacketizerInit *init) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		// create RTP configuration
@@ -1275,7 +1275,7 @@ int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHandlerInit *in
 	});
 }
 
-int rtcSetAACPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
+int rtcSetAACPacketizer(int tr, const rtcPacketizerInit *init) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		// create RTP configuration
