@@ -1144,7 +1144,7 @@ int rtcGetTrackDirection(int tr, rtcDirection *direction) {
 	});
 }
 
-int rtcSendTrackRequestKeyframe(int tr) {
+int rtcRequestKeyframe(int tr) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		track->requestKeyframe();
@@ -1152,7 +1152,7 @@ int rtcSendTrackRequestKeyframe(int tr) {
 	});
 }
 
-int rtcSendTrackRequestBitrate(int tr, unsigned int bitrate) {
+int rtcRequestBitrate(int tr, unsigned int bitrate) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		track->requestBitrate(bitrate);
@@ -1292,11 +1292,11 @@ int rtcSetAACPacketizationHandler(int tr, const rtcPacketizationHandlerInit *ini
 	});
 }
 
-int rtcSetRtcpReceivingSession(int tr) {
+int rtcChainRtcpReceivingSession(int tr) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		auto session = std::make_shared<rtc::RtcpReceivingSession>();
-		track->setMediaHandler(session);
+		track->chainMediaHandler(session);
 		return RTC_ERR_SUCCESS;
 	});
 }

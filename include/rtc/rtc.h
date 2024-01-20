@@ -291,8 +291,8 @@ RTC_C_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
 RTC_C_EXPORT int rtcGetTrackMid(int tr, char *buffer, int size);
 RTC_C_EXPORT int rtcGetTrackDirection(int tr, rtcDirection *direction);
 
-RTC_C_EXPORT int rtcSendTrackRequestKeyframe(int tr);
-RTC_C_EXPORT int rtcSendTrackRequestBitrate(int tr, unsigned int bitrate);
+RTC_C_EXPORT int rtcRequestKeyframe(int tr);
+RTC_C_EXPORT int rtcRequestBitrate(int tr, unsigned int bitrate);
 
 #if RTC_ENABLE_MEDIA
 
@@ -368,7 +368,7 @@ RTC_C_EXPORT int rtcSetOpusPacketizationHandler(int tr, const rtcPacketizationHa
 RTC_C_EXPORT int rtcSetAACPacketizationHandler(int tr, const rtcPacketizationHandlerInit *init);
 
 // Set RtcpReceivingSession for track
-RTC_C_EXPORT int rtcSetRtcpReceivingSession(int tr);
+RTC_C_EXPORT int rtcChainRtcpReceivingSession(int tr);
 
 // Chain RtcpSrReporter to handler chain for given track
 RTC_C_EXPORT int rtcChainRtcpSrReporter(int tr);
