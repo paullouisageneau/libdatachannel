@@ -1220,7 +1220,7 @@ int rtcSetH264Packetizer(int tr, const rtcPacketizerInit *init) {
 		// create packetizer
 		auto nalSeparator = init ? init->nalSeparator : RTC_NAL_SEPARATOR_LENGTH;
 		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
-		                                                     : RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE;
+		                                                     : RTC_DEFAULT_MAX_FRAGMENT_SIZE;
 		auto packetizer = std::make_shared<H264RtpPacketizer>(
 		    static_cast<rtc::NalUnit::Separator>(nalSeparator), rtpConfig, maxFragmentSize);
 		track->setMediaHandler(packetizer);
@@ -1236,7 +1236,7 @@ int rtcSetH265Packetizer(int tr, const rtcPacketizerInit *init) {
 		// create packetizer
 		auto nalSeparator = init ? init->nalSeparator : RTC_NAL_SEPARATOR_LENGTH;
 		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
-		                                                     : RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE;
+		                                                     : RTC_DEFAULT_MAX_FRAGMENT_SIZE;
 		auto packetizer = std::make_shared<H265RtpPacketizer>(
 		    static_cast<rtc::NalUnit::Separator>(nalSeparator), rtpConfig, maxFragmentSize);
 		track->setMediaHandler(packetizer);
@@ -1251,7 +1251,7 @@ int rtcSetAV1Packetizer(int tr, const rtcPacketizerInit *init) {
 		auto rtpConfig = createRtpPacketizationConfig(init);
 		// create packetizer
 		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
-		                                                     : RTC_DEFAULT_MAXIMUM_FRAGMENT_SIZE;
+		                                                     : RTC_DEFAULT_MAX_FRAGMENT_SIZE;
 		auto packetization = init->obuPacketization == RTC_OBU_PACKETIZED_TEMPORAL_UNIT
 		                         ? AV1RtpPacketizer::Packetization::TemporalUnit
 		                         : AV1RtpPacketizer::Packetization::Obu;

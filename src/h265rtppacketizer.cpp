@@ -81,21 +81,21 @@ shared_ptr<H265NalUnits> H265RtpPacketizer::splitMessage(binary_ptr message) {
 }
 
 H265RtpPacketizer::H265RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig,
-                                     uint16_t maximumFragmentSize)
-    : RtpPacketizer(std::move(rtpConfig)), maximumFragmentSize(maximumFragmentSize),
+                                     uint16_t maxFragmentSize)
+    : RtpPacketizer(std::move(rtpConfig)), maxFragmentSize(maxFragmentSize),
       separator(NalUnit::Separator::Length) {}
 
 H265RtpPacketizer::H265RtpPacketizer(NalUnit::Separator separator,
                                      shared_ptr<RtpPacketizationConfig> rtpConfig,
-                                     uint16_t maximumFragmentSize)
-    : RtpPacketizer(std::move(rtpConfig)), maximumFragmentSize(maximumFragmentSize),
+                                     uint16_t maxFragmentSize)
+    : RtpPacketizer(std::move(rtpConfig)), maxFragmentSize(maxFragmentSize),
       separator(separator) {}
 
 void H265RtpPacketizer::outgoing(message_vector &messages, [[maybe_unused]] const message_callback &send) {
 	message_vector result;
 	for (const auto &message : messages) {
 		auto nalus = splitMessage(message);
-		auto fragments = nalus->generateFragments(maximumFragmentSize);
+		auto fragments = nalus->generateFragments(maxFragmentSize);
 		if (fragments.size() == 0)
 			continue;
 

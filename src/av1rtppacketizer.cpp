@@ -117,7 +117,7 @@ std::vector<binary_ptr> extractTemporalUnitObus(binary_ptr message) {
  **/
 
 std::vector<binary_ptr> AV1RtpPacketizer::packetizeObu(binary_ptr message,
-                                                       uint16_t maximumFragmentSize) {
+                                                       uint16_t maxFragmentSize) {
 
 	std::vector<shared_ptr<binary>> payloads{};
 	size_t messageIndex = 0;
@@ -144,7 +144,7 @@ std::vector<binary_ptr> AV1RtpPacketizer::packetizeObu(binary_ptr message,
 		}
 
 		auto payload = std::make_shared<binary>(
-		    std::min(size_t(maximumFragmentSize), messageRemaining + metadataSize));
+		    std::min(size_t(maxFragmentSize), messageRemaining + metadataSize));
 		auto payloadOffset = payloadHeaderSize;
 
 		payload->at(0) = byte(obuCount) << wBitshift;
@@ -187,8 +187,8 @@ std::vector<binary_ptr> AV1RtpPacketizer::packetizeObu(binary_ptr message,
 
 AV1RtpPacketizer::AV1RtpPacketizer(AV1RtpPacketizer::Packetization packetization,
                                    shared_ptr<RtpPacketizationConfig> rtpConfig,
-                                   uint16_t maximumFragmentSize)
-    : RtpPacketizer(rtpConfig), maximumFragmentSize(maximumFragmentSize),
+                                   uint16_t maxFragmentSize)
+    : RtpPacketizer(rtpConfig), maxFragmentSize(maxFragmentSize),
       packetization(packetization) {}
 
 void AV1RtpPacketizer::outgoing(message_vector &messages,
@@ -204,7 +204,7 @@ void AV1RtpPacketizer::outgoing(message_vector &messages,
 
 		std::vector<binary_ptr> fragments;
 		for (auto obu : obus) {
-			auto p = packetizeObu(obu, maximumFragmentSize);
+			auto p = packetizeObu(obu, maxFragmentSize);
 			fragments.insert(fragments.end(), p.begin(), p.end());
 		}
 
