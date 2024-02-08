@@ -7,8 +7,7 @@ SITENAME = 'libdatachannel'
 SITEURL = ''
 
 PATH = 'content'
-STATIC_PATHS = ['images', 'extra/CNAME']
-EXTRA_PATH_METADATA = {'extra/CNAME': {'path': 'CNAME'}}
+STATIC_PATHS = ['images']
 
 THEME = 'theme'
 
