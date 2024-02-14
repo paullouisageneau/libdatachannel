@@ -715,13 +715,10 @@ void PeerConnection::iterateDataChannels(
 	{
 		std::shared_lock lock(mDataChannelsMutex); // read-only
 		locked.reserve(mDataChannels.size());
-		auto it = mDataChannels.begin();
-		while (it != mDataChannels.end()) {
+		for(auto it = mDataChannels.begin(); it != mDataChannels.end(); ++it) {
 			auto channel = it->second.lock();
 			if (channel && !channel->isClosed())
 				locked.push_back(std::move(channel));
-
-			++it;
 		}
 	}
 
@@ -751,6 +748,8 @@ void PeerConnection::remoteCloseDataChannels() {
 }
 
 shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
+	std::unique_lock lock(mTracksMutex); // we are going to emplace
+
 #if !RTC_ENABLE_MEDIA
 	// No media support, mark as removed
 	PLOG_WARNING << "Tracks are disabled (not compiled with media support)";
@@ -759,10 +758,12 @@ shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
 
 	shared_ptr<Track> track;
 	if (auto it = mTracks.find(description.mid()); it != mTracks.end())
-		if (track = it->second.lock(); track)
-			track->setDescription(std::move(description));
+		if (auto t = it->second.lock(); t && !t->isClosed())
+			track = std::move(t);
 
-	if (!track) {
+	if (track) {
+		track->setDescription(std::move(description));
+	} else {
 		track = std::make_shared<Track>(weak_from_this(), std::move(description));
 		mTracks.emplace(std::make_pair(track->mid(), track));
 		mTrackLines.emplace_back(track);
@@ -779,15 +780,22 @@ shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
 }
 
 void PeerConnection::iterateTracks(std::function<void(shared_ptr<Track> track)> func) {
-	std::shared_lock lock(mTracksMutex); // read-only
-	for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it) {
-		auto track = it->lock();
-		if (track && !track->isClosed()) {
-			try {
-				func(std::move(track));
-			} catch (const std::exception &e) {
-				PLOG_WARNING << e.what();
-			}
+	std::vector<shared_ptr<Track>> locked;
+	{
+		std::shared_lock lock(mTracksMutex); // read-only
+		locked.reserve(mTrackLines.size());
+		for(auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it) {
+			auto track = it->lock();
+			if (track && !track->isClosed())
+				locked.push_back(std::move(track));
+		}
+	}
+
+	for (auto &track : locked) {
+		try {
+			func(std::move(track));
+		} catch (const std::exception &e) {
+			PLOG_WARNING << e.what();
 		}
 	}
 }
@@ -896,7 +904,7 @@ void PeerConnection::processLocalDescription(Description description) {
 				        description.addMedia(std::move(reciprocated));
 			        },
 			        [&](Description::Media *remoteMedia) {
-				        std::shared_lock lock(mTracksMutex);
+				        std::unique_lock lock(mTracksMutex); // we may emplace a track
 				        if (auto it = mTracks.find(remoteMedia->mid()); it != mTracks.end()) {
 					        // Prefer local description
 					        if (auto track = it->second.lock()) {
