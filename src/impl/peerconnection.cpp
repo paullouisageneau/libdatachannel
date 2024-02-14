@@ -715,13 +715,10 @@ void PeerConnection::iterateDataChannels(
 	{
 		std::shared_lock lock(mDataChannelsMutex); // read-only
 		locked.reserve(mDataChannels.size());
-		auto it = mDataChannels.begin();
-		while (it != mDataChannels.end()) {
+		for(auto it = mDataChannels.begin(); it != mDataChannels.end(); ++it) {
 			auto channel = it->second.lock();
 			if (channel && !channel->isClosed())
 				locked.push_back(std::move(channel));
-
-			++it;
 		}
 	}
 
@@ -783,15 +780,22 @@ shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
 }
 
 void PeerConnection::iterateTracks(std::function<void(shared_ptr<Track> track)> func) {
-	std::shared_lock lock(mTracksMutex); // read-only
-	for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it) {
-		auto track = it->lock();
-		if (track && !track->isClosed()) {
-			try {
-				func(std::move(track));
-			} catch (const std::exception &e) {
-				PLOG_WARNING << e.what();
-			}
+	std::vector<shared_ptr<Track>> locked;
+	{
+		std::shared_lock lock(mTracksMutex); // read-only
+		locked.reserve(mTrackLines.size());
+		for(auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it) {
+			auto track = it->lock();
+			if (track && !track->isClosed())
+				locked.push_back(std::move(track));
+		}
+	}
+
+	for (auto &track : locked) {
+		try {
+			func(std::move(track));
+		} catch (const std::exception &e) {
+			PLOG_WARNING << e.what();
 		}
 	}
 }
