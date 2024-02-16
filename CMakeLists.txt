@@ -118,6 +118,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/utils.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/plihandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/version.h
 )
 
 set(LIBDATACHANNEL_IMPL_SOURCES
@@ -251,6 +252,11 @@ else()
 	endif()
 	add_library(Usrsctp::Usrsctp ALIAS usrsctp)
 endif()
+
+configure_file (
+    ${PROJECT_SOURCE_DIR}/cmake/version.h.in
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/version.h
+)
 
 add_library(datachannel SHARED
 	${LIBDATACHANNEL_SOURCES}

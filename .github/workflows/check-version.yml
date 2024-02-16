@@ -1,0 +1,24 @@
+name: Check version.h values
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: install packages
+      run: sudo apt update && sudo apt install libssl-dev libsrtp2-dev
+    - name: submodules
+      run: git submodule update --init --recursive --depth 1
+    - name: cmake
+      run: cmake -B build -DUSE_GNUTLS=0 -DUSE_SYSTEM_SRTP=1 -DWARNINGS_AS_ERRORS=1
+    - name: check diff
+      run: |
+        if ! git diff --exit-code
+        then
+          exit 1
+        fi
+
