@@ -281,9 +281,9 @@ public:
 	int addAudio(string mid = "audio", Direction dir = Direction::SendOnly);
 	void clearMedia();
 
-	variant<Media *, Application *> media(unsigned int index);
-	variant<const Media *, const Application *> media(unsigned int index) const;
-	unsigned int mediaCount() const;
+	variant<Media *, Application *> media(int index);
+	variant<const Media *, const Application *> media(int index) const;
+	int mediaCount() const;
 
 	const Application *application() const;
 	Application *application();
