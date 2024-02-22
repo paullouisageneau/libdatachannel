@@ -76,6 +76,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsrreporter.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h264rtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/h264rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/nalunit.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h265rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h265nalunit.cpp
@@ -110,6 +111,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpsrreporter.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/nalunit.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265nalunit.hpp
