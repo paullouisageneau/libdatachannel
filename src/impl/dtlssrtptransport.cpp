@@ -104,7 +104,8 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 
 	// srtp_protect() and srtp_protect_rtcp() assume that they can write SRTP_MAX_TRAILER_LEN (for
 	// the authentication tag) into the location in memory immediately following the RTP packet.
-	message->resize(size + SRTP_MAX_TRAILER_LEN);
+	// Copy instead of resizing so we don't interfere with media handlers keeping references
+	message = make_message(size + SRTP_MAX_TRAILER_LEN, message);
 
 	if (IsRtcp(*message)) { // Demultiplex RTCP and RTP using payload type
 		if (srtp_err_status_t err = srtp_protect_rtcp(mSrtpOut, message->data(), &size)) {
