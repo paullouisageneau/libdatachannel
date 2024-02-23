@@ -59,6 +59,8 @@ RTC_CPP_EXPORT message_ptr make_message(binary &&data, Message::Type type = Mess
                                         unsigned int stream = 0,
                                         shared_ptr<Reliability> reliability = nullptr);
 
+RTC_CPP_EXPORT message_ptr make_message(size_t size, message_ptr orig);
+
 RTC_CPP_EXPORT message_ptr make_message(message_variant data);
 
 #if RTC_ENABLE_MEDIA
