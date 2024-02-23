@@ -26,6 +26,17 @@ message_ptr make_message(binary &&data, Message::Type type, unsigned int stream,
 	return message;
 }
 
+message_ptr make_message(size_t size, message_ptr orig) {
+	if(!orig)
+		return nullptr;
+
+	auto message = std::make_shared<Message>(size, orig->type);
+	std::copy(orig->begin(), std::min(orig->end(), orig->begin() + size), message->begin());
+	message->stream = orig->stream;
+	message->reliability = orig->reliability;
+	return message;
+}
+
 message_ptr make_message(message_variant data) {
 	return std::visit( //
 	    overloaded{
