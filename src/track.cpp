@@ -70,4 +70,8 @@ bool Track::requestBitrate(unsigned int bitrate) {
 
 shared_ptr<MediaHandler> Track::getMediaHandler() { return impl()->getMediaHandler(); }
 
+void Track::onFrame(std::function<void(binary data, FrameInfo frame)> callback) {
+	impl()->onFrame(callback);
+}
+
 } // namespace rtc
