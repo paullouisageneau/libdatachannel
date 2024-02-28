@@ -28,7 +28,7 @@ struct Channel {
 	virtual void triggerAvailable(size_t count);
 	virtual void triggerBufferedAmount(size_t amount);
 
-	void flushPendingMessages();
+	virtual void flushPendingMessages();
 	void resetOpenCallback();
 	void resetCallbacks();
 
@@ -43,7 +43,7 @@ struct Channel {
 	std::atomic<size_t> bufferedAmount = 0;
 	std::atomic<size_t> bufferedAmountLowThreshold = 0;
 
-private:
+protected:
 	std::atomic<bool> mOpenTriggered = false;
 };
 
