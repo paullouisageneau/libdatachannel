@@ -63,6 +63,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/channel.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/configuration.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/datachannel.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/dependencydescriptor.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/mediahandler.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/global.cpp
@@ -93,6 +94,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/channel.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/configuration.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/datachannel.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/dependencydescriptor.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/description.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandler.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpreceivingsession.hpp

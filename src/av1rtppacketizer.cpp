@@ -188,8 +188,7 @@ std::vector<binary_ptr> AV1RtpPacketizer::packetizeObu(binary_ptr message,
 AV1RtpPacketizer::AV1RtpPacketizer(AV1RtpPacketizer::Packetization packetization,
                                    shared_ptr<RtpPacketizationConfig> rtpConfig,
                                    uint16_t maxFragmentSize)
-    : RtpPacketizer(rtpConfig), maxFragmentSize(maxFragmentSize),
-      packetization(packetization) {}
+    : RtpPacketizer(rtpConfig), maxFragmentSize(maxFragmentSize), packetization(packetization) {}
 
 void AV1RtpPacketizer::outgoing(message_vector &messages,
                                 [[maybe_unused]] const message_callback &send) {
@@ -211,10 +210,15 @@ void AV1RtpPacketizer::outgoing(message_vector &messages,
 		if (fragments.size() == 0)
 			continue;
 
-		for (size_t i = 0; i < fragments.size() - 1; i++)
-			result.push_back(packetize(fragments[i], false));
-
-		result.push_back(packetize(fragments[fragments.size() - 1], true));
+		for (size_t i = 0; i < fragments.size(); i++) {
+			if (rtpConfig->dependencyDescriptorContext.has_value()) {
+				auto &ctx = *rtpConfig->dependencyDescriptorContext;
+				ctx.descriptor.startOfFrame = i == 0;
+				ctx.descriptor.endOfFrame = i == fragments.size() - 1;
+			}
+			bool mark = i == fragments.size() - 1;
+			result.push_back(packetize(fragments[i], mark));
+		}
 	}
 
 	messages.swap(result);
