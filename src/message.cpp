@@ -19,15 +19,16 @@ message_ptr make_message(size_t size, Message::Type type, unsigned int stream,
 }
 
 message_ptr make_message(binary &&data, Message::Type type, unsigned int stream,
-                         shared_ptr<Reliability> reliability) {
+                         shared_ptr<Reliability> reliability, shared_ptr<FrameInfo> frameInfo) {
 	auto message = std::make_shared<Message>(std::move(data), type);
 	message->stream = stream;
 	message->reliability = reliability;
+	message->frameInfo = frameInfo;
 	return message;
 }
 
 message_ptr make_message(size_t size, message_ptr orig) {
-	if(!orig)
+	if (!orig)
 		return nullptr;
 
 	auto message = std::make_shared<Message>(size, orig->type);

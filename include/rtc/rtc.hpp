@@ -38,5 +38,6 @@
 #include "rtcpreceivingsession.hpp"
 #include "rtcpsrreporter.hpp"
 #include "rtppacketizer.hpp"
+#include "rtpdepacketizer.hpp"
 
 #endif // RTC_ENABLE_MEDIA

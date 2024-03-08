@@ -41,6 +41,8 @@ public:
 	bool isClosed(void) const override;
 	size_t maxMessageSize() const override;
 
+	void onFrame(std::function<void(binary data, FrameInfo frame)> callback);
+
 	bool requestKeyframe();
 	bool requestBitrate(unsigned int bitrate);
 
