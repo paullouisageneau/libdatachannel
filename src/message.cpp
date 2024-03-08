@@ -32,7 +32,7 @@ message_ptr make_message(size_t size, message_ptr orig) {
 		return nullptr;
 
 	auto message = std::make_shared<Message>(size, orig->type);
-	std::copy(orig->begin(), std::min(orig->end(), orig->begin() + size), message->begin());
+	std::copy(orig->begin(), orig->begin() + std::min(size, orig->size()), message->begin());
 	message->stream = orig->stream;
 	message->reliability = orig->reliability;
 	return message;
