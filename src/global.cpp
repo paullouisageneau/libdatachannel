@@ -7,6 +7,7 @@
  */
 
 #include "plog/Appenders/ColorConsoleAppender.h"
+#include "plog/Converters/UTF8Converter.h"
 #include "plog/Formatters/FuncMessageFormatter.h"
 #include "plog/Formatters/TxtFormatter.h"
 #include "plog/Init.h"
@@ -18,11 +19,6 @@
 #include "impl/init.hpp"
 
 #include <mutex>
-
-#ifdef _WIN32
-#include <codecvt>
-#include <locale>
-#endif
 
 namespace {
 
@@ -58,16 +54,11 @@ struct LogAppender : public plog::IAppender {
 		auto formatted = plog::FuncMessageFormatter::format(record);
 		formatted.pop_back(); // remove newline
 
-#ifdef _WIN32
-		using convert_type = std::codecvt_utf8<wchar_t>;
-		std::wstring_convert<convert_type, wchar_t> converter;
-		std::string str = converter.to_bytes(formatted);
-#else
-		std::string str = formatted;
-#endif
+		const auto &converted =
+		    plog::UTF8Converter::convert(formatted); // does nothing on non-Windows systems
 
-		if (!callback(static_cast<LogLevel>(severity), str))
-			std::cout << plog::severityToString(severity) << " " << str << std::endl;
+		if (!callback(static_cast<LogLevel>(severity), converted))
+			std::cout << plog::severityToString(severity) << " " << converted << std::endl;
 	}
 };
 
@@ -97,26 +88,24 @@ std::shared_future<void> Cleanup() { return impl::Init::Instance().cleanup(); }
 
 void SetSctpSettings(SctpSettings s) { impl::Init::Instance().setSctpSettings(std::move(s)); }
 
-} // namespace rtc
-
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::LogLevel level) {
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, LogLevel level) {
 	switch (level) {
-	case rtc::LogLevel::Fatal:
+	case LogLevel::Fatal:
 		out << "fatal";
 		break;
-	case rtc::LogLevel::Error:
+	case LogLevel::Error:
 		out << "error";
 		break;
-	case rtc::LogLevel::Warning:
+	case LogLevel::Warning:
 		out << "warning";
 		break;
-	case rtc::LogLevel::Info:
+	case LogLevel::Info:
 		out << "info";
 		break;
-	case rtc::LogLevel::Debug:
+	case LogLevel::Debug:
 		out << "debug";
 		break;
-	case rtc::LogLevel::Verbose:
+	case LogLevel::Verbose:
 		out << "verbose";
 		break;
 	default:
@@ -125,3 +114,5 @@ RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::LogLevel level) 
 	}
 	return out;
 }
+
+} // namespace rtc

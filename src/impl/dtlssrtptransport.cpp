@@ -45,12 +45,24 @@ void DtlsSrtpTransport::Init() { srtp_init(); }
 
 void DtlsSrtpTransport::Cleanup() { srtp_shutdown(); }
 
+bool DtlsSrtpTransport::IsGcmSupported() {
+#if RTC_SYSTEM_SRTP
+	// system libSRTP may not have GCM support
+	srtp_policy_t policy = {};
+	return srtp_crypto_policy_set_from_profile_for_rtp(
+	           &policy.rtp, srtp_profile_aead_aes_256_gcm) == srtp_err_status_ok;
+#else
+	return true;
+#endif
+}
+
 DtlsSrtpTransport::DtlsSrtpTransport(shared_ptr<IceTransport> lower,
                                      shared_ptr<Certificate> certificate, optional<size_t> mtu,
+                                     CertificateFingerprint::Algorithm fingerprintAlgorithm,
                                      verifier_callback verifierCallback,
                                      message_callback srtpRecvCallback,
                                      state_callback stateChangeCallback)
-    : DtlsTransport(lower, certificate, mtu, std::move(verifierCallback),
+    : DtlsTransport(lower, certificate, mtu, fingerprintAlgorithm, std::move(verifierCallback),
                     std::move(stateChangeCallback)),
       mSrtpRecvCallback(std::move(srtpRecvCallback)) { // distinct from Transport recv callback
 
@@ -92,7 +104,8 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 
 	// srtp_protect() and srtp_protect_rtcp() assume that they can write SRTP_MAX_TRAILER_LEN (for
 	// the authentication tag) into the location in memory immediately following the RTP packet.
-	message->resize(size + SRTP_MAX_TRAILER_LEN);
+	// Copy instead of resizing so we don't interfere with media handlers keeping references
+	message = make_message(size + SRTP_MAX_TRAILER_LEN, message);
 
 	if (IsRtcp(*message)) { // Demultiplex RTCP and RTP using payload type
 		if (srtp_err_status_t err = srtp_protect_rtcp(mSrtpOut, message->data(), &size)) {
@@ -258,7 +271,7 @@ void DtlsSrtpTransport::postHandshake() {
 
 	mbedtls_dtls_srtp_info srtpInfo;
 	mbedtls_ssl_get_dtls_srtp_negotiation_result(&mSsl, &srtpInfo);
-	if (srtpInfo.private_chosen_dtls_srtp_profile != MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80)
+	if (srtpInfo.MBEDTLS_PRIVATE(chosen_dtls_srtp_profile) != MBEDTLS_TLS_SRTP_AES128_CM_HMAC_SHA1_80)
 		throw std::runtime_error("Failed to get SRTP profile");
 
 	const srtp_profile_t srtpProfile = srtp_profile_aes128_cm_sha1_80;
@@ -326,11 +339,13 @@ void DtlsSrtpTransport::postHandshake() {
 	std::memcpy(mServerSessionKey.data() + keySize, serverSalt, saltSize);
 
 	srtp_policy_t inbound = {};
-	srtp_crypto_policy_set_from_profile_for_rtp(&inbound.rtp, srtpProfile);
-	srtp_crypto_policy_set_from_profile_for_rtcp(&inbound.rtcp, srtpProfile);
+	if (srtp_crypto_policy_set_from_profile_for_rtp(&inbound.rtp, srtpProfile))
+		throw std::runtime_error("SRTP profile is not supported");
+	if (srtp_crypto_policy_set_from_profile_for_rtcp(&inbound.rtcp, srtpProfile))
+		throw std::runtime_error("SRTP profile is not supported");
+
 	inbound.ssrc.type = ssrc_any_inbound;
 	inbound.key = mIsClient ? mServerSessionKey.data() : mClientSessionKey.data();
-
 	inbound.window_size = 1024;
 	inbound.allow_repeat_tx = true;
 	inbound.next = nullptr;
@@ -340,8 +355,11 @@ void DtlsSrtpTransport::postHandshake() {
 		                         to_string(static_cast<int>(err)));
 
 	srtp_policy_t outbound = {};
-	srtp_crypto_policy_set_from_profile_for_rtp(&outbound.rtp, srtpProfile);
-	srtp_crypto_policy_set_from_profile_for_rtcp(&outbound.rtcp, srtpProfile);
+	if (srtp_crypto_policy_set_from_profile_for_rtp(&outbound.rtp, srtpProfile))
+		throw std::runtime_error("SRTP profile is not supported");
+	if (srtp_crypto_policy_set_from_profile_for_rtcp(&outbound.rtcp, srtpProfile))
+		throw std::runtime_error("SRTP profile is not supported");
+
 	outbound.ssrc.type = ssrc_any_outbound;
 	outbound.key = mIsClient ? mClientSessionKey.data() : mServerSessionKey.data();
 	outbound.window_size = 1024;
@@ -356,7 +374,7 @@ void DtlsSrtpTransport::postHandshake() {
 }
 
 #if !USE_GNUTLS && !USE_MBEDTLS
-ProfileParams DtlsSrtpTransport::getProfileParamsFromName(string_view name) {
+DtlsSrtpTransport::ProfileParams DtlsSrtpTransport::getProfileParamsFromName(string_view name) {
 	if (name == "SRTP_AES128_CM_SHA1_80")
 		return {srtp_profile_aes128_cm_sha1_80, SRTP_AES_128_KEY_LEN, SRTP_SALT_LEN};
 	if (name == "SRTP_AES128_CM_SHA1_32")

@@ -67,11 +67,11 @@ private:
 	uint16_t mPort;
 };
 
-} // namespace rtc
-
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const rtc::Candidate &candidate);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const rtc::Candidate::Type &type);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const Candidate &candidate);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const Candidate::Type &type);
 RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out,
-                                        const rtc::Candidate::TransportType &transportType);
+                                        const Candidate::TransportType &transportType);
+
+} // namespace rtc
 
 #endif

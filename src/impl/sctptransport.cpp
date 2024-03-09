@@ -10,6 +10,7 @@
 #include "dtlstransport.hpp"
 #include "internals.hpp"
 #include "logcounter.hpp"
+#include "utils.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -50,27 +51,10 @@
 using namespace std::chrono_literals;
 using namespace std::chrono;
 
-namespace {
-
-template <typename T> uint16_t to_uint16(T i) {
-	if (i >= 0 && static_cast<typename std::make_unsigned<T>::type>(i) <=
-	                  std::numeric_limits<uint16_t>::max())
-		return static_cast<uint16_t>(i);
-	else
-		throw std::invalid_argument("Integer out of range");
-}
-
-template <typename T> uint32_t to_uint32(T i) {
-	if (i >= 0 && static_cast<typename std::make_unsigned<T>::type>(i) <=
-	                  std::numeric_limits<uint32_t>::max())
-		return static_cast<uint32_t>(i);
-	else
-		throw std::invalid_argument("Integer out of range");
-}
-
-} // namespace
-
 namespace rtc::impl {
+
+using utils::to_uint16;
+using utils::to_uint32;
 
 static LogCounter COUNTER_UNKNOWN_PPID(plog::warning,
                                        "Number of SCTP packets received with an unknown PPID");
@@ -102,9 +86,11 @@ SctpTransport::InstancesSet *SctpTransport::Instances = new InstancesSet;
 
 void SctpTransport::Init() {
 	usrsctp_init(0, SctpTransport::WriteCallback, SctpTransport::DebugCallback);
-	usrsctp_enable_crc32c_offload();       // We'll compute CRC32 only for outgoing packets
 	usrsctp_sysctl_set_sctp_pr_enable(1);  // Enable Partial Reliability Extension (RFC 3758)
 	usrsctp_sysctl_set_sctp_ecn_enable(0); // Disable Explicit Congestion Notification
+#ifndef SCTP_ACCEPT_ZERO_CHECKSUM
+	usrsctp_enable_crc32c_offload(); // We'll compute CRC32 only for outgoing packets
+#endif
 #ifdef SCTP_DEBUG
 	usrsctp_sysctl_set_sctp_debug_on(SCTP_DEBUG_ALL);
 #endif
@@ -167,8 +153,10 @@ void SctpTransport::Cleanup() {
 SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &config, Ports ports,
                              message_callback recvCallback, amount_callback bufferedAmountCallback,
                              state_callback stateChangeCallback)
-    : Transport(lower, std::move(stateChangeCallback)), mPorts(std::move(ports)),
-      mSendQueue(0, message_size_func), mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
+    : Transport(lower, std::move(stateChangeCallback)),
+      mMaxMessageSize(config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE)),
+      mPorts(std::move(ports)), mSendQueue(0, message_size_func),
+      mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
 	onRecv(std::move(recvCallback));
 
 	PLOG_DEBUG << "Initializing SCTP transport";
@@ -282,6 +270,16 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 		throw std::runtime_error("Could not disable SCTP fragmented interleave, errno=" +
 		                         std::to_string(errno));
 
+#ifdef SCTP_ACCEPT_ZERO_CHECKSUM // not available in usrsctp v0.9.5.0
+	// When using SCTP over DTLS, the data integrity is ensured by DTLS. Therefore, there's no
+	// need to check CRC32c additionally when receiving. See
+	// https://datatracker.ietf.org/doc/html/draft-ietf-tsvwg-sctp-zero-checksum
+	int edmid = SCTP_EDMID_LOWER_LAYER_DTLS;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_ACCEPT_ZERO_CHECKSUM, &edmid, sizeof(edmid)))
+		throw std::runtime_error("Could set socket option SCTP_ACCEPT_ZERO_CHECKSUM, errno=" +
+		                         std::to_string(errno));
+#endif
+
 	int rcvBuf = 0;
 	socklen_t rcvBufLen = sizeof(rcvBuf);
 	if (usrsctp_getsockopt(mSock, SOL_SOCKET, SO_RCVBUF, &rcvBuf, &rcvBufLen))
@@ -294,8 +292,7 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 		                         std::to_string(errno));
 
 	// Ensure the buffer is also large enough to accomodate the largest messages
-	const size_t maxMessageSize = config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE);
-	const int minBuf = int(std::min(maxMessageSize, size_t(std::numeric_limits<int>::max())));
+	const int minBuf = int(std::min(mMaxMessageSize, size_t(std::numeric_limits<int>::max())));
 	rcvBuf = std::max(rcvBuf, minBuf);
 	sndBuf = std::max(sndBuf, minBuf);
 
@@ -379,6 +376,9 @@ bool SctpTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
+	if (message->size() > mMaxMessageSize)
+		throw std::invalid_argument("Message is too large");
+
 	// Flush the queue, and if nothing is pending, try to send directly
 	if (trySendQueue() && trySendMessage(message))
 		return true;
@@ -447,7 +447,7 @@ void SctpTransport::incoming(message_ptr message) {
 		mWrittenCondition.wait(lock, [&]() { return mWrittenOnce || state() == State::Failed; });
 	}
 
-	if(state() == State::Failed)
+	if (state() == State::Failed)
 		return;
 
 	if (!message) {
@@ -499,24 +499,31 @@ void SctpTransport::doRecv() {
 			if (flags & MSG_NOTIFICATION) {
 				// SCTP event notification
 				mPartialNotification.insert(mPartialNotification.end(), buffer, buffer + len);
+
 				if (flags & MSG_EOR) {
 					// Notification is complete, process it
-					auto notification =
-					    reinterpret_cast<union sctp_notification *>(mPartialNotification.data());
-					processNotification(notification, mPartialNotification.size());
-					mPartialNotification.clear();
+					binary notification;
+					mPartialNotification.swap(notification);
+					auto n = reinterpret_cast<union sctp_notification *>(notification.data());
+					processNotification(n, notification.size());
 				}
+
 			} else {
 				// SCTP message
 				mPartialMessage.insert(mPartialMessage.end(), buffer, buffer + len);
+				if (mPartialMessage.size() > mMaxMessageSize) {
+					PLOG_WARNING << "SCTP message is too large, truncating it";
+					mPartialMessage.resize(mMaxMessageSize);
+				}
+
 				if (flags & MSG_EOR) {
 					// Message is complete, process it
+					binary message;
+					mPartialMessage.swap(message);
 					if (infotype != SCTP_RECVV_RCVINFO)
 						throw std::runtime_error("Missing SCTP recv info");
 
-					processData(std::move(mPartialMessage), info.rcv_sid,
-					            PayloadId(ntohl(info.rcv_ppid)));
-					mPartialMessage.clear();
+					processData(std::move(message), info.rcv_sid, PayloadId(ntohl(info.rcv_ppid)));
 				}
 			}
 		}
@@ -628,7 +635,20 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 	if (reliability.unordered)
 		spa.sendv_sndinfo.snd_flags |= SCTP_UNORDERED;
 
-	switch (reliability.type) {
+	if (reliability.maxPacketLifeTime) {
+		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
+		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_TTL;
+		spa.sendv_prinfo.pr_value = to_uint32(reliability.maxPacketLifeTime->count());
+	} else if (reliability.maxRetransmits) {
+		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
+		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
+		spa.sendv_prinfo.pr_value = to_uint32(*reliability.maxRetransmits);
+	}
+	// else {
+	// 	spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_NONE;
+	// }
+	// Deprecated
+	else switch (reliability.typeDeprecated) {
 	case Reliability::Type::Rexmit:
 		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
 		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
@@ -773,6 +793,7 @@ void SctpTransport::processData(binary &&data, uint16_t sid, PayloadId ppid) {
 
 	case PPID_STRING_PARTIAL: // deprecated
 		mPartialStringData.insert(mPartialStringData.end(), data.begin(), data.end());
+		mPartialStringData.resize(mMaxMessageSize);
 		break;
 
 	case PPID_STRING:
@@ -781,9 +802,11 @@ void SctpTransport::processData(binary &&data, uint16_t sid, PayloadId ppid) {
 			recv(make_message(std::move(data), Message::String, sid));
 		} else {
 			mPartialStringData.insert(mPartialStringData.end(), data.begin(), data.end());
+			mPartialStringData.resize(mMaxMessageSize);
 			mBytesReceived += mPartialStringData.size();
-			recv(make_message(std::move(mPartialStringData), Message::String, sid));
+			auto message = make_message(std::move(mPartialStringData), Message::String, sid);
 			mPartialStringData.clear();
+			recv(std::move(message));
 		}
 		break;
 
@@ -794,6 +817,7 @@ void SctpTransport::processData(binary &&data, uint16_t sid, PayloadId ppid) {
 
 	case PPID_BINARY_PARTIAL: // deprecated
 		mPartialBinaryData.insert(mPartialBinaryData.end(), data.begin(), data.end());
+		mPartialBinaryData.resize(mMaxMessageSize);
 		break;
 
 	case PPID_BINARY:
@@ -802,9 +826,11 @@ void SctpTransport::processData(binary &&data, uint16_t sid, PayloadId ppid) {
 			recv(make_message(std::move(data), Message::Binary, sid));
 		} else {
 			mPartialBinaryData.insert(mPartialBinaryData.end(), data.begin(), data.end());
+			mPartialBinaryData.resize(mMaxMessageSize);
 			mBytesReceived += mPartialBinaryData.size();
-			recv(make_message(std::move(mPartialBinaryData), Message::Binary, sid));
+			auto message = make_message(std::move(mPartialBinaryData), Message::Binary, sid);
 			mPartialBinaryData.clear();
+			recv(std::move(message));
 		}
 		break;
 
@@ -943,12 +969,14 @@ void SctpTransport::UpcallCallback(struct socket *, void *arg, int /* flags */) 
 int SctpTransport::WriteCallback(void *ptr, void *data, size_t len, uint8_t tos, uint8_t set_df) {
 	auto *transport = static_cast<SctpTransport *>(ptr);
 
+#ifndef SCTP_ACCEPT_ZERO_CHECKSUM
 	// Set the CRC32 ourselves as we have enabled CRC32 offloading
 	if (len >= 12) {
 		uint32_t *checksum = reinterpret_cast<uint32_t *>(data) + 2;
 		*checksum = 0;
 		*checksum = usrsctp_crc32c(data, len);
 	}
+#endif
 
 	// Workaround for sctplab/usrsctp#405: Send callback is invoked on already closed socket
 	// https://github.com/sctplab/usrsctp/issues/405

@@ -95,6 +95,11 @@ void test_track() {
 	media.setBitrate(3000);
 	media.addSSRC(1234, "video-send");
 
+	const auto mediaSdp1 = string(media);
+	const auto mediaSdp2 = string(Description::Media(mediaSdp1));
+	if (mediaSdp2 != mediaSdp1)
+		throw runtime_error("Media description parsing test failed");
+
 	auto t1 = pc1.addTrack(media);
 
 	pc1.setLocalDescription();
@@ -104,7 +109,7 @@ void test_track() {
 	while ((!(at2 = std::atomic_load(&t2)) || !at2->isOpen() || !t1->isOpen()) && attempts--)
 		this_thread::sleep_for(1s);
 
-	if (pc1.state() != PeerConnection::State::Connected &&
+	if (pc1.state() != PeerConnection::State::Connected ||
 	    pc2.state() != PeerConnection::State::Connected)
 		throw runtime_error("PeerConnection is not connected");
 

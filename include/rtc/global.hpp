@@ -12,8 +12,8 @@
 #include "common.hpp"
 
 #include <chrono>
-#include <iostream>
 #include <future>
+#include <iostream>
 
 namespace rtc {
 
@@ -52,8 +52,8 @@ struct SctpSettings {
 
 RTC_CPP_EXPORT void SetSctpSettings(SctpSettings s);
 
-} // namespace rtc
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, LogLevel level);
 
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::LogLevel level);
+} // namespace rtc
 
 #endif

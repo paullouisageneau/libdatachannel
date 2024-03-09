@@ -26,7 +26,7 @@ public:
 	virtual rtc::binary getSample() = 0;
 };
 
-class Stream: std::enable_shared_from_this<Stream> {
+class Stream: public std::enable_shared_from_this<Stream> {
     uint64_t startTime = 0;
     std::mutex mutex;
     DispatchQueue dispatchQueue = DispatchQueue("StreamQueue");

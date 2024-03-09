@@ -22,58 +22,6 @@
 
 namespace rtc {
 
-typedef enum {
-	NUSM_noMatch,
-	NUSM_firstZero,
-	NUSM_secondZero,
-	NUSM_thirdZero,
-	NUSM_shortMatch,
-	NUSM_longMatch
-} NalUnitStartSequenceMatch;
-
-NalUnitStartSequenceMatch StartSequenceMatchSucc(NalUnitStartSequenceMatch match, byte _byte,
-                                                 H264RtpPacketizer::Separator separator) {
-	assert(separator != H264RtpPacketizer::Separator::Length);
-	auto byte = (uint8_t)_byte;
-	auto detectShort = separator == H264RtpPacketizer::Separator::ShortStartSequence ||
-	                   separator == H264RtpPacketizer::Separator::StartSequence;
-	auto detectLong = separator == H264RtpPacketizer::Separator::LongStartSequence ||
-	                  separator == H264RtpPacketizer::Separator::StartSequence;
-	switch (match) {
-	case NUSM_noMatch:
-		if (byte == 0x00) {
-			return NUSM_firstZero;
-		}
-		break;
-	case NUSM_firstZero:
-		if (byte == 0x00) {
-			return NUSM_secondZero;
-		}
-		break;
-	case NUSM_secondZero:
-		if (byte == 0x00 && detectLong) {
-			return NUSM_thirdZero;
-		} else if (byte == 0x00 && detectShort) {
-			return NUSM_secondZero;
-		} else if (byte == 0x01 && detectShort) {
-			return NUSM_shortMatch;
-		}
-		break;
-	case NUSM_thirdZero:
-		if (byte == 0x00 && detectLong) {
-			return NUSM_thirdZero;
-		} else if (byte == 0x01 && detectLong) {
-			return NUSM_longMatch;
-		}
-		break;
-	case NUSM_shortMatch:
-		return NUSM_shortMatch;
-	case NUSM_longMatch:
-		return NUSM_longMatch;
-	}
-	return NUSM_noMatch;
-}
-
 shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 	auto nalus = std::make_shared<NalUnits>();
 	if (separator == Separator::Length) {
@@ -103,7 +51,7 @@ shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 		NalUnitStartSequenceMatch match = NUSM_noMatch;
 		size_t index = 0;
 		while (index < message->size()) {
-			match = StartSequenceMatchSucc(match, (*message)[index++], separator);
+			match = NalUnit::StartSequenceMatchSucc(match, (*message)[index++], separator);
 			if (match == NUSM_longMatch || match == NUSM_shortMatch) {
 				match = NUSM_noMatch;
 				break;
@@ -113,7 +61,7 @@ shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 		size_t naluStartIndex = index;
 
 		while (index < message->size()) {
-			match = StartSequenceMatchSucc(match, (*message)[index], separator);
+			match = NalUnit::StartSequenceMatchSucc(match, (*message)[index], separator);
 			if (match == NUSM_longMatch || match == NUSM_shortMatch) {
 				auto sequenceLength = match == NUSM_longMatch ? 4 : 3;
 				size_t naluEndIndex = index - sequenceLength;
@@ -133,33 +81,30 @@ shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 }
 
 H264RtpPacketizer::H264RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig,
-                                     uint16_t maximumFragmentSize)
-    : RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize),
+                                     uint16_t maxFragmentSize)
+    : RtpPacketizer(std::move(rtpConfig)), maxFragmentSize(maxFragmentSize),
       separator(Separator::Length) {}
 
-H264RtpPacketizer::H264RtpPacketizer(H264RtpPacketizer::Separator separator,
+H264RtpPacketizer::H264RtpPacketizer(Separator separator,
                                      shared_ptr<RtpPacketizationConfig> rtpConfig,
-                                     uint16_t maximumFragmentSize)
-    : RtpPacketizer(rtpConfig), MediaHandlerRootElement(), maximumFragmentSize(maximumFragmentSize),
-      separator(separator) {}
+                                     uint16_t maxFragmentSize)
+    : RtpPacketizer(rtpConfig), maxFragmentSize(maxFragmentSize), separator(separator) {}
 
-ChainedOutgoingProduct
-H264RtpPacketizer::processOutgoingBinaryMessage(ChainedMessagesProduct messages,
-                                                message_ptr control) {
-	ChainedMessagesProduct packets = std::make_shared<std::vector<binary_ptr>>();
-	for (auto message : *messages) {
+void H264RtpPacketizer::outgoing(message_vector &messages, [[maybe_unused]] const message_callback &send) {
+	message_vector result;
+	for(const auto &message : messages) {
 		auto nalus = splitMessage(message);
-		auto fragments = nalus->generateFragments(maximumFragmentSize);
-		if (fragments.size() == 0) {
-			return ChainedOutgoingProduct();
-		}
-		unsigned i = 0;
-		for (; i < fragments.size() - 1; i++) {
-			packets->push_back(packetize(fragments[i], false));
-		}
-		packets->push_back(packetize(fragments[i], true));
+		auto fragments = nalus->generateFragments(maxFragmentSize);
+		if (fragments.size() == 0)
+			continue;
+
+		for (size_t i = 0; i < fragments.size() - 1; i++)
+			result.push_back(packetize(fragments[i], false));
+
+		result.push_back(packetize(fragments[fragments.size() - 1], true));
 	}
-	return {packets, control};
+
+	messages.swap(result);
 }
 
 } // namespace rtc

@@ -19,19 +19,22 @@ static LogCounter COUNTER_MEDIA_BAD_DIRECTION(plog::warning,
 static LogCounter COUNTER_QUEUE_FULL(plog::warning,
                                      "Number of media packets dropped due to a full queue");
 
-Track::Track(weak_ptr<PeerConnection> pc, Description::Media description)
-    : mPeerConnection(pc), mMediaDescription(std::move(description)),
+Track::Track(weak_ptr<PeerConnection> pc, Description::Media desc)
+    : mPeerConnection(pc), mMediaDescription(std::move(desc)),
       mRecvQueue(RECV_QUEUE_LIMIT, [](const message_ptr &m) { return m->size(); }) {
 
 	// Discard messages by default if track is send only
-	if(mMediaDescription.direction() == Description::Direction::SendOnly)
+	if (mMediaDescription.direction() == Description::Direction::SendOnly)
 		messageCallback = [](message_variant) {};
 }
 
 Track::~Track() {
 	PLOG_VERBOSE << "Destroying Track";
-
-	close();
+	try {
+		close();
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+	}
 }
 
 string Track::mid() const {
@@ -49,12 +52,17 @@ Description::Media Track::description() const {
 	return mMediaDescription;
 }
 
-void Track::setDescription(Description::Media description) {
-	std::unique_lock lock(mMutex);
-	if (description.mid() != mMediaDescription.mid())
-		throw std::logic_error("Media description mid does not match track mid");
+void Track::setDescription(Description::Media desc) {
+	{
+		std::unique_lock lock(mMutex);
+		if (desc.mid() != mMediaDescription.mid())
+			throw std::logic_error("Media description mid does not match track mid");
 
-	mMediaDescription = std::move(description);
+		mMediaDescription = std::move(desc);
+	}
+
+	if (auto handler = getMediaHandler())
+		handler->media(description());
 }
 
 void Track::close() {
@@ -67,24 +75,23 @@ void Track::close() {
 	resetCallbacks();
 }
 
+message_variant Track::trackMessageToVariant(message_ptr message) {
+	if (message->type == Message::Control)
+		return to_variant(*message); // The same message may be frowarded into multiple Tracks
+	else
+		return to_variant(std::move(*message));
+}
+
 optional<message_variant> Track::receive() {
 	if (auto next = mRecvQueue.pop()) {
-		message_ptr message = *next;
-		if (message->type == Message::Control)
-			return to_variant(**next); // The same message may be frowarded into multiple Tracks
-		else
-			return to_variant(std::move(*message));
+		return trackMessageToVariant(*next);
 	}
 	return nullopt;
 }
 
 optional<message_variant> Track::peek() {
 	if (auto next = mRecvQueue.peek()) {
-		message_ptr message = *next;
-		if (message->type == Message::Control)
-			return to_variant(**next); // The same message may be forwarded into multiple Tracks
-		else
-			return to_variant(std::move(*message));
+		return trackMessageToVariant(*next);
 	}
 	return nullopt;
 }
@@ -126,8 +133,6 @@ void Track::incoming(message_ptr message) {
 	if (!message)
 		return;
 
-	auto handler = getMediaHandler();
-
 	auto dir = direction();
 	if ((dir == Description::Direction::SendOnly || dir == Description::Direction::Inactive) &&
 	    message->type != Message::Control) {
@@ -135,20 +140,20 @@ void Track::incoming(message_ptr message) {
 		return;
 	}
 
-	if (handler) {
-		message = handler->incoming(message);
-		if (!message)
+	message_vector messages{std::move(message)};
+	if (auto handler = getMediaHandler())
+		handler->incomingChain(messages, [this](message_ptr m) { transportSend(m); });
+
+	for (auto &m : messages) {
+		// Tail drop if queue is full
+		if (mRecvQueue.full()) {
+			COUNTER_QUEUE_FULL++;
 			return;
-	}
+		}
 
-	// Tail drop if queue is full
-	if (mRecvQueue.full()) {
-		COUNTER_QUEUE_FULL++;
-		return;
+		mRecvQueue.push(m);
+		triggerAvailable(mRecvQueue.size());
 	}
-
-	mRecvQueue.push(message);
-	triggerAvailable(mRecvQueue.size());
 }
 
 bool Track::outgoing(message_ptr message) {
@@ -169,12 +174,17 @@ bool Track::outgoing(message_ptr message) {
 	}
 
 	if (handler) {
-		message = handler->outgoing(message);
-		if (!message)
-			return false;
-	}
+		message_vector messages{std::move(message)};
+		handler->outgoingChain(messages, [this](message_ptr m) { transportSend(m); });
+		bool ret = false;
+		for (auto &m : messages)
+			ret = transportSend(std::move(m));
 
-	return transportSend(message);
+		return ret;
+
+	} else {
+		return transportSend(std::move(message));
+	}
 }
 
 bool Track::transportSend([[maybe_unused]] message_ptr message) {
@@ -203,19 +213,43 @@ bool Track::transportSend([[maybe_unused]] message_ptr message) {
 void Track::setMediaHandler(shared_ptr<MediaHandler> handler) {
 	{
 		std::unique_lock lock(mMutex);
-		if (mMediaHandler)
-			mMediaHandler->onOutgoing(nullptr);
-
 		mMediaHandler = handler;
 	}
 
 	if (handler)
-		handler->onOutgoing(std::bind(&Track::transportSend, this, std::placeholders::_1));
+		handler->media(description());
 }
 
 shared_ptr<MediaHandler> Track::getMediaHandler() {
 	std::shared_lock lock(mMutex);
 	return mMediaHandler;
+}
+
+void Track::onFrame(std::function<void(binary data, FrameInfo frame)> callback) {
+	frameCallback = callback;
+	flushPendingMessages();
+}
+
+void Track::flushPendingMessages() {
+	if (!mOpenTriggered)
+		return;
+
+	while (messageCallback || frameCallback) {
+		auto next = mRecvQueue.pop();
+		if (!next)
+			break;
+
+		auto message = next.value();
+		try {
+			if (message->frameInfo != nullptr && frameCallback) {
+				frameCallback(std::move(*message), std::move(*message->frameInfo));
+			} else if (message->frameInfo == nullptr && messageCallback) {
+				messageCallback(trackMessageToVariant(message));
+			}
+		} catch (const std::exception &e) {
+			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+		}
+	}
 }
 
 } // namespace rtc::impl

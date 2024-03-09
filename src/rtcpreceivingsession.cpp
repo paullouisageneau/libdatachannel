@@ -32,102 +32,100 @@ static impl::LogCounter COUNTER_BAD_NOTIF_LEN(plog::warning,
 static impl::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning,
                                                 "Number of unknown SCTP_STATUS errors");
 
-message_ptr RtcpReceivingSession::outgoing(message_ptr ptr) { return ptr; }
+void RtcpReceivingSession::incoming(message_vector &messages, const message_callback &send) {
+	message_vector result;
+	for (auto message : messages) {
+		switch (message->type) {
+		case Message::Binary: {
+			if (message->size() < sizeof(RtpHeader)) {
+				COUNTER_BAD_RTP_HEADER++;
+				PLOG_VERBOSE << "RTP packet is too small, size=" << message->size();
+				continue;
+			}
 
-message_ptr RtcpReceivingSession::incoming(message_ptr ptr) {
-	if (ptr->type == Message::Binary) {
-		auto rtp = reinterpret_cast<const RtpHeader *>(ptr->data());
+			auto rtp = reinterpret_cast<const RtpHeader *>(message->data());
 
-		// https://www.rfc-editor.org/rfc/rfc3550.html#appendix-A.1
-		if (rtp->version() != 2) {
-			COUNTER_BAD_RTP_HEADER++;
-			PLOG_VERBOSE << "RTP packet is not version 2";
+			// https://www.rfc-editor.org/rfc/rfc3550.html#appendix-A.1
+			if (rtp->version() != 2) {
+				COUNTER_BAD_RTP_HEADER++;
+				PLOG_VERBOSE << "RTP packet is not version 2";
+				continue;
+			}
 
-			return nullptr;
+			if (rtp->payloadType() == 201 || rtp->payloadType() == 200) {
+				COUNTER_BAD_RTP_HEADER++;
+				PLOG_VERBOSE << "RTP packet has a payload type indicating RR/SR";
+				continue;
+			}
+
+			mSsrc = rtp->ssrc();
+			result.push_back(std::move(message));
+			break;
 		}
-		if (rtp->payloadType() == 201 || rtp->payloadType() == 200) {
-			COUNTER_BAD_RTP_HEADER++;
-			PLOG_VERBOSE << "RTP packet has a payload type indicating RR/SR";
 
-			return nullptr;
+		case Message::Control: {
+			auto rr = reinterpret_cast<const RtcpRr *>(message->data());
+			if (rr->header.payloadType() == 201) { // RR
+				mSsrc = rr->senderSSRC();
+				rr->log();
+			} else if (rr->header.payloadType() == 200) { // SR
+				mSsrc = rr->senderSSRC();
+				auto sr = reinterpret_cast<const RtcpSr *>(message->data());
+				mSyncRTPTS = sr->rtpTimestamp();
+				mSyncNTPTS = sr->ntpTimestamp();
+				sr->log();
+
+				// TODO For the time being, we will send RR's/REMB's when we get an SR
+				pushRR(send, 0);
+				if (unsigned int bitrate = mRequestedBitrate.load(); bitrate > 0)
+					pushREMB(send, bitrate);
+			}
+			break;
 		}
 
-		// Padding-processing is a user-level thing
-
-		mSsrc = rtp->ssrc();
-
-		return ptr;
+		default:
+			break;
+		}
 	}
 
-	assert(ptr->type == Message::Control);
-	auto rr = reinterpret_cast<const RtcpRr *>(ptr->data());
-	if (rr->header.payloadType() == 201) {
-		// RR
-		mSsrc = rr->senderSSRC();
-		rr->log();
-	} else if (rr->header.payloadType() == 200) {
-		// SR
-		mSsrc = rr->senderSSRC();
-		auto sr = reinterpret_cast<const RtcpSr *>(ptr->data());
-		mSyncRTPTS = sr->rtpTimestamp();
-		mSyncNTPTS = sr->ntpTimestamp();
-		sr->log();
-
-		// TODO For the time being, we will send RR's/REMB's when we get an SR
-		pushRR(0);
-		if (mRequestedBitrate > 0)
-			pushREMB(mRequestedBitrate);
-	}
-	return nullptr;
+	messages.swap(result);
 }
 
-void RtcpReceivingSession::requestBitrate(unsigned int newBitrate) {
-	mRequestedBitrate = newBitrate;
-
-	PLOG_DEBUG << "[GOOG-REMB] Requesting bitrate: " << newBitrate << std::endl;
-	pushREMB(newBitrate);
+bool RtcpReceivingSession::requestBitrate(unsigned int bitrate, const message_callback &send) {
+	PLOG_DEBUG << "Requesting bitrate: " << bitrate << std::endl;
+	mRequestedBitrate.store(bitrate);
+	pushREMB(send, bitrate);
+	return true;
 }
 
-void RtcpReceivingSession::pushREMB(unsigned int bitrate) {
-	message_ptr msg = make_message(RtcpRemb::SizeWithSSRCs(1), Message::Control);
-	auto remb = reinterpret_cast<RtcpRemb *>(msg->data());
+void RtcpReceivingSession::pushREMB(const message_callback &send, unsigned int bitrate) {
+	auto message = make_message(RtcpRemb::SizeWithSSRCs(1), Message::Control);
+	auto remb = reinterpret_cast<RtcpRemb *>(message->data());
 	remb->preparePacket(mSsrc, 1, bitrate);
 	remb->setSsrc(0, mSsrc);
-
-	send(msg);
+	send(message);
 }
 
-void RtcpReceivingSession::pushRR(unsigned int lastSR_delay) {
-	auto msg = make_message(RtcpRr::SizeWithReportBlocks(1), Message::Control);
-	auto rr = reinterpret_cast<RtcpRr *>(msg->data());
+void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int lastSrDelay) {
+	auto message = make_message(RtcpRr::SizeWithReportBlocks(1), Message::Control);
+	auto rr = reinterpret_cast<RtcpRr *>(message->data());
 	rr->preparePacket(mSsrc, 1);
 	rr->getReportBlock(0)->preparePacket(mSsrc, 0, 0, uint16_t(mGreatestSeqNo), 0, 0, mSyncNTPTS,
-	                                     lastSR_delay);
+	                                     lastSrDelay);
 	rr->log();
-
-	send(msg);
+	send(message);
 }
 
-bool RtcpReceivingSession::send(message_ptr msg) {
-	try {
-		outgoingCallback(std::move(msg));
-		return true;
-	} catch (const std::exception &e) {
-		LOG_DEBUG << "RTCP tx failed: " << e.what();
-	}
-	return false;
+bool RtcpReceivingSession::requestKeyframe(const message_callback &send) {
+	pushPLI(send);
+	return true;
 }
 
-bool RtcpReceivingSession::requestKeyframe() {
-	pushPLI();
-	return true; // TODO Make this false when it is impossible (i.e. Opus).
-}
-
-void RtcpReceivingSession::pushPLI() {
-	auto msg = make_message(RtcpPli::Size(), Message::Control);
-	auto *pli = reinterpret_cast<RtcpPli *>(msg->data());
+void RtcpReceivingSession::pushPLI(const message_callback &send) {
+	auto message = make_message(RtcpPli::Size(), Message::Control);
+	auto *pli = reinterpret_cast<RtcpPli *>(message->data());
 	pli->preparePacket(mSsrc);
-	send(msg);
+	send(message);
 }
 
 } // namespace rtc

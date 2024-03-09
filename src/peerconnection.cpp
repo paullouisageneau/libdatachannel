@@ -51,6 +51,8 @@ const Configuration *PeerConnection::config() const { return &impl()->config; }
 
 PeerConnection::State PeerConnection::state() const { return impl()->state; }
 
+PeerConnection::IceState PeerConnection::iceState() const { return impl()->iceState; }
+
 PeerConnection::GatheringState PeerConnection::gatheringState() const {
 	return impl()->gatheringState;
 }
@@ -66,6 +68,8 @@ optional<Description> PeerConnection::localDescription() const {
 optional<Description> PeerConnection::remoteDescription() const {
 	return impl()->remoteDescription();
 }
+
+size_t PeerConnection::remoteMaxMessageSize() const { return impl()->remoteMaxMessageSize(); }
 
 bool PeerConnection::hasMedia() const {
 	auto local = localDescription();
@@ -311,6 +315,10 @@ void PeerConnection::onStateChange(std::function<void(State state)> callback) {
 	impl()->stateChangeCallback = callback;
 }
 
+void PeerConnection::onIceStateChange(std::function<void(IceState state)> callback) {
+	impl()->iceStateChangeCallback = callback;
+}
+
 void PeerConnection::onGatheringStateChange(std::function<void(GatheringState state)> callback) {
 	impl()->gatheringStateChangeCallback = callback;
 }
@@ -346,10 +354,8 @@ optional<std::chrono::milliseconds> PeerConnection::rtt() {
 	return sctpTransport ? sctpTransport->rtt() : nullopt;
 }
 
-} // namespace rtc
-
-std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::State state) {
-	using State = rtc::PeerConnection::State;
+std::ostream &operator<<(std::ostream &out, PeerConnection::State state) {
+	using State = PeerConnection::State;
 	const char *str;
 	switch (state) {
 	case State::New:
@@ -377,8 +383,40 @@ std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::State state) {
 	return out << str;
 }
 
-std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::GatheringState state) {
-	using GatheringState = rtc::PeerConnection::GatheringState;
+std::ostream &operator<<(std::ostream &out, PeerConnection::IceState state) {
+	using IceState = PeerConnection::IceState;
+	const char *str;
+	switch (state) {
+	case IceState::New:
+		str = "new";
+		break;
+	case IceState::Checking:
+		str = "checking";
+		break;
+	case IceState::Connected:
+		str = "connected";
+		break;
+	case IceState::Completed:
+		str = "completed";
+		break;
+	case IceState::Failed:
+		str = "failed";
+		break;
+	case IceState::Disconnected:
+		str = "disconnected";
+		break;
+	case IceState::Closed:
+		str = "closed";
+		break;
+	default:
+		str = "unknown";
+		break;
+	}
+	return out << str;
+}
+
+std::ostream &operator<<(std::ostream &out, PeerConnection::GatheringState state) {
+	using GatheringState = PeerConnection::GatheringState;
 	const char *str;
 	switch (state) {
 	case GatheringState::New:
@@ -397,8 +435,8 @@ std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::GatheringState 
 	return out << str;
 }
 
-std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::SignalingState state) {
-	using SignalingState = rtc::PeerConnection::SignalingState;
+std::ostream &operator<<(std::ostream &out, PeerConnection::SignalingState state) {
+	using SignalingState = PeerConnection::SignalingState;
 	const char *str;
 	switch (state) {
 	case SignalingState::Stable:
@@ -422,3 +460,5 @@ std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::SignalingState 
 	}
 	return out << str;
 }
+
+} // namespace rtc

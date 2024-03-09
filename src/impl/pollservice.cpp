@@ -105,13 +105,12 @@ void PollService::prepare(std::vector<struct pollfd> &pfds, optional<clock::time
 }
 
 void PollService::process(std::vector<struct pollfd> &pfds) {
+	std::unique_lock lock(mMutex);
 	auto it = pfds.begin();
 	if (it != pfds.end()) {
-		std::unique_lock lock(mMutex);
 		mInterrupter->process(*it++);
 	}
 	while (it != pfds.end()) {
-		std::unique_lock lock(mMutex);
 		socket_t sock = it->fd;
 		auto jt = mSocks->find(sock);
 		if (jt != mSocks->end()) {
@@ -119,7 +118,9 @@ void PollService::process(std::vector<struct pollfd> &pfds) {
 				auto &entry = jt->second;
 				const auto &params = entry.params;
 
-				if (it->revents & POLLNVAL || it->revents & POLLERR) {
+				if (it->revents & POLLNVAL || it->revents & POLLERR ||
+				    (it->revents & POLLHUP &&
+				     !(it->events & POLLIN))) { // MacOS sets POLLHUP on connection failure
 					PLOG_VERBOSE << "Poll error event";
 					auto callback = std::move(params.callback);
 					mSocks->erase(sock);

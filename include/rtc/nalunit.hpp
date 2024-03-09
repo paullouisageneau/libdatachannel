@@ -25,6 +25,7 @@ struct RTC_CPP_EXPORT NalUnitHeader {
 
 	bool forbiddenBit() const { return _first >> 7; }
 	uint8_t nri() const { return _first >> 5 & 0x03; }
+	uint8_t idc() const { return _first & 0x60; }
 	uint8_t unitType() const { return _first & 0x1F; }
 
 	void setForbiddenBit(bool isSet) { _first = (_first & 0x7F) | (isSet << 7); }
@@ -49,12 +50,29 @@ struct RTC_CPP_EXPORT NalUnitFragmentHeader {
 
 #pragma pack(pop)
 
+enum NalUnitStartSequenceMatch {
+	NUSM_noMatch,
+	NUSM_firstZero,
+	NUSM_secondZero,
+	NUSM_thirdZero,
+	NUSM_shortMatch,
+	NUSM_longMatch
+};
+
+static const size_t H264_NAL_HEADER_SIZE = 1;
+static const size_t H265_NAL_HEADER_SIZE = 2;
 /// Nal unit
 struct RTC_CPP_EXPORT NalUnit : binary {
+	enum class Type { H264, H265 };
+
 	NalUnit(const NalUnit &unit) = default;
-	NalUnit(size_t size, bool includingHeader = true) : binary(size + (includingHeader ? 0 : 1)) {}
+	NalUnit(size_t size, bool includingHeader = true, Type type = Type::H264)
+	    : binary(size + (includingHeader
+	                         ? 0
+	                         : (type == Type::H264 ? H264_NAL_HEADER_SIZE : H265_NAL_HEADER_SIZE))) {}
 	NalUnit(binary &&data) : binary(std::move(data)) {}
-	NalUnit() : binary(1) {}
+	NalUnit(Type type = Type::H264)
+	    : binary(type == Type::H264 ? H264_NAL_HEADER_SIZE : H265_NAL_HEADER_SIZE) {}
 	template <typename Iterator> NalUnit(Iterator begin_, Iterator end_) : binary(begin_, end_) {}
 
 	bool forbiddenBit() const { return header()->forbiddenBit(); }
@@ -76,6 +94,57 @@ struct RTC_CPP_EXPORT NalUnit : binary {
 		insert(end(), payload.begin(), payload.end());
 	}
 
+	/// NAL unit separator
+	enum class Separator {
+		Length = RTC_NAL_SEPARATOR_LENGTH, // first 4 bytes are NAL unit length
+		LongStartSequence = RTC_NAL_SEPARATOR_LONG_START_SEQUENCE,   // 0x00, 0x00, 0x00, 0x01
+		ShortStartSequence = RTC_NAL_SEPARATOR_SHORT_START_SEQUENCE, // 0x00, 0x00, 0x01
+		StartSequence = RTC_NAL_SEPARATOR_START_SEQUENCE, // LongStartSequence or ShortStartSequence
+	};
+
+	static NalUnitStartSequenceMatch StartSequenceMatchSucc(NalUnitStartSequenceMatch match,
+	                                                        std::byte _byte, Separator separator) {
+		assert(separator != Separator::Length);
+		auto byte = (uint8_t)_byte;
+		auto detectShort =
+		    separator == Separator::ShortStartSequence || separator == Separator::StartSequence;
+		auto detectLong =
+		    separator == Separator::LongStartSequence || separator == Separator::StartSequence;
+		switch (match) {
+		case NUSM_noMatch:
+			if (byte == 0x00) {
+				return NUSM_firstZero;
+			}
+			break;
+		case NUSM_firstZero:
+			if (byte == 0x00) {
+				return NUSM_secondZero;
+			}
+			break;
+		case NUSM_secondZero:
+			if (byte == 0x00 && detectLong) {
+				return NUSM_thirdZero;
+			} else if (byte == 0x00 && detectShort) {
+				return NUSM_secondZero;
+			} else if (byte == 0x01 && detectShort) {
+				return NUSM_shortMatch;
+			}
+			break;
+		case NUSM_thirdZero:
+			if (byte == 0x00 && detectLong) {
+				return NUSM_thirdZero;
+			} else if (byte == 0x01 && detectLong) {
+				return NUSM_longMatch;
+			}
+			break;
+		case NUSM_shortMatch:
+			return NUSM_shortMatch;
+		case NUSM_longMatch:
+			return NUSM_longMatch;
+		}
+		return NUSM_noMatch;
+	}
+
 protected:
 	const NalUnitHeader *header() const {
 		assert(size() >= 1);
@@ -91,7 +160,7 @@ protected:
 /// Nal unit fragment A
 struct RTC_CPP_EXPORT NalUnitFragmentA : NalUnit {
 	static std::vector<shared_ptr<NalUnitFragmentA>> fragmentsFrom(shared_ptr<NalUnit> nalu,
-	                                                               uint16_t maximumFragmentSize);
+	                                                               uint16_t maxFragmentSize);
 
 	enum class FragmentType { Start, Middle, End };
 
@@ -148,7 +217,7 @@ public:
 	static const uint16_t defaultMaximumFragmentSize =
 	    uint16_t(RTC_DEFAULT_MTU - 12 - 8 - 40); // SRTP/UDP/IPv6
 
-	std::vector<shared_ptr<binary>> generateFragments(uint16_t maximumFragmentSize);
+	std::vector<shared_ptr<binary>> generateFragments(uint16_t maxFragmentSize);
 };
 
 } // namespace rtc

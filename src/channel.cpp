@@ -17,7 +17,7 @@ Channel::~Channel() { impl()->resetCallbacks(); }
 
 Channel::Channel(impl_ptr<impl::Channel> impl) : CheshireCat<impl::Channel>(std::move(impl)) {}
 
-size_t Channel::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
+size_t Channel::maxMessageSize() const { return 0; }
 
 size_t Channel::bufferedAmount() const { return impl()->bufferedAmount; }
 
@@ -49,9 +49,7 @@ void Channel::setBufferedAmountLowThreshold(size_t amount) {
 	impl()->bufferedAmountLowThreshold = amount;
 }
 
-void Channel::resetCallbacks() {
-	impl()->resetCallbacks();
-}
+void Channel::resetCallbacks() { impl()->resetCallbacks(); }
 
 optional<message_variant> Channel::receive() { return impl()->receive(); }
 

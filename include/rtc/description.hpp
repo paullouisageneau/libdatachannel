@@ -28,6 +28,17 @@ const string DEFAULT_OPUS_AUDIO_PROFILE =
 const string DEFAULT_H264_VIDEO_PROFILE =
     "profile-level-id=42e01f;packetization-mode=1;level-asymmetry-allowed=1";
 
+struct CertificateFingerprint {
+	enum class Algorithm { Sha1, Sha224, Sha256, Sha384, Sha512 };
+	static string AlgorithmIdentifier(Algorithm algorithm);
+	static size_t AlgorithmSize(Algorithm algorithm);
+
+	bool isValid() const;
+
+	Algorithm algorithm;
+	string value;
+};
+
 class RTC_CPP_EXPORT Description {
 public:
 	enum class Type { Unspec, Offer, Answer, Pranswer, Rollback };
@@ -51,11 +62,11 @@ public:
 	std::vector<string> iceOptions() const;
 	optional<string> iceUfrag() const;
 	optional<string> icePwd() const;
-	optional<string> fingerprint() const;
+	optional<CertificateFingerprint> fingerprint() const;
 	bool ended() const;
 
 	void hintType(Type type);
-	void setFingerprint(string fingerprint);
+	void setFingerprint(CertificateFingerprint f);
 	void addIceOption(string option);
 	void removeIceOption(const string &option);
 
@@ -78,19 +89,20 @@ public:
 	public:
 		virtual ~Entry() = default;
 
-		virtual string type() const { return mType; }
-		virtual string description() const { return mDescription; }
-		virtual string mid() const { return mMid; }
+		virtual string type() const;
+		virtual string description() const;
+		virtual string mid() const;
 
-		Direction direction() const { return mDirection; }
+		Direction direction() const;
 		void setDirection(Direction dir);
 
-		bool isRemoved() const { return mIsRemoved; }
+		bool isRemoved() const;
 		void markRemoved();
 
 		std::vector<string> attributes() const;
 		void addAttribute(string attr);
 		void removeAttribute(const string &attr);
+		void addRid(string rid);
 
 		struct RTC_CPP_EXPORT ExtMap {
 			static int parseId(string_view description);
@@ -108,6 +120,7 @@ public:
 
 		std::vector<int> extIds();
 		ExtMap *extMap(int id);
+		const ExtMap *extMap(int id) const;
 		void addExtMap(ExtMap map);
 		void removeExtMap(int id);
 
@@ -119,6 +132,7 @@ public:
 
 	protected:
 		Entry(const string &mline, string mid, Direction dir = Direction::Unknown);
+
 		virtual string generateSdpLines(string_view eol) const;
 
 		std::vector<string> mAttributes;
@@ -128,6 +142,7 @@ public:
 		string mType;
 		string mDescription;
 		string mMid;
+		std::vector<string> mRids;
 		Direction mDirection;
 		bool mIsRemoved;
 	};
@@ -141,12 +156,12 @@ public:
 		string description() const override;
 		Application reciprocate() const;
 
-		void setSctpPort(uint16_t port) { mSctpPort = port; }
-		void hintSctpPort(uint16_t port) { mSctpPort = mSctpPort.value_or(port); }
-		void setMaxMessageSize(size_t size) { mMaxMessageSize = size; }
+		void setSctpPort(uint16_t port);
+		void hintSctpPort(uint16_t port);
+		void setMaxMessageSize(size_t size);
 
-		optional<uint16_t> sctpPort() const { return mSctpPort; }
-		optional<size_t> maxMessageSize() const { return mMaxMessageSize; }
+		optional<uint16_t> sctpPort() const;
+		optional<size_t> maxMessageSize() const;
 
 		virtual void parseSdpLine(string_view line) override;
 
@@ -175,7 +190,7 @@ public:
 		bool hasSSRC(uint32_t ssrc) const;
 		void clearSSRCs();
 		std::vector<uint32_t> getSSRCs() const;
-		std::optional<std::string> getCNameForSsrc(uint32_t ssrc) const;
+		optional<std::string> getCNameForSsrc(uint32_t ssrc) const;
 
 		int bitrate() const;
 		void setBitrate(int bitrate);
@@ -205,6 +220,7 @@ public:
 		bool hasPayloadType(int payloadType) const;
 		std::vector<int> payloadTypes() const;
 		RtpMap *rtpMap(int payloadType);
+		const RtpMap *rtpMap(int payloadType) const;
 		void addRtpMap(RtpMap map);
 		void removeRtpMap(int payloadType);
 		void removeFormat(const string &format);
@@ -228,12 +244,15 @@ public:
 		Audio(string mid = "audio", Direction dir = Direction::SendOnly);
 
 		void addAudioCodec(int payloadType, string codec, optional<string> profile = std::nullopt);
-
 		void addOpusCodec(int payloadType, optional<string> profile = DEFAULT_OPUS_AUDIO_PROFILE);
-
 		void addPCMACodec(int payloadType, optional<string> profile = std::nullopt);
-
 		void addPCMUCodec(int payloadType, optional<string> profile = std::nullopt);
+		void addAACCodec(int payloadType, optional<string> profile = std::nullopt);
+
+		[[deprecated("Use addAACCodec")]] inline void
+		addAacCodec(int payloadType, optional<string> profile = std::nullopt) {
+			addAACCodec(payloadType, std::move(profile));
+		};
 	};
 
 	class RTC_CPP_EXPORT Video : public Media {
@@ -243,8 +262,10 @@ public:
 		void addVideoCodec(int payloadType, string codec, optional<string> profile = std::nullopt);
 
 		void addH264Codec(int payloadType, optional<string> profile = DEFAULT_H264_VIDEO_PROFILE);
-		void addVP8Codec(int payloadType);
-		void addVP9Codec(int payloadType);
+		void addH265Codec(int payloadType, optional<string> profile = std::nullopt);
+		void addVP8Codec(int payloadType, optional<string> profile = std::nullopt);
+		void addVP9Codec(int payloadType, optional<string> profile = std::nullopt);
+		void addAV1Codec(int payloadType, optional<string> profile = std::nullopt);
 	};
 
 	bool hasApplication() const;
@@ -281,7 +302,7 @@ private:
 	string mSessionId;
 	std::vector<string> mIceOptions;
 	optional<string> mIceUfrag, mIcePwd;
-	optional<string> mFingerprint;
+	optional<CertificateFingerprint> mFingerprint;
 	std::vector<string> mAttributes; // other attributes
 
 	// Entries
@@ -293,11 +314,11 @@ private:
 	bool mEnded = false;
 };
 
-} // namespace rtc
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const Description &description);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, Description::Type type);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, Description::Role role);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const Description::Direction &direction);
 
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const rtc::Description &description);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::Description::Type type);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::Description::Role role);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, const rtc::Description::Direction &direction);
+} // namespace rtc
 
 #endif

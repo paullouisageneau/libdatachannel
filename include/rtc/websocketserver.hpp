@@ -12,6 +12,7 @@
 #if RTC_ENABLE_WEBSOCKET
 
 #include "common.hpp"
+#include "configuration.hpp"
 #include "websocket.hpp"
 
 namespace rtc {
@@ -24,15 +25,7 @@ struct WebSocketServer;
 
 class RTC_CPP_EXPORT WebSocketServer final : private CheshireCat<impl::WebSocketServer> {
 public:
-	struct Configuration {
-		uint16_t port = 8080;
-		bool enableTls = false;
-		optional<string> certificatePemFile;
-		optional<string> keyPemFile;
-		optional<string> keyPemPass;
-		optional<string> bindAddress;
-		optional<std::chrono::milliseconds> connectionTimeout;
-	};
+	using Configuration = WebSocketServerConfiguration;
 
 	WebSocketServer();
 	WebSocketServer(Configuration config);

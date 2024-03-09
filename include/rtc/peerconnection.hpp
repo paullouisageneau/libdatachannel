@@ -46,6 +46,16 @@ public:
 		Closed = RTC_CLOSED
 	};
 
+	enum class IceState : int {
+		New = RTC_ICE_NEW,
+		Checking = RTC_ICE_CHECKING,
+		Connected = RTC_ICE_CONNECTED,
+		Completed = RTC_ICE_COMPLETED,
+		Failed = RTC_ICE_FAILED,
+		Disconnected = RTC_ICE_DISCONNECTED,
+		Closed = RTC_ICE_CLOSED
+	};
+
 	enum class GatheringState : int {
 		New = RTC_GATHERING_NEW,
 		InProgress = RTC_GATHERING_INPROGRESS,
@@ -68,11 +78,13 @@ public:
 
 	const Configuration *config() const;
 	State state() const;
+	IceState iceState() const;
 	GatheringState gatheringState() const;
 	SignalingState signalingState() const;
 	bool hasMedia() const;
 	optional<Description> localDescription() const;
 	optional<Description> remoteDescription() const;
+	size_t remoteMaxMessageSize() const;
 	optional<string> localAddress() const;
 	optional<string> remoteAddress() const;
 	uint16_t maxDataChannelId() const;
@@ -85,7 +97,8 @@ public:
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
 	shared_ptr<MediaHandler> getMediaHandler();
 
-	[[nodiscard]] shared_ptr<DataChannel> createDataChannel(string label, DataChannelInit init = {});
+	[[nodiscard]] shared_ptr<DataChannel> createDataChannel(string label,
+	                                                        DataChannelInit init = {});
 	void onDataChannel(std::function<void(std::shared_ptr<DataChannel> dataChannel)> callback);
 
 	[[nodiscard]] shared_ptr<Track> addTrack(Description::Media description);
@@ -94,6 +107,7 @@ public:
 	void onLocalDescription(std::function<void(Description description)> callback);
 	void onLocalCandidate(std::function<void(Candidate candidate)> callback);
 	void onStateChange(std::function<void(State state)> callback);
+	void onIceStateChange(std::function<void(IceState state)> callback);
 	void onGatheringStateChange(std::function<void(GatheringState state)> callback);
 	void onSignalingStateChange(std::function<void(SignalingState state)> callback);
 
@@ -106,12 +120,11 @@ public:
 	optional<std::chrono::milliseconds> rtt();
 };
 
-} // namespace rtc
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, PeerConnection::State state);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, PeerConnection::IceState state);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, PeerConnection::GatheringState state);
+RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, PeerConnection::SignalingState state);
 
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, rtc::PeerConnection::State state);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out,
-                                        rtc::PeerConnection::GatheringState state);
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out,
-                                        rtc::PeerConnection::SignalingState state);
+} // namespace rtc
 
 #endif

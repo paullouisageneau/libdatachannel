@@ -32,6 +32,7 @@ public:
 	using verifier_callback = std::function<bool(const std::string &fingerprint)>;
 
 	DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate, optional<size_t> mtu,
+	              CertificateFingerprint::Algorithm fingerprintAlgorithm,
 	              verifier_callback verifierCallback, state_callback stateChangeCallback);
 	~DtlsTransport();
 
@@ -52,6 +53,7 @@ protected:
 
 	const optional<size_t> mMtu;
 	const certificate_ptr mCertificate;
+	CertificateFingerprint::Algorithm mFingerprintAlgorithm;
 	const verifier_callback mVerifierCallback;
 	const bool mIsClient;
 
@@ -85,6 +87,7 @@ protected:
 	char mRandBytes[64];
 	mbedtls_tls_prf_types mTlsProfile = MBEDTLS_SSL_TLS_PRF_NONE;
 
+	static int CertificateCallback(void *ctx, mbedtls_x509_crt *crt, int depth, uint32_t *flags);
 	static int WriteCallback(void *ctx, const unsigned char *buf, size_t len);
 	static int ReadCallback(void *ctx, unsigned char *buf, size_t len);
 	static void ExportKeysCallback(void *ctx, mbedtls_ssl_key_export_type type,

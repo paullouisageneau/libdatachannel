@@ -163,32 +163,43 @@ void init() {
 	}
 }
 
-string error_string(unsigned long err) {
+string error_string(unsigned long error) {
 	const size_t bufferSize = 256;
 	char buffer[bufferSize];
-	ERR_error_string_n(err, buffer, bufferSize);
+	ERR_error_string_n(error, buffer, bufferSize);
 	return string(buffer);
 }
 
 bool check(int success, const string &message) {
-	if (success)
+	unsigned long last_error = ERR_peek_last_error();
+	ERR_clear_error();
+
+	if (success > 0)
 		return true;
 
-	string str = error_string(ERR_get_error());
-	throw std::runtime_error(message + ": " + str);
+	throw std::runtime_error(message + (last_error != 0 ? ": " + error_string(last_error) : ""));
 }
 
-// Return false on EOF
-bool check(SSL *ssl, int ret, const string &message) {
-	unsigned long err = SSL_get_error(ssl, ret);
-	if (err == SSL_ERROR_NONE || err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
+// Return false on recoverable error
+bool check_error(int err, const string &message) {
+	unsigned long last_error = ERR_peek_last_error();
+	ERR_clear_error();
+
+	if (err == SSL_ERROR_NONE)
 		return true;
-	}
-	if (err == SSL_ERROR_ZERO_RETURN) {
-		return false;
-	}
-	string str = error_string(err);
-	throw std::runtime_error(message + ": " + str);
+
+	if (err == SSL_ERROR_ZERO_RETURN)
+		throw std::runtime_error(message + ": peer closed connection");
+
+	if (err == SSL_ERROR_SYSCALL)
+		throw std::runtime_error(message + ": fatal I/O error");
+
+	if (err == SSL_ERROR_SSL)
+		throw std::runtime_error(message +
+		                         (last_error != 0 ? ": " + error_string(last_error) : ""));
+
+	// SSL_ERROR_WANT_READ and SSL_ERROR_WANT_WRITE end up here
+	return false;
 }
 
 BIO *BIO_new_from_file(const string &filename) {

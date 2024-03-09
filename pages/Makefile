@@ -9,7 +9,7 @@ CONFFILE=$(BASEDIR)/pelicanconf.py
 PUBLISHCONF=$(BASEDIR)/publishconf.py
 
 GITHUB_PAGES_BRANCH=gh-pages
-
+GITHUB_PAGES_CNAME=libdatachannel.org
 
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
@@ -72,8 +72,7 @@ publish:
 	"$(PELICAN)" "$(INPUTDIR)" -o "$(OUTPUTDIR)" -s "$(PUBLISHCONF)" $(PELICANOPTS)
 
 github: publish
-	ghp-import -m "Generate Pelican site" -b $(GITHUB_PAGES_BRANCH) "$(OUTPUTDIR)"
-	git push origin $(GITHUB_PAGES_BRANCH)
+	ghp-import -m "Generate Pelican site" -po -b $(GITHUB_PAGES_BRANCH) -c $(GITHUB_PAGES_CNAME) "$(OUTPUTDIR)"
 
 
 .PHONY: html help clean regenerate serve serve-global devserver publish github

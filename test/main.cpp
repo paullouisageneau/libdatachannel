@@ -15,8 +15,9 @@
 using namespace std;
 using namespace chrono_literals;
 
+void test_connectivity(bool signal_wrong_fingerprint);
 void test_negotiated();
-void test_connectivity();
+void test_reliability();
 void test_turn_connectivity();
 void test_track();
 void test_capi_connectivity();
@@ -41,11 +42,18 @@ int main(int argc, char **argv) {
 	// C++ API tests
 	try {
 		cout << endl << "*** Running WebRTC connectivity test..." << endl;
-		test_connectivity();
+		test_connectivity(false);
 		cout << "*** Finished WebRTC connectivity test" << endl;
 	} catch (const exception &e) {
 		cerr << "WebRTC connectivity test failed: " << e.what() << endl;
 		return -1;
+	}
+	try {
+		cout << endl << "*** Running WebRTC broken fingerprint test..." << endl;
+		test_connectivity(true);
+		cerr << "WebRTC connectivity test failed to detect broken fingerprint" << endl;
+		return -1;
+	} catch (const exception &) {
 	}
 
 // TODO: Temporarily disabled as the Open Relay TURN server is unreliable
@@ -65,6 +73,14 @@ int main(int argc, char **argv) {
 		cout << "*** Finished WebRTC negotiated DataChannel test" << endl;
 	} catch (const exception &e) {
 		cerr << "WebRTC negotiated DataChannel test failed: " << e.what() << endl;
+		return -1;
+	}
+	try {
+		cout << endl << "*** Running WebRTC reliability mode test..." << endl;
+		test_reliability();
+		cout << "*** Finished WebRTC reliaility mode test" << endl;
+	} catch (const exception &e) {
+		cerr << "WebRTC reliability test failed: " << e.what() << endl;
 		return -1;
 	}
 #if RTC_ENABLE_MEDIA

@@ -21,7 +21,7 @@
 
 namespace rtc::impl {
 
-TcpServer::TcpServer(uint16_t port, const char* bindAddress) {
+TcpServer::TcpServer(uint16_t port, const char *bindAddress) {
 	PLOG_DEBUG << "Initializing TCP server";
 	listen(port, bindAddress);
 }
@@ -89,7 +89,7 @@ void TcpServer::close() {
 	}
 }
 
-void TcpServer::listen(uint16_t port, const char* bindAddress) {
+void TcpServer::listen(uint16_t port, const char *bindAddress) {
 	PLOG_DEBUG << "Listening on port " << port;
 
 	struct addrinfo hints = {};

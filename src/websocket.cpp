@@ -41,7 +41,7 @@ bool WebSocket::isOpen() const { return impl()->state.load() == State::Open; }
 
 bool WebSocket::isClosed() const { return impl()->state.load() == State::Closed; }
 
-size_t WebSocket::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
+size_t WebSocket::maxMessageSize() const { return impl()->maxMessageSize(); }
 
 void WebSocket::open(const string &url) { impl()->open(url); }
 
@@ -66,6 +66,29 @@ optional<string> WebSocket::path() const {
 	auto state = impl()->state.load();
 	auto handshake = impl()->getWsHandshake();
 	return state != State::Connecting && handshake ? make_optional(handshake->path()) : nullopt;
+}
+
+std::ostream &operator<<(std::ostream &out, WebSocket::State state) {
+	using State = WebSocket::State;
+	const char *str;
+	switch (state) {
+	case State::Connecting:
+		str = "connecting";
+		break;
+	case State::Open:
+		str = "open";
+		break;
+	case State::Closing:
+		str = "closing";
+		break;
+	case State::Closed:
+		str = "closed";
+		break;
+	default:
+		str = "unknown";
+		break;
+	}
+	return out << str;
 }
 
 } // namespace rtc

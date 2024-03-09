@@ -9,6 +9,7 @@
 #if RTC_ENABLE_MEDIA
 
 #include "rtcpnackresponder.hpp"
+#include "rtp.hpp"
 
 #include "impl/internals.hpp"
 
@@ -16,30 +17,76 @@
 
 namespace rtc {
 
+RtcpNackResponder::RtcpNackResponder(size_t maxSize)
+    : mStorage(std::make_shared<Storage>(maxSize)) {}
+
+void RtcpNackResponder::incoming(message_vector &messages, const message_callback &send) {
+	for (const auto &message : messages) {
+		if (message->type != Message::Control)
+			continue;
+
+		size_t p = 0;
+		while (p + sizeof(RtcpNack) <= message->size()) {
+			auto nack = reinterpret_cast<RtcpNack *>(message->data() + p);
+			p += nack->header.header.lengthInBytes();
+			if (p > message->size())
+				break;
+
+			// check if RTCP is NACK
+			if (nack->header.header.payloadType() != 205 || nack->header.header.reportCount() != 1)
+				continue;
+
+			unsigned int fieldsCount = nack->getSeqNoCount();
+			std::vector<uint16_t> missingSequenceNumbers;
+			for (unsigned int i = 0; i < fieldsCount; i++) {
+				auto field = nack->parts[i];
+				auto newMissingSeqenceNumbers = field.getSequenceNumbers();
+				missingSequenceNumbers.insert(missingSequenceNumbers.end(),
+				                              newMissingSeqenceNumbers.begin(),
+				                              newMissingSeqenceNumbers.end());
+			}
+
+			for (auto sequenceNumber : missingSequenceNumbers) {
+				if (auto optPacket = mStorage->get(sequenceNumber))
+					send(make_message(*optPacket.value()));
+			}
+		}
+	}
+}
+
+void RtcpNackResponder::outgoing(message_vector &messages,
+                                 [[maybe_unused]] const message_callback &send) {
+	for (const auto &message : messages)
+		if (message->type != Message::Control)
+			mStorage->store(message);
+}
+
 RtcpNackResponder::Storage::Element::Element(binary_ptr packet, uint16_t sequenceNumber,
                                              shared_ptr<Element> next)
     : packet(packet), sequenceNumber(sequenceNumber), next(next) {}
 
-unsigned RtcpNackResponder::Storage::size() { return unsigned(storage.size()); }
+size_t RtcpNackResponder::Storage::size() { return storage.size(); }
 
-RtcpNackResponder::Storage::Storage(unsigned _maximumSize) : maximumSize(_maximumSize) {
-	assert(maximumSize > 0);
-	storage.reserve(maximumSize);
+RtcpNackResponder::Storage::Storage(size_t _maxSize) : maxSize(_maxSize) {
+	assert(maxSize > 0);
+	storage.reserve(maxSize);
 }
 
 optional<binary_ptr> RtcpNackResponder::Storage::get(uint16_t sequenceNumber) {
+	std::lock_guard lock(mutex);
 	auto position = storage.find(sequenceNumber);
 	return position != storage.end() ? std::make_optional(storage.at(sequenceNumber)->packet)
 	                                 : nullopt;
 }
 
 void RtcpNackResponder::Storage::store(binary_ptr packet) {
-	if (!packet || packet->size() < 12) {
+	if (!packet || packet->size() < sizeof(RtpHeader))
 		return;
-	}
+
 	auto rtp = reinterpret_cast<RtpHeader *>(packet->data());
 	auto sequenceNumber = rtp->seqNumber();
 
+	std::lock_guard lock(mutex);
 	assert((storage.empty() && !oldest && !newest) || (!storage.empty() && oldest && newest));
 
 	if (size() == 0) {
@@ -53,66 +100,13 @@ void RtcpNackResponder::Storage::store(binary_ptr packet) {
 
 	storage.emplace(sequenceNumber, newest);
 
-	if (size() > maximumSize) {
+	if (size() > maxSize) {
 		assert(oldest);
 		if (oldest) {
 			storage.erase(oldest->sequenceNumber);
 			oldest = oldest->next;
 		}
 	}
-}
-
-RtcpNackResponder::RtcpNackResponder(unsigned maxStoredPacketCount)
-    : MediaHandlerElement(), storage(std::make_shared<Storage>(maxStoredPacketCount)) {}
-
-ChainedIncomingControlProduct
-RtcpNackResponder::processIncomingControlMessage(message_ptr message) {
-	optional<ChainedOutgoingProduct> optPackets = ChainedOutgoingProduct(nullptr);
-	auto packets = make_chained_messages_product();
-
-	size_t p = 0;
-	while (p < message->size()) {
-		auto nack = reinterpret_cast<RtcpNack *>(message->data() + p);
-		p += nack->header.header.lengthInBytes();
-		// check if rtcp is nack
-		if (nack->header.header.payloadType() != 205 || nack->header.header.reportCount() != 1) {
-			continue;
-		}
-
-		auto fieldsCount = nack->getSeqNoCount();
-
-		std::vector<uint16_t> missingSequenceNumbers{};
-		for (unsigned int i = 0; i < fieldsCount; i++) {
-			auto field = nack->parts[i];
-			auto newMissingSeqenceNumbers = field.getSequenceNumbers();
-			missingSequenceNumbers.insert(missingSequenceNumbers.end(),
-			                              newMissingSeqenceNumbers.begin(),
-			                              newMissingSeqenceNumbers.end());
-		}
-		packets->reserve(packets->size() + missingSequenceNumbers.size());
-		for (auto sequenceNumber : missingSequenceNumbers) {
-			auto optPacket = storage->get(sequenceNumber);
-			if (optPacket.has_value()) {
-				auto packet = optPacket.value();
-				packets->push_back(packet);
-			}
-		}
-	}
-
-	if (!packets->empty()) {
-		return {message, ChainedOutgoingProduct(packets)};
-	} else {
-		return {message, nullopt};
-	}
-}
-
-ChainedOutgoingProduct
-RtcpNackResponder::processOutgoingBinaryMessage(ChainedMessagesProduct messages,
-                                                message_ptr control) {
-	for (auto message : *messages) {
-		storage->store(message);
-	}
-	return {messages, control};
 }
 
 } // namespace rtc

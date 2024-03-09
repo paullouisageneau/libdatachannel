@@ -41,9 +41,13 @@ public:
 	bool isClosed(void) const override;
 	size_t maxMessageSize() const override;
 
+	void onFrame(std::function<void(binary data, FrameInfo frame)> callback);
+
 	bool requestKeyframe();
+	bool requestBitrate(unsigned int bitrate);
 
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
+	void chainMediaHandler(shared_ptr<MediaHandler> handler);
 	shared_ptr<MediaHandler> getMediaHandler();
 
 	// Deprecated, use setMediaHandler() and getMediaHandler()

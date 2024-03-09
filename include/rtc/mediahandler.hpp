@@ -11,28 +11,46 @@
 #define RTC_MEDIA_HANDLER_H
 
 #include "common.hpp"
+#include "description.hpp"
 #include "message.hpp"
 
 namespace rtc {
 
-class RTC_CPP_EXPORT MediaHandler {
-protected:
-	// Use this callback when trying to send custom data (such as RTCP) to the client.
-	synchronized_callback<message_ptr> outgoingCallback;
-
+class RTC_CPP_EXPORT MediaHandler : public std::enable_shared_from_this<MediaHandler> {
 public:
-	// Called when there is traffic coming from the peer
-	virtual message_ptr incoming(message_ptr ptr) = 0;
+	MediaHandler();
+	virtual ~MediaHandler();
 
-	// Called when there is traffic that needs to be sent to the peer
-	virtual message_ptr outgoing(message_ptr ptr) = 0;
+	/// Called when a media is added or updated
+	/// @param desc Description of the media
+	virtual void media([[maybe_unused]] const Description::Media &desc) {}
 
-	// This callback is used to send traffic back to the peer.
-	void onOutgoing(const std::function<void(message_ptr)> &cb) {
-		this->outgoingCallback = synchronized_callback<message_ptr>(cb);
-	}
+	/// Called when there is traffic coming from the peer
+	/// @param messages Incoming messages from the peer, can be modified by the handler
+	/// @param send Send callback to send messages back to the peer
+	virtual void incoming([[maybe_unused]] message_vector &messages, [[maybe_unused]] const message_callback &send) {}
 
-	virtual bool requestKeyframe() { return false; }
+	/// Called when there is traffic that needs to be sent to the peer
+	/// @param messages Outgoing messages to the peer, can be modified by the handler
+	/// @param send Send callback to send messages back to the peer
+	virtual void outgoing([[maybe_unused]] message_vector &messages, [[maybe_unused]] const message_callback &send) {}
+
+	virtual bool requestKeyframe(const message_callback &send);
+	virtual bool requestBitrate(unsigned int bitrate, const message_callback &send);
+
+	void addToChain(shared_ptr<MediaHandler> handler);
+	void setNext(shared_ptr<MediaHandler> handler);
+	shared_ptr<MediaHandler> next();
+	shared_ptr<const MediaHandler> next() const;
+	shared_ptr<MediaHandler> last();             // never null
+	shared_ptr<const MediaHandler> last() const; // never null
+
+	void mediaChain(const Description::Media &desc);
+	void incomingChain(message_vector &messages, const message_callback &send);
+	void outgoingChain(message_vector &messages, const message_callback &send);
+
+private:
+	shared_ptr<MediaHandler> mNext;
 };
 
 } // namespace rtc

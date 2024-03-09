@@ -383,6 +383,20 @@ Arguments:
 
 Return value: the maximum stream ID (`stream` for a Data Channel may be set from 0 to this value included) or a negative error code
 
+#### rtcGetRemoteMaxMessageSize
+
+```
+int rtcGetRemoteMaxMessageSize(int pc)
+```
+
+Retrieves the maximum message size for data channels on the peer connection as negotiated with the remote peer.
+
+Arguments:
+
+- `pc`: the Peer Connection identifier
+
+Return value: the maximum message size for data channels or a negative error code
+
 ### Channel (Common API for Data Channel, Track, and WebSocket)
 
 The following common functions might be called with a generic channel identifier. It may be the identifier of either a Data Channel, a Track, or a WebSocket.
@@ -519,6 +533,20 @@ Arguments:
 
 Return value: `true` if the channel exists and is closed (not open and not connecting), `false` otherwise
 
+#### rtcGetMaxMessageSize
+
+```
+int rtcGetMaxMessageSize(int id)
+```
+
+Retrieves the maximum message size for the channel.
+
+Arguments:
+
+- `id`: the channel identifier
+
+Return value: the maximum message size or a negative error code
+
 #### rtcGetBufferedAmount
 
 ```
@@ -616,8 +644,8 @@ Arguments:
   - `reliability`: a structure of reliability settings containing:
     - `unordered`: if `true`, the Data Channel will not enforce message ordering, else it will be ordered
     - `unreliable`: if `true`, the Data Channel will not enforce strict reliability, else it will be reliable
-    - `maxPacketLifeTime`: if unreliable, maximum packet life time in milliseconds
-    - `maxRetransmits`: if unreliable and maxPacketLifeTime is 0, maximum number of retransmissions (0 means no retransmission)
+    - `maxPacketLifeTime`: if unreliable, time window in milliseconds during which transmissions and retransmissions may occur
+    - `maxRetransmits`: if unreliable and maxPacketLifeTime is 0, maximum number of attempted retransmissions (0 means no retransmission)
   - `protocol` (optional): a user-defined UTF-8 string representing the Data Channel protocol, empty if NULL
   - `negotiated`: if `true`, the Data Channel is assumed to be negotiated by the user and won't be negotiated by the WebRTC layer
   - `manualStream`: if `true`, the Data Channel will use `stream` as stream ID, else an available id is automatically selected

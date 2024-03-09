@@ -40,6 +40,9 @@ void test_turn_connectivity() {
 
 	pc1.onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
 
+	pc1.onIceStateChange(
+	    [](PeerConnection::IceState state) { cout << "ICE state 1: " << state << endl; });
+
 	pc1.onGatheringStateChange([&pc1, &pc2](PeerConnection::GatheringState state) {
 		cout << "Gathering state 1: " << state << endl;
 		if (state == PeerConnection::GatheringState::Complete) {
@@ -68,6 +71,9 @@ void test_turn_connectivity() {
 	});
 
 	pc2.onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
+
+	pc2.onIceStateChange(
+	    [](PeerConnection::IceState state) { cout << "ICE state 2: " << state << endl; });
 
 	pc2.onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "Gathering state 2: " << state << endl;
@@ -125,9 +131,15 @@ void test_turn_connectivity() {
 	while ((!(adc2 = std::atomic_load(&dc2)) || !adc2->isOpen() || !dc1->isOpen()) && attempts--)
 		this_thread::sleep_for(1s);
 
-	if (pc1.state() != PeerConnection::State::Connected &&
+	if (pc1.state() != PeerConnection::State::Connected ||
 	    pc2.state() != PeerConnection::State::Connected)
 		throw runtime_error("PeerConnection is not connected");
+
+	if ((pc1.iceState() != PeerConnection::IceState::Connected &&
+	     pc1.iceState() != PeerConnection::IceState::Completed) ||
+	    (pc2.iceState() != PeerConnection::IceState::Connected &&
+	     pc2.iceState() != PeerConnection::IceState::Completed))
+		throw runtime_error("ICE is not connected");
 
 	if (!adc2 || !adc2->isOpen() || !dc1->isOpen())
 		throw runtime_error("DataChannel is not open");

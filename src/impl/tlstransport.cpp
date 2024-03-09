@@ -101,6 +101,8 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 
 TlsTransport::~TlsTransport() {
 	stop();
+
+	PLOG_DEBUG << "Destroying TLS transport";
 	gnutls_deinit(mSession);
 }
 
@@ -342,6 +344,11 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 			mbedtls::check(mbedtls_ssl_conf_own_cert(&mConf, crt.get(), pk.get()));
 		}
 
+		if (mIsClient && mHost) {
+			PLOG_VERBOSE << "Server Name Indication: " << *mHost;
+			mbedtls_ssl_set_hostname(&mSsl, mHost->c_str());
+		}
+
 		mbedtls::check(mbedtls_ssl_setup(&mSsl, &mConf));
 		mbedtls_ssl_set_bio(&mSsl, static_cast<void *>(this), WriteCallback, ReadCallback, NULL);
 
@@ -354,7 +361,15 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 	}
 }
 
-TlsTransport::~TlsTransport() {}
+TlsTransport::~TlsTransport() {
+	stop();
+
+	PLOG_DEBUG << "Destroying TLS transport";
+	mbedtls_entropy_free(&mEntropy);
+	mbedtls_ctr_drbg_free(&mDrbg);
+	mbedtls_ssl_free(&mSsl);
+	mbedtls_ssl_config_free(&mConf);
+}
 
 void TlsTransport::start() {
 	PLOG_DEBUG << "Starting TLS transport";
@@ -386,7 +401,8 @@ bool TlsTransport::send(message_ptr message) {
 		                        int(message->size()));
 	} while (ret == MBEDTLS_ERR_SSL_WANT_WRITE);
 
-	mbedtls::check(ret);
+	if (!mbedtls::check(ret))
+		throw std::runtime_error("TLS send failed");
 
 	return mOutgoingResult;
 }
@@ -573,23 +589,24 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 		auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
 		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
 		SSL_CTX_set_tmp_ecdh(mCtx, ecdh.get());
-		SSL_CTX_set_options(mCtx, SSL_OP_SINGLE_ECDH_USE);
 #endif
 
-		if (certificate) {
-			auto [x509, pkey] = certificate->credentials();
-			SSL_CTX_use_certificate(mCtx, x509);
-			SSL_CTX_use_PrivateKey(mCtx, pkey);
-		} else {
+		if(mIsClient) {
 			if (!SSL_CTX_set_default_verify_paths(mCtx)) {
 				PLOG_WARNING << "SSL root CA certificates unavailable";
 			}
 		}
 
-		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3);
+		if (certificate) {
+			auto [x509, pkey] = certificate->credentials();
+			SSL_CTX_use_certificate(mCtx, x509);
+			SSL_CTX_use_PrivateKey(mCtx, pkey);
+		}
+
+		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3 | SSL_OP_NO_RENEGOTIATION);
 		SSL_CTX_set_min_proto_version(mCtx, TLS1_VERSION);
 		SSL_CTX_set_read_ahead(mCtx, 1);
-		SSL_CTX_set_quiet_shutdown(mCtx, 1);
+		SSL_CTX_set_quiet_shutdown(mCtx, 0); // send the close_notify alert
 		SSL_CTX_set_info_callback(mCtx, InfoCallback);
 		SSL_CTX_set_verify(mCtx, SSL_VERIFY_NONE, NULL);
 
@@ -629,6 +646,8 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 
 TlsTransport::~TlsTransport() {
 	stop();
+
+	PLOG_DEBUG << "Destroying TLS transport";
 	SSL_free(mSsl);
 	SSL_CTX_free(mCtx);
 }
@@ -639,10 +658,15 @@ void TlsTransport::start() {
 	changeState(State::Connecting);
 
 	// Initiate the handshake
-	std::lock_guard lock(mSslMutex);
-	int ret = SSL_do_handshake(mSsl);
-	openssl::check(mSsl, ret, "Handshake initiation failed");
-	flushOutput();
+	int ret, err;
+	{
+		std::lock_guard lock(mSslMutex);
+		ret = SSL_do_handshake(mSsl);
+		err = SSL_get_error(mSsl, ret);
+		flushOutput();
+	}
+
+	openssl::check_error(err, "Handshake failed");
 }
 
 void TlsTransport::stop() {
@@ -661,12 +685,19 @@ bool TlsTransport::send(message_ptr message) {
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
-	std::lock_guard lock(mSslMutex);
-	int ret = SSL_write(mSsl, message->data(), int(message->size()));
-	if (!openssl::check(mSsl, ret))
+	int err;
+	bool result;
+	{
+		std::lock_guard lock(mSslMutex);
+		int ret = SSL_write(mSsl, message->data(), int(message->size()));
+		err = SSL_get_error(mSsl, ret);
+		result = flushOutput();
+	}
+
+	if (!openssl::check_error(err))
 		throw std::runtime_error("TLS send failed");
 
-	return flushOutput();
+	return result;
 }
 
 void TlsTransport::incoming(message_ptr message) {
@@ -698,7 +729,7 @@ void TlsTransport::doRecv() {
 		const size_t bufferSize = 4096;
 		byte buffer[bufferSize];
 
-		// Process incoming messages
+		// Read incoming messages
 		while (mIncomingQueue.running()) {
 			auto next = mIncomingQueue.pop();
 			if (!next)
@@ -712,18 +743,15 @@ void TlsTransport::doRecv() {
 
 			if (state() == State::Connecting) {
 				// Continue the handshake
-				bool finished;
+				int ret, err;
 				{
 					std::lock_guard lock(mSslMutex);
-					int ret = SSL_do_handshake(mSsl);
-					if (!openssl::check(mSsl, ret, "Handshake failed"))
-						break;
-
+					ret = SSL_do_handshake(mSsl);
+					err = SSL_get_error(mSsl, ret);
 					flushOutput();
-					finished = (SSL_is_init_finished(mSsl) != 0);
 				}
 
-				if (finished) {
+				if (openssl::check_error(err, "Handshake failed")) {
 					PLOG_INFO << "TLS handshake finished";
 					changeState(State::Connected);
 					postHandshake();
@@ -731,28 +759,33 @@ void TlsTransport::doRecv() {
 			}
 
 			if (state() == State::Connected) {
-				int ret;
+				int ret, err;
 				while (true) {
 					{
 						std::lock_guard lock(mSslMutex);
 						ret = SSL_read(mSsl, buffer, bufferSize);
+						err = SSL_get_error(mSsl, ret);
+						flushOutput(); // SSL_read() can also cause write operations
 					}
 
-					if (ret > 0)
+					if (err == SSL_ERROR_ZERO_RETURN)
+						break;
+
+					if (openssl::check_error(err))
 						recv(make_message(buffer, buffer + ret));
 					else
 						break;
 				}
 
-				{
-					std::lock_guard lock(mSslMutex);
-					if (!openssl::check(mSsl, ret))
-						break;
-
-					flushOutput(); // SSL_read() can also cause write operations
+				if (err == SSL_ERROR_ZERO_RETURN) {
+					PLOG_DEBUG << "TLS connection cleanly closed";
+					break; // No more data can be read
 				}
 			}
 		}
+
+		std::lock_guard lock(mSslMutex);
+		SSL_shutdown(mSsl);
 
 	} catch (const std::exception &e) {
 		PLOG_ERROR << "TLS recv: " << e.what();
@@ -765,11 +798,6 @@ void TlsTransport::doRecv() {
 	} else {
 		PLOG_ERROR << "TLS handshake failed";
 		changeState(State::Failed);
-	}
-
-	{
-		std::lock_guard lock(mSslMutex);
-		SSL_shutdown(mSsl);
 	}
 }
 

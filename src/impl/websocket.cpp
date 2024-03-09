@@ -36,8 +36,8 @@ using std::chrono::milliseconds;
 
 WebSocket::WebSocket(optional<Configuration> optConfig, certificate_ptr certificate)
     : config(optConfig ? std::move(*optConfig) : Configuration()),
-      mCertificate(std::move(certificate)), mIsSecure(mCertificate != nullptr),
-      mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
+      mCertificate(certificate ? std::move(certificate) : std::move(loadCertificate(config))),
+      mIsSecure(mCertificate != nullptr), mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
 	PLOG_VERBOSE << "Creating WebSocket";
 	if (config.proxyServer) {
 		if (config.proxyServer->type == ProxyServer::Type::Socks5)
@@ -47,6 +47,19 @@ WebSocket::WebSocket(optional<Configuration> optConfig, certificate_ptr certific
 			PLOG_WARNING << "HTTP authentication support for proxy is not implemented";
 		}
 	}
+}
+
+certificate_ptr WebSocket::loadCertificate(const Configuration& config) {
+	if (!config.certificatePemFile)
+		return nullptr;
+
+	if (config.keyPemFile)
+		return std::make_shared<Certificate>(
+			Certificate::FromFile(*config.certificatePemFile, *config.keyPemFile,
+										config.keyPemPass.value_or("")));
+
+	throw std::invalid_argument(
+		"Either none or both certificate and key PEM files must be specified");
 }
 
 WebSocket::~WebSocket() { PLOG_VERBOSE << "Destroying WebSocket"; }
@@ -143,7 +156,7 @@ bool WebSocket::isOpen() const { return state == State::Open; }
 
 bool WebSocket::isClosed() const { return state == State::Closed; }
 
-size_t WebSocket::maxMessageSize() const { return DEFAULT_MAX_MESSAGE_SIZE; }
+size_t WebSocket::maxMessageSize() const { return config.maxMessageSize.value_or(DEFAULT_WS_MAX_MESSAGE_SIZE); }
 
 optional<message_variant> WebSocket::receive() {
 	auto next = mRecvQueue.pop();
@@ -358,7 +371,8 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 		shared_ptr<TlsTransport> transport;
 		if (verify)
 			transport = std::make_shared<VerifiedTlsTransport>(lower, mHostname.value(),
-			                                                   mCertificate, stateChangeCallback);
+			                                                   mCertificate, stateChangeCallback,
+			                                                   config.caCertificatePemFile);
 		else
 			transport =
 			    std::make_shared<TlsTransport>(lower, mHostname, mCertificate, stateChangeCallback);
@@ -429,8 +443,7 @@ shared_ptr<WsTransport> WebSocket::initWsTransport() {
 			}
 		};
 
-		auto maxOutstandingPings = config.maxOutstandingPings.value_or(0);
-		auto transport = std::make_shared<WsTransport>(lower, mWsHandshake, maxOutstandingPings,
+		auto transport = std::make_shared<WsTransport>(lower, mWsHandshake, config,
 		                                               weak_bind(&WebSocket::incoming, this, _1),
 		                                               stateChangeCallback);
 

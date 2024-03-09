@@ -13,6 +13,7 @@
 #include "impl/utils.hpp"
 
 #include <cassert>
+#include <cmath>
 #include <limits>
 #include <random>
 
@@ -43,7 +44,7 @@ double RtpPacketizationConfig::timestampToSeconds(uint32_t timestamp) {
 }
 
 uint32_t RtpPacketizationConfig::getTimestampFromSeconds(double seconds, uint32_t clockRate) {
-	return uint32_t(int64_t(seconds * double(clockRate))); // convert to integer then cast to u32
+	return uint32_t(int64_t(round(seconds * double(clockRate)))); // convert to integer then cast to u32
 }
 
 uint32_t RtpPacketizationConfig::secondsToTimestamp(double seconds) {

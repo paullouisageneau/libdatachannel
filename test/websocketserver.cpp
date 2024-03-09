@@ -24,13 +24,13 @@ template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 void test_websocketserver() {
 	InitLogger(LogLevel::Debug);
 
-	const string myMessage = "Hello world from client";
-
 	WebSocketServer::Configuration serverConfig;
 	serverConfig.port = 48080;
 	serverConfig.enableTls = true;
 	// serverConfig.certificatePemFile = ...
 	// serverConfig.keyPemFile = ...
+	serverConfig.bindAddress = "127.0.0.1"; // to test IPv4 fallback
+	serverConfig.maxMessageSize = 1000;     // to test max message size
 	WebSocketServer server(std::move(serverConfig));
 
 	shared_ptr<WebSocket> client;
@@ -62,21 +62,32 @@ void test_websocketserver() {
 	config.disableTlsVerification = true;
 	WebSocket ws(std::move(config));
 
+	const string myMessage = "Hello world from client";
+
 	ws.onOpen([&ws, &myMessage]() {
 		cout << "WebSocket: Open" << endl;
+		ws.send(binary(1001, byte(0))); // test max message size
 		ws.send(myMessage);
 	});
 
 	ws.onClosed([]() { cout << "WebSocket: Closed" << endl; });
 
 	std::atomic<bool> received = false;
-	ws.onMessage([&received, &myMessage](variant<binary, string> message) {
+	std::atomic<bool> maxSizeReceived = false;
+	ws.onMessage([&received, &maxSizeReceived, &myMessage](variant<binary, string> message) {
 		if (holds_alternative<string>(message)) {
 			string str = std::move(get<string>(message));
 			if ((received = (str == myMessage)))
 				cout << "WebSocket: Received expected message" << endl;
 			else
 				cout << "WebSocket: Received UNEXPECTED message" << endl;
+		}
+		else {
+			binary bin = std::move(get<binary>(message));
+			if ((maxSizeReceived = (bin.size() == 1000)))
+				cout << "WebSocket: Received large message truncated at max size" << endl;
+			else
+				cout << "WebSocket: Received large message NOT TRUNCATED" << endl;
 		}
 	});
 
@@ -89,8 +100,8 @@ void test_websocketserver() {
 	if (!ws.isOpen())
 		throw runtime_error("WebSocket is not open");
 
-	if (!received)
-		throw runtime_error("Expected message not received");
+	if (!received || !maxSizeReceived)
+		throw runtime_error("Expected messages not received");
 
 	ws.close();
 	this_thread::sleep_for(1s);

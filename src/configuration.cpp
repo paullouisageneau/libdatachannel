@@ -70,7 +70,7 @@ IceServer::IceServer(const string &url) {
 	password = utils::url_decode(opt[8].value_or(""));
 
 	hostname = opt[10].value();
-	if(hostname.front() == '[' && hostname.back() == ']') {
+	if (hostname.front() == '[' && hostname.back() == ']') {
 		// IPv6 literal
 		hostname.erase(hostname.begin());
 		hostname.pop_back();

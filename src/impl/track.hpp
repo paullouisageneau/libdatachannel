@@ -28,7 +28,7 @@ struct PeerConnection;
 
 class Track final : public std::enable_shared_from_this<Track>, public Channel {
 public:
-	Track(weak_ptr<PeerConnection> pc, Description::Media description);
+	Track(weak_ptr<PeerConnection> pc, Description::Media desc);
 	~Track();
 
 	void close();
@@ -38,6 +38,10 @@ public:
 	optional<message_variant> receive() override;
 	optional<message_variant> peek() override;
 	size_t availableAmount() const override;
+	void flushPendingMessages() override;
+	message_variant trackMessageToVariant(message_ptr message);
+
+	void onFrame(std::function<void(binary data, FrameInfo frame)> callback);
 
 	bool isOpen() const;
 	bool isClosed() const;
@@ -46,7 +50,7 @@ public:
 	string mid() const;
 	Description::Direction direction() const;
 	Description::Media description() const;
-	void setDescription(Description::Media description);
+	void setDescription(Description::Media desc);
 
 	shared_ptr<MediaHandler> getMediaHandler();
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
@@ -55,9 +59,9 @@ public:
 	void open(shared_ptr<DtlsSrtpTransport> transport);
 #endif
 
-private:
 	bool transportSend(message_ptr message);
 
+private:
 	const weak_ptr<PeerConnection> mPeerConnection;
 #if RTC_ENABLE_MEDIA
 	weak_ptr<DtlsSrtpTransport> mDtlsSrtpTransport;
@@ -71,6 +75,8 @@ private:
 	std::atomic<bool> mIsClosed = false;
 
 	Queue<message_ptr> mRecvQueue;
+
+	synchronized_callback<binary, FrameInfo> frameCallback;
 };
 
 } // namespace rtc::impl

@@ -158,6 +158,8 @@ libdatachannel client implementing WebRTC Data Channels with WebSocket signaling
           Web socket server URL or IP address.\n\
    [ -x ] [ --webSocketPort ] (type=INTEGER, range=0...65535, default=8000)\n\
           Web socket server port.\n\
+   [ -m ] [ --udpMux ] (type=FLAG)\n\
+          Use UDP multiplex.\n\
    [ -h ] [ --help ] (type=FLAG)\n\
           Display this help and exit.\n";
     }
