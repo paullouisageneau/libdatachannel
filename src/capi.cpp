@@ -584,6 +584,14 @@ int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid) {
 	});
 }
 
+int rtcSetRemoteGatherDone(int pc) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		peerConnection->setRemoteGatherDone();
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcGetLocalDescription(int pc, char *buffer, int size) {
 	return wrap([&] {
 		auto peerConnection = getPeerConnection(pc);

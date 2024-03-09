@@ -64,6 +64,10 @@ static void RTC_API gatheringStateCallback(int pc, rtcGatheringState state, void
 	Peer *peer = (Peer *)ptr;
 	peer->gatheringState = state;
 	printf("Gathering state %d: %d\n", peer == peer1 ? 1 : 2, (int)state);
+	if (state == RTC_GATHERING_COMPLETE) {
+		Peer *other = peer == peer1 ? peer2 : peer1;
+		rtcSetRemoteGatherDone(other->pc);
+	}
 }
 
 static void RTC_API signalingStateCallback(int pc, rtcSignalingState state, void *ptr) {

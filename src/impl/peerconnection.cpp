@@ -1127,6 +1127,13 @@ void PeerConnection::processRemoteCandidate(Candidate candidate) {
 	}
 }
 
+void PeerConnection::setRemoteGatherDone() {
+	auto iceTransport = std::atomic_load(&mIceTransport);
+	if (!iceTransport)
+		throw std::logic_error("setting remote gather done without ICE transport");
+	iceTransport->setRemoteGatherDone();
+}
+
 string PeerConnection::localBundleMid() const {
 	std::lock_guard lock(mLocalDescriptionMutex);
 	return mLocalDescription ? mLocalDescription->bundleMid() : "0";

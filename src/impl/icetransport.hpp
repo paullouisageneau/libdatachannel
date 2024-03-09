@@ -50,6 +50,7 @@ public:
 	Description getLocalDescription(Description::Type type) const;
 	void setRemoteDescription(const Description &description);
 	bool addRemoteCandidate(const Candidate &candidate);
+	void setRemoteGatherDone();
 	void gatherLocalCandidates(string mid);
 
 	optional<string> getLocalAddress() const;

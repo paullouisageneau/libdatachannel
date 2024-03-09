@@ -249,6 +249,12 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 	impl()->processRemoteCandidate(std::move(candidate));
 }
 
+void PeerConnection::setRemoteGatherDone() {
+	std::unique_lock signalingLock(impl()->signalingMutex);
+	PLOG_VERBOSE << "Remote gather is done";
+	impl()->setRemoteGatherDone();
+}
+
 void PeerConnection::setMediaHandler(shared_ptr<MediaHandler> handler) {
 	impl()->setMediaHandler(std::move(handler));
 };

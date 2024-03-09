@@ -49,8 +49,11 @@ void test_track() {
 
 	pc1.onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
 
-	pc1.onGatheringStateChange([](PeerConnection::GatheringState state) {
+	pc1.onGatheringStateChange([&pc2](PeerConnection::GatheringState state) {
 		cout << "Gathering state 1: " << state << endl;
+		if (state == PeerConnection::GatheringState::Complete) {
+			pc2.setRemoteGatherDone();
+		}
 	});
 
 	pc2.onLocalDescription([&pc1](Description sdp) {
@@ -65,8 +68,11 @@ void test_track() {
 
 	pc2.onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
 
-	pc2.onGatheringStateChange([](PeerConnection::GatheringState state) {
+	pc2.onGatheringStateChange([&pc1](PeerConnection::GatheringState state) {
 		cout << "Gathering state 2: " << state << endl;
+		if (state == PeerConnection::GatheringState::Complete) {
+			pc1.setRemoteGatherDone();
+		}
 	});
 
 	shared_ptr<Track> t2;

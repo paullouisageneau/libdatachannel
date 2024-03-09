@@ -46,10 +46,22 @@ void test_turn_connectivity() {
 	pc1.onGatheringStateChange([&pc1, &pc2](PeerConnection::GatheringState state) {
 		cout << "Gathering state 1: " << state << endl;
 		if (state == PeerConnection::GatheringState::Complete) {
-			auto sdp = pc1.localDescription().value();
+			pc2.setRemoteGatherDone();
+		}
+	});
+
+	pc1.onLocalDescription([&pc2](Description sdp) {
 			cout << "Description 1: " << sdp << endl;
 			pc2.setRemoteDescription(string(sdp));
+	});
+
+	pc1.onLocalCandidate([&pc2](Candidate candidate) {
+		if (candidate.type() == rtc::Candidate::Type::Host) {
+			cout << "Candidate 1 ignored: " << candidate << endl;
+			return;
 		}
+		cout << "Candidate 1: " << candidate << endl;
+		pc2.addRemoteCandidate(string(candidate));
 	});
 
 	pc1.onSignalingStateChange([](PeerConnection::SignalingState state) {
@@ -62,10 +74,10 @@ void test_turn_connectivity() {
 	});
 
 	pc2.onLocalCandidate([&pc1](Candidate candidate) {
-		// Filter server reflexive candidates
-		if (candidate.type() != rtc::Candidate::Type::ServerReflexive)
+		if (candidate.type() == rtc::Candidate::Type::Host) {
+			cout << "Candidate 2 ignored: " << candidate << endl;
 			return;
-
+		}
 		cout << "Candidate 2: " << candidate << endl;
 		pc1.addRemoteCandidate(string(candidate));
 	});
@@ -75,8 +87,11 @@ void test_turn_connectivity() {
 	pc2.onIceStateChange(
 	    [](PeerConnection::IceState state) { cout << "ICE state 2: " << state << endl; });
 
-	pc2.onGatheringStateChange([](PeerConnection::GatheringState state) {
+	pc2.onGatheringStateChange([&pc1](PeerConnection::GatheringState state) {
 		cout << "Gathering state 2: " << state << endl;
+		if (state == PeerConnection::GatheringState::Complete) {
+			pc1.setRemoteGatherDone();
+		}
 	});
 
 	pc2.onSignalingStateChange([](PeerConnection::SignalingState state) {

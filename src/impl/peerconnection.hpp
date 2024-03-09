@@ -78,6 +78,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void processLocalCandidate(Candidate candidate);
 	void processRemoteDescription(Description description);
 	void processRemoteCandidate(Candidate candidate);
+	void setRemoteGatherDone();
 	string localBundleMid() const;
 
 	void setMediaHandler(shared_ptr<MediaHandler> handler);

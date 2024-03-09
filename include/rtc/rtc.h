@@ -213,6 +213,7 @@ RTC_C_EXPORT int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCal
 RTC_C_EXPORT int rtcSetLocalDescription(int pc, const char *type);
 RTC_C_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 RTC_C_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
+RTC_C_EXPORT int rtcSetRemoteGatherDone(int pc);
 
 RTC_C_EXPORT int rtcGetLocalDescription(int pc, char *buffer, int size);
 RTC_C_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);

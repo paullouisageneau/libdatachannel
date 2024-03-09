@@ -202,6 +202,8 @@ void IceTransport::setRemoteDescription(const Description &description) {
 		throw std::invalid_argument("Invalid ICE settings from remote SDP");
 }
 
+void IceTransport::setRemoteGatherDone() { juice_set_remote_gathering_done(mAgent.get()); }
+
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 	// Don't try to pass unresolved candidates for more safety
 	if (!candidate.isResolved())
@@ -663,6 +665,8 @@ void IceTransport::setRemoteDescription(const Description &description) {
 	                                description.generateApplicationSdp("\n").c_str()) < 0)
 		throw std::invalid_argument("Invalid ICE settings from remote SDP");
 }
+
+void IceTransport::setRemoteGatherDone() {}
 
 bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 	// Don't try to pass unresolved candidates to libnice for more safety
