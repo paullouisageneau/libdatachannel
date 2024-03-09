@@ -512,7 +512,7 @@ int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb)
 					cb(pc, static_cast<rtcSignalingState>(state), *ptr);
 			});
 		else
-			peerConnection->onGatheringStateChange(nullptr);
+			peerConnection->onSignalingStateChange(nullptr);
 		return RTC_ERR_SUCCESS;
 	});
 }
