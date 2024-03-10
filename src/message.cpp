@@ -35,6 +35,7 @@ message_ptr make_message(size_t size, message_ptr orig) {
 	std::copy(orig->begin(), orig->begin() + std::min(size, orig->size()), message->begin());
 	message->stream = orig->stream;
 	message->reliability = orig->reliability;
+	message->frameInfo = orig->frameInfo;
 	return message;
 }
 
