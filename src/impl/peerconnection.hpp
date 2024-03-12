@@ -99,6 +99,8 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	void resetCallbacks();
 
+	void setConfiguration(Configuration config_);
+
 	// Helper method for asynchronous callback invocation
 	template <typename... Args> void trigger(synchronized_callback<Args...> *cb, Args... args) {
 		try {
@@ -108,7 +110,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 		}
 	}
 
-	const Configuration config;
+	Configuration config;
 	std::atomic<State> state = State::New;
 	std::atomic<IceState> iceState = IceState::New;
 	std::atomic<GatheringState> gatheringState = GatheringState::New;

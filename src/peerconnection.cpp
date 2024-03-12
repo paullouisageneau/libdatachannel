@@ -49,6 +49,10 @@ void PeerConnection::close() { impl()->close(); }
 
 const Configuration *PeerConnection::config() const { return &impl()->config; }
 
+void PeerConnection::setConfiguration(const Configuration &config) {
+	impl()->setConfiguration(config);
+}
+
 PeerConnection::State PeerConnection::state() const { return impl()->state; }
 
 PeerConnection::IceState PeerConnection::iceState() const { return impl()->iceState; }

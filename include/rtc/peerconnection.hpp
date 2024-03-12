@@ -77,6 +77,7 @@ public:
 	void close();
 
 	const Configuration *config() const;
+	void setConfiguration(const Configuration& config);
 	State state() const;
 	IceState iceState() const;
 	GatheringState gatheringState() const;

@@ -382,36 +382,46 @@ void rtcSetUserPointer(int i, void *ptr) { setUserPointer(i, ptr); }
 
 void *rtcGetUserPointer(int i) { return getUserPointer(i).value_or(nullptr); }
 
+Configuration convertConfiguration(const rtcConfiguration *config)
+{
+	Configuration c;
+
+	if (!config)
+		return c;
+
+	for (int i = 0; i < config->iceServersCount; ++i)
+		c.iceServers.emplace_back(string(config->iceServers[i]));
+
+	if (config->proxyServer)
+		c.proxyServer.emplace(config->proxyServer);
+
+	if (config->bindAddress)
+		c.bindAddress = string(config->bindAddress);
+
+	if (config->portRangeBegin > 0 || config->portRangeEnd > 0) {
+		c.portRangeBegin = config->portRangeBegin;
+		c.portRangeEnd = config->portRangeEnd;
+	}
+
+	c.certificateType = static_cast<CertificateType>(config->certificateType);
+	c.iceTransportPolicy = static_cast<TransportPolicy>(config->iceTransportPolicy);
+	c.enableIceTcp = config->enableIceTcp;
+	c.enableIceUdpMux = config->enableIceUdpMux;
+	c.disableAutoNegotiation = config->disableAutoNegotiation;
+	c.forceMediaTransport = config->forceMediaTransport;
+
+	if (config->mtu > 0)
+		c.mtu = size_t(config->mtu);
+
+	if (config->maxMessageSize)
+		c.maxMessageSize = size_t(config->maxMessageSize);
+
+	return c;
+}
+
 int rtcCreatePeerConnection(const rtcConfiguration *config) {
 	return wrap([config] {
-		Configuration c;
-		for (int i = 0; i < config->iceServersCount; ++i)
-			c.iceServers.emplace_back(string(config->iceServers[i]));
-
-		if (config->proxyServer)
-			c.proxyServer.emplace(config->proxyServer);
-
-		if (config->bindAddress)
-			c.bindAddress = string(config->bindAddress);
-
-		if (config->portRangeBegin > 0 || config->portRangeEnd > 0) {
-			c.portRangeBegin = config->portRangeBegin;
-			c.portRangeEnd = config->portRangeEnd;
-		}
-
-		c.certificateType = static_cast<CertificateType>(config->certificateType);
-		c.iceTransportPolicy = static_cast<TransportPolicy>(config->iceTransportPolicy);
-		c.enableIceTcp = config->enableIceTcp;
-		c.enableIceUdpMux = config->enableIceUdpMux;
-		c.disableAutoNegotiation = config->disableAutoNegotiation;
-		c.forceMediaTransport = config->forceMediaTransport;
-
-		if (config->mtu > 0)
-			c.mtu = size_t(config->mtu);
-
-		if (config->maxMessageSize)
-			c.maxMessageSize = size_t(config->maxMessageSize);
-
+		Configuration c = convertConfiguration(config);
 		return emplacePeerConnection(std::make_shared<PeerConnection>(std::move(c)));
 	});
 }
@@ -429,6 +439,15 @@ int rtcDeletePeerConnection(int pc) {
 		auto peerConnection = getPeerConnection(pc);
 		peerConnection->close();
 		erasePeerConnection(pc);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetConfiguration(int pc, const rtcConfiguration *config) {
+	return wrap([=] {
+		Configuration c = convertConfiguration(config);
+		auto peerConnection = getPeerConnection(pc);
+		peerConnection->setConfiguration(c);
 		return RTC_ERR_SUCCESS;
 	});
 }

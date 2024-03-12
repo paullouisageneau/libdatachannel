@@ -59,6 +59,8 @@ public:
 
 	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
+	void addIceServers(std::vector<IceServer> servers);
+
 private:
 	bool outgoing(message_ptr message) override;
 

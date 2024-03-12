@@ -1320,4 +1320,28 @@ void PeerConnection::updateTrackSsrcCache(const Description &description) {
 		    description.media(i));
 }
 
+void PeerConnection::setConfiguration(Configuration config_) {
+	if (state != State::New) {
+		if (!config.equalsIgnoreIceServers(config_))
+			throw std::logic_error(
+			    "Only Ice Servers confiruation are allwoed to be changed if the ICE transport has already been started");
+		// Remove turn servers already present in config.
+		config_.iceServers.erase(
+		    std::remove_if(std::begin(config_.iceServers), std::end(config_.iceServers),
+		                   [&](const auto &iceServer) {
+			                   return std::find(std::begin(config.iceServers),
+			                                    std::end(config.iceServers),
+			                                    iceServer) != std::end(config_.iceServers);
+		                   }),
+		    std::end(config_.iceServers));
+		auto iceTransport = std::atomic_load(&mIceTransport);
+		if (iceTransport)
+			iceTransport->addIceServers(config_.iceServers);
+		std::copy(std::begin(config_.iceServers), std::end(config_.iceServers),
+		          std::back_inserter(config.iceServers));
+	} else {
+		config = std::move(config_);
+	}
+}
+
 } // namespace rtc::impl
