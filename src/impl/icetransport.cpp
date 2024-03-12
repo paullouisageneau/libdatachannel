@@ -604,16 +604,14 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 }
 
 IceTransport::~IceTransport() {
-	if (mTimeoutId) {
-		g_source_remove(mTimeoutId);
-		mTimeoutId = 0;
-	}
-
 	PLOG_DEBUG << "Destroying ICE transport";
 	nice_agent_attach_recv(mNiceAgent.get(), mStreamId, 1, g_main_loop_get_context(MainLoop.get()),
 	                       NULL, NULL);
 	nice_agent_remove_stream(mNiceAgent.get(), mStreamId);
 	mNiceAgent.reset();
+
+	if (mTimeoutId)
+		g_source_remove(mTimeoutId);
 }
 
 Description::Role IceTransport::role() const { return mRole; }
