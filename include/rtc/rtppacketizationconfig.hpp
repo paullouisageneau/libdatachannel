@@ -11,6 +11,7 @@
 
 #if RTC_ENABLE_MEDIA
 
+#include "dependencydescriptor.hpp"
 #include "rtp.hpp"
 
 namespace rtc {
@@ -60,6 +61,15 @@ public:
 	// RID Extension Header
 	uint8_t ridId = 0;
 	optional<std::string> rid;
+
+	// Dependency Descriptor Extension Header
+	uint8_t dependencyDescriptorId = 0;
+	struct DependencyDescriptorContext {
+		DependencyDescriptor descriptor;
+		std::bitset<32> activeChains;
+		FrameDependencyStructure structure;
+	};
+	optional<DependencyDescriptorContext> dependencyDescriptorContext;
 
 	/// Construct RTP configuration used in packetization process
 	/// @param ssrc SSRC of source

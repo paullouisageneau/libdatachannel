@@ -21,21 +21,43 @@ RtpPacketizer::~RtpPacketizer() {}
 
 message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 	size_t rtpExtHeaderSize = 0;
+	bool twoByteHeader = false;
 
-	const bool setVideoRotation = (rtpConfig->videoOrientationId != 0) &&
-	                              (rtpConfig->videoOrientationId <
-	                               15) && // needs fixing if longer extension headers are supported
-	                              mark &&
-	                              (rtpConfig->videoOrientation != 0);
+	const bool setVideoRotation =
+	    (rtpConfig->videoOrientationId != 0) && mark && (rtpConfig->videoOrientation != 0);
+
+	// Determine if a two-byte header is necessary
+	// Check for dependency descriptor extension
+	if (rtpConfig->dependencyDescriptorContext.has_value()) {
+		auto &ctx = *rtpConfig->dependencyDescriptorContext;
+		DependencyDescriptorWriter writer(ctx.structure, ctx.activeChains, ctx.descriptor);
+		auto sizeBytes = (writer.getSizeBits() + 7) / 8;
+		if (sizeBytes > 16 || rtpConfig->dependencyDescriptorId > 14) {
+			twoByteHeader = true;
+		}
+	}
+	// Check for other extensions
+	if ((setVideoRotation && rtpConfig->videoOrientationId > 14) ||
+	    (rtpConfig->mid.has_value() && rtpConfig->midId > 14) ||
+	    (rtpConfig->rid.has_value() && rtpConfig->ridId > 14)) {
+		twoByteHeader = true;
+	}
+	size_t headerSize = twoByteHeader ? 2 : 1;
 
 	if (setVideoRotation)
-		rtpExtHeaderSize += 2;
+		rtpExtHeaderSize += headerSize + 1;
 
 	if (rtpConfig->mid.has_value())
-		rtpExtHeaderSize += (1 + rtpConfig->mid->length());
+		rtpExtHeaderSize += headerSize + rtpConfig->mid->length();
 
 	if (rtpConfig->rid.has_value())
-		rtpExtHeaderSize += (1 + rtpConfig->rid->length());
+		rtpExtHeaderSize += headerSize + rtpConfig->rid->length();
+
+	if (rtpConfig->dependencyDescriptorContext.has_value()) {
+		auto &ctx = *rtpConfig->dependencyDescriptorContext;
+		DependencyDescriptorWriter writer(ctx.structure, ctx.activeChains, ctx.descriptor);
+		rtpExtHeaderSize += headerSize + (writer.getSizeBits() + 7) / 8;
+	}
 
 	if (rtpExtHeaderSize != 0)
 		rtpExtHeaderSize += 4;
@@ -57,7 +79,7 @@ message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 		rtp->setExtension(true);
 
 		auto extHeader = rtp->getExtensionHeader();
-		extHeader->setProfileSpecificId(0xbede);
+		extHeader->setProfileSpecificId(twoByteHeader ? 0x1000 : 0xbede);
 
 		auto headerLength = static_cast<uint16_t>(rtpExtHeaderSize / 4) - 1;
 
@@ -66,24 +88,33 @@ message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 
 		size_t offset = 0;
 		if (setVideoRotation) {
-			extHeader->writeCurrentVideoOrientation(offset, rtpConfig->videoOrientationId,
-			                                        rtpConfig->videoOrientation);
-			offset += 2;
+			offset += extHeader->writeCurrentVideoOrientation(
+			    twoByteHeader, offset, rtpConfig->videoOrientationId, rtpConfig->videoOrientation);
 		}
 
 		if (rtpConfig->mid.has_value()) {
-			extHeader->writeOneByteHeader(
-			    offset, rtpConfig->midId,
-			    reinterpret_cast<const std::byte *>(rtpConfig->mid->c_str()),
-			    rtpConfig->mid->length());
-			offset += (1 + rtpConfig->mid->length());
+			offset +=
+			    extHeader->writeHeader(twoByteHeader, offset, rtpConfig->midId,
+			                           reinterpret_cast<const std::byte *>(rtpConfig->mid->c_str()),
+			                           rtpConfig->mid->length());
 		}
 
 		if (rtpConfig->rid.has_value()) {
-			extHeader->writeOneByteHeader(
-			    offset, rtpConfig->ridId,
-			    reinterpret_cast<const std::byte *>(rtpConfig->rid->c_str()),
-			    rtpConfig->rid->length());
+			offset +=
+			    extHeader->writeHeader(twoByteHeader, offset, rtpConfig->ridId,
+			                           reinterpret_cast<const std::byte *>(rtpConfig->rid->c_str()),
+			                           rtpConfig->rid->length());
+		}
+
+		if (rtpConfig->dependencyDescriptorContext.has_value()) {
+			auto &ctx = *rtpConfig->dependencyDescriptorContext;
+			DependencyDescriptorWriter writer(ctx.structure, ctx.activeChains, ctx.descriptor);
+			auto sizeBits = writer.getSizeBits();
+			size_t sizeBytes = (sizeBits + 7) / 8;
+			std::unique_ptr<std::byte[]> buf(new std::byte[sizeBytes]);
+			writer.writeTo(buf.get(), sizeBits);
+			offset += extHeader->writeHeader(
+			    twoByteHeader, offset, rtpConfig->dependencyDescriptorId, buf.get(), sizeBytes);
 		}
 	}
 
