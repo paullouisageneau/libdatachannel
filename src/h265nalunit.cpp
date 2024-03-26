@@ -34,7 +34,7 @@ H265NalUnitFragment::fragmentsFrom(shared_ptr<H265NalUnit> nalu, uint16_t maxFra
 	auto fragments_count = ceil(double(nalu->size()) / maxFragmentSize);
 	maxFragmentSize = uint16_t(int(ceil(nalu->size() / fragments_count)));
 
-	// 3 bytes for FU indicator and FU header
+	// 3 bytes for NALU header and FU header
 	maxFragmentSize -= (H265_NAL_HEADER_SIZE + H265_FU_HEADER_SIZE);
 	auto f = nalu->forbiddenBit();
 	uint8_t nuhLayerId = nalu->nuhLayerId() & 0x3F;        // 6 bits
