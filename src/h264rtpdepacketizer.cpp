@@ -42,6 +42,12 @@ message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
 		auto pktParsed = reinterpret_cast<const rtc::RtpHeader *>(pkt->data());
 		auto headerSize =
 		    sizeof(rtc::RtpHeader) + pktParsed->csrcCount() + pktParsed->getExtensionHeaderSize();
+
+		if (pkt->size() == headerSize) {
+			PLOG_VERBOSE << "H.264 RTP packet has empty payload";
+                	continue;
+		}
+
 		auto nalUnitHeader = NalUnitHeader{std::to_integer<uint8_t>(pkt->at(headerSize))};
 
 		if (fua_buffer.size() != 0 || nalUnitHeader.unitType() == naluTypeFUA) {
