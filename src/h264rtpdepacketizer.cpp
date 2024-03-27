@@ -42,10 +42,15 @@ message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
 		auto pktParsed = reinterpret_cast<const rtc::RtpHeader *>(pkt->data());
 		auto headerSize =
 		    sizeof(rtc::RtpHeader) + pktParsed->csrcCount() + pktParsed->getExtensionHeaderSize();
+		auto paddingSize = 0;
 
-		if (pkt->size() == headerSize) {
+		if (pktParsed->padding()) {
+			paddingSize = std::to_integer<uint8_t>(pkt->at(pkt->size() - 1));
+		}
+
+		if (pkt->size() == headerSize + paddingSize) {
 			PLOG_VERBOSE << "H.264 RTP packet has empty payload";
-                	continue;
+			continue;
 		}
 
 		auto nalUnitHeader = NalUnitHeader{std::to_integer<uint8_t>(pkt->at(headerSize))};
