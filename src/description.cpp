@@ -885,7 +885,9 @@ void Description::Application::parseSdpLine(string_view line) {
 Description::Media::Media(const string &sdp) : Entry(get_first_line(sdp), "", Direction::Unknown) {
 	string line;
 	std::istringstream ss(sdp);
-	std::getline(ss, line); // discard first line
+	std::getline(ss, line); 
+	parseFirstLine(line); // save codecs order
+	
 	while (ss) {
 		std::getline(ss, line);
 		trim_end(line);
@@ -905,8 +907,9 @@ Description::Media::Media(const string &mline, string mid, Direction dir)
 string Description::Media::description() const {
 	std::ostringstream desc;
 	desc << Entry::description();
-	for (auto it = mRtpMaps.begin(); it != mRtpMaps.end(); ++it)
-		desc << ' ' << it->first;
+	for(const string&codec  : mCodecsOrder) {
+	  desc << ' ' << codec;
+	}
 
 	return desc.str();
 }
@@ -1051,6 +1054,17 @@ string Description::Media::generateSdpLines(string_view eol) const {
 	return sdp.str();
 }
 
+void Description::Media::parseFirstLine(string line) {
+  std::istringstream ss(line);
+  string word;
+  std::getline(ss, word, ' '); // audio
+  std::getline(ss, word, ' '); // 9
+  std::getline(ss, word, ' '); // UDP/TLS/RTP/SAVPF
+  while (std::getline(ss, word, ' ')) {
+    mCodecsOrder.push_back(word);
+  }
+}
+  
 void Description::Media::parseSdpLine(string_view line) {
 	if (match_prefix(line, "a=")) {
 		string_view attr = line.substr(2);
