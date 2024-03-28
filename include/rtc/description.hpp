@@ -228,6 +228,7 @@ public:
 		void addRtxCodec(int payloadType, int origPayloadType, unsigned int clockRate);
 
 		virtual void parseSdpLine(string_view line) override;
+		virtual void parseFirstLine(string line);
 
 	private:
 		virtual string generateSdpLines(string_view eol) const override;
@@ -235,6 +236,7 @@ public:
 		int mBas = -1;
 
 		std::map<int, RtpMap> mRtpMaps;
+		std::vector<string> mCodecsOrder;
 		std::vector<uint32_t> mSsrcs;
 		std::map<uint32_t, string> mCNameMap;
 	};
