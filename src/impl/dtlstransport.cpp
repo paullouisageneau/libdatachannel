@@ -394,27 +394,24 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 	mbedtls_ctr_drbg_set_prediction_resistance(&mDrbg, MBEDTLS_CTR_DRBG_PR_ON);
 
 	try {
-		mbedtls::check(mbedtls_ctr_drbg_seed(&mDrbg, mbedtls_entropy_func, &mEntropy, NULL, 0),
-		               "Failed creating Mbed TLS Context");
+		mbedtls::check(mbedtls_ctr_drbg_seed(&mDrbg, mbedtls_entropy_func, &mEntropy, NULL, 0));
 
 		mbedtls::check(mbedtls_ssl_config_defaults(
 		                   &mConf, mIsClient ? MBEDTLS_SSL_IS_CLIENT : MBEDTLS_SSL_IS_SERVER,
-		                   MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT),
-		               "Failed creating Mbed TLS Context");
+		                   MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT));
 
+		mbedtls_ssl_conf_max_version(&mConf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3); // TLS 1.2
 		mbedtls_ssl_conf_authmode(&mConf, MBEDTLS_SSL_VERIFY_OPTIONAL);
 		mbedtls_ssl_conf_verify(&mConf, DtlsTransport::CertificateCallback, this);
-
 		mbedtls_ssl_conf_rng(&mConf, mbedtls_ctr_drbg_random, &mDrbg);
 
 		auto [crt, pk] = mCertificate->credentials();
-		mbedtls::check(mbedtls_ssl_conf_own_cert(&mConf, crt.get(), pk.get()),
-		               "Failed creating Mbed TLS Context");
+		mbedtls::check(mbedtls_ssl_conf_own_cert(&mConf, crt.get(), pk.get()));
 
 		mbedtls_ssl_conf_dtls_cookies(&mConf, NULL, NULL, NULL);
 		mbedtls_ssl_conf_dtls_srtp_protection_profiles(&mConf, srtpSupportedProtectionProfiles);
 
-		mbedtls::check(mbedtls_ssl_setup(&mSsl, &mConf), "Failed creating Mbed TLS Context");
+		mbedtls::check(mbedtls_ssl_setup(&mSsl, &mConf));
 
 		mbedtls_ssl_set_export_keys_cb(&mSsl, DtlsTransport::ExportKeysCallback, this);
 		mbedtls_ssl_set_bio(&mSsl, this, WriteCallback, ReadCallback, NULL);
