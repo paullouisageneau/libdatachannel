@@ -97,9 +97,9 @@ message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 
 			// 12 bits for min + 12 bits for max
 			char data[] = {
-				(min >> 4) & 0xFF, 
-				((min & 0xF) << 4) | ((max >> 8) & 0xF),
-				max & 0xFF
+				static_cast<char>((min >> 4) & 0xFF), 
+				static_cast<char>(((min & 0xF) << 4) | ((max >> 8) & 0xF)),
+				static_cast<char>(max & 0xFF)
 			};
 
 			extHeader->writeOneByteHeader(offset, rtpConfig->playoutDelayId, (byte *)data, 3);
