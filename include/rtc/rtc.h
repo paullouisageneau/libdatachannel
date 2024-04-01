@@ -341,6 +341,9 @@ typedef struct {
 	// AV1 only
 	rtcObuPacketization obuPacketization; // OBU paketization for AV1 samples
 
+	uint8_t playoutDelayId;
+	uint16_t playoutDelayMin;
+	uint16_t playoutDelayMax;
 } rtcPacketizerInit;
 
 // Deprecated, do not use
