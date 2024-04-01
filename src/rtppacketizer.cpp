@@ -92,11 +92,15 @@ message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 		}
 
 		if (setPlayoutDelay) {
+			uint16_t min = rtpConfig->playoutDelayMin & 0xFFF;
+			uint16_t max = rtpConfig->playoutDelayMax & 0xFFF;
+
 			// 12 bits for min + 12 bits for max
-			char data[] = {rtpConfig->playoutDelayMin >> 4,
-			               (char)(rtpConfig->playoutDelayMin << 4) |
-			                   (char)(rtpConfig->playoutDelayMax >> 8),
-			               rtpConfig->playoutDelayMax};
+			char data[] = {
+				(min >> 4) & 0xFF, 
+				((min & 0xF) << 4) | ((max >> 8) & 0xF),
+				max & 0xFF
+			};
 
 			extHeader->writeOneByteHeader(offset, rtpConfig->playoutDelayId, (byte *)data, 3);
 			offset += 4;
