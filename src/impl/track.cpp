@@ -142,7 +142,11 @@ void Track::incoming(message_ptr message) {
 
 	message_vector messages{std::move(message)};
 	if (auto handler = getMediaHandler())
-		handler->incomingChain(messages, [this](message_ptr m) { transportSend(m); });
+		handler->incomingChain(messages, [this, weak_this = weak_from_this()](message_ptr m) {
+			if (auto locked = weak_this.lock()) {
+				transportSend(m);
+			}
+		});
 
 	for (auto &m : messages) {
 		// Tail drop if queue is full
@@ -175,7 +179,11 @@ bool Track::outgoing(message_ptr message) {
 
 	if (handler) {
 		message_vector messages{std::move(message)};
-		handler->outgoingChain(messages, [this](message_ptr m) { transportSend(m); });
+		handler->outgoingChain(messages, [this, weak_this = weak_from_this()](message_ptr m) {
+			if (auto locked = weak_this.lock()) {
+				transportSend(m);
+			}
+		});
 		bool ret = false;
 		for (auto &m : messages)
 			ret = transportSend(std::move(m));
