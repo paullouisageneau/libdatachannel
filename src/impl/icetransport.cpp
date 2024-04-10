@@ -117,27 +117,6 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 		}
 	}
 
-	juice_turn_server_t turn_servers[MAX_TURN_SERVERS_COUNT];
-	std::memset(turn_servers, 0, sizeof(turn_servers));
-
-	// Add TURN servers
-	int k = 0;
-	for (auto &server : servers) {
-		if (!server.hostname.empty() && server.type == IceServer::Type::Turn) {
-			if (server.port == 0)
-				server.port = 3478; // TURN UDP port
-			PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port << "\"";
-			turn_servers[k].host = server.hostname.c_str();
-			turn_servers[k].username = server.username.c_str();
-			turn_servers[k].password = server.password.c_str();
-			turn_servers[k].port = server.port;
-			if (++k >= MAX_TURN_SERVERS_COUNT)
-				break;
-		}
-	}
-	jconfig.turn_servers = k > 0 ? turn_servers : nullptr;
-	jconfig.turn_servers_count = k;
-
 	// Bind address
 	if (config.bindAddress) {
 		jconfig.bind_address = config.bindAddress->c_str();
@@ -154,6 +133,44 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	mAgent = decltype(mAgent)(juice_create(&jconfig), juice_destroy);
 	if (!mAgent)
 		throw std::runtime_error("Failed to create the ICE agent");
+
+	// Filter STUN servers
+	servers.erase(std::remove_if(servers.begin(), servers.end(),
+	                             [](const IceServer &server) {
+		                             return server.hostname.empty() ||
+		                                    server.type != IceServer::Type::Turn;
+	                             }),
+	              servers.end());
+
+	// Add TURN servers
+	for (auto &server : servers) {
+		if (mTURNServersAdded++ >= MAX_TURN_SERVERS_COUNT) {
+			break;
+		}
+
+		addIceServer(server);
+	}
+}
+
+void IceTransport::addIceServer(IceServer server) {
+	if (server.hostname.empty() || server.type != IceServer::Type::Turn) {
+		PLOG_WARNING << "Only TURN servers are supported as additional ICE servers";
+		return;
+	}
+
+	if (server.port == 0)
+		server.port = 3478; // TURN UDP port
+
+	PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port << "\"";
+	juice_turn_server_t turn_server = {};
+	turn_server.host = server.hostname.c_str();
+	turn_server.username = server.username.c_str();
+	turn_server.password = server.password.c_str();
+	turn_server.port = server.port;
+
+	if (juice_add_turn_server(mAgent.get(), &turn_server) != 0) {
+		throw std::runtime_error("Failed to add TURN server");
+	}
 }
 
 IceTransport::~IceTransport() {
@@ -210,8 +227,17 @@ bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 	return juice_add_remote_candidate(mAgent.get(), string(candidate).c_str()) >= 0;
 }
 
-void IceTransport::gatherLocalCandidates(string mid) {
+void IceTransport::gatherLocalCandidates(string mid, std::vector<IceServer> additionalIceServers) {
 	mMid = std::move(mid);
+	std::shuffle(additionalIceServers.begin(), additionalIceServers.end(), utils::random_engine());
+
+	for (auto &server : additionalIceServers) {
+		if (mTURNServersAdded++ >= MAX_TURN_SERVERS_COUNT) {
+			break;
+		}
+
+		addIceServer(server);
+	}
 
 	// Change state now as candidates calls can be synchronous
 	changeGatheringState(GatheringState::InProgress);
@@ -533,59 +559,17 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 			break;
 	}
 
+	// Filter STUN servers
+	servers.erase(std::remove_if(servers.begin(), servers.end(),
+	                             [](const IceServer &server) {
+		                             return server.hostname.empty() ||
+		                                    server.type != IceServer::Type::Turn;
+	                             }),
+	              servers.end());
+
 	// Add TURN servers
 	for (auto &server : servers) {
-		if (server.hostname.empty())
-			continue;
-		if (server.type != IceServer::Type::Turn)
-			continue;
-		if (server.port == 0)
-			server.port = server.relayType == IceServer::RelayType::TurnTls ? 5349 : 3478;
-
-		struct addrinfo hints = {};
-		hints.ai_family = AF_UNSPEC;
-		hints.ai_socktype =
-		    server.relayType == IceServer::RelayType::TurnUdp ? SOCK_DGRAM : SOCK_STREAM;
-		hints.ai_protocol =
-		    server.relayType == IceServer::RelayType::TurnUdp ? IPPROTO_UDP : IPPROTO_TCP;
-		hints.ai_flags = AI_ADDRCONFIG;
-		struct addrinfo *result = nullptr;
-		if (getaddrinfo(server.hostname.c_str(), std::to_string(server.port).c_str(), &hints,
-		                &result) != 0) {
-			PLOG_WARNING << "Unable to resolve TURN server address: " << server.hostname << ':'
-			             << server.port;
-			continue;
-		}
-
-		for (auto p = result; p; p = p->ai_next) {
-			if (p->ai_family == AF_INET || p->ai_family == AF_INET6) {
-				char nodebuffer[MAX_NUMERICNODE_LEN];
-				char servbuffer[MAX_NUMERICSERV_LEN];
-				if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN,
-				                servbuffer, MAX_NUMERICSERV_LEN,
-				                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-					PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port
-					          << "\"";
-					NiceRelayType niceRelayType;
-					switch (server.relayType) {
-					case IceServer::RelayType::TurnTcp:
-						niceRelayType = NICE_RELAY_TYPE_TURN_TCP;
-						break;
-					case IceServer::RelayType::TurnTls:
-						niceRelayType = NICE_RELAY_TYPE_TURN_TLS;
-						break;
-					default:
-						niceRelayType = NICE_RELAY_TYPE_TURN_UDP;
-						break;
-					}
-					nice_agent_set_relay_info(mNiceAgent.get(), mStreamId, 1, nodebuffer,
-					                          std::stoul(servbuffer), server.username.c_str(),
-					                          server.password.c_str(), niceRelayType);
-				}
-			}
-		}
-
-		freeaddrinfo(result);
+		addIceServer(server);
 	}
 
 	g_signal_connect(G_OBJECT(mNiceAgent.get()), "component-state-changed",
@@ -601,6 +585,60 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 
 	nice_agent_attach_recv(mNiceAgent.get(), mStreamId, 1, g_main_loop_get_context(MainLoop.get()),
 	                       RecvCallback, this);
+}
+
+void IceTransport::addIceServer(IceServer server) {
+	if (server.hostname.empty() || server.type != IceServer::Type::Turn) {
+		PLOG_WARNING << "Only TURN servers are supported as additional ICE servers";
+		return;
+	}
+
+	if (server.port == 0)
+		server.port = server.relayType == IceServer::RelayType::TurnTls ? 5349 : 3478;
+
+	struct addrinfo hints = {};
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype =
+	    server.relayType == IceServer::RelayType::TurnUdp ? SOCK_DGRAM : SOCK_STREAM;
+	hints.ai_protocol =
+	    server.relayType == IceServer::RelayType::TurnUdp ? IPPROTO_UDP : IPPROTO_TCP;
+	hints.ai_flags = AI_ADDRCONFIG;
+	struct addrinfo *result = nullptr;
+	if (getaddrinfo(server.hostname.c_str(), std::to_string(server.port).c_str(), &hints,
+	                &result) != 0) {
+		PLOG_WARNING << "Unable to resolve TURN server address: " << server.hostname << ':'
+		             << server.port;
+		return;
+	}
+
+	for (auto p = result; p; p = p->ai_next) {
+		if (p->ai_family == AF_INET || p->ai_family == AF_INET6) {
+			char nodebuffer[MAX_NUMERICNODE_LEN];
+			char servbuffer[MAX_NUMERICSERV_LEN];
+			if (getnameinfo(p->ai_addr, p->ai_addrlen, nodebuffer, MAX_NUMERICNODE_LEN, servbuffer,
+			                MAX_NUMERICSERV_LEN, NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+				PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port
+				          << "\"";
+				NiceRelayType niceRelayType;
+				switch (server.relayType) {
+				case IceServer::RelayType::TurnTcp:
+					niceRelayType = NICE_RELAY_TYPE_TURN_TCP;
+					break;
+				case IceServer::RelayType::TurnTls:
+					niceRelayType = NICE_RELAY_TYPE_TURN_TLS;
+					break;
+				default:
+					niceRelayType = NICE_RELAY_TYPE_TURN_UDP;
+					break;
+				}
+				nice_agent_set_relay_info(mNiceAgent.get(), mStreamId, 1, nodebuffer,
+				                          std::stoul(servbuffer), server.username.c_str(),
+				                          server.password.c_str(), niceRelayType);
+			}
+		}
+	}
+
+	freeaddrinfo(result);
 }
 
 IceTransport::~IceTransport() {
@@ -684,8 +722,13 @@ bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 	return ret > 0;
 }
 
-void IceTransport::gatherLocalCandidates(string mid) {
+void IceTransport::gatherLocalCandidates(string mid, std::vector<IceServer> additionalIceServers) {
 	mMid = std::move(mid);
+	std::shuffle(additionalIceServers.begin(), additionalIceServers.end(), utils::random_engine());
+
+	for (auto &server : additionalIceServers) {
+		addIceServer(server);
+	}
 
 	// Change state now as candidates calls can be synchronous
 	changeGatheringState(GatheringState::InProgress);

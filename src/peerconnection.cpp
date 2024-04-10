@@ -146,8 +146,21 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 	impl()->changeSignalingState(newSignalingState);
 	signalingLock.unlock();
 
-	if (impl()->gatheringState == GatheringState::New) {
+	if (impl()->gatheringState == GatheringState::New && !impl()->config.disableAutoGathering) {
 		iceTransport->gatherLocalCandidates(impl()->localBundleMid());
+	}
+}
+
+void PeerConnection::gatherLocalCandidates(std::vector<IceServer> additionalIceServers) {
+	auto iceTransport = impl()->getIceTransport();
+	if (!iceTransport) {
+		throw std::logic_error("No IceTransport. Local Description has not been set");
+	}
+
+	if (impl()->gatheringState == GatheringState::New) {
+		iceTransport->gatherLocalCandidates(impl()->localBundleMid(), additionalIceServers);
+	} else {
+		PLOG_WARNING << "Candidates gathering already started";
 	}
 }
 
