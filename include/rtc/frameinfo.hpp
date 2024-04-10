@@ -14,7 +14,8 @@
 namespace rtc {
 
 struct RTC_CPP_EXPORT FrameInfo {
-	FrameInfo(uint32_t timestamp) : timestamp(timestamp){};
+	FrameInfo(uint8_t payloadType, uint32_t timestamp) : payloadType(payloadType), timestamp(timestamp){};
+	uint8_t payloadType; // Indicates codec of the frame
 	uint32_t timestamp = 0; // RTP Timestamp
 };
 

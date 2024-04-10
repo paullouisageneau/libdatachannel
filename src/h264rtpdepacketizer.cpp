@@ -32,10 +32,10 @@ const uint8_t naluTypeSTAPA = 24;
 const uint8_t naluTypeFUA = 28;
 
 message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
-                                                message_vector::iterator end, uint32_t timestamp) {
+                                                message_vector::iterator end, uint8_t payloadType, uint32_t timestamp) {
 	message_vector out = {};
 	auto fua_buffer = std::vector<std::byte>{};
-	auto frameInfo = std::make_shared<FrameInfo>(timestamp);
+	auto frameInfo = std::make_shared<FrameInfo>(payloadType, timestamp);
 
 	for (auto it = begin; it != end; it++) {
 		auto pkt = it->get();
@@ -111,6 +111,7 @@ void H264RtpDepacketizer::incoming(message_vector &messages, const message_callb
 	               messages.end());
 
 	while (mRtpBuffer.size() != 0) {
+		uint8_t payload_type = 0;
 		uint32_t current_timestamp = 0;
 		size_t packets_in_timestamp = 0;
 
@@ -119,6 +120,7 @@ void H264RtpDepacketizer::incoming(message_vector &messages, const message_callb
 
 			if (current_timestamp == 0) {
 				current_timestamp = p->timestamp();
+				payload_type = p->payloadType(); // should all be the same for data of the same codec
 			} else if (current_timestamp != p->timestamp()) {
 				break;
 			}
@@ -133,7 +135,7 @@ void H264RtpDepacketizer::incoming(message_vector &messages, const message_callb
 		auto begin = mRtpBuffer.begin();
 		auto end = mRtpBuffer.begin() + (packets_in_timestamp - 1);
 
-		auto frames = buildFrames(begin, end + 1, current_timestamp);
+		auto frames = buildFrames(begin, end + 1, payload_type, current_timestamp);
 		messages.insert(messages.end(), frames.begin(), frames.end());
 		mRtpBuffer.erase(mRtpBuffer.begin(), mRtpBuffer.begin() + packets_in_timestamp);
 	}
