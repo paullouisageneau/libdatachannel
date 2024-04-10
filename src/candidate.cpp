@@ -89,7 +89,7 @@ void Candidate::parse(string candidate) {
 
 	PLOG_VERBOSE << "Parsing candidate: " << candidate;
 
-	// See RFC 8445 for format
+	// See RFC 8839 for format
 	std::istringstream iss(candidate);
 	string typ_;
 	if (!(iss >> mFoundation >> mComponent >> mTransportString >> mPriority &&

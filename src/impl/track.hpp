@@ -38,6 +38,10 @@ public:
 	optional<message_variant> receive() override;
 	optional<message_variant> peek() override;
 	size_t availableAmount() const override;
+	void flushPendingMessages() override;
+	message_variant trackMessageToVariant(message_ptr message);
+
+	void onFrame(std::function<void(binary data, FrameInfo frame)> callback);
 
 	bool isOpen() const;
 	bool isClosed() const;
@@ -71,6 +75,8 @@ private:
 	std::atomic<bool> mIsClosed = false;
 
 	Queue<message_ptr> mRecvQueue;
+
+	synchronized_callback<binary, FrameInfo> frameCallback;
 };
 
 } // namespace rtc::impl

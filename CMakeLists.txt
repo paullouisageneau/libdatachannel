@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.7)
 project(libdatachannel
-	VERSION 0.20.1
+	VERSION 0.20.2
 	LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "C/C++ WebRTC network library featuring Data Channels, Media Transport, and WebSockets")
 
@@ -76,6 +76,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizationconfig.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsrreporter.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h264rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h264rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/nalunit.cpp
@@ -101,6 +102,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/common.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/global.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/message.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/frameinfo.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/peerconnection.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/reliability.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.h
@@ -112,6 +114,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizationconfig.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpsrreporter.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/nalunit.hpp

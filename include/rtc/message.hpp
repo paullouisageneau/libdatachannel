@@ -10,6 +10,7 @@
 #define RTC_MESSAGE_H
 
 #include "common.hpp"
+#include "frameinfo.hpp"
 #include "reliability.hpp"
 
 #include <functional>
@@ -32,6 +33,7 @@ struct RTC_CPP_EXPORT Message : binary {
 	unsigned int stream = 0; // Stream id (SCTP stream or SSRC)
 	unsigned int dscp = 0;   // Differentiated Services Code Point
 	shared_ptr<Reliability> reliability;
+	shared_ptr<FrameInfo> frameInfo;
 };
 
 using message_ptr = shared_ptr<Message>;
@@ -44,10 +46,12 @@ inline size_t message_size_func(const message_ptr &m) {
 
 template <typename Iterator>
 message_ptr make_message(Iterator begin, Iterator end, Message::Type type = Message::Binary,
-                         unsigned int stream = 0, shared_ptr<Reliability> reliability = nullptr) {
+                         unsigned int stream = 0, shared_ptr<Reliability> reliability = nullptr,
+                         shared_ptr<FrameInfo> frameInfo = nullptr) {
 	auto message = std::make_shared<Message>(begin, end, type);
 	message->stream = stream;
 	message->reliability = reliability;
+	message->frameInfo = frameInfo;
 	return message;
 }
 
@@ -57,7 +61,8 @@ RTC_CPP_EXPORT message_ptr make_message(size_t size, Message::Type type = Messag
 
 RTC_CPP_EXPORT message_ptr make_message(binary &&data, Message::Type type = Message::Binary,
                                         unsigned int stream = 0,
-                                        shared_ptr<Reliability> reliability = nullptr);
+                                        shared_ptr<Reliability> reliability = nullptr,
+                                        shared_ptr<FrameInfo> frameInfo = nullptr);
 
 RTC_CPP_EXPORT message_ptr make_message(size_t size, message_ptr orig);
 

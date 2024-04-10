@@ -336,6 +336,7 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 		    &mConf, mIsClient ? MBEDTLS_SSL_IS_CLIENT : MBEDTLS_SSL_IS_SERVER,
 		    MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT));
 
+		mbedtls_ssl_conf_max_version(&mConf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3); // TLS 1.2
 		mbedtls_ssl_conf_authmode(&mConf, MBEDTLS_SSL_VERIFY_OPTIONAL);
 		mbedtls_ssl_conf_rng(&mConf, mbedtls_ctr_drbg_random, &mDrbg);
 
@@ -577,7 +578,7 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 	PLOG_DEBUG << "Initializing TLS transport (OpenSSL)";
 
 	try {
-		if (!(mCtx = SSL_CTX_new(SSLv23_method()))) // version-flexible
+		if (!(mCtx = SSL_CTX_new(TLS_method()))) // version-flexible
 			throw std::runtime_error("Failed to create SSL context");
 
 		openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),

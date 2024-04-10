@@ -32,7 +32,8 @@ public:
 private:
 	std::vector<message_ptr> mRtpBuffer;
 
-	message_vector buildFrames(message_vector::iterator firstPkt, message_vector::iterator lastPkt);
+	message_vector buildFrames(message_vector::iterator firstPkt, message_vector::iterator lastPkt,
+	                           uint32_t timestamp);
 };
 
 } // namespace rtc
