@@ -101,7 +101,7 @@ bool check(int ret, const string &message) {
 	if (ret < 0) {
 		if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE ||
 		    ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS || ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS ||
-		    ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)
+		    ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY || ret == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET)
 			return false;
 
 		const size_t bufferSize = 1024;
