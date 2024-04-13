@@ -32,6 +32,17 @@ message_vector H265RtpDepacketizer::buildFrames(message_vector::iterator begin,
 		auto pkt = it->get();
 		auto pktParsed = reinterpret_cast<const rtc::RtpHeader *>(pkt->data());
 		auto rtpHeaderSize = pktParsed->getSize() + pktParsed->getExtensionHeaderSize();
+		auto rtpPaddingSize = 0;
+
+		if (pktParsed->padding()) {
+			rtpPaddingSize = std::to_integer<uint8_t>(pkt->at(pkt->size() - 1));
+		}
+
+		if (pkt->size() == rtpHeaderSize + rtpPaddingSize) {
+			PLOG_VERBOSE << "H.265 RTP packet has empty payload";
+			continue;
+		}
+
 		auto nalUnitHeader =
 		    H265NalUnitHeader{std::to_integer<uint8_t>(pkt->at(rtpHeaderSize)),
 		                      std::to_integer<uint8_t>(pkt->at(rtpHeaderSize + 1))};
