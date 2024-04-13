@@ -16,10 +16,43 @@
 
 namespace rtc {
 
-const binary naluStartCode = {byte{0}, byte{0}, byte{0}, byte{1}};
+const binary naluLongStartCode = {byte{0}, byte{0}, byte{0}, byte{1}};
+const binary naluShortStartCode = {byte{0}, byte{0}, byte{1}};
 
 const uint8_t naluTypeAP = 48;
 const uint8_t naluTypeFU = 49;
+
+H265RtpDepacketizer::H265RtpDepacketizer(Separator separator) : separator(separator) {
+	switch (separator) {
+	case Separator::StartSequence: [[fallthrough]];
+	case Separator::LongStartSequence: [[fallthrough]];
+	case Separator::ShortStartSequence:
+		break;
+	case Separator::Length: [[fallthrough]];
+	default:
+		throw std::invalid_argument("Invalid separator");
+	}
+}
+
+void H265RtpDepacketizer::addSeparator(binary& accessUnit)
+{
+	switch (separator) {
+	case Separator::StartSequence: [[fallthrough]];
+	case Separator::LongStartSequence:
+		accessUnit.insert(accessUnit.end(),
+		                  naluLongStartCode.begin(),
+		                  naluLongStartCode.end());
+		break;
+	case Separator::ShortStartSequence:
+		accessUnit.insert(accessUnit.end(),
+		                  naluShortStartCode.begin(),
+		                  naluShortStartCode.end());
+		break;
+	case Separator::Length: [[fallthrough]];
+	default:
+		throw std::invalid_argument("Invalid separator");
+	}
+}
 
 message_vector H265RtpDepacketizer::buildFrames(message_vector::iterator begin,
                                                 message_vector::iterator end, uint32_t timestamp) {
@@ -52,8 +85,7 @@ message_vector H265RtpDepacketizer::buildFrames(message_vector::iterator begin,
 			    std::to_integer<uint8_t>(pkt->at(rtpHeaderSize + sizeof(H265NalUnitHeader)))};
 
 			if (nFrags++ == 0) {
-				accessUnit.insert(accessUnit.end(), naluStartCode.begin(), naluStartCode.end());
-
+				addSeparator(accessUnit);
 				nalUnitHeader.setUnitType(nalUnitFragmentHeader.unitType());
 				accessUnit.emplace_back(byte(nalUnitHeader._first));
 				accessUnit.emplace_back(byte(nalUnitHeader._second));
@@ -76,8 +108,7 @@ message_vector H265RtpDepacketizer::buildFrames(message_vector::iterator begin,
 					throw std::runtime_error("H265 AP declared size is larger than buffer");
 				}
 
-				accessUnit.insert(accessUnit.end(), naluStartCode.begin(), naluStartCode.end());
-
+				addSeparator(accessUnit);
 				accessUnit.insert(accessUnit.end(), pkt->begin() + currOffset,
 				                  pkt->begin() + currOffset + naluSize);
 
@@ -86,7 +117,7 @@ message_vector H265RtpDepacketizer::buildFrames(message_vector::iterator begin,
 		} else if (nalUnitHeader.unitType() < naluTypeAP) {
 			// "NAL units with NAL unit type values in the range of 0 to 47, inclusive, may be
 			// passed to the decoder."
-			accessUnit.insert(accessUnit.end(), naluStartCode.begin(), naluStartCode.end());
+			addSeparator(accessUnit);
 			accessUnit.insert(accessUnit.end(), pkt->begin() + rtpHeaderSize, pkt->end());
 		} else {
 			// "NAL-unit-like structures with NAL unit type values in the range of 48 to 63,
