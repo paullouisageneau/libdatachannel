@@ -14,6 +14,7 @@
 #if RTC_ENABLE_MEDIA
 
 #include "common.hpp"
+#include "h265nalunit.hpp"
 #include "mediahandler.hpp"
 #include "message.hpp"
 #include "rtp.hpp"
@@ -25,14 +26,18 @@ namespace rtc {
 /// RTP depacketization for H265
 class RTC_CPP_EXPORT H265RtpDepacketizer : public MediaHandler {
 public:
-	H265RtpDepacketizer() = default;
+	using Separator = NalUnit::Separator;
+
+	H265RtpDepacketizer(Separator separator = Separator::LongStartSequence);
 	virtual ~H265RtpDepacketizer() = default;
 
 	void incoming(message_vector &messages, const message_callback &send) override;
 
 private:
 	std::vector<message_ptr> mRtpBuffer;
+	const NalUnit::Separator separator;
 
+	void addSeparator(binary& accessUnit);
 	message_vector buildFrames(message_vector::iterator firstPkt, message_vector::iterator lastPkt,
 	                           uint32_t timestamp);
 };
