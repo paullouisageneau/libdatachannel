@@ -96,13 +96,13 @@ message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 			uint16_t max = rtpConfig->playoutDelayMax & 0xFFF;
 
 			// 12 bits for min + 12 bits for max
-			char data[] = {
-				static_cast<char>((min >> 4) & 0xFF), 
-				static_cast<char>(((min & 0xF) << 4) | ((max >> 8) & 0xF)),
-				static_cast<char>(max & 0xFF)
+			byte data[] = {
+				byte((min >> 4) & 0xFF), 
+				byte(((min & 0xF) << 4) | ((max >> 8) & 0xF)),
+				byte(max & 0xFF)
 			};
 
-			extHeader->writeOneByteHeader(offset, rtpConfig->playoutDelayId, (byte *)data, 3);
+			extHeader->writeOneByteHeader(offset, rtpConfig->playoutDelayId, data, 3);
 			offset += 4;
 		}
 	}
