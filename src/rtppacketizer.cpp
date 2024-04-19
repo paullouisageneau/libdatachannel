@@ -34,7 +34,7 @@ message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 	const bool setPlayoutDelay = (rtpConfig->playoutDelayId > 0 && rtpConfig->playoutDelayId < 15);
 
 	if (setPlayoutDelay)
-		rtpExtHeaderSize += 1;
+		rtpExtHeaderSize += 4;
 
 	if (rtpConfig->mid.has_value())
 		rtpExtHeaderSize += (1 + rtpConfig->mid->length());
