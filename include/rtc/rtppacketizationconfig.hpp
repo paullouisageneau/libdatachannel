@@ -61,6 +61,14 @@ public:
 	uint8_t ridId = 0;
 	optional<std::string> rid;
 
+	// the negotiated ID of the playout delay header extension
+	// https://webrtc.googlesource.com/src/+/main/docs/native-code/rtp-hdrext/playout-delay/README.md
+	uint8_t playoutDelayId;
+
+	// Minimum/maxiumum playout delay, in 10ms intervals. A value of 10 would equal a 100ms delay
+	uint16_t playoutDelayMin;
+	uint16_t playoutDelayMax;
+
 	/// Construct RTP configuration used in packetization process
 	/// @param ssrc SSRC of source
 	/// @param cname CNAME of source

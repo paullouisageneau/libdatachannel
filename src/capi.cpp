@@ -275,6 +275,9 @@ createRtpPacketizationConfig(const rtcPacketizationHandlerInit *init) {
 	                                                       init->payloadType, init->clockRate);
 	config->sequenceNumber = init->sequenceNumber;
 	config->timestamp = init->timestamp;
+	config->playoutDelayId = init->playoutDelayId;
+	config->playoutDelayMin = init->playoutDelayMin;
+	config->playoutDelayMax = init->playoutDelayMax;
 	return config;
 }
 
