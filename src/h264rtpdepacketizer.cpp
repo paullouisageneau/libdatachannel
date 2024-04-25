@@ -10,94 +10,103 @@
 
 #include "h264rtpdepacketizer.hpp"
 #include "nalunit.hpp"
-#include "track.hpp"
 
-#include "impl/logcounter.hpp"
-
-#include <cmath>
-#include <utility>
-
-#ifdef _WIN32
-#include <winsock2.h>
-#else
-#include <arpa/inet.h>
-#endif
+#include "impl/internals.hpp"
 
 namespace rtc {
 
-const unsigned long stapaHeaderSize = 1;
-const auto fuaHeaderSize = 2;
+const binary naluLongStartCode = {byte{0}, byte{0}, byte{0}, byte{1}};
+const binary naluShortStartCode = {byte{0}, byte{0}, byte{1}};
 
 const uint8_t naluTypeSTAPA = 24;
 const uint8_t naluTypeFUA = 28;
 
-message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
-                                                message_vector::iterator end, uint8_t payloadType, uint32_t timestamp) {
-	message_vector out = {};
-	auto fua_buffer = std::vector<std::byte>{};
-	auto frameInfo = std::make_shared<FrameInfo>(payloadType, timestamp);
+H264RtpDepacketizer::H264RtpDepacketizer(Separator separator) : mSeparator(separator) {
+	if (separator != Separator::StartSequence && separator != Separator::LongStartSequence &&
+	    separator != Separator::ShortStartSequence) {
+		throw std::invalid_argument("Invalid separator");
+	}
+}
 
-	for (auto it = begin; it != end; it++) {
+void H264RtpDepacketizer::addSeparator(binary &accessUnit) {
+	if (mSeparator == Separator::StartSequence || mSeparator == Separator::LongStartSequence) {
+		accessUnit.insert(accessUnit.end(), naluLongStartCode.begin(), naluLongStartCode.end());
+	} else if (mSeparator == Separator::ShortStartSequence) {
+		accessUnit.insert(accessUnit.end(), naluShortStartCode.begin(), naluShortStartCode.end());
+	} else {
+		throw std::invalid_argument("Invalid separator");
+	}
+}
+
+message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
+                                                message_vector::iterator end, uint8_t payloadType,
+                                                uint32_t timestamp) {
+	message_vector out = {};
+	auto accessUnit = binary{};
+	auto frameInfo = std::make_shared<FrameInfo>(payloadType, timestamp);
+	auto nFrags = 0;
+
+	for (auto it = begin; it != end; ++it) {
 		auto pkt = it->get();
 		auto pktParsed = reinterpret_cast<const rtc::RtpHeader *>(pkt->data());
-		auto headerSize =
-		    sizeof(rtc::RtpHeader) + pktParsed->csrcCount() + pktParsed->getExtensionHeaderSize();
-		auto paddingSize = 0;
+		auto rtpHeaderSize = pktParsed->getSize() + pktParsed->getExtensionHeaderSize();
+		auto rtpPaddingSize = 0;
 
 		if (pktParsed->padding()) {
-			paddingSize = std::to_integer<uint8_t>(pkt->at(pkt->size() - 1));
+			rtpPaddingSize = std::to_integer<uint8_t>(pkt->at(pkt->size() - 1));
 		}
 
-		if (pkt->size() == headerSize + paddingSize) {
+		if (pkt->size() == rtpHeaderSize + rtpPaddingSize) {
 			PLOG_VERBOSE << "H.264 RTP packet has empty payload";
 			continue;
 		}
 
-		auto nalUnitHeader = NalUnitHeader{std::to_integer<uint8_t>(pkt->at(headerSize))};
+		auto nalUnitHeader = NalUnitHeader{std::to_integer<uint8_t>(pkt->at(rtpHeaderSize))};
 
-		if (fua_buffer.size() != 0 || nalUnitHeader.unitType() == naluTypeFUA) {
-			if (fua_buffer.size() == 0) {
-				fua_buffer.push_back(std::byte(0));
+		if (nalUnitHeader.unitType() == naluTypeFUA) {
+			auto nalUnitFragmentHeader = NalUnitFragmentHeader{
+			    std::to_integer<uint8_t>(pkt->at(rtpHeaderSize + sizeof(NalUnitHeader)))};
+
+			if (nFrags++ == 0) {
+				addSeparator(accessUnit);
+				accessUnit.emplace_back(
+				    byte(nalUnitHeader.idc() | nalUnitFragmentHeader.unitType()));
 			}
 
-			auto nalUnitFragmentHeader =
-			    NalUnitFragmentHeader{std::to_integer<uint8_t>(pkt->at(headerSize + 1))};
-
-			std::copy(pkt->begin() + headerSize + fuaHeaderSize, pkt->end(),
-			          std::back_inserter(fua_buffer));
-
-			if (nalUnitFragmentHeader.isEnd()) {
-				fua_buffer.at(0) =
-				    std::byte(nalUnitHeader.idc() | nalUnitFragmentHeader.unitType());
-
-				out.push_back(
-				    make_message(std::move(fua_buffer), Message::Binary, 0, nullptr, frameInfo));
-				fua_buffer.clear();
-			}
+			accessUnit.insert(accessUnit.end(),
+			                  pkt->begin() + rtpHeaderSize + sizeof(NalUnitHeader) +
+			                      sizeof(NalUnitFragmentHeader),
+			                  pkt->end());
 		} else if (nalUnitHeader.unitType() > 0 && nalUnitHeader.unitType() < 24) {
-			out.push_back(make_message(pkt->begin() + headerSize, pkt->end(), Message::Binary, 0,
-			                           nullptr, frameInfo));
+			addSeparator(accessUnit);
+			accessUnit.insert(accessUnit.end(), pkt->begin() + rtpHeaderSize, pkt->end());
 		} else if (nalUnitHeader.unitType() == naluTypeSTAPA) {
-			auto currOffset = stapaHeaderSize + headerSize;
+			auto currOffset = rtpHeaderSize + sizeof(NalUnitHeader);
 
-			while (currOffset < pkt->size()) {
-				auto naluSize =
-				    uint16_t(pkt->at(currOffset)) << 8 | uint8_t(pkt->at(currOffset + 1));
+			while (currOffset + sizeof(uint16_t) < pkt->size()) {
+				auto naluSize = std::to_integer<uint16_t>(pkt->at(currOffset)) << 8 |
+				                std::to_integer<uint16_t>(pkt->at(currOffset + 1));
 
-				currOffset += 2;
+				currOffset += sizeof(uint16_t);
 
 				if (pkt->size() < currOffset + naluSize) {
-					throw std::runtime_error("STAP-A declared size is larger then buffer");
+					throw std::runtime_error("H264 STAP-A declared size is larger than buffer");
 				}
 
-				out.push_back(make_message(pkt->begin() + currOffset,
-				                           pkt->begin() + currOffset + naluSize, Message::Binary, 0,
-				                           nullptr, frameInfo));
+				addSeparator(accessUnit);
+				accessUnit.insert(accessUnit.end(), pkt->begin() + currOffset,
+				                  pkt->begin() + currOffset + naluSize);
+
 				currOffset += naluSize;
 			}
 		} else {
 			throw std::runtime_error("Unknown H264 RTP Packetization");
 		}
+	}
+
+	if (!accessUnit.empty()) {
+		out.emplace_back(make_message(accessUnit.begin(), accessUnit.end(), Message::Binary, 0,
+		                              nullptr, frameInfo));
 	}
 
 	return out;
@@ -131,7 +140,8 @@ void H264RtpDepacketizer::incoming(message_vector &messages, const message_callb
 
 			if (current_timestamp == 0) {
 				current_timestamp = p->timestamp();
-				payload_type = p->payloadType(); // should all be the same for data of the same codec
+				payload_type =
+				    p->payloadType(); // should all be the same for data of the same codec
 			} else if (current_timestamp != p->timestamp()) {
 				break;
 			}
