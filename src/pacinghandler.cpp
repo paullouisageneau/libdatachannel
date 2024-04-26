@@ -49,10 +49,7 @@ void PacingHandler::schedule(const message_callback &send) {
 			}
 
 			if (!mRtpBuffer.empty()) {
-				printf("\n more \n");
 				schedule(send);
-			} else {
-				printf("\n empty \n");
 			}
 		}
 	});
