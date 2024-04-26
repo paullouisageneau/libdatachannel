@@ -19,9 +19,8 @@
 
 namespace rtc {
 
-// Paced sending of RTP packets. Takes a stream of RTP packets that can an
-// uneven bitrate. It then delivers these packets in a smoother manner by
-// sending a fixed size of them on an interval
+// Paced sending of RTP packets. It takes a stream of RTP packets that can have an uneven bitrate
+// and delivers them in a smoother manner by sending a fixed size of them on an interval
 class RTC_CPP_EXPORT PacingHandler : public MediaHandler {
 public:
 	PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval);

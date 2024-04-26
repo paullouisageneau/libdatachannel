@@ -18,7 +18,7 @@
 namespace rtc {
 
 PacingHandler::PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval)
-    : mBytesPerSecond(bitsPerSecond / 8), mBudget(0), mSendInterval(sendInterval){};
+    : mBytesPerSecond(bitsPerSecond / 8), mBudget(0.), mSendInterval(sendInterval){};
 
 void PacingHandler::schedule(const message_callback &send) {
 	if (!mHaveScheduled.exchange(true)) {
