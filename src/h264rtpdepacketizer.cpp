@@ -105,8 +105,8 @@ message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
 	}
 
 	if (!accessUnit.empty()) {
-		out.emplace_back(make_message(accessUnit.begin(), accessUnit.end(), Message::Binary, 0,
-		                              nullptr, frameInfo));
+		out.emplace_back(
+		    make_message(std::move(accessUnit), Message::Binary, 0, nullptr, frameInfo));
 	}
 
 	return out;

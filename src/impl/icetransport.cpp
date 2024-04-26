@@ -134,29 +134,23 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	if (!mAgent)
 		throw std::runtime_error("Failed to create the ICE agent");
 
-	// Filter STUN servers
-	servers.erase(std::remove_if(servers.begin(), servers.end(),
-	                             [](const IceServer &server) {
-		                             return server.hostname.empty() ||
-		                                    server.type != IceServer::Type::Turn;
-	                             }),
-	              servers.end());
-
 	// Add TURN servers
-	for (auto &server : servers) {
-		if (mTURNServersAdded++ >= MAX_TURN_SERVERS_COUNT) {
-			break;
-		}
-
-		addIceServer(server);
-	}
+	for (const auto &server : servers)
+		if (!server.hostname.empty() && server.type != IceServer::Type::Stun)
+			addIceServer(server);
 }
 
 void IceTransport::addIceServer(IceServer server) {
-	if (server.hostname.empty() || server.type != IceServer::Type::Turn) {
+	if (server.hostname.empty())
+		return;
+
+	if (server.type != IceServer::Type::Turn) {
 		PLOG_WARNING << "Only TURN servers are supported as additional ICE servers";
 		return;
 	}
+
+	if (mTurnServersAdded >= MAX_TURN_SERVERS_COUNT)
+		return;
 
 	if (server.port == 0)
 		server.port = 3478; // TURN UDP port
@@ -168,9 +162,10 @@ void IceTransport::addIceServer(IceServer server) {
 	turn_server.password = server.password.c_str();
 	turn_server.port = server.port;
 
-	if (juice_add_turn_server(mAgent.get(), &turn_server) != 0) {
+	if (juice_add_turn_server(mAgent.get(), &turn_server) != 0)
 		throw std::runtime_error("Failed to add TURN server");
-	}
+
+	++mTurnServersAdded;
 }
 
 IceTransport::~IceTransport() {
@@ -229,15 +224,10 @@ bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 
 void IceTransport::gatherLocalCandidates(string mid, std::vector<IceServer> additionalIceServers) {
 	mMid = std::move(mid);
+
 	std::shuffle(additionalIceServers.begin(), additionalIceServers.end(), utils::random_engine());
-
-	for (auto &server : additionalIceServers) {
-		if (mTURNServersAdded++ >= MAX_TURN_SERVERS_COUNT) {
-			break;
-		}
-
+	for (const auto &server : additionalIceServers)
 		addIceServer(server);
-	}
 
 	// Change state now as candidates calls can be synchronous
 	changeGatheringState(GatheringState::InProgress);
@@ -559,18 +549,10 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 			break;
 	}
 
-	// Filter STUN servers
-	servers.erase(std::remove_if(servers.begin(), servers.end(),
-	                             [](const IceServer &server) {
-		                             return server.hostname.empty() ||
-		                                    server.type != IceServer::Type::Turn;
-	                             }),
-	              servers.end());
-
 	// Add TURN servers
-	for (auto &server : servers) {
-		addIceServer(server);
-	}
+	for (const auto &server : servers)
+		if (!server.hostname.empty() && server.type != IceServer::Type::Stun)
+			addIceServer(server);
 
 	g_signal_connect(G_OBJECT(mNiceAgent.get()), "component-state-changed",
 	                 G_CALLBACK(StateChangeCallback), this);
@@ -588,7 +570,10 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 }
 
 void IceTransport::addIceServer(IceServer server) {
-	if (server.hostname.empty() || server.type != IceServer::Type::Turn) {
+	if (server.hostname.empty())
+		return;
+
+	if (server.type != IceServer::Type::Turn) {
 		PLOG_WARNING << "Only TURN servers are supported as additional ICE servers";
 		return;
 	}
@@ -724,11 +709,10 @@ bool IceTransport::addRemoteCandidate(const Candidate &candidate) {
 
 void IceTransport::gatherLocalCandidates(string mid, std::vector<IceServer> additionalIceServers) {
 	mMid = std::move(mid);
-	std::shuffle(additionalIceServers.begin(), additionalIceServers.end(), utils::random_engine());
 
-	for (auto &server : additionalIceServers) {
+	std::shuffle(additionalIceServers.begin(), additionalIceServers.end(), utils::random_engine());
+	for (const auto &server : additionalIceServers)
 		addIceServer(server);
-	}
 
 	// Change state now as candidates calls can be synchronous
 	changeGatheringState(GatheringState::InProgress);

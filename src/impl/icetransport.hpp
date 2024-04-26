@@ -81,7 +81,7 @@ private:
 
 #if !USE_NICE
 	unique_ptr<juice_agent_t, void (*)(juice_agent_t *)> mAgent;
-	int mTURNServersAdded = 0;
+	int mTurnServersAdded = 0;
 
 	static void StateChangeCallback(juice_agent_t *agent, juice_state_t state, void *user_ptr);
 	static void CandidateCallback(juice_agent_t *agent, const char *sdp, void *user_ptr);
