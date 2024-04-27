@@ -36,7 +36,7 @@ VerifiedTlsTransport::VerifiedTlsTransport(
 				// *cacert is a PEM content
 				mbedtls::check(mbedtls_x509_crt_parse(
 				    &mCaCert, reinterpret_cast<const unsigned char *>(cacert->c_str()),
-				    cacert->size()));
+				    cacert->size() + 1));
 			}
 			mbedtls_ssl_conf_ca_chain(&mConf, &mCaCert, NULL);
 		}

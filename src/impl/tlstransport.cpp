@@ -323,6 +323,7 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 
 	PLOG_DEBUG << "Initializing TLS transport (MbedTLS)";
 
+	psa_crypto_init();
 	mbedtls_entropy_init(&mEntropy);
 	mbedtls_ctr_drbg_init(&mDrbg);
 	mbedtls_ssl_init(&mSsl);

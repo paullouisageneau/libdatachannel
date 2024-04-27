@@ -36,7 +36,7 @@ void RtpDepacketizer::incoming([[maybe_unused]] message_vector &messages,
 		auto headerSize = sizeof(rtc::RtpHeader) + pkt->csrcCount() + pkt->getExtensionHeaderSize();
 		result.push_back(make_message(message->begin() + headerSize, message->end(),
 		                              Message::Binary, 0, nullptr,
-		                              std::make_shared<FrameInfo>(pkt->timestamp())));
+		                              std::make_shared<FrameInfo>(pkt->payloadType(), pkt->timestamp())));
 	}
 
 	messages.swap(result);

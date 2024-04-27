@@ -50,7 +50,7 @@ public:
 	Description getLocalDescription(Description::Type type) const;
 	void setRemoteDescription(const Description &description);
 	bool addRemoteCandidate(const Candidate &candidate);
-	void gatherLocalCandidates(string mid);
+	void gatherLocalCandidates(string mid, std::vector<IceServer> additionalIceServers = {});
 
 	optional<string> getLocalAddress() const;
 	optional<string> getRemoteAddress() const;
@@ -69,6 +69,8 @@ private:
 	void processGatheringDone();
 	void processTimeout();
 
+	void addIceServer(IceServer server);
+
 	Description::Role mRole;
 	string mMid;
 	std::chrono::milliseconds mTrickleTimeout;
@@ -79,6 +81,7 @@ private:
 
 #if !USE_NICE
 	unique_ptr<juice_agent_t, void (*)(juice_agent_t *)> mAgent;
+	int mTurnServersAdded = 0;
 
 	static void StateChangeCallback(juice_agent_t *agent, juice_state_t state, void *user_ptr);
 	static void CandidateCallback(juice_agent_t *agent, const char *sdp, void *user_ptr);

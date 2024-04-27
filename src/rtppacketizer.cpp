@@ -47,6 +47,11 @@ message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 	if (setVideoRotation)
 		rtpExtHeaderSize += headerSize + 1;
 
+	const bool setPlayoutDelay = (rtpConfig->playoutDelayId > 0 && rtpConfig->playoutDelayId < 15);
+
+	if (setPlayoutDelay)
+		rtpExtHeaderSize += 4;
+
 	if (rtpConfig->mid.has_value())
 		rtpExtHeaderSize += headerSize + rtpConfig->mid->length();
 
@@ -115,6 +120,21 @@ message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 			writer.writeTo(buf.get(), sizeBits);
 			offset += extHeader->writeHeader(
 			    twoByteHeader, offset, rtpConfig->dependencyDescriptorId, buf.get(), sizeBytes);
+		}
+
+		if (setPlayoutDelay) {
+			uint16_t min = rtpConfig->playoutDelayMin & 0xFFF;
+			uint16_t max = rtpConfig->playoutDelayMax & 0xFFF;
+
+			// 12 bits for min + 12 bits for max
+			byte data[] = {
+				byte((min >> 4) & 0xFF), 
+				byte(((min & 0xF) << 4) | ((max >> 8) & 0xF)),
+				byte(max & 0xFF)
+			};
+
+			extHeader->writeOneByteHeader(offset, rtpConfig->playoutDelayId, data, 3);
+			offset += 4;
 		}
 	}
 

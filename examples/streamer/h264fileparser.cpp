@@ -11,6 +11,7 @@
 #include "rtc/rtc.hpp"
 
 #include <fstream>
+#include <cstring>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -29,7 +30,9 @@ void H264FileParser::loadNextSample() {
     while (i < sample.size()) {
         assert(i + 4 < sample.size());
         auto lengthPtr = (uint32_t *) (sample.data() + i);
-        uint32_t length = ntohl(*lengthPtr);
+        uint32_t length;
+        std::memcpy(&length, lengthPtr, sizeof(uint32_t));
+        length = ntohl(length);
         auto naluStartIndex = i + 4;
         auto naluEndIndex = naluStartIndex + length;
         assert(naluEndIndex <= sample.size());
@@ -50,8 +53,8 @@ void H264FileParser::loadNextSample() {
     }
 }
 
-vector<byte> H264FileParser::initialNALUS() {
-    vector<byte> units{};
+vector<std::byte> H264FileParser::initialNALUS() {
+    vector<std::byte> units{};
     if (previousUnitType7.has_value()) {
         auto nalu = previousUnitType7.value();
         units.insert(units.end(), nalu.begin(), nalu.end());

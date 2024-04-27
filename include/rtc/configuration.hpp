@@ -75,6 +75,7 @@ struct RTC_CPP_EXPORT Configuration {
 	bool enableIceTcp = false;    // libnice only
 	bool enableIceUdpMux = false; // libjuice only
 	bool disableAutoNegotiation = false;
+	bool disableAutoGathering = false;
 	bool forceMediaTransport = false;
 
 	// Port range
