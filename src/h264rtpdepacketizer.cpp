@@ -44,7 +44,6 @@ message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
 	message_vector out = {};
 	auto accessUnit = binary{};
 	auto frameInfo = std::make_shared<FrameInfo>(payloadType, timestamp);
-	auto nFrags = 0;
 
 	for (auto it = begin; it != end; ++it) {
 		auto pkt = it->get();
@@ -67,7 +66,10 @@ message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
 			auto nalUnitFragmentHeader = NalUnitFragmentHeader{
 			    std::to_integer<uint8_t>(pkt->at(rtpHeaderSize + sizeof(NalUnitHeader)))};
 
-			if (nFrags++ == 0) {
+			// RFC 6184: When set to one, the Start bit indicates the start of a fragmented NAL
+			// unit. When the following FU payload is not the start of a fragmented NAL unit
+			// payload, the Start bit is set to zero.
+			if (nalUnitFragmentHeader.isStart() || accessUnit.empty()) {
 				addSeparator(accessUnit);
 				accessUnit.emplace_back(
 				    byte(nalUnitHeader.idc() | nalUnitFragmentHeader.unitType()));
