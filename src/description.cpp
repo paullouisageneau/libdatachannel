@@ -218,7 +218,9 @@ void Description::hintType(Type type) {
 
 void Description::setFingerprint(CertificateFingerprint f) {
 	if (!f.isValid())
-		throw std::invalid_argument("Invalid " + CertificateFingerprint::AlgorithmIdentifier(f.algorithm) + " fingerprint \"" + f.value + "\"");
+		throw std::invalid_argument("Invalid " +
+		                            CertificateFingerprint::AlgorithmIdentifier(f.algorithm) +
+		                            " fingerprint \"" + f.value + "\"");
 
 	std::transform(f.value.begin(), f.value.end(), f.value.begin(),
 	               [](char c) { return char(std::toupper(c)); });
@@ -540,9 +542,11 @@ Description::Entry::Entry(const string &mline, string mid, Direction dir)
 	std::istringstream ss(match_prefix(mline, "m=") ? mline.substr(2) : mline);
 	ss >> mType;
 	ss >> port;
-	ss >> mDescription;
+	ss >> mProtocol;
+	ss >> std::ws;
+	std::getline(ss, mDescription);
 
-	if (mType.empty() || mDescription.empty())
+	if (mType.empty() || mProtocol.empty())
 		throw std::invalid_argument("Invalid media description line");
 
 	// RFC 3264: Existing media streams are removed by creating a new SDP with the port number for
@@ -554,6 +558,8 @@ Description::Entry::Entry(const string &mline, string mid, Direction dir)
 }
 
 string Description::Entry::type() const { return mType; }
+
+string Description::Entry::protocol() const { return mProtocol; }
 
 string Description::Entry::description() const { return mDescription; }
 
@@ -621,7 +627,8 @@ string Description::Entry::generateSdp(string_view eol, string_view addr, uint16
 	// RFC 3264: Existing media streams are removed by creating a new SDP with the port number for
 	// that stream set to zero. [...] A stream that is offered with a port of zero MUST be marked
 	// with port zero in the answer.
-	sdp << "m=" << type() << ' ' << (mIsRemoved ? 0 : port) << ' ' << description() << eol;
+	sdp << "m=" << type() << ' ' << (mIsRemoved ? 0 : port) << ' ' << protocol() << ' '
+	    << description() << eol;
 	sdp << "c=IN " << addr << eol;
 	sdp << generateSdpLines(eol);
 
@@ -825,14 +832,11 @@ optional<string> Description::Media::getCNameForSsrc(uint32_t ssrc) const {
 }
 
 Description::Application::Application(string mid)
-    : Entry("application 9 UDP/DTLS/SCTP", std::move(mid), Direction::SendRecv) {}
+    : Entry("application 9 UDP/DTLS/SCTP webrtc-datachannel", std::move(mid), Direction::SendRecv) {
+}
 
 Description::Application::Application(const string &mline, string mid)
     : Entry(mline, std::move(mid), Direction::SendRecv) {}
-
-string Description::Application::description() const {
-	return Entry::description() + " webrtc-datachannel";
-}
 
 Description::Application Description::Application::reciprocate() const {
 	Application reciprocated(*this);
@@ -882,7 +886,15 @@ void Description::Application::parseSdpLine(string_view line) {
 	}
 }
 
-Description::Media::Media(const string &sdp) : Entry(get_first_line(sdp), "", Direction::Unknown) {
+Description::Media::Media(const string &mline, string mid, Direction dir)
+    : Entry(mline, std::move(mid), dir) {
+	std::istringstream ss(Entry::description());
+	int payloadType;
+	while (ss >> payloadType)
+		mOrderedPayloadTypes.push_back(payloadType);
+}
+
+Description::Media::Media(const string &sdp) : Media(get_first_line(sdp), "", Direction::Unknown) {
 	string line;
 	std::istringstream ss(sdp);
 	std::getline(ss, line); // discard first line
@@ -899,16 +911,16 @@ Description::Media::Media(const string &sdp) : Entry(get_first_line(sdp), "", Di
 		throw std::invalid_argument("Missing mid in media description");
 }
 
-Description::Media::Media(const string &mline, string mid, Direction dir)
-    : Entry(mline, std::move(mid), dir) {}
-
 string Description::Media::description() const {
-	std::ostringstream desc;
-	desc << Entry::description();
-	for (auto it = mRtpMaps.begin(); it != mRtpMaps.end(); ++it)
-		desc << ' ' << it->first;
+	std::ostringstream ss;
+	for (auto it = mOrderedPayloadTypes.begin(); it != mOrderedPayloadTypes.end(); ++it) {
+		if (it != mOrderedPayloadTypes.begin())
+			ss << ' ';
 
-	return desc.str();
+		ss << *it;
+	}
+
+	return ss.str();
 }
 
 Description::Media Description::Media::reciprocate() const {
@@ -961,14 +973,7 @@ bool Description::Media::hasPayloadType(int payloadType) const {
 	return mRtpMaps.find(payloadType) != mRtpMaps.end();
 }
 
-std::vector<int> Description::Media::payloadTypes() const {
-	std::vector<int> result;
-	result.reserve(mRtpMaps.size());
-	for (auto it = mRtpMaps.begin(); it != mRtpMaps.end(); ++it)
-		result.push_back(it->first);
-
-	return result;
-}
+std::vector<int> Description::Media::payloadTypes() const { return mOrderedPayloadTypes; }
 
 Description::Media::RtpMap *Description::Media::rtpMap(int payloadType) {
 	auto it = mRtpMaps.find(payloadType);
@@ -987,12 +992,19 @@ const Description::Media::RtpMap *Description::Media::rtpMap(int payloadType) co
 }
 
 void Description::Media::addRtpMap(RtpMap map) {
-	auto payloadType = map.payloadType;
+	int payloadType = map.payloadType;
+	if (std::find(mOrderedPayloadTypes.begin(), mOrderedPayloadTypes.end(), payloadType) ==
+	    mOrderedPayloadTypes.end())
+		mOrderedPayloadTypes.push_back(payloadType);
+
 	mRtpMaps.emplace(payloadType, std::move(map));
 }
 
 void Description::Media::removeRtpMap(int payloadType) {
 	// Remove the actual format
+	mOrderedPayloadTypes.erase(
+	    std::remove(mOrderedPayloadTypes.begin(), mOrderedPayloadTypes.end(), payloadType),
+	    mOrderedPayloadTypes.end());
 	mRtpMaps.erase(payloadType);
 
 	// Remove any other rtpmaps that depend on the format we just removed
@@ -1000,10 +1012,14 @@ void Description::Media::removeRtpMap(int payloadType) {
 	while (it != mRtpMaps.end()) {
 		const auto &fmtps = it->second.fmtps;
 		if (std::find(fmtps.begin(), fmtps.end(), "apt=" + std::to_string(payloadType)) !=
-		    fmtps.end())
+		    fmtps.end()) {
+			mOrderedPayloadTypes.erase(
+			    std::remove(mOrderedPayloadTypes.begin(), mOrderedPayloadTypes.end(), it->first),
+			    mOrderedPayloadTypes.end());
 			it = mRtpMaps.erase(it);
-		else
+		} else {
 			++it;
+		}
 	}
 }
 
@@ -1306,8 +1322,8 @@ CertificateFingerprint::AlgorithmSize(CertificateFingerprint::Algorithm fingerpr
 		return 48;
 	case CertificateFingerprint::Algorithm::Sha512:
 		return 64;
-    default:
-        return 0;
+	default:
+		return 0;
 	}
 }
 
@@ -1325,7 +1341,7 @@ std::string CertificateFingerprint::AlgorithmIdentifier(
 	case CertificateFingerprint::Algorithm::Sha512:
 		return "sha-512";
 	default:
-	    return "unknown";
+		return "unknown";
 	}
 }
 

@@ -90,6 +90,7 @@ public:
 		virtual ~Entry() = default;
 
 		virtual string type() const;
+		virtual string protocol() const;
 		virtual string description() const;
 		virtual string mid() const;
 
@@ -140,6 +141,7 @@ public:
 
 	private:
 		string mType;
+		string mProtocol;
 		string mDescription;
 		string mMid;
 		std::vector<string> mRids;
@@ -153,7 +155,6 @@ public:
 		Application(const string &mline, string mid);
 		virtual ~Application() = default;
 
-		string description() const override;
 		Application reciprocate() const;
 
 		void setSctpPort(uint16_t port);
@@ -175,8 +176,8 @@ public:
 	// Media (non-data)
 	class RTC_CPP_EXPORT Media : public Entry {
 	public:
-		Media(const string &sdp);
 		Media(const string &mline, string mid, Direction dir = Direction::SendOnly);
+		Media(const string &sdp);
 		virtual ~Media() = default;
 
 		string description() const override;
@@ -234,6 +235,7 @@ public:
 
 		int mBas = -1;
 
+		std::vector<int> mOrderedPayloadTypes;
 		std::map<int, RtpMap> mRtpMaps;
 		std::vector<uint32_t> mSsrcs;
 		std::map<uint32_t, string> mCNameMap;
