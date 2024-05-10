@@ -45,8 +45,16 @@ static LogCounter
                                 "Number of unknown RTCP packet types over past second");
 
 PeerConnection::PeerConnection(Configuration config_)
-    : config(std::move(config_)), mCertificate(make_certificate(config.certificateType)) {
+    : config(std::move(config_)) {
 	PLOG_VERBOSE << "Creating PeerConnection";
+
+	if( config.certPem.has_value() && config.keyPem.has_value() ) {
+		std::promise<certificate_ptr> cert;
+		cert.set_value(std::make_shared<Certificate>(Certificate::FromString(config.certPem.value(), config.keyPem.value())));
+		mCertificate = cert.get_future();
+	} else {
+		mCertificate = make_certificate(config.certificateType);
+	}
 
 	if (config.portRangeEnd && config.portRangeBegin > config.portRangeEnd)
 		throw std::invalid_argument("Invalid port range");

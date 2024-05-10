@@ -16,6 +16,7 @@ using namespace std;
 using namespace chrono_literals;
 
 void test_connectivity(bool signal_wrong_fingerprint);
+void test_pem();
 void test_negotiated();
 void test_reliability();
 void test_turn_connectivity();
@@ -54,6 +55,14 @@ int main(int argc, char **argv) {
 		cerr << "WebRTC connectivity test failed to detect broken fingerprint" << endl;
 		return -1;
 	} catch (const exception &) {
+	}
+
+	try {
+		cout << endl << "*** Running pem test..." << endl;
+		test_pem();
+	} catch (const exception &e) {
+		cerr << "pem test failed: " << e.what() << endl;
+		return -1;
 	}
 
 // TODO: Temporarily disabled as the Open Relay TURN server is unreliable
