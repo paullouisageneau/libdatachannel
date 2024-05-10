@@ -426,6 +426,9 @@ bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
 	if (!mRemoteDescription || !mRemoteDescription->fingerprint())
 		return false;
 
+	if (config.skipCheckFingerprint)
+		return true;
+
 	auto expectedFingerprint = mRemoteDescription->fingerprint()->value;
 	if (expectedFingerprint  == fingerprint) {
 		PLOG_VERBOSE << "Valid fingerprint \"" << fingerprint << "\"";
