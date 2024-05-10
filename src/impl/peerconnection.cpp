@@ -858,10 +858,11 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 	if (activeMediaCount == 0)
 		throw std::invalid_argument("Remote description has no active media");
 
-	if (auto local = localDescription(); local && local->iceUfrag() && local->icePwd())
-		if (*description.iceUfrag() == *local->iceUfrag() &&
-		    *description.icePwd() == *local->icePwd())
-			throw std::logic_error("Got the local description as remote description");
+	// In the WebRTC Direct protocol, we need to allow local and remote to use the same ufrag and pwd.
+	// if (auto local = localDescription(); local && local->iceUfrag() && local->icePwd())
+	// 	if (*description.iceUfrag() == *local->iceUfrag() &&
+	// 	    *description.icePwd() == *local->icePwd())
+	// 		throw std::logic_error("Got the local description as remote description");
 
 	PLOG_VERBOSE << "Remote description looks valid";
 }
