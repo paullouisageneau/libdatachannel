@@ -34,11 +34,28 @@ using namespace std::placeholders;
 using namespace std::chrono_literals;
 using std::chrono::milliseconds;
 
+const string PemBeginCertificateTag = "-----BEGIN CERTIFICATE-----";
+
 WebSocket::WebSocket(optional<Configuration> optConfig, certificate_ptr certificate)
     : config(optConfig ? std::move(*optConfig) : Configuration()),
-      mCertificate(certificate ? std::move(certificate) : std::move(loadCertificate(config))),
-      mIsSecure(mCertificate != nullptr), mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
+      mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
 	PLOG_VERBOSE << "Creating WebSocket";
+
+	if (certificate) {
+		mCertificate = std::move(certificate);
+	} else if (config.certificatePemFile && config.keyPemFile) {
+		mCertificate = std::make_shared<Certificate>(
+		    config.certificatePemFile->find(PemBeginCertificateTag) != string::npos
+		        ? Certificate::FromString(*config.certificatePemFile, *config.keyPemFile)
+		        : Certificate::FromFile(*config.certificatePemFile, *config.keyPemFile,
+		                                config.keyPemPass.value_or("")));
+	} else if (config.certificatePemFile || config.keyPemFile) {
+		throw std::invalid_argument(
+		    "Either none or both certificate and key PEM files must be specified");
+	}
+
+	mIsSecure = mCertificate != nullptr;
+
 	if (config.proxyServer) {
 		if (config.proxyServer->type == ProxyServer::Type::Socks5)
 			throw std::invalid_argument(
@@ -47,19 +64,6 @@ WebSocket::WebSocket(optional<Configuration> optConfig, certificate_ptr certific
 			PLOG_WARNING << "HTTP authentication support for proxy is not implemented";
 		}
 	}
-}
-
-certificate_ptr WebSocket::loadCertificate(const Configuration& config) {
-	if (!config.certificatePemFile)
-		return nullptr;
-
-	if (config.keyPemFile)
-		return std::make_shared<Certificate>(
-			Certificate::FromFile(*config.certificatePemFile, *config.keyPemFile,
-										config.keyPemPass.value_or("")));
-
-	throw std::invalid_argument(
-		"Either none or both certificate and key PEM files must be specified");
 }
 
 WebSocket::~WebSocket() { PLOG_VERBOSE << "Destroying WebSocket"; }
@@ -156,7 +160,9 @@ bool WebSocket::isOpen() const { return state == State::Open; }
 
 bool WebSocket::isClosed() const { return state == State::Closed; }
 
-size_t WebSocket::maxMessageSize() const { return config.maxMessageSize.value_or(DEFAULT_WS_MAX_MESSAGE_SIZE); }
+size_t WebSocket::maxMessageSize() const {
+	return config.maxMessageSize.value_or(DEFAULT_WS_MAX_MESSAGE_SIZE);
+}
 
 optional<message_variant> WebSocket::receive() {
 	auto next = mRecvQueue.pop();
