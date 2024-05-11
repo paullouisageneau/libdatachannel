@@ -426,7 +426,7 @@ bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
 	if (!mRemoteDescription || !mRemoteDescription->fingerprint())
 		return false;
 
-	if (config.skipCheckFingerprint)
+	if (config.disableFingerprintVerification)
 		return true;
 
 	auto expectedFingerprint = mRemoteDescription->fingerprint()->value;
