@@ -12,6 +12,7 @@
 
 #include "impl/internals.hpp"
 
+#include <algorithm>
 #include <cassert>
 
 #ifdef _WIN32

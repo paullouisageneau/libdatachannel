@@ -69,7 +69,7 @@ TcpTransport::TcpTransport(socket_t sock, state_callback callback)
 	struct sockaddr_storage addr;
 	socklen_t addrlen = sizeof(addr);
 	if (::getpeername(mSock, reinterpret_cast<struct sockaddr *>(&addr), &addrlen) < 0)
-		throw std::runtime_error("getsockname failed");
+		throw std::runtime_error("getpeername failed");
 
 	unmap_inet6_v4mapped(reinterpret_cast<struct sockaddr *>(&addr), &addrlen);
 
