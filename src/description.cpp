@@ -201,6 +201,8 @@ string Description::bundleMid() const {
 	return "0";
 }
 
+string Description::sessionId() const { return mSessionId; }
+
 optional<string> Description::iceUfrag() const { return mIceUfrag; }
 
 std::vector<string> Description::iceOptions() const { return mIceOptions; }
