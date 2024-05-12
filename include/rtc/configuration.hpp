@@ -89,8 +89,9 @@ struct RTC_CPP_EXPORT Configuration {
 	optional<size_t> maxMessageSize;
 
 	// Certificates and private keys
-	optional<string> certPem;
-	optional<string> keyPem;
+	optional<string> certificatePemFile;
+	optional<string> keyPemFile;
+	optional<string> keyPemPass;
 };
 
 #ifdef RTC_ENABLE_WEBSOCKET

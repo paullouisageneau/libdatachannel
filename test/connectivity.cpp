@@ -289,8 +289,8 @@ void test_pem() {
 
 	Configuration config1;
 
-	config1.certPem = cert_pem;
-	config1.keyPem = key_pem;
+	config1.certificatePemFile = cert_pem;
+	config1.keyPemFile = key_pem;
 
 	PeerConnection pc1(config1);
 	atomic_bool done;

@@ -44,16 +44,26 @@ static LogCounter
     COUNTER_UNKNOWN_PACKET_TYPE(plog::warning,
                                 "Number of unknown RTCP packet types over past second");
 
+const string PemBeginCertificateTag = "-----BEGIN CERTIFICATE-----";
+
 PeerConnection::PeerConnection(Configuration config_)
     : config(std::move(config_)) {
 	PLOG_VERBOSE << "Creating PeerConnection";
 
-	if( config.certPem.has_value() && config.keyPem.has_value() ) {
+
+	if (config.certificatePemFile && config.keyPemFile) {
 		std::promise<certificate_ptr> cert;
-		cert.set_value(std::make_shared<Certificate>(Certificate::FromString(config.certPem.value(), config.keyPem.value())));
+		cert.set_value(std::make_shared<Certificate>(
+			config.certificatePemFile->find(PemBeginCertificateTag) != string::npos
+				? Certificate::FromString(*config.certificatePemFile, *config.keyPemFile)
+				: Certificate::FromFile(*config.certificatePemFile, *config.keyPemFile,
+										config.keyPemPass.value_or(""))));
 		mCertificate = cert.get_future();
-	} else {
+	} else if (!config.certificatePemFile && !config.keyPemFile) {
 		mCertificate = make_certificate(config.certificateType);
+	} else {
+		throw std::invalid_argument(
+			"Either none or both certificate and key PEM files must be specified");
 	}
 
 	if (config.portRangeEnd && config.portRangeBegin > config.portRangeEnd)
