@@ -263,3 +263,55 @@ void test_connectivity(bool signal_wrong_fingerprint) {
 
 	cout << "Success" << endl;
 }
+
+const char* key_pem =
+"-----BEGIN PRIVATE KEY-----\n"
+"MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg3bbuT2SjSlMZH/J1\n"
+"vHwmF0Blb/DBc/v7f1Za9GPUXHmhRANCAATDpmYxZozjVw6xlERNjJJGgfY3bEmj\n"
+"xAKFRq3nbxbDHvMEs34u9HntMZWJ0hp3GUC+Ax7JHTv3cYqSaAg2SpR4\n"
+"-----END PRIVATE KEY-----\n";
+
+const char* cert_pem =
+"-----BEGIN CERTIFICATE-----\n"
+"MIIBgjCCASigAwIBAgIJAPMXEoZXOaDEMAoGCCqGSM49BAMCMEoxDzANBgNVBAMM\n"
+"BmNhLmNvbTELMAkGA1UEBhMCVVMxCzAJBgNVBAcMAkNBMRAwDgYDVQQKDAdleGFt\n"
+"cGxlMQswCQYDVQQIDAJDQTAeFw0yNDA1MDUxNjAzMjFaFw0yNDA4MTMxNjAzMjFa\n"
+"MDExCzAJBgNVBAYTAkNOMRAwDgYDVQQKDAdiYW96LmNuMRAwDgYDVQQDDAdiYW96\n"
+"Lm1lMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEw6ZmMWaM41cOsZRETYySRoH2\n"
+"N2xJo8QChUat528Wwx7zBLN+LvR57TGVidIadxlAvgMeyR0793GKkmgINkqUeKMQ\n"
+"MA4wDAYDVR0TAQH/BAIwADAKBggqhkjOPQQDAgNIADBFAiAPNldqGJHryfjPFyX3\n"
+"zfHHWlO7xSDTzdyoxzroFdwy+gIhAKmZizEVvDlBiIe+3ptCArU3dbp+bzLynTcr\n"
+"Ma9ayzQy\n"
+"-----END CERTIFICATE-----\n";
+
+void test_pem() {
+	InitLogger(LogLevel::Debug);
+
+	Configuration config1;
+
+	config1.certificatePemFile = cert_pem;
+	config1.keyPemFile = key_pem;
+
+	PeerConnection pc1(config1);
+	atomic_bool done;
+	string f;
+
+	pc1.onLocalDescription([&done, &f](Description sdp) {
+		f = sdp.fingerprint().value().value;
+		done = true;
+	});
+
+	auto dc1 = pc1.createDataChannel("test");
+
+	// Wait a bit
+	int attempts = 10;
+	while (!done && attempts--)
+		this_thread::sleep_for(1s);
+
+	cout << "Fingerprint: " << f << endl;
+
+	if (f != "07:E5:6F:2A:1A:0C:2C:32:0E:C1:C3:9C:34:5A:78:4E:A5:8B:32:05:D1:57:D6:F4:E7:02:41:12:E6:01:C6:8F")
+		throw runtime_error("The fingerprint of the specified certificate do not match");
+
+	cout << "Success" << endl;
+}
