@@ -228,11 +228,11 @@ Certificate Certificate::FromString(string crt_pem, string key_pem) {
 
 	mbedtls::check(mbedtls_x509_crt_parse(crt.get(),
 	                                      reinterpret_cast<const unsigned char *>(crt_pem.c_str()),
-	                                      crt_pem.length()),
+	                                      crt_pem.size() + 1),
 	               "Failed to parse certificate");
 	mbedtls::check(mbedtls_pk_parse_key(pk.get(),
 	                                    reinterpret_cast<const unsigned char *>(key_pem.c_str()),
-	                                    key_pem.size(), NULL, 0, NULL, 0),
+	                                    key_pem.size() + 1, NULL, 0, NULL, 0),
 	               "Failed to parse key");
 
 	return Certificate(std::move(crt), std::move(pk));
