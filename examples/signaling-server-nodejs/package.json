@@ -18,6 +18,6 @@
   },
   "homepage": "https://github.com/paullouisageneau/libdatachannel#readme",
   "dependencies": {
-    "websocket": "^1.0.34"
+    "websocket": "^1.0.35"
   }
 }
