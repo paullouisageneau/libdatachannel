@@ -558,6 +558,14 @@ void RtcpRemb::setBitrate(unsigned int numSSRC, unsigned int in_bitrate) {
 
 void RtcpRemb::setSsrc(int iterator, SSRC newSssrc) { _ssrc[iterator] = htonl(newSssrc); }
 
+unsigned int RtcpRemb::getNumSSRC() { return ntohl(_bitrate) >> 24u; }
+
+unsigned int RtcpRemb::getBitrate() {
+	uint32_t br = ntohl(_bitrate);
+	uint8_t exp = (br << 8u) >> 26u;
+	return (br & 0x3FFFF) * (unsigned int)pow(exp, 2);
+}
+
 unsigned int RtcpPli::Size() { return sizeof(RtcpFbHeader); }
 
 void RtcpPli::preparePacket(SSRC messageSSRC) {
