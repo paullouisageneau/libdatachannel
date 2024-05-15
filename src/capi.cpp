@@ -1334,9 +1334,9 @@ int rtcChainPliHandler(int tr, rtcPliHandlerCallbackFunc cb) {
 int rtcChainRembHandler(int tr, rtcRembHandlerCallbackFunc cb) {
 	return wrap([&] {
 		auto track = getTrack(tr);
-		auto handler = std::make_shared<RembHandler>([tr, cb](unsigned int numSSRC, unsigned int bitrate) {
+		auto handler = std::make_shared<RembHandler>([tr, cb](unsigned int bitrate) {
 			if (auto ptr = getUserPointer(tr))
-				cb(tr, numSSRC, bitrate, *ptr);
+				cb(tr, bitrate, *ptr);
 		});
 		track->chainMediaHandler(handler);
 		return RTC_ERR_SUCCESS;
