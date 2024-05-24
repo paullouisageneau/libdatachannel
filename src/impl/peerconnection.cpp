@@ -858,9 +858,6 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 	if (activeMediaCount == 0)
 		throw std::invalid_argument("Remote description has no active media");
 
-	if (auto local = localDescription(); local && local->sessionId() == description.sessionId())
-		throw std::logic_error("Got the local description as remote description");
-
 	PLOG_VERBOSE << "Remote description looks valid";
 }
 

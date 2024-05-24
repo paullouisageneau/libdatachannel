@@ -59,7 +59,6 @@ public:
 	string typeString() const;
 	Role role() const;
 	string bundleMid() const;
-	string sessionId() const;
 	std::vector<string> iceOptions() const;
 	optional<string> iceUfrag() const;
 	optional<string> icePwd() const;
