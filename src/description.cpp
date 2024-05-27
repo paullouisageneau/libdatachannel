@@ -310,12 +310,7 @@ string Description::generateSdp(string_view eol) const {
 
 	// Session-level attributes
 	sdp << "a=msid-semantic:WMS *" << eol;
-	sdp << "a=setup:" << mRole << eol;
 
-	if (mIceUfrag)
-		sdp << "a=ice-ufrag:" << *mIceUfrag << eol;
-	if (mIcePwd)
-		sdp << "a=ice-pwd:" << *mIcePwd << eol;
 	if (!mIceOptions.empty())
 		sdp << "a=ice-options:" << utils::implode(mIceOptions, ',') << eol;
 	if (mFingerprint)
@@ -338,6 +333,14 @@ string Description::generateSdp(string_view eol) const {
 	bool first = true;
 	for (const auto &entry : mEntries) {
 		sdp << entry->generateSdp(eol, addr, port);
+
+		// RFC 8829: Attributes that SDP permits to be at either the session level or the media level
+		// SHOULD generally be at the media level even if they are identical.
+		sdp << "a=setup:" << mRole << eol;
+		if (mIceUfrag)
+			sdp << "a=ice-ufrag:" << *mIceUfrag << eol;
+		if (mIcePwd)
+			sdp << "a=ice-pwd:" << *mIcePwd << eol;
 
 		if (!entry->isRemoved() && std::exchange(first, false)) {
 			// Candidates
