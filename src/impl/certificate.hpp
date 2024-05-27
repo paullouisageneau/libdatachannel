@@ -34,8 +34,9 @@ public:
 	Certificate(shared_ptr<mbedtls_x509_crt> crt, shared_ptr<mbedtls_pk_context> pk);
 	std::tuple<shared_ptr<mbedtls_x509_crt>, shared_ptr<mbedtls_pk_context>> credentials() const;
 #else // OPENSSL
-	Certificate(shared_ptr<X509> x509, shared_ptr<EVP_PKEY> pkey);
+	Certificate(shared_ptr<X509> x509, shared_ptr<EVP_PKEY> pkey, std::vector<shared_ptr<X509>> chain = {});
 	std::tuple<X509 *, EVP_PKEY *> credentials() const;
+	std::vector<X509 *> chain() const;
 #endif
 
 	CertificateFingerprint fingerprint() const;
@@ -52,6 +53,7 @@ private:
 #else
 	const shared_ptr<X509> mX509;
 	const shared_ptr<EVP_PKEY> mPKey;
+	const std::vector<shared_ptr<X509>> mChain;
 #endif
 
 	const string mFingerprint;
