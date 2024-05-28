@@ -30,7 +30,7 @@ else()
 endif()
 
 set_target_properties(datachannel-copy-paste-capi-offerer PROPERTIES
-	OUTPUT_NAME offerer)
+	OUTPUT_NAME offerer-capi)
 
 set_target_properties(datachannel-copy-paste-capi-offerer PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.copypaste.capi.offerer)
@@ -44,7 +44,7 @@ else()
 endif()
 
 set_target_properties(datachannel-copy-paste-capi-answerer PROPERTIES
-	OUTPUT_NAME answerer)
+	OUTPUT_NAME answerer-capi)
 
 set_target_properties(datachannel-copy-paste-capi-answerer PROPERTIES
 	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.copypaste.capi.answerer)
