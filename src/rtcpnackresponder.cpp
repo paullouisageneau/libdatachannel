@@ -79,9 +79,13 @@ optional<binary_ptr> RtcpNackResponder::Storage::get(uint16_t sequenceNumber) {
 	                                 : nullopt;
 }
 
-void RtcpNackResponder::Storage::store(binary_ptr packet) {
-	if (!packet || packet->size() < sizeof(RtpHeader))
+void RtcpNackResponder::Storage::store(binary_ptr message) {
+	if (!message || message->size() < sizeof(RtpHeader))
 		return;
+
+	// We need to create a deep copy of the message binary here because the content
+	// of the binary will be modified by the srtp_protect() function when the message is sent.
+	auto packet = std::make_shared<binary>(message->begin(), message->end());
 
 	auto rtp = reinterpret_cast<RtpHeader *>(packet->data());
 	auto sequenceNumber = rtp->seqNumber();
