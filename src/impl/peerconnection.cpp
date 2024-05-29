@@ -44,9 +44,27 @@ static LogCounter
     COUNTER_UNKNOWN_PACKET_TYPE(plog::warning,
                                 "Number of unknown RTCP packet types over past second");
 
+const string PemBeginCertificateTag = "-----BEGIN CERTIFICATE-----";
+
 PeerConnection::PeerConnection(Configuration config_)
-    : config(std::move(config_)), mCertificate(make_certificate(config.certificateType)) {
+    : config(std::move(config_)) {
 	PLOG_VERBOSE << "Creating PeerConnection";
+
+
+	if (config.certificatePemFile && config.keyPemFile) {
+		std::promise<certificate_ptr> cert;
+		cert.set_value(std::make_shared<Certificate>(
+			config.certificatePemFile->find(PemBeginCertificateTag) != string::npos
+				? Certificate::FromString(*config.certificatePemFile, *config.keyPemFile)
+				: Certificate::FromFile(*config.certificatePemFile, *config.keyPemFile,
+										config.keyPemPass.value_or(""))));
+		mCertificate = cert.get_future();
+	} else if (!config.certificatePemFile && !config.keyPemFile) {
+		mCertificate = make_certificate(config.certificateType);
+	} else {
+		throw std::invalid_argument(
+			"Either none or both certificate and key PEM files must be specified");
+	}
 
 	if (config.portRangeEnd && config.portRangeBegin > config.portRangeEnd)
 		throw std::invalid_argument("Invalid port range");
@@ -425,6 +443,9 @@ bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
 	std::lock_guard lock(mRemoteDescriptionMutex);
 	if (!mRemoteDescription || !mRemoteDescription->fingerprint())
 		return false;
+
+	if (config.disableFingerprintVerification)
+		return true;
 
 	auto expectedFingerprint = mRemoteDescription->fingerprint()->value;
 	if (expectedFingerprint  == fingerprint) {
@@ -857,11 +878,6 @@ void PeerConnection::validateRemoteDescription(const Description &description) {
 
 	if (activeMediaCount == 0)
 		throw std::invalid_argument("Remote description has no active media");
-
-	if (auto local = localDescription(); local && local->iceUfrag() && local->icePwd())
-		if (*description.iceUfrag() == *local->iceUfrag() &&
-		    *description.icePwd() == *local->icePwd())
-			throw std::logic_error("Got the local description as remote description");
 
 	PLOG_VERBOSE << "Remote description looks valid";
 }

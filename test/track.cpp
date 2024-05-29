@@ -97,8 +97,10 @@ void test_track() {
 
 	const auto mediaSdp1 = string(media);
 	const auto mediaSdp2 = string(Description::Media(mediaSdp1));
-	if (mediaSdp2 != mediaSdp1)
+	if (mediaSdp2 != mediaSdp1) {
+		cout << mediaSdp2 << endl;
 		throw runtime_error("Media description parsing test failed");
+	}
 
 	auto t1 = pc1.addTrack(media);
 

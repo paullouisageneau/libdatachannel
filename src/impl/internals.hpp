@@ -43,7 +43,7 @@ const size_t DEFAULT_REMOTE_MAX_MESSAGE_SIZE = 65536;     // Remote max message 
 
 const size_t DEFAULT_WS_MAX_MESSAGE_SIZE = 256 * 1024;   // Default max message size for WebSockets
 
-const size_t RECV_QUEUE_LIMIT = 1024 * 1024; // Max per-channel queue size
+const size_t RECV_QUEUE_LIMIT = 1024; // Max per-channel queue size (messages)
 
 const int MIN_THREADPOOL_SIZE = 4; // Minimum number of threads in the global thread pool (>= 2)
 
