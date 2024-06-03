@@ -49,9 +49,16 @@ private:
 template <uint32_t DEFAULT_CLOCK_RATE>
 class RTC_CPP_EXPORT AudioRtpPacketizer final : public RtpPacketizer {
 public:
+#ifdef _WIN32
 	static const uint32_t DefaultClockRate = DEFAULT_CLOCK_RATE;
-	static const uint32_t defaultClockRate [[deprecated("Use DefaultClockRate")]] =
+	static const uint32_t defaultClockRate[[deprecated("Use DefaultClockRate")]] =
 	    DEFAULT_CLOCK_RATE; // for backward compatibility
+#else // not WIN32
+	inline static const uint32_t DefaultClockRate = DEFAULT_CLOCK_RATE;
+	inline static const uint32_t defaultClockRate[[deprecated("Use DefaultClockRate")]] =
+	    DEFAULT_CLOCK_RATE; // for backward compatibility
+#endif
+
 
 	AudioRtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig)
 	    : RtpPacketizer(std::move(rtpConfig)) {}
