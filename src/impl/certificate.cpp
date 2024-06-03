@@ -9,6 +9,7 @@
 #include "certificate.hpp"
 #include "threadpool.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <iomanip>
@@ -384,9 +385,16 @@ Certificate Certificate::FromString(string crt_pem, string key_pem) {
 	BIO *bio = BIO_new(BIO_s_mem());
 	BIO_write(bio, crt_pem.data(), int(crt_pem.size()));
 	auto x509 = shared_ptr<X509>(PEM_read_bio_X509(bio, nullptr, nullptr, nullptr), X509_free);
-	BIO_free(bio);
-	if (!x509)
+	if (!x509) {
+		BIO_free(bio);
 		throw std::invalid_argument("Unable to import PEM certificate");
+	}
+	std::vector<shared_ptr<X509>> chain;
+	while (auto extra =
+	           shared_ptr<X509>(PEM_read_bio_X509(bio, nullptr, nullptr, nullptr), X509_free)) {
+		chain.push_back(std::move(extra));
+	}
+	BIO_free(bio);
 
 	bio = BIO_new(BIO_s_mem());
 	BIO_write(bio, key_pem.data(), int(key_pem.size()));
@@ -396,7 +404,7 @@ Certificate Certificate::FromString(string crt_pem, string key_pem) {
 	if (!pkey)
 		throw std::invalid_argument("Unable to import PEM key");
 
-	return Certificate(x509, pkey);
+	return Certificate(x509, pkey, std::move(chain));
 }
 
 Certificate Certificate::FromFile(const string &crt_pem_file, const string &key_pem_file,
@@ -408,9 +416,16 @@ Certificate Certificate::FromFile(const string &crt_pem_file, const string &key_
 		throw std::invalid_argument("Unable to open PEM certificate file");
 
 	auto x509 = shared_ptr<X509>(PEM_read_bio_X509(bio, nullptr, nullptr, nullptr), X509_free);
-	BIO_free(bio);
-	if (!x509)
+	if (!x509) {
+		BIO_free(bio);
 		throw std::invalid_argument("Unable to import PEM certificate from file");
+	}
+	std::vector<shared_ptr<X509>> chain;
+	while (auto extra =
+	           shared_ptr<X509>(PEM_read_bio_X509(bio, nullptr, nullptr, nullptr), X509_free)) {
+		chain.push_back(std::move(extra));
+	}
+	BIO_free(bio);
 
 	bio = openssl::BIO_new_from_file(key_pem_file);
 	if (!bio)
@@ -423,7 +438,7 @@ Certificate Certificate::FromFile(const string &crt_pem_file, const string &key_
 	if (!pkey)
 		throw std::invalid_argument("Unable to import PEM key from file");
 
-	return Certificate(x509, pkey);
+	return Certificate(x509, pkey, std::move(chain));
 }
 
 Certificate Certificate::Generate(CertificateType type, const string &commonName) {
@@ -514,12 +529,21 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	return Certificate(x509, pkey);
 }
 
-Certificate::Certificate(shared_ptr<X509> x509, shared_ptr<EVP_PKEY> pkey)
-    : mX509(std::move(x509)), mPKey(std::move(pkey)),
+Certificate::Certificate(shared_ptr<X509> x509, shared_ptr<EVP_PKEY> pkey,
+                         std::vector<shared_ptr<X509>> chain)
+    : mX509(std::move(x509)), mPKey(std::move(pkey)), mChain(std::move(chain)),
       mFingerprint(make_fingerprint(mX509.get(), CertificateFingerprint::Algorithm::Sha256)) {}
 
 std::tuple<X509 *, EVP_PKEY *> Certificate::credentials() const {
 	return {mX509.get(), mPKey.get()};
+}
+
+std::vector<X509 *> Certificate::chain() const {
+	std::vector<X509 *> v;
+	v.reserve(mChain.size());
+	std::transform(mChain.begin(), mChain.end(), std::back_inserter(v),
+	               [](const auto &c) { return c.get(); });
+	return v;
 }
 
 string make_fingerprint(X509 *x509, CertificateFingerprint::Algorithm fingerprintAlgorithm) {
