@@ -93,6 +93,10 @@ struct RTC_CPP_EXPORT Configuration {
 	optional<string> certificatePemFile;
 	optional<string> keyPemFile;
 	optional<string> keyPemPass;
+
+	// Overriding ICE ufrag/pwd
+	optional<string> iceUfrag;
+	optional<string> icePwd;
 };
 
 #ifdef RTC_ENABLE_WEBSOCKET

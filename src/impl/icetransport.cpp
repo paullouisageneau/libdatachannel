@@ -130,9 +130,15 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	}
 
 	// Create agent
-	mAgent = decltype(mAgent)(juice_create(&jconfig), juice_destroy);
-	if (!mAgent)
+	auto agent = juice_create(&jconfig);
+	if (!agent)
 		throw std::runtime_error("Failed to create the ICE agent");
+
+	if (config.iceUfrag && config.icePwd) {
+		juice_set_local_ice_attributes(agent, (char*)config.iceUfrag->c_str(), (char*)config.icePwd->c_str());
+	}
+
+	mAgent = decltype(mAgent)(agent, juice_destroy);
 
 	// Add TURN servers
 	for (const auto &server : servers)
