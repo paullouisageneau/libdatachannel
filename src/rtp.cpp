@@ -545,7 +545,7 @@ void RtcpRemb::preparePacket(SSRC senderSSRC, unsigned int numSSRC, unsigned int
 
 void RtcpRemb::setBitrate(unsigned int numSSRC, unsigned int in_bitrate) {
 	unsigned int exp = 0;
-	while (in_bitrate > pow(2, 18) - 1) {
+	while (in_bitrate > 0x3FFFF) {
 		exp++;
 		in_bitrate /= 2;
 	}
