@@ -34,6 +34,7 @@
 #include "h265rtppacketizer.hpp"
 #include "mediahandler.hpp"
 #include "plihandler.hpp"
+#include "rembhandler.hpp"
 #include "pacinghandler.hpp"
 #include "rtcpnackresponder.hpp"
 #include "rtcpreceivingsession.hpp"

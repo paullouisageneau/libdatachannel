@@ -274,6 +274,8 @@ struct RTC_CPP_EXPORT RtcpRemb {
 	void preparePacket(SSRC senderSSRC, unsigned int numSSRC, unsigned int in_bitrate);
 	void setBitrate(unsigned int numSSRC, unsigned int in_bitrate);
 	void setSsrc(int iterator, SSRC newSssrc);
+	unsigned int getNumSSRC();
+	unsigned int getBitrate();
 };
 
 struct RTC_CPP_EXPORT RtcpPli {
