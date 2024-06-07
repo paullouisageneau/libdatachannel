@@ -278,6 +278,24 @@ Return value: the length of the string copied in buffer (including the terminati
 
 If `buffer` is `NULL`, the description is not copied but the size is still returned.
 
+#### rtcGetCurrentRemoteDescription
+
+```
+int rtcGetCurrentRemoteDescription(int pc, char *buffer, int size)
+```
+
+Retrieves the currently negotiated remote description in SDP format.
+
+Arguments:
+
+- `pc`: the Peer Connection identifier
+- `buffer`: a user-supplied buffer to store the description
+- `size`: the size of `buffer`
+
+Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code
+
+If `buffer` is `NULL`, the description is not copied but the size is still returned.
+
 #### rtcGetLocalDescriptionType
 
 ```

@@ -216,6 +216,7 @@ RTC_C_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid
 
 RTC_C_EXPORT int rtcGetLocalDescription(int pc, char *buffer, int size);
 RTC_C_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);
+RTC_C_EXPORT int rtcGetCurrentRemoteDescription(int pc, char *buffer, int size);
 
 RTC_C_EXPORT int rtcGetLocalDescriptionType(int pc, char *buffer, int size);
 RTC_C_EXPORT int rtcGetRemoteDescriptionType(int pc, char *buffer, int size);

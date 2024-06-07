@@ -41,6 +41,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	optional<Description> localDescription() const;
 	optional<Description> remoteDescription() const;
+	optional<Description> currentRemoteDescription() const;
 	size_t remoteMaxMessageSize() const;
 
 	shared_ptr<IceTransport> initIceTransport();
@@ -53,7 +54,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	void endLocalCandidates();
 	void rollbackLocalDescription();
-	bool checkFingerprint(const std::string &fingerprint) const;
+	bool checkFingerprint(const std::string &fingerprint, const CertificateFingerprint::Algorithm algorithm);
 	void forwardMessage(message_ptr message);
 	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
@@ -77,6 +78,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void processLocalDescription(Description description);
 	void processLocalCandidate(Candidate candidate);
 	void processRemoteDescription(Description description);
+	void processCurrentRemoteDescription(Description description);
 	void processRemoteCandidate(Candidate candidate);
 	string localBundleMid() const;
 
@@ -135,8 +137,8 @@ private:
 
 	Processor mProcessor;
 	optional<Description> mLocalDescription, mRemoteDescription;
-	optional<Description> mCurrentLocalDescription;
-	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
+	optional<Description> mCurrentLocalDescription, mCurrentRemoteDescription;
+	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex, mCurrentRemoteDescriptionMutex;
 
 	shared_ptr<MediaHandler> mMediaHandler;
 

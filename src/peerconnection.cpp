@@ -69,6 +69,10 @@ optional<Description> PeerConnection::remoteDescription() const {
 	return impl()->remoteDescription();
 }
 
+optional<Description> PeerConnection::currentRemoteDescription() const {
+	return impl()->currentRemoteDescription();
+}
+
 size_t PeerConnection::remoteMaxMessageSize() const { return impl()->remoteMaxMessageSize(); }
 
 bool PeerConnection::hasMedia() const {
@@ -243,6 +247,7 @@ void PeerConnection::setRemoteDescription(Description description) {
 	iceTransport->setRemoteDescription(description); // ICE transport might reject the description
 
 	impl()->processRemoteDescription(std::move(description));
+	impl()->processCurrentRemoteDescription(std::move(description));
 	impl()->changeSignalingState(newSignalingState);
 	signalingLock.unlock();
 

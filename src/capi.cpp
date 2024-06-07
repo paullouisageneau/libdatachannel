@@ -609,6 +609,17 @@ int rtcGetRemoteDescription(int pc, char *buffer, int size) {
 	});
 }
 
+int rtcGetCurrentRemoteDescription(int pc, char *buffer, int size) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		if (auto desc = peerConnection->currentRemoteDescription())
+			return copyAndReturn(string(*desc), buffer, size);
+		else
+			return RTC_ERR_NOT_AVAIL;
+	});
+}
+
 int rtcGetLocalDescriptionType(int pc, char *buffer, int size) {
 	return wrap([&] {
 		auto peerConnection = getPeerConnection(pc);

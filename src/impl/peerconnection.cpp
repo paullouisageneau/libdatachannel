@@ -118,6 +118,11 @@ optional<Description> PeerConnection::remoteDescription() const {
 	return mRemoteDescription;
 }
 
+optional<Description> PeerConnection::currentRemoteDescription() const {
+	std::lock_guard lock(mCurrentRemoteDescriptionMutex);
+	return mCurrentRemoteDescription;
+}
+
 size_t PeerConnection::remoteMaxMessageSize() const {
 	const size_t localMax = config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE);
 
@@ -239,7 +244,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 			throw std::logic_error("No underlying ICE transport for DTLS transport");
 
 		auto certificate = mCertificate.get();
-		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1);
+		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1, fingerprintAlgorithm);
 		auto dtlsStateChangeCallback =
 		    [this, weak_this = weak_from_this()](DtlsTransport::State transportState) {
 			    auto shared_this = weak_this.lock();
@@ -439,17 +444,21 @@ void PeerConnection::rollbackLocalDescription() {
 	}
 }
 
-bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
+bool PeerConnection::checkFingerprint(const std::string &fingerprint, const CertificateFingerprint::Algorithm algorithm) {
 	std::lock_guard lock(mRemoteDescriptionMutex);
 	if (!mRemoteDescription || !mRemoteDescription->fingerprint())
 		return false;
 
-	if (config.disableFingerprintVerification)
-		return true;
-
 	auto expectedFingerprint = mRemoteDescription->fingerprint()->value;
-	if (expectedFingerprint  == fingerprint) {
+	if (config.disableFingerprintVerification || expectedFingerprint == fingerprint) {
 		PLOG_VERBOSE << "Valid fingerprint \"" << fingerprint << "\"";
+
+		if (mCurrentRemoteDescription) {
+			std::lock_guard lock(mCurrentRemoteDescriptionMutex);
+			// update current remote description with incoming fingerprint
+			mCurrentRemoteDescription->setFingerprint(CertificateFingerprint{algorithm, fingerprint});
+		}
+
 		return true;
 	}
 
@@ -1078,6 +1087,20 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 	                   &localCandidateCallback, std::move(candidate));
 }
 
+void PeerConnection::processCurrentRemoteDescription(Description description) {
+	{
+		// Set as current remote description
+		std::lock_guard lock(mCurrentRemoteDescriptionMutex);
+
+		std::vector<Candidate> existingCandidates;
+		if (mCurrentRemoteDescription)
+			existingCandidates = mCurrentRemoteDescription->extractCandidates();
+
+		mCurrentRemoteDescription.emplace(description);
+		mCurrentRemoteDescription->addCandidates(std::move(existingCandidates));
+	}
+}
+
 void PeerConnection::processRemoteDescription(Description description) {
 	// Update the SSRC cache for existing tracks
 	updateTrackSsrcCache(description);
@@ -1123,6 +1146,14 @@ void PeerConnection::processRemoteCandidate(Candidate candidate) {
 
 		candidate.resolve(Candidate::ResolveMode::Simple);
 		mRemoteDescription->addCandidate(candidate);
+	}
+	{
+		// Set as remote candidate on current remote description too
+		std::lock_guard lock(mCurrentRemoteDescriptionMutex);
+		if (mCurrentRemoteDescription->hasCandidate(candidate))
+			return; // already in description, ignore
+
+		mCurrentRemoteDescription->addCandidate(candidate);
 	}
 
 	if (candidate.isResolved()) {
