@@ -7,9 +7,8 @@
  */
 
 #include "http.hpp"
-
 #include <algorithm>
-
+#include <cctype>
 namespace rtc::impl {
 
 bool isHttpRequest(const byte *buffer, size_t size) {

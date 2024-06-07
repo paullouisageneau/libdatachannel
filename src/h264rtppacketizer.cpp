@@ -81,7 +81,6 @@ shared_ptr<NalUnits> H264RtpPacketizer::splitMessage(binary_ptr message) {
 	}
 	return nalus;
 }
-
 H264RtpPacketizer::H264RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig,
                                      uint16_t maxFragmentSize)
     : RtpPacketizer(std::move(rtpConfig)), maxFragmentSize(maxFragmentSize),

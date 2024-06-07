@@ -9,7 +9,7 @@
 #if RTC_ENABLE_MEDIA
 
 #include "av1rtppacketizer.hpp"
-
+#include <algorithm>
 #include "impl/internals.hpp"
 
 namespace rtc {

@@ -7,7 +7,7 @@
  */
 
 #include "message.hpp"
-
+#include <algorithm>
 namespace rtc {
 
 message_ptr make_message(size_t size, Message::Type type, unsigned int stream,

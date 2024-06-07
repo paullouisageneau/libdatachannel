@@ -22,7 +22,7 @@ public:
 	using Separator = NalUnit::Separator;
 
 	// Default clock rate for H265 in RTP
-	inline static const uint32_t defaultClockRate = 90 * 1000;
+	static const uint32_t defaultClockRate = 90 * 1000;
 
 	// Constructs h265 payload packetizer with given RTP configuration.
 	// @note RTP configuration is used in packetization process which may change some configuration
