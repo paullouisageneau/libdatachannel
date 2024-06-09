@@ -53,7 +53,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	void endLocalCandidates();
 	void rollbackLocalDescription();
-	bool checkFingerprint(const std::string &fingerprint) const;
+	bool checkFingerprint(const std::string &fingerprint, const CertificateFingerprint::Algorithm &algorithm);
 	void forwardMessage(message_ptr message);
 	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
@@ -98,6 +98,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	bool changeSignalingState(SignalingState newState);
 
 	void resetCallbacks();
+	std::vector<struct RemoteFingerprint> remoteFingerprints();
 
 	// Helper method for asynchronous callback invocation
 	template <typename... Args> void trigger(synchronized_callback<Args...> *cb, Args... args) {
@@ -129,6 +130,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 private:
 	void dispatchMedia(message_ptr message);
 	void updateTrackSsrcCache(const Description &description);
+	void storeRemoteFingerprint(const std::string &fingerprint, const CertificateFingerprint::Algorithm &algorithm);
 
 	const init_token mInitToken = Init::Instance().token();
 	future_certificate_ptr mCertificate;
@@ -157,6 +159,8 @@ private:
 
 	Queue<shared_ptr<DataChannel>> mPendingDataChannels;
 	Queue<shared_ptr<Track>> mPendingTracks;
+
+	std::vector<struct RemoteFingerprint> rFingerprints;
 };
 
 } // namespace rtc::impl

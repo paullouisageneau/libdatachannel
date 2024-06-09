@@ -239,7 +239,7 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 			throw std::logic_error("No underlying ICE transport for DTLS transport");
 
 		auto certificate = mCertificate.get();
-		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1);
+		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1, fingerprintAlgorithm);
 		auto dtlsStateChangeCallback =
 		    [this, weak_this = weak_from_this()](DtlsTransport::State transportState) {
 			    auto shared_this = weak_this.lock();
@@ -439,22 +439,34 @@ void PeerConnection::rollbackLocalDescription() {
 	}
 }
 
-bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
+bool PeerConnection::checkFingerprint(const std::string &fingerprint, const CertificateFingerprint::Algorithm &algorithm) {
 	std::lock_guard lock(mRemoteDescriptionMutex);
 	if (!mRemoteDescription || !mRemoteDescription->fingerprint())
 		return false;
 
-	if (config.disableFingerprintVerification)
-		return true;
-
 	auto expectedFingerprint = mRemoteDescription->fingerprint()->value;
-	if (expectedFingerprint  == fingerprint) {
+	if (config.disableFingerprintVerification || expectedFingerprint == fingerprint) {
 		PLOG_VERBOSE << "Valid fingerprint \"" << fingerprint << "\"";
+		storeRemoteFingerprint(fingerprint, algorithm);
 		return true;
 	}
 
 	PLOG_ERROR << "Invalid fingerprint \"" << fingerprint << "\", expected \"" << expectedFingerprint << "\"";
 	return false;
+}
+
+void PeerConnection::storeRemoteFingerprint(const std::string &value, const CertificateFingerprint::Algorithm &algorithm) {
+	auto iter = std::find_if(rFingerprints.begin(), rFingerprints.end(), [&](const RemoteFingerprint& existing){return existing.value == value;});
+  bool seenPreviously = iter != rFingerprints.end();
+
+	if (seenPreviously) {
+		return;
+	}
+
+	rFingerprints.push_back({
+		value,
+		algorithm
+	});
 }
 
 void PeerConnection::forwardMessage(message_ptr message) {
@@ -1299,6 +1311,13 @@ void PeerConnection::resetCallbacks() {
 	gatheringStateChangeCallback = nullptr;
 	signalingStateChangeCallback = nullptr;
 	trackCallback = nullptr;
+}
+
+std::vector<struct RemoteFingerprint> PeerConnection::remoteFingerprints() {
+	std::vector<struct RemoteFingerprint> ret;
+	ret = rFingerprints;
+
+	return ret;
 }
 
 void PeerConnection::updateTrackSsrcCache(const Description &description) {
