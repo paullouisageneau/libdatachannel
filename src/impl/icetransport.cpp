@@ -135,7 +135,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 		throw std::runtime_error("Failed to create the ICE agent");
 
 	if (config.iceUfrag && config.icePwd) {
-		juice_set_local_ice_attributes(agent, (char*)config.iceUfrag->c_str(), (char*)config.icePwd->c_str());
+		juice_set_local_ice_attributes(agent, config.iceUfrag->c_str(), config.icePwd->c_str());
 	}
 
 	mAgent = decltype(mAgent)(agent, juice_destroy);
