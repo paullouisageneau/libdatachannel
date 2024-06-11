@@ -234,12 +234,14 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 			fingerprintAlgorithm = remote->fingerprint()->algorithm;
 		}
 
+		mRemoteFingerprintAlgorithm = fingerprintAlgorithm;
+
 		auto lower = std::atomic_load(&mIceTransport);
 		if (!lower)
 			throw std::logic_error("No underlying ICE transport for DTLS transport");
 
 		auto certificate = mCertificate.get();
-		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1, fingerprintAlgorithm);
+		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1);
 		auto dtlsStateChangeCallback =
 		    [this, weak_this = weak_from_this()](DtlsTransport::State transportState) {
 			    auto shared_this = weak_this.lock();
@@ -439,34 +441,26 @@ void PeerConnection::rollbackLocalDescription() {
 	}
 }
 
-bool PeerConnection::checkFingerprint(const std::string &fingerprint, const CertificateFingerprint::Algorithm &algorithm) {
+bool PeerConnection::checkFingerprint(const std::string &fingerprint) {
 	std::lock_guard lock(mRemoteDescriptionMutex);
 	if (!mRemoteDescription || !mRemoteDescription->fingerprint())
 		return false;
 
+  if (config.disableFingerprintVerification) {
+		PLOG_VERBOSE << "Skipping fingerprint validation";
+		mRemoteFingerprint = fingerprint;
+		return true;
+	}
+
 	auto expectedFingerprint = mRemoteDescription->fingerprint()->value;
-	if (config.disableFingerprintVerification || expectedFingerprint == fingerprint) {
+	if (expectedFingerprint == fingerprint) {
 		PLOG_VERBOSE << "Valid fingerprint \"" << fingerprint << "\"";
-		storeRemoteFingerprint(fingerprint, algorithm);
+		mRemoteFingerprint = fingerprint;
 		return true;
 	}
 
 	PLOG_ERROR << "Invalid fingerprint \"" << fingerprint << "\", expected \"" << expectedFingerprint << "\"";
 	return false;
-}
-
-void PeerConnection::storeRemoteFingerprint(const std::string &value, const CertificateFingerprint::Algorithm &algorithm) {
-	auto iter = std::find_if(rFingerprints.begin(), rFingerprints.end(), [&](const RemoteFingerprint& existing){return existing.value == value;});
-  bool seenPreviously = iter != rFingerprints.end();
-
-	if (seenPreviously) {
-		return;
-	}
-
-	rFingerprints.push_back({
-		value,
-		algorithm
-	});
 }
 
 void PeerConnection::forwardMessage(message_ptr message) {
@@ -1313,11 +1307,11 @@ void PeerConnection::resetCallbacks() {
 	trackCallback = nullptr;
 }
 
-std::vector<struct RemoteFingerprint> PeerConnection::remoteFingerprints() {
-	std::vector<struct RemoteFingerprint> ret;
-	ret = rFingerprints;
-
-	return ret;
+CertificateFingerprint PeerConnection::remoteFingerprint() {
+	if (mRemoteFingerprint)
+		return {CertificateFingerprint{mRemoteFingerprintAlgorithm, *mRemoteFingerprint}};
+	else
+		return {};
 }
 
 void PeerConnection::updateTrackSsrcCache(const Description &description) {

@@ -35,11 +35,6 @@ struct RTC_CPP_EXPORT DataChannelInit {
 	string protocol = "";
 };
 
-struct RTC_CPP_EXPORT RemoteFingerprint {
-	string value;
-	CertificateFingerprint::Algorithm algorithm;
-};
-
 class RTC_CPP_EXPORT PeerConnection final : CheshireCat<impl::PeerConnection> {
 public:
 	enum class State : int {
@@ -118,7 +113,7 @@ public:
 	void onSignalingStateChange(std::function<void(SignalingState state)> callback);
 
 	void resetCallbacks();
-	std::vector<struct RemoteFingerprint> remoteFingerprints();
+	CertificateFingerprint remoteFingerprint();
 
 	// Stats
 	void clearStats();
