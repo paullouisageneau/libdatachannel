@@ -372,6 +372,10 @@ optional<std::chrono::milliseconds> PeerConnection::rtt() {
 	return sctpTransport ? sctpTransport->rtt() : nullopt;
 }
 
+CertificateFingerprint PeerConnection::remoteFingerprint() {
+	return impl()->remoteFingerprint();
+}
+
 std::ostream &operator<<(std::ostream &out, PeerConnection::State state) {
 	using State = PeerConnection::State;
 	const char *str;

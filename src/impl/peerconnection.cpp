@@ -234,6 +234,8 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 			fingerprintAlgorithm = remote->fingerprint()->algorithm;
 		}
 
+		mRemoteFingerprintAlgorithm = fingerprintAlgorithm;
+
 		auto lower = std::atomic_load(&mIceTransport);
 		if (!lower)
 			throw std::logic_error("No underlying ICE transport for DTLS transport");
@@ -439,17 +441,21 @@ void PeerConnection::rollbackLocalDescription() {
 	}
 }
 
-bool PeerConnection::checkFingerprint(const std::string &fingerprint) const {
+bool PeerConnection::checkFingerprint(const std::string &fingerprint) {
 	std::lock_guard lock(mRemoteDescriptionMutex);
 	if (!mRemoteDescription || !mRemoteDescription->fingerprint())
 		return false;
 
-	if (config.disableFingerprintVerification)
+  if (config.disableFingerprintVerification) {
+		PLOG_VERBOSE << "Skipping fingerprint validation";
+		mRemoteFingerprint = fingerprint;
 		return true;
+	}
 
 	auto expectedFingerprint = mRemoteDescription->fingerprint()->value;
-	if (expectedFingerprint  == fingerprint) {
+	if (expectedFingerprint == fingerprint) {
 		PLOG_VERBOSE << "Valid fingerprint \"" << fingerprint << "\"";
+		mRemoteFingerprint = fingerprint;
 		return true;
 	}
 
@@ -1299,6 +1305,13 @@ void PeerConnection::resetCallbacks() {
 	gatheringStateChangeCallback = nullptr;
 	signalingStateChangeCallback = nullptr;
 	trackCallback = nullptr;
+}
+
+CertificateFingerprint PeerConnection::remoteFingerprint() {
+	if (mRemoteFingerprint)
+		return {CertificateFingerprint{mRemoteFingerprintAlgorithm, *mRemoteFingerprint}};
+	else
+		return {};
 }
 
 void PeerConnection::updateTrackSsrcCache(const Description &description) {

@@ -118,6 +118,7 @@ public:
 	void onSignalingStateChange(std::function<void(SignalingState state)> callback);
 
 	void resetCallbacks();
+	CertificateFingerprint remoteFingerprint();
 
 	// Stats
 	void clearStats();
