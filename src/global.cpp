@@ -19,6 +19,11 @@
 #include "impl/init.hpp"
 
 #include <mutex>
+#include <map>
+
+#if !USE_NICE
+#include <juice/juice.h>
+#endif
 
 namespace {
 
@@ -87,6 +92,54 @@ void Preload() { impl::Init::Instance().preload(); }
 std::shared_future<void> Cleanup() { return impl::Init::Instance().cleanup(); }
 
 void SetSctpSettings(SctpSettings s) { impl::Init::Instance().setSctpSettings(std::move(s)); }
+
+#if !USE_NICE
+
+UnhandledStunRequestCallback unboundStunCallback;
+
+void InvokeUnhandledStunRequestCallback (const juice_mux_binding_request *info, void *user_ptr) {
+	PLOG_DEBUG << "Invoking Unbind STUN listener";
+	auto callback = static_cast<UnhandledStunRequestCallback *>(user_ptr);
+
+	(*callback)({
+		std::string(info->local_ufrag),
+		std::string(info->remote_ufrag),
+		std::string(info->address),
+		info->port
+	});
+}
+
+#endif
+
+void OnUnhandledStunRequest ([[maybe_unused]] std::string host, [[maybe_unused]] int port, [[maybe_unused]] UnhandledStunRequestCallback callback) {
+	#if USE_NICE
+		PLOG_WARNING << "BindStunListener is not supported with libnice, please use libjuice";
+	#else
+	if (callback == NULL) {
+		PLOG_DEBUG << "Removing unhandled STUN request listener";
+
+		// call with NULL callback to unbind
+		if (juice_mux_listen(host.c_str(), port, NULL, NULL) < 0) {
+			throw std::runtime_error("Could not unbind STUN listener");
+		}
+		unboundStunCallback = NULL;
+
+		return;
+	}
+
+	PLOG_DEBUG << "Adding listener for unhandled STUN requests";
+
+	if (unboundStunCallback != NULL) {
+		throw std::runtime_error("Unhandled STUN request handler already present");
+	}
+
+	unboundStunCallback = std::move(callback);
+
+	if (juice_mux_listen(host.c_str(), port, &InvokeUnhandledStunRequestCallback, &unboundStunCallback) < 0) {
+		throw std::invalid_argument("Could add listener for unhandled STUN requests");
+	}
+	#endif
+}
 
 RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, LogLevel level) {
 	switch (level) {

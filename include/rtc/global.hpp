@@ -34,6 +34,17 @@ RTC_CPP_EXPORT void InitLogger(LogLevel level, LogCallback callback = nullptr);
 RTC_CPP_EXPORT void Preload();
 RTC_CPP_EXPORT std::shared_future<void> Cleanup();
 
+struct UnhandledStunRequest {
+	optional<std::string> localUfrag;
+	optional<std::string> remoteUfrag;
+	std::string address;
+	uint16_t port;
+};
+
+RTC_CPP_EXPORT typedef std::function<void(UnhandledStunRequest request)> UnhandledStunRequestCallback;
+
+RTC_CPP_EXPORT void OnUnhandledStunRequest(std::string host, int port, UnhandledStunRequestCallback callback = nullptr);
+
 struct SctpSettings {
 	// For the following settings, not set means optimized default
 	optional<size_t> recvBufferSize;                // in bytes
