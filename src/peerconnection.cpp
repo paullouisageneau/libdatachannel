@@ -76,7 +76,7 @@ bool PeerConnection::hasMedia() const {
 	return local && local->hasAudioOrVideo();
 }
 
-void PeerConnection::setLocalDescription(Description::Type type) {
+void PeerConnection::setLocalDescription(Description::Type type, LocalDescriptionInit init) {
 	std::unique_lock signalingLock(impl()->signalingMutex);
 	PLOG_VERBOSE << "Setting local description, type=" << Description::typeToString(type);
 
@@ -139,6 +139,11 @@ void PeerConnection::setLocalDescription(Description::Type type) {
 	auto iceTransport = impl()->initIceTransport();
 	if (!iceTransport)
 		return; // closed
+
+	if (init.iceUfrag && init.icePwd) {
+		PLOG_DEBUG << "Using custom ICE attributes, ufrag=\"" << init.iceUfrag.value() << "\", pwd=\"" << init.icePwd.value() << "\"";
+		iceTransport->setIceAttributes(init.iceUfrag.value(), init.icePwd.value());
+	}
 
 	Description local = iceTransport->getLocalDescription(type);
 	impl()->processLocalDescription(std::move(local));

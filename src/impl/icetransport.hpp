@@ -51,6 +51,7 @@ public:
 	void setRemoteDescription(const Description &description);
 	bool addRemoteCandidate(const Candidate &candidate);
 	void gatherLocalCandidates(string mid, std::vector<IceServer> additionalIceServers = {});
+	void setIceAttributes(string uFrag, string pwd);
 
 	optional<string> getLocalAddress() const;
 	optional<string> getRemoteAddress() const;
