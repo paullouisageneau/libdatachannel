@@ -575,7 +575,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	                       RecvCallback, this);
 }
 
-void IceTransport::setIceAttributes(string, string) {
+void IceTransport::setIceAttributes([[maybe_unused]] string uFrag, [[maybe_unused]] string pwd) {
 	PLOG_WARNING << "Setting custom ICE attributes is not supported with libnice, please use libjuice";
 }
 
