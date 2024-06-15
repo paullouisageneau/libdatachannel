@@ -98,6 +98,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	bool changeSignalingState(SignalingState newState);
 
 	void resetCallbacks();
+
 	CertificateFingerprint remoteFingerprint();
 
 	// Helper method for asynchronous callback invocation
@@ -135,12 +136,16 @@ private:
 	future_certificate_ptr mCertificate;
 
 	Processor mProcessor;
-	optional<Description> mLocalDescription, mRemoteDescription;
+	optional<Description> mLocalDescription;
 	optional<Description> mCurrentLocalDescription;
-	mutable std::mutex mLocalDescriptionMutex, mRemoteDescriptionMutex;
+	mutable std::mutex mLocalDescriptionMutex;
+
+	optional<Description> mRemoteDescription;
+	CertificateFingerprint::Algorithm mRemoteFingerprintAlgorithm = CertificateFingerprint::Algorithm::Sha256;
+	optional<string> mRemoteFingerprint;
+	mutable std::mutex mRemoteDescriptionMutex;
 
 	shared_ptr<MediaHandler> mMediaHandler;
-
 	mutable std::shared_mutex mMediaHandlerMutex;
 
 	shared_ptr<IceTransport> mIceTransport;
@@ -158,9 +163,6 @@ private:
 
 	Queue<shared_ptr<DataChannel>> mPendingDataChannels;
 	Queue<shared_ptr<Track>> mPendingTracks;
-
-	CertificateFingerprint::Algorithm mRemoteFingerprintAlgorithm = CertificateFingerprint::Algorithm::Sha256;
-	optional<string> mRemoteFingerprint;
 };
 
 } // namespace rtc::impl
