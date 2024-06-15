@@ -46,24 +46,22 @@ static LogCounter
 
 const string PemBeginCertificateTag = "-----BEGIN CERTIFICATE-----";
 
-PeerConnection::PeerConnection(Configuration config_)
-    : config(std::move(config_)) {
+PeerConnection::PeerConnection(Configuration config_) : config(std::move(config_)) {
 	PLOG_VERBOSE << "Creating PeerConnection";
-
 
 	if (config.certificatePemFile && config.keyPemFile) {
 		std::promise<certificate_ptr> cert;
 		cert.set_value(std::make_shared<Certificate>(
-			config.certificatePemFile->find(PemBeginCertificateTag) != string::npos
-				? Certificate::FromString(*config.certificatePemFile, *config.keyPemFile)
-				: Certificate::FromFile(*config.certificatePemFile, *config.keyPemFile,
-										config.keyPemPass.value_or(""))));
+		    config.certificatePemFile->find(PemBeginCertificateTag) != string::npos
+		        ? Certificate::FromString(*config.certificatePemFile, *config.keyPemFile)
+		        : Certificate::FromFile(*config.certificatePemFile, *config.keyPemFile,
+		                                config.keyPemPass.value_or(""))));
 		mCertificate = cert.get_future();
 	} else if (!config.certificatePemFile && !config.keyPemFile) {
 		mCertificate = make_certificate(config.certificateType);
 	} else {
 		throw std::invalid_argument(
-			"Either none or both certificate and key PEM files must be specified");
+		    "Either none or both certificate and key PEM files must be specified");
 	}
 
 	if (config.portRangeEnd && config.portRangeBegin > config.portRangeEnd)
@@ -559,7 +557,7 @@ void PeerConnection::forwardMedia([[maybe_unused]] message_ptr message) {
 void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 #if RTC_ENABLE_MEDIA
 	std::shared_lock lock(mTracksMutex); // read-only
-	if (mTrackLines.size()==1) {
+	if (mTrackLines.size() == 1) {
 		if (auto track = mTrackLines.front().lock())
 			track->incoming(message);
 		return;
@@ -746,7 +744,7 @@ void PeerConnection::iterateDataChannels(
 	{
 		std::shared_lock lock(mDataChannelsMutex); // read-only
 		locked.reserve(mDataChannels.size());
-		for(auto it = mDataChannels.begin(); it != mDataChannels.end(); ++it) {
+		for (auto it = mDataChannels.begin(); it != mDataChannels.end(); ++it) {
 			auto channel = it->second.lock();
 			if (channel && !channel->isClosed())
 				locked.push_back(std::move(channel));
@@ -815,7 +813,7 @@ void PeerConnection::iterateTracks(std::function<void(shared_ptr<Track> track)> 
 	{
 		std::shared_lock lock(mTracksMutex); // read-only
 		locked.reserve(mTrackLines.size());
-		for(auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it) {
+		for (auto it = mTrackLines.begin(); it != mTrackLines.end(); ++it) {
 			auto track = it->lock();
 			if (track && !track->isClosed())
 				locked.push_back(std::move(track));
