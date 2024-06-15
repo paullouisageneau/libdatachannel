@@ -229,12 +229,14 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 		PLOG_VERBOSE << "Starting DTLS transport";
 
-		auto fingerprintAlgorithm = CertificateFingerprint::Algorithm::Sha256;
-		if (auto remote = remoteDescription(); remote && remote->fingerprint()) {
-			fingerprintAlgorithm = remote->fingerprint()->algorithm;
+		CertificateFingerprint::Algorithm fingerprintAlgorithm;
+		{
+			std::lock_guard lock(mRemoteDescriptionMutex);
+			if (mRemoteDescription && mRemoteDescription->fingerprint()) {
+				mRemoteFingerprintAlgorithm = mRemoteDescription->fingerprint()->algorithm;
+			}
+			fingerprintAlgorithm = mRemoteFingerprintAlgorithm;
 		}
-
-		mRemoteFingerprintAlgorithm = fingerprintAlgorithm;
 
 		auto lower = std::atomic_load(&mIceTransport);
 		if (!lower)
@@ -443,23 +445,25 @@ void PeerConnection::rollbackLocalDescription() {
 
 bool PeerConnection::checkFingerprint(const std::string &fingerprint) {
 	std::lock_guard lock(mRemoteDescriptionMutex);
-	if (!mRemoteDescription || !mRemoteDescription->fingerprint())
+	mRemoteFingerprint = fingerprint;
+
+	if (!mRemoteDescription || !mRemoteDescription->fingerprint()
+			|| mRemoteFingerprintAlgorithm != mRemoteDescription->fingerprint()->algorithm)
 		return false;
 
-  if (config.disableFingerprintVerification) {
+	if (config.disableFingerprintVerification) {
 		PLOG_VERBOSE << "Skipping fingerprint validation";
-		mRemoteFingerprint = fingerprint;
 		return true;
 	}
 
 	auto expectedFingerprint = mRemoteDescription->fingerprint()->value;
 	if (expectedFingerprint == fingerprint) {
 		PLOG_VERBOSE << "Valid fingerprint \"" << fingerprint << "\"";
-		mRemoteFingerprint = fingerprint;
 		return true;
 	}
 
-	PLOG_ERROR << "Invalid fingerprint \"" << fingerprint << "\", expected \"" << expectedFingerprint << "\"";
+	PLOG_ERROR << "Invalid fingerprint \"" << fingerprint << "\", expected \""
+	           << expectedFingerprint << "\"";
 	return false;
 }
 
@@ -1308,6 +1312,7 @@ void PeerConnection::resetCallbacks() {
 }
 
 CertificateFingerprint PeerConnection::remoteFingerprint() {
+	std::lock_guard lock(mRemoteDescriptionMutex);
 	if (mRemoteFingerprint)
 		return {CertificateFingerprint{mRemoteFingerprintAlgorithm, *mRemoteFingerprint}};
 	else
