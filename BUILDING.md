@@ -70,7 +70,7 @@ $ make -j2
 ### Microsoft Windows with Microsoft Visual C++
 
 ```bash
-$ cmake -B build -G "NMake Makefiles"
+$ cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
 $ cd build
 $ nmake
 ```
