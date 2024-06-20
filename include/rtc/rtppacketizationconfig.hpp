@@ -63,11 +63,11 @@ public:
 
 	// the negotiated ID of the playout delay header extension
 	// https://webrtc.googlesource.com/src/+/main/docs/native-code/rtp-hdrext/playout-delay/README.md
-	uint8_t playoutDelayId;
+	uint8_t playoutDelayId = 0;
 
 	// Minimum/maxiumum playout delay, in 10ms intervals. A value of 10 would equal a 100ms delay
-	uint16_t playoutDelayMin;
-	uint16_t playoutDelayMax;
+	uint16_t playoutDelayMin = 0;
+	uint16_t playoutDelayMax = 0;
 
 	/// Construct RTP configuration used in packetization process
 	/// @param ssrc SSRC of source
