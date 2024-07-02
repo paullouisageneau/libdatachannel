@@ -172,6 +172,20 @@ typedef void(RTC_API *rtcAvailableCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcPliHandlerCallbackFunc)(int tr, void *ptr);
 typedef void(RTC_API *rtcRembHandlerCallbackFunc)(int tr, unsigned int bitrate, void *ptr);
 
+// Handle STUN requests with unexpected ufrags
+
+typedef struct {
+	const char * ufrag;
+	const char * pwd;
+	uint8_t family;
+	const char * address;
+	uint16_t port;
+} rtcUnhandledStunRequest;
+
+typedef void(RTC_API *rtcUnhandledStunRequestCallbackFunc)(rtcUnhandledStunRequest request);
+
+RTC_C_EXPORT void rtcOnUnhandledStunRequest(const char *host, int port, rtcUnhandledStunRequestCallbackFunc callback);
+
 // Log
 
 // NULL cb on the first call will log to stdout
