@@ -155,6 +155,11 @@ void IceTransport::addIceServer(IceServer server) {
 		return;
 	}
 
+	if (server.relayType != IceServer::RelayType::TurnUdp) {
+		PLOG_WARNING << "TURN transports TCP and TLS are not supported with libjuice";
+		return;
+	}
+
 	if (mTurnServersAdded >= MAX_TURN_SERVERS_COUNT)
 		return;
 
