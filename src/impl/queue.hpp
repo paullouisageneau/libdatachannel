@@ -105,6 +105,7 @@ template <typename T> optional<T> Queue<T>::pop() {
 	mAmount -= mAmountFunction(mQueue.front());
 	optional<T> element{std::move(mQueue.front())};
 	mQueue.pop();
+	mPushCondition.notify_one();
 	return element;
 }
 
