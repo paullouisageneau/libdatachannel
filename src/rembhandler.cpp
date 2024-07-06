@@ -27,7 +27,7 @@ namespace rtc {
 RembHandler::RembHandler(std::function<void(unsigned int)> onRemb) : mOnRemb(onRemb) {}
 
 void RembHandler::incoming(message_vector &messages, [[maybe_unused]] const message_callback &send) {
-	static uint32_t rembValue = makeEndianAgnosticValue('BMER');
+	static uint32_t rembValue = makeEndianAgnosticValue(0x424d4552); // BMER
 
 	for (const auto &message : messages) {
 		size_t offset = 0;
