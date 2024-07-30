@@ -227,6 +227,8 @@ RTC_C_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 RTC_C_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote,
                                              int remoteSize);
 
+RTC_C_EXPORT bool rtcIsNegotiationNeeded(int pc);
+
 RTC_C_EXPORT int rtcGetMaxDataChannelStream(int pc);
 RTC_C_EXPORT int rtcGetRemoteMaxMessageSize(int pc);
 
