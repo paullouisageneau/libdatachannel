@@ -493,8 +493,8 @@ void Description::clearMedia() {
 	mApplication.reset();
 }
 
-variant<Description::Media *, Description::Application *> Description::media(unsigned int index) {
-	if (index >= mEntries.size())
+variant<Description::Media *, Description::Application *> Description::media(int index) {
+	if (index < 0 || index >= int(mEntries.size()))
 		throw std::out_of_range("Media index out of range");
 
 	const auto &entry = mEntries[index];
@@ -514,9 +514,8 @@ variant<Description::Media *, Description::Application *> Description::media(uns
 	}
 }
 
-variant<const Description::Media *, const Description::Application *>
-Description::media(unsigned int index) const {
-	if (index >= mEntries.size())
+variant<const Description::Media *, const Description::Application *> Description::media(int index) const {
+	if (index < 0 || index >= int(mEntries.size()))
 		throw std::out_of_range("Media index out of range");
 
 	const auto &entry = mEntries[index];
@@ -536,7 +535,7 @@ Description::media(unsigned int index) const {
 	}
 }
 
-unsigned int Description::mediaCount() const { return unsigned(mEntries.size()); }
+int Description::mediaCount() const { return int(mEntries.size()); }
 
 Description::Entry::Entry(const string &mline, string mid, Direction dir)
     : mMid(std::move(mid)), mDirection(dir) {

@@ -374,6 +374,18 @@ Return value: the maximun length of strings copied in buffers (including the ter
 
 If `local`, `remote`, or both, are `NULL`, the corresponding candidate is not copied, but the maximum length is still returned.
 
+#### rtcIsNegotiationNeeded
+```
+bool rtcIsNegotiationNeeded(int pc);
+```
+
+Return true if negotiation needs to be started or restarted, for instance to signal new tracks. If so, the user may call `rtcSetLocalDescription()` to start it.
+
+Arguments:
+- `pc`: the Peer Connection identifier
+
+Return value: true if negotiation is needed
+
 #### rtcGetMaxDataChannelStream
 ```
 int rtcGetMaxDataChannelStream(int pc);
