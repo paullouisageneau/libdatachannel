@@ -836,7 +836,7 @@ void PeerConnection::iterateRemoteTracks(std::function<void(shared_ptr<Track> tr
 	std::vector<shared_ptr<Track>> locked;
 	{
 		std::shared_lock lock(mTracksMutex); // read-only
-		locked.reserve(mTracks.size());
+		locked.reserve(remote->mediaCount());
 		for(int i = 0; i < remote->mediaCount(); ++i) {
 			if (std::holds_alternative<Description::Media *>(remote->media(i))) {
 				auto remoteMedia = std::get<Description::Media *>(remote->media(i));
