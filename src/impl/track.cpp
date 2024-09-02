@@ -179,11 +179,7 @@ bool Track::outgoing(message_ptr message) {
 
 	if (handler) {
 		message_vector messages{std::move(message)};
-		handler->outgoingChain(messages, [this, weak_this = weak_from_this()](message_ptr m) {
-			if (auto locked = weak_this.lock()) {
-				transportSend(m);
-			}
-		});
+		handler ->outgoingChain(messages, nullptr);
 		bool ret = false;
 		for (auto &m : messages)
 			ret = transportSend(std::move(m));
