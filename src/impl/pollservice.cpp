@@ -189,12 +189,13 @@ void PollService::runLoop() {
 
 			} while (ret < 0 && (sockerrno == SEINTR || sockerrno == SEAGAIN));
 
+			if (ret < 0) {
 #ifdef _WIN32
-			if (ret == WSAENOTSOCK)
-				continue; // prepare again as the fd has been removed
+				if (sockerrno == WSAENOTSOCK)
+					continue; // prepare again as the fd has been removed
 #endif
-			if (ret < 0)
 				throw std::runtime_error("poll failed, errno=" + std::to_string(sockerrno));
+			}
 
 			process(pfds);
 		}
