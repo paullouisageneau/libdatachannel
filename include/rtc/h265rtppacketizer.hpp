@@ -21,8 +21,8 @@ class RTC_CPP_EXPORT H265RtpPacketizer final : public RtpPacketizer {
 public:
 	using Separator = NalUnit::Separator;
 
-	// Default clock rate for H265 in RTP
-	inline static const uint32_t defaultClockRate = 90 * 1000;
+	inline static const uint32_t ClockRate = VideoClockRate;
+	[[deprecated("Use ClockRate")]] inline static const uint32_t defaultClockRate = ClockRate;
 
 	// Constructs h265 payload packetizer with given RTP configuration.
 	// @note RTP configuration is used in packetization process which may change some configuration
@@ -31,19 +31,18 @@ public:
 	// @param rtpConfig  RTP configuration
 	// @param maxFragmentSize maximum size of one NALU fragment
 	H265RtpPacketizer(Separator separator, shared_ptr<RtpPacketizationConfig> rtpConfig,
-	                  uint16_t maxFragmentSize = H265NalUnits::defaultMaximumFragmentSize);
+	                  size_t maxFragmentSize = DefaultMaxFragmentSize);
 
-	// for backward compatibility
+	// For backward compatibility, do not use
 	[[deprecated]] H265RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig,
-	                  uint16_t maxFragmentSize = H265NalUnits::defaultMaximumFragmentSize);
-
-	void outgoing(message_vector &messages, const message_callback &send) override;
+	                  size_t maxFragmentSize = DefaultMaxFragmentSize);
 
 private:
-	shared_ptr<H265NalUnits> splitMessage(binary_ptr message);
+	std::vector<binary> fragment(binary data) override;
+	std::vector<H265NalUnit> splitFrame(const binary &frame);
 
-	const uint16_t maxFragmentSize;
-	const NalUnit::Separator separator;
+	const NalUnit::Separator mSeparator;
+	const size_t mMaxFragmentSize;
 };
 
 // For backward compatibility, do not use

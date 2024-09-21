@@ -434,9 +434,6 @@ RTC_C_EXPORT int rtcSetTrackRtpTimestamp(int id, uint32_t timestamp);
 // Get timestamp of last RTCP SR, result is written to timestamp
 RTC_C_EXPORT int rtcGetLastTrackSenderReportTimestamp(int id, uint32_t *timestamp);
 
-// Set NeedsToReport flag in RtcpSrReporter handler identified by given track id
-RTC_C_EXPORT int rtcSetNeedsToSendRtcpSr(int id);
-
 // Get all available payload types for given codec and stores them in buffer, does nothing if
 // buffer is NULL
 int rtcGetTrackPayloadTypesForCodec(int tr, const char *ccodec, int *buffer, int size);
@@ -453,6 +450,9 @@ int rtcGetSsrcsForType(const char *mediaType, const char *sdp, uint32_t *buffer,
 // Set SSRC for given media type in given SDP
 int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, const int bufferSize,
                       rtcSsrcForTypeInit *init);
+
+// For backward compatibility, do not use
+RTC_C_EXPORT RTC_DEPRECATED int rtcSetNeedsToSendRtcpSr(int id);
 
 #endif // RTC_ENABLE_MEDIA
 
