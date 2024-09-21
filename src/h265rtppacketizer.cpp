@@ -22,37 +22,51 @@
 
 namespace rtc {
 
-shared_ptr<H265NalUnits> H265RtpPacketizer::splitMessage(binary_ptr message) {
-	auto nalus = std::make_shared<H265NalUnits>();
-	if (separator == NalUnit::Separator::Length) {
+H265RtpPacketizer::H265RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig,
+                                     size_t maxFragmentSize)
+    : RtpPacketizer(std::move(rtpConfig)), mSeparator(NalUnit::Separator::Length),
+      mMaxFragmentSize(maxFragmentSize) {}
+
+H265RtpPacketizer::H265RtpPacketizer(NalUnit::Separator separator,
+                                     shared_ptr<RtpPacketizationConfig> rtpConfig,
+                                     size_t maxFragmentSize)
+    : RtpPacketizer(std::move(rtpConfig)), mSeparator(separator), mMaxFragmentSize(maxFragmentSize) {}
+
+std::vector<binary> H265RtpPacketizer::fragment(binary data) {
+	return H265NalUnit::GenerateFragments(splitFrame(data), mMaxFragmentSize);
+}
+
+std::vector<H265NalUnit> H265RtpPacketizer::splitFrame(const binary &frame) {
+	std::vector<H265NalUnit> nalus;
+	if (mSeparator == NalUnit::Separator::Length) {
 		size_t index = 0;
-		while (index < message->size()) {
-			assert(index + 4 < message->size());
-			if (index + 4 >= message->size()) {
+		while (index < frame.size()) {
+			assert(index + 4 < frame.size());
+			if (index + 4 >= frame.size()) {
 				LOG_WARNING << "Invalid NAL Unit data (incomplete length), ignoring!";
 				break;
 			}
 			uint32_t length;
-			std::memcpy(&length, message->data() + index, sizeof(uint32_t));
+			std::memcpy(&length, frame.data() + index, sizeof(uint32_t));
 			length = ntohl(length);
 			auto naluStartIndex = index + 4;
 			auto naluEndIndex = naluStartIndex + length;
 
-			assert(naluEndIndex <= message->size());
-			if (naluEndIndex > message->size()) {
+			assert(naluEndIndex <= frame.size());
+			if (naluEndIndex > frame.size()) {
 				LOG_WARNING << "Invalid NAL Unit data (incomplete unit), ignoring!";
 				break;
 			}
-			auto begin = message->begin() + naluStartIndex;
-			auto end = message->begin() + naluEndIndex;
-			nalus->push_back(std::make_shared<H265NalUnit>(begin, end));
+			auto begin = frame.begin() + naluStartIndex;
+			auto end = frame.begin() + naluEndIndex;
+			nalus.emplace_back(begin, end);
 			index = naluEndIndex;
 		}
 	} else {
 		NalUnitStartSequenceMatch match = NUSM_noMatch;
 		size_t index = 0;
-		while (index < message->size()) {
-			match = NalUnit::StartSequenceMatchSucc(match, (*message)[index++], separator);
+		while (index < frame.size()) {
+			match = NalUnit::StartSequenceMatchSucc(match, frame[index++], mSeparator);
 			if (match == NUSM_longMatch || match == NUSM_shortMatch) {
 				match = NUSM_noMatch;
 				break;
@@ -61,52 +75,24 @@ shared_ptr<H265NalUnits> H265RtpPacketizer::splitMessage(binary_ptr message) {
 
 		size_t naluStartIndex = index;
 
-		while (index < message->size()) {
-			match = NalUnit::StartSequenceMatchSucc(match, (*message)[index], separator);
+		while (index < frame.size()) {
+			match = NalUnit::StartSequenceMatchSucc(match, frame[index], mSeparator);
 			if (match == NUSM_longMatch || match == NUSM_shortMatch) {
 				auto sequenceLength = match == NUSM_longMatch ? 4 : 3;
 				size_t naluEndIndex = index - sequenceLength;
 				match = NUSM_noMatch;
-				auto begin = message->begin() + naluStartIndex;
-				auto end = message->begin() + naluEndIndex + 1;
-				nalus->push_back(std::make_shared<H265NalUnit>(begin, end));
+				auto begin = frame.begin() + naluStartIndex;
+				auto end = frame.begin() + naluEndIndex + 1;
+				nalus.emplace_back(begin, end);
 				naluStartIndex = index + 1;
 			}
 			index++;
 		}
-		auto begin = message->begin() + naluStartIndex;
-		auto end = message->end();
-		nalus->push_back(std::make_shared<H265NalUnit>(begin, end));
+		auto begin = frame.begin() + naluStartIndex;
+		auto end = frame.end();
+		nalus.emplace_back(begin, end);
 	}
 	return nalus;
-}
-
-H265RtpPacketizer::H265RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig,
-                                     uint16_t maxFragmentSize)
-    : RtpPacketizer(std::move(rtpConfig)), maxFragmentSize(maxFragmentSize),
-      separator(NalUnit::Separator::Length) {}
-
-H265RtpPacketizer::H265RtpPacketizer(NalUnit::Separator separator,
-                                     shared_ptr<RtpPacketizationConfig> rtpConfig,
-                                     uint16_t maxFragmentSize)
-    : RtpPacketizer(std::move(rtpConfig)), maxFragmentSize(maxFragmentSize),
-      separator(separator) {}
-
-void H265RtpPacketizer::outgoing(message_vector &messages, [[maybe_unused]] const message_callback &send) {
-	message_vector result;
-	for (const auto &message : messages) {
-		auto nalus = splitMessage(message);
-		auto fragments = nalus->generateFragments(maxFragmentSize);
-		if (fragments.size() == 0)
-			continue;
-
-		for (size_t i = 0; i < fragments.size() - 1; i++)
-			result.push_back(packetize(fragments[i], false));
-
-		result.push_back(packetize(fragments[fragments.size() - 1], true));
-	}
-
-	messages.swap(result);
 }
 
 } // namespace rtc

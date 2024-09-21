@@ -11,12 +11,20 @@
 
 #include "common.hpp"
 
+#include <chrono>
+
 namespace rtc {
 
 struct RTC_CPP_EXPORT FrameInfo {
-	FrameInfo(uint8_t payloadType, uint32_t timestamp) : payloadType(payloadType), timestamp(timestamp){};
-	uint8_t payloadType; // Indicates codec of the frame
-	uint32_t timestamp = 0; // RTP Timestamp
+	FrameInfo(uint32_t timestamp) : timestamp(timestamp) {};
+	template<typename Period = std::ratio<1>> FrameInfo(std::chrono::duration<double, Period> timestamp) : timestampSeconds(timestamp) {};
+
+	[[deprecated]] FrameInfo(uint8_t payloadType, uint32_t timestamp) : timestamp(timestamp), payloadType(payloadType) {};
+
+	uint32_t timestamp = 0;
+	uint8_t payloadType = 0;
+
+	optional<std::chrono::duration<double>> timestampSeconds;
 };
 
 } // namespace rtc

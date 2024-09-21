@@ -233,11 +233,6 @@ shared_ptr<MediaHandler> Track::getMediaHandler() {
 	return mMediaHandler;
 }
 
-void Track::onFrame(std::function<void(binary data, FrameInfo frame)> callback) {
-	frameCallback = callback;
-	flushPendingMessages();
-}
-
 void Track::flushPendingMessages() {
 	if (!mOpenTriggered)
 		return;
@@ -249,9 +244,9 @@ void Track::flushPendingMessages() {
 
 		auto message = next.value();
 		try {
-			if (message->frameInfo != nullptr && frameCallback) {
+			if (message->frameInfo && frameCallback) {
 				frameCallback(std::move(*message), std::move(*message->frameInfo));
-			} else if (message->frameInfo == nullptr && messageCallback) {
+			} else if (!message->frameInfo && messageCallback) {
 				messageCallback(trackMessageToVariant(message));
 			}
 		} catch (const std::exception &e) {

@@ -20,8 +20,8 @@ namespace rtc {
 // RTP packetization of AV1 payload
 class RTC_CPP_EXPORT AV1RtpPacketizer final : public RtpPacketizer {
 public:
-	// Default clock rate for AV1 in RTP
-	inline static const uint32_t defaultClockRate = 90 * 1000;
+	inline static const uint32_t ClockRate = VideoClockRate;
+	[[deprecated("Use ClockRate")]] inline static const uint32_t defaultClockRate = ClockRate;
 
 	// Define how OBUs are seperated in a AV1 Sample
 	enum class Packetization {
@@ -33,17 +33,18 @@ public:
 	// @note RTP configuration is used in packetization process which may change some configuration
 	// properties such as sequence number.
 	AV1RtpPacketizer(Packetization packetization, shared_ptr<RtpPacketizationConfig> rtpConfig,
-	                 uint16_t maxFragmentSize = NalUnits::defaultMaximumFragmentSize);
-
-	void outgoing(message_vector &messages, const message_callback &send) override;
+	                 size_t maxFragmentSize = DefaultMaxFragmentSize);
 
 private:
-	shared_ptr<NalUnits> splitMessage(binary_ptr message);
-	std::vector<shared_ptr<binary>> packetizeObu(binary_ptr message, uint16_t maxFragmentSize);
+	static std::vector<binary> extractTemporalUnitObus(const binary &data);
 
-	const uint16_t maxFragmentSize;
-	const Packetization packetization;
-	std::shared_ptr<binary> sequenceHeader;
+	std::vector<binary> fragment(binary data) override;
+	std::vector<binary> fragmentObu(const binary &data);
+
+	const Packetization mPacketization;
+	const size_t mMaxFragmentSize;
+
+	std::unique_ptr<binary> mSequenceHeader;
 };
 
 // For backward compatibility, do not use
