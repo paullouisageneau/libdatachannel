@@ -465,8 +465,7 @@ void TcpTransport::process(PollService::Event event) {
 	// Allow any received messages to be processed before we shut down and destroy the callbacks
 	// This should probably be a mutex or check of a queue size or something, but I can't figure out
 	// what to do that against and a 100ms delay seems to be plenty
-
-	usleep(100 * 1000);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	PLOG_INFO << "TCP disconnected";
 	PollService::Instance().remove(mSock);
 	changeState(State::Disconnected);
