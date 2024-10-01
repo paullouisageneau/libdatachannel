@@ -202,7 +202,7 @@ bool Track::transportSend([[maybe_unused]] message_ptr message) {
 		std::shared_lock lock(mMutex);
 		transport = mDtlsSrtpTransport.lock();
 		if (!transport)
-			throw std::runtime_error("Track is closed");
+			throw std::runtime_error("Track is not open");
 
 		// Set recommended medium-priority DSCP value
 		// See https://www.rfc-editor.org/rfc/rfc8837.html#section-5
