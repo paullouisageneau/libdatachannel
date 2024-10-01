@@ -20,6 +20,8 @@
 #include "helpers.hpp"
 #include "ArgParser.hpp"
 
+#include <chrono>
+
 using namespace rtc;
 using namespace std;
 using namespace std::chrono_literals;
@@ -351,26 +353,11 @@ shared_ptr<Stream> createStream(const string h264Samples, const unsigned fps, co
             for (auto clientTrack: tracks) {
                 auto client = clientTrack.id;
                 auto trackData = clientTrack.trackData;
-                auto rtpConfig = trackData->sender->rtpConfig;
-
-                // sample time is in us, we need to convert it to seconds
-                auto elapsedSeconds = double(sampleTime) / (1000 * 1000);
-                // get elapsed time in clock rate
-                uint32_t elapsedTimestamp = rtpConfig->secondsToTimestamp(elapsedSeconds);
-                // set new timestamp
-                rtpConfig->timestamp = rtpConfig->startTimestamp + elapsedTimestamp;
-
-                // get elapsed time in clock rate from last RTCP sender report
-                auto reportElapsedTimestamp = rtpConfig->timestamp - trackData->sender->lastReportedTimestamp();
-                // check if last report was at least 1 second ago
-                if (rtpConfig->timestampToSeconds(reportElapsedTimestamp) > 1) {
-                    trackData->sender->setNeedsToReport();
-                }
 
                 cout << "Sending " << streamType << " sample with size: " << to_string(sample.size()) << " to " << client << endl;
                 try {
                     // send sample
-                    trackData->track->send(sample);
+                    trackData->track->sendFrame(sample, std::chrono::duration<double, std::micro>(sampleTime));
                 } catch (const std::exception &e) {
                     cerr << "Unable to send "<< streamType << " packet: " << e.what() << endl;
                 }
