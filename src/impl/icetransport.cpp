@@ -472,6 +472,10 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	// the characteristics of the associated data.
 	g_object_set(G_OBJECT(mNiceAgent.get()), "stun-pacing-timer", 25, nullptr);
 
+	// Enable RFC 7675 ICE consent freshness support (requires libnice 0.1.19)
+	g_object_set(G_OBJECT(mNiceAgent.get()), "keepalive-conncheck", TRUE, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "consent-freshness", TRUE, nullptr);
+
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp", FALSE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp-timeout", 200, nullptr);
 
