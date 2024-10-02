@@ -252,7 +252,8 @@ shared_ptr<TcpTransport> WebSocket::setTcpTransport(shared_ptr<TcpTransport> tra
 				remoteClose();
 				break;
 			case State::Disconnected:
-				remoteClose();
+				if(state == WebSocket::State::Connecting)
+					remoteClose();
 				break;
 			default:
 				// Ignore
@@ -303,7 +304,8 @@ shared_ptr<HttpProxyTransport> WebSocket::initProxyTransport() {
 				remoteClose();
 				break;
 			case State::Disconnected:
-				remoteClose();
+				if(state == WebSocket::State::Connecting)
+					remoteClose();
 				break;
 			default:
 				// Ignore
@@ -358,7 +360,8 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 				remoteClose();
 				break;
 			case State::Disconnected:
-				remoteClose();
+				if(state == WebSocket::State::Connecting)
+					remoteClose();
 				break;
 			default:
 				// Ignore
