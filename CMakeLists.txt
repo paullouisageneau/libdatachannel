@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 project(libdatachannel
-	VERSION 0.21.2
+	VERSION 0.22.0
 	LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "C/C++ WebRTC network library featuring Data Channels, Media Transport, and WebSockets")
 
