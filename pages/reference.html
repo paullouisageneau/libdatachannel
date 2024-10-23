@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+          <title>libdatachannel</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta charset="utf-8">
+        <link href="https://libdatachannel.org/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="libdatachannel Full Atom Feed">
+        <!-- twitter card metadata -->
+<meta name="twitter:site" content="">
+<meta name="twitter:title" content="Reference">
+<meta name="twitter:description" content="">
+        <!-- OG Tags -->
+<meta property="og:url" content="https://libdatachannel.org/pages/reference.html"/>
+<meta property="og:title" content="libdatachannel | Reference" />
+<meta property="og:description" content="" />
+        <!-- favicon -->
+        <!-- css -->
+        <link rel="stylesheet" type="text/css" href="https://libdatachannel.org/theme/css/main.css">
+        <link rel="stylesheet" type="text/css" href="https://libdatachannel.org/theme/css/pygments-highlight.css">
+
+
+
+</head>
+<body>
+<a href="https://github.com/paullouisageneau/libdatachannel">
+<img style="position: absolute; top: 0; right: 0; border: 0;" src="https://libdatachannel.org/images/forkme_right_gray_6d6d6d.svg" alt="Fork me on GitHub" />
+</a>
+    <div role="banner" id="banner">
+        <header>
+            <nav id="menu">
+                <ul>
+                        <li><a href="https://libdatachannel.org/">libdatachannel</a></li>
+                        <li class="active"><a href="https://libdatachannel.org/pages/reference.html">reference</a></li>
+                </ul>
+            </nav>
+        </header>
+    </div>
+        <div class="page" role="main">
+  <div class="article" role="article">
+    <article>
+        <header>
+          <h1>
+            Reference
+          </h1>
+        </header>
+      <div class="content">
+         <h2>libdatachannel - C API Documentation</h2>
+<p>The following details the C API of libdatachannel. The C API is available by including the <code>rtc/rtc.h</code> header.</p>
+<h3>General considerations</h3>
+<p>Unless stated otherwise, functions return <code>RTC_ERR_SUCCESS</code>, defined as <code>0</code>, on success.</p>
+<p>All functions can return the following negative error codes:</p>
+<ul>
+<li><code>RTC_ERR_INVALID</code>: an invalid argument was provided</li>
+<li><code>RTC_ERR_FAILURE</code>: a runtime error happened</li>
+<li><code>RTC_ERR_NOT_AVAIL</code>: an element is not available at the moment</li>
+<li><code>RTC_ERR_TOO_SMALL</code>: a user-provided buffer is too small</li>
+</ul>
+<p>All functions taking pointers as arguments (excepted the opaque user pointer) need the memory to be accessible until the call returns, but it can be safely discarded afterwards.</p>
+<h3>Common</h3>
+<h4>rtcInitLogger</h4>
+<div class="highlight"><pre><span></span><code>void rtcInitLogger(rtcLogLevel level, rtcLogCallbackFunc cb)
+</code></pre></div>
+
+<p>Arguments:</p>
+<ul>
+<li><code>level</code>: the log level. It must be one of the following: <code>RTC_LOG_NONE</code>, <code>RTC_LOG_FATAL</code>, <code>RTC_LOG_ERROR</code>, <code>RTC_LOG_WARNING</code>, <code>RTC_LOG_INFO</code>, <code>RTC_LOG_DEBUG</code>, <code>RTC_LOG_VERBOSE</code>.</li>
+<li><code>cb</code> (optional): the callback to pass the log lines to. If the callback is already set, it is replaced. If NULL after a callback is set, the callback is unset. If NULL on first call, the library will log to stdout instead.</li>
+</ul>
+<p><code>cb</code> must have the following signature:
+<code>void myLogCallback(rtcLogLevel level, const char *message)</code></p>
+<p>Arguments:</p>
+<ul>
+<li><code>level</code>: the log level for the current message. It will be one of the following: <code>RTC_LOG_FATAL</code>, <code>RTC_LOG_ERROR</code>, <code>RTC_LOG_WARNING</code>, <code>RTC_LOG_INFO</code>, <code>RTC_LOG_DEBUG</code>, <code>RTC_LOG_VERBOSE</code>.</li>
+<li><code>message</code>: a null-terminated string containing the log message</li>
+</ul>
+<h4>rtcPreload</h4>
+<div class="highlight"><pre><span></span><code><span class="nb nb-Type">void</span><span class="w"> </span><span class="n">rtcPreload</span><span class="p">(</span><span class="nb nb-Type">void</span><span class="p">)</span>
+</code></pre></div>
+
+<p>An optional call to <code>rtcPreload</code> preloads the global resources used by the library. If it is not called, resources are lazy-loaded when they are required for the first time by a PeerConnection, which for instance prevents from properly timing connection establishment (as the first one will take way more time). The call blocks until preloading is finished. If resources are already loaded, the call has no effect.</p>
+<h4>rtcCleanup</h4>
+<div class="highlight"><pre><span></span><code>void rtcCleanup(void)
+</code></pre></div>
+
+<p>An optional call to <code>rtcCleanup</code> unloads the global resources used by the library. The call will block until unloading is done. If Peer Connections, Data Channels, Tracks, or WebSockets created through this API still exist, they will be destroyed. If resources are already unloaded, the call has no effect.</p>
+<p>Warning: This function requires all Peer Connections, Data Channels, Tracks, and WebSockets to be destroyed before returning, meaning all callbacks must return before this function returns. Therefore, it must never be called from a callback.</p>
+<h4>rtcSetUserPointer</h4>
+<div class="highlight"><pre><span></span><code>void rtcSetUserPointer(int id, void *user_ptr)
+</code></pre></div>
+
+<p>Sets a opaque user pointer for a Peer Connection, Data Channel, Track, or WebSocket. The user pointer will be passed as last argument in each corresponding callback. It will never be accessed in any way. The initial user pointer of a Peer Connection or WebSocket is <code>NULL</code>, and the initial one of a Data Channel or Track is the one of the Peer Connection at the time of creation.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>id</code>: the identifier of Peer Connection, Data Channel, Track, or WebSocket</li>
+<li><code>user_ptr</code>: an opaque pointer whose meaning is up to the user</li>
+</ul>
+<h3>PeerConnection</h3>
+<h4>rtcCreatePeerConnection</h4>
+<div class="highlight"><pre><span></span><code><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">rtcCreatePeerConnection</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">rtcConfiguration</span><span class="w"> </span><span class="o">*</span><span class="n">config</span><span class="p">)</span>
+
+<span class="n">typedef</span><span class="w"> </span><span class="n">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">**</span><span class="n">iceServers</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">iceServersCount</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">proxyServer</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">bindAddress</span><span class="p">;</span>
+<span class="w">  </span><span class="n">rtcCertificateType</span><span class="w"> </span><span class="n">certificateType</span><span class="p">;</span>
+<span class="w">  </span><span class="n">rtcTransportPolicy</span><span class="w"> </span><span class="n">iceTransportPolicy</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">bool</span><span class="w"> </span><span class="n">enableIceTcp</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">bool</span><span class="w"> </span><span class="n">enableIceUdpMux</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">bool</span><span class="w"> </span><span class="n">disableAutoNegotiation</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">bool</span><span class="w"> </span><span class="n">forceMediaTransport</span><span class="p">;</span>
+<span class="w">  </span><span class="n">uint16_t</span><span class="w"> </span><span class="n">portRangeBegin</span><span class="p">;</span>
+<span class="w">  </span><span class="n">uint16_t</span><span class="w"> </span><span class="n">portRangeEnd</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">mtu</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">maxMessageSize</span><span class="p">;</span>
+<span class="p">}</span><span class="w"> </span><span class="n">rtcConfiguration</span><span class="p">;</span>
+</code></pre></div>
+
+<p>Creates a Peer Connection.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>config</code>: the configuration structure, containing:<ul>
+<li><code>iceServers</code> (optional): an array of pointers on null-terminated ICE server URIs (NULL if unused)</li>
+<li><code>iceServersCount</code> (optional): number of URLs in the array pointed by <code>iceServers</code> (0 if unused)</li>
+<li><code>proxyServer</code> (optional): if non-NULL, specifies the proxy server URI to use for TURN relaying (ignored with libjuice as ICE backend)</li>
+<li><code>bindAddress</code> (optional): if non-NULL, bind only to the given local address (ignored with libnice as ICE backend)</li>
+<li><code>certificateType</code> (optional): certificate type, either <code>RTC_CERTIFICATE_ECDSA</code> or <code>RTC_CERTIFICATE_RSA</code> (0 or <code>RTC_CERTIFICATE_DEFAULT</code> if default)</li>
+<li><code>iceTransportPolicy</code> (optional): ICE transport policy, if set to <code>RTC_TRANSPORT_POLICY_RELAY</code>, the PeerConnection will emit only relayed candidates (0 or <code>RTC_TRANSPORT_POLICY_ALL</code> if default)</li>
+<li><code>enableIceTcp</code>: if true, generate TCP candidates for ICE (ignored with libjuice as ICE backend)</li>
+<li><code>enableIceUdpMux</code>: if true, connections are multiplexed on the same UDP port (should be combined with <code>portRangeBegin</code> and <code>portRangeEnd</code>, ignored with libnice as ICE backend)</li>
+<li><code>disableAutoNegotiation</code>: if true, the user is responsible for calling <code>rtcSetLocalDescription</code> after creating a Data Channel and after setting the remote description</li>
+<li><code>forceMediaTransport</code>: if true, the connection allocates the SRTP media transport even if no tracks are present (necessary to add tracks during later renegotiation)</li>
+<li><code>portRangeBegin</code> (optional): first port (included) of the allowed local port range (0 if unused)</li>
+<li><code>portRangeEnd</code> (optional): last port (included) of the allowed local port range (0 if unused)</li>
+<li><code>mtu</code> (optional): manually set the Maximum Transfer Unit (MTU) for the connection (0 if automatic)</li>
+<li><code>maxMessageSize</code> (optional): manually set the local maximum message size for Data Channels (0 if default)</li>
+</ul>
+</li>
+</ul>
+<p>Return value: the identifier of the new Peer Connection or a negative error code.</p>
+<p>The Peer Connection must be deleted with <code>rtcDeletePeerConnection</code>.</p>
+<p>Each entry in <code>iceServers</code> must match the format <code>[("stun"|"turn"|"turns") (":"|"://")][username ":" password "@"]hostname[":" port]["?transport=" ("udp"|"tcp"|"tls")]</code>. The default scheme is STUN, the default port is 3478 (5349 over TLS), and the default transport is UDP. For instance, a STUN server URI could be <code>mystunserver.org</code>, and a TURN server URI could be <code>turn:myuser:12345678@turnserver.org</code>. Note transports TCP and TLS are only available for a TURN server with libnice as ICE backend and govern only the TURN control connection, meaning relaying is always performed over UDP.</p>
+<p>The <code>proxyServer</code> URI, if present, must match the format <code>[("http"|"socks5") (":"|"://")][username ":" password "@"]hostname["    :" port]</code>. The default scheme is HTTP, and the default port is 3128 for HTTP or 1080 for SOCKS5.</p>
+<p>If the username or password of an URI contains reserved special characters, they must be percent-encoded. In particular, ":" must be encoded as "%3A" and "@" must by encoded as "%40".</p>
+<h4>rtcClosePeerConnection</h4>
+<div class="highlight"><pre><span></span><code>int rtcClosePeerConnection(int pc)
+</code></pre></div>
+
+<p>Closes the Peer Connection.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+</ul>
+<p>Return value: <code>RTC_ERR_SUCCESS</code> or a negative error code</p>
+<h4>rtcDeletePeerConnection</h4>
+<div class="highlight"><pre><span></span><code>int rtcDeletePeerConnection(int pc)
+</code></pre></div>
+
+<p>Deletes the Peer Connection.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+</ul>
+<p>Return value: <code>RTC_ERR_SUCCESS</code> or a negative error code</p>
+<p>If it is not already closed, the Peer Connection is implicitly closed before being deleted. After this function has been called, <code>pc</code> must not be used in a function call anymore. This function will block until all scheduled callbacks of <code>pc</code> return (except the one this function might be called in) and no other callback will be called for <code>pc</code> after it returns.</p>
+<h4>rtcSetXCallback</h4>
+<p>These functions set, change, or unset (if <code>cb</code> is <code>NULL</code>) the different callbacks of a Peer Connection.</p>
+<div class="highlight"><pre><span></span><code>int rtcSetLocalDescriptionCallback(int pc, rtcDescriptionCallbackFunc cb)*
+</code></pre></div>
+
+<p><code>cb</code> must have the following signature: <code>void myDescriptionCallback(int pc, const char *sdp, const char *type, void *user_ptr)</code></p>
+<div class="highlight"><pre><span></span><code>int rtcSetLocalCandidateCallback(int pc, rtcCandidateCallbackFunc cb)
+</code></pre></div>
+
+<p><code>cb</code> must have the following signature: <code>void myCandidateCallback(int pc, const char *cand, const char *mid, void *user_ptr)</code></p>
+<div class="highlight"><pre><span></span><code>int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb)
+</code></pre></div>
+
+<p><code>cb</code> must have the following signature: <code>void myStateChangeCallback(int pc, rtcState state, void *user_ptr)</code></p>
+<p><code>state</code> will be one of the following: <code>RTC_CONNECTING</code>, <code>RTC_CONNECTED</code>, <code>RTC_DISCONNECTED</code>, <code>RTC_FAILED</code>, or <code>RTC_CLOSED</code>.</p>
+<div class="highlight"><pre><span></span><code>int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb)
+</code></pre></div>
+
+<p><code>void myGatheringStateCallback(int pc, rtcGatheringState state, void *user_ptr)</code></p>
+<p><code>state</code> will be <code>RTC_GATHERING_INPROGRESS</code> or <code>RTC_GATHERING_COMPLETE</code>.</p>
+<div class="highlight"><pre><span></span><code>int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb)
+</code></pre></div>
+
+<p><code>cb</code> must have the following signature: <code>void myDataChannelCallback(int pc, int dc, void *user_ptr)</code></p>
+<div class="highlight"><pre><span></span><code>int rtcSetTrackCallback(int pc, rtcTrackCallbackFunc cb)
+</code></pre></div>
+
+<p><code>cb</code> must have the following signature: <code>void myTrackCallback(int pc, int tr, void *user_ptr)</code></p>
+<h4>rtcSetLocalDescription</h4>
+<div class="highlight"><pre><span></span><code><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">rtcSetLocalDescription</span><span class="p">(</span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">pc</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">type</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Initiates the handshake process. Following this call, the local description callback will be called with the local description, which must be sent to the remote peer by the user's method of choice. Note this call is implicit after <code>rtcSetRemoteDescription</code> and <code>rtcCreateDataChannel</code> if <code>disableAutoNegotiation</code> was not set on Peer Connection creation.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+<li><code>type</code> (optional): type of the description ("offer", "answer", "pranswer", or "rollback") or NULL for autodetection.</li>
+</ul>
+<h4>rtcSetRemoteDescription</h4>
+<div class="highlight"><pre><span></span><code><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">rtcSetRemoteDescription</span><span class="p">(</span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">pc</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">sdp</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">type</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Sets the remote description received from the remote peer by the user's method of choice. The remote description may have candidates or not.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+<li><code>type</code> (optional): type of the description ("offer", "answer", "pranswer", or "rollback") or NULL for autodetection.</li>
+</ul>
+<p>If the remote description is an offer and <code>disableAutoNegotiation</code> was not set in <code>rtcConfiguration</code>, the library will automatically answer by calling <code>rtcSetLocalDescription</code> internally. Otherwise, the user must call it to answer the remote description.</p>
+<h4>rtcAddRemoteCandidate</h4>
+<div class="highlight"><pre><span></span><code><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">rtcAddRemoteCandidate</span><span class="p">(</span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">pc</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">cand</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">mid</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Adds a trickled remote candidate received from the remote peer by the user's method of choice.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+<li><code>cand</code>: a null-terminated SDP string representing the candidate (with or without the <code>"a="</code> prefix)</li>
+<li><code>mid</code> (optional): a null-terminated string representing the mid of the candidate in the remote SDP description or NULL for autodetection</li>
+</ul>
+<p>The Peer Connection must have a remote description set.</p>
+<p>Return value: <code>RTC_ERR_SUCCESS</code> or a negative error code</p>
+<h4>rtcGetLocalDescription</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetLocalDescription(int pc, char *buffer, int size)
+</code></pre></div>
+
+<p>Retrieves the current local description in SDP format.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+<li><code>buffer</code>: a user-supplied buffer to store the description</li>
+<li><code>size</code>: the size of <code>buffer</code></li>
+</ul>
+<p>Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the description is not copied but the size is still returned.</p>
+<h4>rtcGetRemoteDescription</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetRemoteDescription(int pc, char *buffer, int size)
+</code></pre></div>
+
+<p>Retrieves the current remote description in SDP format.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+<li><code>buffer</code>: a user-supplied buffer to store the description</li>
+<li><code>size</code>: the size of <code>buffer</code></li>
+</ul>
+<p>Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the description is not copied but the size is still returned.</p>
+<h4>rtcGetLocalDescriptionType</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetLocalDescriptionType(int pc, char *buffer, int size)
+</code></pre></div>
+
+<p>Retrieves the current local description type as string.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+<li><code>buffer</code>: a user-supplied buffer to store the type</li>
+<li><code>size</code>: the size of <code>buffer</code></li>
+</ul>
+<p>Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the description is not copied but the size is still returned.</p>
+<h4>rtcGetRemoteDescription</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetRemoteDescriptionType(int pc, char *buffer, int size)
+</code></pre></div>
+
+<p>Retrieves the current remote description type as string.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+<li><code>buffer</code>: a user-supplied buffer to store the type</li>
+<li><code>size</code>: the size of <code>buffer</code></li>
+</ul>
+<p>Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the description is not copied but the size is still returned.</p>
+<h4>rtcGetLocalAddress</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetLocalAddress(int pc, char *buffer, int size)
+</code></pre></div>
+
+<p>Retrieves the current local address, i.e. the network address of the currently selected local candidate. The address will have the format <code>"IP_ADDRESS:PORT"</code>, where <code>IP_ADDRESS</code> may be either IPv4 or IPv6. The call might fail if the PeerConnection is not in state <code>RTC_CONNECTED</code>, and the address might change after connection.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+<li><code>buffer</code>: a user-supplied buffer to store the address</li>
+<li><code>size</code>: the size of <code>buffer</code></li>
+</ul>
+<p>Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the address is not copied but the size is still returned.</p>
+<h4>rtcGetRemoteAddress</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetRemoteAddress(int pc, char *buffer, int size)
+</code></pre></div>
+
+<p>Retrieves the current remote address, i.e. the network address of the currently selected remote candidate. The address will have the format <code>"IP_ADDRESS:PORT"</code>, where <code>IP_ADDRESS</code> may be either IPv4 or IPv6. The call may fail if the state is not <code>RTC_CONNECTED</code>, and the address might change after connection.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+<li><code>buffer</code>: a user-supplied buffer to store the address</li>
+<li><code>size</code>: the size of <code>buffer</code></li>
+</ul>
+<p>Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the address is not copied but the size is still returned.</p>
+<h4>rtcGetSelectedCandidatePair</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote, int remoteSize)
+</code></pre></div>
+
+<p>Retrieves the currently selected candidate pair. The call may fail if the state is not <code>RTC_CONNECTED</code>, and the selected candidate pair might change after connection.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+<li><code>local</code>: a user-supplied buffer to store the local candidate</li>
+<li><code>localSize</code>: the size of <code>local</code></li>
+<li><code>remote</code>: a user-supplied buffer to store the remote candidate</li>
+<li><code>remoteSize</code>: the size of <code>remote</code></li>
+</ul>
+<p>Return value: the maximun length of strings copied in buffers (including the terminating null character) or a negative error code</p>
+<p>If <code>local</code>, <code>remote</code>, or both, are <code>NULL</code>, the corresponding candidate is not copied, but the maximum length is still returned.</p>
+<h4>rtcIsNegotiationNeeded</h4>
+<div class="highlight"><pre><span></span><code>bool rtcIsNegotiationNeeded(int pc);
+</code></pre></div>
+
+<p>Return true if negotiation needs to be started or restarted, for instance to signal new tracks. If so, the user may call <code>rtcSetLocalDescription()</code> to start it.</p>
+<p>Arguments:
+- <code>pc</code>: the Peer Connection identifier</p>
+<p>Return value: true if negotiation is needed</p>
+<h4>rtcGetMaxDataChannelStream</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetMaxDataChannelStream(int pc);
+</code></pre></div>
+
+<p>Retrieves the maximum stream ID a Data Channel may use. It is useful to create user-negotiated Data Channels with <code>negotiated=true</code> and <code>manualStream=true</code>. The maximum is negotiated during connection, therefore the final value after connection might be lower than before connection if the remote maximum is lower.</p>
+<p>Arguments:
+- <code>pc</code>: the Peer Connection identifier</p>
+<p>Return value: the maximum stream ID (<code>stream</code> for a Data Channel may be set from 0 to this value included) or a negative error code</p>
+<h4>rtcGetRemoteMaxMessageSize</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetRemoteMaxMessageSize(int pc)
+</code></pre></div>
+
+<p>Retrieves the maximum message size for data channels on the peer connection as negotiated with the remote peer.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+</ul>
+<p>Return value: the maximum message size for data channels or a negative error code</p>
+<h3>Channel (Common API for Data Channel, Track, and WebSocket)</h3>
+<p>The following common functions might be called with a generic channel identifier. It may be the identifier of either a Data Channel, a Track, or a WebSocket.</p>
+<h4>rtcSetXCallback</h4>
+<p>These functions set, change, or unset (if <code>cb</code> is <code>NULL</code>) the different callbacks of a channel identified by the argument <code>id</code>.</p>
+<div class="highlight"><pre><span></span><code>int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb)
+</code></pre></div>
+
+<p><code>cb</code> must have the following signature: <code>void myOpenCallback(int id, void *user_ptr)</code></p>
+<p>It is called when the channel was previously connecting and is now open.</p>
+<div class="highlight"><pre><span></span><code>int rtcSetClosedCallback(int id, rtcClosedCallbackFunc cb)
+</code></pre></div>
+
+<p><code>cb</code> must have the following signature: <code>void myClosedCallback(int id, void *user_ptr)</code></p>
+<p>It is called when the channel was previously open and is now closed.</p>
+<div class="highlight"><pre><span></span><code>int rtcSetErrorCallback(int id, rtcErrorCallbackFunc cb)
+</code></pre></div>
+
+<p><code>cb</code> must have the following signature: <code>void myErrorCallback(int id, const char *error, void *user_ptr)</code></p>
+<p>It is called when the channel experience an error, either while connecting or open.</p>
+<div class="highlight"><pre><span></span><code>int rtcSetMessageCallback(int id, rtcMessageCallbackFunc cb)
+</code></pre></div>
+
+<p><code>cb</code> must have the following signature: <code>void myMessageCallback(int id, const char *message, int size, void *user_ptr)</code></p>
+<p>It is called when the channel receives a message. While it is set, messages can't be received with <code>rtcReceiveMessage</code>.</p>
+<p>Track: By default, the track receives data as RTP packets.</p>
+<div class="highlight"><pre><span></span><code>int rtcSetBufferedAmountLowCallback(int id, rtcBufferedAmountLowCallbackFunc cb)
+</code></pre></div>
+
+<p><code>cb</code> must have the following signature: <code>void myBufferedAmountLowCallback(int id, void *user_ptr)</code></p>
+<p>It is called when the buffered amount was strictly higher than the threshold (see <code>rtcSetBufferedAmountLowThreshold</code>) and is now lower or equal than the threshold.</p>
+<div class="highlight"><pre><span></span><code>int rtcSetAvailableCallback(int id, rtcAvailableCallbackFunc cb)
+</code></pre></div>
+
+<p><code>cb</code> must have the following signature: <code>void myAvailableCallback(int id, void *user_ptr)</code></p>
+<p>It is called when messages are now available to be received with <code>rtcReceiveMessage</code>.</p>
+<h4>rtcSendMessage</h4>
+<div class="highlight"><pre><span></span><code><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">rtcSendMessage</span><span class="p">(</span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">size</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Sends a message in the channel.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>id</code>: the channel identifier</li>
+<li><code>data</code>: the message data</li>
+<li><code>size</code>: if size &gt;= 0, <code>data</code> is interpreted as a binary message of length <code>size</code>, otherwise it is interpreted as a null-terminated UTF-8 string.</li>
+</ul>
+<p>Return value: <code>RTC_ERR_SUCCESS</code> or a negative error code</p>
+<p>The message is sent immediately if possible, otherwise it is buffered to be sent later.</p>
+<p>Data Channel and WebSocket: If the message may not be sent immediately due to flow control or congestion control, it is buffered until it can actually be sent. You can retrieve the current buffered data size with <code>rtcGetBufferedAmount</code>.</p>
+<p>Track: By default, the track expects RTP packets. There is no flow or congestion control, packets are never buffered and <code>rtcGetBufferedAmount</code> always returns 0.</p>
+<h4>rtcClose</h4>
+<div class="highlight"><pre><span></span><code>int rtcClose(int id)
+</code></pre></div>
+
+<p>Close the channel.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>id</code>: the channel identifier</li>
+</ul>
+<p>Return value: <code>RTC_ERR_SUCCESS</code> or a negative error code</p>
+<p>WebSocket: Like with the JavaScript API, the state will first change to closing, then closed only after the connection has been actually closed.</p>
+<h4>rtcDelete</h4>
+<div class="highlight"><pre><span></span><code>int rtcDelete(int id)
+</code></pre></div>
+
+<p>Deletes the channel.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>id</code>: the channel identifier</li>
+</ul>
+<p>Return value: <code>RTC_ERR_SUCCESS</code> or a negative error code</p>
+<p>If it is not already closed, the channel is implicitly closed before being deleted. After this function has been called, <code>id</code> must not be used in a function call anymore. This function will block until all scheduled callbacks of <code>id</code> return (except the one this function might be called in) and no other callback will be called for <code>id</code> after it returns.</p>
+<h4>rtcIsOpen</h4>
+<div class="highlight"><pre><span></span><code>bool rtcIsOpen(int id)
+</code></pre></div>
+
+<p>Arguments:</p>
+<ul>
+<li><code>id</code>: the channel identifier</li>
+</ul>
+<p>Return value: <code>true</code> if the channel exists and is open, <code>false</code> otherwise</p>
+<h4>rtcIsClosed</h4>
+<div class="highlight"><pre><span></span><code>bool rtcIsClosed(int id)
+</code></pre></div>
+
+<p>Arguments:</p>
+<ul>
+<li><code>id</code>: the channel identifier</li>
+</ul>
+<p>Return value: <code>true</code> if the channel exists and is closed (not open and not connecting), <code>false</code> otherwise</p>
+<h4>rtcGetMaxMessageSize</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetMaxMessageSize(int id)
+</code></pre></div>
+
+<p>Retrieves the maximum message size for the channel.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>id</code>: the channel identifier</li>
+</ul>
+<p>Return value: the maximum message size or a negative error code</p>
+<h4>rtcGetBufferedAmount</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetBufferedAmount(int id)
+</code></pre></div>
+
+<p>Retrieves the current buffered amount, i.e. the total size of currently buffered messages waiting to be actually sent in the channel. This does not account for the data buffered at the transport level.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>id</code>: the channel identifier</li>
+</ul>
+<p>Return value: the buffered amount or a negative error code</p>
+<h4>rtcSetBufferedAmountLowThreshold</h4>
+<div class="highlight"><pre><span></span><code>int rtcSetBufferedAmountLowThreshold(int id, int amount)
+</code></pre></div>
+
+<p>Changes the buffered amount threshold under which <code>BufferedAmountLowCallback</code> is called. The callback is called when the buffered amount was strictly superior and gets equal to or lower than the threshold when a message is sent. The initial threshold is 0, meaning the the callback is called each time the buffered amount goes back to zero after being non-zero.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>id</code>: the channel identifier</li>
+<li><code>amount</code>: the new buffer level threshold</li>
+</ul>
+<p>Return value: <code>RTC_ERR_SUCCESS</code> or a negative error code</p>
+<h4>rtcReceiveMessage</h4>
+<div class="highlight"><pre><span></span><code>int rtcReceiveMessage(int id, char *buffer, int *size)
+</code></pre></div>
+
+<p>Receives a pending message if possible. The function may only be called if <code>MessageCallback</code> is not set.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>id</code>: the channel identifier</li>
+<li><code>buffer</code>: a user-supplied buffer where to write the message data</li>
+<li><code>size</code>: a pointer to a user-supplied int which must be initialized to the size of <code>buffer</code>. On success, the function will write the size of the message to it before returning (positive size if binary, negative size including terminating 0 if string).</li>
+</ul>
+<p>Return value: <code>RTC_ERR_SUCCESS</code> or a negative error code (In particular, <code>RTC_ERR_NOT_AVAIL</code> is returned when there are no pending messages)</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the message is not copied and kept pending but the size is still written to <code>size</code>.</p>
+<p>Track: By default, the track receives data as RTP packets.</p>
+<h4>rtcGetAvailableAmount</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetAvailableAmount(int id)
+</code></pre></div>
+
+<p>Retrieves the available amount, i.e. the total size of messages pending reception with <code>rtcReceiveMessage</code>. The function may only be called if <code>MessageCallback</code> is not set.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>id</code>: the channel identifier</li>
+</ul>
+<p>Return value: the available amount or a negative error code</p>
+<h3>Data Channel</h3>
+<h4>rtcCreateDataChannel</h4>
+<div class="highlight"><pre><span></span><code><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">rtcCreateDataChannel</span><span class="p">(</span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">pc</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">label</span><span class="p">)</span>
+<span class="nb nb-Type">int</span><span class="w"> </span><span class="n">rtcCreateDataChannelEx</span><span class="p">(</span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">pc</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">label</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">rtcDataChannelInit</span><span class="w"> </span><span class="o">*</span><span class="n">init</span><span class="p">)</span>
+
+<span class="n">typedef</span><span class="w"> </span><span class="n">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nb nb-Type">bool</span><span class="w"> </span><span class="n">unordered</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">bool</span><span class="w"> </span><span class="n">unreliable</span><span class="p">;</span>
+<span class="w">  </span><span class="n">unsigned</span><span class="w"> </span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">maxPacketLifeTime</span><span class="p">;</span>
+<span class="w">  </span><span class="n">unsigned</span><span class="w"> </span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">maxRetransmits</span><span class="p">;</span>
+<span class="p">}</span><span class="w"> </span><span class="n">rtcReliability</span><span class="p">;</span>
+
+<span class="n">typedef</span><span class="w"> </span><span class="n">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">rtcReliability</span><span class="w"> </span><span class="n">reliability</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">protocol</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">bool</span><span class="w"> </span><span class="n">negotiated</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">bool</span><span class="w"> </span><span class="n">manualStream</span><span class="p">;</span>
+<span class="w">  </span><span class="n">uint16_t</span><span class="w"> </span><span class="n">stream</span><span class="p">;</span>
+<span class="p">}</span><span class="w"> </span><span class="n">rtcDataChannelInit</span><span class="p">;</span>
+</code></pre></div>
+
+<p>Adds a Data Channel on a Peer Connection. The Peer Connection does not need to be connected, however, the Data Channel will be open only when the Peer Connection is connected.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: identifier of the PeerConnection on which to add a Data Channel</li>
+<li><code>label</code>: a user-defined UTF-8 string representing the Data Channel name</li>
+<li><code>init</code>: a structure of initialization settings containing:<ul>
+<li><code>reliability</code>: a structure of reliability settings containing:<ul>
+<li><code>unordered</code>: if <code>true</code>, the Data Channel will not enforce message ordering, else it will be ordered</li>
+<li><code>unreliable</code>: if <code>true</code>, the Data Channel will not enforce strict reliability, else it will be reliable</li>
+<li><code>maxPacketLifeTime</code>: if unreliable, time window in milliseconds during which transmissions and retransmissions may occur</li>
+<li><code>maxRetransmits</code>: if unreliable and maxPacketLifeTime is 0, maximum number of attempted retransmissions (0 means no retransmission)</li>
+</ul>
+</li>
+<li><code>protocol</code> (optional): a user-defined UTF-8 string representing the Data Channel protocol, empty if NULL</li>
+<li><code>negotiated</code>: if <code>true</code>, the Data Channel is assumed to be negotiated by the user and won't be negotiated by the WebRTC layer</li>
+<li><code>manualStream</code>: if <code>true</code>, the Data Channel will use <code>stream</code> as stream ID, else an available id is automatically selected</li>
+<li><code>stream</code>: if <code>manualStream</code> is <code>true</code>, the Data Channel will use it as stream ID, else it is ignored</li>
+</ul>
+</li>
+</ul>
+<p><code>rtcDataChannel()</code> is equivalent to <code>rtcDataChannelEx()</code> with settings set to ordered, reliable, non-negotiated, with automatic stream ID selection (all flags set to <code>false</code>), and <code>protocol</code> set to an empty string.</p>
+<p>Return value: the identifier of the new Data Channel or a negative error code.</p>
+<p>The Data Channel must be deleted with <code>rtcDeleteDataChannel</code> (or <code>rtcDelete</code>).</p>
+<p>If <code>disableAutoNegotiation</code> was not set in <code>rtcConfiguration</code>, the library will automatically initiate the negotiation by calling <code>rtcSetLocalDescription</code> internally. Otherwise, the user must call <code>rtcSetLocalDescription</code> to initiate the negotiation after creating the first Data Channel.</p>
+<h4>rtcDeleteDataChannel</h4>
+<div class="highlight"><pre><span></span><code>int rtcDeleteDataChannel(int dc)
+</code></pre></div>
+
+<p>Deletes a Data Channel.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>dc</code>: the Data Channel identifier</li>
+</ul>
+<p>After this function has been called, <code>dc</code> must not be used in a function call anymore. This function will block until all scheduled callbacks of <code>dc</code> return (except the one this function might be called in) and no other callback will be called for <code>dc</code> after it returns.</p>
+<h4>rtcGetDataChannelStream</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetDataChannelStream(int dc)
+</code></pre></div>
+
+<p>Retrieves the stream ID of the Data Channel.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>dc</code>: the Data Channel identifier</li>
+</ul>
+<p>Return value: the stream ID or a negative error code</p>
+<h4>rtcGetDataChannelLabel</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetDataChannelLabel(int dc, char *buffer, int size)
+</code></pre></div>
+
+<p>Retrieves the label of a Data Channel.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>dc</code>: the Data Channel identifier</li>
+<li><code>buffer</code>: a user-supplied buffer to store the label</li>
+<li><code>size</code>: the size of <code>buffer</code></li>
+</ul>
+<p>Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the label is not copied but the size is still returned.</p>
+<h4>rtcGetDataChannelProtocol</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetDataChannelProtocol(int dc, char *buffer, int size)
+</code></pre></div>
+
+<p>Retrieves the protocol of a Data Channel.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>dc</code>: the Data Channel identifier</li>
+<li><code>buffer</code>: a user-supplied buffer to store the protocol</li>
+<li><code>size</code>: the size of <code>buffer</code></li>
+</ul>
+<p>Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the protocol is not copied but the size is still returned.</p>
+<h4>rtcGetDataChannelReliability</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetDataChannelReliability(int dc, rtcReliability *reliability)
+</code></pre></div>
+
+<p>Retrieves the reliability settings of a Data Channel. The function may be called irrelevant of how the Data Channel was created.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>dc</code>: the Data Channel identifier</li>
+<li><code>reliability</code> a user-supplied structure to fill</li>
+</ul>
+<p>Return value: <code>RTC_ERR_SUCCESS</code> or a negative error code</p>
+<h3>Track</h3>
+<h4>rtcAddTrack</h4>
+<div class="highlight"><pre><span></span><code><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">rtcAddTrack</span><span class="p">(</span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">pc</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">mediaDescriptionSdp</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Adds a new Track on a Peer Connection. The Peer Connection does not need to be connected, however, the Track will be open only when the Peer Connection is connected.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>pc</code>: the Peer Connection identifier</li>
+<li><code>mediaDescriptionSdp</code>: a null-terminated string specifying the corresponding media SDP. It must start with a m-line and include a mid parameter.</li>
+</ul>
+<p>Return value: the identifier of the new Track or a negative error code</p>
+<p>The new track must be deleted with <code>rtcDeleteTrack</code> (or <code>rtcDelete</code>).</p>
+<p>The user must call <code>rtcSetLocalDescription</code> to negotiate the track.</p>
+<h4>rtcDeleteTrack</h4>
+<div class="highlight"><pre><span></span><code>int rtcDeleteTrack(int tr)
+</code></pre></div>
+
+<p>Deletes a Track.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>tr</code>: the Track identifier</li>
+</ul>
+<p>After this function has been called, <code>tr</code> must not be used in a function call anymore. This function will block until all scheduled callbacks of <code>tr</code> return (except the one this function might be called in) and no other callback will be called for <code>tr</code> after it returns.</p>
+<h4>rtcGetTrackDescription</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetTrackDescription(int tr, char *buffer, int size)
+</code></pre></div>
+
+<p>Retrieves the SDP media description of a Track.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>tr</code>: the Track identifier</li>
+<li><code>buffer</code>: a user-supplied buffer to store the description</li>
+<li><code>size</code>: the size of <code>buffer</code></li>
+</ul>
+<p>Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the description is not copied but the size is still returned.</p>
+<h4>rtcGetTrackMid</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetTrackMid(int tr, char *buffer, int size)
+</code></pre></div>
+
+<p>Retrieves the mid (media indentifier) of a Track.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>tr</code>: the Track identifier</li>
+<li><code>buffer</code>: a user-supplied buffer to store the mid</li>
+<li><code>size</code>: the size of <code>buffer</code></li>
+</ul>
+<p>Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the mid is not copied but the size is still returned.</p>
+<h4>rtcGetTrackDirection</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetTrackDirection(int tr, rtcDirection *direction)
+</code></pre></div>
+
+<p>Retrieves the direction of a Track.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>tr</code>: the Track identifier</li>
+<li><code>direction</code>: a pointer to a rtcDescription enum to store the result</li>
+</ul>
+<p>On success, the value pointed by <code>direction</code> will be set to one of the following: <code>RTC_DIRECTION_SENDONLY</code>, <code>RTC_DIRECTION_RECVONLY</code>, <code>RTC_DIRECTION_SENDRECV</code>, <code>RTC_DIRECTION_INACTIVE</code>, or <code>RTC_DIRECTION_UNKNOWN</code>.</p>
+<h3>Media handling</h3>
+<p>TODO</p>
+<h3>WebSocket</h3>
+<h4>rtcCreateWebSocket</h4>
+<div class="highlight"><pre><span></span><code><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">rtcCreateWebSocket</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">url</span><span class="p">)</span>
+<span class="nb nb-Type">int</span><span class="w"> </span><span class="n">rtcCreateWebSocketEx</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">url</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">rtcWsConfiguration</span><span class="w"> </span><span class="o">*</span><span class="n">config</span><span class="p">)</span>
+
+<span class="n">typedef</span><span class="w"> </span><span class="n">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nb nb-Type">bool</span><span class="w"> </span><span class="n">disableTlsVerification</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">**</span><span class="n">protocols</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">protocolsCount</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">connectionTimeoutMs</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">pingIntervalMs</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">maxOutstandingPings</span><span class="p">;</span>
+<span class="p">}</span><span class="w"> </span><span class="n">rtcWsConfiguration</span><span class="p">;</span>
+</code></pre></div>
+
+<p>Creates a new client WebSocket.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>url</code>: a null-terminated string representing the fully-qualified URL to open.</li>
+<li><code>config</code>: a structure with the following parameters:<ul>
+<li><code>disableTlsVerification</code>: if true, don't verify the TLS certificate, else try to verify it if possible</li>
+<li><code>protocols</code> (optional): an array of pointers on null-terminated protocol names (NULL if unused)</li>
+<li><code>protocolsCount</code> (optional): number of URLs in the array pointed by <code>protocols</code> (0 if unused)</li>
+<li><code>connectionTimeoutMs</code> (optional): connection timeout in milliseconds (0 if default, &lt; 0 if disabled)</li>
+<li><code>pingIntervalMs</code> (optional): ping interval in milliseconds (0 if default, &lt; 0 if disabled)</li>
+<li><code>maxOutstandingPings</code> (optional): number of unanswered pings before declaring failure (0 if default, &lt; 0 if disabled)</li>
+</ul>
+</li>
+</ul>
+<p>Return value: the identifier of the new WebSocket or a negative error code</p>
+<p>The new WebSocket must be deleted with <code>rtcDeleteWebSocket</code> (or <code>rtcDelete</code>). The scheme of the URL must be either <code>ws</code> or <code>wss</code>.</p>
+<h4>rtcDeleteWebSocket</h4>
+<div class="highlight"><pre><span></span><code>int rtcDeleteWebSocket(int ws)
+</code></pre></div>
+
+<p>Arguments:</p>
+<ul>
+<li><code>ws</code>: the identifier of the WebSocket to delete</li>
+</ul>
+<p>After this function has been called, <code>ws</code> must not be used in a function call anymore. This function will block until all scheduled callbacks of <code>ws</code> return (except the one this function might be called in) and no other callback will be called for <code>ws</code> after it returns.</p>
+<h4>rtcGetWebSocketRemoteAddress</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetWebSocketRemoteAddress(int ws, char *buffer, int size)
+</code></pre></div>
+
+<p>Retrieves the remote address, i.e. the network address of the remote endpoint. The address will have the format <code>"HOST:PORT"</code>. The call may fail if the underlying TCP transport of the WebSocket is not connected. This function is useful for a client WebSocket received by a WebSocket Server.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>ws</code>: the identifier of the WebSocket</li>
+<li><code>buffer</code>: a user-supplied buffer to store the description</li>
+<li><code>size</code>: the size of <code>buffer</code></li>
+</ul>
+<p>Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the address is not copied but the size is still returned.</p>
+<h4>rtcGetWebSocketPath</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetWebSocketPath(int ws, char *buffer, int size)
+</code></pre></div>
+
+<p>Retrieves the path of the WebSocket, i.e. the HTTP requested path. This function is useful for a client WebSocket received by a WebSocket Server. Warning: The WebSocket must be open for the call to succeed.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>ws</code>: the identifier of the WebSocket</li>
+<li><code>buffer</code>: a user-supplied buffer to store the description</li>
+<li><code>size</code>: the size of <code>buffer</code></li>
+</ul>
+<p>Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code</p>
+<p>If <code>buffer</code> is <code>NULL</code>, the path is not copied but the size is still returned.</p>
+<h3>WebSocket Server</h3>
+<h4>rtcCreateWebSocketServer</h4>
+<div class="highlight"><pre><span></span><code><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">rtcCreateWebSocketServer</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">rtcWsServerConfiguration</span><span class="w"> </span><span class="o">*</span><span class="n">config</span><span class="p">,</span><span class="w"> </span><span class="n">rtcWebSocketClientCallbackFunc</span><span class="w"> </span><span class="n">cb</span><span class="p">);</span>
+
+<span class="n">typedef</span><span class="w"> </span><span class="n">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">uint16_t</span><span class="w"> </span><span class="n">port</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">bool</span><span class="w"> </span><span class="n">enableTls</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">certificatePemFile</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">keyPemFile</span><span class="p">;</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="nb">char</span><span class="w"> </span><span class="o">*</span><span class="n">keyPemPass</span><span class="p">;</span>
+<span class="w">  </span><span class="nb nb-Type">int</span><span class="w"> </span><span class="n">connectionTimeoutMs</span><span class="p">;</span>
+<span class="p">}</span><span class="w"> </span><span class="n">rtcWsServerConfiguration</span><span class="p">;</span>
+</code></pre></div>
+
+<p>Creates a new WebSocket server.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>config</code>: a structure with the following parameters:<ul>
+<li><code>port</code>: the port to listen on (if 0, automatically select an available port)</li>
+<li><code>enableTls</code>: if true, enable the TLS layer (WSS)</li>
+<li><code>certificatePemFile</code> (optional): PEM certificate or path of the file containing the PEM certificate (<code>NULL</code> for an autogenerated certificate)</li>
+<li><code>keyPemFile</code> (optional): PEM key or path of the file containing the PEM key (<code>NULL</code> for an autogenerated certificate)</li>
+<li><code>keyPemPass</code> (optional): PEM key file passphrase (NULL if no passphrase)</li>
+<li><code>connectionTimeoutMs</code> (optional): connection timeout in milliseconds (0 if default, &lt; 0 if disabled)</li>
+</ul>
+</li>
+<li><code>cb</code>: the callback for incoming client WebSocket connections (must not be <code>NULL</code>)</li>
+</ul>
+<p><code>cb</code> must have the following signature: <code>void rtcWebSocketClientCallbackFunc(int wsserver, int ws, void *user_ptr)</code></p>
+<p>Return value: the identifier of the new WebSocket Server or a negative error code</p>
+<p>The new WebSocket Server must be deleted with <code>rtcDeleteWebSocketServer</code>.</p>
+<h4>rtcDeleteWebSocketServer</h4>
+<div class="highlight"><pre><span></span><code>int rtcDeleteWebSocketServer(int wsserver)
+</code></pre></div>
+
+<p>Arguments:</p>
+<ul>
+<li><code>wsserver</code>: the identifier of the WebSocket Server to delete</li>
+</ul>
+<p>After this function has been called, <code>wsserver</code> must not be used in a function call anymore. This function will block until all scheduled callbacks of <code>wsserver</code> return (except the one this function might be called in) and no other callback will be called for <code>wsserver</code> after it returns.</p>
+<h4>rtcGetWebSocketServerPort</h4>
+<div class="highlight"><pre><span></span><code>int rtcGetWebSocketServerPort(int wsserver);
+</code></pre></div>
+
+<p>Retrieves the port which the WebSocket Server is listening on.</p>
+<p>Arguments:</p>
+<ul>
+<li><code>wsserver</code>: the identifier of the WebSocket Server</li>
+</ul>
+<p>Return value: The port of the WebSocket Server or a negative error code</p>
+      </div>
+      <div class="back-to-top">
+          <a href="#top">back to top</a>
+      </div>
+    </article>
+  </div>
+<!-- end article -->
+                <footer>
+                    <p>© 2021 Paul-Louis Ageneau</p>
+                </footer>
+        </div>
+</body>
+</html>
