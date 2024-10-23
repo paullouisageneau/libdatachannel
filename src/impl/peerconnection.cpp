@@ -538,11 +538,16 @@ void PeerConnection::forwardMedia([[maybe_unused]] message_ptr message) {
 	if (auto handler = getMediaHandler()) {
 		message_vector messages{std::move(message)};
 
-		handler->incoming(messages, [this](message_ptr message) {
-			auto transport = std::atomic_load(&mDtlsTransport);
-			if (auto srtpTransport = std::dynamic_pointer_cast<DtlsSrtpTransport>(transport))
-				srtpTransport->send(std::move(message));
-		});
+		try {
+			handler->incomingChain(messages, [this](message_ptr message) {
+				auto transport = std::atomic_load(&mDtlsTransport);
+				if (auto srtpTransport = std::dynamic_pointer_cast<DtlsSrtpTransport>(transport))
+					srtpTransport->send(std::move(message));
+			});
+		} catch(const std::exception &e) {
+			PLOG_WARNING << "Exception in global incoming media handler: " << e.what();
+			return;
+		}
 
 		for (auto &m : messages)
 			dispatchMedia(std::move(m));
