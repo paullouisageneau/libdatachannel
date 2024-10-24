@@ -270,8 +270,11 @@ endif()
 target_compile_definitions(datachannel-static PRIVATE RTC_EXPORTS)
 target_compile_definitions(datachannel-static PUBLIC RTC_STATIC)
 
-if(NOT BUILD_SHARED_DEPS_LIBS)
+if(BUILD_SHARED_LIBS AND NOT BUILD_SHARED_DEPS_LIBS)
 	set(BUILD_SHARED_LIBS OFF)
+	set(INSTALL_DEPS_LIBS OFF)
+else()
+	set(INSTALL_DEPS_LIBS ON)
 endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -304,19 +307,20 @@ else()
 	endif()
 	add_library(Usrsctp::Usrsctp ALIAS usrsctp)
 
-	# usrsctp lacks an export set
-	install(TARGETS usrsctp EXPORT UsrsctpTargets)
-	install(EXPORT UsrsctpTargets
-			FILE UsrsctpTargets.cmake
-			NAMESPACE Usrsctp::
-			DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usrsctp
-			EXCLUDE_FROM_ALL)
-
-	# Fix directories
-	set_target_properties(usrsctp PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "")
-	target_include_directories(usrsctp INTERFACE
-		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/usrsctp/usrsctplib>
-		$<INSTALL_INTERFACE:>)
+	if(INSTALL_DEPS_LIBS)
+		# usrsctp lacks an export set
+		install(TARGETS usrsctp EXPORT UsrsctpTargets)
+		install(EXPORT UsrsctpTargets
+				FILE UsrsctpTargets.cmake
+				NAMESPACE Usrsctp::
+				DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usrsctp
+				EXCLUDE_FROM_ALL)
+		# Fix directories
+		set_target_properties(usrsctp PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "")
+		target_include_directories(usrsctp INTERFACE
+			$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/usrsctp/usrsctplib>
+			$<INSTALL_INTERFACE:>)
+	endif()
 endif()
 
 target_include_directories(datachannel PUBLIC
@@ -376,7 +380,9 @@ else()
 	else()
 		if(NOT TARGET srtp2)
 			add_subdirectory(deps/libsrtp EXCLUDE_FROM_ALL)
-			install(TARGETS srtp2)
+			if(INSTALL_DEPS_LIBS)
+				install(TARGETS srtp2)
+			endif()
 		endif()
 		target_compile_definitions(datachannel PRIVATE RTC_SYSTEM_SRTP=0)
 		target_compile_definitions(datachannel-static PRIVATE RTC_SYSTEM_SRTP=0)
@@ -454,7 +460,9 @@ else()
 		target_link_libraries(datachannel-static PRIVATE LibJuice::LibJuice)
 	else()
 		add_subdirectory(deps/libjuice EXCLUDE_FROM_ALL)
-		install(TARGETS juice)
+		if(INSTALL_DEPS_LIBS)
+			install(TARGETS juice)
+		endif()
 		target_compile_definitions(datachannel PRIVATE RTC_SYSTEM_JUICE=0)
 		target_compile_definitions(datachannel-static PRIVATE RTC_SYSTEM_JUICE=0)
 		target_link_libraries(datachannel PRIVATE LibJuice::LibJuice)
