@@ -12,6 +12,8 @@
 
 #include "impl/internals.hpp"
 
+#include <algorithm>
+
 namespace rtc {
 
 const auto payloadHeaderSize = 1;
