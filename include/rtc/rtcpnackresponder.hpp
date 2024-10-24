@@ -33,8 +33,8 @@ private:
 
 		/// Packet storage element
 		struct RTC_CPP_EXPORT Element {
-			Element(binary_ptr packet, uint16_t sequenceNumber, shared_ptr<Element> next = nullptr);
-			const binary_ptr packet;
+			Element(message_ptr packet, uint16_t sequenceNumber, shared_ptr<Element> next = nullptr);
+			const message_ptr packet;
 			const uint16_t sequenceNumber;
 			/// Pointer to newer element
 			shared_ptr<Element> next = nullptr;
@@ -59,11 +59,11 @@ private:
 		Storage(size_t _maxSize);
 
 		/// Returns packet with given sequence number
-		optional<binary_ptr> get(uint16_t sequenceNumber);
+		message_ptr get(uint16_t sequenceNumber);
 
 		/// Stores packet
 		/// @param packet Packet
-		void store(binary_ptr packet);
+		void store(message_ptr packet);
 	};
 
 	const shared_ptr<Storage> mStorage;

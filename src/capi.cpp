@@ -1396,14 +1396,6 @@ int rtcGetLastTrackSenderReportTimestamp(int id, uint32_t *timestamp) {
 	});
 }
 
-int rtcSetNeedsToSendRtcpSr(int id) {
-	return wrap([id] {
-		auto sender = getRtcpSrReporter(id);
-		sender->setNeedsToReport();
-		return RTC_ERR_SUCCESS;
-	});
-}
-
 int rtcGetTrackPayloadTypesForCodec(int tr, const char *ccodec, int *buffer, int size) {
 	return wrap([&] {
 		auto track = getTrack(tr);
@@ -1478,6 +1470,11 @@ int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, cons
 		}
 		return copyAndReturn(string(description), buffer, bufferSize);
 	});
+}
+
+int rtcSetNeedsToSendRtcpSr(int) {
+	// Dummy
+	return RTC_ERR_SUCCESS;
 }
 
 #endif // RTC_ENABLE_MEDIA

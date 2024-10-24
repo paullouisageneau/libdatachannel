@@ -18,10 +18,14 @@ namespace rtc {
 
 class RTC_CPP_EXPORT RtpDepacketizer : public MediaHandler {
 public:
-	RtpDepacketizer() = default;
-	virtual ~RtpDepacketizer() = default;
+	RtpDepacketizer();
+	RtpDepacketizer(uint32_t clockRate);
+	virtual ~RtpDepacketizer();
 
 	virtual void incoming(message_vector &messages, const message_callback &send) override;
+
+private:
+	uint32_t mClockRate;
 };
 
 using OpusRtpDepacketizer = RtpDepacketizer;
