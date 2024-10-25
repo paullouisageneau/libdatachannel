@@ -1222,7 +1222,7 @@ bool PeerConnection::negotiationNeeded() const {
 					if (!media->isRemoved())
 						if (auto it = mTracks.find(media->mid()); it != mTracks.end())
 							if (auto track = it->second.lock(); !track || track->isClosed()) {
-								PLOG_DEBUG << "Negotiation needed to remove track, mid=" << track->mid();
+								PLOG_DEBUG << "Negotiation needed to remove track, mid=" << media->mid();
 								return true;
 							}
 				}
