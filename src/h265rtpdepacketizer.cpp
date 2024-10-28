@@ -62,7 +62,6 @@ message_vector H265RtpDepacketizer::buildFrames(message_vector::iterator begin,
 	message_vector out = {};
 	auto accessUnit = binary{};
 	auto frameInfo = std::make_shared<FrameInfo>(payloadType, timestamp);
-	auto nFrags = 0;
 
 	for (auto it = begin; it != end; ++it) {
 		auto pkt = it->get();
@@ -87,7 +86,11 @@ message_vector H265RtpDepacketizer::buildFrames(message_vector::iterator begin,
 			auto nalUnitFragmentHeader = H265NalUnitFragmentHeader{
 			    std::to_integer<uint8_t>(pkt->at(rtpHeaderSize + sizeof(H265NalUnitHeader)))};
 
-			if (nFrags++ == 0) {
+			// RFC 7798: "When set to 1, the S bit indicates the start of a fragmented
+			// NAL unit, i.e., the first byte of the FU payload is also the first byte of
+			// the payload of the fragmented NAL unit. When the FU payload is not the start
+			// of the fragmented NAL unit payload, the S bit MUST be set to 0."
+			if (nalUnitFragmentHeader.isStart() || accessUnit.empty()) {
 				addSeparator(accessUnit);
 				nalUnitHeader.setUnitType(nalUnitFragmentHeader.unitType());
 				accessUnit.emplace_back(byte(nalUnitHeader._first));
