@@ -14,6 +14,8 @@
 
 #include "impl/internals.hpp"
 
+#include <algorithm>
+
 namespace rtc {
 
 const binary naluLongStartCode = {byte{0}, byte{0}, byte{0}, byte{1}};
