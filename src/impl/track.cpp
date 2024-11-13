@@ -141,12 +141,18 @@ void Track::incoming(message_ptr message) {
 	}
 
 	message_vector messages{std::move(message)};
-	if (auto handler = getMediaHandler())
-		handler->incomingChain(messages, [this, weak_this = weak_from_this()](message_ptr m) {
-			if (auto locked = weak_this.lock()) {
-				transportSend(m);
-			}
-		});
+	if (auto handler = getMediaHandler()) {
+		try {
+			handler->incomingChain(messages, [this, weak_this = weak_from_this()](message_ptr m) {
+				if (auto locked = weak_this.lock()) {
+					transportSend(m);
+				}
+			});
+		} catch (const std::exception &e) {
+			PLOG_WARNING << "Exception in incoming media handler: " << e.what();
+			return;
+		}
+	}
 
 	for (auto &m : messages) {
 		// Tail drop if queue is full
@@ -184,6 +190,7 @@ bool Track::outgoing(message_ptr message) {
 				transportSend(m);
 			}
 		});
+
 		bool ret = false;
 		for (auto &m : messages)
 			ret = transportSend(std::move(m));
@@ -202,7 +209,7 @@ bool Track::transportSend([[maybe_unused]] message_ptr message) {
 		std::shared_lock lock(mMutex);
 		transport = mDtlsSrtpTransport.lock();
 		if (!transport)
-			throw std::runtime_error("Track is closed");
+			throw std::runtime_error("Track is not open");
 
 		// Set recommended medium-priority DSCP value
 		// See https://www.rfc-editor.org/rfc/rfc8837.html#section-5

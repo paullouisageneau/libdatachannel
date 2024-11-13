@@ -1,16 +1,18 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.13)
 project(libdatachannel
-	VERSION 0.21.1
+	VERSION 0.22.2
 	LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "C/C++ WebRTC network library featuring Data Channels, Media Transport, and WebSockets")
 
 include(GNUInstallDirs)
 
 # Options
+option(BUILD_SHARED_LIBS "Build shared library" ON)
+option(BUILD_SHARED_DEPS_LIBS "Build submodules as shared libraries" OFF)
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 option(USE_MBEDTLS "Use Mbed TLS instead of OpenSSL" OFF)
 option(USE_NICE "Use libnice instead of libjuice" OFF)
-option(PREFER_SYSTEM_LIB "Prefer system libraries over deps folder" OFF)
+option(PREFER_SYSTEM_LIB "Prefer system libraries over submodules" OFF)
 option(USE_SYSTEM_SRTP "Use system libSRTP" ${PREFER_SYSTEM_LIB})
 option(USE_SYSTEM_JUICE "Use system libjuice" ${PREFER_SYSTEM_LIB})
 option(USE_SYSTEM_USRSCTP "Use system libusrsctp" ${PREFER_SYSTEM_LIB})
@@ -23,6 +25,7 @@ option(NO_TESTS "Disable tests build" OFF)
 option(WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
 option(SCTP_DEBUG "Enable SCTP debugging output to verbose log" OFF)
+option(RTC_UPDATE_VERSION_HEADER "Enable updating the version header" OFF)
 
 if (USE_GNUTLS AND USE_MBEDTLS)
 	message(FATAL_ERROR "Both USE_MBEDTLS and USE_GNUTLS cannot be enabled at the same time")
@@ -48,7 +51,6 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(BUILD_SHARED_LIBS OFF) # to force usrsctp to be built static
 
 if(WIN32)
 	add_definitions(-DWIN32_LEAN_AND_MEAN)
@@ -80,6 +82,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h264rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/nalunit.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h265rtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/h265rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h265nalunit.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/av1rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.cpp
@@ -87,6 +90,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/plihandler.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/pacinghandler.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rembhandler.cpp
 )
 
 set(LIBDATACHANNEL_HEADERS
@@ -117,12 +121,14 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/nalunit.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265rtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265nalunit.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/av1rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/utils.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/plihandler.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/pacinghandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rembhandler.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/version.h
 )
 
@@ -227,6 +233,52 @@ set(BENCHMARK_UWP_RESOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/Windows_TemporaryKey.pfx
 )
 
+if(RTC_UPDATE_VERSION_HEADER)
+	configure_file (
+		${PROJECT_SOURCE_DIR}/cmake/version.h.in
+		${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/version.h
+	)
+endif()
+
+add_library(datachannel
+	${LIBDATACHANNEL_SOURCES}
+	${LIBDATACHANNEL_HEADERS}
+	${LIBDATACHANNEL_IMPL_SOURCES}
+	${LIBDATACHANNEL_IMPL_HEADERS})
+set_target_properties(datachannel PROPERTIES
+	VERSION ${PROJECT_VERSION}
+	SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+	CXX_STANDARD 17
+	CXX_VISIBILITY_PRESET default)
+if(APPLE)
+	set_target_properties(datachannel PROPERTIES
+		VERSION ${PROJECT_VERSION_MAJOR}
+		SOVERSION ${PROJECT_VERSION_MAJOR})
+endif()
+
+add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
+	${LIBDATACHANNEL_SOURCES}
+	${LIBDATACHANNEL_HEADERS}
+	${LIBDATACHANNEL_IMPL_SOURCES}
+	${LIBDATACHANNEL_IMPL_HEADERS})
+set_target_properties(datachannel-static PROPERTIES
+	VERSION ${PROJECT_VERSION}
+	CXX_STANDARD 17)
+
+target_compile_definitions(datachannel PRIVATE RTC_EXPORTS)
+if (NOT BUILD_SHARED_LIBS)
+	target_compile_definitions(datachannel PUBLIC RTC_STATIC)
+endif()
+target_compile_definitions(datachannel-static PRIVATE RTC_EXPORTS)
+target_compile_definitions(datachannel-static PUBLIC RTC_STATIC)
+
+if(BUILD_SHARED_LIBS AND NOT BUILD_SHARED_DEPS_LIBS)
+	set(BUILD_SHARED_LIBS OFF)
+	set(INSTALL_DEPS_LIBS OFF)
+else()
+	set(INSTALL_DEPS_LIBS ON)
+endif()
+
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
@@ -256,58 +308,44 @@ else()
 		target_compile_definitions(usrsctp PUBLIC -DSCTP_STDINT_INCLUDE=<stdint.h>)
 	endif()
 	add_library(Usrsctp::Usrsctp ALIAS usrsctp)
+
+	if(INSTALL_DEPS_LIBS)
+		# usrsctp lacks an export set
+		install(TARGETS usrsctp EXPORT UsrsctpTargets)
+		install(EXPORT UsrsctpTargets
+				FILE UsrsctpTargets.cmake
+				NAMESPACE Usrsctp::
+				DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usrsctp
+				EXCLUDE_FROM_ALL)
+		# Fix directories
+		set_target_properties(usrsctp PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "")
+		target_include_directories(usrsctp INTERFACE
+			$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/usrsctp/usrsctplib>
+			$<INSTALL_INTERFACE:>)
+	endif()
 endif()
-
-configure_file (
-    ${PROJECT_SOURCE_DIR}/cmake/version.h.in
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/version.h
-)
-
-add_library(datachannel SHARED
-	${LIBDATACHANNEL_SOURCES}
-	${LIBDATACHANNEL_HEADERS}
-	${LIBDATACHANNEL_IMPL_SOURCES}
-	${LIBDATACHANNEL_IMPL_HEADERS})
-set_target_properties(datachannel PROPERTIES
-	VERSION ${PROJECT_VERSION}
-	SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-	CXX_STANDARD 17
-	CXX_VISIBILITY_PRESET default)
-
-if(APPLE)
-	set_target_properties(datachannel PROPERTIES
-		VERSION ${PROJECT_VERSION_MAJOR}
-		SOVERSION ${PROJECT_VERSION_MAJOR})
-endif()
-
-target_compile_definitions(datachannel PRIVATE RTC_EXPORTS)
-
-add_library(datachannel-static STATIC EXCLUDE_FROM_ALL
-	${LIBDATACHANNEL_SOURCES}
-	${LIBDATACHANNEL_HEADERS}
-	${LIBDATACHANNEL_IMPL_SOURCES}
-	${LIBDATACHANNEL_IMPL_HEADERS})
-set_target_properties(datachannel-static PROPERTIES
-	VERSION ${PROJECT_VERSION}
-	CXX_STANDARD 17)
-target_compile_definitions(datachannel-static PRIVATE RTC_EXPORTS)
-target_compile_definitions(datachannel-static PUBLIC RTC_STATIC)
 
 target_include_directories(datachannel PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
-target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
-target_include_directories(datachannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(datachannel PRIVATE Threads::Threads)
-target_link_libraries(datachannel PRIVATE Usrsctp::Usrsctp plog::plog)
+target_include_directories(datachannel PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc
+	${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(datachannel PRIVATE
+	Threads::Threads
+	Usrsctp::Usrsctp
+	$<BUILD_INTERFACE:plog::plog>)
 
 target_include_directories(datachannel-static PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
-target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
-target_include_directories(datachannel-static PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(datachannel-static PRIVATE Threads::Threads)
-target_link_libraries(datachannel-static PRIVATE Usrsctp::Usrsctp plog::plog)
+target_include_directories(datachannel-static PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc
+	${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(datachannel-static PRIVATE
+	Threads::Threads
+	Usrsctp::Usrsctp
+	$<BUILD_INTERFACE:plog::plog>)
 
 if(WIN32)
 	target_link_libraries(datachannel PUBLIC ws2_32) # winsock2
@@ -344,6 +382,9 @@ else()
 	else()
 		if(NOT TARGET srtp2)
 			add_subdirectory(deps/libsrtp EXCLUDE_FROM_ALL)
+			if(INSTALL_DEPS_LIBS)
+				install(TARGETS srtp2)
+			endif()
 		endif()
 		target_compile_definitions(datachannel PRIVATE RTC_SYSTEM_SRTP=0)
 		target_compile_definitions(datachannel-static PRIVATE RTC_SYSTEM_SRTP=0)
@@ -421,9 +462,12 @@ else()
 		target_link_libraries(datachannel-static PRIVATE LibJuice::LibJuice)
 	else()
 		add_subdirectory(deps/libjuice EXCLUDE_FROM_ALL)
+		if(INSTALL_DEPS_LIBS)
+			install(TARGETS juice)
+		endif()
 		target_compile_definitions(datachannel PRIVATE RTC_SYSTEM_JUICE=0)
 		target_compile_definitions(datachannel-static PRIVATE RTC_SYSTEM_JUICE=0)
-		target_link_libraries(datachannel PRIVATE LibJuice::LibJuiceStatic)
+		target_link_libraries(datachannel PRIVATE LibJuice::LibJuice)
 		target_link_libraries(datachannel-static PRIVATE LibJuice::LibJuiceStatic)
 	endif()
 endif()

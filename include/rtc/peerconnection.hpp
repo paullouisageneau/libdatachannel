@@ -35,6 +35,11 @@ struct RTC_CPP_EXPORT DataChannelInit {
 	string protocol = "";
 };
 
+struct RTC_CPP_EXPORT LocalDescriptionInit {
+    optional<string> iceUfrag;
+    optional<string> icePwd;
+};
+
 class RTC_CPP_EXPORT PeerConnection final : CheshireCat<impl::PeerConnection> {
 public:
 	enum class State : int {
@@ -81,6 +86,7 @@ public:
 	IceState iceState() const;
 	GatheringState gatheringState() const;
 	SignalingState signalingState() const;
+	bool negotiationNeeded() const;
 	bool hasMedia() const;
 	optional<Description> localDescription() const;
 	optional<Description> remoteDescription() const;
@@ -90,7 +96,7 @@ public:
 	uint16_t maxDataChannelId() const;
 	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
-	void setLocalDescription(Description::Type type = Description::Type::Unspec);
+	void setLocalDescription(Description::Type type = Description::Type::Unspec, LocalDescriptionInit init = {});
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
 	void gatherLocalCandidates(std::vector<IceServer> additionalIceServers = {});
@@ -113,6 +119,7 @@ public:
 	void onSignalingStateChange(std::function<void(SignalingState state)> callback);
 
 	void resetCallbacks();
+	CertificateFingerprint remoteFingerprint();
 
 	// Stats
 	void clearStats();

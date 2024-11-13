@@ -140,12 +140,23 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 			addIceServer(server);
 }
 
+void IceTransport::setIceAttributes(string uFrag, string pwd) {
+	if (juice_set_local_ice_attributes(mAgent.get(), uFrag.c_str(), pwd.c_str()) < 0) {
+		throw std::invalid_argument("Invalid ICE attributes");
+	}
+}
+
 void IceTransport::addIceServer(IceServer server) {
 	if (server.hostname.empty())
 		return;
 
 	if (server.type != IceServer::Type::Turn) {
 		PLOG_WARNING << "Only TURN servers are supported as additional ICE servers";
+		return;
+	}
+
+	if (server.relayType != IceServer::RelayType::TurnUdp) {
+		PLOG_WARNING << "TURN transports TCP and TLS are not supported with libjuice";
 		return;
 	}
 
@@ -461,6 +472,10 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	// the characteristics of the associated data.
 	g_object_set(G_OBJECT(mNiceAgent.get()), "stun-pacing-timer", 25, nullptr);
 
+	// Enable RFC 7675 ICE consent freshness support (requires libnice 0.1.19)
+	g_object_set(G_OBJECT(mNiceAgent.get()), "keepalive-conncheck", TRUE, nullptr);
+	g_object_set(G_OBJECT(mNiceAgent.get()), "consent-freshness", TRUE, nullptr);
+
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp", FALSE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp-timeout", 200, nullptr);
 
@@ -567,6 +582,10 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 
 	nice_agent_attach_recv(mNiceAgent.get(), mStreamId, 1, g_main_loop_get_context(MainLoop.get()),
 	                       RecvCallback, this);
+}
+
+void IceTransport::setIceAttributes([[maybe_unused]] string uFrag, [[maybe_unused]] string pwd) {
+	PLOG_WARNING << "Setting custom ICE attributes is not supported with libnice, please use libjuice";
 }
 
 void IceTransport::addIceServer(IceServer server) {

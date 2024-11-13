@@ -14,7 +14,7 @@ jobs:
     - name: submodules
       run: git submodule update --init --recursive --depth 1
     - name: cmake
-      run: cmake -B build -DUSE_GNUTLS=0 -DUSE_SYSTEM_SRTP=1 -DWARNINGS_AS_ERRORS=1
+      run: cmake -B build -DUSE_GNUTLS=0 -DUSE_SYSTEM_SRTP=1 -DWARNINGS_AS_ERRORS=1 -DRTC_UPDATE_VERSION_HEADER=1
     - name: check diff
       run: |
         if ! git diff --exit-code

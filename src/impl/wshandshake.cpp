@@ -64,7 +64,7 @@ string WsHandshake::generateHttpRequest() {
 	             "Host: " +
 	             mHost +
 	             "\r\n"
-	             "Connection: upgrade\r\n"
+	             "Connection: Upgrade\r\n"
 	             "Upgrade: websocket\r\n"
 	             "Sec-WebSocket-Version: 13\r\n"
 	             "Sec-WebSocket-Key: " +
@@ -80,12 +80,18 @@ string WsHandshake::generateHttpRequest() {
 
 string WsHandshake::generateHttpResponse() {
 	std::unique_lock lock(mMutex);
-	const string out = "HTTP/1.1 101 Switching Protocols\r\n"
-	                   "Server: libdatachannel\r\n"
-	                   "Connection: upgrade\r\n"
-	                   "Upgrade: websocket\r\n"
-	                   "Sec-WebSocket-Accept: " +
-	                   computeAcceptKey(mKey) + "\r\n\r\n";
+
+	string out = "HTTP/1.1 101 Switching Protocols\r\n"
+	             "Server: libdatachannel\r\n"
+	             "Connection: Upgrade\r\n"
+	             "Upgrade: websocket\r\n"
+	             "Sec-WebSocket-Accept: " +
+	             computeAcceptKey(mKey) + "\r\n";
+
+	if (!mProtocols.empty())
+		out += "Sec-WebSocket-Protocol: " + utils::implode(mProtocols, ',') + "\r\n";
+
+	out += "\r\n";
 
 	return out;
 }
@@ -119,8 +125,6 @@ string WsHandshake::generateHttpError(int responseCode) {
 	const string out = "HTTP/1.1 " + error +
 	                   "\r\n"
 	                   "Server: libdatachannel\r\n"
-	                   "Connection: upgrade\r\n"
-	                   "Upgrade: websocket\r\n"
 	                   "Content-Type: text/plain\r\n"
 	                   "Content-Length: " +
 	                   to_string(error.size()) +

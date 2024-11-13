@@ -170,6 +170,7 @@ typedef void *(RTC_API *rtcInterceptorCallbackFunc)(int pc, const char *message,
 typedef void(RTC_API *rtcBufferedAmountLowCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcAvailableCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcPliHandlerCallbackFunc)(int tr, void *ptr);
+typedef void(RTC_API *rtcRembHandlerCallbackFunc)(int tr, unsigned int bitrate, void *ptr);
 
 // Log
 
@@ -225,6 +226,8 @@ RTC_C_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 
 RTC_C_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote,
                                              int remoteSize);
+
+RTC_C_EXPORT bool rtcIsNegotiationNeeded(int pc);
 
 RTC_C_EXPORT int rtcGetMaxDataChannelStream(int pc);
 RTC_C_EXPORT int rtcGetRemoteMaxMessageSize(int pc);
@@ -408,6 +411,9 @@ RTC_C_EXPORT int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPackets
 
 // Chain PliHandler on track
 RTC_C_EXPORT int rtcChainPliHandler(int tr, rtcPliHandlerCallbackFunc cb);
+
+// Chain RembHandler on track
+RTC_C_EXPORT int rtcChainRembHandler(int tr, rtcRembHandlerCallbackFunc cb);
 
 // Transform seconds to timestamp using track's clock rate, result is written to timestamp
 RTC_C_EXPORT int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp);

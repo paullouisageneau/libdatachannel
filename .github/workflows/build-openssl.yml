@@ -24,7 +24,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: install packages
-      run: HOMEBREW_NO_INSTALL_CLEANUP=1 brew reinstall openssl@1.1
+      run: HOMEBREW_NO_INSTALL_CLEANUP=1 brew reinstall openssl@3
     - name: submodules
       run: git submodule update --init --recursive --depth 1
     - name: cmake
@@ -52,5 +52,7 @@ jobs:
         set CL=/MP
         nmake
     - name: test
-      run: build/tests.exe
+      run: |
+        cd build
+        ./tests
 
