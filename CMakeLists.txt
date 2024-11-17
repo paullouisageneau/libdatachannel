@@ -308,13 +308,7 @@ else()
 	add_library(Usrsctp::Usrsctp ALIAS usrsctp)
 
 	if(INSTALL_DEPS_LIBS)
-		# usrsctp lacks an export set
-		install(TARGETS usrsctp EXPORT UsrsctpTargets)
-		install(EXPORT UsrsctpTargets
-				FILE UsrsctpTargets.cmake
-				NAMESPACE Usrsctp::
-				DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/usrsctp
-				EXCLUDE_FROM_ALL)
+		install(TARGETS usrsctp EXPORT LibDataChannelTargets)
 		# Fix directories
 		set_target_properties(usrsctp PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "")
 		target_include_directories(usrsctp INTERFACE
@@ -381,7 +375,7 @@ else()
 		if(NOT TARGET srtp2)
 			add_subdirectory(deps/libsrtp EXCLUDE_FROM_ALL)
 			if(INSTALL_DEPS_LIBS)
-				install(TARGETS srtp2)
+				install(TARGETS srtp2 EXPORT LibDataChannelTargets)
 			endif()
 		endif()
 		target_compile_definitions(datachannel PRIVATE RTC_SYSTEM_SRTP=0)
@@ -461,7 +455,7 @@ else()
 	else()
 		add_subdirectory(deps/libjuice EXCLUDE_FROM_ALL)
 		if(INSTALL_DEPS_LIBS)
-			install(TARGETS juice)
+			install(TARGETS juice EXPORT LibDataChannelTargets)
 		endif()
 		target_compile_definitions(datachannel PRIVATE RTC_SYSTEM_JUICE=0)
 		target_compile_definitions(datachannel-static PRIVATE RTC_SYSTEM_JUICE=0)
