@@ -200,23 +200,23 @@ void TcpTransport::resolve() {
 }
 
 void TcpTransport::attempt() {
-	std::lock_guard lock(mSendMutex);
-
-	if (state() != State::Connecting)
-		return; // Cancelled
-
-	if (mSock == INVALID_SOCKET) {
-		::closesocket(mSock);
-		mSock = INVALID_SOCKET;
-	}
-
-	if (mResolved.empty()) {
-		PLOG_WARNING << "Connection to " << mHostname << ":" << mService << " failed";
-		changeState(State::Failed);
-		return;
-	}
-
 	try {
+		std::lock_guard lock(mSendMutex);
+
+		if (state() != State::Connecting)
+			return; // Cancelled
+
+		if (mSock == INVALID_SOCKET) {
+			::closesocket(mSock);
+			mSock = INVALID_SOCKET;
+		}
+
+		if (mResolved.empty()) {
+			PLOG_WARNING << "Connection to " << mHostname << ":" << mService << " failed";
+			changeState(State::Failed);
+			return;
+		}
+
 		auto [addr, addrlen] = mResolved.front();
 		mResolved.pop_front();
 
