@@ -9,8 +9,8 @@ if (NOT TARGET LibJuice::LibJuice)
         add_library(LibJuice::LibJuice UNKNOWN IMPORTED)
         set_target_properties(LibJuice::LibJuice PROPERTIES
             IMPORTED_LOCATION "${JUICE_LIBRARY}"
-            INTERFACE_INCLUDE_DIRECTORIES "${JUICE_INCLUDE_DIRS}"
-            INTERFACE_LINK_LIBRARIES "${JUICE_LIBRARIES}"
+            INTERFACE_INCLUDE_DIRECTORIES "${JUICE_INCLUDE_DIR}"
+            INTERFACE_LINK_LIBRARIES "${JUICE_LIBRARY}"
                 IMPORTED_LINK_INTERFACE_LANGUAGES "C")
     endif ()
 endif ()
