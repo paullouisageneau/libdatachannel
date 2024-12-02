@@ -158,7 +158,11 @@ void init() {
 
 	std::lock_guard lock(mutex);
 	if (!std::exchange(done, true)) {
-		OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr);
+		uint64_t ssl_opts = OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS;
+#ifdef OPENSSL_INIT_NO_ATEXIT
+		ssl_opts |= OPENSSL_INIT_NO_ATEXIT;
+#endif
+		OPENSSL_init_ssl(ssl_opts, nullptr);
 		OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr);
 	}
 }
