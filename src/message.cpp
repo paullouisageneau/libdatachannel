@@ -18,11 +18,14 @@ message_ptr make_message(size_t size, Message::Type type, unsigned int stream,
 	return message;
 }
 
-message_ptr make_message(binary &&data, Message::Type type, unsigned int stream,
-                         shared_ptr<Reliability> reliability, shared_ptr<FrameInfo> frameInfo) {
+message_ptr make_message(binary &&data, Message::Type type, unsigned int stream, shared_ptr<Reliability> reliability) {
 	auto message = std::make_shared<Message>(std::move(data), type);
 	message->stream = stream;
 	message->reliability = reliability;
+	return message;
+}
+message_ptr make_message(binary &&data, shared_ptr<FrameInfo> frameInfo) {
+	auto message = std::make_shared<Message>(std::move(data));
 	message->frameInfo = frameInfo;
 	return message;
 }

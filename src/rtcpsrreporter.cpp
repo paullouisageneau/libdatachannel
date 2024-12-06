@@ -14,6 +14,8 @@
 #include <chrono>
 #include <cmath>
 
+using namespace std::chrono_literals;
+
 namespace {
 
 // TODO: move to utils
@@ -28,16 +30,21 @@ uint64_t ntp_time() {
 
 namespace rtc {
 
-RtcpSrReporter::RtcpSrReporter(shared_ptr<RtpPacketizationConfig> rtpConfig)
-    : rtpConfig(rtpConfig) {
-	mLastReportedTimestamp = rtpConfig->timestamp;
-}
+RtcpSrReporter::RtcpSrReporter(shared_ptr<RtpPacketizationConfig> rtpConfig) : rtpConfig(rtpConfig) {}
 
-void RtcpSrReporter::setNeedsToReport() { mNeedsToReport = true; }
+RtcpSrReporter::~RtcpSrReporter() {}
+
+void RtcpSrReporter::setNeedsToReport() {
+	// Dummy
+}
 
 uint32_t RtcpSrReporter::lastReportedTimestamp() const { return mLastReportedTimestamp; }
 
 void RtcpSrReporter::outgoing(message_vector &messages, const message_callback &send) {
+	if (messages.empty())
+		return;
+
+	uint32_t timestamp = 0;
 	for (const auto &message : messages) {
 		if (message->type == Message::Control)
 			continue;
@@ -45,21 +52,27 @@ void RtcpSrReporter::outgoing(message_vector &messages, const message_callback &
 		if (message->size() < sizeof(RtpHeader))
 			continue;
 
-		auto rtp = reinterpret_cast<RtpHeader *>(message->data());
-		addToReport(rtp, uint32_t(message->size()));
+		auto header = reinterpret_cast<RtpHeader *>(message->data());
+		if(header->ssrc() != rtpConfig->ssrc)
+			continue;
+
+		timestamp = header->timestamp();
+
+		addToReport(header, message->size());
 	}
 
-	if (std::exchange(mNeedsToReport, false)) {
-		auto timestamp = rtpConfig->timestamp;
-		auto sr = getSenderReport(timestamp);
-		send(sr);
+	auto now = std::chrono::steady_clock::now();
+	if (now >= mLastReportTime + 1s) {
+		send(getSenderReport(timestamp));
+		mLastReportedTimestamp = timestamp;
+		mLastReportTime = now;
 	}
 }
 
-void RtcpSrReporter::addToReport(RtpHeader *rtp, uint32_t rtpSize) {
+void RtcpSrReporter::addToReport(RtpHeader *header, size_t size) {
 	mPacketCount += 1;
-	assert(!rtp->padding());
-	mPayloadOctets += rtpSize - uint32_t(rtp->getSize());
+	assert(!header->padding());
+	mPayloadOctets += uint32_t(size - header->getSize());
 }
 
 message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
@@ -81,7 +94,6 @@ message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
 	item->setText(rtpConfig->cname);
 	sdes->preparePacket(1);
 
-	mLastReportedTimestamp = timestamp;
 	return msg;
 }
 
