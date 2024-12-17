@@ -22,7 +22,7 @@ The WebRTC stack is fully compatible with browsers like Firefox and Chromium, se
 
 libdatachannel is licensed under MPL 2.0 since version 0.18, see [LICENSE](https://github.com/paullouisageneau/libdatachannel/blob/master/LICENSE) (previous versions were licensed under LGPLv2.1 or later).
 
-libdatachannel is available on [AUR](https://aur.archlinux.org/packages/libdatachannel/), [vcpkg](https://vcpkg.io/en/getting-started), and [FreeBSD ports](https://www.freshports.org/www/libdatachannel). Bindings are available for [Rust](https://crates.io/crates/datachannel) and [Node.js](https://www.npmjs.com/package/node-datachannel).
+libdatachannel is available on [AUR](https://aur.archlinux.org/packages/libdatachannel/), [vcpkg](https://vcpkg.io/en/getting-started), [conan](https://conan.io/center/recipes/libdatachannel), and [FreeBSD ports](https://www.freshports.org/www/libdatachannel). Bindings are available for [Rust](https://crates.io/crates/datachannel) and [Node.js](https://www.npmjs.com/package/node-datachannel).
 
 ## Dependencies
 
