@@ -28,6 +28,8 @@ class RTC_CPP_EXPORT H265RtpDepacketizer : public MediaHandler {
 public:
 	using Separator = NalUnit::Separator;
 
+	inline static const uint32_t ClockRate = 90 * 1000;
+
 	H265RtpDepacketizer(Separator separator = Separator::LongStartSequence);
 	virtual ~H265RtpDepacketizer() = default;
 

@@ -41,7 +41,7 @@ public:
 	void flushPendingMessages() override;
 	message_variant trackMessageToVariant(message_ptr message);
 
-	void onFrame(std::function<void(binary data, FrameInfo frame)> callback);
+	void sendFrame(binary data, const FrameInfo &frame);
 
 	bool isOpen() const;
 	bool isClosed() const;
@@ -61,6 +61,8 @@ public:
 
 	bool transportSend(message_ptr message);
 
+	synchronized_callback<binary, FrameInfo> frameCallback;
+
 private:
 	const weak_ptr<PeerConnection> mPeerConnection;
 #if RTC_ENABLE_MEDIA
@@ -76,7 +78,6 @@ private:
 
 	Queue<message_ptr> mRecvQueue;
 
-	synchronized_callback<binary, FrameInfo> frameCallback;
 };
 
 } // namespace rtc::impl

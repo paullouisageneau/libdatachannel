@@ -40,34 +40,39 @@ const auto oneByteLeb128Size = 1;
 const uint8_t sevenLsbBitmask = 0b01111111;
 const uint8_t msbBitmask = 0b10000000;
 
-std::vector<binary_ptr> extractTemporalUnitObus(binary_ptr message) {
-	std::vector<shared_ptr<binary>> obus{};
+AV1RtpPacketizer::AV1RtpPacketizer(Packetization packetization,
+                                   shared_ptr<RtpPacketizationConfig> rtpConfig,
+                                   size_t maxFragmentSize)
+    : RtpPacketizer(rtpConfig), mPacketization(packetization), mMaxFragmentSize(maxFragmentSize) {}
 
-	if (message->size() <= 2 || (message->at(0) != obuTemporalUnitDelimiter.at(0)) ||
-	    (message->at(1) != obuTemporalUnitDelimiter.at(1))) {
-		return obus;
+std::vector<binary> AV1RtpPacketizer::extractTemporalUnitObus(const binary &data) {
+	std::vector<binary> obus;
+
+	if (data.size() <= 2 || (data.at(0) != obuTemporalUnitDelimiter.at(0)) ||
+	    (data.at(1) != obuTemporalUnitDelimiter.at(1))) {
+		return {};
 	}
 
-	size_t messageIndex = 2;
-	while (messageIndex < message->size()) {
-		if ((message->at(messageIndex) & obuHasSizeMask) == byte(0)) {
+	size_t index = 2;
+	while (index < data.size()) {
+		if ((data.at(index) & obuHasSizeMask) == byte(0)) {
 			return obus;
 		}
 
-		if ((message->at(messageIndex) & obuHasExtensionMask) != byte(0)) {
-			messageIndex++;
+		if ((data.at(index) & obuHasExtensionMask) != byte(0)) {
+			index++;
 		}
 
 		// https://aomediacodec.github.io/av1-spec/#leb128
 		uint32_t obuLength = 0;
 		uint8_t leb128Size = 0;
 		while (leb128Size < 8) {
-			auto leb128Index = messageIndex + leb128Size + obuHeaderSize;
-			if (message->size() < leb128Index) {
+			auto leb128Index = index + leb128Size + obuHeaderSize;
+			if (data.size() < leb128Index) {
 				break;
 			}
 
-			auto leb128_byte = uint8_t(message->at(leb128Index));
+			auto leb128_byte = uint8_t(data.at(leb128Index));
 
 			obuLength |= ((leb128_byte & sevenLsbBitmask) << (leb128Size * 7));
 			leb128Size++;
@@ -77,14 +82,29 @@ std::vector<binary_ptr> extractTemporalUnitObus(binary_ptr message) {
 			}
 		}
 
-		obus.push_back(std::make_shared<binary>(message->begin() + messageIndex,
-		                                        message->begin() + messageIndex + obuHeaderSize +
-		                                            leb128Size + obuLength));
+		obus.emplace_back(data.begin() + index,
+		                  data.begin() + index + obuHeaderSize + leb128Size + obuLength);
 
-		messageIndex += obuHeaderSize + leb128Size + obuLength;
+		index += obuHeaderSize + leb128Size + obuLength;
 	}
 
 	return obus;
+}
+
+std::vector<binary> AV1RtpPacketizer::fragment(binary data) {
+	if (mPacketization == AV1RtpPacketizer::Packetization::TemporalUnit) {
+		std::vector<binary> result;
+		auto obus = extractTemporalUnitObus(data);
+		for (auto obu : obus) {
+			auto fragments = fragmentObu(obu);
+			result.reserve(result.size() + fragments.size());
+			for(auto &fragment : fragments)
+				fragments.push_back(std::move(fragment));
+		}
+		return result;
+	} else {
+		return fragmentObu(data);
+	}
 }
 
 /*
@@ -118,108 +138,69 @@ std::vector<binary_ptr> extractTemporalUnitObus(binary_ptr message) {
  *
  **/
 
-std::vector<binary_ptr> AV1RtpPacketizer::packetizeObu(binary_ptr message,
-                                                       uint16_t maxFragmentSize) {
+std::vector<binary> AV1RtpPacketizer::fragmentObu(const binary &data) {
+	std::vector<binary> payloads;
 
-	std::vector<shared_ptr<binary>> payloads{};
-	size_t messageIndex = 0;
-
-	if (message->size() < 1) {
-		return payloads;
-	}
+	if (data.size() < 1)
+		return {};
 
 	// Cache sequence header and packetize with next OBU
-	auto frameType = (message->at(0) & obuFrameTypeMask) >> obuFrameTypeBitshift;
+	auto frameType = (data.at(0) & obuFrameTypeMask) >> obuFrameTypeBitshift;
 	if (frameType == obuFrameTypeSequenceHeader) {
-		sequenceHeader = std::make_shared<binary>(message->begin(), message->end());
-		return payloads;
+		mSequenceHeader = std::make_unique<binary>(data.begin(), data.end());
+		return {};
 	}
 
-	size_t messageRemaining = message->size();
-	while (messageRemaining > 0) {
-		auto obuCount = 1;
-		auto metadataSize = payloadHeaderSize;
+	size_t index = 0;
+	size_t remaining = data.size();
+	while (remaining > 0) {
+		size_t obuCount = 1;
+		size_t metadataSize = payloadHeaderSize;
 
-		if (sequenceHeader != nullptr) {
+		if (mSequenceHeader) {
 			obuCount++;
-			metadataSize += /* 1 byte leb128 */ 1 + int(sequenceHeader->size());
+			metadataSize += 1 + int(mSequenceHeader->size()); // 1 byte leb128
 		}
 
-		auto payload = std::make_shared<binary>(
-		    std::min(size_t(maxFragmentSize), messageRemaining + metadataSize));
-		auto payloadOffset = payloadHeaderSize;
+		binary payload(std::min(size_t(mMaxFragmentSize), remaining + metadataSize));
+		size_t payloadOffset = payloadHeaderSize;
 
-		payload->at(0) = byte(obuCount) << wBitshift;
+		payload.at(0) = byte(obuCount) << wBitshift;
 
 		// Packetize cached SequenceHeader
 		if (obuCount == 2) {
-			payload->at(0) ^= nMask;
-			payload->at(1) = byte(sequenceHeader->size() & sevenLsbBitmask);
+			payload.at(0) ^= nMask;
+			payload.at(1) = byte(mSequenceHeader->size() & sevenLsbBitmask);
 			payloadOffset += oneByteLeb128Size;
 
-			std::memcpy(payload->data() + payloadOffset, sequenceHeader->data(),
-			            sequenceHeader->size());
-			payloadOffset += int(sequenceHeader->size());
+			std::memcpy(payload.data() + payloadOffset, mSequenceHeader->data(),
+			            mSequenceHeader->size());
+			payloadOffset += int(mSequenceHeader->size());
 
-			sequenceHeader = nullptr;
+			mSequenceHeader = nullptr;
 		}
 
 		// Copy as much of OBU as possible into Payload
-		auto payloadRemaining = payload->size() - payloadOffset;
-		std::memcpy(payload->data() + payloadOffset, message->data() + messageIndex,
+		size_t payloadRemaining = payload.size() - payloadOffset;
+		std::memcpy(payload.data() + payloadOffset, data.data() + index,
 		            payloadRemaining);
-		messageRemaining -= payloadRemaining;
-		messageIndex += payloadRemaining;
+		remaining -= payloadRemaining;
+		index += payloadRemaining;
 
 		// Does this Fragment contain an OBU that started in a previous payload
 		if (payloads.size() > 0) {
-			payload->at(0) ^= zMask;
+			payload.at(0) ^= zMask;
 		}
 
 		// This OBU will be continued in next Payload
-		if (messageIndex < message->size()) {
-			payload->at(0) ^= yMask;
+		if (index < data.size()) {
+			payload.at(0) ^= yMask;
 		}
 
-		payloads.push_back(payload);
+		payloads.push_back(std::move(payload));
 	}
 
 	return payloads;
-}
-
-AV1RtpPacketizer::AV1RtpPacketizer(AV1RtpPacketizer::Packetization packetization,
-                                   shared_ptr<RtpPacketizationConfig> rtpConfig,
-                                   uint16_t maxFragmentSize)
-    : RtpPacketizer(rtpConfig), maxFragmentSize(maxFragmentSize),
-      packetization(packetization) {}
-
-void AV1RtpPacketizer::outgoing(message_vector &messages,
-                                [[maybe_unused]] const message_callback &send) {
-	message_vector result;
-	for (const auto &message : messages) {
-		std::vector<binary_ptr> obus;
-		if (packetization == AV1RtpPacketizer::Packetization::TemporalUnit) {
-			obus = extractTemporalUnitObus(message);
-		} else {
-			obus.push_back(message);
-		}
-
-		std::vector<binary_ptr> fragments;
-		for (auto obu : obus) {
-			auto p = packetizeObu(obu, maxFragmentSize);
-			fragments.insert(fragments.end(), p.begin(), p.end());
-		}
-
-		if (fragments.size() == 0)
-			continue;
-
-		for (size_t i = 0; i < fragments.size() - 1; i++)
-			result.push_back(packetize(fragments[i], false));
-
-		result.push_back(packetize(fragments[fragments.size() - 1], true));
-	}
-
-	messages.swap(result);
 }
 
 } // namespace rtc
