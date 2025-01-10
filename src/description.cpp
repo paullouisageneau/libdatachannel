@@ -1339,7 +1339,7 @@ std::string CertificateFingerprint::AlgorithmIdentifier(
 	case CertificateFingerprint::Algorithm::Sha256:
 		return "sha-256";
 	case CertificateFingerprint::Algorithm::Sha384:
-		return "sha-256";
+		return "sha-384";
 	case CertificateFingerprint::Algorithm::Sha512:
 		return "sha-512";
 	default:
