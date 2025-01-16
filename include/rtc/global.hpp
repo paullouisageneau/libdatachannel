@@ -35,15 +35,20 @@ RTC_CPP_EXPORT void Preload();
 RTC_CPP_EXPORT std::shared_future<void> Cleanup();
 
 struct UnhandledStunRequest {
-	optional<std::string> localUfrag;
-	optional<std::string> remoteUfrag;
-	std::string address;
-	uint16_t port;
+	std::string localUfrag;
+	std::string remoteUfrag;
+	std::string remoteHost;
+	uint16_t remotePort;
 };
 
-RTC_CPP_EXPORT typedef std::function<void(UnhandledStunRequest request)> UnhandledStunRequestCallback;
+RTC_CPP_EXPORT typedef std::function<void(UnhandledStunRequest request, void* userPtr)> UnhandledStunRequestCallback;
 
-RTC_CPP_EXPORT void OnUnhandledStunRequest(std::string host, int port, UnhandledStunRequestCallback callback = nullptr);
+struct UnhandledStunRequestHandler {
+	UnhandledStunRequestCallback callback;
+	void *userPtr;
+};
+
+RTC_CPP_EXPORT void OnUnhandledStunRequest(std::string host, int port, UnhandledStunRequestCallback callback = nullptr, void *userPtr = nullptr);
 
 struct SctpSettings {
 	// For the following settings, not set means optimized default
