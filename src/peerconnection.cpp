@@ -85,6 +85,7 @@ void PeerConnection::setLocalDescription(Description::Type type, LocalDescriptio
 	PLOG_VERBOSE << "Setting local description, type=" << Description::typeToString(type);
 
 	SignalingState signalingState = impl()->signalingState.load();
+
 	if (type == Description::Type::Rollback) {
 		if (signalingState == SignalingState::HaveLocalOffer ||
 		    signalingState == SignalingState::HaveLocalPranswer) {
@@ -139,11 +140,17 @@ void PeerConnection::setLocalDescription(Description::Type type, LocalDescriptio
 		return; // closed
 
 	if (init.iceUfrag && init.icePwd) {
-		PLOG_DEBUG << "Using custom ICE attributes, ufrag=\"" << init.iceUfrag.value() << "\", pwd=\"" << init.icePwd.value() << "\"";
-		iceTransport->setIceAttributes(init.iceUfrag.value(), init.icePwd.value());
+		PLOG_DEBUG << "Setting custom ICE attributes, ufrag=\"" << *init.iceUfrag << "\", pwd=\"" << *init.icePwd << "\"";
+		iceTransport->setIceAttributes(*init.iceUfrag, *init.icePwd);
 	}
 
 	Description local = iceTransport->getLocalDescription(type);
+	impl()->populateLocalDescription(local);
+
+	// There might be no media at this point, for instance if the user deleted tracks
+	if (local.mediaCount() == 0)
+		throw std::runtime_error("No DataChannel or Track to negotiate");
+
 	impl()->processLocalDescription(std::move(local));
 
 	impl()->changeSignalingState(newSignalingState);
@@ -162,9 +169,8 @@ void PeerConnection::setLocalDescription(Description::Type type, LocalDescriptio
 
 void PeerConnection::gatherLocalCandidates(std::vector<IceServer> additionalIceServers) {
 	auto iceTransport = impl()->getIceTransport();
-	if (!iceTransport) {
-		throw std::logic_error("No IceTransport. Local Description has not been set");
-	}
+	if (!iceTransport || !localDescription())
+		throw std::logic_error("Local description has not been set before gathering");
 
 	if (impl()->gatheringState == GatheringState::New) {
 		iceTransport->gatherLocalCandidates(impl()->localBundleMid(), additionalIceServers);
@@ -280,6 +286,26 @@ void PeerConnection::addRemoteCandidate(Candidate candidate) {
 	std::unique_lock signalingLock(impl()->signalingMutex);
 	PLOG_VERBOSE << "Adding remote candidate: " << string(candidate);
 	impl()->processRemoteCandidate(std::move(candidate));
+}
+
+Description PeerConnection::createOffer() {
+	auto iceTransport = impl()->initIceTransport();
+	if (!iceTransport)
+		throw std::runtime_error("Peer connection is closed");
+
+	Description desc = iceTransport->getLocalDescription(rtc::Description::Type::Offer);
+	impl()->populateLocalDescription(desc);
+	return desc;
+}
+
+Description PeerConnection::createAnswer() {
+	auto iceTransport = impl()->initIceTransport();
+	if (!iceTransport)
+		throw std::runtime_error("Peer connection is closed");
+
+	Description desc = iceTransport->getLocalDescription(rtc::Description::Type::Answer);
+	impl()->populateLocalDescription(desc);
+	return desc;
 }
 
 void PeerConnection::setMediaHandler(shared_ptr<MediaHandler> handler) {

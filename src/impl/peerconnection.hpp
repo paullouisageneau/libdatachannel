@@ -75,6 +75,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void closeTracks();
 
 	void validateRemoteDescription(const Description &description);
+	void populateLocalDescription(Description &description) const;
 	void processLocalDescription(Description description);
 	void processLocalCandidate(Candidate candidate);
 	void processRemoteDescription(Description description);
@@ -84,7 +85,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	bool negotiationNeeded() const;
 
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
-	shared_ptr<MediaHandler> getMediaHandler();
+	shared_ptr<MediaHandler> getMediaHandler() const;
 
 	void triggerDataChannel(weak_ptr<DataChannel> weakDataChannel);
 	void triggerTrack(weak_ptr<Track> weakTrack);

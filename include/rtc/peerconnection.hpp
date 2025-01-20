@@ -97,9 +97,13 @@ public:
 	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
 	void setLocalDescription(Description::Type type = Description::Type::Unspec, LocalDescriptionInit init = {});
+	void gatherLocalCandidates(std::vector<IceServer> additionalIceServers = {});
 	void setRemoteDescription(Description description);
 	void addRemoteCandidate(Candidate candidate);
-	void gatherLocalCandidates(std::vector<IceServer> additionalIceServers = {});
+
+	// For specific use cases only
+	Description createOffer();
+	Description createAnswer();
 
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
 	shared_ptr<MediaHandler> getMediaHandler();

@@ -631,6 +631,24 @@ int rtcGetRemoteDescriptionType(int pc, char *buffer, int size) {
 	});
 }
 
+int rtcCreateOffer(int pc, char *buffer, int size) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		auto desc = peerConnection->createOffer();
+		return copyAndReturn(string(desc), buffer, size);
+	});
+}
+
+int rtcCreateAnswer(int pc, char *buffer, int size) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		auto desc = peerConnection->createAnswer();
+		return copyAndReturn(string(desc), buffer, size);
+	});
+}
+
 int rtcGetLocalAddress(int pc, char *buffer, int size) {
 	return wrap([&] {
 		auto peerConnection = getPeerConnection(pc);
