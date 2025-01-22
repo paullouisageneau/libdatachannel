@@ -211,7 +211,7 @@ RTC_C_EXPORT int rtcSetIceStateChangeCallback(int pc, rtcIceStateChangeCallbackF
 RTC_C_EXPORT int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb);
 RTC_C_EXPORT int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb);
 
-RTC_C_EXPORT int rtcSetLocalDescription(int pc, const char *type);
+RTC_C_EXPORT int rtcSetLocalDescription(int pc, const char *type); // type may be NULL
 RTC_C_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 RTC_C_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
 
@@ -220,6 +220,10 @@ RTC_C_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);
 
 RTC_C_EXPORT int rtcGetLocalDescriptionType(int pc, char *buffer, int size);
 RTC_C_EXPORT int rtcGetRemoteDescriptionType(int pc, char *buffer, int size);
+
+// For specific use cases only
+RTC_C_EXPORT int rtcCreateOffer(int pc, char *buffer, int size);
+RTC_C_EXPORT int rtcCreateAnswer(int pc, char *buffer, int size);
 
 RTC_C_EXPORT int rtcGetLocalAddress(int pc, char *buffer, int size);
 RTC_C_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);

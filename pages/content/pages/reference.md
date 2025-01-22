@@ -210,7 +210,9 @@ Initiates the handshake process. Following this call, the local description call
 Arguments:
 
 - `pc`: the Peer Connection identifier
-- `type` (optional): type of the description ("offer", "answer", "pranswer", or "rollback") or NULL for autodetection.
+- `type` (optional): type of the description ("offer", "answer", "pranswer", or "rollback") or NULL for automatic (recommended).
+
+Warning: This function expects the optional type for the local description and not an SDP description. It is not possible to set an existing SDP description.
 
 #### rtcSetRemoteDescription
 
@@ -223,7 +225,8 @@ Sets the remote description received from the remote peer by the user's method o
 Arguments:
 
 - `pc`: the Peer Connection identifier
-- `type` (optional): type of the description ("offer", "answer", "pranswer", or "rollback") or NULL for autodetection.
+- `sdp`: the remote description in SDP format
+- `type` (optional): type of the description ("offer", "answer", "pranswer", or "rollback") or NULL for automatic (not recommended).
 
 If the remote description is an offer and `disableAutoNegotiation` was not set in `rtcConfiguration`, the library will automatically answer by calling `rtcSetLocalDescription` internally. Otherwise, the user must call it to answer the remote description.
 
@@ -299,7 +302,7 @@ Return value: the length of the string copied in buffer (including the terminati
 
 If `buffer` is `NULL`, the description is not copied but the size is still returned.
 
-#### rtcGetRemoteDescription
+#### rtcGetRemoteDescriptionType
 
 ```
 int rtcGetRemoteDescriptionType(int pc, char *buffer, int size)
@@ -317,6 +320,22 @@ Return value: the length of the string copied in buffer (including the terminati
 
 If `buffer` is `NULL`, the description is not copied but the size is still returned.
 
+#### rtcCreateOffer/rtcCreateAnswer
+
+```
+int rtcCreateOffer(int pc, char *buffer, int size)
+int rtcCreateAnswer(int pc, char *buffer, int size)
+```
+
+Create a local offer or answer description in SDP format. These functions are intended only for specific use cases where the application needs to generate a description without setting it. It is useless to call them before `rtcSetLocalDescription` as it doesn't expect the user to supply a description.
+
+- `pc`: the Peer Connection identifier
+- `buffer`: a user-supplied buffer to store the description
+- `size`: the size of `buffer`
+
+Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code
+
+If `buffer` is `NULL`, the description is not copied but the size is still returned.
 
 #### rtcGetLocalAddress
 

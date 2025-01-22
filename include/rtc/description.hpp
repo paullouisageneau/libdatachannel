@@ -66,9 +66,10 @@ public:
 	bool ended() const;
 
 	void hintType(Type type);
-	void setFingerprint(CertificateFingerprint f);
 	void addIceOption(string option);
 	void removeIceOption(const string &option);
+	void setIceAttribute(string ufrag, string pwd);
+	void setFingerprint(CertificateFingerprint f);
 
 	std::vector<string> attributes() const;
 	void addAttribute(string attr);
