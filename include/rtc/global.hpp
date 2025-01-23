@@ -34,17 +34,6 @@ RTC_CPP_EXPORT void InitLogger(LogLevel level, LogCallback callback = nullptr);
 RTC_CPP_EXPORT void Preload();
 RTC_CPP_EXPORT std::shared_future<void> Cleanup();
 
-struct IceUdpMuxRequest {
-	std::string localUfrag;
-	std::string remoteUfrag;
-	std::string remoteHost;
-	uint16_t remotePort;
-};
-
-RTC_CPP_EXPORT typedef std::function<void(IceUdpMuxRequest request)> IceUdpMuxCallback;
-
-RTC_CPP_EXPORT void ListenIceUdpMux (int port, IceUdpMuxCallback *callback, std::optional<std::string> bindAddress = nullptr);
-
 struct SctpSettings {
 	// For the following settings, not set means optimized default
 	optional<size_t> recvBufferSize;                // in bytes

@@ -19,11 +19,6 @@
 #include "impl/init.hpp"
 
 #include <mutex>
-#include <map>
-
-#if !USE_NICE
-#include <juice/juice.h>
-#endif
 
 namespace {
 
@@ -93,54 +88,7 @@ std::shared_future<void> Cleanup() { return impl::Init::Instance().cleanup(); }
 
 void SetSctpSettings(SctpSettings s) { impl::Init::Instance().setSctpSettings(std::move(s)); }
 
-#if !USE_NICE
-
-void InvokeIceUdpMuxCallback (const juice_mux_binding_request *info, void *user_ptr) {
-	PLOG_DEBUG << "Invoking ICE UDP mux callback";
-
-	IceUdpMuxCallback *callback = (IceUdpMuxCallback*)user_ptr;
-
-	if (callback) {
-		(*callback)({
-			std::string(info->local_ufrag),
-			std::string(info->remote_ufrag),
-			std::string(info->address),
-			info->port
-		});
-	} else {
-		PLOG_DEBUG << "No ICE UDP mux callback configured for port " << info->port;
-	}
-}
-
-#endif
-
-void ListenIceUdpMux ([[maybe_unused]] int port, [[maybe_unused]] IceUdpMuxCallback *callback, [[maybe_unused]] std::optional<std::string> bindAddress) {
-	#if USE_NICE
-		PLOG_WARNING << "ListenIceUdpMux is not supported with libnice, please use libjuice";
-	#else
-	// NULL host binds to all available addresses
-	const char *host = bindAddress.has_value() ? bindAddress.value().c_str() : NULL;
-
-	if (callback == NULL) {
-		PLOG_DEBUG << "Removing ICE UDP mux callback for port " << port;
-
-		// call with NULL callback to remove the listener for the host/port
-		if (juice_mux_listen(host, port, NULL, NULL) < 0) {
-			throw std::runtime_error("Could not remove ICE UDP mux callback");
-		}
-
-		return;
-	}
-
-	PLOG_DEBUG << "Adding ICE UDP mux callback for port " << port;
-
-	if (juice_mux_listen(host, port, &InvokeIceUdpMuxCallback, callback) < 0) {
-		throw std::invalid_argument("Could not add ICE UDP mux callback");
-	}
-	#endif
-}
-
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, LogLevel level) {
+std::ostream &operator<<(std::ostream &out, LogLevel level) {
 	switch (level) {
 	case LogLevel::Fatal:
 		out << "fatal";
