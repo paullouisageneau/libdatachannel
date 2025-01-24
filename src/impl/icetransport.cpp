@@ -140,8 +140,16 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 			addIceServer(server);
 }
 
-void IceTransport::setIceAttributes(string uFrag, string pwd) {
-	if (juice_set_local_ice_attributes(mAgent.get(), uFrag.c_str(), pwd.c_str()) < 0) {
+void IceTransport::setIceAttributes(string uFrag, string pwd, string iceMode) {
+	juice_ice_mode_t mode = JUICE_ICE_MODE_UNKNOWN;
+
+	if (iceMode.compare("controlling") == 0) {
+		mode = JUICE_ICE_MODE_CONTROLLING;
+	} else if (iceMode.compare("controlled") == 0) {
+		mode = JUICE_ICE_MODE_CONTROLLED;
+	}
+
+	if (juice_set_local_ice_attributes(mAgent.get(), uFrag.c_str(), pwd.c_str(), mode) < 0) {
 		throw std::invalid_argument("Invalid ICE attributes");
 	}
 }
@@ -584,7 +592,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	                       RecvCallback, this);
 }
 
-void IceTransport::setIceAttributes([[maybe_unused]] string uFrag, [[maybe_unused]] string pwd) {
+void IceTransport::setIceAttributes([[maybe_unused]] string uFrag, [[maybe_unused]] string pwd, [[maybe_unused]] string iceMode) {
 	PLOG_WARNING << "Setting custom ICE attributes is not supported with libnice, please use libjuice";
 }
 

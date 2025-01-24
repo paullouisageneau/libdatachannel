@@ -38,6 +38,7 @@ struct RTC_CPP_EXPORT DataChannelInit {
 struct RTC_CPP_EXPORT LocalDescriptionInit {
     optional<string> iceUfrag;
     optional<string> icePwd;
+    optional<string> iceMode;
 };
 
 class RTC_CPP_EXPORT PeerConnection final : CheshireCat<impl::PeerConnection> {
