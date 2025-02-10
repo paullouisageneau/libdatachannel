@@ -19,6 +19,8 @@ static void sleep(unsigned int secs) { Sleep(secs * 1000); }
 #include <unistd.h> // for sleep
 #endif
 
+#define BUFFER_SIZE 4096
+
 typedef struct {
 	rtcState state;
 	rtcGatheringState gatheringState;
@@ -187,8 +189,24 @@ int test_capi_track_main() {
 		goto error;
 	}
 
+	// Test createOffer
+	char buffer[BUFFER_SIZE];
+	if (rtcCreateOffer(peer1->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcCreateOffer failed\n");
+		goto error;
+	}
+	if (rtcGetLocalDescription(peer1->pc, buffer, BUFFER_SIZE) >= 0) {
+		fprintf(stderr, "rtcCreateOffer has set the local description\n");
+		goto error;
+	}
+
 	// Initiate the handshake
 	rtcSetLocalDescription(peer1->pc, NULL);
+
+	if (rtcGetLocalDescription(peer1->pc, buffer, BUFFER_SIZE) < 0) {
+		fprintf(stderr, "rtcGetLocalDescription failed\n");
+		goto error;
+	}
 
 	attempts = 10;
 	while ((!peer2->connected || !peer1->connected) && attempts--)
