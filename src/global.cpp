@@ -88,7 +88,7 @@ std::shared_future<void> Cleanup() { return impl::Init::Instance().cleanup(); }
 
 void SetSctpSettings(SctpSettings s) { impl::Init::Instance().setSctpSettings(std::move(s)); }
 
-RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, LogLevel level) {
+std::ostream &operator<<(std::ostream &out, LogLevel level) {
 	switch (level) {
 	case LogLevel::Fatal:
 		out << "fatal";

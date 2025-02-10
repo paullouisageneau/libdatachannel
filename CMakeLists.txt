@@ -66,6 +66,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/configuration.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/datachannel.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/iceudpmuxlistener.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/mediahandler.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/global.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/message.cpp
@@ -99,6 +100,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/configuration.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/datachannel.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/description.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/iceudpmuxlistener.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandler.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpreceivingsession.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/common.hpp
@@ -139,6 +141,7 @@ set(LIBDATACHANNEL_IMPL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlssrtptransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/icetransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/iceudpmuxlistener.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/init.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/peerconnection.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/logcounter.cpp
@@ -171,6 +174,7 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlssrtptransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlstransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/icetransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/iceudpmuxlistener.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/init.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/internals.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/peerconnection.hpp

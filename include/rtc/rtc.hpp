@@ -16,6 +16,7 @@
 #include "datachannel.hpp"
 #include "peerconnection.hpp"
 #include "track.hpp"
+#include "iceudpmuxlistener.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
