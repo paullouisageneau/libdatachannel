@@ -59,9 +59,8 @@ void H265RtpDepacketizer::addSeparator(binary& accessUnit)
 message_vector H265RtpDepacketizer::buildFrames(message_vector::iterator begin,
                                                 message_vector::iterator end,
                                                 uint8_t payloadType, uint32_t timestamp) {
-	message_vector out = {};
-	auto accessUnit = binary{};
-	auto frameInfo = std::make_shared<FrameInfo>(payloadType, timestamp);
+	message_vector out;
+	binary accessUnit;
 
 	for (auto it = begin; it != end; ++it) {
 		auto pkt = it->get();
@@ -132,8 +131,10 @@ message_vector H265RtpDepacketizer::buildFrames(message_vector::iterator begin,
 	}
 
 	if (!accessUnit.empty()) {
-		out.emplace_back(make_message(accessUnit.begin(), accessUnit.end(), Message::Binary, 0,
-		                              nullptr, frameInfo));
+		auto frameInfo = std::make_shared<FrameInfo>(timestamp);
+		frameInfo->timestampSeconds = std::chrono::duration<double>(double(timestamp) / double(ClockRate));
+		frameInfo->payloadType = payloadType;
+		out.emplace_back(make_message(std::move(accessUnit), frameInfo));
 	}
 
 	return out;
