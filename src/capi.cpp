@@ -1581,7 +1581,7 @@ int rtcGetWebSocketPath(int ws, char *buffer, int size) {
 	});
 }
 
-RTC_C_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
+int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
                                           rtcWebSocketClientCallbackFunc cb) {
 	return wrap([&] {
 		if (!config)
@@ -1618,7 +1618,7 @@ RTC_C_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config
 	});
 }
 
-RTC_C_EXPORT int rtcDeleteWebSocketServer(int wsserver) {
+int rtcDeleteWebSocketServer(int wsserver) {
 	return wrap([&] {
 		auto webSocketServer = getWebSocketServer(wsserver);
 		webSocketServer->onClient(nullptr);
@@ -1628,7 +1628,7 @@ RTC_C_EXPORT int rtcDeleteWebSocketServer(int wsserver) {
 	});
 }
 
-RTC_C_EXPORT int rtcGetWebSocketServerPort(int wsserver) {
+int rtcGetWebSocketServerPort(int wsserver) {
 	return wrap([&] {
 		auto webSocketServer = getWebSocketServer(wsserver);
 		return int(webSocketServer->port());
