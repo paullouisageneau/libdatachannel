@@ -19,7 +19,12 @@ RtpPacketizer::RtpPacketizer(shared_ptr<RtpPacketizationConfig> rtpConfig) : rtp
 
 RtpPacketizer::~RtpPacketizer() {}
 
-message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
+std::vector<binary> RtpPacketizer::fragment(binary data) {
+	// Default implementation
+	return {std::move(data)};
+}
+
+message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	size_t rtpExtHeaderSize = 0;
 
 	const bool setVideoRotation = (rtpConfig->videoOrientationId != 0) &&
@@ -47,7 +52,7 @@ message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 
 	rtpExtHeaderSize = (rtpExtHeaderSize + 3) & ~3;
 
-	auto message = make_message(RtpHeaderSize + rtpExtHeaderSize + payload->size());
+	auto message = make_message(RtpHeaderSize + rtpExtHeaderSize + payload.size());
 	auto *rtp = (RtpHeader *)message->data();
 	rtp->setPayloadType(rtpConfig->payloadType);
 	rtp->setSeqNumber(rtpConfig->sequenceNumber++); // increase sequence number
@@ -96,11 +101,8 @@ message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 			uint16_t max = rtpConfig->playoutDelayMax & 0xFFF;
 
 			// 12 bits for min + 12 bits for max
-			byte data[] = {
-				byte((min >> 4) & 0xFF), 
-				byte(((min & 0xF) << 4) | ((max >> 8) & 0xF)),
-				byte(max & 0xFF)
-			};
+			byte data[] = {byte((min >> 4) & 0xFF), byte(((min & 0xF) << 4) | ((max >> 8) & 0xF)),
+			               byte(max & 0xFF)};
 
 			extHeader->writeOneByteHeader(offset, rtpConfig->playoutDelayId, data, 3);
 			offset += 4;
@@ -109,19 +111,44 @@ message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
 
 	rtp->preparePacket();
 
-	std::memcpy(message->data() + RtpHeaderSize + rtpExtHeaderSize, payload->data(),
-	            payload->size());
+	std::memcpy(message->data() + RtpHeaderSize + rtpExtHeaderSize, payload.data(), payload.size());
 
 	return message;
 }
 
+message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
+	return packetize(*payload, mark);
+}
+
 void RtpPacketizer::media([[maybe_unused]] const Description::Media &desc) {}
 
-void RtpPacketizer::outgoing([[maybe_unused]] message_vector &messages,
+void RtpPacketizer::outgoing(message_vector &messages,
                              [[maybe_unused]] const message_callback &send) {
-	// Default implementation
-	for (auto &message : messages)
-		message = packetize(message, false);
+	message_vector result;
+	for (const auto &message : messages) {
+		if (const auto &frameInfo = message->frameInfo) {
+			if (frameInfo->payloadType && frameInfo->payloadType != rtpConfig->payloadType)
+				continue;
+
+			if (frameInfo->timestampSeconds)
+				rtpConfig->timestamp =
+				    rtpConfig->startTimestamp +
+				    rtpConfig->secondsToTimestamp(
+				        std::chrono::duration<double>(*frameInfo->timestampSeconds).count());
+			else
+				rtpConfig->timestamp = frameInfo->timestamp;
+		}
+
+		auto payloads = fragment(std::move(*message));
+		if (payloads.size() > 0) {
+			for (size_t i = 0; i < payloads.size() - 1; i++)
+				result.push_back(packetize(payloads[i], false));
+
+			result.push_back(packetize(payloads[payloads.size() - 1], true));
+		}
+	}
+
+	messages.swap(result);
 }
 
 } // namespace rtc

@@ -40,6 +40,15 @@ bool Track::isClosed(void) const { return impl()->isClosed(); }
 
 size_t Track::maxMessageSize() const { return impl()->maxMessageSize(); }
 
+void Track::sendFrame(binary data, FrameInfo info) {
+	impl()->outgoing(make_message(std::move(data), std::make_shared<FrameInfo>(std::move(info))));
+}
+
+void Track::onFrame(std::function<void(binary data, FrameInfo frame)> callback) {
+	impl()->frameCallback = callback;
+	impl()->flushPendingMessages();
+}
+
 void Track::setMediaHandler(shared_ptr<MediaHandler> handler) {
 	impl()->setMediaHandler(std::move(handler));
 }
@@ -69,9 +78,5 @@ bool Track::requestBitrate(unsigned int bitrate) {
 }
 
 shared_ptr<MediaHandler> Track::getMediaHandler() { return impl()->getMediaHandler(); }
-
-void Track::onFrame(std::function<void(binary data, FrameInfo frame)> callback) {
-	impl()->onFrame(callback);
-}
 
 } // namespace rtc
