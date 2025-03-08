@@ -33,6 +33,7 @@
 #include "h264rtpdepacketizer.hpp"
 #include "h265rtppacketizer.hpp"
 #include "h265rtpdepacketizer.hpp"
+#include "vp8rtpdepacketizer.hpp"
 #include "mediahandler.hpp"
 #include "plihandler.hpp"
 #include "rembhandler.hpp"
