@@ -62,7 +62,6 @@ enum NalUnitStartSequenceMatch {
 
 static const size_t H264_NAL_HEADER_SIZE = 1;
 static const size_t H265_NAL_HEADER_SIZE = 2;
-static const size_t VP8_NAL_HEADER_SIZE  = 0;
 
 struct NalUnitFragmentA;
 
@@ -81,23 +80,16 @@ struct RTC_CPP_EXPORT NalUnit : binary {
 	static NalUnitStartSequenceMatch StartSequenceMatchSucc(NalUnitStartSequenceMatch match,
 	                                                 std::byte _byte, Separator separator);
 
-	enum class Type { H264, H265, VP8 };
+	enum class Type { H264, H265 };
 
 	NalUnit(const NalUnit &unit) = default;
 	NalUnit(size_t size, bool includingHeader = true, Type type = Type::H264)
-		: binary( size + (includingHeader
-			? 0
-			: (type == Type::H264
-				? H264_NAL_HEADER_SIZE
-				: (type == Type::H265
-						? H265_NAL_HEADER_SIZE
-						: VP8_NAL_HEADER_SIZE))) )
-	{}
+	    : binary(size + (includingHeader ? 0
+	                                     : (type == Type::H264 ? H264_NAL_HEADER_SIZE
+	                                                           : H265_NAL_HEADER_SIZE))) {}
 	NalUnit(binary &&data) : binary(std::move(data)) {}
 	NalUnit(Type type = Type::H264)
-	    : binary(type == Type::H264 ? H264_NAL_HEADER_SIZE
-	         : (type == Type::H265 ? H265_NAL_HEADER_SIZE
-	                               : VP8_NAL_HEADER_SIZE)) {}
+	    : binary(type == Type::H264 ? H264_NAL_HEADER_SIZE : H265_NAL_HEADER_SIZE) {}
 	template <typename Iterator> NalUnit(Iterator begin_, Iterator end_) : binary(begin_, end_) {}
 
 	bool forbiddenBit() const { return header()->forbiddenBit(); }
