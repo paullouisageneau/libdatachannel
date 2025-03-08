@@ -91,8 +91,6 @@ message_vector VP8RtpDepacketizer::buildFrame(
 	for(auto it = first; it != last; ++it) {
 		auto &pkt = *it;
 		auto hdr = reinterpret_cast<const RtpHeader*>(pkt->data());
-		uint16_t seq = hdr->seqNumber();
-		bool marker  = hdr->marker();
 
 		// The VP8 payload descriptor is after the RTP header:
 		size_t hdrSize = hdr->getSize() + hdr->getExtensionHeaderSize();
@@ -110,20 +108,8 @@ message_vector VP8RtpDepacketizer::buildFrame(
 		size_t descLen = nal.parseDescriptor();
 
 		bool Sbit = nal.isStartOfPartition(); // The S bit
-		bool isKey = nal.isKeyFrame();
 		// There's no direct method named partitionIndex() in your snippet, but you can do:
-		uint8_t pid  = nal.mFirstByte.partitionIndex(); // The low 3 bits from raw
-
-		// Log the essential bits for debugging:
-		// std::cout
-		// 	<< "[VP8RtpDepacketizer] seq=" << seq
-		// 	<< ", TS=" << timestamp
-		// 	<< ", marker=" << (marker ? 1 : 0)
-		// 	<< ", S=" << (Sbit ? 1 : 0)
-		// 	<< ", PID=" << (int)pid
-		// 	<< ", keyframe=" << (isKey ? 1 : 0)
-		// 	<< ", packetSize=" << pkt->size()
-		// 	<< std::endl;
+		uint8_t pid  = nal.mFirstByte.partitionIndex(); // The low 3 bits from raw data
 
 		// For a valid first partition, we want S=1 and PID=0
 		if(Sbit && pid == 0) {
