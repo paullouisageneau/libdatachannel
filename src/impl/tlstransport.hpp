@@ -72,7 +72,7 @@ protected:
 	mbedtls_ssl_config mConf;
 	mbedtls_ssl_context mSsl;
 
-	std::mutex mSslMutex;
+	std::recursive_mutex mSslMutex;
 	std::atomic<bool> mOutgoingResult = true;
 
 	message_ptr mIncomingMessage;
