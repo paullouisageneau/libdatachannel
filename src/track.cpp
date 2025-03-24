@@ -44,6 +44,10 @@ void Track::sendFrame(binary data, FrameInfo info) {
 	impl()->outgoing(make_message(std::move(data), std::make_shared<FrameInfo>(std::move(info))));
 }
 
+void Track::sendFrame(const byte *data, size_t size, FrameInfo info) {
+	sendFrame(binary(data, data + size), std::move(info));
+}
+
 void Track::onFrame(std::function<void(binary data, FrameInfo frame)> callback) {
 	impl()->frameCallback = callback;
 	impl()->flushPendingMessages();

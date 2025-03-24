@@ -42,6 +42,7 @@ public:
 	size_t maxMessageSize() const override;
 
 	void sendFrame(binary data, FrameInfo info);
+	void sendFrame(const byte *data, size_t size, FrameInfo info);
 	void onFrame(std::function<void(binary data, FrameInfo info)> callback);
 
 	bool requestKeyframe();
