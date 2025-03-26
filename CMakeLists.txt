@@ -82,8 +82,10 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h264rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h264rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/nalunit.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/vp8nalunit.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h265rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h265rtpdepacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/vp8rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h265nalunit.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/av1rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.cpp
@@ -121,7 +123,9 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtpdepacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp8rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/nalunit.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp8nalunit.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265nalunit.hpp
@@ -598,4 +602,3 @@ if(NOT NO_EXAMPLES)
 	add_subdirectory(examples/copy-paste)
 	add_subdirectory(examples/copy-paste-capi)
 endif()
-
