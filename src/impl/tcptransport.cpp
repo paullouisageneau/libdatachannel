@@ -372,7 +372,9 @@ bool TcpTransport::trySendMessage(message_ptr &message) {
 		int len = ::send(mSock, data, int(size), flags);
 		if (len < 0) {
 			if (sockerrno == SEAGAIN || sockerrno == SEWOULDBLOCK) {
-				message = make_message(message->end() - size, message->end());
+				if (size < message->size())
+					message = make_message(message->end() - size, message->end());
+
 				return false;
 			} else {
 				PLOG_ERROR << "Connection closed, errno=" << sockerrno;
@@ -427,6 +429,7 @@ void TcpTransport::process(PollService::Event event) {
 		}
 
 		case PollService::Event::Out: {
+			std::lock_guard lock(mSendMutex);
 			if (trySendQueue())
 				setPoll(PollService::Direction::In);
 
