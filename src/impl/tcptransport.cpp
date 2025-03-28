@@ -427,6 +427,7 @@ void TcpTransport::process(PollService::Event event) {
 		}
 
 		case PollService::Event::Out: {
+			std::lock_guard lock(mSendMutex);
 			if (trySendQueue())
 				setPoll(PollService::Direction::In);
 
