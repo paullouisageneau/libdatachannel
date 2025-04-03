@@ -1,5 +1,6 @@
 /**
- * Copyright (c) 2023 Paul-Louis Ageneau
+ * Copyright (c) 2023-2024 Paul-Louis Ageneau
+ * Copyright (c) 2024 Robert Edmonds
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,42 +9,56 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "h264rtpdepacketizer.hpp"
-#include "nalunit.hpp"
+#include "h265rtpdepacketizer.hpp"
+#include "h265nalunit.hpp"
 
 #include "impl/internals.hpp"
 
 #include <algorithm>
-#include <chrono>
 
 namespace rtc {
 
 const binary naluLongStartCode = {byte{0}, byte{0}, byte{0}, byte{1}};
 const binary naluShortStartCode = {byte{0}, byte{0}, byte{1}};
 
-const uint8_t naluTypeSTAPA = 24;
-const uint8_t naluTypeFUA = 28;
+const uint8_t naluTypeAP = 48;
+const uint8_t naluTypeFU = 49;
 
-H264RtpDepacketizer::H264RtpDepacketizer(Separator separator) : mSeparator(separator) {
-	if (separator != Separator::StartSequence && separator != Separator::LongStartSequence &&
-	    separator != Separator::ShortStartSequence) {
+H265RtpDepacketizer::H265RtpDepacketizer(Separator separator) : separator(separator) {
+	switch (separator) {
+	case Separator::StartSequence: [[fallthrough]];
+	case Separator::LongStartSequence: [[fallthrough]];
+	case Separator::ShortStartSequence:
+		break;
+	case Separator::Length: [[fallthrough]];
+	default:
 		throw std::invalid_argument("Invalid separator");
 	}
 }
 
-void H264RtpDepacketizer::addSeparator(binary &accessUnit) {
-	if (mSeparator == Separator::StartSequence || mSeparator == Separator::LongStartSequence) {
-		accessUnit.insert(accessUnit.end(), naluLongStartCode.begin(), naluLongStartCode.end());
-	} else if (mSeparator == Separator::ShortStartSequence) {
-		accessUnit.insert(accessUnit.end(), naluShortStartCode.begin(), naluShortStartCode.end());
-	} else {
+void H265RtpDepacketizer::addSeparator(binary& accessUnit)
+{
+	switch (separator) {
+	case Separator::StartSequence: [[fallthrough]];
+	case Separator::LongStartSequence:
+		accessUnit.insert(accessUnit.end(),
+		                  naluLongStartCode.begin(),
+		                  naluLongStartCode.end());
+		break;
+	case Separator::ShortStartSequence:
+		accessUnit.insert(accessUnit.end(),
+		                  naluShortStartCode.begin(),
+		                  naluShortStartCode.end());
+		break;
+	case Separator::Length: [[fallthrough]];
+	default:
 		throw std::invalid_argument("Invalid separator");
 	}
 }
 
-message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
-                                                message_vector::iterator end, uint8_t payloadType,
-                                                uint32_t timestamp) {
+message_vector H265RtpDepacketizer::buildFrames(message_vector::iterator begin,
+                                                message_vector::iterator end,
+                                                uint8_t payloadType, uint32_t timestamp) {
 	message_vector out;
 	binary accessUnit;
 
@@ -58,34 +73,35 @@ message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
 		}
 
 		if (pkt->size() == rtpHeaderSize + rtpPaddingSize) {
-			PLOG_VERBOSE << "H.264 RTP packet has empty payload";
+			PLOG_VERBOSE << "H.265 RTP packet has empty payload";
 			continue;
 		}
 
-		auto nalUnitHeader = NalUnitHeader{std::to_integer<uint8_t>(pkt->at(rtpHeaderSize))};
+		auto nalUnitHeader =
+		    H265NalUnitHeader{std::to_integer<uint8_t>(pkt->at(rtpHeaderSize)),
+		                      std::to_integer<uint8_t>(pkt->at(rtpHeaderSize + 1))};
 
-		if (nalUnitHeader.unitType() == naluTypeFUA) {
-			auto nalUnitFragmentHeader = NalUnitFragmentHeader{
-			    std::to_integer<uint8_t>(pkt->at(rtpHeaderSize + sizeof(NalUnitHeader)))};
+		if (nalUnitHeader.unitType() == naluTypeFU) {
+			auto nalUnitFragmentHeader = H265NalUnitFragmentHeader{
+			    std::to_integer<uint8_t>(pkt->at(rtpHeaderSize + sizeof(H265NalUnitHeader)))};
 
-			// RFC 6184: When set to one, the Start bit indicates the start of a fragmented NAL
-			// unit. When the following FU payload is not the start of a fragmented NAL unit
-			// payload, the Start bit is set to zero.
+			// RFC 7798: "When set to 1, the S bit indicates the start of a fragmented
+			// NAL unit, i.e., the first byte of the FU payload is also the first byte of
+			// the payload of the fragmented NAL unit. When the FU payload is not the start
+			// of the fragmented NAL unit payload, the S bit MUST be set to 0."
 			if (nalUnitFragmentHeader.isStart() || accessUnit.empty()) {
 				addSeparator(accessUnit);
-				accessUnit.emplace_back(
-				    byte(nalUnitHeader.idc() | nalUnitFragmentHeader.unitType()));
+				nalUnitHeader.setUnitType(nalUnitFragmentHeader.unitType());
+				accessUnit.emplace_back(byte(nalUnitHeader._first));
+				accessUnit.emplace_back(byte(nalUnitHeader._second));
 			}
 
 			accessUnit.insert(accessUnit.end(),
-			                  pkt->begin() + rtpHeaderSize + sizeof(NalUnitHeader) +
-			                      sizeof(NalUnitFragmentHeader),
+			                  pkt->begin() + rtpHeaderSize + sizeof(H265NalUnitHeader) +
+			                      sizeof(H265NalUnitFragmentHeader),
 			                  pkt->end());
-		} else if (nalUnitHeader.unitType() > 0 && nalUnitHeader.unitType() < 24) {
-			addSeparator(accessUnit);
-			accessUnit.insert(accessUnit.end(), pkt->begin() + rtpHeaderSize, pkt->end());
-		} else if (nalUnitHeader.unitType() == naluTypeSTAPA) {
-			auto currOffset = rtpHeaderSize + sizeof(NalUnitHeader);
+		} else if (nalUnitHeader.unitType() == naluTypeAP) {
+			auto currOffset = rtpHeaderSize + sizeof(H265NalUnitHeader);
 
 			while (currOffset + sizeof(uint16_t) < pkt->size()) {
 				auto naluSize = std::to_integer<uint16_t>(pkt->at(currOffset)) << 8 |
@@ -94,7 +110,7 @@ message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
 				currOffset += sizeof(uint16_t);
 
 				if (pkt->size() < currOffset + naluSize) {
-					throw std::runtime_error("H264 STAP-A declared size is larger than buffer");
+					throw std::runtime_error("H265 AP declared size is larger than buffer");
 				}
 
 				addSeparator(accessUnit);
@@ -103,8 +119,14 @@ message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
 
 				currOffset += naluSize;
 			}
+		} else if (nalUnitHeader.unitType() < naluTypeAP) {
+			// "NAL units with NAL unit type values in the range of 0 to 47, inclusive, may be
+			// passed to the decoder."
+			addSeparator(accessUnit);
+			accessUnit.insert(accessUnit.end(), pkt->begin() + rtpHeaderSize, pkt->end());
 		} else {
-			throw std::runtime_error("Unknown H264 RTP Packetization");
+			// "NAL-unit-like structures with NAL unit type values in the range of 48 to 63,
+			// inclusive, MUST NOT be passed to the decoder."
 		}
 	}
 
@@ -118,7 +140,7 @@ message_vector H264RtpDepacketizer::buildFrames(message_vector::iterator begin,
 	return out;
 }
 
-void H264RtpDepacketizer::incoming(message_vector &messages, const message_callback &) {
+void H265RtpDepacketizer::incoming(message_vector &messages, const message_callback &) {
 	messages.erase(std::remove_if(messages.begin(), messages.end(),
 	                              [&](message_ptr message) {
 		                              if (message->type == Message::Control) {
@@ -146,8 +168,7 @@ void H264RtpDepacketizer::incoming(message_vector &messages, const message_callb
 
 			if (current_timestamp == 0) {
 				current_timestamp = p->timestamp();
-				payload_type =
-				    p->payloadType(); // should all be the same for data of the same codec
+				payload_type = p->payloadType(); // should all be the same for data of the same codec
 			} else if (current_timestamp != p->timestamp()) {
 				break;
 			}

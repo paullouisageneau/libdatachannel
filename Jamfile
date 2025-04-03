@@ -103,7 +103,7 @@ rule make_libusrsctp ( targets * : sources * : properties * )
 }
 actions make_libusrsctp
 {
-    (cd $(CWD)/deps/usrsctp && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(VARIANT) -DCMAKE_C_FLAGS="-fPIC -Wno-unknown-warning-option -Wno-format-truncation" -Dsctp_build_shared_lib=0 -Dsctp_build_programs=0 -Dsctp_inet=0 -Dsctp_inet6=0 .. && make -j2 usrsctp)
+    (cd $(CWD)/deps/usrsctp && mkdir -p $(BUILD_DIR) && cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=$(VARIANT) -DCMAKE_C_FLAGS="-fPIC" -Dsctp_werror=0 -Dsctp_build_shared_lib=0 -Dsctp_build_programs=0 -Dsctp_inet=0 -Dsctp_inet6=0 .. && make -j2 usrsctp)
     cp $(CWD)/deps/usrsctp/$(BUILD_DIR)/usrsctplib/libusrsctp.a $(<)
 }
 rule make_libusrsctp_msvc ( targets * : sources * : properties * )
@@ -118,7 +118,7 @@ actions make_libusrsctp_msvc
     cd $(CWD)/deps/usrsctp
     mkdir $(BUILD_DIR)
     cd $(BUILD_DIR)
-    cmake -G "Visual Studio 16 2019" -Dsctp_build_shared_lib=0 -Dsctp_build_programs=0 ..
+    cmake -G "Visual Studio 16 2019" -Dsctp_werror=0 -Dsctp_build_shared_lib=0 -Dsctp_build_programs=0 -Dsctp_inet=0 -Dsctp_inet6=0 ..
     msbuild usrsctplib.sln /property:Configuration=$(VARIANT)
     cd %OLDD%
     cp $(CWD)/deps/usrsctp/$(BUILD_DIR)/usrsctplib/Release/usrsctp.lib $(<)

@@ -16,6 +16,7 @@
 #include "datachannel.hpp"
 #include "peerconnection.hpp"
 #include "track.hpp"
+#include "iceudpmuxlistener.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -33,8 +34,10 @@
 #include "h264rtppacketizer.hpp"
 #include "h264rtpdepacketizer.hpp"
 #include "h265rtppacketizer.hpp"
+#include "h265rtpdepacketizer.hpp"
 #include "mediahandler.hpp"
 #include "plihandler.hpp"
+#include "rembhandler.hpp"
 #include "pacinghandler.hpp"
 #include "rtcpnackresponder.hpp"
 #include "rtcpreceivingsession.hpp"

@@ -18,6 +18,12 @@
 
 namespace rtc {
 
+RtpDepacketizer::RtpDepacketizer() : mClockRate(0) {}
+
+RtpDepacketizer::RtpDepacketizer(uint32_t clockRate) : mClockRate(clockRate) {}
+
+RtpDepacketizer::~RtpDepacketizer() {}
+
 void RtpDepacketizer::incoming([[maybe_unused]] message_vector &messages,
                                [[maybe_unused]] const message_callback &send) {
 	message_vector result;
@@ -34,9 +40,13 @@ void RtpDepacketizer::incoming([[maybe_unused]] message_vector &messages,
 
 		auto pkt = reinterpret_cast<const rtc::RtpHeader *>(message->data());
 		auto headerSize = sizeof(rtc::RtpHeader) + pkt->csrcCount() + pkt->getExtensionHeaderSize();
-		result.push_back(make_message(message->begin() + headerSize, message->end(),
-		                              Message::Binary, 0, nullptr,
-		                              std::make_shared<FrameInfo>(pkt->payloadType(), pkt->timestamp())));
+
+		auto frameInfo = std::make_shared<FrameInfo>(pkt->timestamp());
+		if (mClockRate > 0)
+			frameInfo->timestampSeconds =
+			    std::chrono::duration<double>(double(pkt->timestamp()) / double(mClockRate));
+		frameInfo->payloadType = pkt->payloadType();
+		result.push_back(make_message(message->begin() + headerSize, message->end(), frameInfo));
 	}
 
 	messages.swap(result);

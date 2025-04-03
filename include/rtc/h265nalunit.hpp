@@ -15,6 +15,7 @@
 #include "nalunit.hpp"
 
 #include <cassert>
+#include <vector>
 
 namespace rtc {
 
@@ -72,8 +73,13 @@ struct RTC_CPP_EXPORT H265NalUnitFragmentHeader {
 
 #pragma pack(pop)
 
-/// Nal unit
+struct H265NalUnitFragment;
+
+/// NAL unit
 struct RTC_CPP_EXPORT H265NalUnit : NalUnit {
+	static std::vector<binary> GenerateFragments(const std::vector<H265NalUnit> &nalus,
+	                                             size_t maxFragmentSize);
+
 	H265NalUnit(const H265NalUnit &unit) = default;
 	H265NalUnit(size_t size, bool includingHeader = true)
 	    : NalUnit(size, includingHeader, NalUnit::Type::H265) {}
@@ -104,6 +110,8 @@ struct RTC_CPP_EXPORT H265NalUnit : NalUnit {
 		insert(end(), payload.begin(), payload.end());
 	}
 
+	std::vector<H265NalUnitFragment> generateFragments(size_t maxFragmentSize) const;
+
 protected:
 	const H265NalUnitHeader *header() const {
 		assert(size() >= H265_NAL_HEADER_SIZE);
@@ -116,9 +124,9 @@ protected:
 	}
 };
 
-/// Nal unit fragment A
+/// NAL unit fragment
 struct RTC_CPP_EXPORT H265NalUnitFragment : H265NalUnit {
-	static std::vector<shared_ptr<H265NalUnitFragment>> fragmentsFrom(shared_ptr<H265NalUnit> nalu,
+	[[deprecated]] static std::vector<shared_ptr<H265NalUnitFragment>> fragmentsFrom(shared_ptr<H265NalUnit> nalu,
 	                                                                  uint16_t maxFragmentSize);
 
 	enum class FragmentType { Start, Middle, End };
@@ -171,7 +179,7 @@ protected:
 	}
 };
 
-class RTC_CPP_EXPORT H265NalUnits : public std::vector<shared_ptr<H265NalUnit>> {
+class [[deprecated]] RTC_CPP_EXPORT H265NalUnits : public std::vector<shared_ptr<H265NalUnit>> {
 public:
 	static const uint16_t defaultMaximumFragmentSize =
 	    uint16_t(RTC_DEFAULT_MTU - 12 - 8 - 40); // SRTP/UDP/IPv6

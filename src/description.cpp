@@ -216,6 +216,21 @@ void Description::hintType(Type type) {
 		mType = type;
 }
 
+void Description::addIceOption(string option) {
+	if (std::find(mIceOptions.begin(), mIceOptions.end(), option) == mIceOptions.end())
+		mIceOptions.emplace_back(std::move(option));
+}
+
+void Description::removeIceOption(const string &option) {
+	mIceOptions.erase(std::remove(mIceOptions.begin(), mIceOptions.end(), option),
+	                  mIceOptions.end());
+}
+
+void Description::setIceAttribute(string ufrag, string pwd) {
+	mIceUfrag = std::move(ufrag);
+	mIcePwd = std::move(pwd);
+}
+
 void Description::setFingerprint(CertificateFingerprint f) {
 	if (!f.isValid())
 		throw std::invalid_argument("Invalid " +
@@ -225,16 +240,6 @@ void Description::setFingerprint(CertificateFingerprint f) {
 	std::transform(f.value.begin(), f.value.end(), f.value.begin(),
 	               [](char c) { return char(std::toupper(c)); });
 	mFingerprint = std::move(f);
-}
-
-void Description::addIceOption(string option) {
-	if (std::find(mIceOptions.begin(), mIceOptions.end(), option) == mIceOptions.end())
-		mIceOptions.emplace_back(std::move(option));
-}
-
-void Description::removeIceOption(const string &option) {
-	mIceOptions.erase(std::remove(mIceOptions.begin(), mIceOptions.end(), option),
-	                  mIceOptions.end());
 }
 
 std::vector<string> Description::Entry::attributes() const { return mAttributes; }
@@ -310,7 +315,6 @@ string Description::generateSdp(string_view eol) const {
 
 	// Session-level attributes
 	sdp << "a=msid-semantic:WMS *" << eol;
-
 	if (!mIceOptions.empty())
 		sdp << "a=ice-options:" << utils::implode(mIceOptions, ',') << eol;
 	if (mFingerprint)
@@ -372,27 +376,28 @@ string Description::generateApplicationSdp(string_view eol) const {
 	const uint16_t port =
 	    cand && cand->isResolved() ? *cand->port() : 9; // Port 9 is the discard protocol
 
+	// Session-level attributes
+	sdp << "a=msid-semantic:WMS *" << eol;
+	if (!mIceOptions.empty())
+		sdp << "a=ice-options:" << utils::implode(mIceOptions, ',') << eol;
+
+	for (const auto &attr : mAttributes)
+		sdp << "a=" << attr << eol;
+
 	// Application
 	auto app = mApplication ? mApplication : std::make_shared<Application>();
 	sdp << app->generateSdp(eol, addr, port);
 
-	// Session-level attributes
-	sdp << "a=msid-semantic:WMS *" << eol;
+	// Media-level attributes
 	sdp << "a=setup:" << mRole << eol;
-
 	if (mIceUfrag)
 		sdp << "a=ice-ufrag:" << *mIceUfrag << eol;
 	if (mIcePwd)
 		sdp << "a=ice-pwd:" << *mIcePwd << eol;
-	if (!mIceOptions.empty())
-		sdp << "a=ice-options:" << utils::implode(mIceOptions, ',') << eol;
 	if (mFingerprint)
 		sdp << "a=fingerprint:"
 		    << CertificateFingerprint::AlgorithmIdentifier(mFingerprint->algorithm) << " "
 		    << mFingerprint->value << eol;
-
-	for (const auto &attr : mAttributes)
-		sdp << "a=" << attr << eol;
 
 	// Candidates
 	for (const auto &candidate : mCandidates)
@@ -493,8 +498,8 @@ void Description::clearMedia() {
 	mApplication.reset();
 }
 
-variant<Description::Media *, Description::Application *> Description::media(unsigned int index) {
-	if (index >= mEntries.size())
+variant<Description::Media *, Description::Application *> Description::media(int index) {
+	if (index < 0 || index >= int(mEntries.size()))
 		throw std::out_of_range("Media index out of range");
 
 	const auto &entry = mEntries[index];
@@ -514,9 +519,8 @@ variant<Description::Media *, Description::Application *> Description::media(uns
 	}
 }
 
-variant<const Description::Media *, const Description::Application *>
-Description::media(unsigned int index) const {
-	if (index >= mEntries.size())
+variant<const Description::Media *, const Description::Application *> Description::media(int index) const {
+	if (index < 0 || index >= int(mEntries.size()))
 		throw std::out_of_range("Media index out of range");
 
 	const auto &entry = mEntries[index];
@@ -536,7 +540,7 @@ Description::media(unsigned int index) const {
 	}
 }
 
-unsigned int Description::mediaCount() const { return unsigned(mEntries.size()); }
+int Description::mediaCount() const { return int(mEntries.size()); }
 
 Description::Entry::Entry(const string &mline, string mid, Direction dir)
     : mMid(std::move(mid)), mDirection(dir) {
@@ -1340,7 +1344,7 @@ std::string CertificateFingerprint::AlgorithmIdentifier(
 	case CertificateFingerprint::Algorithm::Sha256:
 		return "sha-256";
 	case CertificateFingerprint::Algorithm::Sha384:
-		return "sha-256";
+		return "sha-384";
 	case CertificateFingerprint::Algorithm::Sha512:
 		return "sha-512";
 	default:

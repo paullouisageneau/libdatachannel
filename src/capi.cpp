@@ -631,6 +631,24 @@ int rtcGetRemoteDescriptionType(int pc, char *buffer, int size) {
 	});
 }
 
+int rtcCreateOffer(int pc, char *buffer, int size) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		auto desc = peerConnection->createOffer();
+		return copyAndReturn(string(desc), buffer, size);
+	});
+}
+
+int rtcCreateAnswer(int pc, char *buffer, int size) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+
+		auto desc = peerConnection->createAnswer();
+		return copyAndReturn(string(desc), buffer, size);
+	});
+}
+
 int rtcGetLocalAddress(int pc, char *buffer, int size) {
 	return wrap([&] {
 		auto peerConnection = getPeerConnection(pc);
@@ -672,6 +690,11 @@ int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote
 
 		return std::max(localRet, remoteRet);
 	});
+}
+
+bool rtcIsNegotiationNeeded(int pc) {
+	return wrap([&] { return getPeerConnection(pc)->negotiationNeeded() ? 0 : 1; }) == 0 ? true
+	                                                                                     : false;
 }
 
 int rtcGetMaxDataChannelStream(int pc) {
@@ -1331,6 +1354,18 @@ int rtcChainPliHandler(int tr, rtcPliHandlerCallbackFunc cb) {
 	});
 }
 
+int rtcChainRembHandler(int tr, rtcRembHandlerCallbackFunc cb) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto handler = std::make_shared<RembHandler>([tr, cb](unsigned int bitrate) {
+			if (auto ptr = getUserPointer(tr))
+				cb(tr, bitrate, *ptr);
+		});
+		track->chainMediaHandler(handler);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp) {
 	return wrap([&] {
 		auto config = getRtpConfig(id);
@@ -1379,14 +1414,6 @@ int rtcGetLastTrackSenderReportTimestamp(int id, uint32_t *timestamp) {
 	});
 }
 
-int rtcSetNeedsToSendRtcpSr(int id) {
-	return wrap([id] {
-		auto sender = getRtcpSrReporter(id);
-		sender->setNeedsToReport();
-		return RTC_ERR_SUCCESS;
-	});
-}
-
 int rtcGetTrackPayloadTypesForCodec(int tr, const char *ccodec, int *buffer, int size) {
 	return wrap([&] {
 		auto track = getTrack(tr);
@@ -1428,7 +1455,7 @@ int rtcGetSsrcsForType(const char *mediaType, const char *sdp, uint32_t *buffer,
 		auto oldSDP = string(sdp);
 		auto description = Description(oldSDP, "unspec");
 		auto mediaCount = description.mediaCount();
-		for (unsigned int i = 0; i < mediaCount; i++) {
+		for (int i = 0; i < mediaCount; i++) {
 			if (std::holds_alternative<Description::Media *>(description.media(i))) {
 				auto media = std::get<Description::Media *>(description.media(i));
 				auto currentMediaType = lowercased(media->type());
@@ -1449,7 +1476,7 @@ int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, cons
 		auto prevSDP = string(sdp);
 		auto description = Description(prevSDP, "unspec");
 		auto mediaCount = description.mediaCount();
-		for (unsigned int i = 0; i < mediaCount; i++) {
+		for (int i = 0; i < mediaCount; i++) {
 			if (std::holds_alternative<Description::Media *>(description.media(i))) {
 				auto media = std::get<Description::Media *>(description.media(i));
 				auto currentMediaType = lowercased(media->type());
@@ -1461,6 +1488,11 @@ int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, cons
 		}
 		return copyAndReturn(string(description), buffer, bufferSize);
 	});
+}
+
+int rtcSetNeedsToSendRtcpSr(int) {
+	// Dummy
+	return RTC_ERR_SUCCESS;
 }
 
 #endif // RTC_ENABLE_MEDIA
@@ -1546,7 +1578,7 @@ int rtcGetWebSocketPath(int ws, char *buffer, int size) {
 	});
 }
 
-RTC_C_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
+int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config,
                                           rtcWebSocketClientCallbackFunc cb) {
 	return wrap([&] {
 		if (!config)
@@ -1583,7 +1615,7 @@ RTC_C_EXPORT int rtcCreateWebSocketServer(const rtcWsServerConfiguration *config
 	});
 }
 
-RTC_C_EXPORT int rtcDeleteWebSocketServer(int wsserver) {
+int rtcDeleteWebSocketServer(int wsserver) {
 	return wrap([&] {
 		auto webSocketServer = getWebSocketServer(wsserver);
 		webSocketServer->onClient(nullptr);
@@ -1593,7 +1625,7 @@ RTC_C_EXPORT int rtcDeleteWebSocketServer(int wsserver) {
 	});
 }
 
-RTC_C_EXPORT int rtcGetWebSocketServerPort(int wsserver) {
+int rtcGetWebSocketServerPort(int wsserver) {
 	return wrap([&] {
 		auto webSocketServer = getWebSocketServer(wsserver);
 		return int(webSocketServer->port());

@@ -78,7 +78,7 @@ protected:
 	mbedtls_ssl_config mConf;
 	mbedtls_ssl_context mSsl;
 
-	std::mutex mSslMutex;
+	std::recursive_mutex mSslMutex;
 
 	uint32_t mFinMs = 0, mIntMs = 0;
 	std::chrono::time_point<std::chrono::steady_clock> mTimerSetAt;

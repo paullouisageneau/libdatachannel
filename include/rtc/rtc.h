@@ -170,6 +170,7 @@ typedef void *(RTC_API *rtcInterceptorCallbackFunc)(int pc, const char *message,
 typedef void(RTC_API *rtcBufferedAmountLowCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcAvailableCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcPliHandlerCallbackFunc)(int tr, void *ptr);
+typedef void(RTC_API *rtcRembHandlerCallbackFunc)(int tr, unsigned int bitrate, void *ptr);
 
 // Log
 
@@ -210,7 +211,7 @@ RTC_C_EXPORT int rtcSetIceStateChangeCallback(int pc, rtcIceStateChangeCallbackF
 RTC_C_EXPORT int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb);
 RTC_C_EXPORT int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb);
 
-RTC_C_EXPORT int rtcSetLocalDescription(int pc, const char *type);
+RTC_C_EXPORT int rtcSetLocalDescription(int pc, const char *type); // type may be NULL
 RTC_C_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 RTC_C_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
 
@@ -220,11 +221,17 @@ RTC_C_EXPORT int rtcGetRemoteDescription(int pc, char *buffer, int size);
 RTC_C_EXPORT int rtcGetLocalDescriptionType(int pc, char *buffer, int size);
 RTC_C_EXPORT int rtcGetRemoteDescriptionType(int pc, char *buffer, int size);
 
+// For specific use cases only
+RTC_C_EXPORT int rtcCreateOffer(int pc, char *buffer, int size);
+RTC_C_EXPORT int rtcCreateAnswer(int pc, char *buffer, int size);
+
 RTC_C_EXPORT int rtcGetLocalAddress(int pc, char *buffer, int size);
 RTC_C_EXPORT int rtcGetRemoteAddress(int pc, char *buffer, int size);
 
 RTC_C_EXPORT int rtcGetSelectedCandidatePair(int pc, char *local, int localSize, char *remote,
                                              int remoteSize);
+
+RTC_C_EXPORT bool rtcIsNegotiationNeeded(int pc);
 
 RTC_C_EXPORT int rtcGetMaxDataChannelStream(int pc);
 RTC_C_EXPORT int rtcGetRemoteMaxMessageSize(int pc);
@@ -409,6 +416,9 @@ RTC_C_EXPORT int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPackets
 // Chain PliHandler on track
 RTC_C_EXPORT int rtcChainPliHandler(int tr, rtcPliHandlerCallbackFunc cb);
 
+// Chain RembHandler on track
+RTC_C_EXPORT int rtcChainRembHandler(int tr, rtcRembHandlerCallbackFunc cb);
+
 // Transform seconds to timestamp using track's clock rate, result is written to timestamp
 RTC_C_EXPORT int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp);
 
@@ -423,9 +433,6 @@ RTC_C_EXPORT int rtcSetTrackRtpTimestamp(int id, uint32_t timestamp);
 
 // Get timestamp of last RTCP SR, result is written to timestamp
 RTC_C_EXPORT int rtcGetLastTrackSenderReportTimestamp(int id, uint32_t *timestamp);
-
-// Set NeedsToReport flag in RtcpSrReporter handler identified by given track id
-RTC_C_EXPORT int rtcSetNeedsToSendRtcpSr(int id);
 
 // Get all available payload types for given codec and stores them in buffer, does nothing if
 // buffer is NULL
@@ -443,6 +450,9 @@ int rtcGetSsrcsForType(const char *mediaType, const char *sdp, uint32_t *buffer,
 // Set SSRC for given media type in given SDP
 int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, const int bufferSize,
                       rtcSsrcForTypeInit *init);
+
+// For backward compatibility, do not use
+RTC_C_EXPORT RTC_DEPRECATED int rtcSetNeedsToSendRtcpSr(int id);
 
 #endif // RTC_ENABLE_MEDIA
 

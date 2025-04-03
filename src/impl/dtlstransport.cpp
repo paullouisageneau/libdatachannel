@@ -53,7 +53,8 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
                              verifier_callback verifierCallback, state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
       mFingerprintAlgorithm(fingerprintAlgorithm), mVerifierCallback(std::move(verifierCallback)),
-      mIsClient(lower->role() == Description::Role::Active) {
+      mIsClient(lower->role() == Description::Role::Active),
+      mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func) {
 
 	PLOG_DEBUG << "Initializing DTLS transport (GnuTLS)";
 
@@ -380,7 +381,8 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
                              verifier_callback verifierCallback, state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
       mFingerprintAlgorithm(fingerprintAlgorithm), mVerifierCallback(std::move(verifierCallback)),
-      mIsClient(lower->role() == Description::Role::Active) {
+      mIsClient(lower->role() == Description::Role::Active),
+      mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func) {
 
 	PLOG_DEBUG << "Initializing DTLS transport (MbedTLS)";
 
@@ -729,7 +731,9 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
                              verifier_callback verifierCallback, state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
       mFingerprintAlgorithm(fingerprintAlgorithm), mVerifierCallback(std::move(verifierCallback)),
-      mIsClient(lower->role() == Description::Role::Active) {
+      mIsClient(lower->role() == Description::Role::Active),
+      mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func) {
+
 	PLOG_DEBUG << "Initializing DTLS transport (OpenSSL)";
 
 	if (!mCertificate)
@@ -757,7 +761,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		                   CertificateCallback);
 		SSL_CTX_set_verify_depth(mCtx, 1);
 
-		openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!LOW:!EXP:!RC4:!MD5:@STRENGTH"),
+		openssl::check(SSL_CTX_set_cipher_list(mCtx, "ALL:!SHA256:!SHA384:!aPSK:!ECDSA+SHA1:!ADH:!LOW:!EXP:!MD5:!3DES:!SSLv3:!TLSv1"),
 		               "Failed to set SSL priorities");
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000

@@ -46,10 +46,9 @@ void RtcpNackResponder::incoming(message_vector &messages, const message_callbac
 				                              newMissingSeqenceNumbers.end());
 			}
 
-			for (auto sequenceNumber : missingSequenceNumbers) {
-				if (auto optPacket = mStorage->get(sequenceNumber))
-					send(make_message(*optPacket.value()));
-			}
+			for (auto sequenceNumber : missingSequenceNumbers)
+				if (auto packet = mStorage->get(sequenceNumber))
+					send(packet);
 		}
 	}
 }
@@ -61,7 +60,7 @@ void RtcpNackResponder::outgoing(message_vector &messages,
 			mStorage->store(message);
 }
 
-RtcpNackResponder::Storage::Element::Element(binary_ptr packet, uint16_t sequenceNumber,
+RtcpNackResponder::Storage::Element::Element(message_ptr packet, uint16_t sequenceNumber,
                                              shared_ptr<Element> next)
     : packet(packet), sequenceNumber(sequenceNumber), next(next) {}
 
@@ -72,14 +71,14 @@ RtcpNackResponder::Storage::Storage(size_t _maxSize) : maxSize(_maxSize) {
 	storage.reserve(maxSize);
 }
 
-optional<binary_ptr> RtcpNackResponder::Storage::get(uint16_t sequenceNumber) {
+message_ptr RtcpNackResponder::Storage::get(uint16_t sequenceNumber) {
 	std::lock_guard lock(mutex);
 	auto position = storage.find(sequenceNumber);
-	return position != storage.end() ? std::make_optional(storage.at(sequenceNumber)->packet)
-	                                 : nullopt;
+	return position != storage.end() ? storage.at(sequenceNumber)->packet
+	                                 : nullptr;
 }
 
-void RtcpNackResponder::Storage::store(binary_ptr packet) {
+void RtcpNackResponder::Storage::store(message_ptr packet) {
 	if (!packet || packet->size() < sizeof(RtpHeader))
 		return;
 
