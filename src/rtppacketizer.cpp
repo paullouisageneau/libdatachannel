@@ -26,15 +26,31 @@ std::vector<binary> RtpPacketizer::fragment(binary data) {
 
 message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	size_t rtpExtHeaderSize = 0;
+	bool twoByteHeader = false;
 
-	const bool setVideoRotation = (rtpConfig->videoOrientationId != 0) &&
-	                              (rtpConfig->videoOrientationId <
-	                               15) && // needs fixing if longer extension headers are supported
-	                              mark &&
-	                              (rtpConfig->videoOrientation != 0);
+	const bool setVideoRotation =
+	    (rtpConfig->videoOrientationId != 0) && mark && (rtpConfig->videoOrientation != 0);
+
+	// Determine if a two-byte header is necessary
+	// Check for dependency descriptor extension
+	if (rtpConfig->dependencyDescriptorContext.has_value()) {
+		auto &ctx = *rtpConfig->dependencyDescriptorContext;
+		DependencyDescriptorWriter writer(ctx.structure, ctx.activeChains, ctx.descriptor);
+		auto sizeBytes = (writer.getSizeBits() + 7) / 8;
+		if (sizeBytes > 16 || rtpConfig->dependencyDescriptorId > 14) {
+			twoByteHeader = true;
+		}
+	}
+	// Check for other extensions
+	if ((setVideoRotation && rtpConfig->videoOrientationId > 14) ||
+	    (rtpConfig->mid.has_value() && rtpConfig->midId > 14) ||
+	    (rtpConfig->rid.has_value() && rtpConfig->ridId > 14)) {
+		twoByteHeader = true;
+	}
+	size_t headerSize = twoByteHeader ? 2 : 1;
 
 	if (setVideoRotation)
-		rtpExtHeaderSize += 2;
+		rtpExtHeaderSize += headerSize + 1;
 
 	const bool setPlayoutDelay = (rtpConfig->playoutDelayId > 0 && rtpConfig->playoutDelayId < 15);
 
@@ -42,10 +58,16 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 		rtpExtHeaderSize += 4;
 
 	if (rtpConfig->mid.has_value())
-		rtpExtHeaderSize += (1 + rtpConfig->mid->length());
+		rtpExtHeaderSize += headerSize + rtpConfig->mid->length();
 
 	if (rtpConfig->rid.has_value())
-		rtpExtHeaderSize += (1 + rtpConfig->rid->length());
+		rtpExtHeaderSize += headerSize + rtpConfig->rid->length();
+
+	if (rtpConfig->dependencyDescriptorContext.has_value()) {
+		auto &ctx = *rtpConfig->dependencyDescriptorContext;
+		DependencyDescriptorWriter writer(ctx.structure, ctx.activeChains, ctx.descriptor);
+		rtpExtHeaderSize += headerSize + (writer.getSizeBits() + 7) / 8;
+	}
 
 	if (rtpExtHeaderSize != 0)
 		rtpExtHeaderSize += 4;
@@ -67,7 +89,7 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 		rtp->setExtension(true);
 
 		auto extHeader = rtp->getExtensionHeader();
-		extHeader->setProfileSpecificId(0xbede);
+		extHeader->setProfileSpecificId(twoByteHeader ? 0x1000 : 0xbede);
 
 		auto headerLength = static_cast<uint16_t>(rtpExtHeaderSize / 4) - 1;
 
@@ -76,24 +98,33 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 
 		size_t offset = 0;
 		if (setVideoRotation) {
-			extHeader->writeCurrentVideoOrientation(offset, rtpConfig->videoOrientationId,
-			                                        rtpConfig->videoOrientation);
-			offset += 2;
+			offset += extHeader->writeCurrentVideoOrientation(
+			    twoByteHeader, offset, rtpConfig->videoOrientationId, rtpConfig->videoOrientation);
 		}
 
 		if (rtpConfig->mid.has_value()) {
-			extHeader->writeOneByteHeader(
-			    offset, rtpConfig->midId,
-			    reinterpret_cast<const std::byte *>(rtpConfig->mid->c_str()),
-			    rtpConfig->mid->length());
-			offset += (1 + rtpConfig->mid->length());
+			offset +=
+			    extHeader->writeHeader(twoByteHeader, offset, rtpConfig->midId,
+			                           reinterpret_cast<const std::byte *>(rtpConfig->mid->c_str()),
+			                           rtpConfig->mid->length());
 		}
 
 		if (rtpConfig->rid.has_value()) {
-			extHeader->writeOneByteHeader(
-			    offset, rtpConfig->ridId,
-			    reinterpret_cast<const std::byte *>(rtpConfig->rid->c_str()),
-			    rtpConfig->rid->length());
+			offset +=
+			    extHeader->writeHeader(twoByteHeader, offset, rtpConfig->ridId,
+			                           reinterpret_cast<const std::byte *>(rtpConfig->rid->c_str()),
+			                           rtpConfig->rid->length());
+		}
+
+		if (rtpConfig->dependencyDescriptorContext.has_value()) {
+			auto &ctx = *rtpConfig->dependencyDescriptorContext;
+			DependencyDescriptorWriter writer(ctx.structure, ctx.activeChains, ctx.descriptor);
+			auto sizeBits = writer.getSizeBits();
+			size_t sizeBytes = (sizeBits + 7) / 8;
+			std::unique_ptr<std::byte[]> buf(new std::byte[sizeBytes]);
+			writer.writeTo(buf.get(), sizeBits);
+			offset += extHeader->writeHeader(
+			    twoByteHeader, offset, rtpConfig->dependencyDescriptorId, buf.get(), sizeBytes);
 		}
 
 		if (setPlayoutDelay) {
@@ -141,10 +172,15 @@ void RtpPacketizer::outgoing(message_vector &messages,
 
 		auto payloads = fragment(std::move(*message));
 		if (payloads.size() > 0) {
-			for (size_t i = 0; i < payloads.size() - 1; i++)
-				result.push_back(packetize(payloads[i], false));
-
-			result.push_back(packetize(payloads[payloads.size() - 1], true));
+			for (size_t i = 0; i < payloads.size(); i++) {
+				if (rtpConfig->dependencyDescriptorContext.has_value()) {
+					auto &ctx = *rtpConfig->dependencyDescriptorContext;
+					ctx.descriptor.startOfFrame = i == 0;
+					ctx.descriptor.endOfFrame = i == payloads.size() - 1;
+				}
+				bool mark = i == payloads.size() - 1;
+				result.push_back(packetize(payloads[i], mark));
+			}
 		}
 	}
 
