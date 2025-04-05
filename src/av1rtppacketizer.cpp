@@ -99,7 +99,7 @@ std::vector<binary> AV1RtpPacketizer::fragment(binary data) {
 			auto fragments = fragmentObu(obu);
 			result.reserve(result.size() + fragments.size());
 			for(auto &fragment : fragments)
-				fragments.push_back(std::move(fragment));
+				result.push_back(std::move(fragment));
 		}
 		return result;
 	} else {
