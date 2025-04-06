@@ -169,16 +169,14 @@ void RtpPacketizer::outgoing(message_vector &messages,
 		}
 
 		auto payloads = fragment(std::move(*message));
-		if (payloads.size() > 0) {
-			for (size_t i = 0; i < payloads.size(); i++) {
-				if (rtpConfig->dependencyDescriptorContext.has_value()) {
-					auto &ctx = *rtpConfig->dependencyDescriptorContext;
-					ctx.descriptor.startOfFrame = i == 0;
-					ctx.descriptor.endOfFrame = i == payloads.size() - 1;
-				}
-				bool mark = i == payloads.size() - 1;
-				result.push_back(packetize(payloads[i], mark));
+		for (size_t i = 0; i < payloads.size(); i++) {
+			if (rtpConfig->dependencyDescriptorContext.has_value()) {
+				auto &ctx = *rtpConfig->dependencyDescriptorContext;
+				ctx.descriptor.startOfFrame = i == 0;
+				ctx.descriptor.endOfFrame = i == payloads.size() - 1;
 			}
+			bool mark = i == payloads.size() - 1;
+			result.push_back(packetize(payloads[i], mark));
 		}
 	}
 
