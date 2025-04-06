@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <limits>
 #include <stdexcept>
 
 namespace rtc {
