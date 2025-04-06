@@ -31,12 +31,15 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	const bool setVideoRotation =
 	    (rtpConfig->videoOrientationId != 0) && mark && (rtpConfig->videoOrientation != 0);
 
+	std::optional<DependencyDescriptorWriter> ddWriter;
+	if (rtpConfig->dependencyDescriptorContext.has_value()) {
+		ddWriter.emplace(*rtpConfig->dependencyDescriptorContext);
+	}
+
 	// Determine if a two-byte header is necessary
 	// Check for dependency descriptor extension
-	if (rtpConfig->dependencyDescriptorContext.has_value()) {
-		auto &ctx = *rtpConfig->dependencyDescriptorContext;
-		DependencyDescriptorWriter writer(ctx.structure, ctx.activeChains, ctx.descriptor);
-		auto sizeBytes = (writer.getSizeBits() + 7) / 8;
+	if (ddWriter.has_value()) {
+		auto sizeBytes = ddWriter->getSize();
 		if (sizeBytes > 16 || rtpConfig->dependencyDescriptorId > 14) {
 			twoByteHeader = true;
 		}
@@ -63,10 +66,8 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	if (rtpConfig->rid.has_value())
 		rtpExtHeaderSize += headerSize + rtpConfig->rid->length();
 
-	if (rtpConfig->dependencyDescriptorContext.has_value()) {
-		auto &ctx = *rtpConfig->dependencyDescriptorContext;
-		DependencyDescriptorWriter writer(ctx.structure, ctx.activeChains, ctx.descriptor);
-		rtpExtHeaderSize += headerSize + (writer.getSizeBits() + 7) / 8;
+	if (ddWriter.has_value()) {
+		rtpExtHeaderSize += headerSize + ddWriter->getSize();
 	}
 
 	if (rtpExtHeaderSize != 0)
@@ -116,15 +117,12 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 			                           rtpConfig->rid->length());
 		}
 
-		if (rtpConfig->dependencyDescriptorContext.has_value()) {
-			auto &ctx = *rtpConfig->dependencyDescriptorContext;
-			DependencyDescriptorWriter writer(ctx.structure, ctx.activeChains, ctx.descriptor);
-			auto sizeBits = writer.getSizeBits();
-			size_t sizeBytes = (sizeBits + 7) / 8;
-			std::unique_ptr<std::byte[]> buf(new std::byte[sizeBytes]);
-			writer.writeTo(buf.get(), sizeBits);
+		if (ddWriter.has_value()) {
+			auto sizeBytes = ddWriter->getSize();
+			std::vector<std::byte> buf(sizeBytes);
+			ddWriter->writeTo(buf.data(), sizeBytes);
 			offset += extHeader->writeHeader(
-			    twoByteHeader, offset, rtpConfig->dependencyDescriptorId, buf.get(), sizeBytes);
+			    twoByteHeader, offset, rtpConfig->dependencyDescriptorId, buf.data(), sizeBytes);
 		}
 
 		if (setPlayoutDelay) {

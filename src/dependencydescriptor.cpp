@@ -204,19 +204,20 @@ static bool find_best_template(const FrameDependencyStructure &structure,
 
 static const uint32_t MaxTemplates = 64;
 
-DependencyDescriptorWriter::DependencyDescriptorWriter(const FrameDependencyStructure &structure,
-                                                       std::bitset<32> activeChains,
-                                                       const DependencyDescriptor &descriptor)
-    : mStructure(structure), mActiveChains(activeChains), mDescriptor(descriptor) {}
+DependencyDescriptorWriter::DependencyDescriptorWriter(const DependencyDescriptorContext& context)
+	: mStructure(context.structure), mActiveChains(context.activeChains), mDescriptor(context.descriptor) {}
 
 size_t DependencyDescriptorWriter::getSizeBits() const {
 	auto writer = rtc::BitWriter::fromNull();
 	doWriteTo(writer);
 	return writer.getWrittenBits();
 }
+size_t DependencyDescriptorWriter::getSize() const {
+	return (getSizeBits() + 7) / 8;
+}
 
-void DependencyDescriptorWriter::writeTo(std::byte *buf, size_t sizeBits) const {
-	auto writer = BitWriter::fromSizeBits(buf, 0, (sizeBits + 7) / 8 * 8);
+void DependencyDescriptorWriter::writeTo(std::byte *buf, size_t sizeBytes) const {
+	auto writer = BitWriter::fromSizeBits(buf, 0, sizeBytes * 8);
 	doWriteTo(writer);
 	// Pad up to the byte boundary
 	if (auto bits = (writer.getWrittenBits() % 8); bits != 0) {

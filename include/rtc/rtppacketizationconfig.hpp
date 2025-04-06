@@ -64,11 +64,6 @@ public:
 
 	// Dependency Descriptor Extension Header
 	uint8_t dependencyDescriptorId = 0;
-	struct DependencyDescriptorContext {
-		DependencyDescriptor descriptor;
-		std::bitset<32> activeChains;
-		FrameDependencyStructure structure;
-	};
 
 	optional<DependencyDescriptorContext> dependencyDescriptorContext;
 	// the negotiated ID of the playout delay header extension

@@ -77,16 +77,21 @@ struct DependencyDescriptor {
 	bool structureAttached;
 };
 
+struct DependencyDescriptorContext {
+	DependencyDescriptor descriptor;
+	std::bitset<32> activeChains;
+	FrameDependencyStructure structure;
+};
+
 // Write dependency descriptor to RTP Header Extension
 // Dependency descriptor specification is here:
 // https://aomediacodec.github.io/av1-rtp-spec/#dependency-descriptor-rtp-header-extension
 class DependencyDescriptorWriter {
 public:
-	DependencyDescriptorWriter(const FrameDependencyStructure &structure,
-	                           std::bitset<32> activeChains,
-	                           const DependencyDescriptor &descriptor);
+	explicit DependencyDescriptorWriter(const DependencyDescriptorContext& context);
 	size_t getSizeBits() const;
-	void writeTo(std::byte *buf, size_t sizeBits) const;
+	size_t getSize() const;
+	void writeTo(std::byte *buf, size_t sizeBytes) const;
 
 private:
 	void doWriteTo(BitWriter &writer) const;
