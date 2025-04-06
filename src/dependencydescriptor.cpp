@@ -24,7 +24,7 @@ BitWriter BitWriter::fromSizeBits(std::byte *buf, size_t offsetBits, size_t size
 }
 BitWriter BitWriter::fromNull() {
 	BitWriter writer;
-	writer.mSize = SIZE_MAX;
+	writer.mSize = std::numeric_limits<size_t>::max();
 	return writer;
 }
 
