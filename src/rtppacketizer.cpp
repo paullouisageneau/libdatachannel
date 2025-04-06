@@ -47,7 +47,8 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	// Check for other extensions
 	if ((setVideoRotation && rtpConfig->videoOrientationId > 14) ||
 	    (rtpConfig->mid.has_value() && rtpConfig->midId > 14) ||
-	    (rtpConfig->rid.has_value() && rtpConfig->ridId > 14)) {
+	    (rtpConfig->rid.has_value() && rtpConfig->ridId > 14) ||
+	    rtpConfig->playoutDelayId > 14) {
 		twoByteHeader = true;
 	}
 	size_t headerSize = twoByteHeader ? 2 : 1;
@@ -55,10 +56,10 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	if (setVideoRotation)
 		rtpExtHeaderSize += headerSize + 1;
 
-	const bool setPlayoutDelay = (rtpConfig->playoutDelayId > 0 && rtpConfig->playoutDelayId < 15);
+	const bool setPlayoutDelay = rtpConfig->playoutDelayId > 0;
 
 	if (setPlayoutDelay)
-		rtpExtHeaderSize += 4;
+		rtpExtHeaderSize += headerSize + 3;
 
 	if (rtpConfig->mid.has_value())
 		rtpExtHeaderSize += headerSize + rtpConfig->mid->length();
@@ -133,8 +134,8 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 			byte data[] = {byte((min >> 4) & 0xFF), byte(((min & 0xF) << 4) | ((max >> 8) & 0xF)),
 			               byte(max & 0xFF)};
 
-			extHeader->writeOneByteHeader(offset, rtpConfig->playoutDelayId, data, 3);
-			offset += 4;
+			offset += extHeader->writeHeader(
+			    twoByteHeader, offset, rtpConfig->playoutDelayId, data, 3);
 		}
 	}
 
