@@ -12,6 +12,7 @@
 #include <bitset>
 #include <cassert>
 #include <optional>
+#include <stdint.h>
 #include <vector>
 
 namespace rtc {
