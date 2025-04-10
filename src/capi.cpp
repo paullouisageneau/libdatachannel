@@ -1259,6 +1259,7 @@ int rtcSetH265Packetizer(int tr, const rtcPacketizerInit *init) {
 		auto track = getTrack(tr);
 		// create RTP configuration
 		auto rtpConfig = createRtpPacketizationConfig(init);
+		emplaceRtpConfig(rtpConfig, tr);
 		// create packetizer
 		auto nalSeparator = init ? init->nalSeparator : RTC_NAL_SEPARATOR_LENGTH;
 		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
@@ -1275,6 +1276,7 @@ int rtcSetAV1Packetizer(int tr, const rtcPacketizerInit *init) {
 		auto track = getTrack(tr);
 		// create RTP configuration
 		auto rtpConfig = createRtpPacketizationConfig(init);
+		emplaceRtpConfig(rtpConfig, tr);
 		// create packetizer
 		auto maxFragmentSize = init && init->maxFragmentSize ? init->maxFragmentSize
 		                                                     : RTC_DEFAULT_MAX_FRAGMENT_SIZE;
@@ -1306,6 +1308,7 @@ int rtcSetAACPacketizer(int tr, const rtcPacketizerInit *init) {
 		auto track = getTrack(tr);
 		// create RTP configuration
 		auto rtpConfig = createRtpPacketizationConfig(init);
+		emplaceRtpConfig(rtpConfig, tr);
 		// create packetizer
 		auto packetizer = std::make_shared<AACRtpPacketizer>(rtpConfig);
 		track->setMediaHandler(packetizer);
