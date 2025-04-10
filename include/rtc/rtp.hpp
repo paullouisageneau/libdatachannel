@@ -38,8 +38,12 @@ struct RTC_CPP_EXPORT RtpExtensionHeader {
 	void setHeaderLength(uint16_t headerLength);
 
 	void clearBody();
-	void writeCurrentVideoOrientation(size_t offset, uint8_t id, uint8_t value);
-	void writeOneByteHeader(size_t offset, uint8_t id, const byte *value, size_t size);
+	size_t writeCurrentVideoOrientation(bool twoByteHeader, size_t offset, uint8_t id,
+	                                    uint8_t value);
+	size_t writeOneByteHeader(size_t offset, uint8_t id, const byte *value, size_t size);
+	size_t writeTwoByteHeader(size_t offset, uint8_t id, const byte *value, size_t size);
+	size_t writeHeader(bool twoByteHeader, size_t offset, uint8_t id, const byte *value,
+	                   size_t size);
 };
 
 struct RTC_CPP_EXPORT RtpHeader {
