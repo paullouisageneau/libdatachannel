@@ -132,6 +132,7 @@ typedef enum {
 	RTC_CODEC_PCMU = 129,
 	RTC_CODEC_PCMA = 130,
 	RTC_CODEC_AAC = 131,
+	RTC_CODEC_G722 = 132,
 } rtcCodec;
 
 typedef enum {
@@ -381,6 +382,9 @@ RTC_C_EXPORT int rtcSetH265Packetizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetAV1Packetizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetOpusPacketizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetAACPacketizer(int tr, const rtcPacketizerInit *init);
+RTC_C_EXPORT int rtcSetPCMUPacketizer(int tr, const rtcPacketizerInit *init);
+RTC_C_EXPORT int rtcSetPCMAPacketizer(int tr, const rtcPacketizerInit *init);
+RTC_C_EXPORT int rtcSetG722Packetizer(int tr, const rtcPacketizerInit *init);
 
 // Deprecated, do not use
 RTC_DEPRECATED static inline int

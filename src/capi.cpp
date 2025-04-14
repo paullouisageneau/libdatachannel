@@ -1089,7 +1089,8 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 		case RTC_CODEC_OPUS:
 		case RTC_CODEC_PCMU:
 		case RTC_CODEC_PCMA:
-		case RTC_CODEC_AAC: {
+		case RTC_CODEC_AAC: 
+		case RTC_CODEC_G722: {
 			auto audio = std::make_unique<Description::Audio>(mid, direction);
 			switch (init->codec) {
 			case RTC_CODEC_OPUS:
@@ -1103,6 +1104,9 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 				break;
 			case RTC_CODEC_AAC:
 				audio->addAACCodec(pt, profile);
+				break;
+			case RTC_CODEC_G722:
+				audio->addG722Codec(pt, profile);
 				break;
 			default:
 				break;
@@ -1311,6 +1315,45 @@ int rtcSetAACPacketizer(int tr, const rtcPacketizerInit *init) {
 		emplaceRtpConfig(rtpConfig, tr);
 		// create packetizer
 		auto packetizer = std::make_shared<AACRtpPacketizer>(rtpConfig);
+		track->setMediaHandler(packetizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetPCMUPacketizer(int tr, const rtcPacketizerInit *init) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		// create RTP configuration
+		auto rtpConfig = createRtpPacketizationConfig(init);
+		emplaceRtpConfig(rtpConfig, tr);
+		// create packetizer
+		auto packetizer = std::make_shared<PCMURtpPacketizer>(rtpConfig);
+		track->setMediaHandler(packetizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetPCMAPacketizer(int tr, const rtcPacketizerInit *init) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		// create RTP configuration
+		auto rtpConfig = createRtpPacketizationConfig(init);
+		emplaceRtpConfig(rtpConfig, tr);
+		// create packetizer
+		auto packetizer = std::make_shared<PCMARtpPacketizer>(rtpConfig);
+		track->setMediaHandler(packetizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetG722Packetizer(int tr, const rtcPacketizerInit *init) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		// create RTP configuration
+		auto rtpConfig = createRtpPacketizationConfig(init);
+		emplaceRtpConfig(rtpConfig, tr);
+		// create packetizer
+		auto packetizer = std::make_shared<G722RtpPacketizer>(rtpConfig);
 		track->setMediaHandler(packetizer);
 		return RTC_ERR_SUCCESS;
 	});
