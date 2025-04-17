@@ -76,6 +76,7 @@ using OpusRtpPacketizer = AudioRtpPacketizer<48000>;
 using AACRtpPacketizer = AudioRtpPacketizer<48000>;
 using PCMARtpPacketizer = AudioRtpPacketizer<8000>;
 using PCMURtpPacketizer = AudioRtpPacketizer<8000>;
+using G722RtpPacketizer = AudioRtpPacketizer<8000>;
 
 // Dummy wrapper for backward compatibility, do not use
 class RTC_CPP_EXPORT PacketizationHandler final : public MediaHandler {

@@ -251,6 +251,7 @@ public:
 		void addPCMACodec(int payloadType, optional<string> profile = std::nullopt);
 		void addPCMUCodec(int payloadType, optional<string> profile = std::nullopt);
 		void addAACCodec(int payloadType, optional<string> profile = std::nullopt);
+		void addG722Codec(int payloadType, optional<string> profile = std::nullopt);
 
 		[[deprecated("Use addAACCodec")]] inline void
 		addAacCodec(int payloadType, optional<string> profile = std::nullopt) {

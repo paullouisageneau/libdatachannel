@@ -1201,7 +1201,7 @@ Description::Audio::Audio(string mid, Direction dir)
 
 void Description::Audio::addAudioCodec(int payloadType, string codec, optional<string> profile) {
 	if (codec.find('/') == string::npos) {
-		if (codec == "PCMA" || codec == "PCMU")
+		if (codec == "PCMA" || codec == "PCMU" || codec == "G722")
 			codec += "/8000/1";
 		else
 			codec += "/48000/2";
@@ -1225,6 +1225,10 @@ void Description::Audio::addPCMACodec(int payloadType, optional<string> profile)
 
 void Description::Audio::addPCMUCodec(int payloadType, optional<string> profile) {
 	addAudioCodec(payloadType, "PCMU", profile);
+}
+
+void Description::Audio::addG722Codec(int payloadType, optional<string> profile) {
+	addAudioCodec(payloadType, "G722", profile);
 }
 
 void Description::Audio::addAACCodec(int payloadType, optional<string> profile) {
