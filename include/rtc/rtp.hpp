@@ -356,6 +356,33 @@ struct RTC_CPP_EXPORT RtpRtx {
 	size_t copyTo(RtpHeader *dest, size_t totalSize, uint8_t originalPayloadType);
 };
 
+struct RTC_CPP_EXPORT RtcpTwcc {
+	RtcpFbHeader header;
+	uint16_t _baseSeqNum;
+	uint16_t _packetStatusCount;
+	uint8_t _referenceTime[3];
+	uint8_t _fbPacketCount;
+
+	[[nodiscard]] uint16_t getBaseSeqNum() const;
+	[[nodiscard]] uint16_t getPacketStatusCount() const;
+	[[nodiscard]] uint32_t getReferenceTime() const;
+	[[nodiscard]] uint8_t getFbPacketCount() const;
+	[[nodiscard]] char* getBody();
+};
+
+struct RTC_CPP_EXPORT RtpTwccExt {
+	RtpExtensionHeader header;
+	uint8_t _id;
+	uint16_t _twccSeqNum;
+	uint8_t _zeroPad;
+
+	void setExtId(uint8_t id);
+	void setTwccSeqNum(uint16_t seqNum);
+	void preparePacket(uint8_t extId);
+
+	[[nodiscard]] uint16_t getTwccSeqNum() const;
+};
+
 #pragma pack(pop)
 
 } // namespace rtc
