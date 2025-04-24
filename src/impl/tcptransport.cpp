@@ -470,7 +470,7 @@ void TcpTransport::processConnect(PollService::Event event) {
 		PollService::Instance().remove(mSock);
 		ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
 	}
-};
+}
 
 } // namespace rtc::impl
 
