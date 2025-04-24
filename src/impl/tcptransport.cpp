@@ -289,7 +289,6 @@ void TcpTransport::configureSocket() {
 }
 
 void TcpTransport::setPoll(PollService::Direction direction) {
-	auto weakSelf = weak_from_this();
 	PollService::Instance().add(
 	    mSock, {direction, direction == PollService::Direction::In ? mReadTimeout : nullopt,
 	            weak_bind(&TcpTransport::process, this, _1)});
