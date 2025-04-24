@@ -59,6 +59,7 @@ private:
 	void triggerBufferedAmount(size_t amount);
 
 	void process(PollService::Event event);
+	void processConnect(PollService::Event event);
 
 	const bool mIsActive;
 	string mHostname, mService;
