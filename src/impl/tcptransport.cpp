@@ -324,9 +324,10 @@ void TcpTransport::configureSocket() {
 }
 
 void TcpTransport::setPoll(PollService::Direction direction) {
+	auto weakSelf = weak_from_this();
 	PollService::Instance().add(
 	    mSock, {direction, direction == PollService::Direction::In ? mReadTimeout : nullopt,
-	            std::bind(&TcpTransport::process, this, _1)});
+	    [weakSelf](PollService::Event event) { if (auto self = weakSelf.lock()) { self->process(event); } } });
 }
 
 void TcpTransport::close() {
