@@ -228,44 +228,9 @@ void TcpTransport::attempt() {
 		return;
 	}
 
-	// Poll out event callback
-	auto callback = [this](PollService::Event event) {
-		try {
-			if (event == PollService::Event::Error)
-				throw std::runtime_error("TCP connection failed");
-
-			if (event == PollService::Event::Timeout)
-				throw std::runtime_error("TCP connection timed out");
-
-			if (event != PollService::Event::Out)
-				return;
-
-			int err = 0;
-			socklen_t errlen = sizeof(err);
-			if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, reinterpret_cast<char *>(&err),
-			                 &errlen) != 0)
-				throw std::runtime_error("Failed to get socket error code");
-
-			if (err != 0) {
-				std::ostringstream msg;
-				msg << "TCP connection failed, errno=" << err;
-				throw std::runtime_error(msg.str());
-			}
-
-			// Success
-			PLOG_INFO << "TCP connected";
-			changeState(State::Connected);
-			setPoll(PollService::Direction::In);
-
-		} catch (const std::exception &e) {
-			PLOG_DEBUG << e.what();
-			PollService::Instance().remove(mSock);
-			ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
-		}
-	};
-
 	const auto timeout = 10s;
-	PollService::Instance().add(mSock, {PollService::Direction::Out, timeout, std::move(callback)});
+	PollService::Instance().add(mSock, {PollService::Direction::Out, timeout, 
+	    weak_bind(&TcpTransport::processConnect, this, _1)});
 }
 
 void TcpTransport::createSocket(const struct sockaddr *addr, socklen_t addrlen) {
@@ -326,7 +291,7 @@ void TcpTransport::configureSocket() {
 void TcpTransport::setPoll(PollService::Direction direction) {
 	PollService::Instance().add(
 	    mSock, {direction, direction == PollService::Direction::In ? mReadTimeout : nullopt,
-	            std::bind(&TcpTransport::process, this, _1)});
+	            weak_bind(&TcpTransport::process, this, _1)});
 }
 
 void TcpTransport::close() {
@@ -469,6 +434,41 @@ void TcpTransport::process(PollService::Event event) {
 	PollService::Instance().remove(mSock);
 	changeState(State::Disconnected);
 	recv(nullptr);
+}
+
+void TcpTransport::processConnect(PollService::Event event) {
+	try {
+		if (event == PollService::Event::Error)
+			throw std::runtime_error("TCP connection failed");
+
+		if (event == PollService::Event::Timeout)
+			throw std::runtime_error("TCP connection timed out");
+
+		if (event != PollService::Event::Out)
+			return;
+
+		int err = 0;
+		socklen_t errlen = sizeof(err);
+		if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, reinterpret_cast<char *>(&err),
+						 &errlen) != 0)
+			throw std::runtime_error("Failed to get socket error code");
+
+		if (err != 0) {
+			std::ostringstream msg;
+			msg << "TCP connection failed, errno=" << err;
+			throw std::runtime_error(msg.str());
+		}
+
+		// Success
+		PLOG_INFO << "TCP connected";
+		changeState(State::Connected);
+		setPoll(PollService::Direction::In);
+
+	} catch (const std::exception &e) {
+		PLOG_DEBUG << e.what();
+		PollService::Instance().remove(mSock);
+		ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
+	}
 }
 
 } // namespace rtc::impl
