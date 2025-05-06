@@ -11,6 +11,7 @@
 
 #if RTC_ENABLE_MEDIA
 
+#include "dependencydescriptor.hpp"
 #include "rtp.hpp"
 
 namespace rtc {
@@ -61,6 +62,10 @@ public:
 	uint8_t ridId = 0;
 	optional<std::string> rid;
 
+	// Dependency Descriptor Extension Header
+	uint8_t dependencyDescriptorId = 0;
+
+	optional<DependencyDescriptorContext> dependencyDescriptorContext;
 	// the negotiated ID of the playout delay header extension
 	// https://webrtc.googlesource.com/src/+/main/docs/native-code/rtp-hdrext/playout-delay/README.md
 	uint8_t playoutDelayId = 0;

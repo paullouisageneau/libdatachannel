@@ -30,6 +30,7 @@
 
 // Media
 #include "av1rtppacketizer.hpp"
+#include "dependencydescriptor.hpp"
 #include "h264rtppacketizer.hpp"
 #include "h264rtpdepacketizer.hpp"
 #include "h265rtppacketizer.hpp"
