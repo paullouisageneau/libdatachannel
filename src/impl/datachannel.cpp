@@ -108,9 +108,8 @@ void DataChannel::close() {
 			transport->closeStream(mStream.value());
 
 		triggerClosed();
-	}
-
-	resetCallbacks();
+		resetCallbacks();
+	}	
 }
 
 void DataChannel::remoteClose() { close(); }

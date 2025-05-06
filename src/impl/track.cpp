@@ -69,10 +69,11 @@ void Track::close() {
 	PLOG_VERBOSE << "Closing Track";
 
 	if (!mIsClosed.exchange(true))
+	{
 		triggerClosed();
-
-	setMediaHandler(nullptr);
-	resetCallbacks();
+		setMediaHandler(nullptr);
+		resetCallbacks();
+	}		
 }
 
 message_variant Track::trackMessageToVariant(message_ptr message) {
