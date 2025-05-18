@@ -1091,13 +1091,6 @@ void PeerConnection::processRemoteDescription(Description description) {
 			PLOG_DEBUG << "New remote track, mid=\"" << remoteMedia->mid() << "\"";
 
 			auto reciprocated = remoteMedia->reciprocate();
-#if !RTC_ENABLE_MEDIA
-			if (!reciprocated.isRemoved()) {
-				// No media support, mark as removed
-				PLOG_WARNING << "Rejecting track (not compiled with media support)";
-				reciprocated.markRemoved();
-			}
-#endif
 
 			// Create incoming track
 			auto track = std::make_shared<Track>(weak_from_this(), std::move(reciprocated));
