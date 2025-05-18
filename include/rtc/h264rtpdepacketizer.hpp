@@ -18,7 +18,7 @@
 #include "nalunit.hpp"
 #include "rtp.hpp"
 
-#include <iterator>
+#include <set>
 
 namespace rtc {
 
@@ -35,12 +35,15 @@ public:
 	void incoming(message_vector &messages, const message_callback &send) override;
 
 private:
-	std::vector<message_ptr> mRtpBuffer;
+	void addSeparator(binary &accessUnit);
+	message_ptr buildFrame();
+
 	const NalUnit::Separator mSeparator;
 
-	void addSeparator(binary &accessUnit);
-	message_vector buildFrames(message_vector::iterator firstPkt, message_vector::iterator lastPkt,
-	                           uint8_t payloadType, uint32_t timestamp);
+	struct sequence_cmp {
+		bool operator() (message_ptr a, message_ptr b) const;
+    };
+	std::set<message_ptr, sequence_cmp> mBuffer;
 };
 
 } // namespace rtc
