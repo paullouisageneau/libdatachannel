@@ -346,6 +346,9 @@ void PeerConnection::onDataChannel(
 }
 
 std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) {
+#if !RTC_ENABLE_MEDIA
+	throw std::exception();
+#endif
 	auto trackImpl = impl()->emplaceTrack(std::move(description));
 	auto track = std::make_shared<Track>(trackImpl);
 
@@ -353,6 +356,9 @@ std::shared_ptr<Track> PeerConnection::addTrack(Description::Media description) 
 }
 
 void PeerConnection::onTrack(std::function<void(std::shared_ptr<Track>)> callback) {
+#if !RTC_ENABLE_MEDIA
+	throw std::exception();
+#endif
 	impl()->trackCallback = callback;
 	impl()->flushPendingTracks();
 }
