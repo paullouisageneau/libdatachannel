@@ -130,22 +130,46 @@ void RtpExtensionHeader::setHeaderLength(uint16_t headerLength) {
 
 void RtpExtensionHeader::clearBody() { std::memset(getBody(), 0, getSize()); }
 
-void RtpExtensionHeader::writeOneByteHeader(size_t offset, uint8_t id, const byte *value,
-                                            size_t size) {
+size_t RtpExtensionHeader::writeOneByteHeader(size_t offset, uint8_t id, const byte *value,
+                                              size_t size) {
 	if ((id == 0) || (id > 14) || (size == 0) || (size > 16) || ((offset + 1 + size) > getSize()))
-		return;
+		return 0;
 	auto buf = getBody() + offset;
 	buf[0] = id << 4;
 	if (size != 1) {
 		buf[0] |= (uint8_t(size) - 1);
 	}
 	std::memcpy(buf + 1, value, size);
+	return 1 + size;
 }
 
-void RtpExtensionHeader::writeCurrentVideoOrientation(size_t offset, const uint8_t id,
-                                                      uint8_t value) {
+size_t RtpExtensionHeader::writeTwoByteHeader(size_t offset, uint8_t id, const byte *value,
+                                              size_t size) {
+	if ((id == 0) || (size > 255) || ((offset + 2 + size) > getSize()))
+		return 0;
+	auto buf = getBody() + offset;
+	buf[0] = id;
+	buf[1] = uint8_t(size);
+	std::memcpy(buf + 2, value, size);
+	return 2 + size;
+}
+
+size_t RtpExtensionHeader::writeCurrentVideoOrientation(bool twoByteHeader, size_t offset,
+                                                        const uint8_t id, uint8_t value) {
 	auto v = std::byte{value};
-	writeOneByteHeader(offset, id, &v, 1);
+	if (twoByteHeader) {
+		return writeTwoByteHeader(offset, id, &v, 1);
+	} else {
+		return writeOneByteHeader(offset, id, &v, 1);
+	}
+}
+size_t RtpExtensionHeader::writeHeader(bool twoByteHeader, size_t offset, uint8_t id,
+                                       const byte *value, size_t size) {
+	if (twoByteHeader) {
+		return writeTwoByteHeader(offset, id, value, size);
+	} else {
+		return writeOneByteHeader(offset, id, value, size);
+	}
 }
 
 SSRC RtcpReportBlock::getSSRC() const { return ntohl(_ssrc); }
