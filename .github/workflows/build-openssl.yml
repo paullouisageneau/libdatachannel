@@ -8,7 +8,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: install packages
       run: sudo apt update && sudo apt install libssl-dev libsrtp2-dev
     - name: submodules
@@ -22,7 +22,7 @@ jobs:
   build-macos:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: install packages
       run: HOMEBREW_NO_INSTALL_CLEANUP=1 brew reinstall openssl@3
     - name: submodules
@@ -38,7 +38,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - uses: ilammy/msvc-dev-cmd@v1
     - name: install packages
       run: choco install openssl --version=3.1.1
