@@ -9,13 +9,14 @@
 #include "dependencydescriptor.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <functional>
 #include <limits>
 #include <stdexcept>
 
 namespace rtc {
 
-BitWriter BitWriter::fromSizeBits(std::byte *buf, size_t offsetBits, size_t sizeBits) {
+BitWriter BitWriter::fromSizeBits(byte *buf, size_t offsetBits, size_t sizeBits) {
 	BitWriter writer;
 	writer.mBuf = buf;
 	writer.mInitialOffset = offsetBits;
@@ -205,19 +206,18 @@ static bool find_best_template(const FrameDependencyStructure &structure,
 
 static const uint32_t MaxTemplates = 64;
 
-DependencyDescriptorWriter::DependencyDescriptorWriter(const DependencyDescriptorContext& context)
-	: mStructure(context.structure), mActiveChains(context.activeChains), mDescriptor(context.descriptor) {}
+DependencyDescriptorWriter::DependencyDescriptorWriter(const DependencyDescriptorContext &context)
+    : mStructure(context.structure), mActiveChains(context.activeChains),
+      mDescriptor(context.descriptor) {}
 
 size_t DependencyDescriptorWriter::getSizeBits() const {
 	auto writer = rtc::BitWriter::fromNull();
 	doWriteTo(writer);
 	return writer.getWrittenBits();
 }
-size_t DependencyDescriptorWriter::getSize() const {
-	return (getSizeBits() + 7) / 8;
-}
+size_t DependencyDescriptorWriter::getSize() const { return (getSizeBits() + 7) / 8; }
 
-void DependencyDescriptorWriter::writeTo(std::byte *buf, size_t sizeBytes) const {
+void DependencyDescriptorWriter::writeTo(byte *buf, size_t sizeBytes) const {
 	auto writer = BitWriter::fromSizeBits(buf, 0, sizeBytes * 8);
 	doWriteTo(writer);
 	// Pad up to the byte boundary
