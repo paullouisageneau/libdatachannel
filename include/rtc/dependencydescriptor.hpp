@@ -9,16 +9,14 @@
 #ifndef RTC_DEPENDENCY_DESCRIPTOR_H
 #define RTC_DEPENDENCY_DESCRIPTOR_H
 
+#include "common.hpp"
+
 #include <bitset>
-#include <cassert>
-#include <optional>
-#include <stdint.h>
-#include <vector>
 
 namespace rtc {
 
 struct BitWriter {
-	static BitWriter fromSizeBits(std::byte *buf, size_t offsetBits, size_t sizeBits);
+	static BitWriter fromSizeBits(byte *buf, size_t offsetBits, size_t sizeBits);
 	static BitWriter fromNull();
 
 	size_t getWrittenBits() const;
@@ -32,7 +30,7 @@ private:
 	size_t writePartialByte(uint8_t *p, size_t offset, uint64_t v, size_t bits);
 
 private:
-	std::byte *mBuf = nullptr;
+	byte *mBuf = nullptr;
 	size_t mInitialOffset = 0;
 	size_t mOffset = 0;
 	size_t mSize = 0;
@@ -91,7 +89,7 @@ public:
 	explicit DependencyDescriptorWriter(const DependencyDescriptorContext& context);
 	size_t getSizeBits() const;
 	size_t getSize() const;
-	void writeTo(std::byte *buf, size_t sizeBytes) const;
+	void writeTo(byte *buf, size_t sizeBytes) const;
 
 private:
 	void doWriteTo(BitWriter &writer) const;
