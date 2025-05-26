@@ -8,7 +8,7 @@ jobs:
   check-version:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: install packages
       run: sudo apt update && sudo apt install libssl-dev libsrtp2-dev
     - name: submodules
