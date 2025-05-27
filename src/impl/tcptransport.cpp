@@ -206,7 +206,7 @@ void TcpTransport::attempt() {
 		if (state() != State::Connecting)
 			return; // Cancelled
 
-		if (mSock == INVALID_SOCKET) {
+		if (mSock != INVALID_SOCKET) {
 			::closesocket(mSock);
 			mSock = INVALID_SOCKET;
 		}
