@@ -1,8 +1,14 @@
-#include <arpa/inet.h>
 #include <iostream>
-#include <netinet/in.h>
 #include <string.h>
+
+#ifdef _WIN32
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#include <winsock2.h>
+#else
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
+#endif
 
 #include <rtc/rtc.hpp>
 
@@ -14,8 +20,6 @@ using nlohmann::json;
 
 const int BUFFER_SIZE = 2048;
 
-// ffmpeg -f lavfi -i testsrc=duration=10:size=1280x720:rate=30 test.mp4
-// ffmpeg -re -i test.mp4 -c:v libvpx -c:a aac -f rtp udp://127.0.0.1:6000
 int main(int argc, char *argv[]) {
 
     httplib::Server svr;
