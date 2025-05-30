@@ -1,8 +1,14 @@
-#include <arpa/inet.h>
 #include <iostream>
-#include <netinet/in.h>
 #include <string.h>
+
+#ifdef _WIN32
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#include <winsock2.h>
+#else
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
+#endif
 
 #include <rtc/rtc.hpp>
 
@@ -11,7 +17,7 @@
 #include <httplib.h>
 
 using nlohmann::json;
-// ffmpeg -protocol_whitelist "file,udp,rtp" -i stream.sdp -c:v copy output.webm
+
 int main(int argc, char *argv[]) {
 
     httplib::Server svr;
@@ -52,7 +58,7 @@ int main(int argc, char *argv[]) {
 
         for (int pt : trackDesc.payloadTypes()) {
             rtc::Description::Media::RtpMap *rtpMap = trackDesc.rtpMap(pt);
-            if (rtpMap->format == "H264") {
+            if (rtpMap->format == "VP8") {
                 offeredTrack->setDescription(std::move(trackDesc));
 
                 std::atomic_store(&track, offeredTrack);
@@ -85,6 +91,7 @@ int main(int argc, char *argv[]) {
         res.set_header("Access-Control-Allow-Origin", "*");
 
         rtc::Description remoteOffer(req.body, "offer");
+
         pc->setRemoteDescription(remoteOffer);
 
         std::optional<rtc::Description> description = pc->localDescription();

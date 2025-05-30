@@ -58,7 +58,17 @@
         navigator.mediaDevices.getUserMedia({ video: true, audio: false })
             .then(stream => {
                 document.getElementById('videoPlayer').srcObject = stream
-                stream.getTracks().forEach(track => peerConnection.addTrack(track, stream))
+                // Add transceiver so we can set codec preferences
+                const transceiver = peerConnection.addTransceiver(stream.getVideoTracks()[0]);
+
+                const codecs = RTCRtpSender.getCapabilities('video').codecs;
+                const vp8Codec = codecs.find(c => c.mimeType === 'video/VP8');
+
+                if (!vp8Codec) {
+                    throw Error("vp8 is not a supported codec");
+                }
+
+                transceiver.setCodecPreferences([vp8Codec]);
 
                 peerConnection.createOffer().then(offer => {
                     peerConnection.setLocalDescription(offer)
