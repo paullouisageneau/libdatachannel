@@ -515,7 +515,12 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 
 	if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 3600 * -1) ||
 	    !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 3600 * 24 * 365) ||
-	    !X509_set_version(x509.get(), X509_VERSION_1) || !BN_rand(serial_number.get(), serialSize, 0, 0) ||
+#if OPENSSL_VERSION_NUMBER >= 0x30000000
+	    !X509_set_version(x509.get(), X509_VERSION_1) || 
+#else
+		!X509_set_version(x509.get(), 0) ||
+#endif 					
+		!BN_rand(serial_number.get(), serialSize, 0, 0) ||
 	    !BN_to_ASN1_INTEGER(serial_number.get(), X509_get_serialNumber(x509.get())) ||
 	    !X509_NAME_add_entry_by_NID(name.get(), NID_commonName, MBSTRING_UTF8, commonNameBytes, -1,
 	                                -1, 0) ||
