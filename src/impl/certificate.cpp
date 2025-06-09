@@ -518,7 +518,7 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 #if OPENSSL_VERSION_NUMBER >= 0x30000000
 	    !X509_set_version(x509.get(), X509_VERSION_1) || 
 #else
-		!X509_set_version(x509.get(), 1) ||
+		!X509_set_version(x509.get(), 0) ||
 #endif 					
 		!BN_rand(serial_number.get(), serialSize, 0, 0) ||
 	    !BN_to_ASN1_INTEGER(serial_number.get(), X509_get_serialNumber(x509.get())) ||
