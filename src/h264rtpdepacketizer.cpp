@@ -25,36 +25,20 @@ const binary naluShortStartCode = {byte{0}, byte{0}, byte{1}};
 const uint8_t naluTypeSTAPA = 24;
 const uint8_t naluTypeFUA = 28;
 
-bool H264RtpDepacketizer::sequence_cmp::operator()(message_ptr a, message_ptr b) const {
-	assert(a->size() >= sizeof(RtpHeader) && b->size() >= sizeof(RtpHeader));
-	auto ha = reinterpret_cast<const rtc::RtpHeader *>(a->data());
-	auto hb = reinterpret_cast<const rtc::RtpHeader *>(b->data());
-	int16_t d = int16_t(hb->seqNumber() - ha->seqNumber());
-	return d > 0;
-}
-
 H264RtpDepacketizer::H264RtpDepacketizer(Separator separator) : mSeparator(separator) {
 	if (separator != Separator::StartSequence && separator != Separator::LongStartSequence &&
 	    separator != Separator::ShortStartSequence) {
-		throw std::invalid_argument("Invalid separator");
+		throw std::invalid_argument("Unimplemented H264 separator");
 	}
 }
 
-void H264RtpDepacketizer::addSeparator(binary &accessUnit) {
-	if (mSeparator == Separator::StartSequence || mSeparator == Separator::LongStartSequence) {
-		accessUnit.insert(accessUnit.end(), naluLongStartCode.begin(), naluLongStartCode.end());
-	} else if (mSeparator == Separator::ShortStartSequence) {
-		accessUnit.insert(accessUnit.end(), naluShortStartCode.begin(), naluShortStartCode.end());
-	} else {
-		throw std::invalid_argument("Invalid separator");
-	}
-}
+H264RtpDepacketizer::~H264RtpDepacketizer() {}
 
-message_ptr H264RtpDepacketizer::buildFrame() {
-	if (mBuffer.empty())
+message_ptr H264RtpDepacketizer::reassemble(message_buffer &buffer) {
+	if (buffer.empty())
 		return nullptr;
 
-	auto first = *mBuffer.begin();
+	auto first = *buffer.begin();
 	auto firstRtpHeader = reinterpret_cast<const RtpHeader *>(first->data());
 	uint8_t payloadType = firstRtpHeader->payloadType();
 	uint32_t timestamp = firstRtpHeader->timestamp();
@@ -62,11 +46,11 @@ message_ptr H264RtpDepacketizer::buildFrame() {
 
 	binary frame;
 	bool continuousFragments = false;
-	for (const auto &packet : mBuffer) {
+	for (const auto &packet : buffer) {
 		auto rtpHeader = reinterpret_cast<const rtc::RtpHeader *>(packet->data());
 		if (rtpHeader->seqNumber() < nextSeqNumber) {
 			// Skip
-			continue; // skip
+			continue;
 		}
 		if (rtpHeader->seqNumber() > nextSeqNumber) {
 			// Missing packet(s)
@@ -149,50 +133,22 @@ message_ptr H264RtpDepacketizer::buildFrame() {
 		}
 	}
 
-	auto frameInfo = std::make_shared<FrameInfo>(timestamp);
-	frameInfo->timestampSeconds =
-	    std::chrono::duration<double>(double(timestamp) / double(ClockRate));
-	frameInfo->payloadType = payloadType;
-	return make_message(std::move(frame), std::move(frameInfo));
+	return make_message(std::move(frame), createFrameInfo(timestamp, payloadType));
 }
 
-void H264RtpDepacketizer::incoming(message_vector &messages, const message_callback &) {
-	message_vector result;
-	for (auto message : messages) {
-		if (message->type == Message::Control) {
-			result.push_back(std::move(message));
-			continue;
-		}
-
-		if (message->size() < sizeof(RtpHeader)) {
-			PLOG_VERBOSE << "RTP packet is too small, size=" << message->size();
-			continue;
-		}
-
-		auto header = reinterpret_cast<const RtpHeader *>(message->data());
-
-		if (!mBuffer.empty()) {
-			auto first = *mBuffer.begin();
-			auto firstHeader = reinterpret_cast<const RtpHeader *>(first->data());
-			if (firstHeader->timestamp() != header->timestamp()) {
-				if (auto frame = buildFrame())
-					result.push_back(frame);
-
-				mBuffer.clear();
-			}
-		}
-
-		mBuffer.insert(std::move(message));
-
-		if (header->marker()) {
-			if (auto frame = buildFrame())
-				result.push_back(std::move(frame));
-
-			mBuffer.clear();
-		}
-	};
-
-	messages.swap(result);
+void H264RtpDepacketizer::addSeparator(binary &frame) {
+	switch (mSeparator) {
+	case Separator::StartSequence:
+		[[fallthrough]];
+	case Separator::LongStartSequence:
+		frame.insert(frame.end(), naluLongStartCode.begin(), naluLongStartCode.end());
+		break;
+	case Separator::ShortStartSequence:
+		frame.insert(frame.end(), naluShortStartCode.begin(), naluShortStartCode.end());
+		break;
+	default:
+		throw std::invalid_argument("Invalid separator");
+	}
 }
 
 } // namespace rtc
