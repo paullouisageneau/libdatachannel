@@ -24,168 +24,140 @@ const binary naluShortStartCode = {byte{0}, byte{0}, byte{1}};
 const uint8_t naluTypeAP = 48;
 const uint8_t naluTypeFU = 49;
 
-H265RtpDepacketizer::H265RtpDepacketizer(Separator separator) : separator(separator) {
-	switch (separator) {
-	case Separator::StartSequence: [[fallthrough]];
-	case Separator::LongStartSequence: [[fallthrough]];
-	case Separator::ShortStartSequence:
-		break;
-	case Separator::Length: [[fallthrough]];
-	default:
-		throw std::invalid_argument("Invalid separator");
+H265RtpDepacketizer::H265RtpDepacketizer(Separator separator) : mSeparator(separator) {
+	if (separator != Separator::StartSequence && separator != Separator::LongStartSequence &&
+	    separator != Separator::ShortStartSequence) {
+		throw std::invalid_argument("Unimplemented H265 separator");
 	}
 }
 
-void H265RtpDepacketizer::addSeparator(binary& accessUnit)
-{
-	switch (separator) {
-	case Separator::StartSequence: [[fallthrough]];
-	case Separator::LongStartSequence:
-		accessUnit.insert(accessUnit.end(),
-		                  naluLongStartCode.begin(),
-		                  naluLongStartCode.end());
-		break;
-	case Separator::ShortStartSequence:
-		accessUnit.insert(accessUnit.end(),
-		                  naluShortStartCode.begin(),
-		                  naluShortStartCode.end());
-		break;
-	case Separator::Length: [[fallthrough]];
-	default:
-		throw std::invalid_argument("Invalid separator");
-	}
-}
+H265RtpDepacketizer::~H265RtpDepacketizer() {}
 
-message_vector H265RtpDepacketizer::buildFrames(message_vector::iterator begin,
-                                                message_vector::iterator end,
-                                                uint8_t payloadType, uint32_t timestamp) {
-	message_vector out;
-	binary accessUnit;
+message_ptr H265RtpDepacketizer::reassemble(message_buffer &buffer) {
+	if (buffer.empty())
+		return nullptr;
 
-	for (auto it = begin; it != end; ++it) {
-		auto pkt = it->get();
-		auto pktParsed = reinterpret_cast<const rtc::RtpHeader *>(pkt->data());
-		auto rtpHeaderSize = pktParsed->getSize() + pktParsed->getExtensionHeaderSize();
-		auto rtpPaddingSize = 0;
+	auto first = *buffer.begin();
+	auto firstRtpHeader = reinterpret_cast<const RtpHeader *>(first->data());
+	uint8_t payloadType = firstRtpHeader->payloadType();
+	uint32_t timestamp = firstRtpHeader->timestamp();
+	uint16_t nextSeqNumber = firstRtpHeader->seqNumber();
 
-		if (pktParsed->padding()) {
-			rtpPaddingSize = std::to_integer<uint8_t>(pkt->at(pkt->size() - 1));
-		}
-
-		if (pkt->size() == rtpHeaderSize + rtpPaddingSize) {
-			PLOG_VERBOSE << "H.265 RTP packet has empty payload";
+	binary frame;
+	bool continuousFragments = false;
+	for (const auto &packet : buffer) {
+		auto rtpHeader = reinterpret_cast<const rtc::RtpHeader *>(packet->data());
+		if (rtpHeader->seqNumber() < nextSeqNumber) {
+			// Skip
 			continue;
 		}
+		if (rtpHeader->seqNumber() > nextSeqNumber) {
+			// Missing packet(s)
+			continuousFragments = false;
+		}
+
+		nextSeqNumber = rtpHeader->seqNumber() + 1;
+
+		auto rtpHeaderSize = rtpHeader->getSize() + rtpHeader->getExtensionHeaderSize();
+		auto paddingSize = 0;
+		if (rtpHeader->padding())
+			paddingSize = std::to_integer<uint8_t>(packet->back());
+
+		if (packet->size() <= rtpHeaderSize + paddingSize)
+			continue; // Empty payload
+
+		size_t payloadSize = packet->size() - (rtpHeaderSize + paddingSize);
+		if (payloadSize < 2)
+			throw std::runtime_error("Truncated H265 NAL unit");
 
 		auto nalUnitHeader =
-		    H265NalUnitHeader{std::to_integer<uint8_t>(pkt->at(rtpHeaderSize)),
-		                      std::to_integer<uint8_t>(pkt->at(rtpHeaderSize + 1))};
+		    H265NalUnitHeader{std::to_integer<uint8_t>(packet->at(rtpHeaderSize)),
+		                      std::to_integer<uint8_t>(packet->at(rtpHeaderSize + 1))};
 
 		if (nalUnitHeader.unitType() == naluTypeFU) {
-			auto nalUnitFragmentHeader = H265NalUnitFragmentHeader{
-			    std::to_integer<uint8_t>(pkt->at(rtpHeaderSize + sizeof(H265NalUnitHeader)))};
+			if (payloadSize <= 2)
+				continue; // Empty FU
 
-			// RFC 7798: "When set to 1, the S bit indicates the start of a fragmented
+			auto nalUnitFragmentHeader =
+			    H265NalUnitFragmentHeader{std::to_integer<uint8_t>(packet->at(rtpHeaderSize + 2))};
+
+			// RFC 7798: When set to 1, the S bit indicates the start of a fragmented
 			// NAL unit, i.e., the first byte of the FU payload is also the first byte of
 			// the payload of the fragmented NAL unit. When the FU payload is not the start
-			// of the fragmented NAL unit payload, the S bit MUST be set to 0."
-			if (nalUnitFragmentHeader.isStart() || accessUnit.empty()) {
-				addSeparator(accessUnit);
+			// of the fragmented NAL unit payload, the S bit MUST be set to 0.
+			if (nalUnitFragmentHeader.isStart()) {
+				addSeparator(frame);
 				nalUnitHeader.setUnitType(nalUnitFragmentHeader.unitType());
-				accessUnit.emplace_back(byte(nalUnitHeader._first));
-				accessUnit.emplace_back(byte(nalUnitHeader._second));
+				frame.emplace_back(byte(nalUnitHeader._first));
+				frame.emplace_back(byte(nalUnitHeader._second));
+				continuousFragments = true;
 			}
 
-			accessUnit.insert(accessUnit.end(),
-			                  pkt->begin() + rtpHeaderSize + sizeof(H265NalUnitHeader) +
-			                      sizeof(H265NalUnitFragmentHeader),
-			                  pkt->end());
-		} else if (nalUnitHeader.unitType() == naluTypeAP) {
-			auto currOffset = rtpHeaderSize + sizeof(H265NalUnitHeader);
+			// RFC 7798: If an FU is lost, the receiver SHOULD discard all following fragmentation
+			// units in transmission order corresponding to the same fragmented NAL unit
+			if (continuousFragments) {
+				frame.insert(frame.end(), packet->begin() + rtpHeaderSize + 3,
+				             packet->end() - paddingSize);
+			}
 
-			while (currOffset + sizeof(uint16_t) < pkt->size()) {
-				auto naluSize = std::to_integer<uint16_t>(pkt->at(currOffset)) << 8 |
-				                std::to_integer<uint16_t>(pkt->at(currOffset + 1));
+			// RFC 7798: When set to 1, the E bit indicates the end of a fragmented NAL unit, i.e.,
+			// the last byte of the payload is also the last byte of the fragmented NAL unit.  When
+			// the FU payload is not the last fragment of a fragmented NAL unit, the E bit MUST be
+			// set to 0.
+			if (nalUnitFragmentHeader.isEnd())
+				continuousFragments = false;
 
-				currOffset += sizeof(uint16_t);
+		} else {
+			continuousFragments = false;
 
-				if (pkt->size() < currOffset + naluSize) {
-					throw std::runtime_error("H265 AP declared size is larger than buffer");
+			if (nalUnitHeader.unitType() == naluTypeAP) {
+				auto offset = rtpHeaderSize + 2;
+
+				while (offset + 2 < packet->size() - paddingSize) {
+					auto naluSize = std::to_integer<uint16_t>(packet->at(offset)) << 8 |
+					                std::to_integer<uint16_t>(packet->at(offset + 1));
+
+					offset += 2;
+
+					if (offset + naluSize > packet->size() - paddingSize)
+						throw std::runtime_error("H265 STAP size is larger than payload");
+
+					addSeparator(frame);
+					frame.insert(frame.end(), packet->begin() + offset,
+					             packet->begin() + offset + naluSize);
+
+					offset += naluSize;
 				}
 
-				addSeparator(accessUnit);
-				accessUnit.insert(accessUnit.end(), pkt->begin() + currOffset,
-				                  pkt->begin() + currOffset + naluSize);
+			} else if (nalUnitHeader.unitType() < 47) {
+				// RFC 7798: NAL units with NAL unit type values in the range of 0 to 47, inclusive,
+				// may be passed to the decoder.
+				addSeparator(frame);
+				frame.insert(frame.end(), packet->begin() + rtpHeaderSize,
+				             packet->end() - paddingSize);
 
-				currOffset += naluSize;
+			} else {
+				// RFC 7798: NAL-unit-like structures with NAL unit type values in the range of 48
+				// to 63, inclusive, MUST NOT be passed to the decoder.
 			}
-		} else if (nalUnitHeader.unitType() < naluTypeAP) {
-			// "NAL units with NAL unit type values in the range of 0 to 47, inclusive, may be
-			// passed to the decoder."
-			addSeparator(accessUnit);
-			accessUnit.insert(accessUnit.end(), pkt->begin() + rtpHeaderSize, pkt->end());
-		} else {
-			// "NAL-unit-like structures with NAL unit type values in the range of 48 to 63,
-			// inclusive, MUST NOT be passed to the decoder."
 		}
 	}
 
-	if (!accessUnit.empty()) {
-		auto frameInfo = std::make_shared<FrameInfo>(timestamp);
-		frameInfo->timestampSeconds = std::chrono::duration<double>(double(timestamp) / double(ClockRate));
-		frameInfo->payloadType = payloadType;
-		out.emplace_back(make_message(std::move(accessUnit), frameInfo));
-	}
-
-	return out;
+	return make_message(std::move(frame), createFrameInfo(timestamp, payloadType));
 }
 
-void H265RtpDepacketizer::incoming(message_vector &messages, const message_callback &) {
-	messages.erase(std::remove_if(messages.begin(), messages.end(),
-	                              [&](message_ptr message) {
-		                              if (message->type == Message::Control) {
-			                              return false;
-		                              }
-
-		                              if (message->size() < sizeof(RtpHeader)) {
-			                              PLOG_VERBOSE << "RTP packet is too small, size="
-			                                           << message->size();
-			                              return true;
-		                              }
-
-		                              mRtpBuffer.push_back(std::move(message));
-		                              return true;
-	                              }),
-	               messages.end());
-
-	while (mRtpBuffer.size() != 0) {
-		uint8_t payload_type = 0;
-		uint32_t current_timestamp = 0;
-		size_t packets_in_timestamp = 0;
-
-		for (const auto &pkt : mRtpBuffer) {
-			auto p = reinterpret_cast<const rtc::RtpHeader *>(pkt->data());
-
-			if (current_timestamp == 0) {
-				current_timestamp = p->timestamp();
-				payload_type = p->payloadType(); // should all be the same for data of the same codec
-			} else if (current_timestamp != p->timestamp()) {
-				break;
-			}
-
-			packets_in_timestamp++;
-		}
-
-		if (packets_in_timestamp == mRtpBuffer.size()) {
-			break;
-		}
-
-		auto begin = mRtpBuffer.begin();
-		auto end = mRtpBuffer.begin() + (packets_in_timestamp - 1);
-
-		auto frames = buildFrames(begin, end + 1, payload_type, current_timestamp);
-		messages.insert(messages.end(), frames.begin(), frames.end());
-		mRtpBuffer.erase(mRtpBuffer.begin(), mRtpBuffer.begin() + packets_in_timestamp);
+void H265RtpDepacketizer::addSeparator(binary &frame) {
+	switch (mSeparator) {
+	case Separator::StartSequence:
+		[[fallthrough]];
+	case Separator::LongStartSequence:
+		frame.insert(frame.end(), naluLongStartCode.begin(), naluLongStartCode.end());
+		break;
+	case Separator::ShortStartSequence:
+		frame.insert(frame.end(), naluShortStartCode.begin(), naluShortStartCode.end());
+		break;
+	default:
+		throw std::invalid_argument("Invalid separator");
 	}
 }
 

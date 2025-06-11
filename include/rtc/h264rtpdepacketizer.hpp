@@ -13,34 +13,26 @@
 #if RTC_ENABLE_MEDIA
 
 #include "common.hpp"
-#include "mediahandler.hpp"
 #include "message.hpp"
 #include "nalunit.hpp"
 #include "rtp.hpp"
-
-#include <iterator>
+#include "rtpdepacketizer.hpp"
 
 namespace rtc {
 
 /// RTP depacketization for H264
-class RTC_CPP_EXPORT H264RtpDepacketizer : public MediaHandler {
+class RTC_CPP_EXPORT H264RtpDepacketizer final : public VideoRtpDepacketizer {
 public:
 	using Separator = NalUnit::Separator;
 
-	inline static const uint32_t ClockRate = 90 * 1000;
-
-	H264RtpDepacketizer(Separator separator = Separator::LongStartSequence);
-	virtual ~H264RtpDepacketizer() = default;
-
-	void incoming(message_vector &messages, const message_callback &send) override;
+	H264RtpDepacketizer(Separator separator = Separator::StartSequence);
+	~H264RtpDepacketizer();
 
 private:
-	std::vector<message_ptr> mRtpBuffer;
-	const NalUnit::Separator mSeparator;
+	message_ptr reassemble(message_buffer &buffer) override;
+	void addSeparator(binary &frame);
 
-	void addSeparator(binary &accessUnit);
-	message_vector buildFrames(message_vector::iterator firstPkt, message_vector::iterator lastPkt,
-	                           uint8_t payloadType, uint32_t timestamp);
+	const NalUnit::Separator mSeparator;
 };
 
 } // namespace rtc
