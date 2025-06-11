@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.13)
 
 set(SFU_MEDIA_UWP_RESOURCES
 	uwp/Logo.png
