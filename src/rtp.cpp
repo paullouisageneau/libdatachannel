@@ -174,14 +174,16 @@ size_t RtpExtensionHeader::writeHeader(bool twoByteHeader, size_t offset, uint8_
 
 SSRC RtcpReportBlock::getSSRC() const { return ntohl(_ssrc); }
 
-void RtcpReportBlock::preparePacket(SSRC in_ssrc, [[maybe_unused]] unsigned int packetsLost,
-                                    [[maybe_unused]] unsigned int totalPackets,
+void RtcpReportBlock::preparePacket(SSRC in_ssrc, uint8_t fraction,
+                                	uint32_t totalPacketsLost,
                                     uint16_t highestSeqNo, uint16_t seqNoCycles, uint32_t jitter,
                                     uint64_t lastSR_NTP, uint64_t lastSR_DELAY) {
 	setSeqNo(highestSeqNo, seqNoCycles);
 	setJitter(jitter);
 	setSSRC(in_ssrc);
 
+	setPacketsLost(fraction, totalPacketsLost);
+	
 	// Middle 32 bits of NTP Timestamp
 	// _lastReport = lastSR_NTP >> 16u;
 	setNTPOfSR(uint64_t(lastSR_NTP));
@@ -194,18 +196,18 @@ void RtcpReportBlock::preparePacket(SSRC in_ssrc, [[maybe_unused]] unsigned int 
 void RtcpReportBlock::setSSRC(SSRC in_ssrc) { _ssrc = htonl(in_ssrc); }
 
 void RtcpReportBlock::setPacketsLost(uint8_t fractionLost,
-                                     unsigned int packetsLostCount) {
+                                     uint32_t packetsLostCount) {
 	_fractionLostAndPacketsLost = htonl((uint32_t(fractionLost) << 24) | (packetsLostCount & 0xFFFFFF));
 }
 
 uint8_t RtcpReportBlock::getFractionLost() const {
 	// Fraction lost is expressed as 8-bit fixed point number
 	// In order to get actual lost percentage divide the result by 256
-	return _fractionLostAndPacketsLost & 0xFF;
+	return (uint8_t) ((ntohl(_fractionLostAndPacketsLost) & 0xFF00000) >> 24);
 }
 
-unsigned int RtcpReportBlock::getPacketsLostCount() const {
-	return ntohl(_fractionLostAndPacketsLost & 0xFFFFFF00);
+uint32_t RtcpReportBlock::getPacketsLostCount() const {
+	return ntohl(_fractionLostAndPacketsLost) & 0x00FFFFFF;
 }
 
 uint16_t RtcpReportBlock::seqNoCycles() const { return ntohs(_seqNoCycles); }
@@ -238,9 +240,8 @@ void RtcpReportBlock::log() const {
 	PLOG_VERBOSE << "RTCP report block: "
 	             << "ssrc="
 	             << ntohl(_ssrc)
-	             // TODO: Implement these reports
-	             //	<< ", fractionLost=" << fractionLost
-	             //	<< ", packetsLost=" << packetsLost
+	             	<< ", fractionLost=" << (uint32_t)getFractionLost()
+	             	<< ", packetsLost=" << getPacketsLostCount()
 	             << ", highestSeqNo=" << highestSeqNo() << ", seqNoCycles=" << seqNoCycles()
 	             << ", jitter=" << jitter() << ", lastSR=" << getNTPOfSR()
 	             << ", lastSRDelay=" << delaySinceSR();

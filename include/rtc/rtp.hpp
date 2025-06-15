@@ -102,7 +102,7 @@ struct RTC_CPP_EXPORT RtcpReportBlock {
 	[[nodiscard]] uint8_t getFractionLost() const;
 	[[nodiscard]] unsigned int getPacketsLostCount() const;
 
-	void preparePacket(SSRC in_ssrc, unsigned int packetsLost, unsigned int totalPackets,
+	void preparePacket(SSRC in_ssrc, uint8_t fraction, unsigned int totalPacketsLost,
 	                   uint16_t highestSeqNo, uint16_t seqNoCycles, uint32_t jitter,
 	                   uint64_t lastSR_NTP, uint64_t lastSR_DELAY);
 	void setSSRC(SSRC in_ssrc);
