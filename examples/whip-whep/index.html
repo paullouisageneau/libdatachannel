@@ -28,7 +28,17 @@
     }
 
     window.doWHEP = () => {
-        peerConnection.addTransceiver('video', { direction: 'recvonly' })
+        const transceiver = peerConnection.addTransceiver('video', { direction: 'recvonly' });
+
+        const codecs = RTCRtpSender.getCapabilities('video').codecs;
+        const vp8Codec = codecs.find(c => c.mimeType === 'video/VP8');
+
+        if (!vp8Codec) {
+            throw Error("vp8 is not a supported codec");
+        }
+
+        // force vp8
+        transceiver.setCodecPreferences([vp8Codec]);
 
         peerConnection.ontrack = function (event) {
             document.getElementById('videoPlayer').srcObject = event.streams[0]
@@ -68,6 +78,7 @@
                     throw Error("vp8 is not a supported codec");
                 }
 
+                // force vp8
                 transceiver.setCodecPreferences([vp8Codec]);
 
                 peerConnection.createOffer().then(offer => {
