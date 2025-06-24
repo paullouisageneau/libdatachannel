@@ -843,8 +843,9 @@ void PeerConnection::iterateRemoteTracks(std::function<void(shared_ptr<Track> tr
 		std::shared_lock lock(mTracksMutex); // read-only
 		locked.reserve(remote->mediaCount());
 		for(int i = 0; i < remote->mediaCount(); ++i) {
-			if (std::holds_alternative<Description::Media *>(remote->media(i))) {
-				auto remoteMedia = std::get<Description::Media *>(remote->media(i));
+			auto media = remote->media(i);
+			if (std::holds_alternative<Description::Media *>(media)) {
+				auto remoteMedia = std::get<Description::Media *>(media);
 				if (!remoteMedia->isRemoved())
 					if (auto it = mTracks.find(remoteMedia->mid()); it != mTracks.end())
 						if (auto track = it->second.lock())
@@ -1082,8 +1083,9 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 void PeerConnection::processRemoteDescription(Description description) {
 	// Create tracks from remote description
 	for (int i = 0; i < description.mediaCount(); ++i) {
-		if (std::holds_alternative<Description::Media *>(description.media(i))) {
-			auto remoteMedia = std::get<Description::Media *>(description.media(i));
+		auto media = description.media(i);
+		if (std::holds_alternative<Description::Media *>(media)) {
+			auto remoteMedia = std::get<Description::Media *>(media);
 			std::unique_lock lock(mTracksMutex); // we may emplace a track
 			if (auto it = mTracks.find(remoteMedia->mid()); it != mTracks.end())
 				continue;
