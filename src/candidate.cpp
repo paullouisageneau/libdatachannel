@@ -145,7 +145,7 @@ void Candidate::changeAddress(string addr, string service) {
 	mPort = 0;
 
 	if (!resolve(ResolveMode::Simple))
-		throw std::invalid_argument("Invalid candidate address \"" + addr + ":" + service + "\"");
+		throw std::invalid_argument("Invalid candidate address \"" + mNode + ":" + mService + "\"");
 }
 
 bool Candidate::resolve(ResolveMode mode) {
