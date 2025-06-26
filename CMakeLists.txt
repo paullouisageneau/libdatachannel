@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.13)
 project(libdatachannel
 	VERSION 0.23.0
 	LANGUAGES CXX)
@@ -26,6 +26,12 @@ option(WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
 option(SCTP_DEBUG "Enable SCTP debugging output to verbose log" OFF)
 option(RTC_UPDATE_VERSION_HEADER "Enable updating the version header" OFF)
+
+if(NOT NO_MEDIA AND NOT PREFER_SYSTEM_LIB)
+	if(CMAKE_VERSION VERSION_LESS 3.21)
+		message(FATAL_ERROR "CMake >= v3.21 is required to build libdatachannel with media support (with submodules).")
+	endif()
+endif()
 
 if (USE_GNUTLS AND USE_MBEDTLS)
 	message(FATAL_ERROR "Both USE_MBEDTLS and USE_GNUTLS cannot be enabled at the same time")
