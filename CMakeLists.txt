@@ -28,6 +28,7 @@ option(SCTP_DEBUG "Enable SCTP debugging output to verbose log" OFF)
 option(RTC_UPDATE_VERSION_HEADER "Enable updating the version header" OFF)
 
 if(NOT NO_MEDIA AND NOT PREFER_SYSTEM_LIB)
+	# libsrtp2 v2.7.0 requires cmake >= v3.21.0
 	if(CMAKE_VERSION VERSION_LESS 3.21)
 		message(FATAL_ERROR "CMake >= v3.21 is required to build libdatachannel with media support (with submodules).")
 	endif()
