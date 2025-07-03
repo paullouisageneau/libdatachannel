@@ -45,7 +45,7 @@ public:
 	bool isClosed() const override;
 	size_t maxMessageSize() const override;
 
-	void open(const string &url);
+	void open(const string &url, const std::map<string, string> &headers = {});
 	void close() override;
 	void forceClose();
 	bool send(const message_variant data) override;
@@ -53,6 +53,7 @@ public:
 
 	optional<string> remoteAddress() const;
 	optional<string> path() const;
+	std::multimap<string, string> requestHeaders() const;
 
 private:
 	using CheshireCat<impl::WebSocket>::impl;

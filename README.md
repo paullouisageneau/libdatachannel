@@ -130,6 +130,44 @@ ws.onMessage([](std::variant<rtc::binary, rtc::string> message) {
 ws.open("wss://my.websocket/service");
 ```
 
+### WebSocket with Custom Headers
+
+```cpp
+rtc::WebSocket ws;
+
+// Send custom headers during handshake
+std::map<std::string, std::string> headers = {
+    {"Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"},
+    {"X-API-Key", "my-secret-api-key"},
+    {"User-Agent", "MyApp/1.0"}
+};
+
+ws.open("wss://my.websocket/service", headers);
+```
+
+### WebSocket Server with Header Access
+
+```cpp
+rtc::WebSocketServer server(config);
+
+server.onClient([](std::shared_ptr<rtc::WebSocket> client) {
+    // Access request headers sent by the client
+    auto requestHeaders = client->requestHeaders();
+
+    for (const auto& [name, value] : requestHeaders) {
+        std::cout << name << ": " << value << std::endl;
+    }
+
+    // Check for specific headers
+    auto authIt = std::find_if(requestHeaders.begin(), requestHeaders.end(),
+        [](const auto& header) { return header.first == "authorization"; });
+
+    if (authIt != requestHeaders.end()) {
+        std::cout << "Client authenticated with: " << authIt->second << std::endl;
+    }
+});
+```
+
 ## Compatibility
 
 The library implements the following communication protocols:

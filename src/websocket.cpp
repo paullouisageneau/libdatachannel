@@ -43,7 +43,9 @@ bool WebSocket::isClosed() const { return impl()->state.load() == State::Closed;
 
 size_t WebSocket::maxMessageSize() const { return impl()->maxMessageSize(); }
 
-void WebSocket::open(const string &url) { impl()->open(url); }
+void WebSocket::open(const string &url, const std::map<string, string> &headers) {
+	impl()->open(url, headers);
+}
 
 void WebSocket::close() { impl()->close(); }
 
@@ -66,6 +68,12 @@ optional<string> WebSocket::path() const {
 	auto state = impl()->state.load();
 	auto handshake = impl()->getWsHandshake();
 	return state != State::Connecting && handshake ? make_optional(handshake->path()) : nullopt;
+}
+
+std::multimap<string, string> WebSocket::requestHeaders() const {
+	auto state = impl()->state.load();
+	auto handshake = impl()->getWsHandshake();
+	return state != State::Connecting && handshake ? handshake->requestHeaders() : std::multimap<string, string>{};
 }
 
 std::ostream &operator<<(std::ostream &out, WebSocket::State state) {

@@ -35,7 +35,7 @@ struct WebSocket final : public Channel, public std::enable_shared_from_this<Web
 	WebSocket(optional<Configuration> optConfig = nullopt, certificate_ptr certificate = nullptr);
 	~WebSocket();
 
-	void open(const string &url);
+	void open(const string &url, const std::map<string, string> &headers = {});
 	void close();
 	void remoteClose();
 	bool outgoing(message_ptr message);
