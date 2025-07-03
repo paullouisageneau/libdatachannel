@@ -1089,7 +1089,7 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 		case RTC_CODEC_OPUS:
 		case RTC_CODEC_PCMU:
 		case RTC_CODEC_PCMA:
-		case RTC_CODEC_AAC: 
+		case RTC_CODEC_AAC:
 		case RTC_CODEC_G722: {
 			auto audio = std::make_unique<Description::Audio>(mid, direction);
 			switch (init->codec) {

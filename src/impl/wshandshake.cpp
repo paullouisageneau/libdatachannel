@@ -30,8 +30,8 @@ using std::chrono::system_clock;
 
 WsHandshake::WsHandshake() {}
 
-WsHandshake::WsHandshake(string host, string path, std::vector<string> protocols)
-    : mHost(std::move(host)), mPath(std::move(path)), mProtocols(std::move(protocols)) {
+WsHandshake::WsHandshake(string host, string path, std::vector<string> protocols, std::map<string, string> headers)
+    : mHost(std::move(host)), mPath(std::move(path)), mProtocols(std::move(protocols)), mCustomHeaders(std::move(headers)) {
 
 	if (mHost.empty())
 		throw std::invalid_argument("WebSocket HTTP host cannot be empty");
@@ -55,6 +55,11 @@ std::vector<string> WsHandshake::protocols() const {
 	return mProtocols;
 }
 
+std::multimap<string, string> WsHandshake::requestHeaders() const {
+	std::unique_lock lock(mMutex);
+	return mRequestHeaders;
+}
+
 string WsHandshake::generateHttpRequest() {
 	std::unique_lock lock(mMutex);
 	mKey = generateKey();
@@ -72,6 +77,11 @@ string WsHandshake::generateHttpRequest() {
 
 	if (!mProtocols.empty())
 		out += "Sec-WebSocket-Protocol: " + utils::implode(mProtocols, ',') + "\r\n";
+
+	// Add custom headers
+	for (const auto& [headerName, headerValue] : mCustomHeaders) {
+		out += headerName + ": " + headerValue + "\r\n";
+	}
 
 	out += "\r\n";
 
@@ -160,6 +170,9 @@ size_t WsHandshake::parseHttpRequest(const byte *buffer, size_t size) {
 	mPath = std::move(path);
 
 	auto headers = parseHttpHeaders(lines);
+
+	// Store all request headers for later access
+	mRequestHeaders = headers;
 
 	auto h = headers.find("host");
 	if (h == headers.end())
