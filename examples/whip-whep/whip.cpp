@@ -34,8 +34,15 @@ int main(int argc, char *argv[]) {
 	pc->onStateChange(
 	    [](rtc::PeerConnection::State state) { std::cout << "State: " << state << std::endl; });
 
-	pc->onGatheringStateChange([](rtc::PeerConnection::GatheringState state) {
+	std::promise<void> gatheringDonePromise;
+	std::future<void> gatheringDoneFuture = gatheringDonePromise.get_future();
+
+	pc->onGatheringStateChange([&gatheringDonePromise](rtc::PeerConnection::GatheringState state) {
 		std::cout << "Gathering State: " << state << std::endl;
+
+		if (rtc::PeerConnection::GatheringState::Complete == state) {
+			gatheringDonePromise.set_value();
+		}
 	});
 	// Set up onLocalDescription
 	pc->onLocalDescription([](rtc::Description description) {});
@@ -69,9 +76,13 @@ int main(int argc, char *argv[]) {
 				// forward rtp data
 				track->onMessage(
 				    [&sock, &addr](rtc::binary message) {
+					    if (message.size() == 0) {
+						    return;
+					    }
+
 					    rtc::RtpHeader *rtp = reinterpret_cast<rtc::RtpHeader *>(message.data());
 
-					    rtp->setPayloadType(96); // match paylod type in ffmpeg sdp
+					    rtp->setPayloadType(96); // match paylod type in gstreamer
 					    ssize_t sent =
 					        sendto(sock, reinterpret_cast<const char *>(message.data()),
 					               int(message.size()), 0,
@@ -90,17 +101,20 @@ int main(int argc, char *argv[]) {
 		res.status = 204; // No Content
 	});
 
-	svr.Post("/whip", [&pc](const httplib::Request &req, httplib::Response &res) {
-		res.set_header("Access-Control-Allow-Origin", "*");
+	svr.Post("/whip",
+	         [&pc, &gatheringDoneFuture](const httplib::Request &req, httplib::Response &res) {
+		         res.set_header("Access-Control-Allow-Origin", "*");
 
-		rtc::Description remoteOffer(req.body, "offer");
+		         rtc::Description remoteOffer(req.body, "offer");
 
-		pc->setRemoteDescription(remoteOffer);
+		         pc->setRemoteDescription(remoteOffer);
 
-		std::optional<rtc::Description> description = pc->localDescription();
+		         // wait for gathering to finish
+		         gatheringDoneFuture.get();
 
-		res.set_content(std::string(description.value()), "application/sdp");
-	});
+		         std::optional<rtc::Description> description = pc->localDescription();
+		         res.set_content(std::string(description.value()), "application/sdp");
+	         });
 
 	std::cout << "Server listening on http://localhost:8080\n";
 	svr.listen("0.0.0.0", 8080);

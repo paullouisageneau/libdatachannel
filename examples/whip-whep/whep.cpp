@@ -34,8 +34,15 @@ int main(int argc, char *argv[]) {
 	pc->onStateChange(
 	    [](rtc::PeerConnection::State state) { std::cout << "State: " << state << std::endl; });
 
-	pc->onGatheringStateChange([](rtc::PeerConnection::GatheringState state) {
+	std::promise<void> gatheringDonePromise;
+	std::future<void> gatheringDoneFuture = gatheringDonePromise.get_future();
+
+	pc->onGatheringStateChange([&gatheringDonePromise](rtc::PeerConnection::GatheringState state) {
 		std::cout << "Gathering State: " << state << std::endl;
+
+		if (rtc::PeerConnection::GatheringState::Complete == state) {
+			gatheringDonePromise.set_value();
+		}
 	});
 	// Set up onLocalDescription
 	pc->onLocalDescription([](rtc::Description description) {});
@@ -101,15 +108,19 @@ int main(int argc, char *argv[]) {
 		res.status = 204; // No Content
 	});
 
-	svr.Post("/whep", [&pc](const httplib::Request &req, httplib::Response &res) {
-		res.set_header("Access-Control-Allow-Origin", "*");
+	svr.Post("/whep",
+	         [&pc, &gatheringDoneFuture](const httplib::Request &req, httplib::Response &res) {
+		         res.set_header("Access-Control-Allow-Origin", "*");
 
-		rtc::Description remoteOffer(req.body, "offer");
-		pc->setRemoteDescription(remoteOffer);
+		         rtc::Description remoteOffer(req.body, "offer");
+		         pc->setRemoteDescription(remoteOffer);
 
-		std::optional<rtc::Description> description = pc->localDescription();
-		res.set_content(std::string(description.value()), "application/sdp");
-	});
+		         // wait for gathering to finish
+		         gatheringDoneFuture.get();
+
+		         std::optional<rtc::Description> description = pc->localDescription();
+		         res.set_content(std::string(description.value()), "application/sdp");
+	         });
 
 	std::cout << "Server listening on http://localhost:8080\n";
 	svr.listen("0.0.0.0", 8080);
