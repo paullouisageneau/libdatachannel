@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 				// forward rtp data
 				track->onMessage(
 				    [&sock, &addr](rtc::binary message) {
-					    if (message.size() == 0) {
+					    if (message.size() < sizeof(rtc::RtpHeader)) {
 						    return;
 					    }
 
