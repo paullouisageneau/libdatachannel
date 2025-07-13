@@ -7,6 +7,7 @@
  */
 
 #include "rtc/rtc.hpp"
+#include "rtc/rtp.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -71,7 +72,8 @@ void test_track() {
 
 	shared_ptr<Track> t2;
 	string newTrackMid;
-	pc2.onTrack([&t2, &newTrackMid](shared_ptr<Track> t) {
+	rtc::binary receivedRtpRaw;
+	pc2.onTrack([&t2, &newTrackMid, &receivedRtpRaw](shared_ptr<Track> t) {
 		string mid = t->mid();
 		cout << "Track 2: Received track with mid \"" << mid << "\"" << endl;
 		if (mid != newTrackMid) {
@@ -83,6 +85,13 @@ void test_track() {
 
 		t->onClosed(
 		    [mid]() { cout << "Track 2: Track with mid \"" << mid << "\" is closed" << endl; });
+
+		t->onMessage(
+		    [&receivedRtpRaw](rtc::binary message) {
+			    // This is an RTP packet
+			    receivedRtpRaw = message;
+		    },
+		    nullptr);
 
 		std::atomic_store(&t2, t);
 	});
@@ -140,7 +149,37 @@ void test_track() {
 	if (!at2 || !at2->isOpen() || !t1->isOpen())
 		throw runtime_error("Renegotiated track is not open");
 
-	// TODO: Test sending RTP packets in track
+	RtpHeader rtp;
+	rtp._first = 0;
+	rtp.preparePacket();
+	rtp.setPayloadType(96);
+	rtp.setSeqNumber(1);
+	rtp.setTimestamp(3000);
+	rtp.setSsrc(2468);
+
+	if (!t1->send(reinterpret_cast<const std::byte *>(&rtp), sizeof(rtp))) {
+		throw runtime_error("Couldn't send RTP packet");
+	}
+
+	// wait for an RTP packet to be received
+	int count = 0;
+	while (count != 4 && receivedRtpRaw.empty() && attempts--)
+		this_thread::sleep_for(1s);
+
+	if (receivedRtpRaw.empty()) {
+		throw runtime_error("Didn't receive RTP packet on pc2");
+	}
+
+	RtpHeader *receivedRtp = reinterpret_cast<RtpHeader *>(receivedRtpRaw.data());
+
+	if (receivedRtp->version() != rtp.version() || receivedRtp->padding() != rtp.padding() ||
+	    receivedRtp->extension() != rtp.extension() ||
+	    receivedRtp->csrcCount() != rtp.csrcCount() || receivedRtp->marker() != rtp.marker() ||
+	    receivedRtp->payloadType() != rtp.payloadType() ||
+	    receivedRtp->seqNumber() != rtp.seqNumber() ||
+	    receivedRtp->timestamp() != rtp.timestamp() || receivedRtp->ssrc() != rtp.ssrc()) {
+		throw runtime_error("Received RTP packet is different than the packet that was sent");
+	}
 
 	// Delay close of peer 2 to check closing works properly
 	pc1.close();
