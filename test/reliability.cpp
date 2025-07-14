@@ -7,6 +7,7 @@
  */
 
 #include "rtc/rtc.hpp"
+#include "test.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -17,7 +18,7 @@
 using namespace rtc;
 using namespace std;
 
-void test_reliability() {
+TestResult *test_reliability() {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
@@ -114,15 +115,15 @@ void test_reliability() {
 
 	if (pc1.state() != PeerConnection::State::Connected ||
 	    pc2.state() != PeerConnection::State::Connected)
-		throw runtime_error("PeerConnection is not connected");
+		return new TestResult(false, "PeerConnection is not connected");
 
 	if (failed)
-		throw runtime_error("Incorrect reliability settings");
+		return new TestResult(false, "Incorrect reliability settings");
 
 	if (count != 4)
-		throw runtime_error("Some DataChannels are not open");
+		return new TestResult(false, "Some DataChannels are not open");
 
 	pc1.close();
 
-	cout << "Success" << endl;
+	return new TestResult(true);
 }
