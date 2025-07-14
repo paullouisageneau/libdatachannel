@@ -6,6 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#include "test.hpp"
 #include <rtc/rtc.h>
 
 #include <cstdio>
@@ -238,7 +239,8 @@ error:
 
 #include <stdexcept>
 
-void test_capi_track() {
+TestResult *test_capi_track() {
 	if (test_capi_track_main())
-		throw std::runtime_error("Connection failed");
+		return new TestResult(false, "Connection failed");
+	return new TestResult(true);
 }

@@ -6,6 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#include "test.hpp"
 #include <rtc/rtc.h>
 
 #if RTC_ENABLE_WEBSOCKET
@@ -164,9 +165,10 @@ error:
 
 #include <stdexcept>
 
-void test_capi_websocketserver() {
+TestResult *test_capi_websocketserver() {
 	if (test_capi_websocketserver_main())
-		throw std::runtime_error("WebSocketServer test failed");
+		return new TestResult(false, "WebSocketServer test failed");
+	return new TestResult(true);
 }
 
 #endif

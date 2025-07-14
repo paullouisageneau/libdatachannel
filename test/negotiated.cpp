@@ -7,6 +7,7 @@
  */
 
 #include "rtc/rtc.hpp"
+#include "test.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -17,7 +18,7 @@
 using namespace rtc;
 using namespace std;
 
-void test_negotiated() {
+TestResult *test_negotiated() {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
@@ -66,10 +67,10 @@ void test_negotiated() {
 
 	if (pc1.state() != PeerConnection::State::Connected ||
 	    pc2.state() != PeerConnection::State::Connected)
-		throw runtime_error("PeerConnection is not connected");
+		return new TestResult(false, "PeerConnection is not connected");
 
 	if (!negotiated1->isOpen() || !negotiated2->isOpen())
-		throw runtime_error("Negotiated DataChannel is not open");
+		return new TestResult(false, "Negotiated DataChannel is not open");
 
 	std::atomic<bool> received = false;
 	negotiated2->onMessage([&received](const variant<binary, string> &message) {
@@ -87,7 +88,7 @@ void test_negotiated() {
 		this_thread::sleep_for(1s);
 
 	if (!received)
-		throw runtime_error("Negotiated DataChannel failed");
+		return new TestResult(false, "Negotiated DataChannel failed");
 
 	// Delay close of peer 2 to check closing works properly
 	pc1.close();
@@ -95,5 +96,5 @@ void test_negotiated() {
 	pc2.close();
 	this_thread::sleep_for(1s);
 
-	cout << "Success" << endl;
+	return new TestResult(true);
 }
