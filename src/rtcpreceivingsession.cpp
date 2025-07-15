@@ -15,6 +15,7 @@
 #include "impl/logcounter.hpp"
 
 #include <cmath>
+#include <mutex>
 #include <utility>
 
 #ifdef _WIN32
@@ -31,6 +32,11 @@ static impl::LogCounter COUNTER_BAD_NOTIF_LEN(plog::warning,
                                               "Number of Bad-Lengthed notifications");
 static impl::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning,
                                                 "Number of unknown SCTP_STATUS errors");
+
+RtcpReceivingSession::SyncPTS RtcpReceivingSession::getSyncPTS(){
+	std::lock_guard lock(mSyncMutex);
+	return mSyncPTS;
+}
 
 void RtcpReceivingSession::incoming(message_vector &messages, const message_callback &send) {
 	message_vector result;
@@ -74,8 +80,11 @@ void RtcpReceivingSession::incoming(message_vector &messages, const message_call
 			} else if (rr->header.payloadType() == 200) { // SR
 				mSsrc = rr->senderSSRC();
 				auto sr = reinterpret_cast<const RtcpSr *>(message->data());
-				mSyncRTPTS = sr->rtpTimestamp();
-				mSyncNTPTS = sr->ntpTimestamp();
+				{
+					std::lock_guard lock(mSyncMutex);
+					mSyncPTS.RTPTS = sr->rtpTimestamp();
+					mSyncPTS.NTPTS = sr->ntpTimestamp();
+				}
 				sr->log();
 
 				// TODO For the time being, we will send RR's/REMB's when we get an SR
@@ -136,8 +145,8 @@ void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int las
 	else { 
 		fraction = (lost_interval << 8) / expected_interval;
 	}
-
-	rr->getReportBlock(0)->preparePacket(mSsrc, fraction, lost, uint16_t(mGreatestSeqNo), mMaxSeq, 0, mSyncNTPTS,
+	auto pts = getSyncPTS();
+	rr->getReportBlock(0)->preparePacket(mSsrc, fraction, lost, uint16_t(mGreatestSeqNo), mMaxSeq, 0, pts.NTPTS,
 	                                     lastSrDelay);
 	rr->log();
 	send(message);
