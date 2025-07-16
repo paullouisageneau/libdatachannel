@@ -7,15 +7,19 @@
  */
 
 #include "rtc/rtc.hpp"
+#include "rtc/rtp.hpp"
 
 #include <atomic>
-#include <chrono>
+#include <cstring>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <thread>
 
 using namespace rtc;
 using namespace std;
+
+static const auto RtpHeaderSize = 12;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
@@ -71,7 +75,9 @@ void test_track() {
 
 	shared_ptr<Track> t2;
 	string newTrackMid;
-	pc2.onTrack([&t2, &newTrackMid](shared_ptr<Track> t) {
+	rtc::binary receivedRtpRaw;
+	std::mutex receivedRtpRawMtx;
+	pc2.onTrack([&t2, &newTrackMid, &receivedRtpRaw, &receivedRtpRawMtx](shared_ptr<Track> t) {
 		string mid = t->mid();
 		cout << "Track 2: Received track with mid \"" << mid << "\"" << endl;
 		if (mid != newTrackMid) {
@@ -83,6 +89,14 @@ void test_track() {
 
 		t->onClosed(
 		    [mid]() { cout << "Track 2: Track with mid \"" << mid << "\" is closed" << endl; });
+
+		t->onMessage(
+		    [&receivedRtpRaw, &receivedRtpRawMtx](rtc::binary message) {
+			    // This is an RTP packet
+			    std::lock_guard<std::mutex> lock(receivedRtpRawMtx);
+			    receivedRtpRaw = message;
+		    },
+		    nullptr);
 
 		std::atomic_store(&t2, t);
 	});
@@ -140,7 +154,37 @@ void test_track() {
 	if (!at2 || !at2->isOpen() || !t1->isOpen())
 		throw runtime_error("Renegotiated track is not open");
 
-	// TODO: Test sending RTP packets in track
+	std::vector<std::byte> payload = {std::byte{0}, std::byte{1}, std::byte{2}, std::byte{3}};
+	std::vector<std::byte> rtpRaw(RtpHeaderSize + payload.size());
+	auto *rtp = (RtpHeader *)rtpRaw.data();
+	rtp->setPayloadType(96);
+	rtp->setSeqNumber(1);
+	rtp->setTimestamp(3000);
+	rtp->setSsrc(2468);
+	rtp->preparePacket();
+	std::memcpy(rtpRaw.data() + RtpHeaderSize, payload.data(), payload.size());
+
+	if (!t1->send(rtpRaw.data(), rtpRaw.size())) {
+		throw runtime_error("Couldn't send RTP packet");
+	}
+
+	// wait for an RTP packet to be received
+	int count = 0;
+	while (count != 4 && receivedRtpRaw.empty() && attempts--)
+		this_thread::sleep_for(1s);
+
+	// make sure RTP packet was copied into receivedRtpRaw
+	std::lock_guard<std::mutex> lock(receivedRtpRawMtx);
+
+	if (receivedRtpRaw.empty()) {
+		throw runtime_error("Didn't receive RTP packet on pc2");
+	}
+
+	if (receivedRtpRaw.size() != rtpRaw.size() ||
+	    memcmp(receivedRtpRaw.data(), rtpRaw.data(), rtpRaw.size()) != 0) {
+		throw runtime_error(
+		    "Received RTP packet is different than the packet that was sent memcmp");
+	}
 
 	// Delay close of peer 2 to check closing works properly
 	pc1.close();
