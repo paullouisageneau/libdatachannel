@@ -74,6 +74,8 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	if (rtpExtHeaderSize != 0)
 		rtpExtHeaderSize += 4;
 
+	// Align the size to the multiple of 4 bytes
+	// according to RFC 3550, sec. 5.3.1.
 	rtpExtHeaderSize = (rtpExtHeaderSize + 3) & ~3;
 
 	auto message = make_message(RtpHeaderSize + rtpExtHeaderSize + payload.size());
