@@ -20,7 +20,7 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-TestResult *test_track() {
+TestResult test_track() {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
@@ -100,7 +100,7 @@ TestResult *test_track() {
 	const auto mediaSdp2 = string(Description::Media(mediaSdp1));
 	if (mediaSdp2 != mediaSdp1) {
 		cout << mediaSdp2 << endl;
-		return new TestResult(false, "Media description parsing test failed");
+		return TestResult(false, "Media description parsing test failed");
 	}
 
 	auto t1 = pc1.addTrack(media);
@@ -114,10 +114,10 @@ TestResult *test_track() {
 
 	if (pc1.state() != PeerConnection::State::Connected ||
 	    pc2.state() != PeerConnection::State::Connected)
-		return new TestResult(false, "PeerConnection is not connected");
+		return TestResult(false, "PeerConnection is not connected");
 
 	if (!at2 || !at2->isOpen() || !t1->isOpen())
-		return new TestResult(false, "Track is not open");
+		return TestResult(false, "Track is not open");
 
 	// Test renegotiation
 	newTrackMid = "added";
@@ -139,7 +139,7 @@ TestResult *test_track() {
 		this_thread::sleep_for(1s);
 
 	if (!at2 || !at2->isOpen() || !t1->isOpen())
-		return new TestResult(false, "Renegotiated track is not open");
+		return TestResult(false, "Renegotiated track is not open");
 
 	// TODO: Test sending RTP packets in track
 
@@ -150,7 +150,7 @@ TestResult *test_track() {
 	this_thread::sleep_for(1s);
 
 	if (!t1->isClosed() || !t2->isClosed())
-		return new TestResult(false, "Track is not closed");
+		return TestResult(false, "Track is not closed");
 
-	return new TestResult(true);
+	return TestResult(true);
 }

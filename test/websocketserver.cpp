@@ -22,7 +22,7 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-TestResult *test_websocketserver() {
+TestResult test_websocketserver() {
 	InitLogger(LogLevel::Debug);
 
 	WebSocketServer::Configuration serverConfig;
@@ -96,10 +96,10 @@ TestResult *test_websocketserver() {
 		this_thread::sleep_for(1s);
 
 	if (!ws.isOpen())
-		return new TestResult(false, "WebSocket is not open");
+		return TestResult(false, "WebSocket is not open");
 
 	if (!received || !maxSizeReceived)
-		return new TestResult(false, "Expected messages not received");
+		return TestResult(false, "Expected messages not received");
 
 	ws.close();
 	this_thread::sleep_for(1s);
@@ -107,7 +107,7 @@ TestResult *test_websocketserver() {
 	server.stop();
 	this_thread::sleep_for(1s);
 
-	return new TestResult(true);
+	return TestResult(true);
 }
 
 #endif

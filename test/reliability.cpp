@@ -18,7 +18,7 @@
 using namespace rtc;
 using namespace std;
 
-TestResult *test_reliability() {
+TestResult test_reliability() {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
@@ -115,15 +115,15 @@ TestResult *test_reliability() {
 
 	if (pc1.state() != PeerConnection::State::Connected ||
 	    pc2.state() != PeerConnection::State::Connected)
-		return new TestResult(false, "PeerConnection is not connected");
+		return TestResult(false, "PeerConnection is not connected");
 
 	if (failed)
-		return new TestResult(false, "Incorrect reliability settings");
+		return TestResult(false, "Incorrect reliability settings");
 
 	if (count != 4)
-		return new TestResult(false, "Some DataChannels are not open");
+		return TestResult(false, "Some DataChannels are not open");
 
 	pc1.close();
 
-	return new TestResult(true);
+	return TestResult(true);
 }

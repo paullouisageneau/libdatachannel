@@ -22,17 +22,17 @@ public:
 class Test {
 public:
 	string name;
-	function<TestResult *(void)> f;
+	function<TestResult(void)> f;
 
-	Test(string name, std::function<TestResult *(void)> testFunc) : name(name), f(testFunc) {}
+	Test(string name, std::function<TestResult(void)> testFunc) : name(name), f(testFunc) {}
 
-	TestResult *run() {
+	TestResult run() {
 		cout << endl << "*** Running " << name << " test" << endl;
-		TestResult *res = this->f();
-		if (res->success) {
+		TestResult res = this->f();
+		if (res.success) {
 			cout << "*** Finished " << name << " test" << endl;
 		} else {
-			cerr << name << " test failed. Reason: " << res->err_reason << endl;
+			cerr << name << " test failed. Reason: " << res.err_reason << endl;
 		}
 
 		return res;

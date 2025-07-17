@@ -239,8 +239,8 @@ error:
 
 #include <stdexcept>
 
-TestResult *test_capi_track() {
+TestResult test_capi_track() {
 	if (test_capi_track_main())
-		return new TestResult(false, "Connection failed");
-	return new TestResult(true);
+		return TestResult(false, "Connection failed");
+	return TestResult(true);
 }
