@@ -393,8 +393,8 @@ error:
 
 #include <stdexcept>
 
-TestResult *test_capi_connectivity() {
+TestResult test_capi_connectivity() {
 	if (test_capi_connectivity_main())
-		return new TestResult(false, "Connection failed");
-	return new TestResult(true);
+		return TestResult(false, "Connection failed");
+	return TestResult(true);
 }

@@ -18,7 +18,7 @@
 using namespace rtc;
 using namespace std;
 
-TestResult *test_negotiated() {
+TestResult test_negotiated() {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
@@ -67,10 +67,10 @@ TestResult *test_negotiated() {
 
 	if (pc1.state() != PeerConnection::State::Connected ||
 	    pc2.state() != PeerConnection::State::Connected)
-		return new TestResult(false, "PeerConnection is not connected");
+		return TestResult(false, "PeerConnection is not connected");
 
 	if (!negotiated1->isOpen() || !negotiated2->isOpen())
-		return new TestResult(false, "Negotiated DataChannel is not open");
+		return TestResult(false, "Negotiated DataChannel is not open");
 
 	std::atomic<bool> received = false;
 	negotiated2->onMessage([&received](const variant<binary, string> &message) {
@@ -88,7 +88,7 @@ TestResult *test_negotiated() {
 		this_thread::sleep_for(1s);
 
 	if (!received)
-		return new TestResult(false, "Negotiated DataChannel failed");
+		return TestResult(false, "Negotiated DataChannel failed");
 
 	// Delay close of peer 2 to check closing works properly
 	pc1.close();
@@ -96,5 +96,5 @@ TestResult *test_negotiated() {
 	pc2.close();
 	this_thread::sleep_for(1s);
 
-	return new TestResult(true);
+	return TestResult(true);
 }

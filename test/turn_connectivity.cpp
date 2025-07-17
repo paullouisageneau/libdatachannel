@@ -20,7 +20,7 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-TestResult *test_turn_connectivity() {
+TestResult test_turn_connectivity() {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
@@ -134,16 +134,16 @@ TestResult *test_turn_connectivity() {
 
 	if (pc1.state() != PeerConnection::State::Connected ||
 	    pc2.state() != PeerConnection::State::Connected)
-		return new TestResult(false, "PeerConnection is not connected");
+		return TestResult(false, "PeerConnection is not connected");
 
 	if ((pc1.iceState() != PeerConnection::IceState::Connected &&
 	     pc1.iceState() != PeerConnection::IceState::Completed) ||
 	    (pc2.iceState() != PeerConnection::IceState::Connected &&
 	     pc2.iceState() != PeerConnection::IceState::Completed))
-		return new TestResult(false, "ICE is not connected");
+		return TestResult(false, "ICE is not connected");
 
 	if (!adc2 || !adc2->isOpen() || !dc1->isOpen())
-		return new TestResult(false, "DataChannel is not open");
+		return TestResult(false, "DataChannel is not open");
 
 	if (auto addr = pc1.localAddress())
 		cout << "Local address 1:  " << *addr << endl;
@@ -156,13 +156,13 @@ TestResult *test_turn_connectivity() {
 
 	Candidate local, remote;
 	if (!pc1.getSelectedCandidatePair(&local, &remote))
-		return new TestResult(false, "getSelectedCandidatePair failed");
+		return TestResult(false, "getSelectedCandidatePair failed");
 
 	cout << "Local candidate 1:  " << local << endl;
 	cout << "Remote candidate 1: " << remote << endl;
 
 	if (local.type() != Candidate::Type::Relayed)
-		return new TestResult(false, "Connection is not relayed as expected");
+		return TestResult(false, "Connection is not relayed as expected");
 
 	// Try to open a second data channel with another label
 	shared_ptr<DataChannel> second2;
@@ -215,7 +215,7 @@ TestResult *test_turn_connectivity() {
 		this_thread::sleep_for(1s);
 
 	if (!asecond2 || !asecond2->isOpen() || !second1->isOpen())
-		return new TestResult(false, "Second DataChannel is not open");
+		return TestResult(false, "Second DataChannel is not open");
 
 	// Try to open a negotiated channel
 	DataChannelInit init;
@@ -225,7 +225,7 @@ TestResult *test_turn_connectivity() {
 	auto negotiated2 = pc2.createDataChannel("negoctated", init);
 
 	if (!negotiated1->isOpen() || !negotiated2->isOpen())
-		return new TestResult(false, "Negotiated DataChannel is not open");
+		return TestResult(false, "Negotiated DataChannel is not open");
 
 	std::atomic<bool> received = false;
 	negotiated2->onMessage([&received](const variant<binary, string> &message) {
@@ -243,7 +243,7 @@ TestResult *test_turn_connectivity() {
 		this_thread::sleep_for(1s);
 
 	if (!received)
-		return new TestResult(false, "Negotiated DataChannel failed");
+		return TestResult(false, "Negotiated DataChannel failed");
 
 	// Delay close of peer 2 to check closing works properly
 	pc1.close();
@@ -251,5 +251,5 @@ TestResult *test_turn_connectivity() {
 	pc2.close();
 	this_thread::sleep_for(1s);
 
-	return new TestResult(true);
+	return TestResult(true);
 }

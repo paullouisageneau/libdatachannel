@@ -22,13 +22,13 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-TestResult *test_connectivity(bool);
+TestResult test_connectivity(bool);
 
-TestResult *test_connectivity() { return test_connectivity(false); }
+TestResult test_connectivity() { return test_connectivity(false); }
 
-TestResult *test_connectivity_fail_on_wrong_fingerprint() { return test_connectivity(true); }
+TestResult test_connectivity_fail_on_wrong_fingerprint() { return test_connectivity(true); }
 
-TestResult *test_connectivity(bool signal_wrong_fingerprint) {
+TestResult test_connectivity(bool signal_wrong_fingerprint) {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
@@ -135,7 +135,7 @@ TestResult *test_connectivity(bool signal_wrong_fingerprint) {
 	auto dc1 = pc1.createDataChannel("test");
 
 	if (dc1->id().has_value())
-		return new TestResult(false, "DataChannel stream id assigned before connection");
+		return TestResult(false, "DataChannel stream id assigned before connection");
 
 	dc1->onOpen([wdc1 = make_weak_ptr(dc1)]() {
 		if (auto dc1 = wdc1.lock()) {
@@ -161,9 +161,9 @@ TestResult *test_connectivity(bool signal_wrong_fingerprint) {
 	if (pc1.state() != PeerConnection::State::Connected ||
 	    pc2.state() != PeerConnection::State::Connected) {
 		if (signal_wrong_fingerprint) {
-			return new TestResult(true);
+			return TestResult(true);
 		} else {
-			return new TestResult(false, "PeerConnection is not connected");
+			return TestResult(false, "PeerConnection is not connected");
 		}
 	}
 
@@ -171,23 +171,23 @@ TestResult *test_connectivity(bool signal_wrong_fingerprint) {
 	     pc1.iceState() != PeerConnection::IceState::Completed) ||
 	    (pc2.iceState() != PeerConnection::IceState::Connected &&
 	     pc2.iceState() != PeerConnection::IceState::Completed))
-		return new TestResult(false, "ICE is not connected");
+		return TestResult(false, "ICE is not connected");
 
 	if (!adc2 || !adc2->isOpen() || !dc1->isOpen())
-		return new TestResult(false, "DataChannel is not open");
+		return TestResult(false, "DataChannel is not open");
 
 	if (adc2->label() != "test")
-		return new TestResult(false, "Wrong DataChannel label");
+		return TestResult(false, "Wrong DataChannel label");
 
 	if (dc1->maxMessageSize() != CUSTOM_MAX_MESSAGE_SIZE ||
 	    dc2->maxMessageSize() != CUSTOM_MAX_MESSAGE_SIZE)
-		return new TestResult(false, "DataChannel max message size is incorrect");
+		return TestResult(false, "DataChannel max message size is incorrect");
 
 	if (!dc1->id().has_value())
-		return new TestResult(false, "DataChannel stream id is not assigned");
+		return TestResult(false, "DataChannel stream id is not assigned");
 
 	if (dc1->id().value() != adc2->id().value())
-		return new TestResult(false, "DataChannel stream ids do not match");
+		return TestResult(false, "DataChannel stream ids do not match");
 
 	if (auto addr = pc1.localAddress())
 		cout << "Local address 1:  " << *addr << endl;
@@ -256,16 +256,16 @@ TestResult *test_connectivity(bool signal_wrong_fingerprint) {
 		this_thread::sleep_for(1s);
 
 	if (!asecond2 || !asecond2->isOpen() || !second1->isOpen())
-		return new TestResult(false, "Second DataChannel is not open");
+		return TestResult(false, "Second DataChannel is not open");
 
 	if (asecond2->label() != "second")
-		return new TestResult(false, "Wrong second DataChannel label");
+		return TestResult(false, "Wrong second DataChannel label");
 
 	if (!second2->id().has_value() || !asecond2->id().has_value())
-		return new TestResult(false, "Second DataChannel stream id is not assigned");
+		return TestResult(false, "Second DataChannel stream id is not assigned");
 
 	if (second2->id().value() != asecond2->id().value())
-		return new TestResult(false, "Second DataChannel stream ids do not match");
+		return TestResult(false, "Second DataChannel stream ids do not match");
 
 	// Delay close of peer 2 to check closing works properly
 	pc1.close();
@@ -273,7 +273,7 @@ TestResult *test_connectivity(bool signal_wrong_fingerprint) {
 	pc2.close();
 	this_thread::sleep_for(1s);
 
-	return new TestResult(true);
+	return TestResult(true);
 }
 
 const char* key_pem =
@@ -296,7 +296,7 @@ const char* cert_pem =
 "Ma9ayzQy\n"
 "-----END CERTIFICATE-----\n";
 
-TestResult *test_pem() {
+TestResult test_pem() {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
@@ -324,7 +324,7 @@ TestResult *test_pem() {
 
 	if (f != "07:E5:6F:2A:1A:0C:2C:32:0E:C1:C3:9C:34:5A:78:4E:A5:8B:32:05:D1:57:D6:F4:E7:02:41:12:"
 	         "E6:01:C6:8F")
-		return new TestResult(false, "The fingerprint of the specified certificate do not match");
+		return TestResult(false, "The fingerprint of the specified certificate do not match");
 
-	return new TestResult(true);
+	return TestResult(true);
 }

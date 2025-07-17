@@ -165,10 +165,10 @@ error:
 
 #include <stdexcept>
 
-TestResult *test_capi_websocketserver() {
+TestResult test_capi_websocketserver() {
 	if (test_capi_websocketserver_main())
-		return new TestResult(false, "WebSocketServer test failed");
-	return new TestResult(true);
+		return TestResult(false, "WebSocketServer test failed");
+	return TestResult(true);
 }
 
 #endif

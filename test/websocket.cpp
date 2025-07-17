@@ -22,7 +22,7 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-TestResult *test_websocket() {
+TestResult test_websocket() {
 	InitLogger(LogLevel::Debug);
 
 	const string myMessage = "Hello world from libdatachannel";
@@ -58,15 +58,15 @@ TestResult *test_websocket() {
 		this_thread::sleep_for(1s);
 
 	if (!ws.isOpen())
-		return new TestResult(false, "WebSocket is not open");
+		return TestResult(false, "WebSocket is not open");
 
 	if (!received)
-		return new TestResult(false, "Expected message not received");
+		return TestResult(false, "Expected message not received");
 
 	ws.close();
 	this_thread::sleep_for(1s);
 
-	return new TestResult(true);
+	return TestResult(true);
 }
 
 #endif
