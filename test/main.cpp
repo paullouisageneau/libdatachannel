@@ -66,7 +66,7 @@ TestResult testCCleanup() {
 	}
 }
 
-static const auto tests = {
+static const vector<Test> tests = {
     // C++ API tests
     Test("WebRTC connectivity", test_connectivity),
     Test("WebRTC broken fingerprint", test_connectivity_fail_on_wrong_fingerprint),
