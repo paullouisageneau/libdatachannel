@@ -7,6 +7,7 @@
  */
 
 #include "rtc/rtc.hpp"
+#include "test.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -21,7 +22,7 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-void test_websocketserver() {
+TestResult test_websocketserver() {
 	InitLogger(LogLevel::Debug);
 
 	WebSocketServer::Configuration serverConfig;
@@ -38,22 +39,20 @@ void test_websocketserver() {
 		cout << "WebSocketServer: Client connection received" << endl;
 		client = incoming;
 
-		if(auto addr = client->remoteAddress())
+		if (auto addr = client->remoteAddress())
 			cout << "WebSocketServer: Client remote address is " << *addr << endl;
 
 		client->onOpen([wclient = make_weak_ptr(client)]() {
 			cout << "WebSocketServer: Client connection open" << endl;
-			if(auto client = wclient.lock())
-				if(auto path = client->path())
+			if (auto client = wclient.lock())
+				if (auto path = client->path())
 					cout << "WebSocketServer: Requested path is " << *path << endl;
 		});
 
-		client->onClosed([]() {
-			cout << "WebSocketServer: Client connection closed" << endl;
-		});
+		client->onClosed([]() { cout << "WebSocketServer: Client connection closed" << endl; });
 
 		client->onMessage([wclient = make_weak_ptr(client)](variant<binary, string> message) {
-			if(auto client = wclient.lock())
+			if (auto client = wclient.lock())
 				client->send(std::move(message));
 		});
 	});
@@ -81,8 +80,7 @@ void test_websocketserver() {
 				cout << "WebSocket: Received expected message" << endl;
 			else
 				cout << "WebSocket: Received UNEXPECTED message" << endl;
-		}
-		else {
+		} else {
 			binary bin = std::move(get<binary>(message));
 			if ((maxSizeReceived = (bin.size() == 1000)))
 				cout << "WebSocket: Received large message truncated at max size" << endl;
@@ -98,10 +96,10 @@ void test_websocketserver() {
 		this_thread::sleep_for(1s);
 
 	if (!ws.isOpen())
-		throw runtime_error("WebSocket is not open");
+		return TestResult(false, "WebSocket is not open");
 
 	if (!received || !maxSizeReceived)
-		throw runtime_error("Expected messages not received");
+		return TestResult(false, "Expected messages not received");
 
 	ws.close();
 	this_thread::sleep_for(1s);
@@ -109,7 +107,7 @@ void test_websocketserver() {
 	server.stop();
 	this_thread::sleep_for(1s);
 
-	cout << "Success" << endl;
+	return TestResult(true);
 }
 
 #endif
