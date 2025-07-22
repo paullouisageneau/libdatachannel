@@ -182,8 +182,7 @@ void test_track() {
 
 	if (receivedRtpRaw.size() != rtpRaw.size() ||
 	    memcmp(receivedRtpRaw.data(), rtpRaw.data(), rtpRaw.size()) != 0) {
-		throw runtime_error(
-		    "Received RTP packet is different than the packet that was sent memcmp");
+		throw runtime_error("Received RTP packet is different than the packet that was sent");
 	}
 
 	// Delay close of peer 2 to check closing works properly
