@@ -11,6 +11,7 @@
 
 #include <atomic>
 #include <cstring>
+#include <future>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -75,9 +76,8 @@ void test_track() {
 
 	shared_ptr<Track> t2;
 	string newTrackMid;
-	rtc::binary receivedRtpRaw;
-	std::mutex receivedRtpRawMtx;
-	pc2.onTrack([&t2, &newTrackMid, &receivedRtpRaw, &receivedRtpRawMtx](shared_ptr<Track> t) {
+	std::promise<rtc::binary> recvRtpPromise;
+	pc2.onTrack([&t2, &newTrackMid, &recvRtpPromise](shared_ptr<Track> t) {
 		string mid = t->mid();
 		cout << "Track 2: Received track with mid \"" << mid << "\"" << endl;
 		if (mid != newTrackMid) {
@@ -91,10 +91,9 @@ void test_track() {
 		    [mid]() { cout << "Track 2: Track with mid \"" << mid << "\" is closed" << endl; });
 
 		t->onMessage(
-		    [&receivedRtpRaw, &receivedRtpRawMtx](rtc::binary message) {
+		    [&recvRtpPromise](rtc::binary message) {
 			    // This is an RTP packet
-			    std::lock_guard<std::mutex> lock(receivedRtpRawMtx);
-			    receivedRtpRaw = message;
+			    recvRtpPromise.set_value(message);
 		    },
 		    nullptr);
 
@@ -169,13 +168,12 @@ void test_track() {
 	}
 
 	// wait for an RTP packet to be received
-	int count = 0;
-	while (count != 4 && receivedRtpRaw.empty() && attempts--)
-		this_thread::sleep_for(1s);
+	auto future = recvRtpPromise.get_future();
+	if (future.wait_for(5s) == std::future_status::timeout) {
+		throw runtime_error("Didn't receive RTP packet on pc2");
+	}
 
-	// make sure RTP packet was copied into receivedRtpRaw
-	std::lock_guard<std::mutex> lock(receivedRtpRawMtx);
-
+	auto receivedRtpRaw = future.get();
 	if (receivedRtpRaw.empty()) {
 		throw runtime_error("Didn't receive RTP packet on pc2");
 	}
