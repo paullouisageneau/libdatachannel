@@ -14,13 +14,10 @@
 #include <future>
 #include <iostream>
 #include <memory>
-#include <mutex>
 #include <thread>
 
 using namespace rtc;
 using namespace std;
-
-static const auto RtpHeaderSize = 12;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
@@ -154,14 +151,14 @@ void test_track() {
 		throw runtime_error("Renegotiated track is not open");
 
 	std::vector<std::byte> payload = {std::byte{0}, std::byte{1}, std::byte{2}, std::byte{3}};
-	std::vector<std::byte> rtpRaw(RtpHeaderSize + payload.size());
-	auto *rtp = (RtpHeader *)rtpRaw.data();
+	std::vector<std::byte> rtpRaw(sizeof(RtpHeader) + payload.size());
+	auto *rtp = reinterpret_cast<RtpHeader *>(rtpRaw.data());
 	rtp->setPayloadType(96);
 	rtp->setSeqNumber(1);
 	rtp->setTimestamp(3000);
 	rtp->setSsrc(2468);
 	rtp->preparePacket();
-	std::memcpy(rtpRaw.data() + RtpHeaderSize, payload.data(), payload.size());
+	std::memcpy(rtpRaw.data() + sizeof(RtpHeader), payload.data(), payload.size());
 
 	if (!t1->send(rtpRaw.data(), rtpRaw.size())) {
 		throw runtime_error("Couldn't send RTP packet");
