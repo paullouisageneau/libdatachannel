@@ -23,11 +23,12 @@ namespace rtc::impl {
 class WsHandshake final {
 public:
 	WsHandshake();
-	WsHandshake(string host, string path = "/", std::vector<string> protocols = {});
+	WsHandshake(string host, string path = "/", std::vector<string> protocols = {}, std::map<string, string> headers = {});
 
 	string host() const;
 	string path() const;
 	std::vector<string> protocols() const;
+	std::multimap<string, string> requestHeaders() const;
 
 	string generateHttpRequest();
 	string generateHttpResponse();
@@ -57,6 +58,8 @@ private:
 	string mHost;
 	string mPath;
 	std::vector<string> mProtocols;
+	std::map<string, string> mCustomHeaders;
+	std::multimap<string, string> mRequestHeaders;
 	string mKey;
 	mutable std::mutex mMutex;
 };

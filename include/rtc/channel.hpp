@@ -13,6 +13,7 @@
 
 #include <atomic>
 #include <functional>
+#include <map>
 
 namespace rtc {
 

@@ -13,6 +13,7 @@
 #include <atomic>
 #include <chrono>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <thread>
 
@@ -34,18 +35,42 @@ void test_websocketserver() {
 	WebSocketServer server(std::move(serverConfig));
 
 	shared_ptr<WebSocket> client;
-	server.onClient([&client](shared_ptr<WebSocket> incoming) {
+	std::atomic<bool> headersVerified = false;
+	server.onClient([&client, &headersVerified](shared_ptr<WebSocket> incoming) {
 		cout << "WebSocketServer: Client connection received" << endl;
 		client = incoming;
 
 		if(auto addr = client->remoteAddress())
 			cout << "WebSocketServer: Client remote address is " << *addr << endl;
 
-		client->onOpen([wclient = make_weak_ptr(client)]() {
+		client->onOpen([wclient = make_weak_ptr(client), &headersVerified]() {
 			cout << "WebSocketServer: Client connection open" << endl;
-			if(auto client = wclient.lock())
+			if(auto client = wclient.lock()) {
 				if(auto path = client->path())
 					cout << "WebSocketServer: Requested path is " << *path << endl;
+
+				// Test custom headers functionality
+				auto requestHeadersMultimap = client->requestHeaders();
+				std::map<string, string> requestHeaders;
+				for (const auto& [key, value] : requestHeadersMultimap) {
+					requestHeaders[key] = value;
+				}
+
+				cout << "WebSocketServer: Checking custom headers..." << endl;
+				bool customHeaderFound = requestHeaders.find("x-test-custom") != requestHeaders.end() &&
+				                        requestHeaders.at("x-test-custom") == "test-value-123";
+				bool authHeaderFound = requestHeaders.find("authorization") != requestHeaders.end() &&
+				                      requestHeaders.at("authorization") == "Bearer custom-token";
+
+				if (customHeaderFound && authHeaderFound) {
+					cout << "WebSocketServer: Custom headers verified successfully!" << endl;
+					headersVerified = true;
+				} else {
+					cout << "WebSocketServer: Custom headers verification failed!" << endl;
+					cout << "  X-Test-Custom header: " << (customHeaderFound ? "FOUND" : "NOT FOUND") << endl;
+					cout << "  Authorization header: " << (authHeaderFound ? "FOUND" : "NOT FOUND") << endl;
+				}
+			}
 		});
 
 		client->onClosed([]() {
@@ -91,10 +116,13 @@ void test_websocketserver() {
 		}
 	});
 
-	ws.open("wss://localhost:48080/");
+	ws.open("wss://localhost:48080/", {
+		{"X-Test-Custom", "test-value-123"},
+		{"Authorization", "Bearer custom-token"}
+	});
 
 	int attempts = 15;
-	while ((!ws.isOpen() || !received) && attempts--)
+	while ((!ws.isOpen() || !received || !headersVerified) && attempts--)
 		this_thread::sleep_for(1s);
 
 	if (!ws.isOpen())
@@ -102,6 +130,9 @@ void test_websocketserver() {
 
 	if (!received || !maxSizeReceived)
 		throw runtime_error("Expected messages not received");
+
+	if (!headersVerified)
+		throw runtime_error("Custom headers not verified");
 
 	ws.close();
 	this_thread::sleep_for(1s);
