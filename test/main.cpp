@@ -46,7 +46,7 @@ void test_benchmark() {
 		throw runtime_error("Goodput is too low");
 }
 
-TestResult testCppCleanup() {
+TestResult test_cleanup() {
 	try {
 		// Every created object must have been destroyed, otherwise the wait will block
 		if (rtc::Cleanup().wait_for(10s) == future_status::timeout)
@@ -57,7 +57,7 @@ TestResult testCppCleanup() {
 	}
 }
 
-TestResult testCCleanup() {
+TestResult test_capi_cleanup() {
 	try {
 		rtcCleanup();
 		return TestResult(true);
@@ -83,7 +83,7 @@ static const vector<Test> tests = {
     // new Test("WebSocket", test_websocket),
     Test("WebSocketServer", test_websocketserver),
 #endif
-    Test("WebRTC Cpp API cleanup", testCppCleanup),
+    Test("Cleanup", test_cleanup),
     // C API tests
     Test("WebRTC C API connectivity", test_capi_connectivity),
 #if RTC_ENABLE_MEDIA
@@ -92,7 +92,7 @@ static const vector<Test> tests = {
 #if RTC_ENABLE_WEBSOCKET
     Test("WebSocketServer C API", test_capi_websocketserver),
 #endif
-    Test("WebRTC C API cleanup", testCCleanup),
+    Test("C API cleanup", test_capi_cleanup),
 };
 
 int main(int argc, char **argv) {
