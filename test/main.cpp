@@ -10,22 +10,29 @@
 #include <iostream>
 #include <thread>
 
+#include "test.hpp"
 #include <rtc/rtc.hpp>
 
 using namespace std;
 using namespace chrono_literals;
 
-void test_connectivity(bool signal_wrong_fingerprint);
-void test_pem();
-void test_negotiated();
-void test_reliability();
-void test_turn_connectivity();
-void test_track();
-void test_capi_connectivity();
-void test_capi_track();
-void test_websocket();
-void test_websocketserver();
-void test_capi_websocketserver();
+using chrono::duration_cast;
+using chrono::milliseconds;
+using chrono::seconds;
+using chrono::steady_clock;
+
+TestResult test_connectivity();
+TestResult test_connectivity_fail_on_wrong_fingerprint();
+TestResult test_pem();
+TestResult test_negotiated();
+TestResult test_reliability();
+TestResult test_turn_connectivity();
+TestResult test_track();
+TestResult test_capi_connectivity();
+TestResult test_capi_track();
+TestResult test_websocket();
+TestResult test_websocketserver();
+TestResult test_capi_websocketserver();
 size_t benchmark(chrono::milliseconds duration);
 
 void test_benchmark() {
@@ -39,149 +46,89 @@ void test_benchmark() {
 		throw runtime_error("Goodput is too low");
 }
 
-int main(int argc, char **argv) {
-	// C++ API tests
-	try {
-		cout << endl << "*** Running WebRTC connectivity test..." << endl;
-		test_connectivity(false);
-		cout << "*** Finished WebRTC connectivity test" << endl;
-	} catch (const exception &e) {
-		cerr << "WebRTC connectivity test failed: " << e.what() << endl;
-		return -1;
-	}
-	try {
-		cout << endl << "*** Running WebRTC broken fingerprint test..." << endl;
-		test_connectivity(true);
-		cerr << "WebRTC connectivity test failed to detect broken fingerprint" << endl;
-		return -1;
-	} catch (const exception &) {
-	}
-
-	try {
-		cout << endl << "*** Running pem test..." << endl;
-		test_pem();
-	} catch (const exception &e) {
-		cerr << "pem test failed: " << e.what() << endl;
-		return -1;
-	}
-
-// TODO: Temporarily disabled as the Open Relay TURN server is unreliable
-/*
-	try {
-		cout << endl << "*** Running WebRTC TURN connectivity test..." << endl;
-		test_turn_connectivity();
-		cout << "*** Finished WebRTC TURN connectivity test" << endl;
-	} catch (const exception &e) {
-		cerr << "WebRTC TURN connectivity test failed: " << e.what() << endl;
-		return -1;
-	}
-*/
-	try {
-		cout << endl << "*** Running WebRTC negotiated DataChannel test..." << endl;
-		test_negotiated();
-		cout << "*** Finished WebRTC negotiated DataChannel test" << endl;
-	} catch (const exception &e) {
-		cerr << "WebRTC negotiated DataChannel test failed: " << e.what() << endl;
-		return -1;
-	}
-	try {
-		cout << endl << "*** Running WebRTC reliability mode test..." << endl;
-		test_reliability();
-		cout << "*** Finished WebRTC reliaility mode test" << endl;
-	} catch (const exception &e) {
-		cerr << "WebRTC reliability test failed: " << e.what() << endl;
-		return -1;
-	}
-#if RTC_ENABLE_MEDIA
-	try {
-		cout << endl << "*** Running WebRTC Track test..." << endl;
-		test_track();
-		cout << "*** Finished WebRTC Track test" << endl;
-	} catch (const exception &e) {
-		cerr << "WebRTC Track test failed: " << e.what() << endl;
-		return -1;
-	}
-#endif
-#if RTC_ENABLE_WEBSOCKET
-// TODO: Temporarily disabled as the echo service is unreliable
-/*
-	try {
-		cout << endl << "*** Running WebSocket test..." << endl;
-		test_websocket();
-		cout << "*** Finished WebSocket test" << endl;
-	} catch (const exception &e) {
-		cerr << "WebSocket test failed: " << e.what() << endl;
-		return -1;
-	}
-*/
-	try {
-		cout << endl << "*** Running WebSocketServer test..." << endl;
-		test_websocketserver();
-		cout << "*** Finished WebSocketServer test" << endl;
-	} catch (const exception &e) {
-		cerr << "WebSocketServer test failed: " << e.what() << endl;
-		return -1;
-	}
-#endif
+TestResult testCppCleanup() {
 	try {
 		// Every created object must have been destroyed, otherwise the wait will block
-		cout << endl << "*** Running cleanup..." << endl;
-		if(rtc::Cleanup().wait_for(10s) == future_status::timeout)
-			throw std::runtime_error("Timeout");
-		cout << "*** Finished cleanup..." << endl;
+		if (rtc::Cleanup().wait_for(10s) == future_status::timeout)
+			return TestResult(false, "timeout");
+		return TestResult(true);
 	} catch (const exception &e) {
-		cerr << "Cleanup failed: " << e.what() << endl;
-		return -1;
+		return TestResult(false, e.what());
 	}
+}
 
-	// C API tests
+TestResult testCCleanup() {
 	try {
-		cout << endl << "*** Running WebRTC C API connectivity test..." << endl;
-		test_capi_connectivity();
-		cout << "*** Finished WebRTC C API connectivity test" << endl;
+		rtcCleanup();
+		return TestResult(true);
 	} catch (const exception &e) {
-		cerr << "WebRTC C API connectivity test failed: " << e.what() << endl;
-		return -1;
+		return TestResult(false, e.what());
 	}
+}
+
+static const vector<Test> tests = {
+    // C++ API tests
+    Test("WebRTC connectivity", test_connectivity),
+    Test("WebRTC broken fingerprint", test_connectivity_fail_on_wrong_fingerprint),
+    Test("pem", test_pem),
+    // TODO: Temporarily disabled as the Open Relay TURN server is unreliable
+    // new Test("WebRTC TURN connectivity", test_turn_connectivity),
+    Test("WebRTC negotiated DataChannel", test_negotiated),
+    Test("WebRTC reliability mode", test_reliability),
 #if RTC_ENABLE_MEDIA
-	try {
-		cout << endl << "*** Running WebRTC C API track test..." << endl;
-		test_capi_track();
-		cout << "*** Finished WebRTC C API track test" << endl;
-	} catch (const exception &e) {
-		cerr << "WebRTC C API track test failed: " << e.what() << endl;
-		return -1;
-	}
+    Test("WebRTC track", test_track),
 #endif
 #if RTC_ENABLE_WEBSOCKET
-	try {
-		cout << endl << "*** Running WebSocketServer C API test..." << endl;
-		test_capi_websocketserver();
-		cout << "*** Finished WebSocketServer C API test" << endl;
-	} catch (const exception &e) {
-		cerr << "WebSocketServer C API test failed: " << e.what() << endl;
-		return -1;
-	}
+    // TODO: Temporarily disabled as the echo service is unreliable
+    // new Test("WebSocket", test_websocket),
+    Test("WebSocketServer", test_websocketserver),
 #endif
-	try {
-		cout << endl << "*** Running C API cleanup..." << endl;
-		rtcCleanup();
-		cout << "*** Finished C API cleanup..." << endl;
-	} catch (const exception &e) {
-		cerr << "C API cleanup failed: " << e.what() << endl;
-		return -1;
+    Test("WebRTC Cpp API cleanup", testCppCleanup),
+    // C API tests
+    Test("WebRTC C API connectivity", test_capi_connectivity),
+#if RTC_ENABLE_MEDIA
+    Test("WebRTC C API track", test_capi_track),
+#endif
+#if RTC_ENABLE_WEBSOCKET
+    Test("WebSocketServer C API", test_capi_websocketserver),
+#endif
+    Test("WebRTC C API cleanup", testCCleanup),
+};
+
+int main(int argc, char **argv) {
+	int success_tests = 0;
+	int failed_tests = 0;
+	steady_clock::time_point startTime, endTime;
+
+	startTime = steady_clock::now();
+
+	for (auto test : tests) {
+		auto res = test.run();
+		if (res.success) {
+			success_tests++;
+		} else {
+			failed_tests++;
+		}
 	}
-/*
-	// Benchmark
-	try {
-		cout << endl << "*** Running WebRTC benchmark..." << endl;
-		test_benchmark();
-		cout << "*** Finished WebRTC benchmark" << endl;
-	} catch (const exception &e) {
-		cerr << "WebRTC benchmark failed: " << e.what() << endl;
-		std::this_thread::sleep_for(2s);
-		return -1;
-	}
-*/
+
+	endTime = steady_clock::now();
+
+	auto durationMs = duration_cast<milliseconds>(endTime - startTime);
+	auto durationS = duration_cast<seconds>(endTime - startTime);
+	cout << "Finished " << success_tests + failed_tests << " tests in " << durationS.count()
+	     << "s (" << durationMs.count() << " ms). Succeeded: " << success_tests
+	     << ". Failed: " << failed_tests << "." << endl;
+	/*
+	    // Benchmark
+	    try {
+	        cout << endl << "*** Running WebRTC benchmark..." << endl;
+	        test_benchmark();
+	        cout << "*** Finished WebRTC benchmark" << endl;
+	    } catch (const exception &e) {
+	        cerr << "WebRTC benchmark failed: " << e.what() << endl;
+	        std::this_thread::sleep_for(2s);
+	        return -1;
+	    }
+	*/
 	return 0;
 }

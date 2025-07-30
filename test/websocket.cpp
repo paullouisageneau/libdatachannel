@@ -7,6 +7,7 @@
  */
 
 #include "rtc/rtc.hpp"
+#include "test.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -21,7 +22,7 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-void test_websocket() {
+TestResult test_websocket() {
 	InitLogger(LogLevel::Debug);
 
 	const string myMessage = "Hello world from libdatachannel";
@@ -57,15 +58,15 @@ void test_websocket() {
 		this_thread::sleep_for(1s);
 
 	if (!ws.isOpen())
-		throw runtime_error("WebSocket is not open");
+		return TestResult(false, "WebSocket is not open");
 
 	if (!received)
-		throw runtime_error("Expected message not received");
+		return TestResult(false, "Expected message not received");
 
 	ws.close();
 	this_thread::sleep_for(1s);
 
-	cout << "Success" << endl;
+	return TestResult(true);
 }
 
 #endif
