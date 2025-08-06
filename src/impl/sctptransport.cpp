@@ -729,15 +729,12 @@ void SctpTransport::sendReset(uint16_t streamId) {
 	srs.srs_number_streams = 1;
 	srs.srs_stream_list[0] = streamId;
 
-	mWritten = false;
-	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_RESET_STREAMS, &srs, len) == 0) {
-		std::unique_lock lock(mWriteMutex); // locking before setsockopt might deadlock usrsctp...
-		mWrittenCondition.wait_for(lock, 1000ms,
-		                           [&]() { return mWritten || state() != State::Connected; });
-	} else if (errno == EINVAL) {
-		PLOG_DEBUG << "SCTP stream " << streamId << " already reset";
-	} else {
-		PLOG_WARNING << "SCTP reset stream " << streamId << " failed, errno=" << errno;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_RESET_STREAMS, &srs, len)) {
+		if (errno == EINVAL) {
+			PLOG_DEBUG << "SCTP stream " << streamId << " already reset";
+		} else {
+			PLOG_WARNING << "SCTP reset stream " << streamId << " failed, errno=" << errno;
+		}
 	}
 }
 
