@@ -18,6 +18,7 @@
 #include "rtp.hpp"
 
 #include <atomic>
+#include <mutex>
 
 #define RTP_SEQ_MOD (1<<16)
 
@@ -36,6 +37,13 @@ public:
 	// For backward compatibility
 	[[deprecated("Use Track::requestKeyframe()")]] inline bool requestKeyframe() { return false; };
 	[[deprecated("Use Track::requestBitrate()")]] inline void requestBitrate(unsigned int) {};
+
+	struct SyncPTS{
+		uint64_t RTPTS;
+		uint64_t NTPTS;
+	};
+
+	SyncPTS getSyncPTS();
 
 protected:
 	void pushREMB(const message_callback &send, unsigned int bitrate);
@@ -58,9 +66,10 @@ protected:
 	uint32_t mTransit = 0;			// relative trans time for prev pkt
 	uint32_t mJitter = 0;	
 	
-	uint64_t mSyncRTPTS, mSyncNTPTS;
+	SyncPTS mSyncPTS{0,0};
 
 	std::atomic<unsigned int> mRequestedBitrate = 0;
+	std::mutex mSyncMutex;
 };
 
 } // namespace rtc
