@@ -82,7 +82,7 @@ private:
 	std::shared_mutex mMutex;
 };
 
-std::unique_ptr<SctpTransport::InstancesSet> SctpTransport::Instances = std::make_unique<InstancesSet>();
+SctpTransport::InstancesSet* SctpTransport::Instances = nullptr;
 
 void SctpTransport::Init() {
 	usrsctp_init(0, SctpTransport::WriteCallback, SctpTransport::DebugCallback);
@@ -94,6 +94,8 @@ void SctpTransport::Init() {
 #ifdef SCTP_DEBUG
 	usrsctp_sysctl_set_sctp_debug_on(SCTP_DEBUG_ALL);
 #endif
+
+	Instances = new InstancesSet;
 }
 
 void SctpTransport::SetSettings(const SctpSettings &s) {
@@ -148,6 +150,9 @@ void SctpTransport::SetSettings(const SctpSettings &s) {
 void SctpTransport::Cleanup() {
 	while (usrsctp_finish())
 		std::this_thread::sleep_for(100ms);
+
+	delete Instances;
+	Instances = nullptr;
 }
 
 SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &config, Ports ports,

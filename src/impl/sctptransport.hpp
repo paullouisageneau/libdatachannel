@@ -127,7 +127,7 @@ private:
 	static void DebugCallback(const char *format, ...);
 
 	class InstancesSet;
-	static std::unique_ptr<InstancesSet> Instances;
+	static InstancesSet* Instances;
 };
 
 } // namespace rtc::impl
