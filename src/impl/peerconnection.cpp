@@ -1042,6 +1042,9 @@ void PeerConnection::processLocalDescription(Description description) {
 	if (description.mediaCount() == 0)
 		throw std::logic_error("Local description has no media line");
 
+	// Update the SSRC cache
+	updateTrackSsrcCache(description);
+
 	{
 		// Set as local description
 		std::lock_guard lock(mLocalDescriptionMutex);
