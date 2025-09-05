@@ -3,7 +3,7 @@
 
 #define RTC_VERSION_MAJOR 0
 #define RTC_VERSION_MINOR 23
-#define RTC_VERSION_PATCH 1
-#define RTC_VERSION "0.23.1"
+#define RTC_VERSION_PATCH 2
+#define RTC_VERSION "0.23.2"
 
 #endif
