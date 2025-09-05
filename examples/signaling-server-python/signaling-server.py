@@ -22,10 +22,10 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 clients = {}
 
 
-async def handle_websocket(websocket, path):
+async def handle_websocket(websocket):
     client_id = None
     try:
-        splitted = path.split('/')
+        splitted = websocket.request.path.split('/')
         splitted.pop(0)
         client_id = splitted.pop(0)
         print('Client {} connected'.format(client_id))
