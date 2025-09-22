@@ -278,6 +278,13 @@ createRtpPacketizationConfig(const rtcPacketizationHandlerInit *init) {
 	config->playoutDelayId = init->playoutDelayId;
 	config->playoutDelayMin = init->playoutDelayMin;
 	config->playoutDelayMax = init->playoutDelayMax;
+	config->colorSpaceId = init->colorSpaceId;
+	config->colorChromaSitingHorz = init->colorChromaSitingHorz;
+	config->colorChromaSitingVert = init->colorChromaSitingVert;
+	config->colorRange = init->colorRange;
+	config->colorPrimaries = init->colorPrimaries;
+	config->colorTransfer = init->colorTransfer;
+	config->colorMatrix = init->colorMatrix;
 	return config;
 }
 
