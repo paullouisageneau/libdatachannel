@@ -588,7 +588,7 @@ unsigned int RtcpRemb::getNumSSRC() { return ntohl(_bitrate) >> 24u; }
 unsigned int RtcpRemb::getBitrate() {
 	uint32_t br = ntohl(_bitrate);
 	uint8_t exp = (br << 8u) >> 26u;
-	return (br & 0x3FFFF) * static_cast<unsigned int>(pow(exp, 2));
+	return (br & 0x3FFFF) * static_cast<unsigned int>(pow(2, exp));
 }
 
 unsigned int RtcpPli::Size() { return sizeof(RtcpFbHeader); }
