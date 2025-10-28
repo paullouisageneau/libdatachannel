@@ -7,9 +7,12 @@
  */
 
 #include "rtc/rtc.hpp"
+#include "rtc/rtp.hpp"
+#include "test.hpp"
 
 #include <atomic>
-#include <chrono>
+#include <cstring>
+#include <future>
 #include <iostream>
 #include <memory>
 #include <thread>
@@ -19,7 +22,7 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-void test_track() {
+TestResult test_track() {
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
@@ -71,7 +74,8 @@ void test_track() {
 
 	shared_ptr<Track> t2;
 	string newTrackMid;
-	pc2.onTrack([&t2, &newTrackMid](shared_ptr<Track> t) {
+	std::promise<rtc::binary> recvRtpPromise;
+	pc2.onTrack([&t2, &newTrackMid, &recvRtpPromise](shared_ptr<Track> t) {
 		string mid = t->mid();
 		cout << "Track 2: Received track with mid \"" << mid << "\"" << endl;
 		if (mid != newTrackMid) {
@@ -83,6 +87,13 @@ void test_track() {
 
 		t->onClosed(
 		    [mid]() { cout << "Track 2: Track with mid \"" << mid << "\" is closed" << endl; });
+
+		t->onMessage(
+		    [&recvRtpPromise](rtc::binary message) {
+			    // This is an RTP packet
+			    recvRtpPromise.set_value(message);
+		    },
+		    nullptr);
 
 		std::atomic_store(&t2, t);
 	});
@@ -99,7 +110,7 @@ void test_track() {
 	const auto mediaSdp2 = string(Description::Media(mediaSdp1));
 	if (mediaSdp2 != mediaSdp1) {
 		cout << mediaSdp2 << endl;
-		throw runtime_error("Media description parsing test failed");
+		return TestResult(false, "Media description parsing test failed");
 	}
 
 	auto t1 = pc1.addTrack(media);
@@ -113,10 +124,10 @@ void test_track() {
 
 	if (pc1.state() != PeerConnection::State::Connected ||
 	    pc2.state() != PeerConnection::State::Connected)
-		throw runtime_error("PeerConnection is not connected");
+		return TestResult(false, "PeerConnection is not connected");
 
 	if (!at2 || !at2->isOpen() || !t1->isOpen())
-		throw runtime_error("Track is not open");
+		return TestResult(false, "Track is not open");
 
 	// Test renegotiation
 	newTrackMid = "added";
@@ -138,9 +149,37 @@ void test_track() {
 		this_thread::sleep_for(1s);
 
 	if (!at2 || !at2->isOpen() || !t1->isOpen())
-		throw runtime_error("Renegotiated track is not open");
+		return TestResult(false, "Renegotiated track is not open");
 
-	// TODO: Test sending RTP packets in track
+	std::vector<std::byte> payload = {std::byte{0}, std::byte{1}, std::byte{2}, std::byte{3}};
+	std::vector<std::byte> rtpRaw(sizeof(RtpHeader) + payload.size());
+	auto *rtp = reinterpret_cast<RtpHeader *>(rtpRaw.data());
+	rtp->setPayloadType(96);
+	rtp->setSeqNumber(1);
+	rtp->setTimestamp(3000);
+	rtp->setSsrc(2468);
+	rtp->preparePacket();
+	std::memcpy(rtpRaw.data() + sizeof(RtpHeader), payload.data(), payload.size());
+
+	if (!t1->send(rtpRaw.data(), rtpRaw.size())) {
+		throw runtime_error("Couldn't send RTP packet");
+	}
+
+	// wait for an RTP packet to be received
+	auto future = recvRtpPromise.get_future();
+	if (future.wait_for(5s) == std::future_status::timeout) {
+		throw runtime_error("Didn't receive RTP packet on pc2");
+	}
+
+	auto receivedRtpRaw = future.get();
+	if (receivedRtpRaw.empty()) {
+		throw runtime_error("Didn't receive RTP packet on pc2");
+	}
+
+	if (receivedRtpRaw.size() != rtpRaw.size() ||
+	    memcmp(receivedRtpRaw.data(), rtpRaw.data(), rtpRaw.size()) != 0) {
+		throw runtime_error("Received RTP packet is different than the packet that was sent");
+	}
 
 	// Delay close of peer 2 to check closing works properly
 	pc1.close();
@@ -149,7 +188,7 @@ void test_track() {
 	this_thread::sleep_for(1s);
 
 	if (!t1->isClosed() || !t2->isClosed())
-		throw runtime_error("Track is not closed");
+		return TestResult(false, "Track is not closed");
 
-	cout << "Success" << endl;
+	return TestResult(true);
 }

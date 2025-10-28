@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 project(libdatachannel
-	VERSION 0.23.1
+	VERSION 0.23.2
 	LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "C/C++ WebRTC network library featuring Data Channels, Media Transport, and WebSockets")
 
@@ -224,6 +224,10 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/websocketserver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_websocketserver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
+)
+
+set(TESTS_HEADERS 
+	${CMAKE_CURRENT_SOURCE_DIR}/test/test.hpp
 )
 
 set(TESTS_UWP_RESOURCES
@@ -511,6 +515,11 @@ install(TARGETS datachannel EXPORT LibDataChannelTargets
 	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+if(MSVC AND BUILD_SHARED_LIBS)
+    install(FILES $<TARGET_PDB_FILE:datachannel>
+        DESTINATION ${CMAKE_INSTALL_BINDIR} OPTIONAL)
+endif()
+
 install(FILES ${LIBDATACHANNEL_HEADERS}
 	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rtc
 )
@@ -546,9 +555,9 @@ install(FILES
 if(NOT NO_TESTS)
 	if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 		# Add resource files needed for UWP apps.
-		add_executable(datachannel-tests ${TESTS_SOURCES} ${TESTS_UWP_RESOURCES})
+		add_executable(datachannel-tests ${TESTS_SOURCES} ${TESTS_HEADERS} ${TESTS_UWP_RESOURCES})
 	else()
-		add_executable(datachannel-tests ${TESTS_SOURCES})
+		add_executable(datachannel-tests ${TESTS_SOURCES} ${TESTS_HEADERS})
 	endif()
 
 	set_target_properties(datachannel-tests PROPERTIES

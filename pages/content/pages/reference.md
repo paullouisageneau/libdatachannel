@@ -872,6 +872,7 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config)
 
 typedef struct {
 	bool disableTlsVerification;
+	const char *proxyServer;
 	const char **protocols;
 	int protocolsCount;
 	int connectionTimeoutMs;
@@ -887,6 +888,7 @@ Arguments:
 - `url`: a null-terminated string representing the fully-qualified URL to open.
 - `config`: a structure with the following parameters:
   - `disableTlsVerification`: if true, don't verify the TLS certificate, else try to verify it if possible
+  - `proxyServer` (optional): address of proxy server as string, only non-authenticated HTTP for now (NULL if unused)
   - `protocols` (optional): an array of pointers on null-terminated protocol names (NULL if unused)
   - `protocolsCount` (optional): number of URLs in the array pointed by `protocols` (0 if unused)
   - `connectionTimeoutMs` (optional): connection timeout in milliseconds (0 if default, < 0 if disabled)

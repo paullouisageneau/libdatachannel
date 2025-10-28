@@ -57,10 +57,14 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 		rtpExtHeaderSize += headerSize + 1;
 
 	const bool setPlayoutDelay = rtpConfig->playoutDelayId > 0;
+	const bool setColorSpace = rtpConfig->colorSpaceId > 0;
 
 	if (setPlayoutDelay)
 		rtpExtHeaderSize += headerSize + 3;
 
+	if (setColorSpace)
+		rtpExtHeaderSize += headerSize + 4;
+	
 	if (rtpConfig->mid.has_value())
 		rtpExtHeaderSize += headerSize + rtpConfig->mid->length();
 
@@ -74,6 +78,8 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	if (rtpExtHeaderSize != 0)
 		rtpExtHeaderSize += 4;
 
+	// Align the size to the multiple of 4 bytes
+	// according to RFC 3550, sec. 5.3.1.
 	rtpExtHeaderSize = (rtpExtHeaderSize + 3) & ~3;
 
 	auto message = make_message(RtpHeaderSize + rtpExtHeaderSize + payload.size());
@@ -136,6 +142,16 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 
 			offset += extHeader->writeHeader(
 			    twoByteHeader, offset, rtpConfig->playoutDelayId, data, 3);
+		}
+
+		if (setColorSpace) {
+			uint8_t range_chr = (rtpConfig->colorRange << 4) + (rtpConfig->colorChromaSitingHorz << 2) + rtpConfig->colorChromaSitingVert;
+
+			byte data[] = {byte(rtpConfig->colorPrimaries), byte(rtpConfig->colorTransfer),
+			               byte(rtpConfig->colorMatrix), byte(range_chr)};
+
+			offset += extHeader->writeHeader(
+			    twoByteHeader, offset, rtpConfig->playoutDelayId, data, 4);
 		}
 	}
 
