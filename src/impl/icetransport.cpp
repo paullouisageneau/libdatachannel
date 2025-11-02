@@ -451,7 +451,8 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	// has been deprecated in this specification.
 	// libnice defaults to aggressive nomation therefore we change to regular nomination.
 	// See https://gitlab.freedesktop.org/libnice/libnice/-/merge_requests/125
-	NiceAgentOption flags = NICE_AGENT_OPTION_REGULAR_NOMINATION;
+	// Enable RFC 7675 ICE consent freshness support (requires libnice 0.1.19)
+	NiceAgentOption flags = static_cast<NiceAgentOption>(NICE_AGENT_OPTION_REGULAR_NOMINATION | NICE_AGENT_OPTION_CONSENT_FRESHNESS);
 
 	// Create agent
 	mNiceAgent = decltype(mNiceAgent)(
@@ -481,10 +482,7 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	// the characteristics of the associated data.
 	g_object_set(G_OBJECT(mNiceAgent.get()), "stun-pacing-timer", 25, nullptr);
 
-	// Enable RFC 7675 ICE consent freshness support (requires libnice 0.1.19)
 	g_object_set(G_OBJECT(mNiceAgent.get()), "keepalive-conncheck", TRUE, nullptr);
-	g_object_set(G_OBJECT(mNiceAgent.get()), "consent-freshness", TRUE, nullptr);
-
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp", FALSE, nullptr);
 	g_object_set(G_OBJECT(mNiceAgent.get()), "upnp-timeout", 200, nullptr);
 
