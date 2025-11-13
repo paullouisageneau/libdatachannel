@@ -123,7 +123,7 @@ ws.onOpen([]() {
 
 ws.onMessage([](std::variant<rtc::binary, rtc::string> message) {
     if (std::holds_alternative<rtc::string>(message)) {
-        std::cout << "WebSocket received: " << std::get<rtc::string>(message) << endl;
+        std::cout << "WebSocket received: " << std::get<rtc::string>(message) << std::endl;
     }
 });
 
