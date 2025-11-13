@@ -33,9 +33,9 @@ static impl::LogCounter COUNTER_BAD_NOTIF_LEN(plog::warning,
 static impl::LogCounter COUNTER_BAD_SCTP_STATUS(plog::warning,
                                                 "Number of unknown SCTP_STATUS errors");
 
-RtcpReceivingSession::SyncPTS RtcpReceivingSession::getSyncPTS(){
+RtcpReceivingSession::SyncTimestamps RtcpReceivingSession::getSyncTimestamps(){
 	std::lock_guard lock(mSyncMutex);
-	return mSyncPTS;
+	return mSyncTimestamps;
 }
 
 void RtcpReceivingSession::incoming(message_vector &messages, const message_callback &send) {
