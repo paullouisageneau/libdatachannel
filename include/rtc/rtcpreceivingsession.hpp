@@ -38,12 +38,12 @@ public:
 	[[deprecated("Use Track::requestKeyframe()")]] inline bool requestKeyframe() { return false; };
 	[[deprecated("Use Track::requestBitrate()")]] inline void requestBitrate(unsigned int) {};
 
-	struct SyncPTS{
-		uint64_t RTPTS;
-		uint64_t NTPTS;
+	struct SyncTimestamps {
+		uint64_t rtpTimestamp;
+		uint64_t ntpTimestamp;
 	};
 
-	SyncPTS getSyncPTS();
+	SyncTimestamps getSyncTimestamps();
 
 protected:
 	void pushREMB(const message_callback &send, unsigned int bitrate);
