@@ -66,7 +66,7 @@ protected:
 	uint32_t mTransit = 0;			// relative trans time for prev pkt
 	uint32_t mJitter = 0;	
 	
-	SyncPTS mSyncPTS{0,0};
+	SyncTimestamps mSyncTimestamps{0,0};
 
 	std::atomic<unsigned int> mRequestedBitrate = 0;
 	std::mutex mSyncMutex;
