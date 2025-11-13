@@ -82,8 +82,8 @@ void RtcpReceivingSession::incoming(message_vector &messages, const message_call
 				auto sr = reinterpret_cast<const RtcpSr *>(message->data());
 				{
 					std::lock_guard lock(mSyncMutex);
-					mSyncPTS.RTPTS = sr->rtpTimestamp();
-					mSyncPTS.NTPTS = sr->ntpTimestamp();
+					mSyncTimestamps.rtpTimestamp = sr->rtpTimestamp();
+					mSyncTimestamps.ntpTimestamp = sr->ntpTimestamp();
 				}
 				sr->log();
 
@@ -145,8 +145,8 @@ void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int las
 	else { 
 		fraction = (lost_interval << 8) / expected_interval;
 	}
-	auto pts = getSyncPTS();
-	rr->getReportBlock(0)->preparePacket(mSsrc, fraction, lost, uint16_t(mGreatestSeqNo), mMaxSeq, 0, pts.NTPTS,
+	auto syncTimestamps = getSyncTimestamps();
+	rr->getReportBlock(0)->preparePacket(mSsrc, fraction, lost, uint16_t(mGreatestSeqNo), mMaxSeq, 0, syncTimestamps.ntpTimestamp,
 	                                     lastSrDelay);
 	rr->log();
 	send(message);
