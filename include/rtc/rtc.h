@@ -191,7 +191,7 @@ typedef struct {
 	const char *bindAddress; // libjuice only, NULL means any
 	rtcCertificateType certificateType;
 	rtcTransportPolicy iceTransportPolicy;
-	bool enableIceTcp;    // libnice only
+	bool enableIceTcp;
 	bool enableIceUdpMux; // libjuice only
 	bool disableAutoNegotiation;
 	bool forceMediaTransport;

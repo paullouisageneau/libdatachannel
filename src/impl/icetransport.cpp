@@ -90,10 +90,6 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	jconfig.cb_recv = IceTransport::RecvCallback;
 	jconfig.user_ptr = this;
 
-	if (config.enableIceTcp) {
-		PLOG_WARNING << "ICE-TCP is not supported with libjuice";
-	}
-
 	if (config.enableIceUdpMux) {
 		PLOG_DEBUG << "Enabling ICE UDP mux";
 		jconfig.concurrency_mode = JUICE_CONCURRENCY_MODE_MUX;
@@ -133,6 +129,10 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 	mAgent = decltype(mAgent)(juice_create(&jconfig), juice_destroy);
 	if (!mAgent)
 		throw std::runtime_error("Failed to create the ICE agent");
+
+	// ICE-TCP
+	juice_set_ice_tcp_mode(mAgent.get(), config.enableIceTcp ? JUICE_ICE_TCP_MODE_ACTIVE
+	                                                         : JUICE_ICE_TCP_MODE_NONE);
 
 	// Add TURN servers
 	for (const auto &server : servers)
