@@ -106,7 +106,7 @@ Arguments:
   - `bindAddress` (optional): if non-NULL, bind only to the given local address (ignored with libnice as ICE backend)
   - `certificateType` (optional): certificate type, either `RTC_CERTIFICATE_ECDSA` or `RTC_CERTIFICATE_RSA` (0 or `RTC_CERTIFICATE_DEFAULT` if default)
   - `iceTransportPolicy` (optional): ICE transport policy, if set to `RTC_TRANSPORT_POLICY_RELAY`, the PeerConnection will emit only relayed candidates (0 or `RTC_TRANSPORT_POLICY_ALL` if default)
-  - `enableIceTcp`: if true, generate TCP candidates for ICE (ignored with libjuice as ICE backend)
+  - `enableIceTcp`: if true, generate TCP candidates for ICE
   - `enableIceUdpMux`: if true, connections are multiplexed on the same UDP port (should be combined with `portRangeBegin` and `portRangeEnd`, ignored with libnice as ICE backend)
   - `disableAutoNegotiation`: if true, the user is responsible for calling `rtcSetLocalDescription` after creating a Data Channel and after setting the remote description
   - `forceMediaTransport`: if true, the connection allocates the SRTP media transport even if no tracks are present (necessary to add tracks during later renegotiation)
