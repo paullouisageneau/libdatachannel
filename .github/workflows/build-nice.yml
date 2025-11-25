@@ -8,7 +8,7 @@ jobs:
   build-nice:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: install packages
       run: sudo apt update && sudo apt install libgnutls28-dev libnice-dev
     - name: submodules
