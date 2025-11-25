@@ -18,41 +18,36 @@
 namespace rtc {
 
 PacingHandler::PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval)
-    : mBytesPerSecond(bitsPerSecond / 8), mBudget(0.), mSendInterval(sendInterval){};
+    : mBytesPerSecond(bitsPerSecond / 8), mBudget(0.), mSendInterval(sendInterval) {};
 
 void PacingHandler::schedule(const message_callback &send) {
-	if (mHaveScheduled.exchange(true)) {
-		return;
+	if (!mHaveScheduled.exchange(true))
+		impl::ThreadPool::Instance().schedule(mSendInterval,
+		                                      weak_bind(&PacingHandler::run, this, send));
+}
+
+void PacingHandler::run(const message_callback &send) {
+	const std::lock_guard<std::mutex> lock(mMutex);
+	mHaveScheduled.store(false);
+
+	// Update the budget and cap it
+	auto now = std::chrono::high_resolution_clock::now();
+	auto newBudget = std::chrono::duration<double>(now - mLastRun).count() * mBytesPerSecond;
+	auto maxBudget = std::chrono::duration<double>(mSendInterval).count() * mBytesPerSecond;
+	mBudget = std::min(mBudget + newBudget, maxBudget);
+	mLastRun = std::chrono::high_resolution_clock::now();
+
+	// Send packets while there is budget, allow a single partial packet over budget
+	while (!mRtpBuffer.empty() && mBudget > 0) {
+		auto size = int(mRtpBuffer.front()->size());
+		send(std::move(mRtpBuffer.front()));
+		mRtpBuffer.pop();
+		mBudget -= size;
 	}
 
-	impl::ThreadPool::Instance().schedule(mSendInterval, [this, weak_this = weak_from_this(),
-	                                                      send]() {
-		if (auto locked = weak_this.lock()) {
-			const std::lock_guard<std::mutex> lock(mMutex);
-			mHaveScheduled.store(false);
-
-			// Update the budget and cap it
-			auto newBudget =
-			    std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - mLastRun)
-			        .count() *
-			    mBytesPerSecond;
-			auto maxBudget = std::chrono::duration<double>(mSendInterval).count() * mBytesPerSecond;
-			mBudget = std::min(mBudget + newBudget, maxBudget);
-			mLastRun = std::chrono::high_resolution_clock::now();
-
-			// Send packets while there is budget, allow a single partial packet over budget
-			while (!mRtpBuffer.empty() && mBudget > 0) {
-				auto size = int(mRtpBuffer.front()->size());
-				send(std::move(mRtpBuffer.front()));
-				mRtpBuffer.pop();
-				mBudget -= size;
-			}
-
-			if (!mRtpBuffer.empty()) {
-				schedule(send);
-			}
-		}
-	});
+	if (!mRtpBuffer.empty()) {
+		schedule(send);
+	}
 }
 
 void PacingHandler::outgoing(message_vector &messages, const message_callback &send) {

@@ -162,52 +162,52 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport() {
 		auto transport = std::make_shared<IceTransport>(
 		    config, weak_bind(&PeerConnection::processLocalCandidate, this, _1),
 		    [this, weak_this = weak_from_this()](IceTransport::State transportState) {
-			    auto shared_this = weak_this.lock();
-			    if (!shared_this)
-				    return;
-			    switch (transportState) {
-			    case IceTransport::State::Connecting:
-				    changeIceState(IceState::Checking);
-				    changeState(State::Connecting);
-				    break;
-			    case IceTransport::State::Connected:
-				    changeIceState(IceState::Connected);
-				    initDtlsTransport();
-				    break;
-			    case IceTransport::State::Completed:
-				    changeIceState(IceState::Completed);
-				    break;
-			    case IceTransport::State::Failed:
-				    changeIceState(IceState::Failed);
-				    changeState(State::Failed);
-				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
-				    break;
-			    case IceTransport::State::Disconnected:
-				    changeIceState(IceState::Disconnected);
-				    changeState(State::Disconnected);
-				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
-				    break;
-			    default:
-				    // Ignore
-				    break;
-			    }
+			    if (auto locked = weak_this.lock())
+				    std::invoke([=]() {
+					    switch (transportState) {
+					    case IceTransport::State::Connecting:
+						    changeIceState(IceState::Checking);
+						    changeState(State::Connecting);
+						    break;
+					    case IceTransport::State::Connected:
+						    changeIceState(IceState::Connected);
+						    initDtlsTransport();
+						    break;
+					    case IceTransport::State::Completed:
+						    changeIceState(IceState::Completed);
+						    break;
+					    case IceTransport::State::Failed:
+						    changeIceState(IceState::Failed);
+						    changeState(State::Failed);
+						    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
+						    break;
+					    case IceTransport::State::Disconnected:
+						    changeIceState(IceState::Disconnected);
+						    changeState(State::Disconnected);
+						    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
+						    break;
+					    default:
+						    // Ignore
+						    break;
+					    }
+				    });
 		    },
 		    [this, weak_this = weak_from_this()](IceTransport::GatheringState gatheringState) {
-			    auto shared_this = weak_this.lock();
-			    if (!shared_this)
-				    return;
-			    switch (gatheringState) {
-			    case IceTransport::GatheringState::InProgress:
-				    changeGatheringState(GatheringState::InProgress);
-				    break;
-			    case IceTransport::GatheringState::Complete:
-				    endLocalCandidates();
-				    changeGatheringState(GatheringState::Complete);
-				    break;
-			    default:
-				    // Ignore
-				    break;
-			    }
+			    if (auto locked = weak_this.lock())
+				    std::invoke([=]() {
+					    switch (gatheringState) {
+					    case IceTransport::GatheringState::InProgress:
+						    changeGatheringState(GatheringState::InProgress);
+						    break;
+					    case IceTransport::GatheringState::Complete:
+						    endLocalCandidates();
+						    changeGatheringState(GatheringState::Complete);
+						    break;
+					    default:
+						    // Ignore
+						    break;
+					    }
+				    });
 		    });
 
 		return emplaceTransport(this, &mIceTransport, std::move(transport));
@@ -241,34 +241,33 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 		auto certificate = mCertificate.get();
 		auto verifierCallback = weak_bind(&PeerConnection::checkFingerprint, this, _1);
-		auto dtlsStateChangeCallback =
-		    [this, weak_this = weak_from_this()](DtlsTransport::State transportState) {
-			    auto shared_this = weak_this.lock();
-			    if (!shared_this)
-				    return;
+		auto dtlsStateChangeCallback = [this, weak_this = weak_from_this()](
+		                                   DtlsTransport::State transportState) {
+			if (auto locked = weak_this.lock())
+				std::invoke([=]() {
+					switch (transportState) {
+					case DtlsTransport::State::Connected:
+						if (auto remote = remoteDescription(); remote && remote->hasApplication())
+							initSctpTransport();
+						else
+							changeState(State::Connected);
 
-			    switch (transportState) {
-			    case DtlsTransport::State::Connected:
-				    if (auto remote = remoteDescription(); remote && remote->hasApplication())
-					    initSctpTransport();
-				    else
-					    changeState(State::Connected);
-
-				    mProcessor.enqueue(&PeerConnection::openTracks, shared_from_this());
-				    break;
-			    case DtlsTransport::State::Failed:
-				    changeState(State::Failed);
-				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
-				    break;
-			    case DtlsTransport::State::Disconnected:
-				    changeState(State::Disconnected);
-				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
-				    break;
-			    default:
-				    // Ignore
-				    break;
-			    }
-		    };
+						mProcessor.enqueue(&PeerConnection::openTracks, shared_from_this());
+						break;
+					case DtlsTransport::State::Failed:
+						changeState(State::Failed);
+						mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
+						break;
+					case DtlsTransport::State::Disconnected:
+						changeState(State::Disconnected);
+						mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
+						break;
+					default:
+						// Ignore
+						break;
+					}
+				});
+		};
 
 		shared_ptr<DtlsTransport> transport;
 		auto local = localDescription();
@@ -329,28 +328,28 @@ shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 		    lower, config, std::move(ports), weak_bind(&PeerConnection::forwardMessage, this, _1),
 		    weak_bind(&PeerConnection::forwardBufferedAmount, this, _1, _2),
 		    [this, weak_this = weak_from_this()](SctpTransport::State transportState) {
-			    auto shared_this = weak_this.lock();
-			    if (!shared_this)
-				    return;
-
-			    switch (transportState) {
-			    case SctpTransport::State::Connected:
-				    changeState(State::Connected);
-				    assignDataChannels();
-				    mProcessor.enqueue(&PeerConnection::openDataChannels, shared_from_this());
-				    break;
-			    case SctpTransport::State::Failed:
-				    changeState(State::Failed);
-				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
-				    break;
-			    case SctpTransport::State::Disconnected:
-				    changeState(State::Disconnected);
-				    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
-				    break;
-			    default:
-				    // Ignore
-				    break;
-			    }
+			    if (auto locked = weak_this.lock())
+				    std::invoke([=]() {
+					    switch (transportState) {
+					    case SctpTransport::State::Connected:
+						    changeState(State::Connected);
+						    assignDataChannels();
+						    mProcessor.enqueue(&PeerConnection::openDataChannels,
+						                       shared_from_this());
+						    break;
+					    case SctpTransport::State::Failed:
+						    changeState(State::Failed);
+						    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
+						    break;
+					    case SctpTransport::State::Disconnected:
+						    changeState(State::Disconnected);
+						    mProcessor.enqueue(&PeerConnection::remoteClose, shared_from_this());
+						    break;
+					    default:
+						    // Ignore
+						    break;
+					    }
+				    });
 		    });
 
 		return emplaceTransport(this, &mSctpTransport, std::move(transport));
