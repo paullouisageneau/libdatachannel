@@ -12,11 +12,11 @@ jobs:
     - name: Set up Homebrew
       uses: Homebrew/actions/setup-homebrew@master
     - name: Install Mbed TLS
-      run: brew update && brew install mbedtls
+      run: brew update && brew install mbedtls@3
     - name: submodules
       run: git submodule update --init --recursive --depth 1
     - name: cmake
-      run: cmake -B build -DUSE_MBEDTLS=1 -DWARNINGS_AS_ERRORS=1  -DCMAKE_PREFIX_PATH=$(brew --prefix mbedtls)
+      run: cmake -B build -DUSE_MBEDTLS=1 -DWARNINGS_AS_ERRORS=1  -DCMAKE_PREFIX_PATH=$(brew --prefix mbedtls@3)
     - name: make
       run: (cd build; make -j2)
     - name: test
@@ -26,11 +26,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install Mbed TLS
-      run: brew update && brew install mbedtls
+      run: brew update && brew install mbedtls@3
     - name: submodules
       run: git submodule update --init --recursive --depth 1
     - name: cmake
-      run: cmake -B build -DUSE_MBEDTLS=1 -DWARNINGS_AS_ERRORS=1 -DENABLE_LOCAL_ADDRESS_TRANSLATION=1  -DCMAKE_PREFIX_PATH=$(brew --prefix mbedtls)
+      run: cmake -B build -DUSE_MBEDTLS=1 -DWARNINGS_AS_ERRORS=1 -DENABLE_LOCAL_ADDRESS_TRANSLATION=1 -DCMAKE_PREFIX_PATH=$(brew --prefix mbedtls@3)
     - name: make
       run: (cd build; make -j2)
     - name: test
