@@ -102,13 +102,12 @@ void WsTransport::close() {
 		return;
 	}
 
-	ThreadPool::Instance().schedule(std::chrono::seconds(10),
-	                                [this, weak_this = weak_from_this()]() {
-		                                if (auto shared_this = weak_this.lock()) {
-			                                PLOG_DEBUG << "WebSocket close timeout";
-			                                changeState(State::Disconnected);
-		                                }
-	                                });
+	ThreadPool::Instance().schedule(std::chrono::seconds(10), [weak_this = weak_from_this()]() {
+		if (auto locked = weak_this.lock()) {
+			PLOG_DEBUG << "WebSocket close timeout";
+			locked->changeState(State::Disconnected);
+		}
+	});
 }
 
 void WsTransport::incoming(message_ptr message) {

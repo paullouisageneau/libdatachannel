@@ -40,6 +40,7 @@ private:
 	std::queue<message_ptr> mRtpBuffer;
 
 	void schedule(const message_callback &send);
+	void run(const message_callback &send);
 };
 
 } // namespace rtc

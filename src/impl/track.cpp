@@ -73,7 +73,7 @@ void Track::close() {
 		triggerClosed();
 		setMediaHandler(nullptr);
 		resetCallbacks();
-	}		
+	}
 }
 
 message_variant Track::trackMessageToVariant(message_ptr message) {
@@ -144,9 +144,9 @@ void Track::incoming(message_ptr message) {
 	message_vector messages{std::move(message)};
 	if (auto handler = getMediaHandler()) {
 		try {
-			handler->incomingChain(messages, [this, weak_this = weak_from_this()](message_ptr m) {
+			handler->incomingChain(messages, [weak_this = weak_from_this()](message_ptr m) {
 				if (auto locked = weak_this.lock()) {
-					transportSend(m);
+					locked->transportSend(m);
 				}
 			});
 		} catch (const std::exception &e) {
@@ -186,9 +186,9 @@ bool Track::outgoing(message_ptr message) {
 
 	if (handler) {
 		message_vector messages{std::move(message)};
-		handler->outgoingChain(messages, [this, weak_this = weak_from_this()](message_ptr m) {
+		handler->outgoingChain(messages, [weak_this = weak_from_this()](message_ptr m) {
 			if (auto locked = weak_this.lock()) {
-				transportSend(m);
+				locked->transportSend(m);
 			}
 		});
 
