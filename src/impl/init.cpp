@@ -96,6 +96,12 @@ std::shared_future<void> Init::cleanup() {
 	return mCleanupFuture;
 }
 
+void Init::setThreadPoolSize(unsigned int count) {
+	std::lock_guard lock(mMutex);
+	mThreadPoolSize = count;
+
+}
+
 void Init::setSctpSettings(SctpSettings s) {
 	std::lock_guard lock(mMutex);
 	if (mGlobal)
@@ -118,8 +124,8 @@ void Init::doInit() {
 		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
 #endif
 
-	int concurrency = std::thread::hardware_concurrency();
-	int count = std::max(concurrency, MIN_THREADPOOL_SIZE);
+	unsigned int count = mThreadPoolSize > 0 ? mThreadPoolSize : std::thread::hardware_concurrency();
+	count = std::max(count, MIN_THREADPOOL_SIZE);
 	PLOG_DEBUG << "Spawning " << count << " threads";
 	ThreadPool::Instance().spawn(count);
 

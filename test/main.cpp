@@ -96,6 +96,8 @@ static const vector<Test> tests = {
 };
 
 int main(int argc, char **argv) {
+	rtc::SetThreadPoolSize(4);
+
 	int success_tests = 0;
 	int failed_tests = 0;
 	steady_clock::time_point startTime, endTime;
@@ -118,6 +120,7 @@ int main(int argc, char **argv) {
 	cout << "Finished " << success_tests + failed_tests << " tests in " << durationS.count()
 	     << "s (" << durationMs.count() << " ms). Succeeded: " << success_tests
 	     << ". Failed: " << failed_tests << "." << endl;
+
 	/*
 	    // Benchmark
 	    try {
