@@ -1096,7 +1096,7 @@ int rtcAddTrackEx(int pc, const rtcTrackInit *init) {
 		case RTC_CODEC_OPUS:
 		case RTC_CODEC_PCMU:
 		case RTC_CODEC_PCMA:
-		case RTC_CODEC_AAC: 
+		case RTC_CODEC_AAC:
 		case RTC_CODEC_G722: {
 			auto audio = std::make_unique<Description::Audio>(mid, direction);
 			switch (init->codec) {
@@ -1687,28 +1687,11 @@ int rtcGetWebSocketServerPort(int wsserver) {
 
 #endif
 
-void rtcPreload() {
-	try {
-		rtc::Preload();
-	} catch (const std::exception &e) {
-		PLOG_ERROR << e.what();
-	}
-}
-
-void rtcCleanup() {
-	try {
-		size_t count = eraseAll();
-		if (count != 0) {
-			PLOG_INFO << count << " objects were not properly destroyed before cleanup";
-		}
-
-		if (rtc::Cleanup().wait_for(10s) == std::future_status::timeout)
-			throw std::runtime_error(
-			    "Cleanup timeout (possible deadlock or undestructible object)");
-
-	} catch (const std::exception &e) {
-		PLOG_ERROR << e.what();
-	}
+int rtcSetThreadPoolSize(unsigned int count) {
+	return wrap([&] {
+		SetThreadPoolSize(count);
+		return RTC_ERR_SUCCESS;
+	});
 }
 
 int rtcSetSctpSettings(const rtcSctpSettings *settings) {
@@ -1759,3 +1742,28 @@ int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 		return RTC_ERR_SUCCESS;
 	});
 }
+
+void rtcPreload() {
+	try {
+		rtc::Preload();
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+	}
+}
+
+void rtcCleanup() {
+	try {
+		size_t count = eraseAll();
+		if (count != 0) {
+			PLOG_INFO << count << " objects were not properly destroyed before cleanup";
+		}
+
+		if (rtc::Cleanup().wait_for(10s) == std::future_status::timeout)
+			throw std::runtime_error(
+			    "Cleanup timeout (possible deadlock or undestructible object)");
+
+	} catch (const std::exception &e) {
+		PLOG_ERROR << e.what();
+	}
+}
+

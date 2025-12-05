@@ -45,7 +45,7 @@ const size_t DEFAULT_WS_MAX_MESSAGE_SIZE = 256 * 1024;   // Default max message 
 
 const size_t RECV_QUEUE_LIMIT = 1024; // Max per-channel queue size (messages)
 
-const int MIN_THREADPOOL_SIZE = 4; // Minimum number of threads in the global thread pool (>= 2)
+const unsigned int MIN_THREADPOOL_SIZE = 2; // Minimum number of threads in the global thread pool (>= 2)
 
 const size_t DEFAULT_MTU = RTC_DEFAULT_MTU; // defined in rtc.h
 

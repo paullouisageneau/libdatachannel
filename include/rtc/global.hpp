@@ -31,8 +31,7 @@ typedef std::function<void(LogLevel level, string message)> LogCallback;
 
 RTC_CPP_EXPORT void InitLogger(LogLevel level, LogCallback callback = nullptr);
 
-RTC_CPP_EXPORT void Preload();
-RTC_CPP_EXPORT std::shared_future<void> Cleanup();
+RTC_CPP_EXPORT void SetThreadPoolSize(unsigned int count); // 0: hardware concurrency
 
 struct SctpSettings {
 	// For the following settings, not set means optimized default
@@ -51,6 +50,10 @@ struct SctpSettings {
 };
 
 RTC_CPP_EXPORT void SetSctpSettings(SctpSettings s);
+
+// Optional global preload and cleanup
+RTC_CPP_EXPORT void Preload();
+RTC_CPP_EXPORT std::shared_future<void> Cleanup();
 
 RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, LogLevel level);
 

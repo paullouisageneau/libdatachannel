@@ -513,12 +513,10 @@ RTC_C_EXPORT int rtcGetWebSocketServerPort(int wsserver);
 
 #endif
 
-// Optional global preload and cleanup
+// Global settings
 
-RTC_C_EXPORT void rtcPreload(void);
-RTC_C_EXPORT void rtcCleanup(void);
-
-// SCTP global settings
+// Note: Applied when threads are spawned
+RTC_C_EXPORT int rtcSetThreadPoolSize(unsigned int count);
 
 typedef struct {
 	int recvBufferSize;          // in bytes, <= 0 means optimized default
@@ -537,6 +535,10 @@ typedef struct {
 
 // Note: SCTP settings apply to newly-created PeerConnections only
 RTC_C_EXPORT int rtcSetSctpSettings(const rtcSctpSettings *settings);
+
+// Optional global preload and cleanup
+RTC_C_EXPORT void rtcPreload(void);
+RTC_C_EXPORT void rtcCleanup(void);
 
 #ifdef __cplusplus
 } // extern "C"

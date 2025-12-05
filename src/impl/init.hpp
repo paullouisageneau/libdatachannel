@@ -32,6 +32,8 @@ public:
 	init_token token();
 	void preload();
 	std::shared_future<void> cleanup();
+
+	void setThreadPoolSize(unsigned int count);
 	void setSctpSettings(SctpSettings s);
 
 private:
@@ -45,6 +47,7 @@ private:
 	weak_ptr<void> mWeak;
 	bool mInitialized = false;
 	SctpSettings mCurrentSctpSettings = {};
+	unsigned int mThreadPoolSize = 0;
 	std::mutex mMutex;
 	std::shared_future<void> mCleanupFuture;
 
