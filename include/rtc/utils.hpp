@@ -162,7 +162,7 @@ class case_insensitive_less : public std::less<std::string> {
 public:
 	bool operator()(const std::string &lhs, const std::string &rhs) const {
 		return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
-		                                    [this](auto a, auto b) {
+		                                    [](auto a, auto b) {
 			                                    return std::tolower(static_cast<unsigned char>(a)) <
 			                                           std::tolower(static_cast<unsigned char>(b));
 		                                    });
