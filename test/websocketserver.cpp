@@ -35,12 +35,12 @@ TestResult test_websocketserver() {
 	serverConfig.maxMessageSize = 1000;     // to test max message size
 	WebSocketServer server(std::move(serverConfig));
 
-	std::map<string, string, case_insensitive_less> requestHeaders = {
+	WebSocket::Headers requestHeaders = {
 	    {"Authorization", "Bearer 9c96615b"},
 	    {"User-Agent", "libdatachannel/0.24"},
 	    {"X-Badly-Formatted", "Hello\r\nWorld"},
 	};
-	std::map<string, string, case_insensitive_less> expectedRequestHeaders = {
+	WebSocket::Headers expectedRequestHeaders = {
 	    {"Authorization", "Bearer 9c96615b"},
 	    {"User-Agent", "libdatachannel/0.24"},
 	    {"X-Badly-Formatted", "Hello World"},

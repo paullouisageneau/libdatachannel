@@ -43,8 +43,7 @@ bool WebSocket::isClosed() const { return impl()->state.load() == State::Closed;
 
 size_t WebSocket::maxMessageSize() const { return impl()->maxMessageSize(); }
 
-void WebSocket::open(const string &url,
-                     const std::map<string, string, case_insensitive_less> &headers) {
+void WebSocket::open(const string &url, const Headers &headers) {
 	impl()->open(url, std::move(headers));
 }
 

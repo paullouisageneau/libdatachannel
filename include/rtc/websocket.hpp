@@ -36,6 +36,8 @@ public:
 
 	using Configuration = WebSocketConfiguration;
 
+	using Headers = std::map<string, string, case_insensitive_less>;
+
 	WebSocket();
 	WebSocket(Configuration config);
 	WebSocket(impl_ptr<impl::WebSocket> impl);
@@ -47,8 +49,7 @@ public:
 	bool isClosed() const override;
 	size_t maxMessageSize() const override;
 
-	void open(const string &url,
-	          const std::map<string, string, case_insensitive_less> &headers = {});
+	void open(const string &url, const Headers &headers = {});
 	void close() override;
 	void forceClose();
 	bool send(const message_variant data) override;
