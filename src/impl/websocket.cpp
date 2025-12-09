@@ -68,7 +68,8 @@ WebSocket::WebSocket(optional<Configuration> optConfig, certificate_ptr certific
 
 WebSocket::~WebSocket() { PLOG_VERBOSE << "Destroying WebSocket"; }
 
-void WebSocket::open(const string &url) {
+void WebSocket::open(const string &url,
+                     const std::map<string, string, case_insensitive_less> &headers) {
 	PLOG_VERBOSE << "Opening WebSocket to URL: " << url;
 
 	if (state != State::Closed)
@@ -126,7 +127,8 @@ void WebSocket::open(const string &url) {
 
 	mHostname = hostname; // for TLS SNI and Proxy
 	mService = service;   // For proxy
-	std::atomic_store(&mWsHandshake, std::make_shared<WsHandshake>(host, path, config.protocols));
+	std::atomic_store(&mWsHandshake,
+	                  std::make_shared<WsHandshake>(host, path, config.protocols, headers));
 
 	changeState(State::Connecting);
 

@@ -30,14 +30,24 @@ using std::chrono::system_clock;
 
 WsHandshake::WsHandshake() {}
 
-WsHandshake::WsHandshake(string host, string path, std::vector<string> protocols)
-    : mHost(std::move(host)), mPath(std::move(path)), mProtocols(std::move(protocols)) {
+WsHandshake::WsHandshake(string host, string path, std::vector<string> protocols,
+                         const std::map<string, string, case_insensitive_less> &headers)
+    : mHost(std::move(host)), mPath(std::move(path)), mProtocols(std::move(protocols)),
+      mRequestHeaders(headers.begin(), headers.end()) {
 
 	if (mHost.empty())
 		throw std::invalid_argument("WebSocket HTTP host cannot be empty");
 
 	if (mPath.empty())
 		throw std::invalid_argument("WebSocket HTTP path cannot be empty");
+
+	for (auto &[name, value] : mRequestHeaders) {
+		if (name.empty()) {
+			throw std::invalid_argument("WebSocket HTTP header name cannot be empty");
+		}
+		value.erase(std::remove(value.begin(), value.end(), '\r'), value.end());
+		std::replace(value.begin(), value.end(), '\n', ' ');
+	}
 }
 
 string WsHandshake::host() const {
@@ -53,6 +63,11 @@ string WsHandshake::path() const {
 std::vector<string> WsHandshake::protocols() const {
 	std::unique_lock lock(mMutex);
 	return mProtocols;
+}
+
+http_headers WsHandshake::requestHeaders() const {
+	std::unique_lock lock(mMutex);
+	return mRequestHeaders;
 }
 
 string WsHandshake::generateHttpRequest() {
@@ -72,6 +87,10 @@ string WsHandshake::generateHttpRequest() {
 
 	if (!mProtocols.empty())
 		out += "Sec-WebSocket-Protocol: " + utils::implode(mProtocols, ',') + "\r\n";
+
+	for (auto const &[name, value] : mRequestHeaders) {
+		out += name + ": " + value + "\r\n";
+	}
 
 	out += "\r\n";
 
@@ -186,6 +205,8 @@ size_t WsHandshake::parseHttpRequest(const byte *buffer, size_t size) {
 	h = headers.find("sec-websocket-protocol");
 	if (h != headers.end())
 		mProtocols = utils::explode(h->second, ',');
+
+	mRequestHeaders = std::move(headers);
 
 	return length;
 }
