@@ -28,8 +28,8 @@ option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
 option(SCTP_DEBUG "Enable SCTP debugging output to verbose log" OFF)
 option(RTC_UPDATE_VERSION_HEADER "Enable updating the version header" OFF)
 
-if(NO_WEBRTC)
-	message(STATUS "libdatachannel: Setting NO_MEDIA option due to NO_WEBRTC option")
+if(NO_WEBRTC AND NOT NO_MEDIA)
+	message(STATUS "libdatachannel: Forcing NO_MEDIA option due to NO_WEBRTC option")
     set(NO_MEDIA ON CACHE BOOL "Disable media transport support" FORCE)
 endif()
 
