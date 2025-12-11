@@ -48,12 +48,16 @@ AV1RtpPacketizer::AV1RtpPacketizer(Packetization packetization,
 std::vector<binary> AV1RtpPacketizer::extractTemporalUnitObus(const binary &data) {
 	std::vector<binary> obus;
 
-	if (data.size() <= 2 || (data.at(0) != obuTemporalUnitDelimiter.at(0)) ||
-	    (data.at(1) != obuTemporalUnitDelimiter.at(1))) {
+	if (data.size() == 0) {
 		return {};
 	}
 
-	size_t index = 2;
+	// VAAPI doesn't seem to include delimiters
+	size_t index = 0;
+	if (data.size() > 2 && (data.at(0) == obuTemporalUnitDelimiter.at(0)) &&
+	    (data.at(1) == obuTemporalUnitDelimiter.at(1))) {
+		index = 2;
+	}
 	while (index < data.size()) {
 		if ((data.at(index) & obuHasSizeMask) == byte(0)) {
 			return obus;
