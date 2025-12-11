@@ -7,6 +7,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#if RTC_ENABLE_WEBRTC
+
 #include "peerconnection.hpp"
 #include "certificate.hpp"
 #include "dtlstransport.hpp"
@@ -1427,3 +1429,5 @@ void PeerConnection::updateTrackSsrcCache(const Description &description) {
 }
 
 } // namespace rtc::impl
+
+#endif

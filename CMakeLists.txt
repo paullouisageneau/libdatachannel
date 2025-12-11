@@ -20,12 +20,18 @@ option(USE_SYSTEM_PLOG "Use system Plog" ${PREFER_SYSTEM_LIB})
 option(USE_SYSTEM_JSON "Use system Nlohmann JSON" ${PREFER_SYSTEM_LIB})
 option(NO_WEBSOCKET "Disable WebSocket support" OFF)
 option(NO_MEDIA "Disable media transport support" OFF)
+option(NO_WEBRTC "Disable WebRTC support" OFF)
 option(NO_EXAMPLES "Disable examples" OFF)
 option(NO_TESTS "Disable tests build" OFF)
 option(WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
 option(SCTP_DEBUG "Enable SCTP debugging output to verbose log" OFF)
 option(RTC_UPDATE_VERSION_HEADER "Enable updating the version header" OFF)
+
+if(NO_WEBRTC)
+	message(STATUS "libdatachannel: Setting NO_MEDIA option due to NO_WEBRTC option")
+    set(NO_MEDIA ON CACHE BOOL "Disable media transport support" FORCE)
+endif()
 
 if(NOT NO_MEDIA AND NOT PREFER_SYSTEM_LIB)
 	# libsrtp2 v2.7.0 requires cmake >= v3.21.0
@@ -213,18 +219,21 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 
 set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/turn_connectivity.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/track.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_connectivity.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_track.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/websocket.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/websocketserver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_websocketserver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
 )
+if(NOT NO_WEBRTC)
+	list(APPEND TESTS_SOURCES
+    	${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
+    	${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
+    	${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/test/turn_connectivity.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/test/track.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/test/capi_connectivity.cpp
+		${CMAKE_CURRENT_SOURCE_DIR}/test/capi_track.cpp
+    	${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp)
+endif()
 
 set(TESTS_HEADERS 
 	${CMAKE_CURRENT_SOURCE_DIR}/test/test.hpp
@@ -311,28 +320,35 @@ if(SCTP_DEBUG)
 	add_definitions(-DSCTP_DEBUG)
 endif()
 
-if(USE_SYSTEM_USRSCTP)
-	find_package(Usrsctp REQUIRED)
+if(NO_WEBRTC)
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBRTC=0)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBRTC=0)
 else()
-	option(sctp_build_shared_lib OFF)
-	option(sctp_build_programs OFF)
-	option(sctp_inet OFF)
-	option(sctp_inet6 OFF)
-	option(sctp_werror OFF)
-	set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-	add_subdirectory(deps/usrsctp EXCLUDE_FROM_ALL)
-	if (MSYS OR MINGW)
-		target_compile_definitions(usrsctp PUBLIC -DSCTP_STDINT_INCLUDE=<stdint.h>)
-	endif()
-	add_library(Usrsctp::Usrsctp ALIAS usrsctp)
+	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBRTC=1)
+	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBRTC=1)
+	if(USE_SYSTEM_USRSCTP)
+		find_package(Usrsctp REQUIRED)
+	else()
+		option(sctp_build_shared_lib OFF)
+		option(sctp_build_programs OFF)
+		option(sctp_inet OFF)
+		option(sctp_inet6 OFF)
+		option(sctp_werror OFF)
+		set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+		add_subdirectory(deps/usrsctp EXCLUDE_FROM_ALL)
+		if (MSYS OR MINGW)
+			target_compile_definitions(usrsctp PUBLIC -DSCTP_STDINT_INCLUDE=<stdint.h>)
+		endif()
+		add_library(Usrsctp::Usrsctp ALIAS usrsctp)
 
-	if(INSTALL_DEPS_LIBS)
-		install(TARGETS usrsctp EXPORT LibDataChannelTargets)
-		# Fix directories
-		set_target_properties(usrsctp PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "")
-		target_include_directories(usrsctp INTERFACE
-			$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/usrsctp/usrsctplib>
-			$<INSTALL_INTERFACE:>)
+		if(INSTALL_DEPS_LIBS)
+			install(TARGETS usrsctp EXPORT LibDataChannelTargets)
+			# Fix directories
+			set_target_properties(usrsctp PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "")
+			target_include_directories(usrsctp INTERFACE
+				$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/usrsctp/usrsctplib>
+				$<INSTALL_INTERFACE:>)
+		endif()
 	endif()
 endif()
 
@@ -344,8 +360,10 @@ target_include_directories(datachannel PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(datachannel PRIVATE
 	Threads::Threads
-	Usrsctp::Usrsctp
 	$<BUILD_INTERFACE:plog::plog>)
+if(NOT NO_WEBRTC)
+	target_link_libraries(datachannel PRIVATE Usrsctp::Usrsctp)
+endif()
 
 target_include_directories(datachannel-static PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -355,8 +373,10 @@ target_include_directories(datachannel-static PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(datachannel-static PRIVATE
 	Threads::Threads
-	Usrsctp::Usrsctp
 	$<BUILD_INTERFACE:plog::plog>)
+if(NOT NO_WEBRTC)
+	target_link_libraries(datachannel-static PRIVATE Usrsctp::Usrsctp)
+endif()
 
 if(WIN32)
 	target_link_libraries(datachannel PUBLIC ws2_32) # winsock2
@@ -371,7 +391,7 @@ else()
 	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=1)
 endif()
 
-if(NO_MEDIA)
+if(NO_MEDIA OR NO_WEBRTC)
 	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_MEDIA=0)
 	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_MEDIA=0)
 else()
@@ -572,24 +592,26 @@ if(NOT NO_TESTS)
 	target_link_libraries(datachannel-tests datachannel Threads::Threads)
 
 	# Benchmark
-	if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
-		# Add resource files needed for UWP apps.
-		add_executable(datachannel-benchmark test/benchmark.cpp ${BENCHMARK_UWP_RESOURCES})
-	else()
-		add_executable(datachannel-benchmark test/benchmark.cpp)
+	if(NOT NO_WEBRTC)
+		if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+			# Add resource files needed for UWP apps.
+			add_executable(datachannel-benchmark test/benchmark.cpp ${BENCHMARK_UWP_RESOURCES})
+		else()
+			add_executable(datachannel-benchmark test/benchmark.cpp)
+		endif()
+
+		set_target_properties(datachannel-benchmark PROPERTIES
+			VERSION ${PROJECT_VERSION}
+			CXX_STANDARD 17
+			OUTPUT_NAME benchmark)
+
+		set_target_properties(datachannel-benchmark PROPERTIES
+			XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.benchmark)
+
+		target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
+		target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+		target_link_libraries(datachannel-benchmark datachannel Threads::Threads)
 	endif()
-
-	set_target_properties(datachannel-benchmark PROPERTIES
-		VERSION ${PROJECT_VERSION}
-		CXX_STANDARD 17
-		OUTPUT_NAME benchmark)
-
-	set_target_properties(datachannel-benchmark PROPERTIES
-		XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.benchmark)
-
-	target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
-	target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-	target_link_libraries(datachannel-benchmark datachannel Threads::Threads)
 endif()
 
 # Examples

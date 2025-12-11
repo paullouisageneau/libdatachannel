@@ -33,6 +33,8 @@ TestResult test_capi_track();
 TestResult test_websocket();
 TestResult test_websocketserver();
 TestResult test_capi_websocketserver();
+
+#if RTC_ENABLE_WEBRTC
 size_t benchmark(chrono::milliseconds duration);
 
 void test_benchmark() {
@@ -45,6 +47,7 @@ void test_benchmark() {
 	if (goodput < threshold)
 		throw runtime_error("Goodput is too low");
 }
+#endif
 
 TestResult test_cleanup() {
 	try {
@@ -67,6 +70,7 @@ TestResult test_capi_cleanup() {
 }
 
 static const vector<Test> tests = {
+#if RTC_ENABLE_WEBRTC
     // C++ API tests
     Test("WebRTC connectivity", test_connectivity),
     Test("WebRTC broken fingerprint", test_connectivity_fail_on_wrong_fingerprint),
@@ -78,16 +82,19 @@ static const vector<Test> tests = {
 #if RTC_ENABLE_MEDIA
     Test("WebRTC track", test_track),
 #endif
+#endif
 #if RTC_ENABLE_WEBSOCKET
     // TODO: Temporarily disabled as the echo service is unreliable
     // new Test("WebSocket", test_websocket),
     Test("WebSocketServer", test_websocketserver),
 #endif
     Test("Cleanup", test_cleanup),
+#if RTC_ENABLE_WEBRTC
     // C API tests
     Test("WebRTC C API connectivity", test_capi_connectivity),
 #if RTC_ENABLE_MEDIA
     Test("WebRTC C API track", test_capi_track),
+#endif
 #endif
 #if RTC_ENABLE_WEBSOCKET
     Test("WebSocketServer C API", test_capi_websocketserver),
