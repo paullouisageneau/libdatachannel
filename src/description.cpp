@@ -542,6 +542,8 @@ variant<const Description::Media *, const Description::Application *> Descriptio
 
 int Description::mediaCount() const { return int(mEntries.size()); }
 
+string Description::sessionId() const { return mSessionId; }
+
 Description::Entry::Entry(const string &mline, string mid, Direction dir)
     : mMid(std::move(mid)), mDirection(dir) {
 
