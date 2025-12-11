@@ -86,7 +86,7 @@ void InitLogger(plog::Severity severity, plog::IAppender *appender) {
 void SetThreadPoolSize(unsigned int count) { impl::Init::Instance().setThreadPoolSize(count); }
 void SetSctpSettings(SctpSettings s) { impl::Init::Instance().setSctpSettings(std::move(s)); }
 
-void Preload() { impl::Init::Instance().preload(); }
+bool Preload() { return impl::Init::Instance().preload(); }
 std::shared_future<void> Cleanup() { return impl::Init::Instance().cleanup(); }
 
 std::ostream &operator<<(std::ostream &out, LogLevel level) {

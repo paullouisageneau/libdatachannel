@@ -30,7 +30,7 @@ public:
 	Init &operator=(Init &&) = delete;
 
 	init_token token();
-	void preload();
+	bool preload();
 	std::shared_future<void> cleanup();
 
 	void setThreadPoolSize(unsigned int count);

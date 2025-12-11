@@ -537,7 +537,7 @@ typedef struct {
 RTC_C_EXPORT int rtcSetSctpSettings(const rtcSctpSettings *settings);
 
 // Optional global preload and cleanup
-RTC_C_EXPORT void rtcPreload(void);
+RTC_C_EXPORT bool rtcPreload(void);
 RTC_C_EXPORT void rtcCleanup(void);
 
 #ifdef __cplusplus
