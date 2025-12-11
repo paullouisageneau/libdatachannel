@@ -6,6 +6,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#if RTC_ENABLE_WEBRTC
+
 #include "candidate.hpp"
 
 #include "impl/internals.hpp"
@@ -285,3 +287,5 @@ std::ostream &operator<<(std::ostream &out, const Candidate::TransportType &tran
 }
 
 } // namespace rtc
+
+#endif

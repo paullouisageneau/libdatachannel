@@ -6,6 +6,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#if RTC_ENABLE_WEBRTC
+
 #include "icetransport.hpp"
 #include "configuration.hpp"
 #include "internals.hpp"
@@ -945,3 +947,5 @@ bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote)
 #endif
 
 } // namespace rtc::impl
+
+#endif

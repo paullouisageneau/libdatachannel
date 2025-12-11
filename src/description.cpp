@@ -158,8 +158,10 @@ Description::Description(const string &sdp, Type type, Role role)
 				// attribute.
 				if (mIceOptions.empty())
 					mIceOptions = utils::explode(string(value), ',');
+#if RTC_ENABLE_WEBRTC
 			} else if (key == "candidate") {
 				addCandidate(Candidate(attr, bundleMid()));
+#endif
 			} else if (key == "end-of-candidates") {
 				mEnded = true;
 			} else if (current) {
@@ -256,6 +258,7 @@ void Description::Entry::removeAttribute(const string &attr) {
 	    mAttributes.end());
 }
 
+#if RTC_ENABLE_WEBRTC
 std::vector<Candidate> Description::candidates() const { return mCandidates; }
 
 std::vector<Candidate> Description::extractCandidates() {
@@ -423,6 +426,7 @@ optional<Candidate> Description::defaultCandidate() const {
 	}
 	return result;
 }
+#endif
 
 shared_ptr<Description::Entry> Description::createEntry(string mline, string mid, Direction dir) {
 	string type = mline.substr(0, mline.find(' '));
@@ -1374,9 +1378,11 @@ bool CertificateFingerprint::isValid() const {
 	return true;
 }
 
+#if RTC_ENABLE_WEBRTC
 std::ostream &operator<<(std::ostream &out, const Description &description) {
 	return out << string(description);
 }
+#endif
 
 std::ostream &operator<<(std::ostream &out, Description::Type type) {
 	return out << Description::typeToString(type);
