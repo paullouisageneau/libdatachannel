@@ -293,6 +293,8 @@ public:
 	static Type stringToType(const string &typeString);
 	static string typeToString(Type type);
 
+	string sessionId() const;
+
 private:
 	optional<Candidate> defaultCandidate() const;
 	shared_ptr<Entry> createEntry(string mline, string mid, Direction dir);
