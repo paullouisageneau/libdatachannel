@@ -89,6 +89,8 @@ bool check_error(int err, const string &message = "OpenSSL error");
 
 BIO *BIO_new_from_file(const string &filename);
 
+void SSL_CTX_add_cert_to_store_from_pem(SSL_CTX *ctx, const string &pem);
+
 } // namespace rtc::openssl
 
 #endif
