@@ -23,7 +23,7 @@ namespace rtc {
 // and delivers them in a smoother manner by sending a fixed size of them on an interval
 class RTC_CPP_EXPORT PacingHandler : public MediaHandler {
 public:
-	PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval, size_t maxQueueSize=2048, std::function<void(void)> onOverflowCallback=nullptr);
+	PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval, size_t maxQueueSize=0, std::function<void(void)> onOverflowCallback=nullptr);
 
 	void setBitrate(double bitsPerSecond);
 

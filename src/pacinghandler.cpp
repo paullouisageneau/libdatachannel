@@ -76,17 +76,21 @@ void PacingHandler::outgoing(message_vector &messages, const message_callback &s
         maxQueueSize = mMaxQueueSize;
     }
 	
-    size_t currentSize = mRtpBuffer.size();
     size_t messagesSize = messages.size();
-	if (currentSize + messagesSize > maxQueueSize) {
-        mRtpBuffer = {};
-		if (mOnOverflowCallback) {
-			mOnOverflowCallback();
+	if (maxQueueSize > 0) {
+		size_t currentSize = mRtpBuffer.size();
+		if (currentSize + messagesSize > maxQueueSize) {
+			mRtpBuffer = {};
+			if (mOnOverflowCallback) {
+				mOnOverflowCallback();
+			}
 		}
-    }
-	if (messages.size() <= maxQueueSize) {
-		for (auto &m : messages) {
-			mRtpBuffer.push(std::move(m));
+	}
+	if (maxQueueSize == 0 || messagesSize <= maxQueueSize) {
+		if (messages.size() <= maxQueueSize) {
+			for (auto &m : messages) {
+				mRtpBuffer.push(std::move(m));
+			}
 		}
 	}
 	messages.clear();
