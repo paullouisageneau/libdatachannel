@@ -48,7 +48,7 @@ private:
 
 	std::function<void(void)> mOnOverflowCallback;
 
-	void schedule(const message_callback &send);
+	void schedule(const message_callback &send, std::chrono::milliseconds scheduleInterval);
 	void run(const message_callback &send);
 };
 

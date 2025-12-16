@@ -30,9 +30,9 @@ void PacingHandler::setMaxQueueSize(size_t maxQueueSize) {
     mMaxQueueSize = maxQueueSize;
 }
 
-void PacingHandler::schedule(const message_callback &send) {
+void PacingHandler::schedule(const message_callback &send, std::chrono::milliseconds scheduleInterval) {
 	if (!mHaveScheduled.exchange(true))
-		impl::ThreadPool::Instance().schedule(mSendInterval,
+		impl::ThreadPool::Instance().schedule(scheduleInterval,
 		                                      weak_bind(&PacingHandler::run, this, send));
 }
 
@@ -61,8 +61,10 @@ void PacingHandler::run(const message_callback &send) {
 		mBudget -= size;
 	}
 
+	auto scheduleInterval = std::chrono::duration_cast<std::chrono::milliseconds>(mSendInterval - (std::chrono::high_resolution_clock::now() - mLastRun));
+
 	if (!mRtpBuffer.empty()) {
-		schedule(send);
+		schedule(send, std::max(scheduleInterval, std::chrono::milliseconds(0)));
 	}
 }
 
@@ -95,7 +97,7 @@ void PacingHandler::outgoing(message_vector &messages, const message_callback &s
 	}
 	messages.clear();
 
-	schedule(send);
+	schedule(send, mSendInterval);
 }
 
 } // namespace rtc
