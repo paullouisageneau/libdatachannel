@@ -17,8 +17,8 @@
 
 namespace rtc {
 
-PacingHandler::PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval, size_t maxQueueSize)
-    : mBytesPerSecond(bitsPerSecond / 8), mBudget(0.), mSendInterval(sendInterval), mMaxQueueSize(maxQueueSize) {};
+PacingHandler::PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval, size_t maxQueueSize, std::function<void(void)> onOverflowCallback)
+    : mBytesPerSecond(bitsPerSecond / 8), mBudget(0.), mSendInterval(sendInterval), mMaxQueueSize(maxQueueSize), mOnOverflowCallback(onOverflowCallback) {};
 
 void PacingHandler::setBitrate(double bitsPerSecond) {
 	std::lock_guard<std::mutex> lock(mParamsMutex);
@@ -80,6 +80,9 @@ void PacingHandler::outgoing(message_vector &messages, const message_callback &s
     size_t messagesSize = messages.size();
 	if (currentSize + messagesSize > maxQueueSize) {
         mRtpBuffer = {};
+		if (mOnOverflowCallback) {
+			mOnOverflowCallback();
+		}
     }
 	if (messages.size() <= maxQueueSize) {
 		for (auto &m : messages) {
