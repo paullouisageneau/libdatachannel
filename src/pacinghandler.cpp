@@ -97,7 +97,7 @@ void PacingHandler::outgoing(message_vector &messages, const message_callback &s
 	}
 	messages.clear();
 
-	schedule(send, mSendInterval);
+	schedule(send, std::chrono::milliseconds(0));
 }
 
 } // namespace rtc
