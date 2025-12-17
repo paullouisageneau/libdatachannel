@@ -576,12 +576,14 @@ void RtcpRemb::setBitrate(unsigned int numSSRC, unsigned int in_bitrate) {
 	}
 
 	// "length" in packet is one less than the number of 32 bit words in the packet.
-	header.header.setLength(uint16_t((offsetof(RtcpRemb, _ssrc) / sizeof(uint32_t)) - 1 + numSSRC));
+	header.header.setLength(uint16_t((offsetof(RtcpRemb, _ssrcs) / sizeof(uint32_t)) - 1 + numSSRC));
 
 	_bitrate = htonl((numSSRC << (32u - 8u)) | (exp << (32u - 8u - 6u)) | in_bitrate);
 }
 
-void RtcpRemb::setSsrc(int iterator, SSRC newSssrc) { _ssrc[iterator] = htonl(newSssrc); }
+SSRC RtcpRemb::getSsrc(int num) const { return ntohl(*(&_ssrcs + num)); }
+
+void RtcpRemb::setSsrc(int num, SSRC newSsrc) { *(&_ssrcs + num) = htonl(newSsrc); }
 
 unsigned int RtcpRemb::getNumSSRC() { return ntohl(_bitrate) >> 24u; }
 

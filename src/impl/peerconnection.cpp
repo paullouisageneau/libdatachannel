@@ -577,11 +577,24 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 				break;
 			}
 			offset += header->lengthInBytes();
-			if (header->payloadType() == 205 || header->payloadType() == 206) {
+			if (header->payloadType() == 205) {
 				auto rtcpfb = reinterpret_cast<RtcpFbHeader *>(header);
 				ssrcs.insert(rtcpfb->packetSenderSSRC());
 				ssrcs.insert(rtcpfb->mediaSourceSSRC());
-
+			} else if (header->payloadType() == 206) {
+				auto rtcpfb = reinterpret_cast<RtcpFbHeader *>(header);
+				ssrcs.insert(rtcpfb->packetSenderSSRC());
+				if (header->reportCount() == 15 && header->lengthInBytes() == sizeof(RtcpRemb)) {
+					auto remb = reinterpret_cast<RtcpRemb *>(header);
+					if (remb->_id[0] == 'R' && remb->_id[1] == 'E' && remb->_id[2] == 'M' && remb->_id[3] == 'B') {
+                    	unsigned numSsrc = remb->getNumSSRC();
+						for (unsigned i = 0; i < numSsrc; i++) {
+							ssrcs.insert(remb->getSsrc(i));
+						}
+						continue;
+					}
+				}
+				ssrcs.insert(rtcpfb->mediaSourceSSRC());
 			} else if (header->payloadType() == 200) {
 				auto rtcpsr = reinterpret_cast<RtcpSr *>(header);
 				ssrcs.insert(rtcpsr->senderSSRC());
