@@ -28,7 +28,7 @@ void RembHandler::incoming(message_vector &messages, [[maybe_unused]] const mess
 			auto header = reinterpret_cast<RtcpHeader *>(message->data() + offset);
 			uint8_t payload_type = header->payloadType();
 
-			if (payload_type == 206 && header->reportCount() == 15 && header->lengthInBytes() == sizeof(RtcpRemb)) {
+			if (payload_type == 206 && header->reportCount() == 15 && header->lengthInBytes() >= sizeof(RtcpRemb)) {
 				auto remb = reinterpret_cast<RtcpRemb *>(message->data() + offset);
 
 				if (remb->_id[0] == 'R' && remb->_id[1] == 'E' && remb->_id[2] == 'M' && remb->_id[3] == 'B') {

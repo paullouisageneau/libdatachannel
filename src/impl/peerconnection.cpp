@@ -584,7 +584,7 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 			} else if (header->payloadType() == 206) {
 				auto rtcpfb = reinterpret_cast<RtcpFbHeader *>(header);
 				ssrcs.insert(rtcpfb->packetSenderSSRC());
-				if (header->reportCount() == 15 && header->lengthInBytes() == sizeof(RtcpRemb)) {
+				if (header->reportCount() == 15 && header->lengthInBytes() >= sizeof(RtcpRemb)) {
 					auto remb = reinterpret_cast<RtcpRemb *>(header);
 					if (remb->_id[0] == 'R' && remb->_id[1] == 'E' && remb->_id[2] == 'M' && remb->_id[3] == 'B') {
                     	unsigned numSsrc = remb->getNumSSRC();
