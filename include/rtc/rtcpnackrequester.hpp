@@ -21,21 +21,26 @@ namespace rtc {
 
 class RTC_CPP_EXPORT RtcpNackRequester final : public MediaHandler {
 public:
+	RtcpNackRequester(SSRC ssrc, size_t jitterSize = 5, size_t nackResendIntervalMs = 10,
+	                  size_t nackResendTimesMax = 10);
 	SSRC ssrc;
-	size_t jitterSize;
-	size_t nackWaitMs;
-
-	RtcpNackRequester(SSRC ssrc, size_t jitterSize = 5, size_t nackWaitMs = 50);
 	void incoming(message_vector &messages, const message_callback &send) override;
 
 private:
-	uint16_t expectSequence = 0;
-	std::chrono::steady_clock::time_point nackWaitUntil;
+	size_t jitterSize;
+	size_t nackResendIntervalMs;
+	size_t nackResendTimesMax;
 
-	std::unordered_map<uint16_t, message_ptr> receivePackets;
-	std::set<uint16_t> lostSequenceNumbers;
+	bool initialized = false;
+	uint16_t expectedSeq;
+	size_t nackResendTimes = 0;
+	std::chrono::steady_clock::time_point nextNackTime = std::chrono::steady_clock::now();
 
-	message_ptr nackMesssage(uint16_t sequence);
+	std::map<uint16_t, message_ptr> jitterBuffer;
+
+	auto isSeqNewerOrEqual(uint16_t seq1, uint16_t seq2) -> bool;
+	void clearBuffer();
+	auto nackMessage(uint16_t sequence) -> message_ptr;
 };
 
 } // namespace rtc
