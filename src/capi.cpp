@@ -1179,7 +1179,7 @@ int rtcGetTrackDirection(int tr, rtcDirection *direction) {
 int rtcRequestKeyframe(int tr) {
 	return wrap([&] {
 		auto track = getTrack(tr);
-		track->requestKeyframe();
+		std::ignore = std::ignore = track->requestKeyframe();
 		return RTC_ERR_SUCCESS;
 	});
 }
@@ -1187,7 +1187,7 @@ int rtcRequestKeyframe(int tr) {
 int rtcRequestBitrate(int tr, unsigned int bitrate) {
 	return wrap([&] {
 		auto track = getTrack(tr);
-		track->requestBitrate(bitrate);
+		std::ignore = track->requestBitrate(bitrate);
 		return RTC_ERR_SUCCESS;
 	});
 }

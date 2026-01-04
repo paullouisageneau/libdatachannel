@@ -108,7 +108,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	// Helper method for asynchronous callback invocation
 	template <typename... Args> void trigger(synchronized_callback<Args...> *cb, Args... args) {
 		try {
-			(*cb)(std::move(args...));
+			std::ignore = (*cb)(std::move(args...));
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
 		}

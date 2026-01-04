@@ -1267,7 +1267,7 @@ void PeerConnection::triggerPendingDataChannels() {
 		auto impl = std::move(*next);
 
 		try {
-			dataChannelCallback(std::make_shared<rtc::DataChannel>(impl));
+			std::ignore = dataChannelCallback(std::make_shared<rtc::DataChannel>(impl));
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
 		}
@@ -1285,7 +1285,7 @@ void PeerConnection::triggerPendingTracks() {
 		auto impl = std::move(*next);
 
 		try {
-			trackCallback(std::make_shared<rtc::Track>(impl));
+			std::ignore = trackCallback(std::make_shared<rtc::Track>(impl));
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
 		}
@@ -1319,7 +1319,7 @@ bool PeerConnection::changeState(State newState) {
 
 	if (newState == State::Closed) {
 		auto callback = std::move(stateChangeCallback); // steal the callback
-		callback(State::Closed);                        // call it synchronously
+		std::ignore = callback(State::Closed);                        // call it synchronously
 	} else {
 		mProcessor.enqueue(&PeerConnection::trigger<State>, shared_from_this(),
 		                   &stateChangeCallback, newState);
@@ -1337,7 +1337,7 @@ bool PeerConnection::changeIceState(IceState newState) {
 
 	if (newState == IceState::Closed) {
 		auto callback = std::move(iceStateChangeCallback); // steal the callback
-		callback(IceState::Closed);                        // call it synchronously
+		std::ignore = callback(IceState::Closed);                        // call it synchronously
 	} else {
 		mProcessor.enqueue(&PeerConnection::trigger<IceState>, shared_from_this(),
 		                   &iceStateChangeCallback, newState);
