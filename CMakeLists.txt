@@ -67,15 +67,168 @@ if(WIN32)
 		add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 	endif()
 endif()
-file(GLOB LIBDATACHANNEL_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
-file(GLOB LIBDATACHANNEL_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/*.h*")
-file(GLOB LIBDATACHANNEL_IMPL_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/impl/*.cpp")
-file(GLOB LIBDATACHANNEL_IMPL_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/impl/*.hpp")
 
-file(GLOB TESTS_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/test/*.cpp")
-file(GLOB TESTS_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/test/*.hpp")
+set(LIBDATACHANNEL_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/src/candidate.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/channel.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/configuration.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/datachannel.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/dependencydescriptor.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/iceudpmuxlistener.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/mediahandler.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/global.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/message.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/peerconnection.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpreceivingsession.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/track.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/websocket.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/websocketserver.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizationconfig.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsrreporter.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtpdepacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/h264rtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/h264rtpdepacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/nalunit.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/h265rtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/h265rtpdepacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/h265nalunit.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/av1rtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtp.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/plihandler.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/pacinghandler.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rembhandler.cpp
+)
 
+set(LIBDATACHANNEL_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/candidate.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/channel.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/configuration.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/datachannel.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/dependencydescriptor.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/description.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/iceudpmuxlistener.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/mediahandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpreceivingsession.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/common.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/global.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/message.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/frameinfo.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/peerconnection.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/reliability.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.h
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtc.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtp.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/track.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocket.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocketserver.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizationconfig.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpsrreporter.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtpdepacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h264rtpdepacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/nalunit.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265rtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265rtpdepacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265nalunit.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/av1rtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/utils.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/plihandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/pacinghandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rembhandler.hpp
+)
 
+set(LIBDATACHANNEL_IMPL_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/certificate.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/channel.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/datachannel.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlssrtptransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/icetransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/iceudpmuxlistener.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/init.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/peerconnection.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/logcounter.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sctptransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/threadpool.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tls.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/track.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/utils.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sha.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/pollinterrupter.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/pollservice.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/http.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/httpproxytransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcpserver.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcptransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tlstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/transport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/verifiedtlstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocket.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocketserver.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wstransport.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wshandshake.cpp
+)
+
+set(LIBDATACHANNEL_IMPL_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/certificate.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/channel.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/datachannel.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlssrtptransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/dtlstransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/icetransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/iceudpmuxlistener.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/init.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/internals.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/peerconnection.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/queue.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/logcounter.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sctptransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/threadpool.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tls.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/track.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/utils.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sha.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/pollinterrupter.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/pollservice.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/http.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/httpproxytransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcpserver.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tcptransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/tlstransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/transport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/verifiedtlstransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocket.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocketserver.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wstransport.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wshandshake.hpp
+)
+
+set(TESTS_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/turn_connectivity.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/track.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_connectivity.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_track.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/websocket.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/websocketserver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_websocketserver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
+)
+
+set(TESTS_HEADERS 
+	${CMAKE_CURRENT_SOURCE_DIR}/test/test.hpp
+)
 
 set(TESTS_UWP_RESOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/tests/Logo.png
