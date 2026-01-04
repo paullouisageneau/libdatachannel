@@ -949,7 +949,7 @@ void PeerConnection::populateLocalDescription(Description &description) const {
 					        PLOG_DEBUG << "Adding application to local description, mid=\""
 					                   << app.mid() << "\"";
 
-					        description.addMedia(std::move(app));
+					        std::ignore = description.addMedia(std::move(app));
 
 				        } else {
 							auto reciprocated = remoteApp->reciprocate();
@@ -959,7 +959,7 @@ void PeerConnection::populateLocalDescription(Description &description) const {
 							PLOG_DEBUG << "Reciprocating application in local description, mid=\""
 								       << reciprocated.mid() << "\"";
 
-							description.addMedia(std::move(reciprocated));
+							std::ignore = description.addMedia(std::move(reciprocated));
 						}
 			        },
 			        [&](Description::Media *remoteMedia) {
@@ -974,7 +974,7 @@ void PeerConnection::populateLocalDescription(Description &description) const {
 						                << media.mid() << "\", removed=" << std::boolalpha
 						                << media.isRemoved();
 
-						    description.addMedia(std::move(media));
+						    std::ignore = description.addMedia(std::move(media));
 
 					    } else {
 							auto reciprocated = remoteMedia->reciprocate();
@@ -984,7 +984,7 @@ void PeerConnection::populateLocalDescription(Description &description) const {
 						                << reciprocated.mid()
 						                << "\", removed=true (track is destroyed)";
 
-						    description.addMedia(std::move(reciprocated));
+						    std::ignore = description.addMedia(std::move(reciprocated));
 					    }
 			        },
 			    },
@@ -1006,7 +1006,7 @@ void PeerConnection::populateLocalDescription(Description &description) const {
 				PLOG_DEBUG << "Adding media to local description, mid=\"" << media.mid()
 				           << "\", removed=" << std::boolalpha << media.isRemoved();
 
-				description.addMedia(std::move(media));
+				std::ignore = description.addMedia(std::move(media));
 			}
 		}
 
@@ -1026,7 +1026,7 @@ void PeerConnection::populateLocalDescription(Description &description) const {
 				PLOG_DEBUG << "Adding application to local description, mid=\"" << app.mid()
 				           << "\"";
 
-				description.addMedia(std::move(app));
+				std::ignore = description.addMedia(std::move(app));
 			}
 		}
 	}

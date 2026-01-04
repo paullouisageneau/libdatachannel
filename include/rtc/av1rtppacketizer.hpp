@@ -36,10 +36,10 @@ public:
 	                 size_t maxFragmentSize = DefaultMaxFragmentSize);
 
 private:
-	static std::vector<binary> extractTemporalUnitObus(const binary &data);
+	[[nodiscard]] static std::vector<binary> extractTemporalUnitObus(const binary &data);
 
-	std::vector<binary> fragment(binary data) override;
-	std::vector<binary> fragmentObu(const binary &data);
+	[[nodiscard]] std::vector<binary> fragment(binary data) override;
+	[[nodiscard]] std::vector<binary> fragmentObu(const binary &data);
 
 	const Packetization mPacketization;
 	const size_t mMaxFragmentSize;

@@ -53,13 +53,13 @@ private:
 		const size_t maxSize;
 
 		/// Returns current size
-		size_t size();
+		[[nodiscard]] size_t size();
 
 	public:
 		Storage(size_t _maxSize);
 
 		/// Returns packet with given sequence number
-		message_ptr get(uint16_t sequenceNumber);
+		[[nodiscard]] message_ptr get(uint16_t sequenceNumber);
 
 		/// Stores packet
 		/// @param packet Packet

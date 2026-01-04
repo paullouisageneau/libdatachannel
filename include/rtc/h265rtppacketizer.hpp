@@ -38,8 +38,8 @@ public:
 	                  size_t maxFragmentSize = DefaultMaxFragmentSize);
 
 private:
-	std::vector<binary> fragment(binary data) override;
-	std::vector<H265NalUnit> splitFrame(const binary &frame);
+	[[nodiscard]] std::vector<binary> fragment(binary data) override;
+	[[nodiscard]] std::vector<H265NalUnit> splitFrame(const binary &frame);
 
 	const NalUnit::Separator mSeparator;
 	const size_t mMaxFragmentSize;

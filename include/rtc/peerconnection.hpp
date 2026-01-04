@@ -81,20 +81,20 @@ public:
 
 	void close();
 
-	const Configuration *config() const;
-	State state() const;
-	IceState iceState() const;
-	GatheringState gatheringState() const;
-	SignalingState signalingState() const;
-	bool negotiationNeeded() const;
-	bool hasMedia() const;
-	optional<Description> localDescription() const;
-	optional<Description> remoteDescription() const;
-	size_t remoteMaxMessageSize() const;
-	optional<string> localAddress() const;
-	optional<string> remoteAddress() const;
-	uint16_t maxDataChannelId() const;
-	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
+	[[nodiscard]] const Configuration *config() const;
+	[[nodiscard]] State state() const;
+	[[nodiscard]] IceState iceState() const;
+	[[nodiscard]] GatheringState gatheringState() const;
+	[[nodiscard]] SignalingState signalingState() const;
+	[[nodiscard]] bool negotiationNeeded() const;
+	[[nodiscard]] bool hasMedia() const;
+	[[nodiscard]] optional<Description> localDescription() const;
+	[[nodiscard]] optional<Description> remoteDescription() const;
+	[[nodiscard]] size_t remoteMaxMessageSize() const;
+	[[nodiscard]] optional<string> localAddress() const;
+	[[nodiscard]] optional<string> remoteAddress() const;
+	[[nodiscard]] uint16_t maxDataChannelId() const;
+	[[nodiscard]] bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
 	void setLocalDescription(Description::Type type = Description::Type::Unspec, LocalDescriptionInit init = {});
 	void gatherLocalCandidates(std::vector<IceServer> additionalIceServers = {});
@@ -102,11 +102,11 @@ public:
 	void addRemoteCandidate(Candidate candidate);
 
 	// For specific use cases only
-	Description createOffer();
-	Description createAnswer();
+	[[nodiscard]] Description createOffer();
+	[[nodiscard]] Description createAnswer();
 
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
-	shared_ptr<MediaHandler> getMediaHandler();
+	[[nodiscard]] shared_ptr<MediaHandler> getMediaHandler();
 
 	[[nodiscard]] shared_ptr<DataChannel> createDataChannel(string label,
 	                                                        DataChannelInit init = {});
@@ -123,13 +123,13 @@ public:
 	void onSignalingStateChange(std::function<void(SignalingState state)> callback);
 
 	void resetCallbacks();
-	CertificateFingerprint remoteFingerprint();
+	[[nodiscard]] CertificateFingerprint remoteFingerprint();
 
 	// Stats
 	void clearStats();
-	size_t bytesSent();
-	size_t bytesReceived();
-	optional<std::chrono::milliseconds> rtt();
+	[[nodiscard]] size_t bytesSent();
+	[[nodiscard]] size_t bytesReceived();
+	[[nodiscard]] optional<std::chrono::milliseconds> rtt();
 };
 
 RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, PeerConnection::State state);

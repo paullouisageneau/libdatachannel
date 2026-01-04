@@ -27,34 +27,34 @@ public:
 	Track(impl_ptr<impl::Track> impl);
 	~Track() override;
 
-	string mid() const;
-	Description::Direction direction() const;
-	Description::Media description() const;
+	[[nodiscard]] string mid() const;
+	[[nodiscard]] Description::Direction direction() const;
+	[[nodiscard]] Description::Media description() const;
 
 	void setDescription(Description::Media description);
 
 	void close(void) override;
-	bool send(message_variant data) override;
-	bool send(const byte *data, size_t size) override;
+	[[nodiscard]] bool send(message_variant data) override;
+	[[nodiscard]] bool send(const byte *data, size_t size) override;
 
-	bool isOpen(void) const override;
-	bool isClosed(void) const override;
-	size_t maxMessageSize() const override;
+	[[nodiscard]] bool isOpen(void) const override;
+	[[nodiscard]] bool isClosed(void) const override;
+	[[nodiscard]] size_t maxMessageSize() const override;
 
 	void sendFrame(binary data, FrameInfo info);
 	void sendFrame(const byte *data, size_t size, FrameInfo info);
 	void onFrame(std::function<void(binary data, FrameInfo info)> callback);
 
-	bool requestKeyframe();
-	bool requestBitrate(unsigned int bitrate);
+	[[nodiscard]] bool requestKeyframe();
+	[[nodiscard]] bool requestBitrate(unsigned int bitrate);
 
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
 	void chainMediaHandler(shared_ptr<MediaHandler> handler);
-	shared_ptr<MediaHandler> getMediaHandler();
+	[[nodiscard]] shared_ptr<MediaHandler> getMediaHandler();
 
 	// Deprecated, use setMediaHandler() and getMediaHandler()
 	inline void setRtcpHandler(shared_ptr<MediaHandler> handler) { setMediaHandler(handler); }
-	inline shared_ptr<MediaHandler> getRtcpHandler() { return getMediaHandler(); }
+	[[nodiscard]] inline shared_ptr<MediaHandler> getRtcpHandler() { return getMediaHandler(); }
 
 private:
 	using CheshireCat<impl::Track>::impl;

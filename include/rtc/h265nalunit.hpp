@@ -35,10 +35,10 @@ struct RTC_CPP_EXPORT H265NalUnitHeader {
 	uint8_t _first = 0;  // high byte of header
 	uint8_t _second = 0; // low byte of header
 
-	bool forbiddenBit() const { return _first >> 7; }
-	uint8_t unitType() const { return (_first & 0b0111'1110) >> 1; }
-	uint8_t nuhLayerId() const { return ((_first & 0x1) << 5) | ((_second & 0b1111'1000) >> 3); }
-	uint8_t nuhTempIdPlus1() const { return _second & 0b111; }
+	[[nodiscard]] bool forbiddenBit() const { return _first >> 7; }
+	[[nodiscard]] uint8_t unitType() const { return (_first & 0b0111'1110) >> 1; }
+	[[nodiscard]] uint8_t nuhLayerId() const { return ((_first & 0x1) << 5) | ((_second & 0b1111'1000) >> 3); }
+	[[nodiscard]] uint8_t nuhTempIdPlus1() const { return _second & 0b111; }
 
 	void setForbiddenBit(bool isSet) { _first = (_first & 0x7F) | (isSet << 7); }
 	void setUnitType(uint8_t type) { _first = (_first & 0b1000'0001) | ((type & 0b11'1111) << 1); }

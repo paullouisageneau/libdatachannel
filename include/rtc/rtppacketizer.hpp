@@ -49,7 +49,7 @@ protected:
 	/// @note This function increases the sequence number.
 	/// @param payload RTP payload
 	/// @param mark Set marker flag in RTP packet if true
-	virtual message_ptr packetize(const binary &payload, bool mark);
+	[[nodiscard]] virtual message_ptr packetize(const binary &payload, bool mark);
 
 	// For backward compatibility, do not use
 	[[deprecated]] virtual message_ptr packetize(shared_ptr<binary> payload, bool mark);

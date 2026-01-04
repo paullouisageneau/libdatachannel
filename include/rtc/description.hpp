@@ -55,15 +55,15 @@ public:
 	Description(const string &sdp, Type type = Type::Unspec, Role role = Role::ActPass);
 	Description(const string &sdp, string typeString);
 
-	Type type() const;
-	string typeString() const;
-	Role role() const;
-	string bundleMid() const;
-	std::vector<string> iceOptions() const;
-	optional<string> iceUfrag() const;
-	optional<string> icePwd() const;
-	optional<CertificateFingerprint> fingerprint() const;
-	bool ended() const;
+	[[nodiscard]] Type type() const;
+	[[nodiscard]] string typeString() const;
+	[[nodiscard]] Role role() const;
+	[[nodiscard]] string bundleMid() const;
+	[[nodiscard]] std::vector<string> iceOptions() const;
+	[[nodiscard]] optional<string> iceUfrag() const;
+	[[nodiscard]] optional<string> icePwd() const;
+	[[nodiscard]] optional<CertificateFingerprint> fingerprint() const;
+	[[nodiscard]] bool ended() const;
 
 	void hintType(Type type);
 	void addIceOption(string option);
@@ -71,37 +71,37 @@ public:
 	void setIceAttribute(string ufrag, string pwd);
 	void setFingerprint(CertificateFingerprint f);
 
-	std::vector<string> attributes() const;
+	[[nodiscard]] std::vector<string> attributes() const;
 	void addAttribute(string attr);
 	void removeAttribute(const string &attr);
 
-	std::vector<Candidate> candidates() const;
-	std::vector<Candidate> extractCandidates();
-	bool hasCandidate(const Candidate &candidate) const;
+	[[nodiscard]] std::vector<Candidate> candidates() const;
+	[[nodiscard]] std::vector<Candidate> extractCandidates();
+	[[nodiscard]] bool hasCandidate(const Candidate &candidate) const;
 	void addCandidate(Candidate candidate);
 	void addCandidates(std::vector<Candidate> candidates);
 	void endCandidates();
 
-	operator string() const;
-	string generateSdp(string_view eol = "\r\n") const;
-	string generateApplicationSdp(string_view eol = "\r\n") const;
+	[[nodiscard]] operator string() const;
+	[[nodiscard]] string generateSdp(string_view eol = "\r\n") const;
+	[[nodiscard]] string generateApplicationSdp(string_view eol = "\r\n") const;
 
 	class RTC_CPP_EXPORT Entry {
 	public:
 		virtual ~Entry() = default;
 
-		virtual string type() const;
-		virtual string protocol() const;
-		virtual string description() const;
-		virtual string mid() const;
+		[[nodiscard]] virtual string type() const;
+		[[nodiscard]] virtual string protocol() const;
+		[[nodiscard]] virtual string description() const;
+		[[nodiscard]] virtual string mid() const;
 
-		Direction direction() const;
+		[[nodiscard]] Direction direction() const;
 		void setDirection(Direction dir);
 
-		bool isRemoved() const;
+		[[nodiscard]] bool isRemoved() const;
 		void markRemoved();
 
-		std::vector<string> attributes() const;
+		[[nodiscard]] std::vector<string> attributes() const;
 		void addAttribute(string attr);
 		void removeAttribute(const string &attr);
 		void addRid(string rid);
@@ -120,14 +120,14 @@ public:
 			Direction direction = Direction::Unknown;
 		};
 
-		std::vector<int> extIds();
-		ExtMap *extMap(int id);
-		const ExtMap *extMap(int id) const;
+		[[nodiscard]] std::vector<int> extIds();
+		[[nodiscard]] ExtMap *extMap(int id);
+		[[nodiscard]] const ExtMap *extMap(int id) const;
 		void addExtMap(ExtMap map);
 		void removeExtMap(int id);
 
-		operator string() const;
-		string generateSdp(string_view eol = "\r\n", string_view addr = "0.0.0.0",
+		[[nodiscard]] operator string() const;
+		[[nodiscard]] string generateSdp(string_view eol = "\r\n", string_view addr = "0.0.0.0",
 		                   uint16_t port = 9) const;
 
 		virtual void parseSdpLine(string_view line);
@@ -135,7 +135,7 @@ public:
 	protected:
 		Entry(const string &mline, string mid, Direction dir = Direction::Unknown);
 
-		virtual string generateSdpLines(string_view eol) const;
+		[[nodiscard]] virtual string generateSdpLines(string_view eol) const;
 
 		std::vector<string> mAttributes;
 		std::map<int, ExtMap> mExtMaps;
@@ -156,19 +156,19 @@ public:
 		Application(const string &mline, string mid);
 		virtual ~Application() = default;
 
-		Application reciprocate() const;
+		[[nodiscard]] Application reciprocate() const;
 
 		void setSctpPort(uint16_t port);
 		void hintSctpPort(uint16_t port);
 		void setMaxMessageSize(size_t size);
 
-		optional<uint16_t> sctpPort() const;
-		optional<size_t> maxMessageSize() const;
+		[[nodiscard]] optional<uint16_t> sctpPort() const;
+		[[nodiscard]] optional<size_t> maxMessageSize() const;
 
 		virtual void parseSdpLine(string_view line) override;
 
 	private:
-		virtual string generateSdpLines(string_view eol) const override;
+		[[nodiscard]] virtual string generateSdpLines(string_view eol) const override;
 
 		optional<uint16_t> mSctpPort;
 		optional<size_t> mMaxMessageSize;
@@ -181,20 +181,20 @@ public:
 		Media(const string &sdp);
 		virtual ~Media() = default;
 
-		string description() const override;
-		Media reciprocate() const;
+		[[nodiscard]] string description() const override;
+		[[nodiscard]] Media reciprocate() const;
 
 		void addSSRC(uint32_t ssrc, optional<string> name, optional<string> msid = nullopt,
 		             optional<string> trackId = nullopt);
 		void removeSSRC(uint32_t ssrc);
 		void replaceSSRC(uint32_t old, uint32_t ssrc, optional<string> name,
 		                 optional<string> msid = nullopt, optional<string> trackID = nullopt);
-		bool hasSSRC(uint32_t ssrc) const;
+		[[nodiscard]] bool hasSSRC(uint32_t ssrc) const;
 		void clearSSRCs();
-		std::vector<uint32_t> getSSRCs() const;
-		optional<std::string> getCNameForSsrc(uint32_t ssrc) const;
+		[[nodiscard]] std::vector<uint32_t> getSSRCs() const;
+		[[nodiscard]] optional<std::string> getCNameForSsrc(uint32_t ssrc) const;
 
-		int bitrate() const;
+		[[nodiscard]] int bitrate() const;
 		void setBitrate(int bitrate);
 
 		struct RTC_CPP_EXPORT RtpMap {
@@ -219,10 +219,10 @@ public:
 			std::vector<string> fmtps;
 		};
 
-		bool hasPayloadType(int payloadType) const;
-		std::vector<int> payloadTypes() const;
-		RtpMap *rtpMap(int payloadType);
-		const RtpMap *rtpMap(int payloadType) const;
+		[[nodiscard]] bool hasPayloadType(int payloadType) const;
+		[[nodiscard]] std::vector<int> payloadTypes() const;
+		[[nodiscard]] RtpMap *rtpMap(int payloadType);
+		[[nodiscard]] const RtpMap *rtpMap(int payloadType) const;
 		void addRtpMap(RtpMap map);
 		void removeRtpMap(int payloadType);
 		void removeFormat(const string &format);
@@ -232,7 +232,7 @@ public:
 		virtual void parseSdpLine(string_view line) override;
 
 	private:
-		virtual string generateSdpLines(string_view eol) const override;
+		[[nodiscard]] virtual string generateSdpLines(string_view eol) const override;
 
 		int mBas = -1;
 
@@ -272,32 +272,32 @@ public:
 		void addAV1Codec(int payloadType, optional<string> profile = std::nullopt);
 	};
 
-	bool hasApplication() const;
-	bool hasAudioOrVideo() const;
-	bool hasMid(string_view mid) const;
+	[[nodiscard]] bool hasApplication() const;
+	[[nodiscard]] bool hasAudioOrVideo() const;
+	[[nodiscard]] bool hasMid(string_view mid) const;
 
-	int addMedia(Media media);
-	int addMedia(Application application);
-	int addApplication(string mid = "data");
-	int addVideo(string mid = "video", Direction dir = Direction::SendOnly);
-	int addAudio(string mid = "audio", Direction dir = Direction::SendOnly);
+	[[nodiscard]] int addMedia(Media media);
+	[[nodiscard]] int addMedia(Application application);
+	[[nodiscard]] int addApplication(string mid = "data");
+	[[nodiscard]] int addVideo(string mid = "video", Direction dir = Direction::SendOnly);
+	[[nodiscard]] int addAudio(string mid = "audio", Direction dir = Direction::SendOnly);
 	void clearMedia();
 
-	variant<Media *, Application *> media(int index);
-	variant<const Media *, const Application *> media(int index) const;
-	int mediaCount() const;
+	[[nodiscard]] variant<Media *, Application *> media(int index);
+	[[nodiscard]] variant<const Media *, const Application *> media(int index) const;
+	[[nodiscard]] int mediaCount() const;
 
-	const Application *application() const;
-	Application *application();
+	[[nodiscard]] const Application *application() const;
+	[[nodiscard]] Application *application();
 
-	static Type stringToType(const string &typeString);
-	static string typeToString(Type type);
+	[[nodiscard]] static Type stringToType(const string &typeString);
+	[[nodiscard]] static string typeToString(Type type);
 
-	string sessionId() const;
+	[[nodiscard]] string sessionId() const;
 
 private:
-	optional<Candidate> defaultCandidate() const;
-	shared_ptr<Entry> createEntry(string mline, string mid, Direction dir);
+	[[nodiscard]] optional<Candidate> defaultCandidate() const;
+	[[nodiscard]] shared_ptr<Entry> createEntry(string mline, string mid, Direction dir);
 	void removeApplication();
 
 	Type mType;

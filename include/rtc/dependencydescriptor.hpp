@@ -16,18 +16,18 @@
 namespace rtc {
 
 struct BitWriter {
-	static BitWriter fromSizeBits(byte *buf, size_t offsetBits, size_t sizeBits);
-	static BitWriter fromNull();
+	[[nodiscard]] static BitWriter fromSizeBits(byte *buf, size_t offsetBits, size_t sizeBits);
+	[[nodiscard]] static BitWriter fromNull();
 
-	size_t getWrittenBits() const;
+	[[nodiscard]] size_t getWrittenBits() const;
 
-	bool write(uint64_t v, size_t bits);
+	[[nodiscard]] bool write(uint64_t v, size_t bits);
 	// Write non-symmetric unsigned encoded integer
 	// ref: https://aomediacodec.github.io/av1-rtp-spec/#a82-syntax
-	bool writeNonSymmetric(uint64_t v, uint64_t n);
+	[[nodiscard]] bool writeNonSymmetric(uint64_t v, uint64_t n);
 
 private:
-	size_t writePartialByte(uint8_t *p, size_t offset, uint64_t v, size_t bits);
+	[[nodiscard]] size_t writePartialByte(uint8_t *p, size_t offset, uint64_t v, size_t bits);
 
 private:
 	byte *mBuf = nullptr;
@@ -87,8 +87,8 @@ struct DependencyDescriptorContext {
 class DependencyDescriptorWriter {
 public:
 	explicit DependencyDescriptorWriter(const DependencyDescriptorContext& context);
-	size_t getSizeBits() const;
-	size_t getSize() const;
+	[[nodiscard]] size_t getSizeBits() const;
+	[[nodiscard]] size_t getSize() const;
 	void writeTo(byte *buf, size_t sizeBytes) const;
 
 private:

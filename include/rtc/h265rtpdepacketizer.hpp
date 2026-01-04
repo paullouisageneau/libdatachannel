@@ -32,7 +32,7 @@ public:
 	~H265RtpDepacketizer();
 
 private:
-	message_ptr reassemble(message_buffer &buffer);
+	[[nodiscard]] message_ptr reassemble(message_buffer &buffer);
 	void addSeparator(binary &frame);
 
 	const NalUnit::Separator mSeparator;

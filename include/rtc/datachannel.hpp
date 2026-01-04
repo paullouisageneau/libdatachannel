@@ -29,21 +29,21 @@ public:
 	DataChannel(impl_ptr<impl::DataChannel> impl);
 	~DataChannel() override;
 
-	optional<uint16_t> stream() const;
-	optional<uint16_t> id() const;
-	string label() const;
-	string protocol() const;
-	Reliability reliability() const;
+	[[nodiscard]] optional<uint16_t> stream() const;
+	[[nodiscard]] optional<uint16_t> id() const;
+	[[nodiscard]] string label() const;
+	[[nodiscard]] string protocol() const;
+	[[nodiscard]] Reliability reliability() const;
 
-	bool isOpen(void) const override;
-	bool isClosed(void) const override;
-	size_t maxMessageSize() const override;
+	[[nodiscard]] bool isOpen(void) const override;
+	[[nodiscard]] bool isClosed(void) const override;
+	[[nodiscard]] size_t maxMessageSize() const override;
 
 	void close(void) override;
-	bool send(message_variant data) override;
-	bool send(const byte *data, size_t size) override;
-	template <typename Buffer> bool sendBuffer(const Buffer &buf);
-	template <typename Iterator> bool sendBuffer(Iterator first, Iterator last);
+	[[nodiscard]] bool send(message_variant data) override;
+	[[nodiscard]] bool send(const byte *data, size_t size) override;
+	template <typename Buffer> [[nodiscard]] bool sendBuffer(const Buffer &buf);
+	template <typename Iterator> [[nodiscard]] bool sendBuffer(Iterator first, Iterator last);
 
 private:
 	using CheshireCat<impl::DataChannel>::impl;

@@ -34,7 +34,7 @@ public:
 
 private:
 	void addToReport(RtpHeader *header, size_t size);
-	message_ptr getSenderReport(uint32_t timestamp);
+	[[nodiscard]] message_ptr getSenderReport(uint32_t timestamp);
 
 	uint32_t mPacketCount = 0;
 	uint32_t mPayloadOctets = 0;

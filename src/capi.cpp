@@ -788,9 +788,9 @@ int rtcSendMessage(int id, const char *data, int size) {
 
 		if (size >= 0) {
 			auto b = reinterpret_cast<const byte *>(data);
-			channel->send(binary(b, b + size));
+			std::ignore = channel->send(binary(b, b + size));
 		} else {
-			channel->send(string(data));
+			std::ignore = channel->send(string(data));
 		}
 		return RTC_ERR_SUCCESS;
 	});
@@ -895,7 +895,7 @@ int rtcReceiveMessage(int id, char *buffer, int *size) {
 			        if (ret >= 0) {
 				        *size = ret;
 				        if (buffer) {
-					        channel->receive(); // discard
+					        std::ignore = channel->receive(); // discard
 				        }
 
 				        return RTC_ERR_SUCCESS;
@@ -909,7 +909,7 @@ int rtcReceiveMessage(int id, char *buffer, int *size) {
 			        if (ret >= 0) {
 				        *size = -ret;
 				        if (buffer) {
-					        channel->receive(); // discard
+					        std::ignore = channel->receive(); // discard
 				        }
 
 				        return RTC_ERR_SUCCESS;

@@ -58,7 +58,7 @@ public:
 	synchronized_callback(std::function<void(Args...)> func) { *this = std::move(func); }
 	virtual ~synchronized_callback() { *this = nullptr; }
 
-	synchronized_callback &operator=(synchronized_callback &&cb) {
+	synchronized_callback &operator=(synchronized_callback &&cb)  noexcept {
 		std::scoped_lock lock(mutex, cb.mutex);
 		set(std::exchange(cb.callback, nullptr));
 		return *this;
@@ -76,19 +76,19 @@ public:
 		return *this;
 	}
 
-	bool operator()(Args... args) const {
+	[[nodiscard]] bool operator()(Args... args) const {
 		std::lock_guard lock(mutex);
 		return call(std::move(args)...);
 	}
 
-	operator bool() const {
+	[[nodiscard]] operator bool() const {
 		std::lock_guard lock(mutex);
 		return callback ? true : false;
 	}
 
 protected:
 	virtual void set(std::function<void(Args...)> func) { callback = std::move(func); }
-	virtual bool call(Args... args) const {
+	[[nodiscard]] virtual bool call(Args... args) const {
 		if (!callback)
 			return false;
 
@@ -118,7 +118,7 @@ private:
 		}
 	}
 
-	bool call(Args... args) const {
+	[[nodiscard]] bool call(Args... args) const {
 		if (!synchronized_callback<Args...>::call(args...))
 			stored.emplace(std::move(args)...);
 
@@ -140,7 +140,7 @@ public:
 
 	virtual ~CheshireCat() = default;
 
-	CheshireCat &operator=(CheshireCat<T> &&cc) {
+	CheshireCat &operator=(CheshireCat<T> &&cc)  noexcept {
 		mImpl = std::move(cc.mImpl);
 		return *this;
 	};
