@@ -84,7 +84,7 @@ void WebSocketServer::runLoop() {
 				auto impl = std::make_shared<WebSocket>(std::move(clientConfig), mCertificate);
 				impl->changeState(WebSocket::State::Connecting);
 				impl->setTcpTransport(incoming);
-				clientCallback(std::make_shared<rtc::WebSocket>(impl));
+				std::ignore = clientCallback(std::make_shared<rtc::WebSocket>(impl));
 
 			} catch (const std::exception &e) {
 				PLOG_ERROR << "WebSocketServer: " << e.what();
