@@ -34,7 +34,7 @@ public:
 
 	void stop();
 
-	uint16_t port() const;
+	[[nodiscard]] uint16_t port() const;
 
 	void OnUnhandledStunRequest(std::function<void(IceUdpMuxRequest)> callback);
 

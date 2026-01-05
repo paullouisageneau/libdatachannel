@@ -52,7 +52,7 @@ bool Transport::send(message_ptr message) { return outgoing(message); }
 
 void Transport::recv(message_ptr message) {
 	try {
-		mRecvCallback(message);
+		std::ignore = mRecvCallback(message);
 	} catch (const std::exception &e) {
 		PLOG_WARNING << e.what();
 	}
@@ -61,7 +61,7 @@ void Transport::recv(message_ptr message) {
 void Transport::changeState(State state) {
 	try {
 		if (mState.exchange(state) != state)
-			mStateChangeCallback(state);
+			std::ignore = mStateChangeCallback(state);
 	} catch (const std::exception &e) {
 		PLOG_WARNING << e.what();
 	}

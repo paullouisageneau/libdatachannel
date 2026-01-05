@@ -9,8 +9,6 @@
 #ifndef RTC_C_API
 #define RTC_C_API
 
-#include "version.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

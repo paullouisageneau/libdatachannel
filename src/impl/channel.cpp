@@ -14,7 +14,7 @@ namespace rtc::impl {
 void Channel::triggerOpen() {
 	mOpenTriggered = true;
 	try {
-		openCallback();
+		std::ignore = openCallback();
 	} catch (const std::exception &e) {
 		PLOG_WARNING << "Uncaught exception in callback: " << e.what();
 	}
@@ -23,7 +23,7 @@ void Channel::triggerOpen() {
 
 void Channel::triggerClosed() {
 	try {
-		closedCallback();
+		std::ignore = closedCallback();
 	} catch (const std::exception &e) {
 		PLOG_WARNING << "Uncaught exception in callback: " << e.what();
 	}
@@ -31,7 +31,7 @@ void Channel::triggerClosed() {
 
 void Channel::triggerError(string error) {
 	try {
-		errorCallback(std::move(error));
+		std::ignore = errorCallback(std::move(error));
 	} catch (const std::exception &e) {
 		PLOG_WARNING << "Uncaught exception in callback: " << e.what();
 	}
@@ -40,7 +40,7 @@ void Channel::triggerError(string error) {
 void Channel::triggerAvailable(size_t count) {
 	if (count == 1) {
 		try {
-			availableCallback();
+			std::ignore = availableCallback();
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
 		}
@@ -54,7 +54,7 @@ void Channel::triggerBufferedAmount(size_t amount) {
 	size_t threshold = bufferedAmountLowThreshold.load();
 	if (previous > threshold && amount <= threshold) {
 		try {
-			bufferedAmountLowCallback();
+			std::ignore = bufferedAmountLowCallback();
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
 		}
@@ -71,7 +71,7 @@ void Channel::flushPendingMessages() {
 			break;
 
 		try {
-			messageCallback(*next);
+			std::ignore = messageCallback(*next);
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
 		}

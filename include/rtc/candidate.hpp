@@ -33,12 +33,12 @@ public:
 	enum class ResolveMode { Simple, Lookup };
 	bool resolve(ResolveMode mode = ResolveMode::Simple);
 
-	Type type() const;
-	TransportType transportType() const;
-	uint32_t priority() const;
-	string candidate() const;
-	string mid() const;
-	operator string() const;
+	[[nodiscard]] Type type() const;
+	[[nodiscard]] TransportType transportType() const;
+	[[nodiscard]] uint32_t priority() const;
+	[[nodiscard]] string candidate() const;
+	[[nodiscard]] string mid() const;
+	[[nodiscard]] operator string() const;
 
 	bool operator==(const Candidate &other) const;
 	bool operator!=(const Candidate &other) const;

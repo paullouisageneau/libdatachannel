@@ -35,15 +35,15 @@ public:
 	/// @param send Send callback to send messages back to the peer
 	virtual void outgoing([[maybe_unused]] message_vector &messages, [[maybe_unused]] const message_callback &send) {}
 
-	virtual bool requestKeyframe(const message_callback &send);
-	virtual bool requestBitrate(unsigned int bitrate, const message_callback &send);
+	[[nodiscard]] virtual bool requestKeyframe(const message_callback &send);
+	[[nodiscard]] virtual bool requestBitrate(unsigned int bitrate, const message_callback &send);
 
 	void addToChain(shared_ptr<MediaHandler> handler);
 	void setNext(shared_ptr<MediaHandler> handler);
-	shared_ptr<MediaHandler> next();
-	shared_ptr<const MediaHandler> next() const;
-	shared_ptr<MediaHandler> last();             // never null
-	shared_ptr<const MediaHandler> last() const; // never null
+	[[nodiscard]] shared_ptr<MediaHandler> next();
+	[[nodiscard]] shared_ptr<const MediaHandler> next() const;
+	[[nodiscard]] shared_ptr<MediaHandler> last();             // never null
+	[[nodiscard]] shared_ptr<const MediaHandler> last() const; // never null
 
 	void mediaChain(const Description::Media &desc);
 	void incomingChain(message_vector &messages, const message_callback &send);

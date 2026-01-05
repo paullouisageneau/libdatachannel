@@ -253,9 +253,9 @@ void Track::flushPendingMessages() {
 		auto message = next.value();
 		try {
 			if (message->frameInfo && frameCallback) {
-				frameCallback(std::move(*message), std::move(*message->frameInfo));
+				std::ignore = frameCallback(std::move(*message), std::move(*message->frameInfo));
 			} else if (!message->frameInfo && messageCallback) {
-				messageCallback(trackMessageToVariant(message));
+				std::ignore = messageCallback(trackMessageToVariant(message));
 			}
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Uncaught exception in callback: " << e.what();

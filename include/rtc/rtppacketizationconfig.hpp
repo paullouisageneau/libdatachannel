@@ -98,20 +98,20 @@ public:
 	/// Convert timestamp to seconds
 	/// @param timestamp Timestamp
 	/// @param clockRate Clock rate for timestamp calculation
-	static double getSecondsFromTimestamp(uint32_t timestamp, uint32_t clockRate);
+	[[nodiscard]] static double getSecondsFromTimestamp(uint32_t timestamp, uint32_t clockRate);
 
 	/// Convert timestamp to seconds
 	/// @param timestamp Timestamp
-	double timestampToSeconds(uint32_t timestamp);
+	[[nodiscard]] double timestampToSeconds(uint32_t timestamp);
 
 	/// Convert seconds to timestamp
 	/// @param seconds Number of seconds
 	/// @param clockRate Clock rate for timestamp calculation
-	static uint32_t getTimestampFromSeconds(double seconds, uint32_t clockRate);
+	[[nodiscard]] static uint32_t getTimestampFromSeconds(double seconds, uint32_t clockRate);
 
 	/// Convert seconds to timestamp
 	/// @param seconds Number of seconds
-	uint32_t secondsToTimestamp(double seconds);
+	[[nodiscard]] uint32_t secondsToTimestamp(double seconds);
 };
 
 } // namespace rtc

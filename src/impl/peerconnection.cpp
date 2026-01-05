@@ -949,7 +949,7 @@ void PeerConnection::populateLocalDescription(Description &description) const {
 					        PLOG_DEBUG << "Adding application to local description, mid=\""
 					                   << app.mid() << "\"";
 
-					        description.addMedia(std::move(app));
+					        std::ignore = description.addMedia(std::move(app));
 
 				        } else {
 							auto reciprocated = remoteApp->reciprocate();
@@ -959,7 +959,7 @@ void PeerConnection::populateLocalDescription(Description &description) const {
 							PLOG_DEBUG << "Reciprocating application in local description, mid=\""
 								       << reciprocated.mid() << "\"";
 
-							description.addMedia(std::move(reciprocated));
+							std::ignore = description.addMedia(std::move(reciprocated));
 						}
 			        },
 			        [&](Description::Media *remoteMedia) {
@@ -974,7 +974,7 @@ void PeerConnection::populateLocalDescription(Description &description) const {
 						                << media.mid() << "\", removed=" << std::boolalpha
 						                << media.isRemoved();
 
-						    description.addMedia(std::move(media));
+						    std::ignore = description.addMedia(std::move(media));
 
 					    } else {
 							auto reciprocated = remoteMedia->reciprocate();
@@ -984,7 +984,7 @@ void PeerConnection::populateLocalDescription(Description &description) const {
 						                << reciprocated.mid()
 						                << "\", removed=true (track is destroyed)";
 
-						    description.addMedia(std::move(reciprocated));
+						    std::ignore = description.addMedia(std::move(reciprocated));
 					    }
 			        },
 			    },
@@ -1006,7 +1006,7 @@ void PeerConnection::populateLocalDescription(Description &description) const {
 				PLOG_DEBUG << "Adding media to local description, mid=\"" << media.mid()
 				           << "\", removed=" << std::boolalpha << media.isRemoved();
 
-				description.addMedia(std::move(media));
+				std::ignore = description.addMedia(std::move(media));
 			}
 		}
 
@@ -1026,7 +1026,7 @@ void PeerConnection::populateLocalDescription(Description &description) const {
 				PLOG_DEBUG << "Adding application to local description, mid=\"" << app.mid()
 				           << "\"";
 
-				description.addMedia(std::move(app));
+				std::ignore = description.addMedia(std::move(app));
 			}
 		}
 	}
@@ -1267,7 +1267,7 @@ void PeerConnection::triggerPendingDataChannels() {
 		auto impl = std::move(*next);
 
 		try {
-			dataChannelCallback(std::make_shared<rtc::DataChannel>(impl));
+			std::ignore = dataChannelCallback(std::make_shared<rtc::DataChannel>(impl));
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
 		}
@@ -1285,7 +1285,7 @@ void PeerConnection::triggerPendingTracks() {
 		auto impl = std::move(*next);
 
 		try {
-			trackCallback(std::make_shared<rtc::Track>(impl));
+			std::ignore = trackCallback(std::make_shared<rtc::Track>(impl));
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
 		}
@@ -1319,7 +1319,7 @@ bool PeerConnection::changeState(State newState) {
 
 	if (newState == State::Closed) {
 		auto callback = std::move(stateChangeCallback); // steal the callback
-		callback(State::Closed);                        // call it synchronously
+		std::ignore = callback(State::Closed);                        // call it synchronously
 	} else {
 		mProcessor.enqueue(&PeerConnection::trigger<State>, shared_from_this(),
 		                   &stateChangeCallback, newState);
@@ -1337,7 +1337,7 @@ bool PeerConnection::changeIceState(IceState newState) {
 
 	if (newState == IceState::Closed) {
 		auto callback = std::move(iceStateChangeCallback); // steal the callback
-		callback(IceState::Closed);                        // call it synchronously
+		std::ignore = callback(IceState::Closed);                        // call it synchronously
 	} else {
 		mProcessor.enqueue(&PeerConnection::trigger<IceState>, shared_from_this(),
 		                   &iceStateChangeCallback, newState);

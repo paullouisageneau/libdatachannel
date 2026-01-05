@@ -24,7 +24,7 @@ void IceUdpMuxListener::UnhandledStunRequestCallback(const juice_mux_binding_req
 	request.remoteUfrag = info->remote_ufrag;
 	request.remoteAddress = info->address;
 	request.remotePort = info->port;
-	listener->unhandledStunRequestCallback(std::move(request));
+	std::ignore = listener->unhandledStunRequestCallback(std::move(request));
 }
 #endif
 

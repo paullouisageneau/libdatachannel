@@ -222,7 +222,7 @@ void DependencyDescriptorWriter::writeTo(byte *buf, size_t sizeBytes) const {
 	doWriteTo(writer);
 	// Pad up to the byte boundary
 	if (auto bits = (writer.getWrittenBits() % 8); bits != 0) {
-		writer.write(0, 8 - bits);
+		std::ignore = writer.write(0, 8 - bits);
 	}
 }
 

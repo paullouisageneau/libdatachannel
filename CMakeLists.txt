@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.13)
+
+file(READ VERSION RTC_VERSION)
 project(libdatachannel
-	VERSION 0.24.0
+	VERSION ${RTC_VERSION}
 	LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "C/C++ WebRTC network library featuring Data Channels, Media Transport, and WebSockets")
 
@@ -25,7 +27,6 @@ option(NO_TESTS "Disable tests build" OFF)
 option(WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
 option(SCTP_DEBUG "Enable SCTP debugging output to verbose log" OFF)
-option(RTC_UPDATE_VERSION_HEADER "Enable updating the version header" OFF)
 
 if(NOT NO_MEDIA AND NOT PREFER_SYSTEM_LIB)
 	# libsrtp2 v2.7.0 requires cmake >= v3.21.0
@@ -140,7 +141,6 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/plihandler.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/pacinghandler.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rembhandler.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/version.h
 )
 
 set(LIBDATACHANNEL_IMPL_SOURCES
@@ -250,13 +250,6 @@ set(BENCHMARK_UWP_RESOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/test/uwp/benchmark/Windows_TemporaryKey.pfx
 )
 
-if(RTC_UPDATE_VERSION_HEADER)
-	configure_file (
-		${PROJECT_SOURCE_DIR}/cmake/version.h.in
-		${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/version.h
-	)
-endif()
-
 add_library(datachannel
 	${LIBDATACHANNEL_SOURCES}
 	${LIBDATACHANNEL_HEADERS}
@@ -283,11 +276,22 @@ set_target_properties(datachannel-static PROPERTIES
 	CXX_STANDARD 17)
 
 target_compile_definitions(datachannel PRIVATE RTC_EXPORTS)
+target_compile_definitions(datachannel PUBLIC
+		RTC_VERSION="${RTC_VERSION}"
+		RTC_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+		RTC_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+		RTC_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+)
 if (NOT BUILD_SHARED_LIBS)
 	target_compile_definitions(datachannel PUBLIC RTC_STATIC)
 endif()
 target_compile_definitions(datachannel-static PRIVATE RTC_EXPORTS)
-target_compile_definitions(datachannel-static PUBLIC RTC_STATIC)
+target_compile_definitions(datachannel-static PUBLIC
+		RTC_STATIC
+		RTC_EXPORTS RTC_VERSION="${RTC_VERSION}"
+		RTC_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+		RTC_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+		RTC_VERSION_PATCH=${PROJECT_VERSION_PATCH})
 
 if(BUILD_SHARED_LIBS AND NOT BUILD_SHARED_DEPS_LIBS)
 	set(BUILD_SHARED_LIBS OFF)

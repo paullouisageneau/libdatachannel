@@ -28,7 +28,7 @@ public:
 	virtual void incoming(message_vector &messages, const message_callback &send) override;
 
 protected:
-	shared_ptr<FrameInfo> createFrameInfo(uint32_t timestamp, uint8_t payloadType) const;
+	[[nodiscard]] shared_ptr<FrameInfo> createFrameInfo(uint32_t timestamp, uint8_t payloadType) const;
 
 private:
 	const uint32_t mClockRate;
