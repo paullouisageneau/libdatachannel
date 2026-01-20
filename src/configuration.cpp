@@ -10,6 +10,7 @@
 
 #include "impl/utils.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <regex>
 
