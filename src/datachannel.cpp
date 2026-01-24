@@ -6,6 +6,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#if RTC_ENABLE_WEBRTC
+
 #include "datachannel.hpp"
 #include "common.hpp"
 #include "peerconnection.hpp"
@@ -55,3 +57,5 @@ bool DataChannel::send(const byte *data, size_t size) {
 }
 
 } // namespace rtc
+
+#endif

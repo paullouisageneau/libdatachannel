@@ -33,6 +33,7 @@ RTC_CPP_EXPORT void InitLogger(LogLevel level, LogCallback callback = nullptr);
 
 RTC_CPP_EXPORT void SetThreadPoolSize(unsigned int count); // 0: hardware concurrency
 
+#if RTC_ENABLE_WEBRTC
 struct SctpSettings {
 	// For the following settings, not set means optimized default
 	optional<size_t> recvBufferSize;                // in bytes
@@ -50,6 +51,7 @@ struct SctpSettings {
 };
 
 RTC_CPP_EXPORT void SetSctpSettings(SctpSettings s);
+#endif
 
 // Optional global preload and cleanup
 RTC_CPP_EXPORT void Preload();

@@ -9,6 +9,8 @@
 #ifndef RTC_IMPL_SCTP_TRANSPORT_H
 #define RTC_IMPL_SCTP_TRANSPORT_H
 
+#if RTC_ENABLE_WEBRTC
+
 #include "common.hpp"
 #include "configuration.hpp"
 #include "global.hpp"
@@ -127,9 +129,11 @@ private:
 	static void DebugCallback(const char *format, ...);
 
 	class InstancesSet;
-	static InstancesSet* Instances;
+	static InstancesSet *Instances;
 };
 
 } // namespace rtc::impl
 
 #endif
+
+#endif // RTC_IMPL_SCTP_TRANSPORT_H

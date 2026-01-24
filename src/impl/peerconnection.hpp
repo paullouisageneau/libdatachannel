@@ -9,6 +9,8 @@
 #ifndef RTC_IMPL_PEER_CONNECTION_H
 #define RTC_IMPL_PEER_CONNECTION_H
 
+#if RTC_ENABLE_WEBRTC
+
 #include "common.hpp"
 #include "datachannel.hpp"
 #include "dtlstransport.hpp"
@@ -171,3 +173,5 @@ private:
 } // namespace rtc::impl
 
 #endif
+
+#endif // RTC_IMPL_PEER_CONNECTION_H

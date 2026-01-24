@@ -7,6 +7,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#if RTC_ENABLE_WEBRTC
+
 #include "peerconnection.hpp"
 #include "common.hpp"
 #include "rtp.hpp"
@@ -520,3 +522,5 @@ std::ostream &operator<<(std::ostream &out, PeerConnection::SignalingState state
 }
 
 } // namespace rtc
+
+#endif

@@ -9,6 +9,8 @@
 #ifndef RTC_TRACK_H
 #define RTC_TRACK_H
 
+#if RTC_ENABLE_WEBRTC
+
 #include "channel.hpp"
 #include "common.hpp"
 #include "description.hpp"
@@ -63,3 +65,5 @@ private:
 } // namespace rtc
 
 #endif
+
+#endif // RTC_TRACK_H

@@ -9,6 +9,8 @@
 #ifndef RTC_CANDIDATE_H
 #define RTC_CANDIDATE_H
 
+#if RTC_ENABLE_WEBRTC
+
 #include "common.hpp"
 
 #include <string>
@@ -75,3 +77,5 @@ RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out,
 } // namespace rtc
 
 #endif
+
+#endif // RTC_CANDIDATE_H
