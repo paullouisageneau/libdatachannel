@@ -230,6 +230,45 @@ BIO *BIO_new_from_file(const string &filename) {
 	}
 }
 
+void SSL_CTX_add_cert_to_store_from_pem(SSL_CTX *ctx, const string &pem) {
+	X509_STORE *store = SSL_CTX_get_cert_store(ctx);
+	if (!store) {
+		throw std::runtime_error("Failed to get certificate store");
+	}
+
+	BIO *bio = BIO_new(BIO_s_mem());
+	BIO_write(bio, pem.data(), int(pem.size()));
+	STACK_OF(X509_INFO) *certs = PEM_X509_INFO_read_bio(bio, nullptr, nullptr, nullptr);
+	BIO_free(bio);
+	if (!certs) {
+		throw std::runtime_error("Failed to load PEM certificate");
+	}
+
+	for (int i = 0; i < sk_X509_INFO_num(certs); i++) {
+		X509_INFO *value = sk_X509_INFO_value(certs, i);
+		if (value->x509) {
+			if (!X509_STORE_add_cert(store, value->x509)) {
+				unsigned long error = ERR_get_error();
+				if (ERR_GET_REASON(error) != X509_R_CERT_ALREADY_IN_HASH_TABLE) {
+					sk_X509_INFO_pop_free(certs, X509_INFO_free);
+					throw std::runtime_error("Failed to add certificate to store: " +
+					                         openssl::error_string(error));
+				}
+			}
+		}
+		if (value->crl) {
+			if (!X509_STORE_add_crl(store, value->crl)) {
+				unsigned long error = ERR_get_error();
+				sk_X509_INFO_pop_free(certs, X509_INFO_free);
+				throw std::runtime_error("Failed to add CRL to store: " +
+				                         openssl::error_string(error));
+			}
+		}
+	}
+
+	sk_X509_INFO_pop_free(certs, X509_INFO_free);
+}
+
 } // namespace rtc::openssl
 
 #endif
