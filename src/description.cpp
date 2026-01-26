@@ -653,7 +653,7 @@ void Description::Entry::addRid(string rid) {
 	mRids.emplace_back(std::move(rid));
 }
 
-void Description::Entry::addRid(const Rid& rid) {
+void Description::Entry::addRid(const Rid &rid) {
 	mRids.emplace_back(rid);
 }
 

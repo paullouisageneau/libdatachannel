@@ -153,7 +153,7 @@ public:
 		void addAttribute(string attr);
 		void removeAttribute(const string &attr);
 		void addRid(string rid);		// Just the name
-		void addRid(const Rid& rid);	// With RFC 8851 attributes
+		void addRid(const Rid &rid);	// With RFC 8851 attributes
 
 		struct RTC_CPP_EXPORT ExtMap {
 			static int parseId(string_view description);
