@@ -544,6 +544,52 @@ int Description::mediaCount() const { return int(mEntries.size()); }
 
 string Description::sessionId() const { return mSessionId; }
 
+Description::Rid::Rid(string rid) : mRid(std::move(rid)) {}
+
+Description::Rid::Rid(string rid, std::vector<RidAttribute> &&attributes) : mRid(std::move(rid)), mAttributes(std::move(attributes)) {}
+
+const string& Description::Rid::rid() const { return mRid; }
+
+const std::vector<Description::RidAttribute>& Description::Rid::attributes() const { return mAttributes; }
+
+Description::RidBuilder::RidBuilder(string rid) : mRid(std::move(rid)) {}
+
+Description::RidBuilder& Description::RidBuilder::max_width(uint32_t value) {
+	return saveAttribute("max-width", std::to_string(value));
+}
+
+Description::RidBuilder& Description::RidBuilder::max_height(uint32_t value) {
+	return saveAttribute("max-height", std::to_string(value));
+}
+
+Description::RidBuilder& Description::RidBuilder::max_fps(uint32_t value) {
+	return saveAttribute("max-fps", std::to_string(value));
+}
+
+Description::RidBuilder& Description::RidBuilder::max_br(uint32_t value) {
+	return saveAttribute("max-br", std::to_string(value));
+}
+
+Description::RidBuilder& Description::RidBuilder::custom(string key, string value) {
+	return saveAttribute(std::move(key), std::move(value));
+}
+
+Description::Rid Description::RidBuilder::build() {
+	return {mRid, std::move(mAttributes)};
+}
+
+Description::RidBuilder& Description::RidBuilder::saveAttribute(string key, string value) {
+	const auto iter = std::find_if(mAttributes.begin(), mAttributes.end(),
+		[key](const RidAttribute &attr) { return attr.name == key; }
+	);
+	if (iter != mAttributes.end()) {
+		iter->value = std::move(value);
+	} else {
+		mAttributes.push_back({std::move(key), std::move(value)});
+	}
+	return *this;
+}
+
 Description::Entry::Entry(const string &mline, string mid, Direction dir)
     : mMid(std::move(mid)), mDirection(dir) {
 

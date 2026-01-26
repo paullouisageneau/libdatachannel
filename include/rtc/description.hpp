@@ -86,6 +86,46 @@ public:
 	string generateSdp(string_view eol = "\r\n") const;
 	string generateApplicationSdp(string_view eol = "\r\n") const;
 
+	class RTC_CPP_EXPORT RidAttribute {
+	public:
+		string name;
+		string value;
+	};
+
+	class RTC_CPP_EXPORT Rid {
+	public:
+		explicit Rid(string rid);
+		Rid(string rid, std::vector<RidAttribute> &&attributes);
+
+		[[nodiscard]] const string& rid() const;
+		[[nodiscard]] const std::vector<RidAttribute>& attributes() const;
+
+	private:
+		string mRid;
+		std::vector<RidAttribute> mAttributes;
+	};
+
+	class RTC_CPP_EXPORT RidBuilder {
+	public:
+		explicit RidBuilder(string rid);
+
+		// https://datatracker.ietf.org/doc/html/rfc8851#name-arid-restrictions
+		RidBuilder& max_width(uint32_t value);
+		RidBuilder& max_height(uint32_t value);
+		RidBuilder& max_fps(uint32_t value);
+		RidBuilder& max_br(uint32_t value);
+
+		RidBuilder& custom(string key, string value);
+
+		[[nodiscard]] Rid build();
+
+	private:
+		const string mRid;
+		std::vector<RidAttribute> mAttributes;
+
+		RidBuilder& saveAttribute(string key, string value);
+	};
+
 	class RTC_CPP_EXPORT Entry {
 	public:
 		virtual ~Entry() = default;
@@ -104,7 +144,8 @@ public:
 		std::vector<string> attributes() const;
 		void addAttribute(string attr);
 		void removeAttribute(const string &attr);
-		void addRid(string rid);
+		void addRid(string rid);	// Just the name
+		void addRid(Rid rid);		// With attributes
 
 		struct RTC_CPP_EXPORT ExtMap {
 			static int parseId(string_view description);
