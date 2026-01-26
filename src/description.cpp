@@ -735,8 +735,9 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 				first = false;
 				sdp << " ";
 			} else {
-				sdp << ";" << attr.name << "=" << attr.value;
+				sdp << ";";
 			}
+			sdp << attr.name << "=" << attr.value;
 		}
 
 		sdp << eol;
