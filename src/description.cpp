@@ -635,7 +635,13 @@ void Description::addAttribute(string attr) {
 		mAttributes.emplace_back(std::move(attr));
 }
 
-void Description::Entry::addRid(string rid) { mRids.emplace_back(rid); }
+void Description::Entry::addRid(string rid) {
+	mRids.emplace_back(std::move(rid));
+}
+
+void Description::Entry::addRid(const Rid& rid) {
+	mRids.emplace_back(rid);
+}
 
 void Description::removeAttribute(const string &attr) {
 	mAttributes.erase(
@@ -720,10 +726,23 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 	}
 
 	for (const auto &rid : mRids) {
-		sdp << "a=rid:" << rid << " send" << eol;
+		sdp << "a=rid:" << rid.rid() << " send";
+
+		const auto &attributes = rid.attributes();
+		bool first = true;
+		for (const auto &attr : attributes) {
+			if (first) {
+				first = false;
+				sdp << " ";
+			} else {
+				sdp << ";" << attr.name << "=" << attr.value;
+			}
+		}
+
+		sdp << eol;
 	}
 
-	if (mRids.size() != 0) {
+	if (!mRids.empty()) {
 		sdp << "a=simulcast:send ";
 
 		bool first = true;
@@ -734,7 +753,7 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 				sdp << ";";
 			}
 
-			sdp << rid;
+			sdp << rid.rid();
 		}
 
 		sdp << eol;

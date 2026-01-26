@@ -144,8 +144,8 @@ public:
 		std::vector<string> attributes() const;
 		void addAttribute(string attr);
 		void removeAttribute(const string &attr);
-		void addRid(string rid);	// Just the name
-		void addRid(Rid rid);		// With attributes
+		void addRid(string rid);		// Just the name
+		void addRid(const Rid& rid);	// With RFC 8851 attributes
 
 		struct RTC_CPP_EXPORT ExtMap {
 			static int parseId(string_view description);
@@ -186,7 +186,7 @@ public:
 		string mProtocol;
 		string mDescription;
 		string mMid;
-		std::vector<string> mRids;
+		std::vector<Rid> mRids;
 		Direction mDirection;
 		bool mIsRemoved;
 	};
