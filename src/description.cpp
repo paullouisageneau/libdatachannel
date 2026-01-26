@@ -544,6 +544,20 @@ int Description::mediaCount() const { return int(mEntries.size()); }
 
 string Description::sessionId() const { return mSessionId; }
 
+Description::RidAttribute::RidAttribute(string name, string value) : mName(std::move(name)), mValue(std::move(value)) {}
+
+const string &Description::RidAttribute::name() const {
+	return mName;
+}
+
+const string &Description::RidAttribute::value() const {
+	return mValue;
+}
+
+void Description::RidAttribute::value(string value) {
+	mValue = std::move(value);
+}
+
 Description::Rid::Rid(string rid) : mRid(std::move(rid)) {}
 
 Description::Rid::Rid(string rid, std::vector<RidAttribute> &&attributes) : mRid(std::move(rid)), mAttributes(std::move(attributes)) {}
@@ -580,12 +594,12 @@ Description::Rid Description::RidBuilder::build() {
 
 Description::RidBuilder& Description::RidBuilder::saveAttribute(string key, string value) {
 	const auto iter = std::find_if(mAttributes.begin(), mAttributes.end(),
-		[key](const RidAttribute &attr) { return attr.name == key; }
+		[key](const RidAttribute &attr) { return attr.name() == key; }
 	);
 	if (iter != mAttributes.end()) {
-		iter->value = std::move(value);
+		iter->value(std::move(value));
 	} else {
-		mAttributes.push_back({std::move(key), std::move(value)});
+		mAttributes.emplace_back(std::move(key), std::move(value));
 	}
 	return *this;
 }
@@ -739,7 +753,7 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 				} else {
 					sdp << ";";
 				}
-				sdp << attr.name << "=" << attr.value;
+				sdp << attr.name() << "=" << attr.value();
 			}
 		}
 

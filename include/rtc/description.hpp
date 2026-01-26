@@ -88,8 +88,16 @@ public:
 
 	class RTC_CPP_EXPORT RidAttribute {
 	public:
-		string name;
-		string value;
+		RidAttribute(string name, string value);
+
+		[[nodiscard]] const string &name() const;
+		[[nodiscard]] const string &value() const;
+
+		void value(string value);
+
+	private:
+		string mName;
+		string mValue;
 	};
 
 	class RTC_CPP_EXPORT Rid {
