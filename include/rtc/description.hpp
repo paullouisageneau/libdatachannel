@@ -105,8 +105,8 @@ public:
 		explicit Rid(string rid);
 		Rid(string rid, std::vector<RidAttribute> &&attributes);
 
-		[[nodiscard]] const string& rid() const;
-		[[nodiscard]] const std::vector<RidAttribute>& attributes() const;
+		[[nodiscard]] const string &rid() const;
+		[[nodiscard]] const std::vector<RidAttribute> &attributes() const;
 
 	private:
 		string mRid;
