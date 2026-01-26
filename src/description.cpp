@@ -729,15 +729,18 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 		sdp << "a=rid:" << rid.rid() << " send";
 
 		const auto &attributes = rid.attributes();
-		bool first = true;
-		for (const auto &attr : attributes) {
-			if (first) {
-				first = false;
-				sdp << " ";
-			} else {
-				sdp << ";";
+		if (!attributes.empty()) {
+			sdp << " ";
+
+			bool first = true;
+			for (const auto &attr : attributes) {
+				if (first) {
+					first = false;
+				} else {
+					sdp << ";";
+				}
+				sdp << attr.name << "=" << attr.value;
 			}
-			sdp << attr.name << "=" << attr.value;
 		}
 
 		sdp << eol;
