@@ -12,28 +12,10 @@
 #if RTC_ENABLE_MEDIA
 
 #include "dependencydescriptor.hpp"
+#include "google_vla_ext.hpp"
 #include "rtp.hpp"
 
 namespace rtc {
-
-// Google Video Layer Allocation for simulcast
-//
-// https://webrtc.googlesource.com/src/+/refs/heads/main/docs/native-code/rtp-hdrext/video-layers-allocation00
-
-struct RTC_CPP_EXPORT GoogleVideoLayerAllocation {
-	struct SpatialLayer {
-		uint16_t width = 0;
-		uint16_t height = 0;
-		uint8_t fps = 0;
-		std::vector<uint32_t> targetBitratesKbps;  // per temporal layer, cumulative
-	};
-
-	struct RtpStream {
-		std::vector<SpatialLayer> spatialLayers;
-	};
-
-	std::vector<RtpStream> rtpStreams;  // up to 4 streams
-};
 
 // RTP configuration used in packetization process
 class RTC_CPP_EXPORT RtpPacketizationConfig {

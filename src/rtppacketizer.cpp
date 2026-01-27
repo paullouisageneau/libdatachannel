@@ -9,6 +9,7 @@
 #if RTC_ENABLE_MEDIA
 
 #include "rtppacketizer.hpp"
+#include "google_vla_ext.hpp"
 
 #include <cmath>
 #include <cstring>
@@ -42,7 +43,9 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	if (rtpConfig->googleVideoLayerAllocationId > 0 &&
 		rtpConfig->googleVideoLayerAllocationStreams &&
 		checkGoogleVideoLayerAllocation()) {
-		googleVideoLayerAllocationBuf = generateGoogleVideoLayerAllocation();
+		googleVideoLayerAllocationBuf = rtc::generateGoogleVideoLayerAllocation(
+		    rtpConfig->googleVideoLayerAllocationStreams,
+		    rtpConfig->googleVideoLayerAllocationStreamIndex);
 	}
 
 	// Determine if a two-byte header is necessary
@@ -240,10 +243,6 @@ bool RtpPacketizer::checkGoogleVideoLayerAllocation() {
 	return false;
 }
 
-binary RtpPacketizer::generateGoogleVideoLayerAllocation() {
-	// TODO - generate the Google VLA payload
-	return {};
-}
 
 } // namespace rtc
 

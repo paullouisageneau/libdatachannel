@@ -62,7 +62,6 @@ private:
 	bool isGeneratingKeyFrame = false;
 
 	bool checkGoogleVideoLayerAllocation();
-	binary generateGoogleVideoLayerAllocation();
 };
 
 // Generic audio RTP packetizer
