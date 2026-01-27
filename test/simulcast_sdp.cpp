@@ -10,13 +10,13 @@ TestResult test_simulcast_sdp() {
 
 	// Without attributes
 	{
-		auto media0 = Description::Media("m=video 49170 UDP/TLS/RTP/SAVPF 96", "video0");
+		Description::Video video0("video0");
 
-		media0.addRid("rid0");
-		media0.addRid("rid1");
-		media0.addRid("rid2");
+		video0.addRid("rid0");
+		video0.addRid("rid1");
+		video0.addRid("rid2");
 
-		const auto sdp0 = media0.generateSdp("\n");
+		const auto sdp0 = video0.generateSdp("\n");
 
 		if (sdp0.find("a=rid:rid0 send\n") == string::npos) {
 			return {false, "cannot find rid0"};
@@ -35,19 +35,19 @@ TestResult test_simulcast_sdp() {
 
 	// With attributes using builder
 	{
-		auto media1 = Description::Media("m=video 49170 UDP/TLS/RTP/SAVPF 96", "video0");
+		Description::Video video1("video1");
 
-		media1.addRid(Description::RidBuilder("rid0")
+		video1.addRid(Description::RidBuilder("rid0")
 			.max_width(1920)
 			.max_height(1080)
 			.max_fps(60)
 			.build());
-		media1.addRid(Description::RidBuilder("rid1")
+		video1.addRid(Description::RidBuilder("rid1")
 			.max_height(720)
 			.max_fps(30)
 			.max_br(1500000)
 			.build());
-		media1.addRid(Description::RidBuilder("rid2")
+		video1.addRid(Description::RidBuilder("rid2")
 			.max_width(340)
 			.max_width(350)
 			.max_width(360)	// Last one wins
@@ -55,10 +55,10 @@ TestResult test_simulcast_sdp() {
 			.max_br(400000)
 			.custom("foo", "bar")
 			.build());
-		media1.addRid(Description::RidBuilder("rid3")
+		video1.addRid(Description::RidBuilder("rid3")
 			.build());
 
-		const auto sdp1 = media1.generateSdp("\n");
+		const auto sdp1 = video1.generateSdp("\n");
 
 		if (sdp1.find("a=rid:rid0 send max-width=1920;max-height=1080;max-fps=60\n") == string::npos) {
 			return {false, "cannot find rid0"};
