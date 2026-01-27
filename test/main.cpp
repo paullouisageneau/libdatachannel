@@ -76,7 +76,7 @@ static const vector<Test> tests = {
     // new Test("WebRTC TURN connectivity", test_turn_connectivity),
     Test("WebRTC negotiated DataChannel", test_negotiated),
     Test("WebRTC reliability mode", test_reliability),
-	Test("WebRTC simulcast SDP", test_simulcast_sdp),
+    Test("WebRTC simulcast SDP", test_simulcast_sdp),
 #if RTC_ENABLE_MEDIA
     Test("WebRTC track", test_track),
 #endif
