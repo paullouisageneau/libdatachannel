@@ -560,7 +560,7 @@ void Description::RidAttribute::value(string value) {
 
 Description::Rid::Rid(string rid) : mRid(std::move(rid)) {}
 
-Description::Rid::Rid(string rid, std::vector<RidAttribute> &&attributes) : mRid(std::move(rid)), mAttributes(std::move(attributes)) {}
+Description::Rid::Rid(string rid, std::vector<RidAttribute> attributes) : mRid(std::move(rid)), mAttributes(std::move(attributes)) {}
 
 const string &Description::Rid::rid() const { return mRid; }
 
@@ -589,7 +589,7 @@ Description::RidBuilder& Description::RidBuilder::custom(string key, string valu
 }
 
 Description::Rid Description::RidBuilder::build() {
-	return {mRid, std::move(mAttributes)};
+	return {std::move(mRid), std::move(mAttributes)};
 }
 
 Description::RidBuilder& Description::RidBuilder::saveAttribute(string key, string value) {

@@ -103,7 +103,7 @@ public:
 	class RTC_CPP_EXPORT Rid {
 	public:
 		explicit Rid(string rid);
-		Rid(string rid, std::vector<RidAttribute> &&attributes);
+		Rid(string rid, std::vector<RidAttribute> attributes);
 
 		[[nodiscard]] const string &rid() const;
 		[[nodiscard]] const std::vector<RidAttribute> &attributes() const;
@@ -129,7 +129,7 @@ public:
 		[[nodiscard]] Rid build();
 
 	private:
-		const string mRid;
+		string mRid;
 		std::vector<RidAttribute> mAttributes;
 
 		RidBuilder& saveAttribute(string key, string value);
