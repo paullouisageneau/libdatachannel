@@ -594,7 +594,7 @@ Description::Rid Description::RidBuilder::build() {
 
 Description::RidBuilder& Description::RidBuilder::saveAttribute(string key, string value) {
 	const auto iter = std::find_if(mAttributes.begin(), mAttributes.end(),
-		[key](const RidAttribute &attr) { return attr.name() == key; }
+		[&key](const RidAttribute &attr) { return attr.name() == key; }
 	);
 	if (iter != mAttributes.end()) {
 		iter->value(std::move(value));
@@ -653,8 +653,8 @@ void Description::Entry::addRid(string rid) {
 	mRids.emplace_back(std::move(rid));
 }
 
-void Description::Entry::addRid(const Rid &rid) {
-	mRids.emplace_back(rid);
+void Description::Entry::addRid(Rid rid) {
+	mRids.emplace_back(std::move(rid));
 }
 
 void Description::removeAttribute(const string &attr) {
