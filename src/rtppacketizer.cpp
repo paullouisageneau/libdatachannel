@@ -171,7 +171,7 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 			               byte(rtpConfig->colorMatrix), byte(range_chr)};
 
 			offset += extHeader->writeHeader(
-			    twoByteHeader, offset, rtpConfig->playoutDelayId, data, 4);
+			    twoByteHeader, offset, rtpConfig->colorSpaceId, data, 4);
 		}
 	}
 
