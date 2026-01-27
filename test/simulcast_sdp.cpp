@@ -70,7 +70,7 @@ TestResult test_simulcast_sdp() {
 			return {false, "cannot find rid2"};
 		}
 		if (sdp1.find("a=rid:rid3 send\n") == string::npos) {
-			return {false, "cannot find rid2"};
+			return {false, "cannot find rid3"};
 		}
 
 		if (sdp1.find("a=simulcast:send rid0;rid1;rid2;rid3\n") == string::npos) {
