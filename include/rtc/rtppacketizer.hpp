@@ -57,6 +57,11 @@ protected:
 private:
 	static const auto RtpHeaderSize = 12;
 	static const auto RtpExtHeaderCvoSize = 8;
+
+	uint32_t googleVlaInitialPacketCount = 0;
+	bool isGeneratingKeyFrame = false;
+
+	bool checkGoogleVideoLayerAllocation();
 };
 
 // Generic audio RTP packetizer
