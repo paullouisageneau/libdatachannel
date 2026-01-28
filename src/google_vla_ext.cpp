@@ -49,7 +49,7 @@ binary generateGoogleVideoLayerAllocation(
 	}
 
 	const auto& streams = allocation->rtpStreams;
-	const size_t numStreams = std::min<size_t>(streams.size(), 4u);
+	const auto numStreams = std::min<size_t>(streams.size(), 4u);
 
 	if (streamIndex >= numStreams) {
 		return {};
