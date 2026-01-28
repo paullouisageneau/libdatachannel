@@ -106,8 +106,8 @@ binary generateGoogleVideoLayerAllocation(
 		for (size_t slIdx = 0; slIdx < stream.spatialLayers.size() && slIdx < 4; ++slIdx) {
 			if (bitmask & (1 << slIdx)) {
 				const auto& sl = stream.spatialLayers[slIdx];
-				uint8_t numTemporal = std::min(sl.targetBitratesKbps.size(), size_t(4));
-				uint8_t tlValue = (numTemporal - 1) & 0x03;
+				const auto numTemporal = std::min(sl.targetBitratesKbps.size(), size_t(4));
+				const auto tlValue = uint8_t((numTemporal - 1) & 0x03);
 
 				tempByte |= (tlValue << bitPos);
 				bitPos -= 2;
