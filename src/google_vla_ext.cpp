@@ -44,19 +44,19 @@ binary generateGoogleVideoLayerAllocation(
     const std::shared_ptr<const GoogleVideoLayerAllocation>& allocation,
     uint8_t streamIndex) {
 
-	if (!allocation || allocation->rtpStreams.empty() || allocation->rtpStreams.size() > 4) {
+	if (!allocation || allocation->rtpStreams.empty()) {
 		return {};
 	}
 
 	const auto& streams = allocation->rtpStreams;
-	const size_t numStreams = streams.size();
+	const size_t numStreams = std::min<size_t>(streams.size(), 4u);
 
 	if (streamIndex >= numStreams) {
 		return {};
 	}
 
 	binary result;
-	result.reserve(64);  // Pre-allocate reasonable size
+	result.reserve(30);  // Pre-allocate reasonable size
 
 	// Compute spatial layer bitmasks for all streams
 	std::vector<uint8_t> slBitmasks;
@@ -106,7 +106,7 @@ binary generateGoogleVideoLayerAllocation(
 		for (size_t slIdx = 0; slIdx < stream.spatialLayers.size() && slIdx < 4; ++slIdx) {
 			if (bitmask & (1 << slIdx)) {
 				const auto& sl = stream.spatialLayers[slIdx];
-				const auto numTemporal = std::min(sl.targetBitratesKbps.size(), size_t(4));
+				const auto numTemporal = std::min<size_t>(sl.targetBitratesKbps.size(), 4u);
 				const auto tlValue = uint8_t((numTemporal - 1) & 0x03);
 
 				tempByte |= (tlValue << bitPos);
@@ -129,7 +129,7 @@ binary generateGoogleVideoLayerAllocation(
 	// Target bitrates in kbps, LEB128 encoded
 	// Order: for each stream, for each spatial layer (by id), for each temporal layer
 	for (size_t streamIdx = 0; streamIdx < numStreams; ++streamIdx) {
-		uint8_t bitmask = allSameBitmask ? slBm : slBitmasks[streamIdx];
+		const auto bitmask = allSameBitmask ? slBm : slBitmasks[streamIdx];
 		const auto& stream = streams[streamIdx];
 
 		for (size_t slIdx = 0; slIdx < stream.spatialLayers.size() && slIdx < 4; ++slIdx) {
@@ -145,7 +145,7 @@ binary generateGoogleVideoLayerAllocation(
 	// Resolution and framerate: 5 bytes per active spatial layer
 	// Format: width-1 (2 bytes BE), height-1 (2 bytes BE), fps (1 byte)
 	for (size_t streamIdx = 0; streamIdx < numStreams; ++streamIdx) {
-		uint8_t bitmask = allSameBitmask ? slBm : slBitmasks[streamIdx];
+		const auto bitmask = allSameBitmask ? slBm : slBitmasks[streamIdx];
 		const auto& stream = streams[streamIdx];
 
 		for (size_t slIdx = 0; slIdx < stream.spatialLayers.size() && slIdx < 4; ++slIdx) {

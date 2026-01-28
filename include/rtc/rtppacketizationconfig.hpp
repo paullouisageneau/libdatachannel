@@ -12,10 +12,11 @@
 #if RTC_ENABLE_MEDIA
 
 #include "dependencydescriptor.hpp"
-#include "google_vla_ext.hpp"
 #include "rtp.hpp"
 
 namespace rtc {
+
+struct RTC_CPP_EXPORT GoogleVideoLayerAllocation;
 
 // RTP configuration used in packetization process
 class RTC_CPP_EXPORT RtpPacketizationConfig {
@@ -75,7 +76,8 @@ public:
 	uint16_t playoutDelayMin = 0;
 	uint16_t playoutDelayMax = 0;
 
-	// Google Video Layer Allocation
+	// Google Video Layer Allocation for simulcast
+	// https://webrtc.googlesource.com/src/+/refs/heads/main/docs/native-code/rtp-hdrext/video-layers-allocation00
 	//
 	//  Extension id
 	uint8_t googleVideoLayerAllocationId = 0;
