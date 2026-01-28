@@ -37,13 +37,13 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 		ddWriter.emplace(*rtpConfig->dependencyDescriptorContext);
 	}
 
-	// Decide if we need to emit the Google Video Layer Allocation - if enabled, we do it
-	// for the first 100 packets and also for every packet of every key frame
+	// Decide if we are going to emit the Google Video Layer Allocation extension
 	binary googleVideoLayerAllocationBuf;
 	if (rtpConfig->googleVideoLayerAllocationId > 0 &&
 		rtpConfig->googleVideoLayerAllocationStreams &&
 		checkGoogleVideoLayerAllocation()) {
-		googleVideoLayerAllocationBuf = rtc::generateGoogleVideoLayerAllocation(
+		// Yes, generate it now so we can calculate total size
+		googleVideoLayerAllocationBuf = generateGoogleVideoLayerAllocation(
 		    rtpConfig->googleVideoLayerAllocationStreams,
 		    rtpConfig->googleVideoLayerAllocationStreamIndex);
 	}
