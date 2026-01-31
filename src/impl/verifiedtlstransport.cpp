@@ -48,10 +48,16 @@ VerifiedTlsTransport::VerifiedTlsTransport(
 	if (cacert) {
 		if (cacert->find(PemBeginCertificateTag) == string::npos) {
 			// *cacert is a file path
-			openssl::check(SSL_CTX_load_verify_locations(mCtx, cacert->c_str(), NULL), "Failed to load CA certificate");
+			openssl::check(SSL_CTX_load_verify_locations(mCtx, cacert->c_str(), NULL),
+			               "Failed to load CA certificate");
 		} else {
 			// *cacert is a PEM content
-			PLOG_WARNING << "CA certificate as PEM is not supported for OpenSSL";
+			try {
+				openssl::SSL_CTX_add_cert_to_store_from_pem(mCtx, *cacert);
+			} catch (std::exception const &e) {
+				throw std::runtime_error("Failed to add CA certificate to store: " +
+				                         std::string(e.what()));
+			}
 		}
 	}
 	SSL_set_verify(mSsl, SSL_VERIFY_PEER, NULL);
