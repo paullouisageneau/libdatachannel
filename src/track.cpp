@@ -6,6 +6,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#if RTC_ENABLE_WEBRTC
+
 #include "track.hpp"
 
 #include "impl/internals.hpp"
@@ -84,3 +86,5 @@ bool Track::requestBitrate(unsigned int bitrate) {
 shared_ptr<MediaHandler> Track::getMediaHandler() { return impl()->getMediaHandler(); }
 
 } // namespace rtc
+
+#endif

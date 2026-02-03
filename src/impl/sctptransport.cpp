@@ -6,6 +6,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#if RTC_ENABLE_WEBRTC
+
 #include "sctptransport.hpp"
 #include "dtlstransport.hpp"
 #include "internals.hpp"
@@ -82,7 +84,7 @@ private:
 	std::shared_mutex mMutex;
 };
 
-SctpTransport::InstancesSet* SctpTransport::Instances = nullptr;
+SctpTransport::InstancesSet *SctpTransport::Instances = nullptr;
 
 void SctpTransport::Init() {
 	usrsctp_init(0, SctpTransport::WriteCallback, SctpTransport::DebugCallback);
@@ -653,21 +655,23 @@ bool SctpTransport::trySendMessage(message_ptr message) {
 	// 	spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_NONE;
 	// }
 	// Deprecated
-	else switch (reliability.typeDeprecated) {
-	case Reliability::Type::Rexmit:
-		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
-		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
-		spa.sendv_prinfo.pr_value = to_uint32(std::get<int>(reliability.rexmit));
-		break;
-	case Reliability::Type::Timed:
-		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
-		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_TTL;
-		spa.sendv_prinfo.pr_value = to_uint32(std::get<milliseconds>(reliability.rexmit).count());
-		break;
-	default:
-		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_NONE;
-		break;
-	}
+	else
+		switch (reliability.typeDeprecated) {
+		case Reliability::Type::Rexmit:
+			spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
+			spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
+			spa.sendv_prinfo.pr_value = to_uint32(std::get<int>(reliability.rexmit));
+			break;
+		case Reliability::Type::Timed:
+			spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
+			spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_TTL;
+			spa.sendv_prinfo.pr_value =
+			    to_uint32(std::get<milliseconds>(reliability.rexmit).count());
+			break;
+		default:
+			spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_NONE;
+			break;
+		}
 
 	ssize_t ret;
 	if (!message->empty()) {
@@ -1005,3 +1009,5 @@ void SctpTransport::DebugCallback(const char *format, ...) {
 }
 
 } // namespace rtc::impl
+
+#endif

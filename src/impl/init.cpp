@@ -99,9 +99,9 @@ std::shared_future<void> Init::cleanup() {
 void Init::setThreadPoolSize(unsigned int count) {
 	std::lock_guard lock(mMutex);
 	mThreadPoolSize = count;
-
 }
 
+#if RTC_ENABLE_WEBRTC
 void Init::setSctpSettings(SctpSettings s) {
 	std::lock_guard lock(mMutex);
 	if (mGlobal)
@@ -109,6 +109,7 @@ void Init::setSctpSettings(SctpSettings s) {
 
 	mCurrentSctpSettings = std::move(s); // store for next init
 }
+#endif
 
 void Init::doInit() {
 	// mMutex needs to be locked
@@ -124,7 +125,8 @@ void Init::doInit() {
 		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
 #endif
 
-	unsigned int count = mThreadPoolSize > 0 ? mThreadPoolSize : std::thread::hardware_concurrency();
+	unsigned int count =
+	    mThreadPoolSize > 0 ? mThreadPoolSize : std::thread::hardware_concurrency();
 	count = std::max(count, MIN_THREADPOOL_SIZE);
 	PLOG_DEBUG << "Spawning " << count << " threads";
 	ThreadPool::Instance().spawn(count);
@@ -141,16 +143,20 @@ void Init::doInit() {
 	openssl::init();
 #endif
 
+#if RTC_ENABLE_WEBRTC
 	SctpTransport::Init();
 	SctpTransport::SetSettings(mCurrentSctpSettings);
 	DtlsTransport::Init();
+#endif
 #if RTC_ENABLE_WEBSOCKET
 	TlsTransport::Init();
 #endif
+#if RTC_ENABLE_WEBRTC
 #if RTC_ENABLE_MEDIA
 	DtlsSrtpTransport::Init();
 #endif
 	IceTransport::Init();
+#endif
 }
 
 void Init::doCleanup() {
@@ -169,15 +175,19 @@ void Init::doCleanup() {
 	PollService::Instance().join();
 #endif
 
+#if RTC_ENABLE_WEBRTC
 	SctpTransport::Cleanup();
 	DtlsTransport::Cleanup();
+#endif
 #if RTC_ENABLE_WEBSOCKET
 	TlsTransport::Cleanup();
 #endif
+#if RTC_ENABLE_WEBRTC
 #if RTC_ENABLE_MEDIA
 	DtlsSrtpTransport::Cleanup();
 #endif
 	IceTransport::Cleanup();
+#endif
 
 #ifdef _WIN32
 	WSACleanup();

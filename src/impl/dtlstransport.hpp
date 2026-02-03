@@ -9,6 +9,8 @@
 #ifndef RTC_IMPL_DTLS_TRANSPORT_H
 #define RTC_IMPL_DTLS_TRANSPORT_H
 
+#if RTC_ENABLE_WEBRTC
+
 #include "certificate.hpp"
 #include "common.hpp"
 #include "queue.hpp"
@@ -123,3 +125,5 @@ protected:
 } // namespace rtc::impl
 
 #endif
+
+#endif // RTC_IMPL_DTLS_TRANSPORT_H

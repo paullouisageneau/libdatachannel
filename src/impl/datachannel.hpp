@@ -9,6 +9,8 @@
 #ifndef RTC_IMPL_DATA_CHANNEL_H
 #define RTC_IMPL_DATA_CHANNEL_H
 
+#if RTC_ENABLE_WEBRTC
+
 #include "channel.hpp"
 #include "common.hpp"
 #include "message.hpp"
@@ -91,3 +93,5 @@ struct IncomingDataChannel final : public DataChannel {
 } // namespace rtc::impl
 
 #endif
+
+#endif // RTC_IMPL_DATA_CHANNEL_H

@@ -9,6 +9,8 @@
 #ifndef RTC_PEER_CONNECTION_H
 #define RTC_PEER_CONNECTION_H
 
+#if RTC_ENABLE_WEBRTC
+
 #include "candidate.hpp"
 #include "common.hpp"
 #include "configuration.hpp"
@@ -140,3 +142,5 @@ RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, PeerConnection::Signa
 } // namespace rtc
 
 #endif
+
+#endif // RTC_PEER_CONNECTION_H
