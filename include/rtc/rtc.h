@@ -388,6 +388,7 @@ RTC_C_EXPORT int rtcSetMediaInterceptorCallback(int id, rtcInterceptorCallbackFu
 RTC_C_EXPORT int rtcSetH264Packetizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetH265Packetizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetAV1Packetizer(int tr, const rtcPacketizerInit *init);
+RTC_C_EXPORT int rtcSetVP8Packetizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetOpusPacketizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetAACPacketizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetPCMUPacketizer(int tr, const rtcPacketizerInit *init);
