@@ -34,7 +34,9 @@ public:
 	std::shared_future<void> cleanup();
 
 	void setThreadPoolSize(unsigned int count);
+#if RTC_ENABLE_WEBRTC
 	void setSctpSettings(SctpSettings s);
+#endif
 
 private:
 	Init();
@@ -46,7 +48,9 @@ private:
 	std::optional<shared_ptr<void>> mGlobal;
 	weak_ptr<void> mWeak;
 	bool mInitialized = false;
+#if RTC_ENABLE_WEBRTC
 	SctpSettings mCurrentSctpSettings = {};
+#endif
 	unsigned int mThreadPoolSize = 0;
 	std::mutex mMutex;
 	std::shared_future<void> mCleanupFuture;

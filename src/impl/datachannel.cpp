@@ -6,15 +6,17 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#if RTC_ENABLE_WEBRTC
+
 #include "datachannel.hpp"
 #include "common.hpp"
 #include "internals.hpp"
 #include "logcounter.hpp"
 #include "peerconnection.hpp"
-#include "sctptransport.hpp"
-#include "utils.hpp"
 #include "rtc/datachannel.hpp"
 #include "rtc/track.hpp"
+#include "sctptransport.hpp"
+#include "utils.hpp"
 
 #include <algorithm>
 
@@ -79,10 +81,10 @@ DataChannel::DataChannel(weak_ptr<PeerConnection> pc, string label, string proto
     : mPeerConnection(pc), mLabel(std::move(label)), mProtocol(std::move(protocol)),
       mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
 
-	if(reliability.maxPacketLifeTime && reliability.maxRetransmits)
+	if (reliability.maxPacketLifeTime && reliability.maxRetransmits)
 		throw std::invalid_argument("Both maxPacketLifeTime and maxRetransmits are set");
 
-    mReliability = std::make_shared<Reliability>(std::move(reliability));
+	mReliability = std::make_shared<Reliability>(std::move(reliability));
 }
 
 DataChannel::~DataChannel() {
@@ -109,7 +111,7 @@ void DataChannel::close() {
 
 		triggerClosed();
 		resetCallbacks();
-	}	
+	}
 }
 
 void DataChannel::remoteClose() { close(); }
@@ -393,3 +395,5 @@ void IncomingDataChannel::processOpenMessage(message_ptr message) {
 }
 
 } // namespace rtc::impl
+
+#endif

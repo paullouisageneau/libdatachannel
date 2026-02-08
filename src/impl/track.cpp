@@ -6,6 +6,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#if RTC_ENABLE_WEBRTC
+
 #include "track.hpp"
 #include "internals.hpp"
 #include "logcounter.hpp"
@@ -264,3 +266,5 @@ void Track::flushPendingMessages() {
 }
 
 } // namespace rtc::impl
+
+#endif

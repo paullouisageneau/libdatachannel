@@ -9,6 +9,8 @@
 #ifndef RTC_DATA_CHANNEL_H
 #define RTC_DATA_CHANNEL_H
 
+#if RTC_ENABLE_WEBRTC
+
 #include "channel.hpp"
 #include "common.hpp"
 #include "reliability.hpp"
@@ -78,3 +80,5 @@ template <typename Iterator> bool DataChannel::sendBuffer(Iterator first, Iterat
 } // namespace rtc
 
 #endif
+
+#endif // RTC_DATA_CHANNEL_H

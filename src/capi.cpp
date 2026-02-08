@@ -25,12 +25,14 @@ using std::chrono::milliseconds;
 
 namespace {
 
+#if RTC_ENABLE_WEBRTC
 std::unordered_map<int, shared_ptr<PeerConnection>> peerConnectionMap;
 std::unordered_map<int, shared_ptr<DataChannel>> dataChannelMap;
 std::unordered_map<int, shared_ptr<Track>> trackMap;
 #if RTC_ENABLE_MEDIA
 std::unordered_map<int, shared_ptr<RtcpSrReporter>> rtcpSrReporterMap;
 std::unordered_map<int, shared_ptr<RtpPacketizationConfig>> rtpConfigMap;
+#endif
 #endif
 #if RTC_ENABLE_WEBSOCKET
 std::unordered_map<int, shared_ptr<WebSocket>> webSocketMap;
@@ -51,6 +53,7 @@ void setUserPointer(int i, void *ptr) {
 	userPointerMap[i] = ptr;
 }
 
+#if RTC_ENABLE_WEBRTC
 shared_ptr<PeerConnection> getPeerConnection(int id) {
 	std::lock_guard lock(mutex);
 	if (auto it = peerConnectionMap.find(id); it != peerConnectionMap.end())
@@ -123,10 +126,13 @@ void eraseTrack(int tr) {
 #endif
 	userPointerMap.erase(tr);
 }
+#endif
 
 size_t eraseAll() {
 	std::lock_guard lock(mutex);
-	size_t count = dataChannelMap.size() + trackMap.size() + peerConnectionMap.size();
+	size_t count = 0;
+#if RTC_ENABLE_WEBRTC
+	count += dataChannelMap.size() + trackMap.size() + peerConnectionMap.size();
 	dataChannelMap.clear();
 	trackMap.clear();
 	peerConnectionMap.clear();
@@ -135,21 +141,26 @@ size_t eraseAll() {
 	rtcpSrReporterMap.clear();
 	rtpConfigMap.clear();
 #endif
+#endif
 #if RTC_ENABLE_WEBSOCKET
 	count += webSocketMap.size() + webSocketServerMap.size();
 	webSocketMap.clear();
 	webSocketServerMap.clear();
 #endif
+#if RTC_ENABLE_WEBRTC
 	userPointerMap.clear();
+#endif
 	return count;
 }
 
 shared_ptr<Channel> getChannel(int id) {
 	std::lock_guard lock(mutex);
+#if RTC_ENABLE_WEBRTC
 	if (auto it = dataChannelMap.find(id); it != dataChannelMap.end())
 		return it->second;
 	if (auto it = trackMap.find(id); it != trackMap.end())
 		return it->second;
+#endif
 #if RTC_ENABLE_WEBSOCKET
 	if (auto it = webSocketMap.find(id); it != webSocketMap.end())
 		return it->second;
@@ -159,6 +170,7 @@ shared_ptr<Channel> getChannel(int id) {
 
 void eraseChannel(int id) {
 	std::lock_guard lock(mutex);
+#if RTC_ENABLE_WEBRTC
 	if (dataChannelMap.erase(id) != 0) {
 		userPointerMap.erase(id);
 		return;
@@ -171,6 +183,7 @@ void eraseChannel(int id) {
 #endif
 		return;
 	}
+#endif
 #if RTC_ENABLE_WEBSOCKET
 	if (webSocketMap.erase(id) != 0) {
 		userPointerMap.erase(id);
@@ -227,6 +240,7 @@ template <typename F> int wrap(F func) {
 	}
 }
 
+#if RTC_ENABLE_WEBRTC
 #if RTC_ENABLE_MEDIA
 
 string lowercased(string str) {
@@ -325,6 +339,7 @@ private:
 };
 
 #endif // RTC_ENABLE_MEDIA
+#endif // RTC_ENABLE_WEBRTC
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -392,6 +407,7 @@ void rtcSetUserPointer(int i, void *ptr) { setUserPointer(i, ptr); }
 
 void *rtcGetUserPointer(int i) { return getUserPointer(i).value_or(nullptr); }
 
+#if RTC_ENABLE_WEBRTC
 int rtcCreatePeerConnection(const rtcConfiguration *config) {
 	return wrap([config] {
 		Configuration c;
@@ -717,6 +733,7 @@ int rtcGetRemoteMaxMessageSize(int pc) {
 		return int(peerConnection->remoteMaxMessageSize());
 	});
 }
+#endif
 
 int rtcSetOpenCallback(int id, rtcOpenCallbackFunc cb) {
 	return wrap([&] {
@@ -923,6 +940,7 @@ int rtcReceiveMessage(int id, char *buffer, int *size) {
 	});
 }
 
+#if RTC_ENABLE_WEBRTC
 int rtcCreateDataChannel(int pc, const char *label) {
 	return rtcCreateDataChannelEx(pc, label, nullptr);
 }
@@ -1193,7 +1211,9 @@ int rtcRequestBitrate(int tr, unsigned int bitrate) {
 		return RTC_ERR_SUCCESS;
 	});
 }
+#endif
 
+#if RTC_ENABLE_WEBRTC
 #if RTC_ENABLE_MEDIA
 
 void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid,
@@ -1566,6 +1586,7 @@ int rtcSetNeedsToSendRtcpSr(int) {
 }
 
 #endif // RTC_ENABLE_MEDIA
+#endif // RTC_ENABLE_WEBRTC
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -1711,6 +1732,7 @@ int rtcSetThreadPoolSize(unsigned int count) {
 	});
 }
 
+#if RTC_ENABLE_WEBRTC
 int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 	return wrap([&] {
 		SctpSettings s = {};
@@ -1759,6 +1781,7 @@ int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 		return RTC_ERR_SUCCESS;
 	});
 }
+#endif
 
 void rtcPreload() {
 	try {
@@ -1783,4 +1806,3 @@ void rtcCleanup() {
 		PLOG_ERROR << e.what();
 	}
 }
-

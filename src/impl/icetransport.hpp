@@ -9,6 +9,8 @@
 #ifndef RTC_IMPL_ICE_TRANSPORT_H
 #define RTC_IMPL_ICE_TRANSPORT_H
 
+#if RTC_ENABLE_WEBRTC
+
 #include "candidate.hpp"
 #include "common.hpp"
 #include "configuration.hpp"
@@ -125,3 +127,5 @@ private:
 } // namespace rtc::impl
 
 #endif
+
+#endif // RTC_IMPL_ICE_TRANSPORT_H

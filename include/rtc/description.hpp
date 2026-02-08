@@ -75,6 +75,7 @@ public:
 	void addAttribute(string attr);
 	void removeAttribute(const string &attr);
 
+#if RTC_ENABLE_WEBRTC
 	std::vector<Candidate> candidates() const;
 	std::vector<Candidate> extractCandidates();
 	bool hasCandidate(const Candidate &candidate) const;
@@ -85,6 +86,7 @@ public:
 	operator string() const;
 	string generateSdp(string_view eol = "\r\n") const;
 	string generateApplicationSdp(string_view eol = "\r\n") const;
+#endif
 
 	class RTC_CPP_EXPORT Entry {
 	public:
@@ -296,7 +298,9 @@ public:
 	string sessionId() const;
 
 private:
+#if RTC_ENABLE_WEBRTC
 	optional<Candidate> defaultCandidate() const;
+#endif
 	shared_ptr<Entry> createEntry(string mline, string mid, Direction dir);
 	void removeApplication();
 
@@ -316,7 +320,9 @@ private:
 	shared_ptr<Application> mApplication;
 
 	// Candidates
+#if RTC_ENABLE_WEBRTC
 	std::vector<Candidate> mCandidates;
+#endif
 	bool mEnded = false;
 };
 

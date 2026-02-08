@@ -84,7 +84,9 @@ void InitLogger(plog::Severity severity, plog::IAppender *appender) {
 }
 
 void SetThreadPoolSize(unsigned int count) { impl::Init::Instance().setThreadPoolSize(count); }
+#if RTC_ENABLE_WEBRTC
 void SetSctpSettings(SctpSettings s) { impl::Init::Instance().setSctpSettings(std::move(s)); }
+#endif
 
 void Preload() { impl::Init::Instance().preload(); }
 std::shared_future<void> Cleanup() { return impl::Init::Instance().cleanup(); }
