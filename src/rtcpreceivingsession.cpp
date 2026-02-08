@@ -114,7 +114,7 @@ void RtcpReceivingSession::pushREMB(const message_callback &send, unsigned int b
 	auto message = make_message(RtcpRemb::SizeWithSSRCs(1), Message::Control);
 	auto remb = reinterpret_cast<RtcpRemb *>(message->data());
 	remb->preparePacket(mSsrc, 1, bitrate);
-	remb->setSsrc(0, mSsrc);
+	remb->setSSRC(0, mSsrc);
 	send(message);
 }
 
