@@ -8,7 +8,7 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "google_vla_ext.hpp"
+#include "video_layers_allocation_ext.hpp"
 
 #include <algorithm>
 
@@ -30,18 +30,21 @@ void writeLeb128(binary& out, uint32_t value) {
 
 // Compute spatial layer bitmask for a stream
 // Returns bitmask where bit i is set if spatial layer i is present
-uint8_t computeSpatialLayerBitmask(const GoogleVideoLayerAllocation::RtpStream& stream) {
+uint8_t computeSpatialLayerBitmask(const VideoLayersAllocation::RtpStream& stream) {
 	uint8_t bitmask = 0;
 	for (size_t i = 0; i < stream.spatialLayers.size() && i < 4; ++i) {
-		bitmask |= (1 << i);
+		const auto& spatialLayer = stream.spatialLayers[i];
+		if (!spatialLayer.targetBitratesKbps.empty()) {
+			bitmask |= (1 << i);
+		}
 	}
 	return bitmask;
 }
 
 } // namespace
 
-binary generateGoogleVideoLayerAllocation(
-    const std::shared_ptr<const GoogleVideoLayerAllocation>& allocation,
+binary generateVideoLayersAllocation(
+    const std::shared_ptr<const VideoLayersAllocation>& allocation,
     uint8_t streamIndex) {
 
 	if (!allocation || allocation->rtpStreams.empty()) {
@@ -133,7 +136,7 @@ binary generateGoogleVideoLayerAllocation(
 		const auto& stream = streams[streamIdx];
 
 		for (size_t slIdx = 0; slIdx < stream.spatialLayers.size() && slIdx < 4; ++slIdx) {
-			if (bitmask & (1 << slIdx)) {
+			if ((bitmask & (1 << slIdx)) != 0) {
 				const auto& sl = stream.spatialLayers[slIdx];
 				for (uint32_t bitrate : sl.targetBitratesKbps) {
 					writeLeb128(result, bitrate);

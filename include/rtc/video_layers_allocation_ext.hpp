@@ -6,8 +6,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#ifndef RTC_GOOGLE_VLA_EXT_H
-#define RTC_GOOGLE_VLA_EXT_H
+#ifndef RTC_VIDEO_LAYERS_ALLOCATION_EXT_H
+#define RTC_VIDEO_LAYERS_ALLOCATION_EXT_H
 
 #if RTC_ENABLE_MEDIA
 
@@ -19,16 +19,16 @@
 
 namespace rtc {
 
-// Google Video Layer Allocation for simulcast
+// Google Video Layers Allocation for simulcast
 //
 // https://webrtc.googlesource.com/src/+/refs/heads/main/docs/native-code/rtp-hdrext/video-layers-allocation00
 
-struct RTC_CPP_EXPORT GoogleVideoLayerAllocation {
+struct RTC_CPP_EXPORT VideoLayersAllocation {
 	struct SpatialLayer {
 		uint16_t width = 0;
 		uint16_t height = 0;
 		uint8_t fps = 0;
-		std::vector<uint32_t> targetBitratesKbps;  // per temporal layer, cumulative
+		std::vector<uint32_t> targetBitratesKbps;  // per temporal layer, cumulative, cannot be empty
 	};
 
 	struct RtpStream {
@@ -38,16 +38,16 @@ struct RTC_CPP_EXPORT GoogleVideoLayerAllocation {
 	std::vector<RtpStream> rtpStreams;  // up to 4 streams
 };
 
-/// Generate the wire format for Google Video Layer Allocation RTP header extension
+/// Generate the wire format for Google Video Layers Allocation RTP header extension
 /// @param allocation The layer allocation data
 /// @param streamIndex The RTP stream index (0-3) for this packet's stream
 /// @return Binary payload for the RTP header extension, empty if allocation is invalid
-binary generateGoogleVideoLayerAllocation(
-    const std::shared_ptr<const GoogleVideoLayerAllocation>& allocation,
+binary generateVideoLayersAllocation(
+    const std::shared_ptr<const VideoLayersAllocation>& allocation,
     uint8_t streamIndex);
 
 } // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* RTC_GOOGLE_VLA_EXT_H */
+#endif /* RTC_VIDEO_LAYERS_ALLOCATION_EXT_H */

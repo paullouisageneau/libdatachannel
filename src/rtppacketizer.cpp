@@ -9,7 +9,7 @@
 #if RTC_ENABLE_MEDIA
 
 #include "rtppacketizer.hpp"
-#include "google_vla_ext.hpp"
+#include "video_layers_allocation_ext.hpp"
 
 #include <cmath>
 #include <cstring>
@@ -37,15 +37,15 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 		ddWriter.emplace(*rtpConfig->dependencyDescriptorContext);
 	}
 
-	// Decide if we are going to emit the Google Video Layer Allocation extension
-	binary googleVideoLayerAllocationBuf;
-	if (rtpConfig->googleVideoLayerAllocationId > 0 &&
-		rtpConfig->googleVideoLayerAllocationStreams &&
-		checkGoogleVideoLayerAllocation()) {
+	// Decide if we are going to emit the Google Video Layers Allocation extension
+	binary videoLayersAllocationBuf;
+	if (rtpConfig->videoLayersAllocationId > 0 &&
+		rtpConfig->videoLayersAllocationStreams &&
+		checkVideoLayersAllocation()) {
 		// Yes, generate it now so we can calculate total size
-		googleVideoLayerAllocationBuf = generateGoogleVideoLayerAllocation(
-		    rtpConfig->googleVideoLayerAllocationStreams,
-		    rtpConfig->googleVideoLayerAllocationStreamIndex);
+		videoLayersAllocationBuf = generateVideoLayersAllocation(
+		    rtpConfig->videoLayersAllocationStreams,
+		    rtpConfig->videoLayersAllocationStreamIndex);
 	}
 
 	// Determine if a two-byte header is necessary
@@ -60,7 +60,7 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	if ((setVideoRotation && rtpConfig->videoOrientationId > 14) ||
 	    (rtpConfig->mid.has_value() && rtpConfig->midId > 14) ||
 	    (rtpConfig->rid.has_value() && rtpConfig->ridId > 14) ||
-	    (googleVideoLayerAllocationBuf.size() > 14 || rtpConfig->googleVideoLayerAllocationId > 14) ||
+	    (videoLayersAllocationBuf.size() > 14 || rtpConfig->videoLayersAllocationId > 14) ||
 	    rtpConfig->playoutDelayId > 14) {
 		twoByteHeader = true;
 	}
@@ -84,12 +84,11 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	if (rtpConfig->rid.has_value())
 		rtpExtHeaderSize += headerSize + rtpConfig->rid->length();
 
-	if (!googleVideoLayerAllocationBuf.empty())
-		rtpExtHeaderSize += headerSize + googleVideoLayerAllocationBuf.size();
+	if (!videoLayersAllocationBuf.empty())
+		rtpExtHeaderSize += headerSize + videoLayersAllocationBuf.size();
 
-	if (ddWriter.has_value()) {
+	if (ddWriter.has_value())
 		rtpExtHeaderSize += headerSize + ddWriter->getSize();
-	}
 
 	if (rtpExtHeaderSize != 0)
 		rtpExtHeaderSize += 4;
@@ -148,11 +147,11 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 			    twoByteHeader, offset, rtpConfig->dependencyDescriptorId, buf.data(), sizeBytes);
 		}
 
-		if (!googleVideoLayerAllocationBuf.empty()) {
+		if (!videoLayersAllocationBuf.empty()) {
 			offset += extHeader->writeHeader(
-				twoByteHeader, offset, rtpConfig->googleVideoLayerAllocationId,
-				googleVideoLayerAllocationBuf.data(),
-				googleVideoLayerAllocationBuf.size());
+				twoByteHeader, offset, rtpConfig->videoLayersAllocationId,
+				videoLayersAllocationBuf.data(),
+				videoLayersAllocationBuf.size());
 		}
 
 		if (setPlayoutDelay) {
@@ -228,10 +227,10 @@ void RtpPacketizer::outgoing(message_vector &messages,
 	messages.swap(result);
 }
 
-bool RtpPacketizer::checkGoogleVideoLayerAllocation() {
-	// We emit the Google VLA for the first 100 packets
-	if (googleVlaInitialPacketCount < 100) {
-		++ googleVlaInitialPacketCount;
+bool RtpPacketizer::checkVideoLayersAllocation() {
+	// We emit the Google VLA extension for the first 100 packets
+	if (videoLayersAllocationInitialPacketCount < 100) {
+		++ videoLayersAllocationInitialPacketCount;
 		return true;
 	}
 
