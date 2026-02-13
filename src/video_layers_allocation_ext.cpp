@@ -47,19 +47,19 @@ binary generateVideoLayersAllocation(
     const std::shared_ptr<const VideoLayersAllocation>& allocation,
     uint8_t streamIndex) {
 
-	if (!allocation || allocation->rtpStreams.empty()) {
+	if (!allocation) {
 		return {};
 	}
 
 	const auto& streams = allocation->rtpStreams;
 	const auto numStreams = std::min<size_t>(streams.size(), 4u);
 
-	if (streamIndex >= numStreams) {
+	if (numStreams == 0 || streamIndex >= numStreams) {
 		return {};
 	}
 
 	binary result;
-	result.reserve(30);  // Pre-allocate reasonable size
+	result.reserve(60);  // Pre-allocate reasonable size
 
 	// Compute spatial layer bitmasks for all streams
 	std::vector<uint8_t> slBitmasks;
@@ -75,6 +75,11 @@ binary generateVideoLayersAllocation(
 			allSameBitmask = false;
 			break;
 		}
+	}
+
+	// Check if we have any active spatial layers in any streams
+	if (allSameBitmask && slBitmasks[0] == 0) {
+		return {};
 	}
 
 	// Header byte: RID(2) | NS(2) | sl_bm(4)
@@ -154,8 +159,8 @@ binary generateVideoLayersAllocation(
 		for (size_t slIdx = 0; slIdx < stream.spatialLayers.size() && slIdx < 4; ++slIdx) {
 			if (bitmask & (1 << slIdx)) {
 				const auto& sl = stream.spatialLayers[slIdx];
-				uint16_t width = sl.width - 1;
-				uint16_t height = sl.height - 1;
+				uint16_t width = std::max<uint32_t>(sl.width, 1u) - 1u;
+				uint16_t height = std::max<uint32_t>(sl.height, 1u) - 1u;
 
 				// Big endian width-1
 				result.push_back(std::byte((width >> 8) & 0xFF));
