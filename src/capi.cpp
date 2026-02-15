@@ -1194,6 +1194,27 @@ int rtcRequestBitrate(int tr, unsigned int bitrate) {
 	});
 }
 
+int rtcSetFrameCallback(int tr, rtcFrameCallbackFunc cb) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		if (cb)
+			track->onFrame([tr, cb](binary data, FrameInfo info) {
+				if (auto ptr = getUserPointer(tr)) {
+					rtcFrameInfo frameInfo;
+					frameInfo.timestamp = info.timestamp;
+					frameInfo.payloadType = info.payloadType;
+					frameInfo.timestampSeconds =
+					    info.timestampSeconds ? info.timestampSeconds->count() : -1.0;
+					cb(tr, reinterpret_cast<const char *>(data.data()), int(data.size()),
+					   &frameInfo, *ptr);
+				}
+			});
+		else
+			track->onFrame(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 #if RTC_ENABLE_MEDIA
 
 void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid,
