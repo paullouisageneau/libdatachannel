@@ -8,6 +8,7 @@
 #include "rtc/video_layers_allocation_ext.hpp"
 #include "test.hpp"
 
+#include <cstring>
 #include <cassert>
 
 #if RTC_ENABLE_MEDIA
