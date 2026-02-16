@@ -28,6 +28,7 @@ static unsigned int char_to_hex(char ch) {
 		return ch - 'A' + 10;
 	}
 	assert(false);
+	return 0;
 }
 
 // Convert hex to binary message
