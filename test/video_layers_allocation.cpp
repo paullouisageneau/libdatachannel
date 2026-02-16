@@ -8,10 +8,40 @@
 #include "rtc/video_layers_allocation_ext.hpp"
 #include "test.hpp"
 
+#include <cassert>
+
 #if RTC_ENABLE_MEDIA
 
 using namespace rtc;
 using namespace std;
+
+// Convert hex character to hex
+static unsigned int char_to_hex(char ch) {
+	if (ch >= '0' && ch <= '9') {
+		return ch - '0';
+	}
+	if (ch >= 'a' && ch <= 'f') {
+		return ch - 'a' + 10;
+	}
+	if (ch >= 'A' && ch <= 'F') {
+		return ch - 'A' + 10;
+	}
+	assert(false);
+}
+
+// Convert hex to binary message
+static binary hex_to_binary(const char* payload) {
+	binary result;
+
+	for (size_t i = 0; i < strlen(payload); i += 2) {
+		const auto hi = char_to_hex(payload[i]);
+		const auto lo = char_to_hex(payload[i + 1]);
+
+		result.push_back(static_cast<byte>((hi << 4) | lo));
+	}
+
+	return result;
+}
 
 // Convert binary message to hex
 static string binary_to_hex(const binary& payload) {
@@ -116,19 +146,19 @@ static TestResult test_vla_2_streams() {
 		return { false, "2 streams should generate a payload" };
 	}
 
-	const binary check = {
-		byte(0x11),				// RID = 1, NS = 2-1 = 1, sl_bm = 1
-								// sl0_bm .. sl3_bm not present because sl_bm != 0
-		byte(0x00),				// #tl = 4 x b00
-		byte(0xC4), byte(0x13),	// layer_0 bitrate = 2500
-		byte(0xDC), byte(0x0B),	// layer_1 bitrate = 1500
-		byte(0x04), byte(0xFF),	// layer_0 width-1 = 1279
-		byte(0x02), byte(0xCF), // layer_0 height-1 = 719
-		byte(0x1E),				// layer_0 fps = 30
-		byte(0x02), byte(0x7F),	// layer_1 width-1 = 639
-		byte(0x01), byte(0x67), // layer_1 height-1 = 359
-		byte(0x1E),				// layer_1 fps = 30
-	};
+	const binary check = hex_to_binary(
+		"11"	// RID = 1, NS = 2-1 = 1, sl_bm = 1
+				// sl0_bm .. sl3_bm not present because sl_bm != 0
+		"00"	// #tl = 4 x b00
+		"C413"	// layer_0 bitrate = 2500
+		"DC0B"	// layer_1 bitrate = 1500
+		"04FF"	// layer_0 width-1 = 1279
+		"02CF"	// layer_0 height-1 = 719
+		"1E"	// layer_0 fps = 30
+		"027F"	// layer_1 width-1 = 639
+		"0167"	// layer_1 height-1 = 359
+		"1E"	// layer_1 fps = 30
+	);
 
 	if (payload != check) {
 		cout
@@ -165,23 +195,23 @@ static TestResult test_vla_3_streams() {
 		return { false, "3 streams should generate a payload" };
 	}
 
-	const binary check = {
-		byte(0x61),				// RID = 1, NS = 3-1 = 2, sl_bm = 1
-								// sl0_bm .. sl3_bm not present because sl_bm != 0
-		byte(0x00),				// #tl = 4 x b00
-		byte(0xAC), byte(0x1B),	// layer_0 bitrate = 3500
-		byte(0xDC), byte(0x0B),	// layer_1 bitrate = 1500
-		byte(0xF4), byte(0x03),	// layer_2 bitrate = 500
-		byte(0x04), byte(0xFF),	// layer_0 width-1 = 1279
-		byte(0x02), byte(0xCF), // layer_0 height-1 = 719
-		byte(0x3C),				// layer_0 fps = 60
-		byte(0x02), byte(0x7F),	// layer_1 width-1 = 639
-		byte(0x01), byte(0x67), // layer_1 height-1 = 359
-		byte(0x1E),				// layer_1 fps = 30
-		byte(0x01), byte(0x3F),	// layer_2 width-1 = 319
-		byte(0x00), byte(0x9F), // layer_2 height-1 = 159
-		byte(0x0F),				// layer_2 fps = 15
-	};
+	const binary check = hex_to_binary(
+		"61"	// RID = 1, NS = 3-1 = 2, sl_bm = 1
+				// sl0_bm .. sl3_bm not present because sl_bm != 0
+		"00"	// #tl = 4 x b00
+		"AC1B"	// layer_0 bitrate = 3500
+		"DC0B"	// layer_1 bitrate = 1500
+		"F403"	// layer_2 bitrate = 500
+		"04FF"	// layer_0 width-1 = 1279
+		"02CF"	// layer_0 height-1 = 719
+		"3C"	// layer_0 fps = 60
+		"027F"	// layer_1 width-1 = 639
+		"0167"	// layer_1 height-1 = 359
+		"1E"	// layer_1 fps = 30
+		"013F"	// layer_2 width-1 = 319
+		"009F"	// layer_2 height-1 = 159
+		"0F"	// layer_2 fps = 15
+	);
 
 	if (payload != check) {
 		cout
