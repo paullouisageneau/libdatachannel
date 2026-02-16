@@ -8,6 +8,8 @@
 #include "rtc/video_layers_allocation_ext.hpp"
 #include "test.hpp"
 
+#if RTC_ENABLE_MEDIA
+
 using namespace rtc;
 using namespace std;
 
@@ -100,13 +102,13 @@ static TestResult test_vla_2_streams() {
 
 	layers->rtpStreams.push_back(
 		VideoLayersAllocation::RtpStream{
-	{
-		VideoLayersAllocation::SpatialLayer{1280, 720, 30, {2500}}
+		{
+			VideoLayersAllocation::SpatialLayer{1280, 720, 30, {2500}}
 	}});
 	layers->rtpStreams.push_back(
 		VideoLayersAllocation::RtpStream{
-	{
-		VideoLayersAllocation::SpatialLayer{640, 360, 30, {1500}}
+		{
+			VideoLayersAllocation::SpatialLayer{640, 360, 30, {1500}}
 	}});
 
 	const auto payload = generateVideoLayersAllocation(layers, 0);
@@ -144,18 +146,18 @@ static TestResult test_vla_3_streams() {
 
 	layers->rtpStreams.push_back(
 		VideoLayersAllocation::RtpStream{
-	{
-		VideoLayersAllocation::SpatialLayer{1280, 720, 60, {3500}}
+		{
+			VideoLayersAllocation::SpatialLayer{1280, 720, 60, {3500}}
 	}});
 	layers->rtpStreams.push_back(
 		VideoLayersAllocation::RtpStream{
-	{
-		VideoLayersAllocation::SpatialLayer{640, 360, 30, {1500}}
+		{
+			VideoLayersAllocation::SpatialLayer{640, 360, 30, {1500}}
 	}});
 	layers->rtpStreams.push_back(
 		VideoLayersAllocation::RtpStream{
-	{
-		VideoLayersAllocation::SpatialLayer{320, 160, 15, {500}}
+		{
+			VideoLayersAllocation::SpatialLayer{320, 160, 15, {500}}
 	}});
 
 	const auto payload = generateVideoLayersAllocation(layers, 1);
@@ -220,3 +222,5 @@ TestResult test_video_layers_allocation() {
 
 	return {true};
 }
+
+#endif
