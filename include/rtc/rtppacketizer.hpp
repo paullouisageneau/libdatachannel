@@ -61,7 +61,7 @@ private:
 	uint32_t videoLayersAllocationInitialPacketCount = 0;
 	bool isGeneratingKeyFrame = false;
 
-	bool checkVideoLayersAllocation();
+	bool shouldEmitVideoLayersAllocation();
 };
 
 // Generic audio RTP packetizer

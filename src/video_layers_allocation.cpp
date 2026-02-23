@@ -8,7 +8,7 @@
 
 #if RTC_ENABLE_MEDIA
 
-#include "video_layers_allocation_ext.hpp"
+#include "video_layers_allocation.hpp"
 
 #include <algorithm>
 
@@ -43,17 +43,8 @@ uint8_t computeSpatialLayerBitmask(const VideoLayersAllocation::RtpStream& strea
 
 } // namespace
 
-binary RTC_CPP_EXPORT generateVideoLayersAllocation(
-    const std::shared_ptr<const VideoLayersAllocation>& allocation,
-    uint8_t streamIndex) {
-
-	if (!allocation) {
-		return {};
-	}
-
-	const auto& streams = allocation->rtpStreams;
-	const auto numStreams = std::min<size_t>(streams.size(), 4u);
-
+binary VideoLayersAllocation::generate(uint8_t streamIndex) const {
+	const auto numStreams = std::min<size_t>(rtpStreams.size(), 4u);
 	if (numStreams == 0 || streamIndex >= numStreams) {
 		return {};
 	}
@@ -65,7 +56,7 @@ binary RTC_CPP_EXPORT generateVideoLayersAllocation(
 	std::vector<uint8_t> slBitmasks;
 	slBitmasks.reserve(numStreams);
 	for (size_t i = 0; i < numStreams; ++i) {
-		slBitmasks.push_back(computeSpatialLayerBitmask(streams[i]));
+		slBitmasks.push_back(computeSpatialLayerBitmask(rtpStreams[i]));
 	}
 
 	// Check if all streams have the same spatial layer bitmask
@@ -109,7 +100,7 @@ binary RTC_CPP_EXPORT generateVideoLayersAllocation(
 
 	for (size_t streamIdx = 0; streamIdx < numStreams; ++streamIdx) {
 		uint8_t bitmask = allSameBitmask ? slBm : slBitmasks[streamIdx];
-		const auto& stream = streams[streamIdx];
+		const auto& stream = rtpStreams[streamIdx];
 
 		for (size_t slIdx = 0; slIdx < stream.spatialLayers.size() && slIdx < 4; ++slIdx) {
 			if (bitmask & (1 << slIdx)) {
@@ -138,7 +129,7 @@ binary RTC_CPP_EXPORT generateVideoLayersAllocation(
 	// Order: for each stream, for each spatial layer (by id), for each temporal layer
 	for (size_t streamIdx = 0; streamIdx < numStreams; ++streamIdx) {
 		const auto bitmask = allSameBitmask ? slBm : slBitmasks[streamIdx];
-		const auto& stream = streams[streamIdx];
+		const auto& stream = rtpStreams[streamIdx];
 
 		for (size_t slIdx = 0; slIdx < stream.spatialLayers.size() && slIdx < 4; ++slIdx) {
 			if ((bitmask & (1 << slIdx)) != 0) {
@@ -154,7 +145,7 @@ binary RTC_CPP_EXPORT generateVideoLayersAllocation(
 	// Format: width-1 (2 bytes BE), height-1 (2 bytes BE), fps (1 byte)
 	for (size_t streamIdx = 0; streamIdx < numStreams; ++streamIdx) {
 		const auto bitmask = allSameBitmask ? slBm : slBitmasks[streamIdx];
-		const auto& stream = streams[streamIdx];
+		const auto& stream = rtpStreams[streamIdx];
 
 		for (size_t slIdx = 0; slIdx < stream.spatialLayers.size() && slIdx < 4; ++slIdx) {
 			if (bitmask & (1 << slIdx)) {

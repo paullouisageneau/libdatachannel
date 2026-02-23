@@ -6,10 +6,10 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+#include "rtc/video_layers_allocation.hpp"
 #include "rtc/global.hpp"
 #include "rtc/rtc.hpp"
 #include "rtc/rtp.hpp"
-#include "rtc/video_layers_allocation_ext.hpp"
 #include "test.hpp"
 
 #include <cstring>
@@ -67,20 +67,10 @@ static string binary_to_hex(const binary& payload) {
 	return result;
 }
 
-// The layers are null
-static TestResult test_vla_null() {
-	const auto payload = generateVideoLayersAllocation({}, 0);
-	if (!payload.empty()) {
-		return { false, "null payload should be empty" };
-	}
-
-	return { true };
-}
-
 // There are no streams
 static TestResult test_vla_no_streams() {
 	const auto layers = make_shared<VideoLayersAllocation>();
-	const auto payload = generateVideoLayersAllocation(layers, 0);
+	const auto payload = layers->generate(0);
 	if (!payload.empty()) {
 		return { false, "no streams should generate empty payload" };
 	}
@@ -96,7 +86,7 @@ static TestResult test_vla_no_spatial_layers() {
 	layers->rtpStreams.emplace_back();
 	layers->rtpStreams.emplace_back();
 
-	const auto payload = generateVideoLayersAllocation(layers, 1);
+	const auto payload = layers->generate(1);
 	if (!payload.empty()) {
 		return { false, "no spatial layers should generate empty payload" };
 	}
@@ -124,7 +114,7 @@ static TestResult test_vla_no_temporal_layers() {
 		VideoLayersAllocation::SpatialLayer{320, 160, 15, {}}
 	}});
 
-	const auto payload = generateVideoLayersAllocation(layers, 1);
+	const auto payload = layers->generate(1);
 	if (!payload.empty()) {
 		return { false, "no temporal layers should generate empty payload" };
 	}
@@ -147,13 +137,13 @@ static TestResult test_vla_2_streams() {
 			VideoLayersAllocation::SpatialLayer{640, 360, 30, {1500}}
 	}});
 
-	const auto payload = generateVideoLayersAllocation(layers, 0);
+	const auto payload = layers->generate(0);
 	if (payload.empty()) {
 		return { false, "2 streams should generate a payload" };
 	}
 
 	const binary check = hex_to_binary(
-		"11"	// RID = 1, NS = 2-1 = 1, sl_bm = 1
+		"11"	// RID = 0, NS = 2-1 = 1, sl_bm = 1
 				// sl0_bm .. sl3_bm not present because sl_bm != 0
 		"00"	// #tl = 4 x b00
 		"C413"	// layer_0 bitrate = 2500
@@ -196,7 +186,7 @@ static TestResult test_vla_3_streams() {
 			VideoLayersAllocation::SpatialLayer{320, 160, 15, {500}}
 	}});
 
-	const auto payload = generateVideoLayersAllocation(layers, 1);
+	const auto payload = layers->generate(1);
 	if (payload.empty()) {
 		return { false, "3 streams should generate a payload" };
 	}
@@ -231,10 +221,6 @@ static TestResult test_vla_3_streams() {
 
 TestResult test_video_layers_allocation() {
 	InitLogger(LogLevel::Debug);
-
-	if (const auto result = test_vla_null(); !result.success) {
-		return result;
-	}
 
 	if (const auto result = test_vla_no_streams(); !result.success) {
 		return result;

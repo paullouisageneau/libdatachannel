@@ -6,8 +6,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#ifndef RTC_VIDEO_LAYERS_ALLOCATION_EXT_H
-#define RTC_VIDEO_LAYERS_ALLOCATION_EXT_H
+#ifndef RTC_VIDEO_LAYERS_ALLOCATION_H
+#define RTC_VIDEO_LAYERS_ALLOCATION_H
 
 #if RTC_ENABLE_MEDIA
 
@@ -36,18 +36,15 @@ struct RTC_CPP_EXPORT VideoLayersAllocation {
 	};
 
 	std::vector<RtpStream> rtpStreams;  // up to 4 streams
-};
 
-/// Generate the wire format for Google Video Layers Allocation RTP header extension
-/// @param allocation The layer allocation data
-/// @param streamIndex The RTP stream index (0-3) for this packet's stream
-/// @return Binary payload for the RTP header extension, empty if allocation is invalid
-binary RTC_CPP_EXPORT generateVideoLayersAllocation(
-    const std::shared_ptr<const VideoLayersAllocation>& allocation,
-    uint8_t streamIndex);
+	/// Generate the wire format for Google Video Layers Allocation RTP header extension
+	/// @param streamIndex The RTP stream index (0-3) for this packet's stream
+	/// @return Binary payload for the RTP header extension, empty if allocation is invalid
+	binary generate(uint8_t streamIndex) const;
+};
 
 } // namespace rtc
 
 #endif /* RTC_ENABLE_MEDIA */
 
-#endif /* RTC_VIDEO_LAYERS_ALLOCATION_EXT_H */
+#endif /* RTC_VIDEO_LAYERS_ALLOCATION_H */

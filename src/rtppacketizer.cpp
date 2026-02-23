@@ -9,7 +9,7 @@
 #if RTC_ENABLE_MEDIA
 
 #include "rtppacketizer.hpp"
-#include "video_layers_allocation_ext.hpp"
+#include "video_layers_allocation.hpp"
 
 #include <cmath>
 #include <cstring>
@@ -41,11 +41,10 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	binary videoLayersAllocationBuf;
 	if (rtpConfig->videoLayersAllocationId > 0 &&
 		rtpConfig->videoLayersAllocationStreams &&
-		checkVideoLayersAllocation()) {
+		shouldEmitVideoLayersAllocation()) {
 		// Yes, generate it now so we can calculate total size
-		videoLayersAllocationBuf = generateVideoLayersAllocation(
-		    rtpConfig->videoLayersAllocationStreams,
-		    rtpConfig->videoLayersAllocationStreamIndex);
+		videoLayersAllocationBuf = rtpConfig->videoLayersAllocationStreams->
+				generate(rtpConfig->videoLayersAllocationStreamIndex);
 	}
 
 	// Determine if a two-byte header is necessary
@@ -227,7 +226,7 @@ void RtpPacketizer::outgoing(message_vector &messages,
 	messages.swap(result);
 }
 
-bool RtpPacketizer::checkVideoLayersAllocation() {
+bool RtpPacketizer::shouldEmitVideoLayersAllocation() {
 	// We emit the Google VLA extension for the first 100 packets
 	if (videoLayersAllocationInitialPacketCount < 100) {
 		++ videoLayersAllocationInitialPacketCount;
