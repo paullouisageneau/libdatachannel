@@ -544,6 +544,66 @@ int Description::mediaCount() const { return int(mEntries.size()); }
 
 string Description::sessionId() const { return mSessionId; }
 
+Description::RidAttribute::RidAttribute(string name, string value) : mName(std::move(name)), mValue(std::move(value)) {}
+
+const string &Description::RidAttribute::name() const {
+	return mName;
+}
+
+const string &Description::RidAttribute::value() const {
+	return mValue;
+}
+
+void Description::RidAttribute::value(string value) {
+	mValue = std::move(value);
+}
+
+Description::Rid::Rid(string rid) : mRid(std::move(rid)) {}
+
+Description::Rid::Rid(string rid, std::vector<RidAttribute> attributes) : mRid(std::move(rid)), mAttributes(std::move(attributes)) {}
+
+const string &Description::Rid::rid() const { return mRid; }
+
+const std::vector<Description::RidAttribute> &Description::Rid::attributes() const { return mAttributes; }
+
+Description::RidBuilder::RidBuilder(string rid) : mRid(std::move(rid)) {}
+
+Description::RidBuilder& Description::RidBuilder::max_width(uint32_t value) {
+	return saveAttribute("max-width", std::to_string(value));
+}
+
+Description::RidBuilder& Description::RidBuilder::max_height(uint32_t value) {
+	return saveAttribute("max-height", std::to_string(value));
+}
+
+Description::RidBuilder& Description::RidBuilder::max_fps(uint32_t value) {
+	return saveAttribute("max-fps", std::to_string(value));
+}
+
+Description::RidBuilder& Description::RidBuilder::max_br(uint32_t value) {
+	return saveAttribute("max-br", std::to_string(value));
+}
+
+Description::RidBuilder& Description::RidBuilder::custom(string key, string value) {
+	return saveAttribute(std::move(key), std::move(value));
+}
+
+Description::Rid Description::RidBuilder::build() {
+	return {std::move(mRid), std::move(mAttributes)};
+}
+
+Description::RidBuilder& Description::RidBuilder::saveAttribute(string key, string value) {
+	const auto iter = std::find_if(mAttributes.begin(), mAttributes.end(),
+		[&key](const RidAttribute &attr) { return attr.name() == key; }
+	);
+	if (iter != mAttributes.end()) {
+		iter->value(std::move(value));
+	} else {
+		mAttributes.emplace_back(std::move(key), std::move(value));
+	}
+	return *this;
+}
+
 Description::Entry::Entry(const string &mline, string mid, Direction dir)
     : mMid(std::move(mid)), mDirection(dir) {
 
@@ -589,7 +649,13 @@ void Description::addAttribute(string attr) {
 		mAttributes.emplace_back(std::move(attr));
 }
 
-void Description::Entry::addRid(string rid) { mRids.emplace_back(rid); }
+void Description::Entry::addRid(string rid) {
+	mRids.emplace_back(std::move(rid));
+}
+
+void Description::Entry::addRid(Rid rid) {
+	mRids.emplace_back(std::move(rid));
+}
 
 void Description::removeAttribute(const string &attr) {
 	mAttributes.erase(
@@ -674,10 +740,27 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 	}
 
 	for (const auto &rid : mRids) {
-		sdp << "a=rid:" << rid << " send" << eol;
+		sdp << "a=rid:" << rid.rid() << " send";
+
+		const auto &attributes = rid.attributes();
+		if (!attributes.empty()) {
+			sdp << " ";
+
+			bool first = true;
+			for (const auto &attr : attributes) {
+				if (first) {
+					first = false;
+				} else {
+					sdp << ";";
+				}
+				sdp << attr.name() << "=" << attr.value();
+			}
+		}
+
+		sdp << eol;
 	}
 
-	if (mRids.size() != 0) {
+	if (!mRids.empty()) {
 		sdp << "a=simulcast:send ";
 
 		bool first = true;
@@ -688,7 +771,7 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 				sdp << ";";
 			}
 
-			sdp << rid;
+			sdp << rid.rid();
 		}
 
 		sdp << eol;

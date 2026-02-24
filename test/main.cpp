@@ -26,6 +26,7 @@ TestResult test_connectivity_fail_on_wrong_fingerprint();
 TestResult test_pem();
 TestResult test_negotiated();
 TestResult test_reliability();
+TestResult test_simulcast_sdp();
 TestResult test_turn_connectivity();
 TestResult test_track();
 TestResult test_video_layers_allocation();
@@ -76,6 +77,7 @@ static const vector<Test> tests = {
     // new Test("WebRTC TURN connectivity", test_turn_connectivity),
     Test("WebRTC negotiated DataChannel", test_negotiated),
     Test("WebRTC reliability mode", test_reliability),
+    Test("WebRTC simulcast SDP", test_simulcast_sdp),
 #if RTC_ENABLE_MEDIA
     Test("WebRTC track", test_track),
 	Test("WebRTC video layers allocation", test_video_layers_allocation),
