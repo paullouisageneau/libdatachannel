@@ -28,6 +28,7 @@ TestResult test_negotiated();
 TestResult test_reliability();
 TestResult test_turn_connectivity();
 TestResult test_track();
+TestResult test_video_layers_allocation();
 TestResult test_capi_connectivity();
 TestResult test_capi_track();
 TestResult test_websocket();
@@ -77,6 +78,7 @@ static const vector<Test> tests = {
     Test("WebRTC reliability mode", test_reliability),
 #if RTC_ENABLE_MEDIA
     Test("WebRTC track", test_track),
+	Test("WebRTC video layers allocation", test_video_layers_allocation),
 #endif
 #if RTC_ENABLE_WEBSOCKET
     // TODO: Temporarily disabled as the echo service is unreliable
