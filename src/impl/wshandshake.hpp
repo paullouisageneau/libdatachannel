@@ -10,6 +10,7 @@
 #define RTC_IMPL_WS_HANDSHAKE_H
 
 #include "common.hpp"
+#include "http.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -23,11 +24,13 @@ namespace rtc::impl {
 class WsHandshake final {
 public:
 	WsHandshake();
-	WsHandshake(string host, string path = "/", std::vector<string> protocols = {});
+	WsHandshake(string host, string path = "/", std::vector<string> protocols = {},
+	            const std::map<string, string, case_insensitive_less> &headers = {});
 
 	string host() const;
 	string path() const;
 	std::vector<string> protocols() const;
+	http_headers requestHeaders() const;
 
 	string generateHttpRequest();
 	string generateHttpResponse();
@@ -57,6 +60,7 @@ private:
 	string mHost;
 	string mPath;
 	std::vector<string> mProtocols;
+	http_headers mRequestHeaders;
 	string mKey;
 	mutable std::mutex mMutex;
 };

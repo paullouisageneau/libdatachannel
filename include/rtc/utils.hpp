@@ -9,10 +9,13 @@
 #ifndef RTC_UTILS_H
 #define RTC_UTILS_H
 
+#include <algorithm>
+#include <cctype>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <tuple>
 #include <utility>
 
@@ -152,6 +155,18 @@ protected:
 
 private:
 	impl_ptr<T> mImpl;
+};
+
+// case-insensitive string comparator using std::tolower
+class case_insensitive_less : public std::less<std::string> {
+public:
+	bool operator()(const std::string &lhs, const std::string &rhs) const {
+		return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
+		                                    [](auto a, auto b) {
+			                                    return std::tolower(static_cast<unsigned char>(a)) <
+			                                           std::tolower(static_cast<unsigned char>(b));
+		                                    });
+	}
 };
 
 } // namespace rtc

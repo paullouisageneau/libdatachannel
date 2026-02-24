@@ -14,6 +14,7 @@
 #include <atomic>
 #include <chrono>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <thread>
 
@@ -34,19 +35,74 @@ TestResult test_websocketserver() {
 	serverConfig.maxMessageSize = 1000;     // to test max message size
 	WebSocketServer server(std::move(serverConfig));
 
+	WebSocket::Headers requestHeaders = {
+	    {"Authorization", "Bearer 9c96615b"},
+	    {"User-Agent", "libdatachannel/0.24"},
+	    {"X-Badly-Formatted", "Hello\r\nWorld"},
+	};
+	WebSocket::Headers expectedRequestHeaders = {
+	    {"Authorization", "Bearer 9c96615b"},
+	    {"User-Agent", "libdatachannel/0.24"},
+	    {"X-Badly-Formatted", "Hello World"},
+	};
+	bool allRequestHeadersReceived = false;
+
 	shared_ptr<WebSocket> client;
-	server.onClient([&client](shared_ptr<WebSocket> incoming) {
+	server.onClient([&client, &expectedRequestHeaders,
+	                 &allRequestHeadersReceived](shared_ptr<WebSocket> incoming) {
 		cout << "WebSocketServer: Client connection received" << endl;
 		client = incoming;
 
 		if (auto addr = client->remoteAddress())
 			cout << "WebSocketServer: Client remote address is " << *addr << endl;
 
-		client->onOpen([wclient = make_weak_ptr(client)]() {
+		client->onOpen([wclient = make_weak_ptr(client), &expectedRequestHeaders,
+		                &allRequestHeadersReceived]() {
 			cout << "WebSocketServer: Client connection open" << endl;
-			if (auto client = wclient.lock())
+			if (auto client = wclient.lock()) {
 				if (auto path = client->path())
 					cout << "WebSocketServer: Requested path is " << *path << endl;
+
+				bool ok = true;
+				auto receivedRequestHeaders = client->requestHeaders();
+				for (auto const &[name, value] : expectedRequestHeaders) {
+					auto it = receivedRequestHeaders.find(name);
+					if (it == receivedRequestHeaders.end()) {
+						cout << "WebSocketServer: Request header " << name << " not received"
+						     << endl;
+						ok = false;
+						continue;
+					}
+					if (it->first != name) {
+						// While HTTP headers are not case-sensitive, they should still be
+						// transmitted with their original casing.
+						cout << "WebSocketServer: Request header " << it->first
+						     << " does not match expected case: " << name << endl;
+						ok = false;
+						continue;
+					}
+					if (it->second != value) {
+						cout << "WebSocketServer: Request header " << it->first
+						     << " value mismatch: Expected \"" << value << "\", received \""
+						     << it->second << "\"" << endl;
+						ok = false;
+						continue;
+					}
+				}
+
+				allRequestHeadersReceived = ok;
+				if (allRequestHeadersReceived) {
+					cout << "WebSocketServer: Received " << expectedRequestHeaders.size()
+					     << " request headers: ";
+					for (auto it = expectedRequestHeaders.begin();
+					     it != expectedRequestHeaders.end(); it++) {
+						if (it != expectedRequestHeaders.begin())
+							cout << ", ";
+						cout << it->first;
+					}
+					cout << endl;
+				}
+			}
 		});
 
 		client->onClosed([]() { cout << "WebSocketServer: Client connection closed" << endl; });
@@ -89,7 +145,7 @@ TestResult test_websocketserver() {
 		}
 	});
 
-	ws.open("wss://localhost:48080/");
+	ws.open("wss://localhost:48080/", requestHeaders);
 
 	int attempts = 15;
 	while ((!ws.isOpen() || !received) && attempts--)
@@ -100,6 +156,9 @@ TestResult test_websocketserver() {
 
 	if (!received || !maxSizeReceived)
 		return TestResult(false, "Expected messages not received");
+
+	if (!allRequestHeadersReceived)
+		return TestResult(false, "Some request headers not received");
 
 	ws.close();
 	this_thread::sleep_for(1s);
