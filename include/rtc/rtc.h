@@ -432,6 +432,9 @@ RTC_C_EXPORT int rtcChainPliHandler(int tr, rtcPliHandlerCallbackFunc cb);
 // Chain RembHandler on track
 RTC_C_EXPORT int rtcChainRembHandler(int tr, rtcRembHandlerCallbackFunc cb);
 
+// Chain PacingHandler on track
+RTC_C_EXPORT int rtcChainPacingHandler(int tr, double bitsPerSecond, int sendIntervalMs);
+
 // Transform seconds to timestamp using track's clock rate, result is written to timestamp
 RTC_C_EXPORT int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp);
 
