@@ -1436,6 +1436,15 @@ int rtcChainRembHandler(int tr, rtcRembHandlerCallbackFunc cb) {
 	});
 }
 
+int rtcChainPacingHandler(int tr, double bitsPerSecond, int sendIntervalMs) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto handler = std::make_shared<PacingHandler>(bitsPerSecond, milliseconds(sendIntervalMs));
+		track->chainMediaHandler(handler);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp) {
 	return wrap([&] {
 		auto config = getRtpConfig(id);
