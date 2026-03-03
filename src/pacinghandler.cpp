@@ -17,12 +17,22 @@
 
 namespace rtc {
 
-PacingHandler::PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval)
-    : mBytesPerSecond(bitsPerSecond / 8), mBudget(0.), mSendInterval(sendInterval) {};
+PacingHandler::PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval, size_t maxQueueSize, std::function<void(void)> onOverflowCallback)
+    : mBytesPerSecond(bitsPerSecond / 8), mBudget(0.), mSendInterval(sendInterval), mMaxQueueSize(maxQueueSize), mOnOverflowCallback(onOverflowCallback) {};
 
-void PacingHandler::schedule(const message_callback &send) {
+void PacingHandler::setBitrate(double bitsPerSecond) {
+	std::lock_guard<std::mutex> lock(mParamsMutex);
+    mBytesPerSecond = bitsPerSecond / 8;
+}
+
+void PacingHandler::setMaxQueueSize(size_t maxQueueSize) {
+	std::lock_guard<std::mutex> lock(mParamsMutex);
+    mMaxQueueSize = maxQueueSize;
+}
+
+void PacingHandler::schedule(const message_callback &send, std::chrono::milliseconds scheduleInterval) {
 	if (!mHaveScheduled.exchange(true))
-		impl::ThreadPool::Instance().schedule(mSendInterval,
+		impl::ThreadPool::Instance().schedule(scheduleInterval,
 		                                      weak_bind(&PacingHandler::run, this, send));
 }
 
@@ -30,10 +40,16 @@ void PacingHandler::run(const message_callback &send) {
 	const std::lock_guard<std::mutex> lock(mMutex);
 	mHaveScheduled.store(false);
 
+	double bytesPerSecond;
+	{
+		std::lock_guard<std::mutex> lockParams(mParamsMutex);
+		bytesPerSecond = mBytesPerSecond;
+	}
+
 	// Update the budget and cap it
 	auto now = std::chrono::high_resolution_clock::now();
-	auto newBudget = std::chrono::duration<double>(now - mLastRun).count() * mBytesPerSecond;
-	auto maxBudget = std::chrono::duration<double>(mSendInterval).count() * mBytesPerSecond;
+	auto newBudget = std::chrono::duration<double>(now - mLastRun).count() * bytesPerSecond;
+	auto maxBudget = std::chrono::duration<double>(mSendInterval).count() * bytesPerSecond;
 	mBudget = std::min(mBudget + newBudget, maxBudget);
 	mLastRun = std::chrono::high_resolution_clock::now();
 
@@ -45,8 +61,10 @@ void PacingHandler::run(const message_callback &send) {
 		mBudget -= size;
 	}
 
+	auto scheduleInterval = std::chrono::duration_cast<std::chrono::milliseconds>(mSendInterval - (std::chrono::high_resolution_clock::now() - mLastRun));
+
 	if (!mRtpBuffer.empty()) {
-		schedule(send);
+		schedule(send, std::max(scheduleInterval, std::chrono::milliseconds(0)));
 	}
 }
 
@@ -54,12 +72,32 @@ void PacingHandler::outgoing(message_vector &messages, const message_callback &s
 
 	std::lock_guard<std::mutex> lock(mMutex);
 
-	for (auto &m : messages) {
-		mRtpBuffer.push(std::move(m));
+	size_t maxQueueSize;
+    {
+        std::lock_guard<std::mutex> lockParams(mParamsMutex);
+        maxQueueSize = mMaxQueueSize;
+    }
+	
+    size_t messagesSize = messages.size();
+	if (maxQueueSize > 0) {
+		size_t currentSize = mRtpBuffer.size();
+		if (currentSize + messagesSize > maxQueueSize) {
+			mRtpBuffer = {};
+			if (mOnOverflowCallback) {
+				mOnOverflowCallback();
+			}
+		}
+	}
+	if (maxQueueSize == 0 || messagesSize <= maxQueueSize) {
+		if (messages.size() <= maxQueueSize) {
+			for (auto &m : messages) {
+				mRtpBuffer.push(std::move(m));
+			}
+		}
 	}
 	messages.clear();
 
-	schedule(send);
+	schedule(send, std::chrono::milliseconds(0));
 }
 
 } // namespace rtc
