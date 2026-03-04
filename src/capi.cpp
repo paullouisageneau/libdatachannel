@@ -1769,11 +1769,12 @@ int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 	});
 }
 
-void rtcPreload() {
+bool rtcPreload() {
 	try {
-		rtc::Preload();
+		return rtc::Preload();
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
+		return false;
 	}
 }
 
