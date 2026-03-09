@@ -76,6 +76,32 @@ private:
 	bool mInitialized = false;
 };
 
+// Helper MediaHandler that intercepts raw RTP packets on the wire BEFORE RTX unwrapping.
+class RtxWireInterceptor final : public MediaHandler {
+public:
+	RtxWireInterceptor(SSRC rtxSsrc, uint8_t rtxPt) : mRtxSsrc(rtxSsrc), mRtxPt(rtxPt) {}
+
+	void incoming(message_vector &messages, const message_callback &send) override {
+		for (auto &msg : messages) {
+			if (msg->type == Message::Control || msg->size() < sizeof(RtpHeader))
+				continue;
+			auto *rtp = reinterpret_cast<const RtpHeader *>(msg->data());
+			if (rtp->ssrc() == mRtxSsrc && rtp->payloadType() == mRtxPt) {
+				cout << "RtxWireInterceptor: saw RTX wire packet SSRC=" << rtp->ssrc()
+				     << " PT=" << (int)rtp->payloadType()
+				     << " seq=" << rtp->seqNumber() << endl;
+				mRtxPacketsSeen++;
+			}
+		}
+	}
+
+	std::atomic<int> mRtxPacketsSeen{0};
+
+private:
+	SSRC mRtxSsrc;
+	uint8_t mRtxPt;
+};
+
 // Helper MediaHandler that drops RTP packets matching target sequence numbers
 class PacketDropper final : public MediaHandler {
 public:
@@ -155,11 +181,12 @@ TestResult test_rtx_dropped_packet() {
 	media.addRtxSSRC(PRIMARY_SSRC, RTX_SSRC);
 
 	shared_ptr<Track> t2;
+	shared_ptr<RtxWireInterceptor> capturedRtxInterceptor;
 	promise<rtc::binary> recvPromiseSeq2;
 	promise<rtc::binary> recvPromiseSeq4;
 	const std::unordered_set<uint16_t> dropSeqs = {2, 4};
 
-	pc2.onTrack([&t2, &recvPromiseSeq2, &recvPromiseSeq4, &dropSeqs](shared_ptr<Track> t) {
+	pc2.onTrack([&t2, &capturedRtxInterceptor, &recvPromiseSeq2, &recvPromiseSeq4, &dropSeqs](shared_ptr<Track> t) {
 		string mid = t->mid();
 		cout << "Track 2: Received track with mid \"" << mid << "\"" << endl;
 
@@ -192,10 +219,13 @@ TestResult test_rtx_dropped_packet() {
 		auto packetDropper = make_shared<PacketDropper>(dropSeqs);
 		auto nackGenerator = make_shared<TestNackGenerator>();
 		auto receivingSession = make_shared<RtcpReceivingSession>();
+		auto rtxInterceptor = make_shared<RtxWireInterceptor>(RTX_SSRC, RTX_PT);
 		nackGenerator->addToChain(packetDropper);
-		receivingSession->addToChain(nackGenerator);
+		rtxInterceptor->addToChain(nackGenerator);
+		receivingSession->addToChain(rtxInterceptor);
 		t->setMediaHandler(receivingSession);
 
+		std::atomic_store(&capturedRtxInterceptor, rtxInterceptor);
 		std::atomic_store(&t2, t);
 	});
 
@@ -282,6 +312,14 @@ TestResult test_rtx_dropped_packet() {
 		cout << "RTX recovered seq=" << expectedSeq << ": SSRC=" << rtp->ssrc()
 		     << " PT=" << (int)rtp->payloadType() << " timestamp=" << rtp->timestamp() << endl;
 	}
+
+	// Verify that retransmissions were actually sent on the RTX SSRC/PT on the wire.
+	auto interceptor = std::atomic_load(&capturedRtxInterceptor);
+	if (!interceptor || interceptor->mRtxPacketsSeen.load() == 0)
+		return TestResult(false, "No RTX packets seen on the wire with RTX_SSRC=" +
+		                             to_string(RTX_SSRC) + " RTX_PT=" + to_string(RTX_PT));
+
+	cout << "RTX wire packets seen: " << interceptor->mRtxPacketsSeen.load() << endl;
 
 	// Clean up
 	pc1.close();
