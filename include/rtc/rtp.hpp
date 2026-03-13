@@ -269,7 +269,7 @@ struct RTC_CPP_EXPORT RtcpRemb {
 
 	char _id[4];       // Unique identifier ('R' 'E' 'M' 'B')
 	uint32_t _bitrate; // Num SSRC, Br Exp, Br Mantissa (bit mask)
-	SSRC _ssrc[1];
+	SSRC _ssrcs[1];
 
 	[[nodiscard]] static size_t SizeWithSSRCs(int count);
 
@@ -277,9 +277,10 @@ struct RTC_CPP_EXPORT RtcpRemb {
 
 	void preparePacket(SSRC senderSSRC, unsigned int numSSRC, unsigned int in_bitrate);
 	void setBitrate(unsigned int numSSRC, unsigned int in_bitrate);
-	void setSsrc(int iterator, SSRC newSssrc);
-	unsigned int getNumSSRC();
-	unsigned int getBitrate();
+	SSRC getSSRC(int num) const;
+	void setSSRC(int num, SSRC newSsrc);
+	unsigned int getNumSSRC() const;
+	unsigned int getBitrate() const;
 };
 
 struct RTC_CPP_EXPORT RtcpPli {
