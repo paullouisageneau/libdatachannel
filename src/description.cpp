@@ -469,7 +469,7 @@ void Description::addRtx(optional<unsigned int> clockRate, bool audio) {
 		std::vector<int> codecsNeedingRtx;
 		for (int pt : med->payloadTypes()) {
 			auto *rtp = med->rtpMap(pt);
-			if (rtp->format == "RTX")
+			if (rtp->format == "RTX" || rtp->format == "rtx")
 				continue;
 			if (med->getRtxPayloadType(pt).has_value())
 				continue;
@@ -1140,7 +1140,7 @@ void Description::Media::removeFormat(const string &format) {
 }
 
 void Description::Media::addRtxCodec(int payloadType, int origPayloadType, unsigned int clockRate) {
-	RtpMap rtp(std::to_string(payloadType) + " RTX/" + std::to_string(clockRate));
+	RtpMap rtp(std::to_string(payloadType) + " rtx/" + std::to_string(clockRate));
 	rtp.fmtps.emplace_back("apt=" + std::to_string(origPayloadType));
 	addRtpMap(rtp);
 }
@@ -1160,7 +1160,7 @@ optional<int> Description::Media::getRtxPayloadType(int primaryPayloadType) cons
 
 bool Description::Media::isRtxEnabled() const {
 	for (const auto &[pt, map] : mRtpMaps) {
-		if (map.format == "RTX")
+		if (map.format == "RTX" || map.format == "rtx")
 			return true;
 	}
 	return false;
@@ -1168,6 +1168,7 @@ bool Description::Media::isRtxEnabled() const {
 
 void Description::Media::disableRtx() {
 	removeFormat("RTX");
+	removeFormat("rtx");
 	auto mSsrcToRtxSsrcCopy = mSsrcToRtxSsrc;
 	for (const auto &[primarySsrc, _] : mSsrcToRtxSsrcCopy)
 		removeRtxSSRC(primarySsrc);
