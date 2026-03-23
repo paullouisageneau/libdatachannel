@@ -35,7 +35,7 @@ struct WebSocket final : public Channel, public std::enable_shared_from_this<Web
 	WebSocket(optional<Configuration> optConfig = nullopt, certificate_ptr certificate = nullptr);
 	~WebSocket();
 
-	void open(const string &url);
+	void open(const string &url, const rtc::WebSocket::Headers &headers);
 	void close();
 	void remoteClose();
 	bool outgoing(message_ptr message);
@@ -67,7 +67,7 @@ struct WebSocket final : public Channel, public std::enable_shared_from_this<Web
 	std::atomic<State> state = State::Closed;
 
 private:
-	static certificate_ptr loadCertificate(const Configuration& config);
+	static certificate_ptr loadCertificate(const Configuration &config);
 
 	void scheduleConnectionTimeout();
 
