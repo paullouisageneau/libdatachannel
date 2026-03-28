@@ -129,7 +129,7 @@ void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int las
 	auto lost = 0;
 	if (mReceived > 0) {
 		lost = expected - mReceived;
-	} 
+	}
 
 	auto expected_interval = expected - mExpectedPrior;
     mExpectedPrior = expected;
@@ -139,15 +139,17 @@ void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int las
 
 	uint8_t fraction;
 
-	if (expected_interval == 0 || lost_interval <= 0) {  
+	if (expected_interval == 0 || lost_interval <= 0) {
 		fraction = 0;
-	}	
-	else { 
+	}
+	else {
 		fraction = (lost_interval << 8) / expected_interval;
 	}
 	auto syncTimestamps = getSyncTimestamps();
-	rr->getReportBlock(0)->preparePacket(mSsrc, fraction, lost, uint16_t(mGreatestSeqNo), mMaxSeq, 0, syncTimestamps.ntpTimestamp,
-	                                     lastSrDelay);
+	auto reportBlock = rr->getReportBlock(0);
+	assert(reportBlock);
+	reportBlock->preparePacket(mSsrc, fraction, lost, uint16_t(mGreatestSeqNo), mMaxSeq, 0, syncTimestamps.ntpTimestamp,
+	                           lastSrDelay);
 	rr->log();
 	send(message);
 }
