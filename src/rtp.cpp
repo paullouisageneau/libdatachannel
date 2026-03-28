@@ -697,10 +697,12 @@ size_t RtpRtx::getBodySize(size_t totalSize) const {
 size_t RtpRtx::getSize() const { return header.getSize() + sizeof(uint16_t); }
 
 size_t RtpRtx::normalizePacket(size_t totalSize, SSRC originalSSRC, uint8_t originalPayloadType) {
+	if (totalSize < getSize())
+		throw std::invalid_argument("Packet size is too small for RTX");
+
 	header.setSeqNumber(getOriginalSeqNo());
 	header.setSsrc(originalSSRC);
 	header.setPayloadType(originalPayloadType);
-	// TODO, the -12 is the size of the header (which is variable!)
 	memmove(header.getBody(), getBody(), totalSize - getSize());
 	return totalSize - 2;
 }
