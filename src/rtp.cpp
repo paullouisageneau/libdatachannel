@@ -660,7 +660,12 @@ unsigned int RtcpNack::Size(unsigned int discreteSeqNoCount) {
 	return offsetof(RtcpNack, parts) + sizeof(RtcpNackPart) * discreteSeqNoCount;
 }
 
-unsigned int RtcpNack::getSeqNoCount() { return header.header.length() - 2; }
+unsigned int RtcpNack::getSeqNoCount() {
+	if (header.header.length() < 2)
+		return 0;
+
+	return header.header.length() - 2;
+}
 
 void RtcpNack::preparePacket(SSRC ssrc, unsigned int discreteSeqNoCount) {
 	header.header.prepareHeader(205, 1, 2 + uint16_t(discreteSeqNoCount));
