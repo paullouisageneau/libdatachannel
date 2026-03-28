@@ -430,6 +430,7 @@ long RtcpSdesChunk::safelyCountChunkSize(size_t maxChunkSize) const {
 			return -1;
 		}
 		textsLength.push_back(itemLength);
+		size += RtcpSdesItem::Size(itemLength);
 		// safely to access next item
 		item = getItem(++i);
 	}
