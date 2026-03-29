@@ -395,6 +395,12 @@ RTC_C_EXPORT int rtcSetPCMUPacketizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetPCMAPacketizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetG722Packetizer(int tr, const rtcPacketizerInit *init);
 
+// Set a depacketizer on track
+RTC_C_EXPORT int rtcSetH264Depacketizer(int tr, rtcNalUnitSeparator nalSeparator);
+RTC_C_EXPORT int rtcSetH265Depacketizer(int tr, rtcNalUnitSeparator nalSeparator);
+RTC_C_EXPORT int rtcSetOpusDepacketizer(int tr);
+RTC_C_EXPORT int rtcSetAACDepacketizer(int tr);
+
 // Deprecated, do not use
 RTC_DEPRECATED static inline int
 rtcSetH264PacketizationHandler(int tr, const rtcPacketizationHandlerInit *init) {
