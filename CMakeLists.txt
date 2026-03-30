@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
 project(libdatachannel
-	VERSION 0.24.0
+	VERSION 0.24.2
 	LANGUAGES CXX)
 set(PROJECT_DESCRIPTION "C/C++ WebRTC network library featuring Data Channels, Media Transport, and WebSockets")
 
@@ -84,6 +84,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/websocket.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/websocketserver.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizationconfig.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/video_layers_allocation.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpsrreporter.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtpdepacketizer.cpp
@@ -94,6 +95,8 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h265rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h265nalunit.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/av1rtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/vp8rtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/vp8rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtp.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
@@ -125,6 +128,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocket.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/websocketserver.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizationconfig.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/video_layers_allocation.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpsrreporter.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtpdepacketizer.hpp
@@ -135,6 +139,8 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265nalunit.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/av1rtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp8rtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp8rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/utils.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/plihandler.hpp
@@ -218,6 +224,7 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/turn_connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/track.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/video_layers_allocation.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_track.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/websocket.cpp

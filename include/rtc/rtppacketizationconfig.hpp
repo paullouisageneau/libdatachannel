@@ -16,6 +16,8 @@
 
 namespace rtc {
 
+struct RTC_CPP_EXPORT VideoLayersAllocation;
+
 // RTP configuration used in packetization process
 class RTC_CPP_EXPORT RtpPacketizationConfig {
 public:
@@ -73,6 +75,16 @@ public:
 	// Minimum/maxiumum playout delay, in 10ms intervals. A value of 10 would equal a 100ms delay
 	uint16_t playoutDelayMin = 0;
 	uint16_t playoutDelayMax = 0;
+
+	// Google Video Layers Allocation for simulcast
+	// https://webrtc.googlesource.com/src/+/refs/heads/main/docs/native-code/rtp-hdrext/video-layers-allocation00
+	//
+	// The negotiated extension id
+	uint8_t videoLayersAllocationId = 0;
+	// Stream index, unique per RID/SSRC
+	uint8_t videoLayersAllocationStreamIndex = 0;
+	// Shared data about layers
+	std::shared_ptr<const VideoLayersAllocation> videoLayersAllocationStreams;
 
 	// https://webrtc.googlesource.com/src/+/refs/heads/main/docs/native-code/rtp-hdrext/color-space/
 	uint8_t colorSpaceId = 0;               // the negotiated ID of color space header extension

@@ -728,7 +728,7 @@ void SctpTransport::sendReset(uint16_t streamId) {
 
 	using srs_t = struct sctp_reset_streams;
 	const size_t len = sizeof(srs_t) + sizeof(uint16_t);
-	byte buffer[len] = {};
+	alignas(alignof(srs_t)) byte buffer[len] = {};
 	srs_t &srs = *reinterpret_cast<srs_t *>(buffer);
 	srs.srs_flags = SCTP_STREAM_RESET_OUTGOING;
 	srs.srs_number_streams = 1;

@@ -42,7 +42,7 @@ public:
 protected:
 	/// Fragment data into payloads
 	/// Default implementation returns data as a single payload
-	/// @param message Input data
+	/// @param data Input data
 	virtual std::vector<binary> fragment(binary data);
 
 	/// Creates an RTP packet for a payload
@@ -57,6 +57,11 @@ protected:
 private:
 	static const auto RtpHeaderSize = 12;
 	static const auto RtpExtHeaderCvoSize = 8;
+
+	uint32_t videoLayersAllocationInitialPacketCount = 0;
+	bool isGeneratingKeyFrame = false;
+
+	bool shouldEmitVideoLayersAllocation();
 };
 
 // Generic audio RTP packetizer

@@ -35,10 +35,16 @@ void RtpDepacketizer::incoming(message_vector &messages,
 			continue;
 		}
 
-		auto pkt = reinterpret_cast<const rtc::RtpHeader *>(message->data());
-		auto headerSize = sizeof(rtc::RtpHeader) + pkt->csrcCount() + pkt->getExtensionHeaderSize();
-		result.push_back(make_message(message->begin() + headerSize, message->end(),
-		                              createFrameInfo(pkt->timestamp(), pkt->payloadType())));
+		auto header = reinterpret_cast<const rtc::RtpHeader *>(message->data());
+		if (message->size() < header->getSize())
+			continue; // truncated header
+
+		auto totalHeaderSize = header->getSize() + header->getExtensionHeaderSize();
+		if (message->size() < totalHeaderSize)
+			continue; // truncated header
+
+		result.push_back(make_message(message->begin() + totalHeaderSize, message->end(),
+		                              createFrameInfo(header->timestamp(), header->payloadType())));
 	}
 
 	messages.swap(result);
@@ -73,6 +79,8 @@ void VideoRtpDepacketizer::incoming(message_vector &messages,
 		}
 
 		auto header = reinterpret_cast<const RtpHeader *>(message->data());
+		if (message->size() < header->getSize())
+			continue; // truncated header
 
 		if (!mBuffer.empty()) {
 			auto first = *mBuffer.begin();

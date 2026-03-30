@@ -27,6 +27,7 @@
 namespace rtc {
 
 static impl::LogCounter COUNTER_BAD_RTP_HEADER(plog::warning, "Number of malformed RTP headers");
+static impl::LogCounter COUNTER_BAD_RTCP_HEADER(plog::warning, "Number of malformed RTCP headers");
 static impl::LogCounter COUNTER_UNKNOWN_PPID(plog::warning, "Number of Unknown PPID messages");
 static impl::LogCounter COUNTER_BAD_NOTIF_LEN(plog::warning,
                                               "Number of Bad-Lengthed notifications");
@@ -73,13 +74,29 @@ void RtcpReceivingSession::incoming(message_vector &messages, const message_call
 		}
 
 		case Message::Control: {
-			auto rr = reinterpret_cast<const RtcpRr *>(message->data());
-			if (rr->header.payloadType() == 201) { // RR
+			if (message->size() < sizeof(RtcpHeader)) {
+				COUNTER_BAD_RTCP_HEADER++;
+				PLOG_VERBOSE << "RTCP packet is too small, size=" << message->size();
+				continue;
+			}
+			auto header = reinterpret_cast<const RtcpHeader *>(message->data());
+			if (header->payloadType() == 201) { // RR
+				if (message->size() < RtcpRr::SizeWithReportBlocks(0)) {
+					COUNTER_BAD_RTCP_HEADER++;
+					PLOG_VERBOSE << "RTCP RR is too small, size=" << message->size();
+					continue;
+				}
+				auto rr = reinterpret_cast<const RtcpRr *>(message->data());
 				mSsrc = rr->senderSSRC();
 				rr->log();
-			} else if (rr->header.payloadType() == 200) { // SR
-				mSsrc = rr->senderSSRC();
+			} else if (header->payloadType() == 200) { // SR
+				if (message->size() < RtcpSr::Size(0)) {
+					COUNTER_BAD_RTCP_HEADER++;
+					PLOG_VERBOSE << "RTCP SR is too small, size=" << message->size();
+					continue;
+				}
 				auto sr = reinterpret_cast<const RtcpSr *>(message->data());
+				mSsrc = sr->senderSSRC();
 				{
 					std::lock_guard lock(mSyncMutex);
 					mSyncTimestamps.rtpTimestamp = sr->rtpTimestamp();
@@ -129,7 +146,7 @@ void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int las
 	auto lost = 0;
 	if (mReceived > 0) {
 		lost = expected - mReceived;
-	} 
+	}
 
 	auto expected_interval = expected - mExpectedPrior;
     mExpectedPrior = expected;
@@ -139,15 +156,17 @@ void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int las
 
 	uint8_t fraction;
 
-	if (expected_interval == 0 || lost_interval <= 0) {  
+	if (expected_interval == 0 || lost_interval <= 0) {
 		fraction = 0;
-	}	
-	else { 
+	}
+	else {
 		fraction = (lost_interval << 8) / expected_interval;
 	}
 	auto syncTimestamps = getSyncTimestamps();
-	rr->getReportBlock(0)->preparePacket(mSsrc, fraction, lost, uint16_t(mGreatestSeqNo), mMaxSeq, 0, syncTimestamps.ntpTimestamp,
-	                                     lastSrDelay);
+	auto reportBlock = rr->getReportBlock(0);
+	assert(reportBlock);
+	reportBlock->preparePacket(mSsrc, fraction, lost, uint16_t(mGreatestSeqNo), mMaxSeq, 0, syncTimestamps.ntpTimestamp,
+	                           lastSrDelay);
 	rr->log();
 	send(message);
 }

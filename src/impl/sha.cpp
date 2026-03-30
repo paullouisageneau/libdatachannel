@@ -21,7 +21,7 @@
 #else
 
 #ifndef OPENSSL_API_COMPAT
-#define OPENSSL_API_COMPAT 0x10100000L
+#define OPENSSL_API_COMPAT 0x10101000L
 #endif
 
 #include <openssl/sha.h>
