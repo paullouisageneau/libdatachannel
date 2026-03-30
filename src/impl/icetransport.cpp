@@ -155,8 +155,8 @@ void IceTransport::addIceServer(IceServer server) {
 		return;
 	}
 
-	if (server.relayType != IceServer::RelayType::TurnUdp) {
-		PLOG_WARNING << "TURN transports TCP and TLS are not supported with libjuice";
+	if (server.relayType == IceServer::RelayType::TurnTls) {
+		PLOG_WARNING << "TURN transport TLS is not supported with libjuice";
 		return;
 	}
 
@@ -164,14 +164,18 @@ void IceTransport::addIceServer(IceServer server) {
 		return;
 
 	if (server.port == 0)
-		server.port = 3478; // TURN UDP port
+		server.port = 3478; // TURN default port
 
-	PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port << "\"";
+	PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port << "\""
+	          << " (" << (server.relayType == IceServer::RelayType::TurnTcp ? "TCP" : "UDP") << ")";
 	juice_turn_server_t turn_server = {};
 	turn_server.host = server.hostname.c_str();
 	turn_server.username = server.username.c_str();
 	turn_server.password = server.password.c_str();
 	turn_server.port = server.port;
+	turn_server.transport = (server.relayType == IceServer::RelayType::TurnTcp)
+	                            ? JUICE_TURN_TRANSPORT_TCP
+	                            : JUICE_TURN_TRANSPORT_UDP;
 
 	if (juice_add_turn_server(mAgent.get(), &turn_server) != 0)
 		throw std::runtime_error("Failed to add TURN server");

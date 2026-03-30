@@ -27,6 +27,7 @@ TestResult test_pem();
 TestResult test_negotiated();
 TestResult test_reliability();
 TestResult test_turn_connectivity();
+TestResult test_turn_tcp_connectivity();
 TestResult test_track();
 TestResult test_video_layers_allocation();
 TestResult test_capi_connectivity();
@@ -73,7 +74,8 @@ static const vector<Test> tests = {
     Test("WebRTC broken fingerprint", test_connectivity_fail_on_wrong_fingerprint),
     Test("pem", test_pem),
     // TODO: Temporarily disabled as the Open Relay TURN server is unreliable
-    // new Test("WebRTC TURN connectivity", test_turn_connectivity),
+    //Test("WebRTC TURN connectivity", test_turn_connectivity),
+    Test("WebRTC TURN-TCP connectivity", test_turn_tcp_connectivity),
     Test("WebRTC negotiated DataChannel", test_negotiated),
     Test("WebRTC reliability mode", test_reliability),
 #if RTC_ENABLE_MEDIA
@@ -97,21 +99,24 @@ static const vector<Test> tests = {
     Test("C API cleanup", test_capi_cleanup),
 };
 
+
 int main(int argc, char **argv) {
 	rtc::SetThreadPoolSize(4);
-
+	
 	int success_tests = 0;
 	int failed_tests = 0;
 	steady_clock::time_point startTime, endTime;
 
 	startTime = steady_clock::now();
 
-	for (auto test : tests) {
-		auto res = test.run();
-		if (res.success) {
-			success_tests++;
-		} else {
-			failed_tests++;
+	for (int test_num = 0; test_num < 3; test_num++) {
+		for (auto test : tests) {
+			auto res = test.run();
+			if (res.success) {
+				success_tests++;
+			} else {
+				failed_tests++;
+			}
 		}
 	}
 
@@ -120,8 +125,8 @@ int main(int argc, char **argv) {
 	auto durationMs = duration_cast<milliseconds>(endTime - startTime);
 	auto durationS = duration_cast<seconds>(endTime - startTime);
 	cout << "Finished " << success_tests + failed_tests << " tests in " << durationS.count()
-	     << "s (" << durationMs.count() << " ms). Succeeded: " << success_tests
-	     << ". Failed: " << failed_tests << "." << endl;
+		<< "s (" << durationMs.count() << " ms). Succeeded: " << success_tests
+		<< ". Failed: " << failed_tests << "." << endl;
 
 	/*
 	    // Benchmark

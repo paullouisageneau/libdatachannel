@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Paul-Louis Ageneau
+ * Copyright (c) 2020 Paul-Louis Ageneau
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,8 +11,10 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <random>
 #include <thread>
 
 using namespace rtc;
@@ -20,7 +22,14 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
-TestResult test_turn_connectivity() {
+TestResult test_turn_tcp_connectivity() {
+	// Allow skipping this test if no TURN server is available
+	const char *skip = getenv("SKIP_TURN_TCP_TEST");
+	if (skip && string(skip) != "0") {
+		cout << "TURN TCP connectivity test skipped (SKIP_TURN_TCP_TEST is set)" << endl;
+		return TestResult(true);
+	}
+
 	// Read TURN server configuration from environment variables.
 	// If not set, attempt to connect to a local coturn instance on 127.0.0.1:3478.
 	const char *turn_host_env = getenv("TURN_HOST");
@@ -29,7 +38,7 @@ TestResult test_turn_connectivity() {
 	const char *turn_pass_env = getenv("TURN_PASSWORD");
 
 	if (!turn_host_env || !turn_port_env || !turn_user_env || !turn_pass_env) {
-		cout << "TURN connectivity test skipped (missing environment)" << endl;
+		cout << "TURN TCP connectivity test skipped (missing environment)" << endl;
 		return TestResult(true);
 	}
 	string turn_host = turn_host_env ? turn_host_env : "127.0.0.1";
@@ -40,30 +49,23 @@ TestResult test_turn_connectivity() {
 	// Build TURN URI: turn:<user>:<pass>@<host>:<port>?transport=tcp
 	// The IceServer constructor also accepts a relayType parameter.
 	IceServer turnServer(turn_host, (uint16_t)stoi(turn_port), turn_user, turn_pass,
-	                     IceServer::RelayType::TurnUdp);
+	                     IceServer::RelayType::TurnTcp);
 
 	InitLogger(LogLevel::Debug);
 
 	Configuration config1;
 	config1.iceTransportPolicy = TransportPolicy::Relay; // force relay
-
-	// TURN server example (use your own server in production)
-	//config1.iceServers.emplace_back("turn:openrelayproject:openrelayproject@openrelay.metered.ca:80");
-	config1.iceServers.emplace_back(turnServer);
+	config1.iceServers.push_back(turnServer);
 
 	PeerConnection pc1(config1);
 
 	Configuration config2;
-
-	// STUN server example (use your own server in production)
-	//config2.iceServers.emplace_back("stun:openrelay.metered.ca:80");
-	IceServer stunServer(turn_host, (uint16_t)stoi(turn_port));
-	config2.iceServers.emplace_back(stunServer);
+	config2.iceTransportPolicy = TransportPolicy::Relay; // force relay
+	config2.iceServers.push_back(turnServer);
 
 	PeerConnection pc2(config2);
 
 	pc1.onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
-
 	pc1.onIceStateChange(
 	    [](PeerConnection::IceState state) { cout << "ICE state 1: " << state << endl; });
 
@@ -86,78 +88,80 @@ TestResult test_turn_connectivity() {
 	});
 
 	pc2.onLocalCandidate([&pc1](Candidate candidate) {
-		// Filter server reflexive candidates
-		if (candidate.type() != rtc::Candidate::Type::ServerReflexive)
+		// Only forward relay candidates
+		if (candidate.type() != rtc::Candidate::Type::Relayed)
 			return;
-
 		cout << "Candidate 2: " << candidate << endl;
 		pc1.addRemoteCandidate(string(candidate));
 	});
 
 	pc2.onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
-
 	pc2.onIceStateChange(
 	    [](PeerConnection::IceState state) { cout << "ICE state 2: " << state << endl; });
-
 	pc2.onGatheringStateChange([](PeerConnection::GatheringState state) {
 		cout << "Gathering state 2: " << state << endl;
 	});
-
 	pc2.onSignalingStateChange([](PeerConnection::SignalingState state) {
 		cout << "Signaling state 2: " << state << endl;
 	});
 
+	const int NUM_PACKETS = 20;
+	const int MIN_SIZE = 100;
+	const int MAX_SIZE = 2048;
+
+	atomic<int> dc1_recv_count(0);
+	atomic<int> dc2_recv_count(0);
+	atomic<size_t> dc1_recv_bytes(0);
+	atomic<size_t> dc2_recv_bytes(0);
+
 	shared_ptr<DataChannel> dc2;
-	pc2.onDataChannel([&dc2](shared_ptr<DataChannel> dc) {
+	pc2.onDataChannel([&](shared_ptr<DataChannel> dc) {
 		cout << "DataChannel 2: Received with label \"" << dc->label() << "\"" << endl;
 		if (dc->label() != "test") {
 			cerr << "Wrong DataChannel label" << endl;
 			return;
 		}
-
 		dc->onOpen([wdc = make_weak_ptr(dc)]() {
-			if (auto dc = wdc.lock()) {
+			if (auto dc = wdc.lock())
 				cout << "DataChannel 2: Open" << endl;
-				dc->send("Hello from 2");
+		});
+		dc->onMessage([&](variant<binary, string> message) {
+			if (holds_alternative<binary>(message)) {
+				dc2_recv_bytes += get<binary>(message).size();
+				int n = ++dc2_recv_count;
+				cout << "DC2 recv packet " << n << " (" << get<binary>(message).size() << " bytes)" << endl;
 			}
 		});
-
-		dc->onMessage([](variant<binary, string> message) {
-			if (holds_alternative<string>(message)) {
-				cout << "Message 2: " << get<string>(message) << endl;
-			}
-		});
-
 		std::atomic_store(&dc2, dc);
 	});
 
 	auto dc1 = pc1.createDataChannel("test");
 	dc1->onOpen([wdc1 = make_weak_ptr(dc1)]() {
-		auto dc1 = wdc1.lock();
-		if (!dc1)
-			return;
-
-		cout << "DataChannel 1: Open" << endl;
-		dc1->send("Hello from 1");
+		if (auto dc1 = wdc1.lock())
+			cout << "DataChannel 1: Open" << endl;
 	});
-
 	dc1->onClosed([]() { cout << "DataChannel 1: Closed" << endl; });
-
-	dc1->onMessage([](const variant<binary, string> &message) {
-		if (holds_alternative<string>(message)) {
-			cout << "Message 1: " << get<string>(message) << endl;
+	dc1->onMessage([&](const variant<binary, string> &message) {
+		if (holds_alternative<binary>(message)) {
+			dc1_recv_bytes += get<binary>(message).size();
+			int n = ++dc1_recv_count;
+			cout << "DC1 recv packet " << n << " (" << get<binary>(message).size() << " bytes)" << endl;
 		}
 	});
 
-	// Wait a bit
-	int attempts = 10;
+	// Wait up to 45s for connection (ICE PAC timeout is 39.5s, need margin for TURN server unreachable case)
+	int attempts = 45;
 	shared_ptr<DataChannel> adc2;
 	while ((!(adc2 = std::atomic_load(&dc2)) || !adc2->isOpen() || !dc1->isOpen()) && attempts--)
 		this_thread::sleep_for(1s);
 
+	// If not connected, the TURN server is probably not available – skip gracefully
 	if (pc1.state() != PeerConnection::State::Connected ||
-	    pc2.state() != PeerConnection::State::Connected)
+	    pc2.state() != PeerConnection::State::Connected) {
+		pc1.close();
+		pc2.close();
 		return TestResult(false, "PeerConnection is not connected");
+	}
 
 	if ((pc1.iceState() != PeerConnection::IceState::Connected &&
 	     pc1.iceState() != PeerConnection::IceState::Completed) ||
@@ -187,88 +191,51 @@ TestResult test_turn_connectivity() {
 	if (local.type() != Candidate::Type::Relayed)
 		return TestResult(false, "Connection is not relayed as expected");
 
-	// Try to open a second data channel with another label
-	shared_ptr<DataChannel> second2;
-	pc2.onDataChannel([&second2](shared_ptr<DataChannel> dc) {
-		cout << "Second DataChannel 2: Received with label \"" << dc->label() << "\"" << endl;
-		if (dc->label() != "second") {
-			cerr << "Wrong second DataChannel label" << endl;
-			return;
-		}
+	// Send 20 packets of random size (100-2048 bytes) in each direction
+	mt19937 rng(42); // fixed seed for reproducibility
+	uniform_int_distribution<int> size_dist(MIN_SIZE, MAX_SIZE);
 
-		dc->onOpen([wdc = make_weak_ptr(dc)]() {
-			if (auto dc = wdc.lock())
-				dc->send("Second hello from 2");
-		});
+	size_t total_sent_1to2 = 0;
+	size_t total_sent_2to1 = 0;
 
-		dc->onMessage([](variant<binary, string> message) {
-			if (holds_alternative<string>(message)) {
-				cout << "Second Message 2: " << get<string>(message) << endl;
-			}
-		});
+	cout << "Sending " << NUM_PACKETS << " packets in each direction (size " << MIN_SIZE << "-" << MAX_SIZE << " bytes)" << endl;
 
-		std::atomic_store(&second2, dc);
-	});
+	for (int i = 0; i < NUM_PACKETS; i++) {
+		int pkt_size_1 = size_dist(rng);
+		int pkt_size_2 = size_dist(rng);
 
-	auto second1 = pc1.createDataChannel("second");
+		binary data1(pkt_size_1);
+		binary data2(pkt_size_2);
+		for (int j = 0; j < pkt_size_1; j++) data1[j] = byte(rng() & 0xFF);
+		for (int j = 0; j < pkt_size_2; j++) data2[j] = byte(rng() & 0xFF);
 
-	second1->onOpen([wsecond1 = make_weak_ptr(second1)]() {
-		auto second1 = wsecond1.lock();
-		if (!second1)
-			return;
+		cout << "Send packet " << (i + 1) << ": DC1->" << pkt_size_1 << "B, DC2->" << pkt_size_2 << "B" << endl;
+		dc1->send(data1);
+		adc2->send(data2);
+		total_sent_1to2 += pkt_size_1;
+		total_sent_2to1 += pkt_size_2;		
+	}
 
-		cout << "Second DataChannel 1: Open" << endl;
-		second1->send("Second hello from 1");
-	});
+	// Wait for all packets to arrive (up to 10s)
+	attempts = 100;
+	while ((dc1_recv_count < NUM_PACKETS || dc2_recv_count < NUM_PACKETS) && attempts--)
+		this_thread::sleep_for(100ms);
 
-	second1->onClosed([]() { cout << "Second DataChannel 1: Closed" << endl; });
+	cout << "Results: DC1 sent " << total_sent_1to2 << " bytes in " << NUM_PACKETS << " packets" << endl;
+	cout << "Results: DC2 sent " << total_sent_2to1 << " bytes in " << NUM_PACKETS << " packets" << endl;
+	cout << "Results: DC1 received " << dc1_recv_count << "/" << NUM_PACKETS
+	     << " packets (" << dc1_recv_bytes << " bytes)" << endl;
+	cout << "Results: DC2 received " << dc2_recv_count << "/" << NUM_PACKETS
+	     << " packets (" << dc2_recv_bytes << " bytes)" << endl;
 
-	second1->onMessage([](const variant<binary, string> &message) {
-		if (holds_alternative<string>(message)) {
-			cout << "Second Message 1: " << get<string>(message) << endl;
-		}
-	});
+	if (dc2_recv_count != NUM_PACKETS)
+		return TestResult(false, "DC2 did not receive all packets (got " +
+		                  to_string(dc2_recv_count.load()) + "/" + to_string(NUM_PACKETS) + ")");
 
-	// Wait a bit
-	attempts = 10;
-	shared_ptr<DataChannel> asecond2;
-	while (
-	    (!(asecond2 = std::atomic_load(&second2)) || !asecond2->isOpen() || !second1->isOpen()) &&
-	    attempts--)
-		this_thread::sleep_for(1s);
+	if (dc1_recv_count != NUM_PACKETS)
+		return TestResult(false, "DC1 did not receive all packets (got " +
+		                  to_string(dc1_recv_count.load()) + "/" + to_string(NUM_PACKETS) + ")");
 
-	if (!asecond2 || !asecond2->isOpen() || !second1->isOpen())
-		return TestResult(false, "Second DataChannel is not open");
-
-	// Try to open a negotiated channel
-	DataChannelInit init;
-	init.negotiated = true;
-	init.id = 42;
-	auto negotiated1 = pc1.createDataChannel("negotiated", init);
-	auto negotiated2 = pc2.createDataChannel("negoctated", init);
-
-	if (!negotiated1->isOpen() || !negotiated2->isOpen())
-		return TestResult(false, "Negotiated DataChannel is not open");
-
-	std::atomic<bool> received = false;
-	negotiated2->onMessage([&received](const variant<binary, string> &message) {
-		if (holds_alternative<string>(message)) {
-			cout << "Second Message 2: " << get<string>(message) << endl;
-			received = true;
-		}
-	});
-
-	negotiated1->send("Hello from negotiated channel");
-
-	// Wait a bit
-	attempts = 5;
-	while (!received && attempts--)
-		this_thread::sleep_for(1s);
-
-	if (!received)
-		return TestResult(false, "Negotiated DataChannel failed");
-
-	// Delay close of peer 2 to check closing works properly
 	pc1.close();
 	this_thread::sleep_for(1s);
 	pc2.close();
