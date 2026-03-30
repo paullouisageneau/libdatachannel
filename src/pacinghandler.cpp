@@ -17,17 +17,21 @@
 
 namespace rtc {
 
-PacingHandler::PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval, size_t maxQueueSize, std::function<void(void)> onOverflowCallback)
-    : mBytesPerSecond(bitsPerSecond / 8), mBudget(0.), mSendInterval(sendInterval), mMaxQueueSize(maxQueueSize), mOnOverflowCallback(onOverflowCallback) {};
+PacingHandler::PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval, size_t maxQueueAmount)
+    : mBytesPerSecond(bitsPerSecond / 8), mBudget(0.), mSendInterval(sendInterval), mMaxQueueAmount(maxQueueAmount) {}
 
 void PacingHandler::setBitrate(double bitsPerSecond) {
 	std::lock_guard<std::mutex> lock(mParamsMutex);
     mBytesPerSecond = bitsPerSecond / 8;
 }
 
-void PacingHandler::setMaxQueueSize(size_t maxQueueSize) {
+void PacingHandler::setMaxQueueAmount(size_t maxQueueAmount) {
 	std::lock_guard<std::mutex> lock(mParamsMutex);
-    mMaxQueueSize = maxQueueSize;
+    mMaxQueueAmount = maxQueueAmount;
+}
+
+void PacingHandler::onOverflow(std::function<void()> callback) {
+	mOverflowCallback = std::move(callback);
 }
 
 void PacingHandler::schedule(const message_callback &send, std::chrono::milliseconds scheduleInterval) {
@@ -72,28 +76,18 @@ void PacingHandler::outgoing(message_vector &messages, const message_callback &s
 
 	std::lock_guard<std::mutex> lock(mMutex);
 
-	size_t maxQueueSize;
+	size_t maxQueueAmount;
     {
         std::lock_guard<std::mutex> lockParams(mParamsMutex);
-        maxQueueSize = mMaxQueueSize;
+        maxQueueAmount = mMaxQueueAmount;
     }
-	
-    size_t messagesSize = messages.size();
-	if (maxQueueSize > 0) {
-		size_t currentSize = mRtpBuffer.size();
-		if (currentSize + messagesSize > maxQueueSize) {
-			mRtpBuffer = {};
-			if (mOnOverflowCallback) {
-				mOnOverflowCallback();
-			}
+
+	for (auto& m : messages) {
+		if (maxQueueAmount != 0 && mRtpBuffer.size() >= maxQueueAmount) {
+			mOverflowCallback();
+			break;
 		}
-	}
-	if (maxQueueSize == 0 || messagesSize <= maxQueueSize) {
-		if (messages.size() <= maxQueueSize) {
-			for (auto &m : messages) {
-				mRtpBuffer.push(std::move(m));
-			}
-		}
+		mRtpBuffer.push(std::move(m));
 	}
 	messages.clear();
 

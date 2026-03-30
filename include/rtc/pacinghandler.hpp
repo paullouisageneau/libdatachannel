@@ -23,11 +23,13 @@ namespace rtc {
 // and delivers them in a smoother manner by sending a fixed size of them on an interval
 class RTC_CPP_EXPORT PacingHandler : public MediaHandler {
 public:
-	PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval, size_t maxQueueSize=0, std::function<void(void)> onOverflowCallback=nullptr);
+	PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval, size_t maxQueueSize=0);
 
 	void setBitrate(double bitsPerSecond);
 
-	void setMaxQueueSize(size_t maxQueueSize);
+	void setMaxQueueAmount(size_t maxQueueAmount);
+
+	void onOverflow(std::function<void()> callback);
 
 	void outgoing(message_vector &messages, const message_callback &send) override;
 
@@ -40,13 +42,13 @@ private:
 	std::chrono::milliseconds mSendInterval;
 	std::chrono::time_point<std::chrono::high_resolution_clock> mLastRun;
 
-	size_t mMaxQueueSize;
+	size_t mMaxQueueAmount;
 
 	std::mutex mParamsMutex;
 	std::mutex mMutex;
 	std::queue<message_ptr> mRtpBuffer;
 
-	std::function<void(void)> mOnOverflowCallback;
+	synchronized_callback<> mOverflowCallback;
 
 	void schedule(const message_callback &send, std::chrono::milliseconds scheduleInterval);
 	void run(const message_callback &send);
