@@ -162,6 +162,8 @@ Description::Description(const string &sdp, Type type, Role role)
 				addCandidate(Candidate(attr, bundleMid()));
 			} else if (key == "end-of-candidates") {
 				mEnded = true;
+			} else if (key == "group") {
+				// Ignore, it will be generated automatically
 			} else if (current) {
 				current->parseSdpLine(std::move(line));
 			} else {

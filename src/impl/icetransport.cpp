@@ -655,8 +655,17 @@ void IceTransport::addIceServer(IceServer server) {
 
 IceTransport::~IceTransport() {
 	PLOG_DEBUG << "Destroying ICE transport";
+
+	g_signal_handlers_disconnect_by_func(G_OBJECT(mNiceAgent.get()),
+	                 (gpointer)StateChangeCallback, this);
+	g_signal_handlers_disconnect_by_func(G_OBJECT(mNiceAgent.get()),
+	                 (gpointer)CandidateCallback, this);
+	g_signal_handlers_disconnect_by_func(G_OBJECT(mNiceAgent.get()),
+	                 (gpointer)GatheringDoneCallback, this);
+
 	nice_agent_attach_recv(mNiceAgent.get(), mStreamId, 1, g_main_loop_get_context(MainLoop->get()),
 	                       NULL, NULL);
+
 	nice_agent_remove_stream(mNiceAgent.get(), mStreamId);
 	mNiceAgent.reset();
 

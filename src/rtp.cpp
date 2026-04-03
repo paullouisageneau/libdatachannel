@@ -183,7 +183,7 @@ void RtcpReportBlock::preparePacket(SSRC in_ssrc, uint8_t fraction,
 	setSSRC(in_ssrc);
 
 	setPacketsLost(fraction, totalPacketsLost);
-	
+
 	// Middle 32 bits of NTP Timestamp
 	// _lastReport = lastSR_NTP >> 16u;
 	setNTPOfSR(uint64_t(lastSR_NTP));
@@ -306,9 +306,19 @@ void RtcpSr::preparePacket(SSRC senderSSRC, uint8_t reportCount) {
 	this->_senderSSRC = htonl(senderSSRC);
 }
 
-const RtcpReportBlock *RtcpSr::getReportBlock(int num) const { return &_reportBlocks + num; }
+const RtcpReportBlock *RtcpSr::getReportBlock(int num) const {
+	if (num < 0 || num >= int((header.lengthInBytes() - 24) / sizeof(RtcpReportBlock)))
+		return nullptr;
 
-RtcpReportBlock *RtcpSr::getReportBlock(int num) { return &_reportBlocks + num; }
+	return &_reportBlocks + num;
+}
+
+RtcpReportBlock *RtcpSr::getReportBlock(int num) {
+	if (num < 0 || num >= int((header.lengthInBytes() - 24) / sizeof(RtcpReportBlock)))
+		return nullptr;
+
+	return &_reportBlocks + num;
+}
 
 size_t RtcpSr::getSize() const {
 	// "length" in packet is one less than the number of 32 bit words in the packet.
@@ -333,9 +343,9 @@ void RtcpSr::log() const {
 	             << ", RtpTS=" << rtpTimestamp() << ", packetCount=" << packetCount()
 	             << ", octetCount=" << octetCount();
 
-	for (unsigned i = 0; i < unsigned(header.reportCount()); i++) {
-		getReportBlock(i)->log();
-	}
+	for (int i = 0; i < header.reportCount(); i++)
+		if (const auto *reportBlock = getReportBlock(i))
+			reportBlock->log();
 }
 
 unsigned int RtcpSdesItem::Size(uint8_t textLength) { return textLength + 2; }
@@ -420,6 +430,7 @@ long RtcpSdesChunk::safelyCountChunkSize(size_t maxChunkSize) const {
 			return -1;
 		}
 		textsLength.push_back(itemLength);
+		size += RtcpSdesItem::Size(itemLength);
 		// safely to access next item
 		item = getItem(++i);
 	}
@@ -505,9 +516,19 @@ void RtcpSdes::preparePacket(uint8_t chunkCount) {
 	header.prepareHeader(202, chunkCount, length);
 }
 
-const RtcpReportBlock *RtcpRr::getReportBlock(int num) const { return &_reportBlocks + num; }
+const RtcpReportBlock *RtcpRr::getReportBlock(int num) const {
+	if (num < 0 || num >= int((header.lengthInBytes() - 4) / sizeof(RtcpReportBlock)))
+		return nullptr;
 
-RtcpReportBlock *RtcpRr::getReportBlock(int num) { return &_reportBlocks + num; }
+	return &_reportBlocks + num;
+}
+
+RtcpReportBlock *RtcpRr::getReportBlock(int num) {
+	if (num < 0 || num >= int((header.lengthInBytes() - 4) / sizeof(RtcpReportBlock)))
+		return nullptr;
+
+	return &_reportBlocks + num;
+}
 
 size_t RtcpRr::SizeWithReportBlocks(uint8_t reportCount) {
 	return sizeof(header) + 4 + size_t(reportCount) * sizeof(RtcpReportBlock);
@@ -538,9 +559,9 @@ void RtcpRr::log() const {
 	PLOG_VERBOSE << "RTCP RR: "
 	             << " SSRC=" << ntohl(_senderSSRC);
 
-	for (unsigned i = 0; i < unsigned(header.reportCount()); i++) {
-		getReportBlock(i)->log();
-	}
+	for (int i = 0; i < header.reportCount(); i++)
+		if (const auto *reportBlock = getReportBlock(i))
+			reportBlock->log();
 }
 
 size_t RtcpRemb::SizeWithSSRCs(int count) { return sizeof(RtcpRemb) + (count - 1) * sizeof(SSRC); }
@@ -640,7 +661,12 @@ unsigned int RtcpNack::Size(unsigned int discreteSeqNoCount) {
 	return offsetof(RtcpNack, parts) + sizeof(RtcpNackPart) * discreteSeqNoCount;
 }
 
-unsigned int RtcpNack::getSeqNoCount() { return header.header.length() - 2; }
+unsigned int RtcpNack::getSeqNoCount() {
+	if (header.header.length() < 2)
+		return 0;
+
+	return header.header.length() - 2;
+}
 
 void RtcpNack::preparePacket(SSRC ssrc, unsigned int discreteSeqNoCount) {
 	header.header.prepareHeader(205, 1, 2 + uint16_t(discreteSeqNoCount));
@@ -677,10 +703,12 @@ size_t RtpRtx::getBodySize(size_t totalSize) const {
 size_t RtpRtx::getSize() const { return header.getSize() + sizeof(uint16_t); }
 
 size_t RtpRtx::normalizePacket(size_t totalSize, SSRC originalSSRC, uint8_t originalPayloadType) {
+	if (totalSize < getSize())
+		throw std::invalid_argument("Packet size is too small for RTX");
+
 	header.setSeqNumber(getOriginalSeqNo());
 	header.setSsrc(originalSSRC);
 	header.setPayloadType(originalPayloadType);
-	// TODO, the -12 is the size of the header (which is variable!)
 	memmove(header.getBody(), getBody(), totalSize - getSize());
 	return totalSize - 2;
 }
