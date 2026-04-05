@@ -891,7 +891,6 @@ void PeerConnection::openTracks() {
 }
 
 void PeerConnection::closeTracks() {
-	std::shared_lock lock(mTracksMutex); // read-only
 	iterateTracks([&](shared_ptr<Track> track) { track->close(); });
 }
 
