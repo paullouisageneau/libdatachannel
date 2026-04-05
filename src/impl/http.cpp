@@ -43,8 +43,8 @@ size_t parseHttpLines(const byte *buffer, size_t size, std::list<string> &lines)
 	return cur - begin;
 }
 
-std::multimap<string, string> parseHttpHeaders(const std::list<string> &lines) {
-	std::multimap<string, string> headers;
+http_headers parseHttpHeaders(const std::list<string> &lines) {
+	http_headers headers;
 	for (const auto &line : lines) {
 		if (size_t pos = line.find_first_of(':'); pos != string::npos) {
 			string key = line.substr(0, pos);
@@ -52,8 +52,6 @@ std::multimap<string, string> parseHttpHeaders(const std::list<string> &lines) {
 			if (size_t subPos = line.find_first_not_of(' ', pos + 1); subPos != string::npos) {
 				value = line.substr(subPos);
 			}
-			std::transform(key.begin(), key.end(), key.begin(),
-			               [](char c) { return std::tolower(c); });
 			headers.emplace(std::move(key), std::move(value));
 		} else {
 			headers.emplace(line, "");
