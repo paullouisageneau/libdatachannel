@@ -1091,8 +1091,17 @@ void PeerConnection::processRemoteDescription(Description description) {
 		if (std::holds_alternative<Description::Media *>(media)) {
 			auto remoteMedia = std::get<Description::Media *>(media);
 			std::unique_lock lock(mTracksMutex); // we may emplace a track
-			if (auto it = mTracks.find(remoteMedia->mid()); it != mTracks.end())
+			if (auto it = mTracks.find(remoteMedia->mid()); it != mTracks.end()) {
+				// Existing track — negotiate RTX with remote description
+				if (auto track = it->second.lock()) {
+					auto desc = track->description();
+					if (desc.isRtxEnabled() && !remoteMedia->isRtxEnabled()) {
+						desc.disableRtx();
+						track->setDescription(std::move(desc));
+					}
+				}
 				continue;
+			}
 
 			PLOG_DEBUG << "New remote track, mid=\"" << remoteMedia->mid() << "\"";
 
