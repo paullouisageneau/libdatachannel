@@ -169,8 +169,8 @@ struct RTC_CPP_EXPORT RtcpSr {
 	[[nodiscard]] uint32_t octetCount() const;
 	[[nodiscard]] uint32_t senderSSRC() const;
 
-	[[nodiscard]] const RtcpReportBlock *getReportBlock(int num) const;
-	[[nodiscard]] RtcpReportBlock *getReportBlock(int num);
+	[[nodiscard]] const RtcpReportBlock *getReportBlock(int num) const; // nullptr if out-of-bounds
+	[[nodiscard]] RtcpReportBlock *getReportBlock(int num); // nullptr if out-of-bounds
 	[[nodiscard]] unsigned int size(unsigned int reportCount);
 	[[nodiscard]] size_t getSize() const;
 
@@ -254,8 +254,8 @@ struct RTC_CPP_EXPORT RtcpRr {
 	bool isSenderReport();
 	bool isReceiverReport();
 
-	[[nodiscard]] RtcpReportBlock *getReportBlock(int num);
-	[[nodiscard]] const RtcpReportBlock *getReportBlock(int num) const;
+	[[nodiscard]] RtcpReportBlock *getReportBlock(int num); // nullptr if out-of-bounds
+	[[nodiscard]] const RtcpReportBlock *getReportBlock(int num) const; // nullptr if out-of-bounds
 	[[nodiscard]] size_t getSize() const;
 
 	void preparePacket(SSRC senderSSRC, uint8_t reportCount);

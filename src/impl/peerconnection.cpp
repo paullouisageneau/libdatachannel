@@ -586,12 +586,14 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 				auto rtcpsr = reinterpret_cast<RtcpSr *>(header);
 				ssrcs.insert(rtcpsr->senderSSRC());
 				for (int i = 0; i < rtcpsr->header.reportCount(); ++i)
-					ssrcs.insert(rtcpsr->getReportBlock(i)->getSSRC());
+					if (const auto *reportBlock = rtcpsr->getReportBlock(i))
+						ssrcs.insert(reportBlock->getSSRC());
 			} else if (header->payloadType() == 201) {
 				auto rtcprr = reinterpret_cast<RtcpRr *>(header);
 				ssrcs.insert(rtcprr->senderSSRC());
 				for (int i = 0; i < rtcprr->header.reportCount(); ++i)
-					ssrcs.insert(rtcprr->getReportBlock(i)->getSSRC());
+					if (const auto *reportBlock = rtcprr->getReportBlock(i))
+						ssrcs.insert(reportBlock->getSSRC());
 			} else if (header->payloadType() == 202) {
 				auto sdes = reinterpret_cast<RtcpSdes *>(header);
 				if (!sdes->isValid()) {
@@ -889,7 +891,6 @@ void PeerConnection::openTracks() {
 }
 
 void PeerConnection::closeTracks() {
-	std::shared_lock lock(mTracksMutex); // read-only
 	iterateTracks([&](shared_ptr<Track> track) { track->close(); });
 }
 
