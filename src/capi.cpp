@@ -1383,6 +1383,44 @@ int rtcSetG722Packetizer(int tr, const rtcPacketizerInit *init) {
 	});
 }
 
+int rtcSetH264Depacketizer(int tr, rtcNalUnitSeparator nalSeparator) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<H264RtpDepacketizer>(
+		    static_cast<rtc::NalUnit::Separator>(nalSeparator));
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetH265Depacketizer(int tr, rtcNalUnitSeparator nalSeparator) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<H265RtpDepacketizer>(
+		    static_cast<rtc::NalUnit::Separator>(nalSeparator));
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetOpusDepacketizer(int tr) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<OpusRtpDepacketizer>();
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetAACDepacketizer(int tr) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<AACRtpDepacketizer>();
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcChainRtcpReceivingSession(int tr) {
 	return wrap([&] {
 		auto track = getTrack(tr);
