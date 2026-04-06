@@ -97,6 +97,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/av1rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/vp8rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/vp8rtpdepacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/vp9rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/vp9rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtp.cpp
@@ -142,6 +143,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/av1rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp8rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp8rtpdepacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp9rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp9rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/utils.hpp
