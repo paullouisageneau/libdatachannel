@@ -222,7 +222,8 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp_generation.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp_parsing.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/turn_connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/track.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/video_layers_allocation.cpp

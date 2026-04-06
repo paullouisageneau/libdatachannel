@@ -57,6 +57,56 @@ inline std::pair<string_view, string_view> parse_pair(string_view attr) {
 	return std::make_pair(std::move(key), std::move(value));
 }
 
+inline std::vector<string_view> split_into_list(string_view value, char ch) {
+	std::vector<string_view> result;
+
+
+	size_t pos = 0;
+	size_t end = value.size();
+	while (pos < end) {
+		auto i = value.find(ch, pos);
+		if (i == string_view::npos) {
+			i = end;
+		}
+
+		const auto substr = value.substr(pos, i - pos);
+		if (!substr.empty()) {
+			result.push_back(substr);
+		}
+
+		pos = i + 1;
+	}
+
+	return result;
+}
+
+inline std::vector<std::pair<string_view, string_view>> parse_attr_list(string_view attr_list) {
+	std::vector<std::pair<string_view, string_view>> attrs;
+
+	size_t pos = 0;
+	size_t end = attr_list.size();
+	while (pos < end) {
+		auto i = attr_list.find(';', pos);
+		if (i == string_view::npos) {
+			i = end;
+		}
+
+		const auto key_value = attr_list.substr(pos, i - pos);
+		const auto j = key_value.find('=');
+		if (j != string_view::npos) {
+			const auto key = key_value.substr(0, j);
+			const auto value = key_value.substr(j + 1);
+			if (!key.empty() && !value.empty()) {
+				attrs.push_back(std::make_pair(key, value));
+			}
+		}
+
+		pos = i + 1;
+	}
+
+	return attrs;
+}
+
 template <typename T> T to_integer(string_view s) {
 	const string str(s);
 	try {
@@ -659,6 +709,10 @@ void Description::Entry::addRid(Rid rid) {
 	mRids.emplace_back(std::move(rid));
 }
 
+std::vector<Description::Rid> Description::Entry::rids() const {
+	return mRids;
+}
+
 void Description::removeAttribute(const string &attr) {
 	mAttributes.erase(
 	    std::remove_if(mAttributes.begin(), mAttributes.end(),
@@ -810,6 +864,40 @@ void Description::Entry::parseSdpLine(string_view line) {
 			// a bundled "m=" section from a BUNDLE group, the offerer [...] MUST NOT assign an SDP
 			// 'bundle-only' attribute to the "m=" section.
 			mIsRemoved = false;
+		} else if (key == "rid") {
+			// "a:rid=foo send" or optionally "a:rid=foo send abc=def;x=y;m=n"
+			const auto list = split_into_list(value, ' ');
+			if (list.size() < 2 || list.size() > 3) {
+				throw std::invalid_argument("Invalid rid line \"" + string(line) + "\" in description");
+			}
+
+			const auto rid = list[0];
+			const auto direction = list[1];
+			const auto attr_list = list.size() >= 3 ? list[2] : "";
+
+			auto builder = RidBuilder(string(rid));
+
+			if (!attr_list.empty()) {
+				const auto attr_list_parsed = parse_attr_list(attr_list);
+				for (const auto& [attr_key, attr_value] : attr_list_parsed) {
+					if (attr_key == "max-width") {
+						builder.max_width(to_integer<uint32_t>(attr_value));
+					} else if (attr_key == "max-height") {
+						builder.max_height(to_integer<uint32_t>(attr_value));
+					} else if (attr_key == "max-br") {
+						builder.max_br(to_integer<uint32_t>(attr_value));
+					} else if (attr_key == "max-fps") {
+						builder.max_fps(to_integer<uint32_t>(attr_value));
+					} else {
+						builder.custom(string(attr_key), string(attr_value));
+					}
+				}
+			}
+
+			// TODO - we don't store direction anywhere for now
+			(void) direction;
+
+			addRid(builder.build());
 		} else {
 			mAttributes.emplace_back(attr);
 		}
