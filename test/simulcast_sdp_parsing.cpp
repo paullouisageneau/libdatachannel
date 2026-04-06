@@ -59,7 +59,7 @@ TestResult test_simulcast_sdp_parsing() {
 	{
 		Description::Video video0("video0");
 		video0.parseSdpLine("a=rid:layer0 send max-width=1920;max-height=1080;max-fps=60");
-		video0.parseSdpLine("a=rid:layer1 send max-height=720;max-fps=30;max-br=1500000;foo=bar");
+		video0.parseSdpLine("a=rid:layer1 send max-height=720;max-fps=20;max-fps=30;max-br=1500000;foo=bar");
 
 		const auto rid_list = video0.rids();
 		if (rid_list.size() != 2) {

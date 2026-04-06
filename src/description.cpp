@@ -872,12 +872,11 @@ void Description::Entry::parseSdpLine(string_view line) {
 
 			const auto rid = list[0];
 			const auto direction = list[1];
-			const auto attr_list = list.size() >= 3 ? list[2] : "";
 
 			auto builder = RidBuilder(string(rid));
 
-			if (!attr_list.empty()) {
-				const auto attr_list_parsed = parse_attr_list(attr_list);
+			if (list.size() == 3) {
+				const auto attr_list_parsed = parse_attr_list(list[2]);
 				for (const auto& [attr_key, attr_value] : attr_list_parsed) {
 					if (attr_key == "max-width") {
 						builder.max_width(to_integer<uint32_t>(attr_value));
