@@ -453,12 +453,10 @@ void Description::removeApplication() {
 
 void Description::addRtx(optional<unsigned int> clockRate, bool audio) {
 	for (int i = 0; i < mediaCount(); ++i) {
-		auto m = media(i);
-		auto *mediaPtr = std::get_if<Media *>(&m);
-		if (!mediaPtr)
-			continue;
+		if (!std::holds_alternative<Media *>(media(i)))
+		    continue;
 
-		Media *med = *mediaPtr;
+		Media *med = std::get<Media*>(media(i));
 
 		// Apply to video always. Apply to audio only if requested
 		string mediaType = med->type();
@@ -1148,9 +1146,7 @@ void Description::Media::addRtxCodec(int payloadType, int origPayloadType, unsig
 }
 
 optional<int> Description::Media::getRtxPayloadType(int primaryPayloadType) const {
-	std::ostringstream oss;
-	oss << "apt=" << primaryPayloadType;
-	string aptValue = oss.str();
+	string aptValue = "apt=" + std::to_string(primaryPayloadType);
 	for (const auto &[pt, map] : mRtpMaps) {
 		for (const auto &fmtp : map.fmtps) {
 			if (fmtp == aptValue)
