@@ -60,7 +60,6 @@ inline std::pair<string_view, string_view> parse_pair(string_view attr) {
 inline std::vector<string_view> split_into_list(string_view value, char ch) {
 	std::vector<string_view> result;
 
-
 	size_t pos = 0;
 	size_t end = value.size();
 	while (pos < end) {
