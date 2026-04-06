@@ -153,8 +153,10 @@ public:
 		std::vector<string> attributes() const;
 		void addAttribute(string attr);
 		void removeAttribute(const string &attr);
-		void addRid(string rid);		// Just the name
-		void addRid(Rid rid);	// With RFC 8851 attributes
+		void addRid(string rid);	// Just the name
+		void addRid(Rid rid);		// With RFC 8851 attributes
+
+		std::vector<Rid> rids() const;
 
 		struct RTC_CPP_EXPORT ExtMap {
 			static int parseId(string_view description);

@@ -5,7 +5,7 @@
 using namespace rtc;
 using namespace std;
 
-TestResult test_simulcast_sdp() {
+TestResult test_simulcast_sdp_generation() {
 	InitLogger(LogLevel::Debug);
 
 	// Without attributes
