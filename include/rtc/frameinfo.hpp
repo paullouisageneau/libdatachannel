@@ -17,7 +17,7 @@ namespace rtc {
 
 struct RTC_CPP_EXPORT FrameInfo {
 	FrameInfo(uint32_t timestamp) : timestamp(timestamp) {};
-	template<typename Period = std::ratio<1>> FrameInfo(std::chrono::duration<double, Period> timestamp) : timestampSeconds(timestamp) {};
+	template<typename Period = std::ratio<1>> FrameInfo(std::chrono::duration<double, Period> timestamp) : timestampSeconds(timestamp) {}
 
 	[[deprecated]] FrameInfo(uint8_t payloadType, uint32_t timestamp) : timestamp(timestamp), payloadType(payloadType) {};
 
