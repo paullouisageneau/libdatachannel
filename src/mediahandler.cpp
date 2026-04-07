@@ -48,6 +48,14 @@ bool MediaHandler::requestKeyframe(const message_callback &send) {
 		return false;
 }
 
+bool MediaHandler::requestFIR(const message_callback &send) {
+	// Default implementation is to call next handler
+	if (auto handler = next())
+		return handler->requestFIR(send);
+	else
+		return false;
+}
+
 bool MediaHandler::requestBitrate(unsigned int bitrate, const message_callback &send) {
 	// Default implementation is to call next handler
 	if (auto handler = next())

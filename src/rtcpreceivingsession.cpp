@@ -176,10 +176,23 @@ bool RtcpReceivingSession::requestKeyframe(const message_callback &send) {
 	return true;
 }
 
+bool RtcpReceivingSession::requestFIR(const message_callback &send) {
+	pushFIR(send);
+	return true;
+}
+
 void RtcpReceivingSession::pushPLI(const message_callback &send) {
 	auto message = make_message(RtcpPli::Size(), Message::Control);
 	auto *pli = reinterpret_cast<RtcpPli *>(message->data());
 	pli->preparePacket(mSsrc);
+	send(message);
+}
+
+void RtcpReceivingSession::pushFIR(const message_callback &send) {
+	static uint8_t firSeqNo = 0;
+	auto message = make_message(RtcpFir::Size(), Message::Control);
+	auto *fir = reinterpret_cast<RtcpFir *>(message->data());
+	fir->preparePacket(mSsrc, firSeqNo++);
 	send(message);
 }
 

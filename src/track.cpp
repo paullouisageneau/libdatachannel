@@ -73,6 +73,14 @@ bool Track::requestKeyframe() {
 	return false;
 }
 
+bool Track::requestFIR() {
+	if (description().type() == "video")
+		if (auto handler = impl()->getMediaHandler())
+			return handler->requestFIR([this](message_ptr m) { impl()->transportSend(m); });
+
+	return false;
+}
+
 bool Track::requestBitrate(unsigned int bitrate) {
 	if (auto handler = impl()->getMediaHandler())
 		return handler->requestBitrate(bitrate,

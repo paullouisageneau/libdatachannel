@@ -28,9 +28,11 @@ void PliHandler::incoming(message_vector &messages, [[maybe_unused]] const messa
 				break;
 			} else if (payload_type == 206) {
 				// On a payload specific fb message, there is a "feedback message type" (FMT) in the
-				// header instead of a report count. PT = 206, FMT = 1 means a PLI message
+				// header instead of a report count.
+				// PT = 206, FMT = 1 means a PLI message (RFC 4585)
+				// PT = 206, FMT = 4 means a FIR message (RFC 5104)
 				uint8_t feedback_message_type = header->reportCount();
-				if (feedback_message_type == 1) {
+				if (feedback_message_type == 1 || feedback_message_type == 4) {
 					mOnPli();
 					break;
 				}
