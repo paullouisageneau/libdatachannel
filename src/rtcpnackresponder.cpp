@@ -38,7 +38,7 @@ RtcpNackResponder::RtcpNackResponder(size_t maxSize)
 void RtcpNackResponder::media(const Description::Media &desc) {
 	bool newRtxEnabled = false;
 	optional<SSRC> newRtxSsrc;
-	std::unordered_map<uint8_t, uint8_t> newRtxPayloadTypeMap;
+	std::unordered_map<int, int> newRtxPayloadTypeMap;
 
 	if (desc.isRtxEnabled()) {
 		auto pts = desc.payloadTypes();
@@ -57,8 +57,7 @@ void RtcpNackResponder::media(const Description::Media &desc) {
 		for (int pt : pts) {
 			auto rtxPt = desc.getRtxPayloadType(pt);
 			if (rtxPt) {
-				newRtxPayloadTypeMap[static_cast<uint8_t>(pt)] =
-				    static_cast<uint8_t>(*rtxPt);
+				newRtxPayloadTypeMap[pt] = *rtxPt;
 			}
 		}
 
@@ -132,10 +131,10 @@ message_ptr RtcpNackResponder::wrapInRtx(const message_ptr &original) {
 		return nullptr;
 
 	auto origRtp = reinterpret_cast<const RtpHeader *>(original->data());
-	uint8_t origPt = origRtp->payloadType();
+	int origPt = origRtp->payloadType();
 
 	optional<SSRC> rtxSsrc;
-	optional<uint8_t> rtxPayloadType;
+	optional<int> rtxPayloadType;
 	{
 		std::lock_guard lock(mMutex);
 		rtxSsrc = mRtxSsrc;

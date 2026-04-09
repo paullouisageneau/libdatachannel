@@ -288,16 +288,6 @@ void RtcpReceivingSession::pushPLI(const message_callback &send) {
 	send(message);
 }
 
-void RtcpReceivingSession::pushNACK(const message_callback &send, uint16_t missingSeqNo) {
-	auto message = make_message(RtcpNack::Size(1), Message::Control);
-	auto *nack = reinterpret_cast<RtcpNack *>(message->data());
-	nack->preparePacket(mSsrc, 1);
-	unsigned int fciCount = 0;
-	uint16_t fciPID = 0;
-	nack->addMissingPacket(&fciCount, &fciPID, missingSeqNo);
-	PLOG_DEBUG << "Sending NACK for missing seq=" << missingSeqNo;
-	send(message);
-}
 
 void RtcpReceivingSession::initSeq(uint16_t seq) {
 	mBaseSeq = seq;

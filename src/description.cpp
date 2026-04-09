@@ -13,6 +13,7 @@
 #include "impl/utils.hpp"
 
 #include <algorithm>
+#include <numeric>
 #include <array>
 #include <cctype>
 #include <chrono>
@@ -451,6 +452,16 @@ void Description::removeApplication() {
 	mApplication.reset();
 }
 
+static std::vector<int> availablePayloadTypes(const Description::Media *media) {
+	std::vector<int> allPt(32);
+	std::iota(allPt.begin(), allPt.end(), 96);
+	auto usedPt = media->payloadTypes();
+	std::vector<int> availablePt;
+	std::set_difference(allPt.begin(), allPt.end(), usedPt.begin(), usedPt.end(),
+	                    std::back_inserter(availablePt));
+	return availablePt;
+}
+
 void Description::addRtx(optional<unsigned int> clockRate, bool audio) {
 	for (int i = 0; i < mediaCount(); ++i) {
 		if (!std::holds_alternative<Media *>(media(i)))
@@ -476,26 +487,20 @@ void Description::addRtx(optional<unsigned int> clockRate, bool audio) {
 			codecsNeedingRtx.push_back(pt);
 		}
 
-		// Find the next available dynamic payload type (96-127)
-		auto usedTypes = med->payloadTypes();
-		int nextPt = 96;
-		auto findNextPt = [&]() {
-			while (nextPt <= 127) {
-				if (std::find(usedTypes.begin(), usedTypes.end(), nextPt) == usedTypes.end())
-					return nextPt++;
-				++nextPt;
-			}
-			return -1;
-		};
+		// Find available dynamic payload types via set difference
+		auto availablePt = availablePayloadTypes(med);
+		std::reverse(availablePt.begin(), availablePt.end());
 
 		for (int origPt : codecsNeedingRtx) {
-			int rtxPt = findNextPt();
-			if (rtxPt < 0)
+			if (availablePt.empty())
 				break;
+
+			int rtxPt = availablePt.back();
+			availablePt.pop_back();
+
 			auto *rtp = med->rtpMap(origPt);
 			unsigned int rate = clockRate.value_or(rtp->clockRate);
 			med->addRtxCodec(rtxPt, origPt, rate);
-			usedTypes.push_back(rtxPt);
 		}
 	}
 }
