@@ -52,7 +52,6 @@ protected:
 	void pushREMB(const message_callback &send, unsigned int bitrate);
 	void pushRR(const message_callback &send,unsigned int lastSrDelay);
 	void pushPLI(const message_callback &send);
-	void pushNACK(const message_callback &send, uint16_t missingSeqNo);
 
 	void initSeq(uint16_t seq);
 	bool updateSeq(uint16_t seq);

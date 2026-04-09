@@ -427,7 +427,7 @@ TestResult test_rtx_description_addrtx() {
 			return TestResult(false, "RTX PT for Opus must not collide with primary PT");
 	}
 
-	// Calling addRtx again should be idempotent (no duplicate RTX entries)
+	cout << "Calling addRtx again should be idempotent (no duplicate RTX entries)" << endl;
 	desc.addRtx(nullopt, true);
 	{
 		auto m0 = desc.media(0);
@@ -440,10 +440,9 @@ TestResult test_rtx_description_addrtx() {
 			                      to_string(pts.size()));
 	}
 
-	// Verify SDP round-trip: serialize and re-parse, check RTX survives
+	cout << "Verify SDP round-trip: serialize and re-parse, check RTX survives" << endl;
 	string sdp1 = desc.generateSdp();
 	Description desc2(sdp1, Description::Type::Offer);
-
 	{
 		auto m0 = desc2.media(0);
 		auto *vid = std::get_if<Description::Media *>(&m0);

@@ -36,7 +36,7 @@ private:
 
 	// RTX state populated by media() from SDP inspection
 	optional<SSRC> mRtxSsrc;
-	std::unordered_map<uint8_t, uint8_t> mRtxPayloadTypeMap; // original PT -> RTX PT
+	std::unordered_map<int, int> mRtxPayloadTypeMap; // original PT -> RTX PT
 	uint16_t mRtxSequenceNumber = 0;
 	bool mRtxEnabled = false;
 	std::mutex mMutex;
