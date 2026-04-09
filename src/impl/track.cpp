@@ -62,7 +62,7 @@ void Track::setDescription(Description::Media desc) {
 	}
 
 	if (auto handler = getMediaHandler())
-		handler->media(description());
+		handler->mediaChain(description());
 }
 
 void Track::close() {
@@ -233,7 +233,7 @@ void Track::setMediaHandler(shared_ptr<MediaHandler> handler) {
 	}
 
 	if (handler)
-		handler->media(description());
+		handler->mediaChain(description());
 }
 
 shared_ptr<MediaHandler> Track::getMediaHandler() {

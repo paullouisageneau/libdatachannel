@@ -30,6 +30,11 @@ TestResult test_simulcast_sdp();
 TestResult test_turn_connectivity();
 TestResult test_track();
 TestResult test_video_layers_allocation();
+TestResult test_rtx_attribute();
+TestResult test_rtx_description_addrtx();
+TestResult test_rtx_description_addrtx_no_audio();
+TestResult test_rtx_dropped_packet();
+TestResult test_rtx_multi_codec();
 TestResult test_capi_connectivity();
 TestResult test_capi_track();
 TestResult test_websocket();
@@ -81,6 +86,11 @@ static const vector<Test> tests = {
 #if RTC_ENABLE_MEDIA
     Test("WebRTC track", test_track),
 	Test("WebRTC video layers allocation", test_video_layers_allocation),
+    Test("RTX Description::addRtx", test_rtx_description_addrtx),
+    Test("RTX Description::addRtx audio=false", test_rtx_description_addrtx_no_audio),
+    Test("RTX negotiation fallback", test_rtx_attribute),
+    Test("RTX dropped packet recovery", test_rtx_dropped_packet),
+    Test("RTX multi-codec PT mapping", test_rtx_multi_codec),
 #endif
 #if RTC_ENABLE_WEBSOCKET
     // TODO: Temporarily disabled as the echo service is unreliable
