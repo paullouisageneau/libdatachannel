@@ -57,30 +57,8 @@ inline std::pair<string_view, string_view> parse_pair(string_view attr) {
 	return std::make_pair(std::move(key), std::move(value));
 }
 
-inline std::vector<string_view> split_into_list(string_view value, char ch) {
-	std::vector<string_view> result;
-
-	size_t pos = 0;
-	size_t end = value.size();
-	while (pos < end) {
-		auto i = value.find(ch, pos);
-		if (i == string_view::npos) {
-			i = end;
-		}
-
-		const auto substr = value.substr(pos, i - pos);
-		if (!substr.empty()) {
-			result.push_back(substr);
-		}
-
-		pos = i + 1;
-	}
-
-	return result;
-}
-
-inline std::vector<std::pair<string_view, string_view>> parse_attr_list(string_view attr_list) {
-	std::vector<std::pair<string_view, string_view>> attrs;
+inline std::vector<std::pair<string, string>> parse_attr_list(const string& attr_list) {
+	std::vector<std::pair<string, string>> attrs;
 
 	size_t pos = 0;
 	size_t end = attr_list.size();
@@ -96,7 +74,7 @@ inline std::vector<std::pair<string_view, string_view>> parse_attr_list(string_v
 			const auto key = key_value.substr(0, j);
 			const auto value = key_value.substr(j + 1);
 			if (!key.empty() && !value.empty()) {
-				attrs.push_back(std::make_pair(key, value));
+				attrs.emplace_back(key, value);
 			}
 		}
 
@@ -865,17 +843,17 @@ void Description::Entry::parseSdpLine(string_view line) {
 			mIsRemoved = false;
 		} else if (key == "rid") {
 			// "a:rid=foo send" or optionally "a:rid=foo send abc=def;x=y;m=n"
-			const auto list = split_into_list(value, ' ');
-			if (list.size() < 2 || list.size() > 3) {
+			const auto list = utils::explode(string(value), ' ');
+			if (list.size() < 2) {
 				throw std::invalid_argument("Invalid rid line \"" + string(line) + "\" in description");
 			}
 
-			const auto rid = list[0];
-			const auto direction = list[1];
+			const auto& rid = list[0];
+			const auto& direction = list[1];
 
-			auto builder = RidBuilder(string(rid));
+			auto builder = RidBuilder(rid);
 
-			if (list.size() == 3) {
+			if (list.size() >= 3) {
 				const auto attr_list_parsed = parse_attr_list(list[2]);
 				for (const auto& [attr_key, attr_value] : attr_list_parsed) {
 					if (attr_key == "max-width") {
@@ -887,7 +865,7 @@ void Description::Entry::parseSdpLine(string_view line) {
 					} else if (attr_key == "max-fps") {
 						builder.max_fps(to_integer<uint32_t>(attr_value));
 					} else {
-						builder.custom(string(attr_key), string(attr_value));
+						builder.custom(attr_key, attr_value);
 					}
 				}
 			}
