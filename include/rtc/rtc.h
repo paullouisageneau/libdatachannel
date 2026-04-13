@@ -173,6 +173,15 @@ typedef void(RTC_API *rtcAvailableCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcPliHandlerCallbackFunc)(int tr, void *ptr);
 typedef void(RTC_API *rtcRembHandlerCallbackFunc)(int tr, unsigned int bitrate, void *ptr);
 
+typedef struct {
+	uint32_t timestamp;
+	uint8_t payloadType;
+	double timestampSeconds; // negative means not available
+} rtcFrameInfo;
+
+typedef void(RTC_API *rtcFrameCallbackFunc)(int tr, const char *data, int size,
+                                            const rtcFrameInfo *info, void *ptr);
+
 // Log
 
 // NULL cb on the first call will log to stdout
@@ -313,6 +322,8 @@ RTC_C_EXPORT int rtcGetTrackDirection(int tr, rtcDirection *direction);
 
 RTC_C_EXPORT int rtcRequestKeyframe(int tr);
 RTC_C_EXPORT int rtcRequestBitrate(int tr, unsigned int bitrate);
+
+RTC_C_EXPORT int rtcSetFrameCallback(int tr, rtcFrameCallbackFunc cb);
 
 #if RTC_ENABLE_MEDIA
 
