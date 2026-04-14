@@ -82,12 +82,14 @@ init_token Init::token() {
 	return *mGlobal;
 }
 
-void Init::preload() {
+bool Init::preload() {
 	std::lock_guard lock(mMutex);
 	if (!mGlobal) {
 		mGlobal = std::make_shared<TokenPayload>(&mCleanupFuture);
 		mWeak = *mGlobal;
+		return true;
 	}
+	return false;
 }
 
 std::shared_future<void> Init::cleanup() {
