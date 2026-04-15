@@ -58,10 +58,12 @@ void Track::setMediaHandler(shared_ptr<MediaHandler> handler) {
 }
 
 void Track::chainMediaHandler(shared_ptr<MediaHandler> handler) {
-	if (auto first = impl()->getMediaHandler())
-		first->addToChain(std::move(handler));
-	else
+	if (auto first = impl()->getMediaHandler()) {
+		first->addToChain(handler);
+		handler->mediaChain(description());
+	} else {
 		impl()->setMediaHandler(std::move(handler));
+	}
 }
 
 bool Track::requestKeyframe() {

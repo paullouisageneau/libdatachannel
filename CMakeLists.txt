@@ -235,6 +235,10 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
 )
 
+if(NOT NO_MEDIA)
+    list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/rtx.cpp)
+endif()
+
 set(TESTS_HEADERS 
 	${CMAKE_CURRENT_SOURCE_DIR}/test/test.hpp
 )
