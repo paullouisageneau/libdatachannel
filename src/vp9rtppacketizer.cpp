@@ -49,8 +49,8 @@ std::vector<binary> VP9RtpPacketizer::fragment(binary frame) {
 	/*
 	 * VP9 uncompressed header (VP9 bitstream spec, Section 6.2):
 	 * The first two bits of the first byte encode the frame marker (0b10),
-	 * and the profile. Bit 2 (0x04) is the show_existing_frame flag.
-	 * When show_existing_frame is 0, bit 3 (0x08) is 0 for a key frame
+	 * and the profile. Bit 3 (0x08) is the show_existing_frame flag.
+	 * When show_existing_frame is 0, bit 2 (0x04) is 0 for a key frame
 	 * and 1 for a non-key frame.
 	 *
 	 * However, the exact bit-level positions depend on the profile and
@@ -58,11 +58,11 @@ std::vector<binary> VP9RtpPacketizer::fragment(binary frame) {
 	 * a VP9 key frame starts with byte value 0x82 or 0x83 (frame marker
 	 * 0b10 + profile bits), but this is fragile.
 	 *
-	 * The robust check: bit 2 (show_existing_frame) must be 0, and
-	 * bit 3 is the frame_type: 0 = KEY_FRAME, 1 = NON_KEY_FRAME.
+	 * The robust check: bit 3 (show_existing_frame) must be 0, and
+	 * bit 2 is the frame_type: 0 = KEY_FRAME, 1 = NON_KEY_FRAME.
 	 */
-	const uint8_t showExistingFrame = 0b00000100;
-	const uint8_t frameTypeBit = 0b00001000;
+	const uint8_t showExistingFrame = 0b00001000; // bit 3 (0x08)
+	const uint8_t frameTypeBit = 0b00000100;     // bit 2 (0x04)
 
 	if (frame.empty())
 		return {};
