@@ -173,6 +173,15 @@ typedef void(RTC_API *rtcAvailableCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcPliHandlerCallbackFunc)(int tr, void *ptr);
 typedef void(RTC_API *rtcRembHandlerCallbackFunc)(int tr, unsigned int bitrate, void *ptr);
 
+typedef struct {
+	uint32_t timestamp;
+	uint8_t payloadType;
+	double timestampSeconds; // negative means not available
+} rtcFrameInfo;
+
+typedef void(RTC_API *rtcFrameCallbackFunc)(int tr, const char *data, int size,
+                                            const rtcFrameInfo *info, void *ptr);
+
 // Log
 
 // NULL cb on the first call will log to stdout
@@ -314,6 +323,8 @@ RTC_C_EXPORT int rtcGetTrackDirection(int tr, rtcDirection *direction);
 RTC_C_EXPORT int rtcRequestKeyframe(int tr);
 RTC_C_EXPORT int rtcRequestBitrate(int tr, unsigned int bitrate);
 
+RTC_C_EXPORT int rtcSetFrameCallback(int tr, rtcFrameCallbackFunc cb);
+
 #if RTC_ENABLE_MEDIA
 
 // Media
@@ -394,6 +405,12 @@ RTC_C_EXPORT int rtcSetAACPacketizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetPCMUPacketizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetPCMAPacketizer(int tr, const rtcPacketizerInit *init);
 RTC_C_EXPORT int rtcSetG722Packetizer(int tr, const rtcPacketizerInit *init);
+
+// Set a depacketizer on track
+RTC_C_EXPORT int rtcSetH264Depacketizer(int tr, rtcNalUnitSeparator nalSeparator);
+RTC_C_EXPORT int rtcSetH265Depacketizer(int tr, rtcNalUnitSeparator nalSeparator);
+RTC_C_EXPORT int rtcSetOpusDepacketizer(int tr);
+RTC_C_EXPORT int rtcSetAACDepacketizer(int tr);
 
 // Deprecated, do not use
 RTC_DEPRECATED static inline int

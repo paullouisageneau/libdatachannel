@@ -222,7 +222,8 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp_generation.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp_parsing.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/turn_connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/track.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/video_layers_allocation.cpp
@@ -233,6 +234,10 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_websocketserver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
 )
+
+if(NOT NO_MEDIA)
+    list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/rtx.cpp)
+endif()
 
 set(TESTS_HEADERS 
 	${CMAKE_CURRENT_SOURCE_DIR}/test/test.hpp

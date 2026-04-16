@@ -13,6 +13,7 @@
 #include "impl/utils.hpp"
 
 #include <algorithm>
+#include <numeric>
 #include <array>
 #include <cctype>
 #include <chrono>
@@ -55,6 +56,33 @@ inline std::pair<string_view, string_view> parse_pair(string_view attr) {
 		key = attr;
 	}
 	return std::make_pair(std::move(key), std::move(value));
+}
+
+inline std::vector<std::pair<string, string>> parse_attr_list(const string& attr_list) {
+	std::vector<std::pair<string, string>> attrs;
+
+	size_t pos = 0;
+	size_t end = attr_list.size();
+	while (pos < end) {
+		auto i = attr_list.find(';', pos);
+		if (i == string_view::npos) {
+			i = end;
+		}
+
+		const auto key_value = attr_list.substr(pos, i - pos);
+		const auto j = key_value.find('=');
+		if (j != string_view::npos) {
+			const auto key = key_value.substr(0, j);
+			const auto value = key_value.substr(j + 1);
+			if (!key.empty() && !value.empty()) {
+				attrs.emplace_back(key, value);
+			}
+		}
+
+		pos = i + 1;
+	}
+
+	return attrs;
 }
 
 template <typename T> T to_integer(string_view s) {
@@ -451,6 +479,60 @@ void Description::removeApplication() {
 	mApplication.reset();
 }
 
+static std::vector<int> availablePayloadTypes(const Description::Media *media) {
+	std::vector<int> allPt(32);
+	std::iota(allPt.begin(), allPt.end(), 96);
+	auto usedPt = media->payloadTypes();
+	std::sort(usedPt.begin(), usedPt.end());
+	std::vector<int> availablePt;
+	std::set_difference(allPt.begin(), allPt.end(), usedPt.begin(), usedPt.end(),
+	                    std::back_inserter(availablePt));
+	return availablePt;
+}
+
+void Description::addRtx(optional<unsigned int> clockRate, bool audio) {
+	for (int i = 0; i < mediaCount(); ++i) {
+		if (!std::holds_alternative<Media *>(media(i)))
+		    continue;
+
+		Media *med = std::get<Media*>(media(i));
+
+		// Apply to video always. Apply to audio only if requested
+		string mediaType = med->type();
+		if (mediaType == "audio" && !audio)
+			continue;
+		if (mediaType != "audio" && mediaType != "video")
+			continue;
+
+		// Collect non-RTX codecs that don't already have an RTX entry
+		std::vector<int> codecsNeedingRtx;
+		for (int pt : med->payloadTypes()) {
+			auto *rtp = med->rtpMap(pt);
+			if (rtp->format == "RTX" || rtp->format == "rtx")
+				continue;
+			if (med->getRtxPayloadType(pt).has_value())
+				continue;
+			codecsNeedingRtx.push_back(pt);
+		}
+
+		// Find available dynamic payload types via set difference
+		auto availablePt = availablePayloadTypes(med);
+		std::reverse(availablePt.begin(), availablePt.end());
+
+		for (int origPt : codecsNeedingRtx) {
+			if (availablePt.empty())
+				break;
+
+			int rtxPt = availablePt.back();
+			availablePt.pop_back();
+
+			auto *rtp = med->rtpMap(origPt);
+			unsigned int rate = clockRate.value_or(rtp->clockRate);
+			med->addRtxCodec(rtxPt, origPt, rate);
+		}
+	}
+}
+
 bool Description::hasApplication() const { return mApplication && !mApplication->isRemoved(); }
 
 bool Description::hasAudioOrVideo() const {
@@ -659,6 +741,10 @@ void Description::Entry::addRid(Rid rid) {
 	mRids.emplace_back(std::move(rid));
 }
 
+std::vector<Description::Rid> Description::Entry::rids() const {
+	return mRids;
+}
+
 void Description::removeAttribute(const string &attr) {
 	mAttributes.erase(
 	    std::remove_if(mAttributes.begin(), mAttributes.end(),
@@ -810,6 +896,39 @@ void Description::Entry::parseSdpLine(string_view line) {
 			// a bundled "m=" section from a BUNDLE group, the offerer [...] MUST NOT assign an SDP
 			// 'bundle-only' attribute to the "m=" section.
 			mIsRemoved = false;
+		} else if (key == "rid") {
+			// "a:rid=foo send" or optionally "a:rid=foo send abc=def;x=y;m=n"
+			const auto list = utils::explode(string(value), ' ');
+			if (list.size() < 2) {
+				throw std::invalid_argument("Invalid rid line \"" + string(line) + "\" in description");
+			}
+
+			const auto& rid = list[0];
+			const auto& direction = list[1];
+
+			auto builder = RidBuilder(rid);
+
+			if (list.size() >= 3) {
+				const auto attr_list_parsed = parse_attr_list(list[2]);
+				for (const auto& [attr_key, attr_value] : attr_list_parsed) {
+					if (attr_key == "max-width") {
+						builder.max_width(to_integer<uint32_t>(attr_value));
+					} else if (attr_key == "max-height") {
+						builder.max_height(to_integer<uint32_t>(attr_value));
+					} else if (attr_key == "max-br") {
+						builder.max_br(to_integer<uint32_t>(attr_value));
+					} else if (attr_key == "max-fps") {
+						builder.max_fps(to_integer<uint32_t>(attr_value));
+					} else {
+						builder.custom(attr_key, attr_value);
+					}
+				}
+			}
+
+			// TODO - we don't store direction anywhere for now
+			(void) direction;
+
+			addRid(builder.build());
 		} else {
 			mAttributes.emplace_back(attr);
 		}
@@ -913,6 +1032,7 @@ void Description::Media::clearSSRCs() {
 
 	mSsrcs.clear();
 	mCNameMap.clear();
+	mSsrcToRtxSsrc.clear();
 }
 
 std::vector<uint32_t> Description::Media::getSSRCs() const { return mSsrcs; }
@@ -921,6 +1041,51 @@ optional<string> Description::Media::getCNameForSsrc(uint32_t ssrc) const {
 	auto it = mCNameMap.find(ssrc);
 	if (it != mCNameMap.end()) {
 		return it->second;
+	}
+	return nullopt;
+}
+
+void Description::Media::addRtxSSRC(SSRC primarySsrc, SSRC rtxSsrc, optional<string> cname) {
+	mSsrcToRtxSsrc[primarySsrc] = rtxSsrc;
+
+	// Add the RTX SSRC to mSsrcs if not already present
+	if (!hasSSRC(rtxSsrc)) {
+		if (cname) {
+			std::ostringstream attr;
+			attr << "ssrc:" << rtxSsrc << " cname:" << *cname;
+			mAttributes.emplace_back(attr.str());
+			mCNameMap.emplace(rtxSsrc, *cname);
+		} else {
+			std::ostringstream attr;
+			attr << "ssrc:" << rtxSsrc;
+			mAttributes.emplace_back(attr.str());
+		}
+		mSsrcs.emplace_back(rtxSsrc);
+	}
+}
+
+void Description::Media::removeRtxSSRC(SSRC primarySsrc) {
+	auto it = mSsrcToRtxSsrc.find(primarySsrc);
+	if (it != mSsrcToRtxSsrc.end()) {
+		SSRC rtxSsrc = it->second;
+		removeSSRC(rtxSsrc);
+		mSsrcToRtxSsrc.erase(it);
+	}
+}
+
+optional<SSRC> Description::Media::getRtxSsrcForSsrc(SSRC primarySsrc) const {
+	auto it = mSsrcToRtxSsrc.find(primarySsrc);
+	if (it != mSsrcToRtxSsrc.end()) {
+		return it->second;
+	}
+	return nullopt;
+}
+
+optional<SSRC> Description::Media::getSsrcForRtxSsrc(SSRC rtxSsrc) const {
+	for (const auto &[primary, rtx] : mSsrcToRtxSsrc) {
+		if (rtx == rtxSsrc) {
+			return primary;
+		}
 	}
 	return nullopt;
 }
@@ -1128,9 +1293,37 @@ void Description::Media::removeFormat(const string &format) {
 }
 
 void Description::Media::addRtxCodec(int payloadType, int origPayloadType, unsigned int clockRate) {
-	RtpMap rtp(std::to_string(payloadType) + " RTX/" + std::to_string(clockRate));
+	RtpMap rtp(std::to_string(payloadType) + " rtx/" + std::to_string(clockRate));
 	rtp.fmtps.emplace_back("apt=" + std::to_string(origPayloadType));
 	addRtpMap(rtp);
+}
+
+optional<int> Description::Media::getRtxPayloadType(int primaryPayloadType) const {
+	string aptValue = "apt=" + std::to_string(primaryPayloadType);
+	for (const auto &[pt, map] : mRtpMaps) {
+		for (const auto &fmtp : map.fmtps) {
+			if (fmtp == aptValue)
+				return pt;
+		}
+	}
+	return nullopt;
+}
+
+bool Description::Media::isRtxEnabled() const {
+	for (const auto &[pt, map] : mRtpMaps) {
+		if (map.format == "RTX" || map.format == "rtx")
+			return true;
+	}
+	return false;
+}
+
+void Description::Media::disableRtx() {
+	removeFormat("RTX");
+	removeFormat("rtx");
+	auto mSsrcToRtxSsrcCopy = mSsrcToRtxSsrc;
+	for (const auto &[primarySsrc, _] : mSsrcToRtxSsrcCopy)
+		removeRtxSSRC(primarySsrc);
+	mSsrcToRtxSsrc.clear();
 }
 
 string Description::Media::generateSdpLines(string_view eol) const {
@@ -1156,6 +1349,11 @@ string Description::Media::generateSdpLines(string_view eol) const {
 
 		for (const auto &val : map.fmtps)
 			sdp << "a=fmtp:" << map.payloadType << ' ' << val << eol;
+	}
+
+	// Output ssrc-group:FID for RTX SSRC associations
+	for (const auto &[primarySsrc, rtxSsrc] : mSsrcToRtxSsrc) {
+		sdp << "a=ssrc-group:FID " << primarySsrc << ' ' << rtxSsrc << eol;
 	}
 
 	return sdp.str();
@@ -1206,6 +1404,18 @@ void Description::Media::parseSdpLine(string_view line) {
 				mCNameMap.emplace(ssrc, cname);
 			}
 			mAttributes.emplace_back(attr);
+
+		} else if (key == "ssrc-group") {
+			// Parse ssrc-group:FID <primary> <rtx>
+			if (match_prefix(value, "FID ")) {
+				string_view ssrcs = value.substr(4);
+				size_t space = ssrcs.find(' ');
+				if (space != string_view::npos) {
+					auto primarySsrc = to_integer<SSRC>(ssrcs.substr(0, space));
+					auto rtxSsrc = to_integer<SSRC>(ssrcs.substr(space + 1));
+					mSsrcToRtxSsrc[primarySsrc] = rtxSsrc;
+				}
+			}
 
 		} else {
 			Entry::parseSdpLine(line);

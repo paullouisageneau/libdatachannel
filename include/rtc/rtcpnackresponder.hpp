@@ -12,7 +12,10 @@
 #if RTC_ENABLE_MEDIA
 
 #include "mediahandler.hpp"
+#include "description.hpp"
+#include "rtp.hpp"
 
+#include <mutex>
 #include <queue>
 #include <unordered_map>
 
@@ -24,10 +27,20 @@ public:
 
 	RtcpNackResponder(size_t maxSize = DefaultMaxSize);
 
+	void media(const Description::Media &desc) override;
 	void incoming(message_vector &messages, const message_callback &send) override;
 	void outgoing(message_vector &messages, const message_callback &send) override;
 
 private:
+	message_ptr wrapInRtx(const message_ptr &original);
+
+	// RTX state populated by media() from SDP inspection
+	optional<SSRC> mRtxSsrc;
+	std::unordered_map<int, int> mRtxPayloadTypeMap; // original PT -> RTX PT
+	uint16_t mRtxSequenceNumber = 0;
+	bool mRtxEnabled = false;
+	std::mutex mMutex;
+
 	// Packet storage
 	class RTC_CPP_EXPORT Storage {
 

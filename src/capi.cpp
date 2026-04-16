@@ -1194,6 +1194,27 @@ int rtcRequestBitrate(int tr, unsigned int bitrate) {
 	});
 }
 
+int rtcSetFrameCallback(int tr, rtcFrameCallbackFunc cb) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		if (cb)
+			track->onFrame([tr, cb](binary data, FrameInfo info) {
+				if (auto ptr = getUserPointer(tr)) {
+					rtcFrameInfo frameInfo;
+					frameInfo.timestamp = info.timestamp;
+					frameInfo.payloadType = info.payloadType;
+					frameInfo.timestampSeconds =
+					    info.timestampSeconds ? info.timestampSeconds->count() : -1.0;
+					cb(tr, reinterpret_cast<const char *>(data.data()), int(data.size()),
+					   &frameInfo, *ptr);
+				}
+			});
+		else
+			track->onFrame(nullptr);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 #if RTC_ENABLE_MEDIA
 
 void setSSRC(Description::Media *description, uint32_t ssrc, const char *_name, const char *_msid,
@@ -1379,6 +1400,44 @@ int rtcSetG722Packetizer(int tr, const rtcPacketizerInit *init) {
 		// create packetizer
 		auto packetizer = std::make_shared<G722RtpPacketizer>(rtpConfig);
 		track->setMediaHandler(packetizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetH264Depacketizer(int tr, rtcNalUnitSeparator nalSeparator) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<H264RtpDepacketizer>(
+		    static_cast<rtc::NalUnit::Separator>(nalSeparator));
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetH265Depacketizer(int tr, rtcNalUnitSeparator nalSeparator) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<H265RtpDepacketizer>(
+		    static_cast<rtc::NalUnit::Separator>(nalSeparator));
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetOpusDepacketizer(int tr) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<OpusRtpDepacketizer>();
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetAACDepacketizer(int tr) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<AACRtpDepacketizer>();
+		track->setMediaHandler(depacketizer);
 		return RTC_ERR_SUCCESS;
 	});
 }

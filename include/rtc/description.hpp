@@ -12,6 +12,7 @@
 
 #include "candidate.hpp"
 #include "common.hpp"
+#include "rtp.hpp"
 
 #include <iostream>
 #include <map>
@@ -153,8 +154,10 @@ public:
 		std::vector<string> attributes() const;
 		void addAttribute(string attr);
 		void removeAttribute(const string &attr);
-		void addRid(string rid);		// Just the name
-		void addRid(Rid rid);	// With RFC 8851 attributes
+		void addRid(string rid);	// Just the name
+		void addRid(Rid rid);		// With RFC 8851 attributes
+
+		std::vector<Rid> rids() const;
 
 		struct RTC_CPP_EXPORT ExtMap {
 			static int parseId(string_view description);
@@ -244,6 +247,11 @@ public:
 		std::vector<uint32_t> getSSRCs() const;
 		optional<std::string> getCNameForSsrc(uint32_t ssrc) const;
 
+		void addRtxSSRC(SSRC primarySsrc, SSRC rtxSsrc, optional<string> cname = nullopt);
+		void removeRtxSSRC(SSRC primarySsrc);
+		optional<SSRC> getRtxSsrcForSsrc(SSRC primarySsrc) const;
+		optional<SSRC> getSsrcForRtxSsrc(SSRC rtxSsrc) const;
+
 		int bitrate() const;
 		void setBitrate(int bitrate);
 
@@ -279,6 +287,11 @@ public:
 
 		void addRtxCodec(int payloadType, int origPayloadType, unsigned int clockRate);
 
+		optional<int> getRtxPayloadType(int primaryPayloadType) const;
+
+		bool isRtxEnabled() const;
+		void disableRtx();
+
 		virtual void parseSdpLine(string_view line) override;
 
 	private:
@@ -290,6 +303,7 @@ public:
 		std::map<int, RtpMap> mRtpMaps;
 		std::vector<uint32_t> mSsrcs;
 		std::map<uint32_t, string> mCNameMap;
+		std::map<SSRC, SSRC> mSsrcToRtxSsrc;  // primary_ssrc -> rtx_ssrc
 	};
 
 	class RTC_CPP_EXPORT Audio : public Media {
@@ -321,6 +335,11 @@ public:
 		void addVP9Codec(int payloadType, optional<string> profile = std::nullopt);
 		void addAV1Codec(int payloadType, optional<string> profile = std::nullopt);
 	};
+
+	// Adds RTX payload type mappings for SDP negotiation (codec level only).
+	// For per-stream RTX, also call Media::addRtxSSRC() once SSRCs are known.
+	// Set audio=true to also apply RTX to audio media streams.
+	void addRtx(optional<unsigned int> clockRate = nullopt, bool audio = false);
 
 	bool hasApplication() const;
 	bool hasAudioOrVideo() const;
