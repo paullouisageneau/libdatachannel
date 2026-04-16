@@ -1547,7 +1547,7 @@ void Description::Video::addVideoCodec(int payloadType, string codec, optional<s
 
 	map.addFeedback("nack");
 	map.addFeedback("nack pli");
-	// map.addFB("ccm fir");
+	map.addFB("ccm fir");
 	map.addFeedback("goog-remb");
 
 	if (profile)
