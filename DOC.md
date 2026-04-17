@@ -188,7 +188,7 @@ int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb)
 
 `cb` must have the following signature: `void myStateChangeCallback(int pc, rtcState state, void *user_ptr)`
 
-`state` will be one of the following: `RTC_NEW`, `RTC_CONNECTING`, `RTC_CONNECTED`, `RTC_DISCONNECTED`, `RTC_FAILED`, or `RTC_CLOSED`.
+`state` will be one of the following: `RTC_CONNECTING`, `RTC_CONNECTED`, `RTC_DISCONNECTED`, `RTC_FAILED`, or `RTC_CLOSED`.
 
 ```
 int rtcSetIceStateChangeCallback(int pc, rtcIceStateChangeCallbackFunc cb)
@@ -196,7 +196,7 @@ int rtcSetIceStateChangeCallback(int pc, rtcIceStateChangeCallbackFunc cb)
 
 `cb` must have the following signature: `void myIceStateChangeCallback(int pc, rtcIceState state, void *user_ptr)`
 
-`state` will be one of the following: `RTC_ICE_NEW`, `RTC_ICE_CHECKING`, `RTC_ICE_CONNECTED`, `RTC_ICE_COMPLETED`, `RTC_ICE_FAILED`, `RTC_ICE_DISCONNECTED`, or `RTC_ICE_CLOSED`.
+`state` will be one of the following: `RTC_ICE_CHECKING`, `RTC_ICE_CONNECTED`, `RTC_ICE_COMPLETED`, `RTC_ICE_FAILED`, `RTC_ICE_DISCONNECTED`, or `RTC_ICE_CLOSED`.
 
 ```
 int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb)
@@ -204,7 +204,7 @@ int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb)
 
 `cb` must have the following signature: `void myGatheringStateCallback(int pc, rtcGatheringState state, void *user_ptr)`
 
-`state` will be `RTC_GATHERING_NEW`, `RTC_GATHERING_INPROGRESS`, or `RTC_GATHERING_COMPLETE`.
+`state` will be `RTC_GATHERING_INPROGRESS` or `RTC_GATHERING_COMPLETE`.
 
 ```
 int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb)
@@ -1295,6 +1295,22 @@ Arguments:
 
 - `id`: the Track identifier
 - `timestamp`: a pointer to a `uint32_t` to store the result
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcGetTrackRtcpSyncTimestamps
+
+```
+int rtcGetTrackRtcpSyncTimestamps(int tr, uint64_t *rtpTimestamp, uint64_t *ntpTimestamp)
+```
+
+Retrieves the RTP and NTP synchronization timestamps from the RTCP receiving session chained on the track. These timestamps are extracted from incoming RTCP Sender Reports and can be used to synchronize media streams. The track must have an RTCP receiving session chained (see `rtcChainRtcpReceivingSession`).
+
+Arguments:
+
+- `tr`: the Track identifier
+- `rtpTimestamp`: a pointer to a `uint64_t` to store the RTP timestamp (may be NULL)
+- `ntpTimestamp`: a pointer to a `uint64_t` to store the NTP timestamp (may be NULL)
 
 Return value: `RTC_ERR_SUCCESS` or a negative error code
 
