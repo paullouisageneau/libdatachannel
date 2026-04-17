@@ -896,8 +896,11 @@ void DtlsTransport::incoming(message_ptr message) {
 	}
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
-	mIncomingQueue.push(message);
-	enqueueRecv();
+	if(mIncomingQueue.tryPush(message)) {
+		enqueueRecv();
+	} else {
+		PLOG_VERBOSE << "DTLS incoming queue is full, dropping";
+	}
 }
 
 bool DtlsTransport::outgoing(message_ptr message) {
