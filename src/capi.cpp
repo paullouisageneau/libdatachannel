@@ -31,6 +31,7 @@ std::unordered_map<int, shared_ptr<Track>> trackMap;
 #if RTC_ENABLE_MEDIA
 std::unordered_map<int, shared_ptr<RtcpSrReporter>> rtcpSrReporterMap;
 std::unordered_map<int, shared_ptr<RtpPacketizationConfig>> rtpConfigMap;
+std::unordered_map<int, shared_ptr<RtcpReceivingSession>> rtcpReceivingSessionMap;
 #endif
 #if RTC_ENABLE_WEBSOCKET
 std::unordered_map<int, shared_ptr<WebSocket>> webSocketMap;
@@ -120,6 +121,7 @@ void eraseTrack(int tr) {
 #if RTC_ENABLE_MEDIA
 	rtcpSrReporterMap.erase(tr);
 	rtpConfigMap.erase(tr);
+	rtcpReceivingSessionMap.erase(tr);
 #endif
 	userPointerMap.erase(tr);
 }
@@ -131,9 +133,10 @@ size_t eraseAll() {
 	trackMap.clear();
 	peerConnectionMap.clear();
 #if RTC_ENABLE_MEDIA
-	count += rtcpSrReporterMap.size() + rtpConfigMap.size();
+	count += rtcpSrReporterMap.size() + rtpConfigMap.size() + rtcpReceivingSessionMap.size();
 	rtcpSrReporterMap.clear();
 	rtpConfigMap.clear();
+	rtcpReceivingSessionMap.clear();
 #endif
 #if RTC_ENABLE_WEBSOCKET
 	count += webSocketMap.size() + webSocketServerMap.size();
@@ -168,6 +171,7 @@ void eraseChannel(int id) {
 #if RTC_ENABLE_MEDIA
 		rtcpSrReporterMap.erase(id);
 		rtpConfigMap.erase(id);
+		rtcpReceivingSessionMap.erase(id);
 #endif
 		return;
 	}
@@ -261,6 +265,20 @@ shared_ptr<RtpPacketizationConfig> getRtpConfig(int id) {
 void emplaceRtpConfig(shared_ptr<RtpPacketizationConfig> ptr, int tr) {
 	std::lock_guard lock(mutex);
 	rtpConfigMap.emplace(std::make_pair(tr, ptr));
+}
+
+shared_ptr<RtcpReceivingSession> getRtcpReceivingSession(int tr) {
+	std::lock_guard lock(mutex);
+	if (auto it = rtcpReceivingSessionMap.find(tr); it != rtcpReceivingSessionMap.end()) {
+		return it->second;
+	} else {
+		throw std::invalid_argument("RTCP receiving session ID does not exist");
+	}
+}
+
+void emplaceRtcpReceivingSession(shared_ptr<RtcpReceivingSession> ptr, int tr) {
+	std::lock_guard lock(mutex);
+	rtcpReceivingSessionMap.emplace(std::make_pair(tr, ptr));
 }
 
 shared_ptr<RtpPacketizationConfig>
@@ -1447,6 +1465,7 @@ int rtcChainRtcpReceivingSession(int tr) {
 		auto track = getTrack(tr);
 		auto session = std::make_shared<rtc::RtcpReceivingSession>();
 		track->chainMediaHandler(session);
+		emplaceRtcpReceivingSession(session, tr);
 		return RTC_ERR_SUCCESS;
 	});
 }
@@ -1548,6 +1567,18 @@ int rtcGetLastTrackSenderReportTimestamp(int id, uint32_t *timestamp) {
 		if (timestamp)
 			*timestamp = sender->lastReportedTimestamp();
 
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcGetTrackRtcpSyncTimestamps(int tr, uint64_t *rtpTimestamp, uint64_t *ntpTimestamp) {
+	return wrap([&] {
+		auto session = getRtcpReceivingSession(tr);
+		auto timestamps = session->getSyncTimestamps();
+		if (rtpTimestamp)
+			*rtpTimestamp = timestamps.rtpTimestamp;
+		if (ntpTimestamp)
+			*ntpTimestamp = timestamps.ntpTimestamp;
 		return RTC_ERR_SUCCESS;
 	});
 }
