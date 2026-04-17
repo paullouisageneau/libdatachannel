@@ -34,6 +34,7 @@ public:
 	size_t size() const;   // elements
 	size_t amount() const; // amount
 	void push(T element);
+	bool tryPush(T element);
 	optional<T> pop();
 	optional<T> peek();
 	optional<T> exchange(T element);
@@ -95,6 +96,16 @@ template <typename T> void Queue<T>::push(T element) {
 
 	mAmount += mAmountFunction(element);
 	mQueue.emplace(std::move(element));
+}
+
+template <typename T> bool Queue<T>::tryPush(T element) {
+	std::unique_lock lock(mMutex);
+	if ((mLimit > 0 && mQueue.size() >= mLimit) || mStopping)
+		return false;
+
+	mAmount += mAmountFunction(element);
+	mQueue.emplace(std::move(element));
+	return true;
 }
 
 template <typename T> optional<T> Queue<T>::pop() {
