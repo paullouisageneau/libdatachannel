@@ -13,7 +13,7 @@
 
 namespace rtc {
 
-PliHandler::PliHandler(std::function<void(void)> onPli) : mOnPli(onPli) {}
+PliHandler::PliHandler(std::function<void(void)> onPli) : mOnPli(onPli), mFirSeqNo(0) {}
 
 void PliHandler::incoming(message_vector &messages, [[maybe_unused]] const message_callback &send) {
 	for (const auto &message : messages) {
@@ -32,8 +32,17 @@ void PliHandler::incoming(message_vector &messages, [[maybe_unused]] const messa
 				// PT = 206, FMT = 1 means a PLI message (RFC 4585)
 				// PT = 206, FMT = 4 means a FIR message (RFC 5104)
 				uint8_t feedback_message_type = header->reportCount();
-				if (feedback_message_type == 1 || feedback_message_type == 4) {
+				if (feedback_message_type == 1) {
 					mOnPli();
+					break;
+				} else if (feedback_message_type == 4) {
+					auto fir = reinterpret_cast<const RtcpFir *>(message->data() + offset);
+					uint8_t firSeqNo = fir->seqNo();
+					// Check if this is a duplicate of the last sent fir
+					if (firSeqNo != mFirSeqNo) {
+						mFirSeqNo = firSeqNo;
+						mOnPli();
+					}
 					break;
 				}
 			}

@@ -84,6 +84,7 @@ protected:
 	SSRC mRtxPrimarySsrc = 0;
 	bool mRtxEnabled = false;
 
+	uint32_t mFirCmdNum = 0;		// RFC 5104 FIR command number
 };
 
 } // namespace rtc

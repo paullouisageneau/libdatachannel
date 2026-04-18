@@ -294,10 +294,9 @@ void RtcpReceivingSession::pushPLI(const message_callback &send) {
 }
 
 void RtcpReceivingSession::pushFIR(const message_callback &send) {
-	static uint8_t firSeqNo = 0;
 	auto message = make_message(RtcpFir::Size(), Message::Control);
 	auto *fir = reinterpret_cast<RtcpFir *>(message->data());
-	fir->preparePacket(mSsrc, firSeqNo++);
+	fir->preparePacket(mSsrc, ++mFirCmdNum % 256);
 	send(message);
 }
 

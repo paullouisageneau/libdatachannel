@@ -27,6 +27,9 @@ public:
     PliHandler(std::function<void(void)> onPli);
 
 	void incoming(message_vector &messages, const message_callback &send) override;
+
+private:
+	uint8_t mFirSeqNo;
 };
 
 }
