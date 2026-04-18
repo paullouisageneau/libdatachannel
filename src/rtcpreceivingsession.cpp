@@ -286,14 +286,14 @@ void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int las
 
 bool RtcpReceivingSession::requestKeyframe(SSRC targetSSRC, const message_callback &send) {
 	if (mSupportsRfc5104FIR) {
-		pushFIR(targetSSRC, send);
+		pushFIR(send, targetSSRC);
 	} else {
 		pushPLI(send);
 	}
 	return true;
 }
 
-void RtcpReceivingSession::pushFIR(SSRC targetSSRC, const message_callback &send) {
+void RtcpReceivingSession::pushFIR(const message_callback &send, SSRC targetSSRC) {
 	auto message = make_message(RtcpFir::Size(), Message::Control);
 	auto *fir = reinterpret_cast<RtcpFir *>(message->data());
 	if (targetSSRC == 0)

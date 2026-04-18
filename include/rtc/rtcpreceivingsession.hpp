@@ -52,7 +52,7 @@ protected:
 	void pushREMB(const message_callback &send, unsigned int bitrate);
 	void pushRR(const message_callback &send,unsigned int lastSrDelay);
 	void pushPLI(const message_callback &send);
-	void pushFIR(SSRC targetSSRC, const message_callback &send);
+	void pushFIR(const message_callback &send, SSRC targetSSRC);
 
 	void initSeq(uint16_t seq);
 	bool updateSeq(uint16_t seq);
