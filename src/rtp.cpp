@@ -624,6 +624,10 @@ void RtcpPli::log() const { header.log(); }
 
 unsigned int RtcpFir::Size() { return sizeof(RtcpFbHeader) + sizeof(RtcpFirPart); }
 
+SSRC RtcpFir::messageSSRC() const { return ntohl(parts[0].ssrc); }
+
+uint8_t RtcpFir::seqNo() const { return parts[0].seqNo; }
+
 void RtcpFir::preparePacket(SSRC messageSSRC, uint8_t seqNo) {
 	header.header.prepareHeader(206, 4, 2 + 2 * 1);
 	header.setPacketSenderSSRC(messageSSRC);

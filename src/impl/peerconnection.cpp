@@ -588,7 +588,7 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 					// FIRs have one FCI entry of fixed length
 					size_t pktLen = header->lengthInBytes();
 					if (pktLen == (sizeof(RtcpFbHeader) + sizeof(RtcpFirPart))) {
-						ssrcs.insert(parsed->parts[0].ssrc);
+						ssrcs.insert(parsed->messageSSRC());
 					}
 				}
 			} else if (header->payloadType() == 200) {

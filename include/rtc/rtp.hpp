@@ -305,6 +305,9 @@ struct RTC_CPP_EXPORT RtcpFir {
 
 	static unsigned int Size();
 
+	[[nodiscard]] SSRC messageSSRC() const;
+	[[nodiscard]] uint8_t seqNo() const;
+
 	void preparePacket(SSRC messageSSRC, uint8_t seqNo);
 
 	void log() const;
