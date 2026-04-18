@@ -67,18 +67,10 @@ void Track::chainMediaHandler(shared_ptr<MediaHandler> handler) {
 }
 
 bool Track::requestKeyframe() {
-	// only push PLI for video
+	// only request key frames for video
 	if (description().type() == "video")
 		if (auto handler = impl()->getMediaHandler())
-			return handler->requestKeyframe([this](message_ptr m) { impl()->transportSend(m); });
-
-	return false;
-}
-
-bool Track::requestFIR() {
-	if (description().type() == "video")
-		if (auto handler = impl()->getMediaHandler())
-			return handler->requestFIR([this](message_ptr m) { impl()->transportSend(m); });
+			return handler->requestKeyframe(0, [this](message_ptr m) { impl()->transportSend(m); });
 
 	return false;
 }

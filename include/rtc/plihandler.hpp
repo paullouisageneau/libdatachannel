@@ -31,7 +31,7 @@ public:
 	void incoming(message_vector &messages, const message_callback &send) override;
 
 protected:
-	std::map<SSRC, uint8_t> mFirSSRCSeqNumberMap;
+	std::unordered_map<uint64_t, uint8_t> mFirSSRCSeqNumberMap;
 };
 
 }

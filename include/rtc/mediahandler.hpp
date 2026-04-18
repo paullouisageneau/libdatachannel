@@ -35,8 +35,7 @@ public:
 	/// @param send Send callback to send messages back to the peer
 	virtual void outgoing([[maybe_unused]] message_vector &messages, [[maybe_unused]] const message_callback &send) {}
 
-	virtual bool requestKeyframe(const message_callback &send);
-	virtual bool requestFIR(const message_callback &send);
+	virtual bool requestKeyframe(SSRC targetSSRC, const message_callback &send);
 	virtual bool requestBitrate(unsigned int bitrate, const message_callback &send);
 
 	void addToChain(shared_ptr<MediaHandler> handler);

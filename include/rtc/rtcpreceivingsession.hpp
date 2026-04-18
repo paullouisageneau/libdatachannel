@@ -34,8 +34,7 @@ public:
 
 	void media(const Description::Media &desc) override;
 	void incoming(message_vector &messages, const message_callback &send) override;
-	bool requestKeyframe(const message_callback &send) override;
-	bool requestFIR(const message_callback &send) override;
+	bool requestKeyframe(SSRC targetSSRC, const message_callback &send) override;
 	bool requestBitrate(unsigned int bitrate, const message_callback &send) override;
 
 	// For backward compatibility
@@ -53,7 +52,7 @@ protected:
 	void pushREMB(const message_callback &send, unsigned int bitrate);
 	void pushRR(const message_callback &send,unsigned int lastSrDelay);
 	void pushPLI(const message_callback &send);
-	void pushFIR(const message_callback &send);
+	void pushFIR(SSRC targetSSRC, const message_callback &send);
 
 	void initSeq(uint16_t seq);
 	bool updateSeq(uint16_t seq);
@@ -84,7 +83,8 @@ protected:
 	SSRC mRtxPrimarySsrc = 0;
 	bool mRtxEnabled = false;
 
-	uint32_t mFirCmdNum = 0;		// RFC 5104 FIR command number
+	bool mSupportsRfc5104FIR = false;
+	uint32_t mRfc5104FIRCmdNum = 0;
 };
 
 } // namespace rtc

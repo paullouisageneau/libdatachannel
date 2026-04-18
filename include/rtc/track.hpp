@@ -46,7 +46,6 @@ public:
 	void onFrame(std::function<void(binary data, FrameInfo info)> callback);
 
 	bool requestKeyframe();
-	bool requestFIR();
 	bool requestBitrate(unsigned int bitrate);
 
 	void setMediaHandler(shared_ptr<MediaHandler> handler);

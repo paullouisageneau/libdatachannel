@@ -73,6 +73,14 @@ void RtcpReceivingSession::media(const Description::Media &desc) {
 	mRtxEnabled = newRtxEnabled;
 	mRtxToPrimaryPtMap = std::move(newRtxToPrimaryPtMap);
 	mRtxPrimarySsrc = newRtxPrimarySsrc;
+
+	// Check if RFC 5104 FIR support should be enabled
+	for (const auto payloadType : desc.payloadTypes()) {
+		const Description::Media::RtpMap* rtpMap = desc.rtpMap(payloadType);
+		if (rtpMap->hasFeedback("ccm fir")) {
+			mSupportsRfc5104FIR = true;
+		}
+	}
 }
 
 message_ptr RtcpReceivingSession::unwrapRtx(const message_ptr &rtxPacket) {
@@ -276,27 +284,28 @@ void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int las
 	send(message);
 }
 
-bool RtcpReceivingSession::requestKeyframe(const message_callback &send) {
-	pushPLI(send);
+bool RtcpReceivingSession::requestKeyframe(SSRC targetSSRC, const message_callback &send) {
+	if (mSupportsRfc5104FIR) {
+		pushFIR(targetSSRC, send);
+	} else {
+		pushPLI(send);
+	}
 	return true;
 }
 
-bool RtcpReceivingSession::requestFIR(const message_callback &send) {
-	pushFIR(send);
-	return true;
+void RtcpReceivingSession::pushFIR(SSRC targetSSRC, const message_callback &send) {
+	auto message = make_message(RtcpFir::Size(), Message::Control);
+	auto *fir = reinterpret_cast<RtcpFir *>(message->data());
+	if (targetSSRC == 0)
+		targetSSRC = mSsrc;
+	fir->preparePacket(mSsrc, targetSSRC, ++mRfc5104FIRCmdNum % 256);
+	send(message);
 }
 
 void RtcpReceivingSession::pushPLI(const message_callback &send) {
 	auto message = make_message(RtcpPli::Size(), Message::Control);
 	auto *pli = reinterpret_cast<RtcpPli *>(message->data());
 	pli->preparePacket(mSsrc);
-	send(message);
-}
-
-void RtcpReceivingSession::pushFIR(const message_callback &send) {
-	auto message = make_message(RtcpFir::Size(), Message::Control);
-	auto *fir = reinterpret_cast<RtcpFir *>(message->data());
-	fir->preparePacket(mSsrc, ++mFirCmdNum % 256);
 	send(message);
 }
 

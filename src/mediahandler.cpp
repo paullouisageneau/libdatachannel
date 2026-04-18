@@ -40,18 +40,10 @@ shared_ptr<const MediaHandler> MediaHandler::last() const {
 		return shared_from_this();
 }
 
-bool MediaHandler::requestKeyframe(const message_callback &send) {
+bool MediaHandler::requestKeyframe(SSRC targetSSRC, const message_callback &send) {
 	// Default implementation is to call next handler
 	if (auto handler = next())
-		return handler->requestKeyframe(send);
-	else
-		return false;
-}
-
-bool MediaHandler::requestFIR(const message_callback &send) {
-	// Default implementation is to call next handler
-	if (auto handler = next())
-		return handler->requestFIR(send);
+		return handler->requestKeyframe(targetSSRC, send);
 	else
 		return false;
 }

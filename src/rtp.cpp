@@ -628,10 +628,10 @@ SSRC RtcpFir::messageSSRC() const { return ntohl(parts[0].ssrc); }
 
 uint8_t RtcpFir::seqNo() const { return parts[0].seqNo; }
 
-void RtcpFir::preparePacket(SSRC messageSSRC, uint8_t seqNo) {
+void RtcpFir::preparePacket(SSRC senderSSRC, SSRC messageSSRC, uint8_t seqNo) {
 	header.header.prepareHeader(206, 4, 2 + 2 * 1);
-	header.setPacketSenderSSRC(messageSSRC);
-	header.setMediaSourceSSRC(messageSSRC);
+	header.setPacketSenderSSRC(senderSSRC);
+	header.setMediaSourceSSRC(0);
 	parts[0].ssrc = htonl(messageSSRC);
 	parts[0].seqNo = seqNo;
 }
