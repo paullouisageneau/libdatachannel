@@ -13,7 +13,7 @@
 
 namespace rtc {
 
-PliHandler::PliHandler(std::function<void(void)> onPli) : mOnPli(onPli), mFirSeqNo(0) {}
+PliHandler::PliHandler(std::function<void(void)> onPli) : mOnPli(onPli) {}
 
 void PliHandler::incoming(message_vector &messages, [[maybe_unused]] const message_callback &send) {
 	for (const auto &message : messages) {
@@ -38,9 +38,10 @@ void PliHandler::incoming(message_vector &messages, [[maybe_unused]] const messa
 				} else if (feedback_message_type == 4) {
 					auto fir = reinterpret_cast<const RtcpFir *>(message->data() + offset);
 					uint8_t firSeqNo = fir->seqNo();
-					// Check if this is a duplicate of the last sent fir
-					if (firSeqNo != mFirSeqNo) {
-						mFirSeqNo = firSeqNo;
+					SSRC senderSSRC = fir->header.packetSenderSSRC();
+					// Check if this is a duplicate of the last sent fir for this SSRC
+					if (mFirSSRCSeqNumberMap[senderSSRC] != firSeqNo) {
+						mFirSSRCSeqNumberMap[senderSSRC] = firSeqNo;
 						mOnPli();
 					}
 					break;

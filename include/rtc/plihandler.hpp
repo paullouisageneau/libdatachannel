@@ -14,6 +14,8 @@
 #include "mediahandler.hpp"
 #include "utils.hpp"
 
+#include <map>
+
 namespace rtc {
 
 /// Responds to PLI and FIR messages sent by the receiver. The sender should respond to these
@@ -28,8 +30,8 @@ public:
 
 	void incoming(message_vector &messages, const message_callback &send) override;
 
-private:
-	uint8_t mFirSeqNo;
+protected:
+	std::map<SSRC, uint8_t> mFirSSRCSeqNumberMap;
 };
 
 }
