@@ -602,7 +602,7 @@ void RtcpRemb::setBitrate(unsigned int numSSRC, unsigned int in_bitrate) {
 	_bitrate = htonl((numSSRC << (32u - 8u)) | (exp << (32u - 8u - 6u)) | in_bitrate);
 }
 
-SSRC RtcpRemb::getSSRC(int num) const { 
+SSRC RtcpRemb::getSSRC(int num) const {
     if (num < 0 || static_cast<unsigned>(num) >= getNumSSRC())
         throw std::out_of_range("SSRC num out of range");
     return ntohl(_ssrcs[num]);
@@ -619,6 +619,20 @@ unsigned int RtcpRemb::getBitrate() const {
 	uint32_t br = ntohl(_bitrate);
 	uint8_t exp = (br << 8u) >> 26u;
 	return (br & 0x3FFFF) * static_cast<unsigned int>(pow(2, exp));
+}
+
+void RtcpRemb::setSsrc(int num, SSRC newSsrc) {
+	if (num < 0 || static_cast<unsigned>(num) >= getNumSSRC())
+		throw std::out_of_range("SSRC num out of range");
+    _ssrcs[num] = htonl(newSsrc);
+}
+
+unsigned int RtcpRemb::getNumSSRC() {
+	return std::as_const(*this).getNumSSRC();
+}
+
+unsigned int RtcpRemb::getBitrate() {
+	return std::as_const(*this).getBitrate();
 }
 
 unsigned int RtcpPli::Size() { return sizeof(RtcpFbHeader); }
