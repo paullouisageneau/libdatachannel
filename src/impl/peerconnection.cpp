@@ -570,13 +570,13 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 	if (message->type == Message::Control) {
 		std::set<uint32_t> ssrcs;
 		size_t offset = 0;
-		while ((sizeof(RtcpHeader) + offset) <= message->size()) {
+		while (offset + sizeof(RtcpHeader) <= message->size()) {
 			auto header = reinterpret_cast<RtcpHeader *>(message->data() + offset);
-			if (header->lengthInBytes() > message->size() - offset) {
+			size_t length = header->lengthInBytes();
+			if (offset + length > message->size()) {
 				COUNTER_MEDIA_TRUNCATED++;
 				break;
 			}
-			offset += header->lengthInBytes();
 			if (header->payloadType() == 205) {
 				auto rtcpfb = reinterpret_cast<RtcpFbHeader *>(header);
 				ssrcs.insert(rtcpfb->packetSenderSSRC());
@@ -584,20 +584,15 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 			} else if (header->payloadType() == 206) {
 				auto rtcpfb = reinterpret_cast<RtcpFbHeader *>(header);
 				ssrcs.insert(rtcpfb->packetSenderSSRC());
-				if (header->reportCount() == 15 && header->lengthInBytes() >= sizeof(RtcpRemb)) {
+				ssrcs.insert(rtcpfb->mediaSourceSSRC());
+				if (header->reportCount() == 15 && length >= sizeof(RtcpRemb)) {
 					auto remb = reinterpret_cast<RtcpRemb *>(header);
-					unsigned numSsrc = remb->getNumSSRC();
-					if (RtcpRemb::SizeWithSSRCs(numSsrc) > message->size() + header->lengthInBytes() - offset) {
-						continue;
-					}
-					if (remb->_id[0] == 'R' && remb->_id[1] == 'E' && remb->_id[2] == 'M' && remb->_id[3] == 'B') {
-						for (unsigned i = 0; i < numSsrc; i++) {
+					if (remb->hasValidId()) {
+						for (int i = 0; i < remb->getSSRCCount(); ++i) {
 							ssrcs.insert(remb->getSSRC(i));
 						}
-						continue;
 					}
 				}
-				ssrcs.insert(rtcpfb->mediaSourceSSRC());
 			} else if (header->payloadType() == 200) {
 				auto rtcpsr = reinterpret_cast<RtcpSr *>(header);
 				ssrcs.insert(rtcpsr->senderSSRC());
@@ -629,6 +624,7 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 					COUNTER_UNKNOWN_PACKET_TYPE++;
 				}
 			}
+			offset += header->lengthInBytes();
 		}
 
 		if (!ssrcs.empty()) {

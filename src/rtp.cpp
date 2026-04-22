@@ -597,23 +597,31 @@ void RtcpRemb::setBitrate(unsigned int numSSRC, unsigned int in_bitrate) {
 	}
 
 	// "length" in packet is one less than the number of 32 bit words in the packet.
-	header.header.setLength(uint16_t((offsetof(RtcpRemb, _ssrcs) / sizeof(uint32_t)) - 1 + numSSRC));
+	header.header.setLength(uint16_t((offsetof(RtcpRemb, _ssrcs) / sizeof(uint32_t)) + numSSRC - 1));
 
 	_bitrate = htonl((numSSRC << (32u - 8u)) | (exp << (32u - 8u - 6u)) | in_bitrate);
 }
 
 SSRC RtcpRemb::getSSRC(int num) const {
-    if (num < 0 || static_cast<unsigned>(num) >= getNumSSRC())
+    if (num < 0 || num >= getSSRCCount())
         throw std::out_of_range("SSRC num out of range");
     return ntohl(_ssrcs[num]);
 }
 void RtcpRemb::setSSRC(int num, SSRC newSsrc) {
-    if (num < 0 || static_cast<unsigned>(num) >= getNumSSRC())
+    if (num < 0 || num >= getSSRCCount())
         throw std::out_of_range("SSRC num out of range");
     _ssrcs[num] = htonl(newSsrc);
 }
 
-unsigned int RtcpRemb::getNumSSRC() const { return ntohl(_bitrate) >> 24u; }
+bool RtcpRemb::hasValidId() const {
+	return _id[0] == 'R' && _id[1] == 'E' && _id[2] == 'M' && _id[3] == 'B';
+}
+
+int RtcpRemb::getSSRCCount() const {
+	return std::min(
+		int(ntohl(_bitrate) >> 24u),
+		std::max(int(header.header.length() + 1 - offsetof(RtcpRemb, _ssrcs) / sizeof(uint32_t)), 0));
+}
 
 unsigned int RtcpRemb::getBitrate() const {
 	uint32_t br = ntohl(_bitrate);
@@ -622,13 +630,17 @@ unsigned int RtcpRemb::getBitrate() const {
 }
 
 void RtcpRemb::setSsrc(int num, SSRC newSsrc) {
-	if (num < 0 || static_cast<unsigned>(num) >= getNumSSRC())
+    if (num < 0 || num >= getSSRCCount())
 		throw std::out_of_range("SSRC num out of range");
     _ssrcs[num] = htonl(newSsrc);
 }
 
+unsigned int RtcpRemb::getNumSSRC() const {
+	return unsigned(getSSRCCount());
+}
+
 unsigned int RtcpRemb::getNumSSRC() {
-	return std::as_const(*this).getNumSSRC();
+	return unsigned(getSSRCCount());
 }
 
 unsigned int RtcpRemb::getBitrate() {
