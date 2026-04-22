@@ -585,8 +585,8 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 				auto rtcpfb = reinterpret_cast<RtcpFbHeader *>(header);
 				ssrcs.insert(rtcpfb->packetSenderSSRC());
 
-        if rtcpfb->header.reportCount() == 4) {
-          // RFC 5104 FIR (PT=206, FMT=4): the target SSRC is inside the FCI payload
+				if (rtcpfb->header.reportCount() == 4) {
+					// RFC 5104 FIR (PT=206, FMT=4): the target SSRC is inside the FCI payload
 					auto parsed = reinterpret_cast<const RtcpFir *>(header);
 					// FIRs have one FCI entry of fixed length
 					size_t pktLen = header->lengthInBytes();
@@ -594,7 +594,7 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 						ssrcs.insert(parsed->messageSSRC());
 					}
 				} else if (header->reportCount() == 15 && header->lengthInBytes() >= sizeof(RtcpRemb)) {
-          // REMB
+					// REMB
 					auto remb = reinterpret_cast<RtcpRemb *>(header);
 					unsigned numSsrc = remb->getNumSSRC();
 					if (RtcpRemb::SizeWithSSRCs(numSsrc) > message->size() + header->lengthInBytes() - offset) {
@@ -607,8 +607,8 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 						continue;
 					}
 				}
-        if (rtcpfb->mediaSourceSSRC() != 0)
-				  ssrcs.insert(rtcpfb->mediaSourceSSRC());
+				if (rtcpfb->mediaSourceSSRC())
+					ssrcs.insert(rtcpfb->mediaSourceSSRC());
 			} else if (header->payloadType() == 200) {
 				auto rtcpsr = reinterpret_cast<RtcpSr *>(header);
 				ssrcs.insert(rtcpsr->senderSSRC());
