@@ -109,7 +109,7 @@ void PeerConnection::setLocalDescription(Description::Type type, LocalDescriptio
 	case SignalingState::Stable:
 		if (type != Description::Type::Offer) {
 			std::ostringstream oss;
-			oss << "Unexpected local desciption type " << type << " in signaling state "
+			oss << "Unexpected local description type " << type << " in signaling state "
 			    << signalingState;
 			throw std::logic_error(oss.str());
 		}
