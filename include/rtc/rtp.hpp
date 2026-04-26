@@ -279,12 +279,14 @@ struct RTC_CPP_EXPORT RtcpRemb {
 	void setBitrate(unsigned int numSSRC, unsigned int in_bitrate);
 	SSRC getSSRC(int num) const;
 	void setSSRC(int num, SSRC newSsrc);
-	unsigned int getNumSSRC() const;
+	bool hasValidId() const;
+	int getSSRCCount() const;
 	unsigned int getBitrate() const;
 
 	// Deprecated
-	[[deprecated("Use setSSRC")]] void setSsrc(int num, SSRC newSssrc);
-	unsigned int getNumSSRC();
+	[[deprecated("use setSSRC")]] void setSsrc(int num, SSRC newSssrc);
+	[[deprecated("use getSSRCCount")]] unsigned int getNumSSRC() const;
+	[[deprecated("use getSSRCCount")]] unsigned int getNumSSRC();
 	unsigned int getBitrate();
 };
 

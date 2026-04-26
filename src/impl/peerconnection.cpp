@@ -570,57 +570,66 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 	if (message->type == Message::Control) {
 		std::set<uint32_t> ssrcs;
 		size_t offset = 0;
-		while ((sizeof(RtcpHeader) + offset) <= message->size()) {
+		while (offset + sizeof(RtcpHeader) <= message->size()) {
 			auto header = reinterpret_cast<RtcpHeader *>(message->data() + offset);
-			if (header->lengthInBytes() > message->size() - offset) {
+			size_t length = header->lengthInBytes();
+			if (offset + length > message->size()) {
 				COUNTER_MEDIA_TRUNCATED++;
 				break;
 			}
-			offset += header->lengthInBytes();
-			if (header->payloadType() == 205) {
-				auto rtcpfb = reinterpret_cast<RtcpFbHeader *>(header);
-				ssrcs.insert(rtcpfb->packetSenderSSRC());
-				ssrcs.insert(rtcpfb->mediaSourceSSRC());
-			} else if (header->payloadType() == 206) {
-				auto rtcpfb = reinterpret_cast<RtcpFbHeader *>(header);
-				ssrcs.insert(rtcpfb->packetSenderSSRC());
-				if (header->reportCount() == 15 && header->lengthInBytes() >= sizeof(RtcpRemb)) {
-					auto remb = reinterpret_cast<RtcpRemb *>(header);
-					unsigned numSsrc = remb->getNumSSRC();
-					if (RtcpRemb::SizeWithSSRCs(numSsrc) > message->size() + header->lengthInBytes() - offset) {
+			switch(header->payloadType()) {
+			case 200: // SR
+				if (length >= sizeof(RtcpSr)) {
+					auto rtcpsr = reinterpret_cast<RtcpSr *>(header);
+					ssrcs.insert(rtcpsr->senderSSRC());
+					for (int i = 0; i < rtcpsr->header.reportCount(); ++i)
+						if (const auto *reportBlock = rtcpsr->getReportBlock(i))
+							ssrcs.insert(reportBlock->getSSRC());
+				}
+				break;
+
+			case 201: // RR
+				if (length >= sizeof(RtcpRr)) {
+					auto rtcprr = reinterpret_cast<RtcpRr *>(header);
+					ssrcs.insert(rtcprr->senderSSRC());
+					for (int i = 0; i < rtcprr->header.reportCount(); ++i)
+						if (const auto *reportBlock = rtcprr->getReportBlock(i))
+							ssrcs.insert(reportBlock->getSSRC());
+				}
+				break;
+
+			case 202: // SDES
+				if (length >= sizeof(RtcpSdes)) {
+					auto sdes = reinterpret_cast<RtcpSdes *>(header);
+					if (!sdes->isValid()) {
+						PLOG_WARNING << "RTCP SDES packet is invalid";
 						continue;
 					}
-					if (remb->_id[0] == 'R' && remb->_id[1] == 'E' && remb->_id[2] == 'M' && remb->_id[3] == 'B') {
-						for (unsigned i = 0; i < numSsrc; i++) {
-							ssrcs.insert(remb->getSSRC(i));
-						}
-						continue;
+					for (unsigned int i = 0; i < sdes->chunksCount(); i++) {
+						auto chunk = sdes->getChunk(i);
+						ssrcs.insert(chunk->ssrc());
 					}
 				}
-				ssrcs.insert(rtcpfb->mediaSourceSSRC());
-			} else if (header->payloadType() == 200) {
-				auto rtcpsr = reinterpret_cast<RtcpSr *>(header);
-				ssrcs.insert(rtcpsr->senderSSRC());
-				for (int i = 0; i < rtcpsr->header.reportCount(); ++i)
-					if (const auto *reportBlock = rtcpsr->getReportBlock(i))
-						ssrcs.insert(reportBlock->getSSRC());
-			} else if (header->payloadType() == 201) {
-				auto rtcprr = reinterpret_cast<RtcpRr *>(header);
-				ssrcs.insert(rtcprr->senderSSRC());
-				for (int i = 0; i < rtcprr->header.reportCount(); ++i)
-					if (const auto *reportBlock = rtcprr->getReportBlock(i))
-						ssrcs.insert(reportBlock->getSSRC());
-			} else if (header->payloadType() == 202) {
-				auto sdes = reinterpret_cast<RtcpSdes *>(header);
-				if (!sdes->isValid()) {
-					PLOG_WARNING << "RTCP SDES packet is invalid";
-					continue;
+				break;
+
+
+			case 205: // FB
+			case 206:
+				if (length >= sizeof(RtcpFbHeader)) {
+					auto rtcpfb = reinterpret_cast<RtcpFbHeader *>(header);
+					ssrcs.insert(rtcpfb->packetSenderSSRC());
+					ssrcs.insert(rtcpfb->mediaSourceSSRC());
+					if (header->payloadType() == 206 && header->reportCount() == 15 &&
+						length >= sizeof(RtcpRemb)) {
+						auto remb = reinterpret_cast<RtcpRemb *>(header);
+						if (remb->hasValidId())
+							for (int i = 0; i < remb->getSSRCCount(); ++i)
+								ssrcs.insert(remb->getSSRC(i));
+					}
 				}
-				for (unsigned int i = 0; i < sdes->chunksCount(); i++) {
-					auto chunk = sdes->getChunk(i);
-					ssrcs.insert(chunk->ssrc());
-				}
-			} else {
+				break;
+
+			default:
 				// PT=203 == Goodbye
 				// PT=204 == Application Specific
 				// PT=207 == Extended Report
@@ -628,7 +637,9 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 				    header->payloadType() != 207) {
 					COUNTER_UNKNOWN_PACKET_TYPE++;
 				}
+				break;
 			}
+			offset += header->lengthInBytes();
 		}
 
 		if (!ssrcs.empty()) {
