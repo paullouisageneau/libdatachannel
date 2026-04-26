@@ -9,6 +9,8 @@
 #include "rembhandler.hpp"
 #include "rtp.hpp"
 
+#include "impl/internals.hpp"
+
 #ifdef _WIN32
 #include <winsock2.h>
 #else
@@ -36,7 +38,9 @@ void RembHandler::incoming(message_vector &messages, [[maybe_unused]] const mess
 
 				auto remb = reinterpret_cast<RtcpRemb *>(message->data() + offset);
 				if (remb->hasValidId()) {
-					mOnRemb(remb->getBitrate());
+					unsigned int bitrate = remb->getBitrate();
+					PLOG_DEBUG << "Got REMB, bitrate=" << bitrate;
+					mOnRemb(bitrate);
 					break;
 				}
 			}
