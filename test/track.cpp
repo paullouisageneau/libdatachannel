@@ -137,8 +137,8 @@ TestResult test_track() {
 	media2.setBitrate(3000);
 	media2.addSSRC(2468, "video-send");
 
-	// NOTE: Overwriting the old shared_ptr for t1 will cause it's respective
-	//       track to be dropped (so it's SSRCs won't be on the description next time)
+	// NOTE: Overwriting the old shared_ptr for t1 will cause the respective
+	//       track to be dropped (so its SSRCs won't be on the description next time)
 	t1 = pc1.addTrack(media2);
 
 	pc1.setLocalDescription();
@@ -151,14 +151,16 @@ TestResult test_track() {
 	if (!at2 || !at2->isOpen() || !t1->isOpen())
 		return TestResult(false, "Renegotiated track is not open");
 
+#if RTC_ENABLE_MEDIA
+	// RTP test
 	std::vector<std::byte> payload = {std::byte{0}, std::byte{1}, std::byte{2}, std::byte{3}};
 	std::vector<std::byte> rtpRaw(sizeof(RtpHeader) + payload.size());
 	auto *rtp = reinterpret_cast<RtpHeader *>(rtpRaw.data());
+	rtp->preparePacket();
 	rtp->setPayloadType(96);
 	rtp->setSeqNumber(1);
 	rtp->setTimestamp(3000);
 	rtp->setSsrc(2468);
-	rtp->preparePacket();
 	std::memcpy(rtpRaw.data() + sizeof(RtpHeader), payload.data(), payload.size());
 
 	if (!t1->send(rtpRaw.data(), rtpRaw.size())) {
@@ -167,7 +169,7 @@ TestResult test_track() {
 
 	// wait for an RTP packet to be received
 	auto future = recvRtpPromise.get_future();
-	if (future.wait_for(5s) == std::future_status::timeout) {
+	if (future.wait_for(2s) == std::future_status::timeout) {
 		throw runtime_error("Didn't receive RTP packet on pc2");
 	}
 
@@ -180,6 +182,32 @@ TestResult test_track() {
 	    memcmp(receivedRtpRaw.data(), rtpRaw.data(), rtpRaw.size()) != 0) {
 		throw runtime_error("Received RTP packet is different than the packet that was sent");
 	}
+
+	// RTCP REMB test
+	std::promise<unsigned int> rembPromise;
+	t1->setMediaHandler(make_shared<RembHandler>([&rembPromise](unsigned int bitrate) {
+		rembPromise.set_value(bitrate);
+	}));
+
+	std::vector<std::byte> rtcpRembRaw(RtcpRemb::SizeWithSSRCs(2));
+	auto *rtcpRemb = reinterpret_cast<RtcpRemb*>(rtcpRembRaw.data());
+	rtcpRemb->preparePacket(6666, 2, 1000000);
+	rtcpRemb->setSSRC(0, 2468);
+	rtcpRemb->setSSRC(1, 2469);
+	if (!t2->send(rtcpRembRaw.data(), rtcpRembRaw.size())) {
+		throw runtime_error("Couldn't send RTCP REMB message");
+	}
+
+	auto rembFuture = rembPromise.get_future();
+	if (rembFuture.wait_for(2s) == std::future_status::timeout) {
+		throw runtime_error("Didn't receive REMB message");
+	}
+
+	unsigned int bitrate = rembFuture.get();
+	if (bitrate != 1000000) {
+		throw runtime_error("Incorrect bitrate in REMB message");
+	}
+#endif
 
 	// Delay close of peer 2 to check closing works properly
 	pc1.close();
