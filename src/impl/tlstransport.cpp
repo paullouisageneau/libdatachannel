@@ -622,8 +622,11 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 
 		if (mIsClient && mHost) {
 			SSL_set_hostflags(mSsl, 0);
+#if OPENSSL_VERSION_NUMBER >= 0x40000000
+			openssl::check(SSL_set1_dnsname(mSsl, mHost->c_str()), "Failed to set SSL dnsname");
+#else
 			openssl::check(SSL_set1_host(mSsl, mHost->c_str()), "Failed to set SSL host");
-
+#endif
 			PLOG_VERBOSE << "Server Name Indication: " << *mHost;
 			SSL_set_tlsext_host_name(mSsl, mHost->c_str());
 		}
