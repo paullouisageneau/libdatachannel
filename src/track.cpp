@@ -66,13 +66,17 @@ void Track::chainMediaHandler(shared_ptr<MediaHandler> handler) {
 	}
 }
 
-bool Track::requestKeyframe() {
+bool Track::requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit) {
 	// only request key frames for video
 	if (description().type() == "video")
 		if (auto handler = impl()->getMediaHandler())
-			return handler->requestKeyframe(0, [this](message_ptr m) { impl()->transportSend(m); });
+			return handler->requestKeyframe(targetSSRCs, retransmit, [this](message_ptr m) { impl()->transportSend(m); });
 
 	return false;
+}
+
+bool Track::requestKeyframe(const SSRC ssrc, bool retransmit) {
+	return requestKeyframe(std::vector<SSRC>(1, ssrc), retransmit);
 }
 
 bool Track::requestBitrate(unsigned int bitrate) {

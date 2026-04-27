@@ -21,6 +21,7 @@
 #include <atomic>
 #include <mutex>
 #include <unordered_map>
+#include <vector>
 
 #define RTP_SEQ_MOD (1<<16)
 
@@ -34,7 +35,7 @@ public:
 
 	void media(const Description::Media &desc) override;
 	void incoming(message_vector &messages, const message_callback &send) override;
-	bool requestKeyframe(SSRC targetSSRC, const message_callback &send) override;
+	bool requestKeyframe(const std::vector<SSRC>& targetSSRCs, const bool retransmit, const message_callback &send) override;
 	bool requestBitrate(unsigned int bitrate, const message_callback &send) override;
 
 	// For backward compatibility
@@ -52,7 +53,7 @@ protected:
 	void pushREMB(const message_callback &send, unsigned int bitrate);
 	void pushRR(const message_callback &send,unsigned int lastSrDelay);
 	void pushPLI(const message_callback &send);
-	void pushFIR(const message_callback &send, SSRC targetSSRC);
+	void pushFIR(const message_callback &send, const std::vector<SSRC>& targetSSRCs, bool retransmit);
 
 	void initSeq(uint16_t seq);
 	bool updateSeq(uint16_t seq);
@@ -84,7 +85,7 @@ protected:
 	bool mRtxEnabled = false;
 
 	bool mSupportsRfc5104FIR = false;
-	uint32_t mRfc5104FIRCmdNum = 0;
+	std::unordered_map<SSRC, uint32_t> mRfc5104FIRCmdNums; // SSRC -> seq no mapping
 };
 
 } // namespace rtc

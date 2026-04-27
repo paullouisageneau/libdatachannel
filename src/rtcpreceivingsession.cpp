@@ -284,21 +284,45 @@ void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int las
 	send(message);
 }
 
-bool RtcpReceivingSession::requestKeyframe(SSRC targetSSRC, const message_callback &send) {
+bool RtcpReceivingSession::requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit, const message_callback &send) {
 	if (mSupportsRfc5104FIR) {
-		pushFIR(send, targetSSRC);
+		pushFIR(send, targetSSRCs, retransmit);
 	} else {
 		pushPLI(send);
 	}
 	return true;
 }
 
-void RtcpReceivingSession::pushFIR(const message_callback &send, SSRC targetSSRC) {
-	auto message = make_message(RtcpFir::Size(), Message::Control);
+void RtcpReceivingSession::pushFIR(const message_callback &send, const std::vector<SSRC>& targetSSRCs, bool retransmit) {
+	std::vector<RtcpFirFci> firFcisToSend;
+	if (targetSSRCs.size() > 0) {
+		for (const auto& ssrc : targetSSRCs) {
+			SSRC targetSSRC = ssrc;
+			if (targetSSRC == 0)
+				targetSSRC = mSsrc;
+			if(!retransmit)
+				++mRfc5104FIRCmdNums[targetSSRC];
+
+			RtcpFirFci firFci;
+			firFci._seqNo = static_cast<uint8_t>(mRfc5104FIRCmdNums[targetSSRC] % 256);
+			firFci._ssrc = targetSSRC;
+			firFci._dummy1 = 0; firFci._dummy2 = 0;
+			firFcisToSend.emplace_back(firFci);
+		}
+	} else {
+		if(!retransmit)
+			++mRfc5104FIRCmdNums[mSsrc];
+
+		RtcpFirFci firFci;
+		firFci._seqNo = static_cast<uint8_t>(mRfc5104FIRCmdNums[mSsrc] % 256);
+		firFci._ssrc = mSsrc;
+		firFci._dummy1 = 0; firFci._dummy2 = 0;
+		firFcisToSend.emplace_back(firFci);
+	}
+	auto message = make_message(RtcpFir::SizeWithFCIs(firFcisToSend.size()), Message::Control);
 	auto *fir = reinterpret_cast<RtcpFir *>(message->data());
-	if (targetSSRC == 0)
-		targetSSRC = mSsrc;
-	fir->preparePacket(mSsrc, targetSSRC, ++mRfc5104FIRCmdNum % 256);
+
+	fir->preparePacket(mSsrc, firFcisToSend);
 	send(message);
 }
 

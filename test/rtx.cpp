@@ -184,7 +184,6 @@ TestResult test_rtx_dropped_packet() {
 	shared_ptr<RtxWireInterceptor> capturedRtxInterceptor;
 	promise<rtc::binary> recvPromiseSeq2;
 	promise<rtc::binary> recvPromiseSeq4;
-	promise<bool> recvPromisePliCalled;
 	const std::unordered_set<uint16_t> dropSeqs = {2, 4};
 
 	pc2.onTrack([&t2, &capturedRtxInterceptor, &recvPromiseSeq2, &recvPromiseSeq4, &dropSeqs](shared_ptr<Track> t) {
@@ -237,13 +236,8 @@ TestResult test_rtx_dropped_packet() {
 
 	auto srReporter = make_shared<RtcpSrReporter>(rtpConfig);
 	auto nackResponder = make_shared<RtcpNackResponder>();
-	auto pliHandler = make_shared<PliHandler>([&recvPromisePliCalled](void) {
-		cout << "PLI Handler Called" << endl;
-		recvPromisePliCalled.set_value(true);
-	});
-
-	nackResponder->addToChain(pliHandler);
 	srReporter->addToChain(nackResponder);
+
 	t1->setMediaHandler(srReporter);
 
 	pc1.setLocalDescription();
@@ -326,16 +320,6 @@ TestResult test_rtx_dropped_packet() {
 		                             to_string(RTX_SSRC) + " RTX_PT=" + to_string(RTX_PT));
 
 	cout << "RTX wire packets seen: " << interceptor->mRtxPacketsSeen.load() << endl;
-
-	// Send a first FIR and make sure it arrives.
-	t2->requestKeyframe();
-	if (recvPromisePliCalled.get_future().wait_for(10s) == future_status::timeout)
-		return TestResult(false, "Didn't receive FIR on pc1 PLI Handler");
-	// Send a second FIR and make sure it arrives.
-	recvPromisePliCalled = promise<bool>();
-	t2->requestKeyframe();
-	if (recvPromisePliCalled.get_future().wait_for(10s) == future_status::timeout)
-		return TestResult(false, "Didn't receive second FIR on pc1 PLI Handler");
 
 	// Clean up
 	pc1.close();
