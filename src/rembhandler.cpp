@@ -9,6 +9,8 @@
 #include "rembhandler.hpp"
 #include "rtp.hpp"
 
+#include "impl/internals.hpp"
+
 #ifdef _WIN32
 #include <winsock2.h>
 #else
@@ -24,18 +26,21 @@ RembHandler::RembHandler(std::function<void(unsigned int)> onRemb) : mOnRemb(onR
 void RembHandler::incoming(message_vector &messages, [[maybe_unused]] const message_callback &send) {
 	for (const auto &message : messages) {
 		size_t offset = 0;
-		while ((sizeof(RtcpHeader) + offset) <= message->size()) {
+		while (offset + sizeof(RtcpHeader) <= message->size()) {
 			auto header = reinterpret_cast<RtcpHeader *>(message->data() + offset);
-			uint8_t payload_type = header->payloadType();
+			size_t length = header->lengthInBytes();
+			if (offset + length > message->size())
+				break;
 
-			if (payload_type == 206 && header->reportCount() == 15 && header->lengthInBytes() >= sizeof(RtcpRemb)) {
+			if (header->payloadType() == 206 && header->reportCount() == 15 && length >= sizeof(RtcpRemb)) {
 				if (offset + sizeof(RtcpRemb) > message->size())
 					break;
 
 				auto remb = reinterpret_cast<RtcpRemb *>(message->data() + offset);
-
-				if (remb->_id[0] == 'R' && remb->_id[1] == 'E' && remb->_id[2] == 'M' && remb->_id[3] == 'B') {
-					mOnRemb(remb->getBitrate());
+				if (remb->hasValidId()) {
+					unsigned int bitrate = remb->getBitrate();
+					PLOG_DEBUG << "Got REMB, bitrate=" << bitrate;
+					mOnRemb(bitrate);
 					break;
 				}
 			}
