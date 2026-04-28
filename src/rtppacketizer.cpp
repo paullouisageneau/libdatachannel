@@ -32,6 +32,9 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	const bool setVideoRotation =
 	    (rtpConfig->videoOrientationId != 0) && mark && (rtpConfig->videoOrientation != 0);
 
+	const bool setAbsCaptureTime =
+	    rtpConfig->absCaptureTimeId > 0 && currentAbsCaptureTimeNtp.has_value();
+
 	std::optional<DependencyDescriptorWriter> ddWriter;
 	if (rtpConfig->dependencyDescriptorContext.has_value()) {
 		ddWriter.emplace(*rtpConfig->dependencyDescriptorContext);
@@ -60,7 +63,8 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	    (rtpConfig->mid.has_value() && rtpConfig->midId > 14) ||
 	    (rtpConfig->rid.has_value() && rtpConfig->ridId > 14) ||
 	    (videoLayersAllocationBuf.size() > 14 || rtpConfig->videoLayersAllocationId > 14) ||
-	    rtpConfig->playoutDelayId > 14) {
+	    rtpConfig->playoutDelayId > 14 ||
+	    (setAbsCaptureTime && rtpConfig->absCaptureTimeId > 14)) {
 		twoByteHeader = true;
 	}
 	size_t headerSize = twoByteHeader ? 2 : 1;
@@ -76,7 +80,10 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 
 	if (setColorSpace)
 		rtpExtHeaderSize += headerSize + 4;
-	
+
+	if (setAbsCaptureTime)
+		rtpExtHeaderSize += headerSize + 8;
+
 	if (rtpConfig->mid.has_value())
 		rtpExtHeaderSize += headerSize + rtpConfig->mid->length();
 
@@ -174,6 +181,20 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 			offset += extHeader->writeHeader(
 			    twoByteHeader, offset, rtpConfig->colorSpaceId, data, 4);
 		}
+
+		if (setAbsCaptureTime) {
+			// 8-byte (shortened) form: 64-bit NTP timestamp, network order.
+			// https://webrtc.googlesource.com/src/+/refs/heads/main/docs/native-code/rtp-hdrext/abs-capture-time
+			uint64_t ntp = *currentAbsCaptureTimeNtp;
+			byte data[8] = {
+			    byte((ntp >> 56) & 0xFF), byte((ntp >> 48) & 0xFF),
+			    byte((ntp >> 40) & 0xFF), byte((ntp >> 32) & 0xFF),
+			    byte((ntp >> 24) & 0xFF), byte((ntp >> 16) & 0xFF),
+			    byte((ntp >> 8) & 0xFF),  byte(ntp & 0xFF)};
+
+			offset += extHeader->writeHeader(
+			    twoByteHeader, offset, rtpConfig->absCaptureTimeId, data, 8);
+		}
 	}
 
 	rtp->preparePacket();
@@ -207,6 +228,8 @@ void RtpPacketizer::outgoing(message_vector &messages,
 
 			if (frameInfo->isKeyFrame)
 				isGeneratingKeyFrame = true;
+
+			currentAbsCaptureTimeNtp = frameInfo->absCaptureTimeNtp;
 		}
 
 		auto payloads = fragment(std::move(*message));
@@ -221,6 +244,7 @@ void RtpPacketizer::outgoing(message_vector &messages,
 		}
 
 		isGeneratingKeyFrame = false;
+		currentAbsCaptureTimeNtp.reset();
 	}
 
 	messages.swap(result);
