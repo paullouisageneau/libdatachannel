@@ -17,6 +17,8 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <mutex>
+#include <vector>
 
 namespace rtc::impl {
 
@@ -53,6 +55,13 @@ private:
 	synchronized_callback<message_ptr> mRecvCallback;
 
 	std::atomic<State> mState = State::Disconnected;
+
+	// Packets received before a callback is registered are held here and
+	// replayed when onRecv() is first called with a non-null callback.
+	// This prevents the ICE->DTLS and DTLS->SCTP races where one side
+	// sends its first packet before the other side has called registerIncoming().
+	std::mutex mPendingMutex;
+	std::vector<message_ptr> mPendingRecv;
 };
 
 } // namespace rtc::impl
