@@ -80,7 +80,7 @@ static const vector<Test> tests = {
     Test("WebRTC broken fingerprint", test_connectivity_fail_on_wrong_fingerprint),
     Test("pem", test_pem),
     // TODO: Temporarily disabled as the Open Relay TURN server is unreliable
-    // new Test("WebRTC TURN connectivity", test_turn_connectivity),
+    // Test("WebRTC TURN connectivity", test_turn_connectivity),
     Test("WebRTC negotiated DataChannel", test_negotiated),
     Test("WebRTC reliability mode", test_reliability),
     Test("WebRTC simulcast SDP generation", test_simulcast_sdp_generation),
@@ -96,7 +96,7 @@ static const vector<Test> tests = {
 #endif
 #if RTC_ENABLE_WEBSOCKET
     // TODO: Temporarily disabled as the echo service is unreliable
-    // new Test("WebSocket", test_websocket),
+    // Test("WebSocket", test_websocket),
     Test("WebSocketServer", test_websocketserver),
 #endif
     Test("Cleanup", test_cleanup),
