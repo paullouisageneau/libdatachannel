@@ -90,6 +90,10 @@ void TcpTransport::onBufferedAmount(amount_callback callback) {
 	mBufferedAmountCallback = std::move(callback);
 }
 
+void TcpTransport::setConnectTimeout(std::chrono::milliseconds connectTimeout) {
+	mConnectTimeout = connectTimeout;
+}
+
 void TcpTransport::setReadTimeout(std::chrono::milliseconds readTimeout) {
 	mReadTimeout = readTimeout;
 }
@@ -228,9 +232,8 @@ void TcpTransport::attempt() {
 		return;
 	}
 
-	const auto timeout = 10s;
-	PollService::Instance().add(mSock, {PollService::Direction::Out, timeout, 
-	    weak_bind(&TcpTransport::processConnect, this, _1)});
+	PollService::Instance().add(mSock, {PollService::Direction::Out, mConnectTimeout,
+	                                    weak_bind(&TcpTransport::processConnect, this, _1)});
 }
 
 void TcpTransport::createSocket(const struct sockaddr *addr, socklen_t addrlen) {

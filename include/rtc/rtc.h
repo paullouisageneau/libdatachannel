@@ -501,10 +501,11 @@ typedef struct {
 	const char *proxyServer;     // only non-authenticated http supported for now
 	const char **protocols;
 	int protocolsCount;
-	int connectionTimeoutMs; // in milliseconds, 0 means default, < 0 means disabled
-	int pingIntervalMs;      // in milliseconds, 0 means default, < 0 means disabled
-	int maxOutstandingPings; // 0 means default, < 0 means disabled
-	int maxMessageSize;      // <= 0 means default
+	int tcpConnectionTimeoutMs; // in milliseconds, 0 means default, < 0 means disabled
+	int connectionTimeoutMs;    // in milliseconds, 0 means default, < 0 means disabled
+	int pingIntervalMs;         // in milliseconds, 0 means default, < 0 means disabled
+	int maxOutstandingPings;    // 0 means default, < 0 means disabled
+	int maxMessageSize;         // <= 0 means default
 } rtcWsConfiguration;
 
 RTC_C_EXPORT int rtcCreateWebSocket(const char *url); // returns ws id
