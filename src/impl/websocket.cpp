@@ -267,6 +267,11 @@ shared_ptr<TcpTransport> WebSocket::setTcpTransport(shared_ptr<TcpTransport> tra
 		if (pingInterval > milliseconds::zero())
 			transport->setReadTimeout(pingInterval);
 
+		// Set TCP connect timeout if specified
+		auto connectTimeout = config.tcpConnectionTimeout.value_or(5000ms);
+		if (connectTimeout > milliseconds::zero())
+			transport->setConnectTimeout(connectTimeout);
+
 		scheduleConnectionTimeout();
 
 		return emplaceTransport(this, &mTcpTransport, std::move(transport));
