@@ -14,6 +14,8 @@
 #include "description.hpp"
 #include "message.hpp"
 
+#include <vector>
+
 namespace rtc {
 
 class RTC_CPP_EXPORT MediaHandler : public std::enable_shared_from_this<MediaHandler> {
@@ -35,7 +37,7 @@ public:
 	/// @param send Send callback to send messages back to the peer
 	virtual void outgoing([[maybe_unused]] message_vector &messages, [[maybe_unused]] const message_callback &send) {}
 
-	virtual bool requestKeyframe(const message_callback &send);
+	virtual bool requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit, const message_callback &send);
 	virtual bool requestBitrate(unsigned int bitrate, const message_callback &send);
 
 	void addToChain(shared_ptr<MediaHandler> handler);

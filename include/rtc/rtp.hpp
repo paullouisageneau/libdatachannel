@@ -300,20 +300,23 @@ struct RTC_CPP_EXPORT RtcpPli {
 	void log() const;
 };
 
-struct RTC_CPP_EXPORT RtcpFirPart {
-	uint32_t ssrc;
-	uint8_t seqNo;
-	uint8_t dummy1;
-	uint16_t dummy2;
+struct RTC_CPP_EXPORT RtcpFirFci {
+	uint32_t _ssrc;
+	uint8_t _seqNo;
+	uint8_t _dummy1;
+	uint16_t _dummy2;
+
+	[[nodiscard]] SSRC getSSRC() const;
+	[[nodiscard]] uint8_t getSeqNo() const;
 };
 
 struct RTC_CPP_EXPORT RtcpFir {
 	RtcpFbHeader header;
-	RtcpFirPart parts[1];
+	RtcpFirFci parts[1];
 
-	static unsigned int Size();
-
-	void preparePacket(SSRC messageSSRC, uint8_t seqNo);
+	unsigned int getFciCount() const;
+	[[nodiscard]] static size_t SizeWithFCIs(size_t count);
+	void preparePacket(SSRC senderSSRC, std::vector<RtcpFirFci> fcis);
 
 	void log() const;
 };

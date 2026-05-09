@@ -1482,6 +1482,17 @@ void Description::Media::RtpMap::removeFeedback(const string &str) {
 	}
 }
 
+bool Description::Media::RtpMap::hasFeedback(const string &str) const {
+	auto it = rtcpFbs.begin();
+	while (it != rtcpFbs.end()) {
+		if (it->find(str) != string::npos)
+			return true;
+		else
+			it++;
+	}
+	return false;
+}
+
 void Description::Media::RtpMap::addParameter(string p) {
 	if (std::find(fmtps.begin(), fmtps.end(), p) == fmtps.end())
 		fmtps.emplace_back(std::move(p));
@@ -1547,7 +1558,7 @@ void Description::Video::addVideoCodec(int payloadType, string codec, optional<s
 
 	map.addFeedback("nack");
 	map.addFeedback("nack pli");
-	// map.addFB("ccm fir");
+	map.addFeedback("ccm fir");
 	map.addFeedback("goog-remb");
 
 	if (profile)

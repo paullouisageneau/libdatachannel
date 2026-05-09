@@ -265,6 +265,8 @@ public:
 
 			void addFeedback(string fb);
 			void removeFeedback(const string &str);
+			bool hasFeedback(const string &str) const;
+
 			void addParameter(string p);
 			void removeParameter(const string &str);
 

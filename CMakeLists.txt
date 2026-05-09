@@ -236,6 +236,7 @@ set(TESTS_SOURCES
 )
 
 if(NOT NO_MEDIA)
+    list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/fir.cpp)
     list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/rtx.cpp)
 endif()
 

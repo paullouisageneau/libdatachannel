@@ -28,10 +28,30 @@ void PliHandler::incoming(message_vector &messages, [[maybe_unused]] const messa
 				break;
 			} else if (payload_type == 206) {
 				// On a payload specific fb message, there is a "feedback message type" (FMT) in the
-				// header instead of a report count. PT = 206, FMT = 1 means a PLI message
+				// header instead of a report count.
+				// PT = 206, FMT = 1 means a PLI message (RFC 4585)
+				// PT = 206, FMT = 4 means a FIR message (RFC 5104)
 				uint8_t feedback_message_type = header->reportCount();
 				if (feedback_message_type == 1) {
 					mOnPli();
+					break;
+				} else if (feedback_message_type == 4) {
+					auto fir = reinterpret_cast<const RtcpFir *>(message->data() + offset);
+					bool invokeHandler = false;
+					unsigned int fciCount = fir->getFciCount();
+					for (unsigned int i = 0; i < fciCount; i++) {
+						uint8_t firSeqNo = fir->parts[i].getSeqNo();
+						// RFC 5104 Section 4.3.1.1 says seqNo checking is done against the combo of the two values,
+						// so pack the sender SSRC and target SSRC into a single value for lookup in the map.
+						uint64_t comboSSRCs = (((uint64_t) fir->header.packetSenderSSRC()) << 32) + fir->parts[i].getSSRC();
+						// Check if this is a duplicate of the last sent fir for this SSRC
+						if (mFirSSRCSeqNumberMap[comboSSRCs] != firSeqNo) {
+							mFirSSRCSeqNumberMap[comboSSRCs] = firSeqNo;
+							invokeHandler = true;
+						}
+					}
+					if (invokeHandler)
+						mOnPli();
 					break;
 				}
 			}

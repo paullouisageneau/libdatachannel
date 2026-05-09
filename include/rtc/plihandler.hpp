@@ -14,6 +14,8 @@
 #include "mediahandler.hpp"
 #include "utils.hpp"
 
+#include <unordered_map>
+
 namespace rtc {
 
 /// Responds to PLI and FIR messages sent by the receiver. The sender should respond to these
@@ -27,6 +29,9 @@ public:
     PliHandler(std::function<void(void)> onPli);
 
 	void incoming(message_vector &messages, const message_callback &send) override;
+
+protected:
+	std::unordered_map<uint64_t, uint8_t> mFirSSRCSeqNumberMap;
 };
 
 }

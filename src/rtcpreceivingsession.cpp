@@ -73,6 +73,14 @@ void RtcpReceivingSession::media(const Description::Media &desc) {
 	mRtxEnabled = newRtxEnabled;
 	mRtxToPrimaryPtMap = std::move(newRtxToPrimaryPtMap);
 	mRtxPrimarySsrc = newRtxPrimarySsrc;
+
+	// Check if RFC 5104 FIR support should be enabled
+	for (const auto payloadType : desc.payloadTypes()) {
+		const Description::Media::RtpMap* rtpMap = desc.rtpMap(payloadType);
+		if (rtpMap->hasFeedback("ccm fir")) {
+			mSupportsRfc5104FIR = true;
+		}
+	}
 }
 
 message_ptr RtcpReceivingSession::unwrapRtx(const message_ptr &rtxPacket) {
@@ -276,9 +284,46 @@ void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int las
 	send(message);
 }
 
-bool RtcpReceivingSession::requestKeyframe(const message_callback &send) {
-	pushPLI(send);
+bool RtcpReceivingSession::requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit, const message_callback &send) {
+	if (mSupportsRfc5104FIR) {
+		pushFIR(send, targetSSRCs, retransmit);
+	} else {
+		pushPLI(send);
+	}
 	return true;
+}
+
+void RtcpReceivingSession::pushFIR(const message_callback &send, const std::vector<SSRC>& targetSSRCs, bool retransmit) {
+	std::vector<RtcpFirFci> firFcisToSend;
+	if (targetSSRCs.size() > 0) {
+		for (const auto& ssrc : targetSSRCs) {
+			SSRC targetSSRC = ssrc;
+			if (targetSSRC == 0)
+				targetSSRC = mSsrc;
+			if(!retransmit)
+				++mRfc5104FIRCmdNums[targetSSRC];
+
+			RtcpFirFci firFci;
+			firFci._seqNo = static_cast<uint8_t>(mRfc5104FIRCmdNums[targetSSRC] % 256);
+			firFci._ssrc = targetSSRC;
+			firFci._dummy1 = 0; firFci._dummy2 = 0;
+			firFcisToSend.emplace_back(firFci);
+		}
+	} else {
+		if(!retransmit)
+			++mRfc5104FIRCmdNums[mSsrc];
+
+		RtcpFirFci firFci;
+		firFci._seqNo = static_cast<uint8_t>(mRfc5104FIRCmdNums[mSsrc] % 256);
+		firFci._ssrc = mSsrc;
+		firFci._dummy1 = 0; firFci._dummy2 = 0;
+		firFcisToSend.emplace_back(firFci);
+	}
+	auto message = make_message(RtcpFir::SizeWithFCIs(firFcisToSend.size()), Message::Control);
+	auto *fir = reinterpret_cast<RtcpFir *>(message->data());
+
+	fir->preparePacket(mSsrc, firFcisToSend);
+	send(message);
 }
 
 void RtcpReceivingSession::pushPLI(const message_callback &send) {
@@ -287,7 +332,6 @@ void RtcpReceivingSession::pushPLI(const message_callback &send) {
 	pli->preparePacket(mSsrc);
 	send(message);
 }
-
 
 void RtcpReceivingSession::initSeq(uint16_t seq) {
 	mBaseSeq = seq;
