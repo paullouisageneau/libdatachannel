@@ -67,6 +67,20 @@ Arguments:
 - `id`: the identifier of Peer Connection, Data Channel, Track, or WebSocket
 - `user_ptr`: an opaque pointer whose meaning is up to the user
 
+#### rtcGetUserPointer
+
+```
+void *rtcGetUserPointer(int id)
+```
+
+Retrieves the opaque user pointer previously set for a Peer Connection, Data Channel, Track, or WebSocket.
+
+Arguments:
+
+- `id`: the identifier of Peer Connection, Data Channel, Track, or WebSocket
+
+Return value: the user pointer previously set by `rtcSetUserPointer`, or `NULL` if unset or `id` is invalid
+
 ### PeerConnection
 
 #### rtcCreatePeerConnection
@@ -177,12 +191,28 @@ int rtcSetStateChangeCallback(int pc, rtcStateChangeCallbackFunc cb)
 `state` will be one of the following: `RTC_CONNECTING`, `RTC_CONNECTED`, `RTC_DISCONNECTED`, `RTC_FAILED`, or `RTC_CLOSED`.
 
 ```
+int rtcSetIceStateChangeCallback(int pc, rtcIceStateChangeCallbackFunc cb)
+```
+
+`cb` must have the following signature: `void myIceStateChangeCallback(int pc, rtcIceState state, void *user_ptr)`
+
+`state` will be one of the following: `RTC_ICE_CHECKING`, `RTC_ICE_CONNECTED`, `RTC_ICE_COMPLETED`, `RTC_ICE_FAILED`, `RTC_ICE_DISCONNECTED`, or `RTC_ICE_CLOSED`.
+
+```
 int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCallbackFunc cb)
 ```
 
-`void myGatheringStateCallback(int pc, rtcGatheringState state, void *user_ptr)`
+`cb` must have the following signature: `void myGatheringStateCallback(int pc, rtcGatheringState state, void *user_ptr)`
 
 `state` will be `RTC_GATHERING_INPROGRESS` or `RTC_GATHERING_COMPLETE`.
+
+```
+int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb)
+```
+
+`cb` must have the following signature: `void mySignalingStateCallback(int pc, rtcSignalingState state, void *user_ptr)`
+
+`state` will be one of the following: `RTC_SIGNALING_STABLE`, `RTC_SIGNALING_HAVE_LOCAL_OFFER`, `RTC_SIGNALING_HAVE_REMOTE_OFFER`, `RTC_SIGNALING_HAVE_LOCAL_PRANSWER`, or `RTC_SIGNALING_HAVE_REMOTE_PRANSWER`.
 
 ```
 int rtcSetDataChannelCallback(int pc, rtcDataChannelCallbackFunc cb)
@@ -564,10 +594,10 @@ Arguments:
 
 Return value: `true` if the channel exists and is closed (not open and not connecting), `false` otherwise
 
-#### rtcGetMaxMessageSize
+#### rtcMaxMessageSize
 
 ```
-int rtcGetMaxMessageSize(int id)
+int rtcMaxMessageSize(int id)
 ```
 
 Retrieves the maximum message size for the channel.
@@ -790,6 +820,48 @@ The new track must be deleted with `rtcDeleteTrack` (or `rtcDelete`).
 
 The user must call `rtcSetLocalDescription` to negotiate the track.
 
+#### rtcAddTrackEx
+
+```
+int rtcAddTrackEx(int pc, const rtcTrackInit *init)
+
+typedef struct {
+	rtcDirection direction;
+	rtcCodec codec;
+	int payloadType;
+	uint32_t ssrc;
+	const char *mid;
+	const char *name;    // optional
+	const char *msid;    // optional
+	const char *trackId; // optional, track ID used in MSID
+	const char *profile; // optional, codec profile
+} rtcTrackInit;
+```
+
+Adds a new Track on a Peer Connection using a simplified initialization structure rather than a raw SDP media description. The function will generate the appropriate SDP media description from the provided codec and parameters.
+
+Arguments:
+
+- `pc`: the Peer Connection identifier
+- `init`: a structure of initialization settings containing:
+  - `direction`: the direction of the track, one of `RTC_DIRECTION_SENDONLY`, `RTC_DIRECTION_RECVONLY`, `RTC_DIRECTION_SENDRECV`, `RTC_DIRECTION_INACTIVE`, or `RTC_DIRECTION_UNKNOWN`
+  - `codec`: the codec to use, one of the following:
+    - Video: `RTC_CODEC_H264`, `RTC_CODEC_VP8`, `RTC_CODEC_VP9`, `RTC_CODEC_H265`, `RTC_CODEC_AV1`
+    - Audio: `RTC_CODEC_OPUS`, `RTC_CODEC_PCMU`, `RTC_CODEC_PCMA`, `RTC_CODEC_AAC`, `RTC_CODEC_G722`
+  - `payloadType`: the RTP payload type number
+  - `ssrc`: the SSRC of the track
+  - `mid` (optional): a null-terminated string for the media identifier (if NULL, defaults to "video" or "audio" based on the codec)
+  - `name` (optional): a null-terminated CNAME string for the SSRC (NULL if unused)
+  - `msid` (optional): a null-terminated MSID string for the SSRC (NULL if unused)
+  - `trackId` (optional): a null-terminated track ID string used in the MSID (NULL if unused)
+  - `profile` (optional): a null-terminated codec profile string (NULL if unused)
+
+Return value: the identifier of the new Track or a negative error code
+
+The new track must be deleted with `rtcDeleteTrack` (or `rtcDelete`).
+
+The user must call `rtcSetLocalDescription` to negotiate the track.
+
 #### rtcDeleteTrack
 
 ```
@@ -851,13 +923,498 @@ Retrieves the direction of a Track.
 Arguments:
 
 - `tr`: the Track identifier
-- `direction`: a pointer to a rtcDescription enum to store the result
+- `direction`: a pointer to a rtcDirection enum to store the result
 
 On success, the value pointed by `direction` will be set to one of the following: `RTC_DIRECTION_SENDONLY`, `RTC_DIRECTION_RECVONLY`, `RTC_DIRECTION_SENDRECV`, `RTC_DIRECTION_INACTIVE`, or `RTC_DIRECTION_UNKNOWN`.
 
+#### rtcRequestKeyframe
+
+```
+int rtcRequestKeyframe(int tr)
+```
+
+Requests a keyframe from the remote peer for the Track by sending a PLI (Picture Loss Indication) RTCP message.
+
+Arguments:
+
+- `tr`: the Track identifier
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcRequestBitrate
+
+```
+int rtcRequestBitrate(int tr, unsigned int bitrate)
+```
+
+Requests a bitrate change from the remote peer for the Track by sending a REMB (Receiver Estimated Maximum Bitrate) RTCP message.
+
+Arguments:
+
+- `tr`: the Track identifier
+- `bitrate`: the requested bitrate in bits per second
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcSetFrameCallback
+
+```
+int rtcSetFrameCallback(int tr, rtcFrameCallbackFunc cb)
+
+typedef struct {
+	uint32_t timestamp;
+	uint8_t payloadType;
+	double timestampSeconds; // negative means not available
+} rtcFrameInfo;
+```
+
+Sets, changes, or unsets (if `cb` is `NULL`) the frame callback on a Track. This callback is designed to receive depacketized media frames rather than raw RTP packets.
+
+`cb` must have the following signature: `void myFrameCallback(int tr, const char *data, int size, const rtcFrameInfo *info, void *user_ptr)`
+
+Arguments:
+
+- `tr`: the Track identifier
+- `cb`: the frame callback, or NULL to unset
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+The `rtcFrameInfo` structure provides additional metadata about the received frame:
+- `timestamp`: RTP timestamp of the frame
+- `payloadType`: RTP payload type
+- `timestampSeconds`: the timestamp converted to seconds using the track's clock rate (negative value means not available)
+
 ### Media handling
 
-TODO
+The Media handling API is available when the library is compiled with media support (`RTC_ENABLE_MEDIA`). It provides packetizers and depacketizers for common audio and video codecs, as well as RTCP handlers that can be chained on tracks.
+
+#### rtcPacketizerInit
+
+```
+typedef enum {
+	RTC_OBU_PACKETIZED_OBU = 0,
+	RTC_OBU_PACKETIZED_TEMPORAL_UNIT = 1,
+} rtcObuPacketization;
+
+typedef enum {
+	RTC_NAL_SEPARATOR_LENGTH = 0,               // first 4 bytes are NAL unit length
+	RTC_NAL_SEPARATOR_LONG_START_SEQUENCE = 1,   // 0x00, 0x00, 0x00, 0x01
+	RTC_NAL_SEPARATOR_SHORT_START_SEQUENCE = 2,  // 0x00, 0x00, 0x01
+	RTC_NAL_SEPARATOR_START_SEQUENCE = 3,        // long or short start sequence
+} rtcNalUnitSeparator;
+
+typedef struct {
+	uint32_t ssrc;
+	const char *cname;
+	uint8_t payloadType;
+	uint32_t clockRate;
+	uint16_t sequenceNumber;
+	uint32_t timestamp;
+	uint16_t maxFragmentSize;            // Maximum fragment size, 0 means default
+	rtcNalUnitSeparator nalSeparator;    // H264/H265 only
+	rtcObuPacketization obuPacketization; // AV1 only
+	uint8_t playoutDelayId;
+	uint16_t playoutDelayMin;
+	uint16_t playoutDelayMax;
+	uint8_t colorSpaceId;
+	uint8_t colorChromaSitingHorz;
+	uint8_t colorChromaSitingVert;
+	uint8_t colorRange;
+	uint8_t colorPrimaries;
+	uint8_t colorTransfer;
+	uint8_t colorMatrix;
+} rtcPacketizerInit;
+```
+
+The `rtcPacketizerInit` structure is used to configure packetizers set on tracks. Its fields are:
+
+- `ssrc`: the SSRC of the track
+- `cname`: a null-terminated CNAME string (must not be NULL)
+- `payloadType`: the RTP payload type number
+- `clockRate`: the clock rate for the codec (e.g. 90000 for video, 48000 for Opus)
+- `sequenceNumber`: the initial RTP sequence number
+- `timestamp`: the initial RTP timestamp
+- `maxFragmentSize` (optional): the maximum fragment size in bytes (0 for default)
+- `nalSeparator` (H264/H265 only): the NAL unit separator type
+- `obuPacketization` (AV1 only): the OBU packetization mode
+- `playoutDelayId` (optional): the RTP extension ID for playout delay
+- `playoutDelayMin` (optional): minimum playout delay in ms
+- `playoutDelayMax` (optional): maximum playout delay in ms
+- `colorSpaceId` (optional): the RTP extension ID for color space
+- `colorChromaSitingHorz` (optional): horizontal chroma siting
+- `colorChromaSitingVert` (optional): vertical chroma siting
+- `colorRange` (optional): color range
+- `colorPrimaries` (optional): color primaries
+- `colorTransfer` (optional): color transfer characteristics
+- `colorMatrix` (optional): color matrix coefficients
+
+#### rtcSetXxxPacketizer
+
+```
+int rtcSetH264Packetizer(int tr, const rtcPacketizerInit *init)
+int rtcSetH265Packetizer(int tr, const rtcPacketizerInit *init)
+int rtcSetAV1Packetizer(int tr, const rtcPacketizerInit *init)
+int rtcSetVP8Packetizer(int tr, const rtcPacketizerInit *init)
+int rtcSetOpusPacketizer(int tr, const rtcPacketizerInit *init)
+int rtcSetAACPacketizer(int tr, const rtcPacketizerInit *init)
+int rtcSetPCMUPacketizer(int tr, const rtcPacketizerInit *init)
+int rtcSetPCMAPacketizer(int tr, const rtcPacketizerInit *init)
+int rtcSetG722Packetizer(int tr, const rtcPacketizerInit *init)
+```
+
+Sets a packetizer on a Track, which will transform media frames sent via `rtcSendMessage` into RTP packets before sending them. The packetizer is set as the media handler on the track.
+
+Arguments:
+
+- `tr`: the Track identifier
+- `init`: a pointer to the `rtcPacketizerInit` structure (must not be NULL)
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcSetXxxDepacketizer
+
+```
+int rtcSetH264Depacketizer(int tr, rtcNalUnitSeparator nalSeparator)
+int rtcSetH265Depacketizer(int tr, rtcNalUnitSeparator nalSeparator)
+int rtcSetOpusDepacketizer(int tr)
+int rtcSetAACDepacketizer(int tr)
+```
+
+Sets a depacketizer on a Track, which will reassemble incoming RTP packets into media frames. The depacketizer is set as the media handler on the track.
+
+Arguments:
+
+- `tr`: the Track identifier
+- `nalSeparator` (H264/H265 only): the NAL unit separator to use in the output
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcSetMediaInterceptorCallback
+
+```
+int rtcSetMediaInterceptorCallback(int pc, rtcInterceptorCallbackFunc cb)
+```
+
+Sets, changes, or unsets (if `cb` is `NULL`) a media interceptor on a Peer Connection. The interceptor allows inspecting and modifying incoming RTP traffic on all tracks of the Peer Connection.
+
+`cb` must have the following signature: `void *myInterceptorCallback(int pc, const char *message, int size, void *user_ptr)`
+
+The callback should return:
+- The original `message` pointer to forward the packet unchanged
+- A pointer to an opaque message created with `rtcCreateOpaqueMessage` to replace the packet
+- `NULL` to drop the packet
+
+Arguments:
+
+- `pc`: the Peer Connection identifier
+- `cb`: the interceptor callback, or NULL to unset
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcCreateOpaqueMessage / rtcDeleteOpaqueMessage
+
+```
+rtcMessage *rtcCreateOpaqueMessage(void *data, int size)
+void rtcDeleteOpaqueMessage(rtcMessage *msg)
+```
+
+`rtcCreateOpaqueMessage` allocates a new opaque message from a data buffer. The message must be explicitly freed with `rtcDeleteOpaqueMessage` unless it is returned by a media interceptor callback (in which case ownership is transferred).
+
+`rtcDeleteOpaqueMessage` frees an opaque message previously created with `rtcCreateOpaqueMessage`.
+
+Arguments:
+
+- `data`: a pointer to the message data
+- `size`: the size of the data in bytes
+- `msg`: the opaque message to free
+
+#### rtcChainRtcpReceivingSession
+
+```
+int rtcChainRtcpReceivingSession(int tr)
+```
+
+Chains an RTCP receiving session handler on a Track. This handler processes incoming RTCP packets.
+
+Arguments:
+
+- `tr`: the Track identifier
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcChainRtcpSrReporter
+
+```
+int rtcChainRtcpSrReporter(int tr)
+```
+
+Chains an RTCP Sender Report (SR) reporter handler on a Track. This handler automatically sends RTCP Sender Reports. A packetizer must be set on the track before calling this function.
+
+Arguments:
+
+- `tr`: the Track identifier
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcChainRtcpNackResponder
+
+```
+int rtcChainRtcpNackResponder(int tr, unsigned int maxStoredPacketsCount)
+```
+
+Chains an RTCP NACK responder handler on a Track. This handler stores sent packets and retransmits them when a NACK is received from the remote peer.
+
+Arguments:
+
+- `tr`: the Track identifier
+- `maxStoredPacketsCount`: the maximum number of sent packets to store for potential retransmission
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcChainPliHandler
+
+```
+int rtcChainPliHandler(int tr, rtcPliHandlerCallbackFunc cb)
+```
+
+Chains a PLI (Picture Loss Indication) handler on a Track. The callback is called when a PLI RTCP message is received from the remote peer, indicating that the remote peer has lost some video data and is requesting a keyframe.
+
+`cb` must have the following signature: `void myPliHandlerCallback(int tr, void *user_ptr)`
+
+Arguments:
+
+- `tr`: the Track identifier
+- `cb`: the PLI handler callback
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcChainRembHandler
+
+```
+int rtcChainRembHandler(int tr, rtcRembHandlerCallbackFunc cb)
+```
+
+Chains a REMB (Receiver Estimated Maximum Bitrate) handler on a Track. The callback is called when a REMB RTCP message is received from the remote peer.
+
+`cb` must have the following signature: `void myRembHandlerCallback(int tr, unsigned int bitrate, void *user_ptr)`
+
+Arguments:
+
+- `tr`: the Track identifier
+- `cb`: the REMB handler callback
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcChainPacingHandler
+
+```
+int rtcChainPacingHandler(int tr, double bitsPerSecond, int sendIntervalMs)
+```
+
+Chains a pacing handler on a Track. This handler paces the sending of RTP packets to control outgoing bitrate.
+
+Arguments:
+
+- `tr`: the Track identifier
+- `bitsPerSecond`: the target bitrate in bits per second
+- `sendIntervalMs`: the send interval in milliseconds
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcTransformSecondsToTimestamp
+
+```
+int rtcTransformSecondsToTimestamp(int id, double seconds, uint32_t *timestamp)
+```
+
+Transforms a time value in seconds to an RTP timestamp using the track's clock rate. The track must have a packetizer set.
+
+Arguments:
+
+- `id`: the Track identifier
+- `seconds`: the time value in seconds
+- `timestamp`: a pointer to a `uint32_t` to store the result
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcTransformTimestampToSeconds
+
+```
+int rtcTransformTimestampToSeconds(int id, uint32_t timestamp, double *seconds)
+```
+
+Transforms an RTP timestamp to a time value in seconds using the track's clock rate. The track must have a packetizer set.
+
+Arguments:
+
+- `id`: the Track identifier
+- `timestamp`: the RTP timestamp
+- `seconds`: a pointer to a `double` to store the result
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcGetCurrentTrackTimestamp
+
+```
+int rtcGetCurrentTrackTimestamp(int id, uint32_t *timestamp)
+```
+
+Retrieves the current RTP timestamp for a track. The track must have a packetizer set.
+
+Arguments:
+
+- `id`: the Track identifier
+- `timestamp`: a pointer to a `uint32_t` to store the result
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcSetTrackRtpTimestamp
+
+```
+int rtcSetTrackRtpTimestamp(int id, uint32_t timestamp)
+```
+
+Sets the RTP timestamp for a track. The track must have a packetizer set.
+
+Arguments:
+
+- `id`: the Track identifier
+- `timestamp`: the RTP timestamp to set
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcGetLastTrackSenderReportTimestamp
+
+```
+int rtcGetLastTrackSenderReportTimestamp(int id, uint32_t *timestamp)
+```
+
+Retrieves the timestamp of the last RTCP Sender Report sent for the track. The track must have an RTCP SR reporter chained.
+
+Arguments:
+
+- `id`: the Track identifier
+- `timestamp`: a pointer to a `uint32_t` to store the result
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcGetTrackRtcpSyncTimestamps
+
+```
+int rtcGetTrackRtcpSyncTimestamps(int tr, uint64_t *rtpTimestamp, uint64_t *ntpTimestamp)
+```
+
+Retrieves the RTP and NTP synchronization timestamps from the RTCP receiving session chained on the track. These timestamps are extracted from incoming RTCP Sender Reports and can be used to synchronize media streams. The track must have an RTCP receiving session chained (see `rtcChainRtcpReceivingSession`).
+
+Arguments:
+
+- `tr`: the Track identifier
+- `rtpTimestamp`: a pointer to a `uint64_t` to store the RTP timestamp (may be NULL)
+- `ntpTimestamp`: a pointer to a `uint64_t` to store the NTP timestamp (may be NULL)
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcGetTrackPayloadTypesForCodec
+
+```
+int rtcGetTrackPayloadTypesForCodec(int tr, const char *ccodec, int *buffer, int size)
+```
+
+Retrieves all available RTP payload types for a given codec name on the track.
+
+Arguments:
+
+- `tr`: the Track identifier
+- `ccodec`: the codec name as a null-terminated string (case-insensitive)
+- `buffer`: a user-supplied buffer to store payload types (may be NULL)
+- `size`: the number of elements `buffer` can hold
+
+Return value: the number of payload types found or a negative error code
+
+If `buffer` is `NULL`, the payload types are not stored but the count is still returned.
+
+#### rtcGetSsrcsForTrack
+
+```
+int rtcGetSsrcsForTrack(int tr, uint32_t *buffer, int count)
+```
+
+Retrieves all SSRCs declared for a given track.
+
+Arguments:
+
+- `tr`: the Track identifier
+- `buffer`: a user-supplied buffer to store SSRCs (may be NULL)
+- `count`: the number of elements `buffer` can hold
+
+Return value: the number of SSRCs found or a negative error code
+
+If `buffer` is `NULL`, the SSRCs are not stored but the count is still returned.
+
+#### rtcGetCNameForSsrc
+
+```
+int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char *cname, int cnameSize)
+```
+
+Retrieves the CNAME associated with a given SSRC on a track.
+
+Arguments:
+
+- `tr`: the Track identifier
+- `ssrc`: the SSRC to look up
+- `cname`: a user-supplied buffer to store the CNAME
+- `cnameSize`: the size of `cname`
+
+Return value: the length of the string copied (including the terminating null character), 0 if no CNAME was found, or a negative error code
+
+#### rtcGetSsrcsForType
+
+```
+int rtcGetSsrcsForType(const char *mediaType, const char *sdp, uint32_t *buffer, int bufferSize)
+```
+
+Retrieves all SSRCs for a given media type (e.g. "video" or "audio") from an SDP description string.
+
+Arguments:
+
+- `mediaType`: the media type string (case-insensitive), e.g. "video" or "audio"
+- `sdp`: the SDP description string
+- `buffer`: a user-supplied buffer to store SSRCs (may be NULL)
+- `bufferSize`: the number of elements `buffer` can hold
+
+Return value: the number of SSRCs found or a negative error code
+
+If `buffer` is `NULL`, the SSRCs are not stored but the count is still returned.
+
+#### rtcSetSsrcForType
+
+```
+int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, const int bufferSize, rtcSsrcForTypeInit *init)
+
+typedef struct {
+	uint32_t ssrc;
+	const char *name;    // optional
+	const char *msid;    // optional
+	const char *trackId; // optional, track ID used in MSID
+} rtcSsrcForTypeInit;
+```
+
+Sets the SSRC for a given media type in an SDP description string and writes the modified SDP to `buffer`.
+
+Arguments:
+
+- `mediaType`: the media type string (case-insensitive), e.g. "video" or "audio"
+- `sdp`: the original SDP description string
+- `buffer`: a user-supplied buffer to store the modified SDP
+- `bufferSize`: the size of `buffer`
+- `init`: a structure containing:
+  - `ssrc`: the SSRC to set
+  - `name` (optional): a CNAME string (NULL if unused)
+  - `msid` (optional): an MSID string (NULL if unused)
+  - `trackId` (optional): a track ID string used in MSID (NULL if unused)
+
+Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code
 
 ### WebSocket
 
@@ -869,11 +1426,13 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config)
 
 typedef struct {
 	bool disableTlsVerification;
+	const char *proxyServer;
 	const char **protocols;
 	int protocolsCount;
 	int connectionTimeoutMs;
 	int pingIntervalMs;
 	int maxOutstandingPings;
+	int maxMessageSize;
 } rtcWsConfiguration;
 ```
 
@@ -884,11 +1443,13 @@ Arguments:
 - `url`: a null-terminated string representing the fully-qualified URL to open.
 - `config`: a structure with the following parameters:
   - `disableTlsVerification`: if true, don't verify the TLS certificate, else try to verify it if possible
+  - `proxyServer` (optional): if non-NULL, specifies the proxy server URI to use (only non-authenticated HTTP proxies are supported for now)
   - `protocols` (optional): an array of pointers on null-terminated protocol names (NULL if unused)
   - `protocolsCount` (optional): number of URLs in the array pointed by `protocols` (0 if unused)
   - `connectionTimeoutMs` (optional): connection timeout in milliseconds (0 if default, < 0 if disabled)
   - `pingIntervalMs` (optional): ping interval in milliseconds (0 if default, < 0 if disabled)
   - `maxOutstandingPings` (optional): number of unanswered pings before declaring failure (0 if default, < 0 if disabled)
+  - `maxMessageSize` (optional): maximum message size in bytes (<= 0 if default)
 
 Return value: the identifier of the new WebSocket or a negative error code
 
@@ -955,7 +1516,9 @@ typedef struct {
 	const char *certificatePemFile;
 	const char *keyPemFile;
 	const char *keyPemPass;
+	const char *bindAddress;
 	int connectionTimeoutMs;
+	int maxMessageSize;
 } rtcWsServerConfiguration;
 ```
 
@@ -969,7 +1532,9 @@ Arguments:
   - `certificatePemFile` (optional): PEM certificate or path of the file containing the PEM certificate (`NULL` for an autogenerated certificate)
   - `keyPemFile` (optional): PEM key or path of the file containing the PEM key (`NULL` for an autogenerated certificate)
   - `keyPemPass` (optional): PEM key file passphrase (NULL if no passphrase)
+  - `bindAddress` (optional): if non-NULL, bind only to the given local address (NULL for any)
   - `connectionTimeoutMs` (optional): connection timeout in milliseconds (0 if default, < 0 if disabled)
+  - `maxMessageSize` (optional): maximum message size in bytes (<= 0 if default)
 - `cb`: the callback for incoming client WebSocket connections (must not be `NULL`)
 
 `cb` must have the following signature: `void rtcWebSocketClientCallbackFunc(int wsserver, int ws, void *user_ptr)`
@@ -1003,4 +1568,59 @@ Arguments:
 
 Return value: The port of the WebSocket Server or a negative error code
 
+### Global settings
 
+#### rtcSetThreadPoolSize
+
+```
+int rtcSetThreadPoolSize(unsigned int count)
+```
+
+Sets the number of threads used for the internal thread pool. The change is applied when threads are spawned (typically when the first Peer Connection is created).
+
+Arguments:
+
+- `count`: the number of threads to use (0 means using the hardware concurrency)
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
+
+#### rtcSetSctpSettings
+
+```
+int rtcSetSctpSettings(const rtcSctpSettings *settings)
+
+typedef struct {
+	int recvBufferSize;             // in bytes, <= 0 means optimized default
+	int sendBufferSize;             // in bytes, <= 0 means optimized default
+	int maxChunksOnQueue;           // in chunks, <= 0 means optimized default
+	int initialCongestionWindow;    // in MTUs, <= 0 means optimized default
+	int maxBurst;                   // in MTUs, 0 means optimized default, < 0 means disabled
+	int congestionControlModule;    // 0: RFC2581 (default), 1: HSTCP, 2: H-TCP, 3: RTCC
+	int delayedSackTimeMs;          // in milliseconds, 0 means optimized default, < 0 means disabled
+	int minRetransmitTimeoutMs;     // in milliseconds, <= 0 means optimized default
+	int maxRetransmitTimeoutMs;     // in milliseconds, <= 0 means optimized default
+	int initialRetransmitTimeoutMs; // in milliseconds, <= 0 means optimized default
+	int maxRetransmitAttempts;      // number of retransmissions, <= 0 means optimized default
+	int heartbeatIntervalMs;        // in milliseconds, <= 0 means optimized default
+} rtcSctpSettings;
+```
+
+Sets the SCTP settings for the library. SCTP settings apply to newly-created PeerConnections only and do not affect existing ones.
+
+Arguments:
+
+- `settings`: a structure with the SCTP configuration parameters:
+  - `recvBufferSize` (optional): receive buffer size in bytes (<= 0 for optimized default)
+  - `sendBufferSize` (optional): send buffer size in bytes (<= 0 for optimized default)
+  - `maxChunksOnQueue` (optional): maximum number of chunks on the send queue (<= 0 for optimized default)
+  - `initialCongestionWindow` (optional): initial congestion window in MTUs (<= 0 for optimized default)
+  - `maxBurst` (optional): maximum burst size in MTUs (0 for optimized default, < 0 to disable)
+  - `congestionControlModule` (optional): congestion control module (0: RFC2581, 1: HSTCP, 2: H-TCP, 3: RTCC)
+  - `delayedSackTimeMs` (optional): delayed SACK time in milliseconds (0 for optimized default, < 0 to disable)
+  - `minRetransmitTimeoutMs` (optional): minimum retransmit timeout in milliseconds (<= 0 for optimized default)
+  - `maxRetransmitTimeoutMs` (optional): maximum retransmit timeout in milliseconds (<= 0 for optimized default)
+  - `initialRetransmitTimeoutMs` (optional): initial retransmit timeout in milliseconds (<= 0 for optimized default)
+  - `maxRetransmitAttempts` (optional): maximum number of retransmission attempts (<= 0 for optimized default)
+  - `heartbeatIntervalMs` (optional): heartbeat interval in milliseconds (<= 0 for optimized default)
+
+Return value: `RTC_ERR_SUCCESS` or a negative error code
