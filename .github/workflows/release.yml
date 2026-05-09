@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Get tag
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Get version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          VERSION_MAJOR=$(echo $VERSION | cut -d. -f1)
+          VERSION_MINOR=$(echo $VERSION | cut -d. -f2)
+          VERSION_PATCH=$(echo $VERSION | cut -d. -f3)
+          if [ -z "$VERSION_MAJOR" ] || [ -z "$VERSION_MINOR" ] || [ -z "$VERSION_PATCH" ]; then
+            echo "Invalid version: $VERSION"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION_MAJOR=$VERSION_MAJOR" >> $GITHUB_ENV
+          echo "VERSION_MINOR=$VERSION_MINOR" >> $GITHUB_ENV
+          echo "VERSION_PATCH=$VERSION_PATCH" >> $GITHUB_ENV
+
+      - name: Check version in CMakeLists and header
+        run: |
+          VERSION_HEADER=include/rtc/version.h
+          sed -i -E "s/^(\s*VERSION) [0-9]+\.[0-9]+\.[0-9]+/\1 $VERSION/" CMakeLists.txt
+          sed -i -E "s/^(.*VERSION_MAJOR) [0-9]+/\1 $VERSION_MAJOR/" $VERSION_HEADER
+          sed -i -E "s/^(.*VERSION_MINOR) [0-9]+/\1 $VERSION_MINOR/" $VERSION_HEADER
+          sed -i -E "s/^(.*VERSION_PATCH) [0-9]+/\1 $VERSION_PATCH/" $VERSION_HEADER
+          sed -i -E "s/^(.*VERSION) \"[^\"]*\"/\1 \"$VERSION\"/" $VERSION_HEADER
+          if ! git diff --exit-code; then
+            echo "Inconsistent version in source"
+            exit 1
+          fi
+
+      - name: Create source zip
+        run: git ls-files --recurse-submodules | xargs zip -r libdatachannel-${{ env.TAG }}.zip
+
+      - name: Upload source zip as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: libdatachannel-${{ env.TAG }}.zip
+          path: libdatachannel-${{ env.TAG }}.zip
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Version ${{ env.VERSION }}
+          draft: true
+          prerelease: false
+
+      - name: Upload source zip to release
+        run: gh release upload ${{ github.ref }} libdatachannel-${{ env.TAG }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
