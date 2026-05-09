@@ -25,7 +25,7 @@ std::vector<binary> RtpPacketizer::fragment(binary data) {
 	return {std::move(data)};
 }
 
-message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
+message_ptr RtpPacketizer::packetize(const binary &payload, bool mark, shared_ptr<FrameInfo> frameInfo) {
 	size_t rtpExtHeaderSize = 0;
 	bool twoByteHeader = false;
 
@@ -33,7 +33,7 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	    (rtpConfig->videoOrientationId != 0) && mark && (rtpConfig->videoOrientation != 0);
 
 	const bool setAbsCaptureTime =
-	    rtpConfig->absCaptureTimeId > 0 && currentAbsCaptureTimeNtp.has_value();
+	    rtpConfig->absCaptureTimeId > 0 && frameInfo && frameInfo->absCaptureTimeNtp.has_value();
 
 	std::optional<DependencyDescriptorWriter> ddWriter;
 	if (rtpConfig->dependencyDescriptorContext.has_value()) {
@@ -44,7 +44,7 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	binary videoLayersAllocationBuf;
 	if (rtpConfig->videoLayersAllocationId > 0 &&
 		rtpConfig->videoLayersAllocationStreams &&
-		shouldEmitVideoLayersAllocation()) {
+		shouldEmitVideoLayersAllocation(frameInfo)) {
 		// Yes, generate it now so we can calculate total size
 		videoLayersAllocationBuf = rtpConfig->videoLayersAllocationStreams->
 				generate(rtpConfig->videoLayersAllocationStreamIndex);
@@ -185,7 +185,7 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 		if (setAbsCaptureTime) {
 			// 8-byte (shortened) form: 64-bit NTP timestamp, network order.
 			// https://webrtc.googlesource.com/src/+/refs/heads/main/docs/native-code/rtp-hdrext/abs-capture-time
-			uint64_t ntp = *currentAbsCaptureTimeNtp;
+			uint64_t ntp = frameInfo ? frameInfo->absCaptureTimeNtp.value_or(0) : 0;
 			byte data[8] = {
 			    byte((ntp >> 56) & 0xFF), byte((ntp >> 48) & 0xFF),
 			    byte((ntp >> 40) & 0xFF), byte((ntp >> 32) & 0xFF),
@@ -202,10 +202,6 @@ message_ptr RtpPacketizer::packetize(const binary &payload, bool mark) {
 	std::memcpy(message->data() + RtpHeaderSize + rtpExtHeaderSize, payload.data(), payload.size());
 
 	return message;
-}
-
-message_ptr RtpPacketizer::packetize(shared_ptr<binary> payload, bool mark) {
-	return packetize(*payload, mark);
 }
 
 void RtpPacketizer::media([[maybe_unused]] const Description::Media &desc) {}
@@ -225,11 +221,6 @@ void RtpPacketizer::outgoing(message_vector &messages,
 				        std::chrono::duration<double>(*frameInfo->timestampSeconds).count());
 			else
 				rtpConfig->timestamp = frameInfo->timestamp;
-
-			if (frameInfo->isKeyFrame)
-				isGeneratingKeyFrame = true;
-
-			currentAbsCaptureTimeNtp = frameInfo->absCaptureTimeNtp;
 		}
 
 		auto payloads = fragment(std::move(*message));
@@ -240,17 +231,14 @@ void RtpPacketizer::outgoing(message_vector &messages,
 				ctx.descriptor.endOfFrame = i == payloads.size() - 1;
 			}
 			bool mark = i == payloads.size() - 1;
-			result.push_back(packetize(payloads[i], mark));
+			result.push_back(packetize(payloads[i], mark, message->frameInfo));
 		}
-
-		isGeneratingKeyFrame = false;
-		currentAbsCaptureTimeNtp.reset();
 	}
 
 	messages.swap(result);
 }
 
-bool RtpPacketizer::shouldEmitVideoLayersAllocation() {
+bool RtpPacketizer::shouldEmitVideoLayersAllocation(shared_ptr<FrameInfo> frameInfo) {
 	// We emit the Google VLA extension for the first 100 packets
 	if (videoLayersAllocationInitialPacketCount < 100) {
 		++ videoLayersAllocationInitialPacketCount;
@@ -258,7 +246,7 @@ bool RtpPacketizer::shouldEmitVideoLayersAllocation() {
 	}
 
 	// And also on every packet of every key frame
-	if (isGeneratingKeyFrame) {
+	if (frameInfo && frameInfo->isKeyFrame) {
 		return true;
 	}
 

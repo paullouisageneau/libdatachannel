@@ -49,24 +49,15 @@ protected:
 	/// @note This function increases the sequence number.
 	/// @param payload RTP payload
 	/// @param mark Set marker flag in RTP packet if true
-	virtual message_ptr packetize(const binary &payload, bool mark);
-
-	// For backward compatibility, do not use
-	[[deprecated]] virtual message_ptr packetize(shared_ptr<binary> payload, bool mark);
+	virtual message_ptr packetize(const binary &payload, bool mark, shared_ptr<FrameInfo> frameInfo = nullptr);
 
 private:
 	static const auto RtpHeaderSize = 12;
 	static const auto RtpExtHeaderCvoSize = 8;
 
 	uint32_t videoLayersAllocationInitialPacketCount = 0;
-	bool isGeneratingKeyFrame = false;
 
-	// Per-frame transient: NTP-format absolute capture time copied from the
-	// current FrameInfo by outgoing(), then read by packetize() to emit the
-	// abs-capture-time RTP header extension on every fragment of the frame.
-	optional<uint64_t> currentAbsCaptureTimeNtp;
-
-	bool shouldEmitVideoLayersAllocation();
+	bool shouldEmitVideoLayersAllocation(shared_ptr<FrameInfo> frameInfo);
 };
 
 // Generic audio RTP packetizer
