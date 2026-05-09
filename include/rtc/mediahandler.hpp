@@ -37,6 +37,8 @@ public:
 
 	virtual bool requestKeyframe(const message_callback &send);
 	virtual bool requestBitrate(unsigned int bitrate, const message_callback &send);
+	virtual bool sendRtcpApp(uint32_t ssrc, const char name[4], uint8_t subtype, const binary &data,
+	                         const message_callback &send);
 
 	void addToChain(shared_ptr<MediaHandler> handler);
 	void setNext(shared_ptr<MediaHandler> handler);
