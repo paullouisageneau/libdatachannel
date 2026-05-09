@@ -61,6 +61,11 @@ private:
 	uint32_t videoLayersAllocationInitialPacketCount = 0;
 	bool isGeneratingKeyFrame = false;
 
+	// Per-frame transient: NTP-format absolute capture time copied from the
+	// current FrameInfo by outgoing(), then read by packetize() to emit the
+	// abs-capture-time RTP header extension on every fragment of the frame.
+	optional<uint64_t> currentAbsCaptureTimeNtp;
+
 	bool shouldEmitVideoLayersAllocation();
 };
 

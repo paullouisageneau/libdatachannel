@@ -95,6 +95,14 @@ public:
 	uint8_t colorTransfer = 1;              // BT.709-6
 	uint8_t colorMatrix = 1;                // BT.709-6
 
+	// abs-capture-time RTP header extension. When absCaptureTimeId > 0 and an
+	// outgoing FrameInfo carries an absCaptureTimeNtp value, the RtpPacketizer
+	// writes the 8-byte (shortened) form of the abs-capture-time extension into
+	// every packet for that frame. The receiver can recover the source's
+	// capture wallclock and compute true glass-to-glass latency.
+	// https://webrtc.googlesource.com/src/+/refs/heads/main/docs/native-code/rtp-hdrext/abs-capture-time
+	uint8_t absCaptureTimeId = 0;
+
 	/// Construct RTP configuration used in packetization process
 	/// @param ssrc SSRC of source
 	/// @param cname CNAME of source
