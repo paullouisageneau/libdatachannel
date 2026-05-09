@@ -353,6 +353,28 @@ struct RTC_CPP_EXPORT RtcpNack {
 	bool addMissingPacket(unsigned int *fciCount, uint16_t *fciPID, uint16_t missingPacket);
 };
 
+struct RTC_CPP_EXPORT RtcpApp {
+	RtcpHeader header;
+
+	SSRC _ssrc;
+	char _name[4];
+	char _data[1];
+
+	[[nodiscard]] static size_t SizeWithData(size_t dataLength);
+
+	[[nodiscard]] SSRC ssrc() const;
+	[[nodiscard]] uint8_t subtype() const;
+	[[nodiscard]] string name() const;
+	[[nodiscard]] const char *data() const;
+	[[nodiscard]] size_t dataSize() const;
+
+	void preparePacket(SSRC ssrc, uint8_t subtype, const char name[4], size_t dataLength);
+	void setSSRC(SSRC ssrc);
+	void setName(const char name[4]);
+
+	void log() const;
+};
+
 struct RTC_CPP_EXPORT RtpRtx {
 	RtpHeader header;
 

@@ -47,6 +47,8 @@ public:
 
 	bool requestKeyframe();
 	bool requestBitrate(unsigned int bitrate);
+	bool sendRtcpApp(uint32_t ssrc, const char name[4], uint8_t subtype,
+	                 const binary &data = binary{});
 
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
 	void chainMediaHandler(shared_ptr<MediaHandler> handler);

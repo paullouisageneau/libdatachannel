@@ -725,6 +725,42 @@ bool RtcpNack::addMissingPacket(unsigned int *fciCount, uint16_t *fciPID, uint16
 	}
 }
 
+size_t RtcpApp::SizeWithData(size_t dataLength) {
+	return sizeof(RtcpHeader) + sizeof(SSRC) + 4 + dataLength;
+}
+
+SSRC RtcpApp::ssrc() const { return ntohl(_ssrc); }
+
+uint8_t RtcpApp::subtype() const { return header.reportCount(); }
+
+string RtcpApp::name() const { return string(_name, 4); }
+
+const char *RtcpApp::data() const { return _data; }
+
+size_t RtcpApp::dataSize() const {
+	size_t totalSize = header.lengthInBytes();
+	size_t headerAndName = sizeof(RtcpHeader) + sizeof(SSRC) + 4;
+	return totalSize > headerAndName ? totalSize - headerAndName : 0;
+}
+
+void RtcpApp::preparePacket(SSRC ssrc, uint8_t subtype, const char name[4], size_t dataLength) {
+	uint16_t lengthField =
+	    uint16_t((sizeof(SSRC) + 4 + dataLength) / 4); // in 32-bit words, minus 1 for header
+	header.prepareHeader(204, subtype, lengthField);
+	setSSRC(ssrc);
+	setName(name);
+}
+
+void RtcpApp::setSSRC(SSRC ssrc) { _ssrc = htonl(ssrc); }
+
+void RtcpApp::setName(const char name[4]) { std::memcpy(_name, name, 4); }
+
+void RtcpApp::log() const {
+	header.log();
+	PLOG_VERBOSE << "RTCP APP: ssrc=" << ssrc() << ", subtype=" << unsigned(subtype())
+	             << ", name=" << name();
+}
+
 uint16_t RtpRtx::getOriginalSeqNo() const { return ntohs(*(uint16_t *)(header.getBody())); }
 
 const char *RtpRtx::getBody() const { return header.getBody() + sizeof(uint16_t); }
