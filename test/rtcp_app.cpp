@@ -24,12 +24,12 @@ TestResult test_rtcp_app_single_packet() {
 	cout << "RTCP APP single packet test" << endl;
 
 	uint8_t receivedSubtype = 0;
-	string receivedName;
+	RtcpAppName receivedName;
 	binary receivedData;
 	int callbackCount = 0;
 
 	auto handler = make_shared<AppHandler>(
-	    [&](string name, uint8_t subtype, binary data) {
+	    [&](RtcpAppName name, uint8_t subtype, binary data) {
 		    receivedSubtype = subtype;
 		    receivedName = std::move(name);
 		    receivedData = std::move(data);
@@ -38,7 +38,7 @@ TestResult test_rtcp_app_single_packet() {
 
 	// Build an RTCP APP packet: subtype=5, name="TEST", 8 bytes of data
 	const uint8_t subtype = 5;
-	const char name[4] = {'T', 'E', 'S', 'T'};
+	RtcpAppName name = {'T', 'E', 'S', 'T'};
 	const binary appData = {byte{0x01}, byte{0x02}, byte{0x03}, byte{0x04},
 	                         byte{0x05}, byte{0x06}, byte{0x07}, byte{0x08}};
 	const SSRC ssrc = 12345;
@@ -46,7 +46,7 @@ TestResult test_rtcp_app_single_packet() {
 	size_t packetSize = RtcpApp::SizeWithData(appData.size());
 	auto message = make_message(packetSize, Message::Control);
 	auto *app = reinterpret_cast<RtcpApp *>(message->data());
-	app->preparePacket(ssrc, subtype, name, appData.size());
+	app->preparePacket(ssrc, name, subtype, appData.size());
 	std::memcpy(app->_data, appData.data(), appData.size());
 
 	// Verify struct accessors
@@ -54,8 +54,10 @@ TestResult test_rtcp_app_single_packet() {
 		return TestResult(false, "RtcpApp::ssrc() mismatch");
 	if (app->subtype() != subtype)
 		return TestResult(false, "RtcpApp::subtype() mismatch");
-	if (app->name() != "TEST")
-		return TestResult(false, "RtcpApp::name() mismatch: got " + app->name());
+	if (app->name() != name) {
+		RtcpAppName parsedName = app->name();
+		return TestResult(false, "RtcpApp::name() mismatch: got " + std::string(parsedName.data(), parsedName.size()));
+	}
 	if (app->dataSize() != appData.size())
 		return TestResult(false, "RtcpApp::dataSize() mismatch: expected " +
 		                             to_string(appData.size()) + " got " +
@@ -70,8 +72,8 @@ TestResult test_rtcp_app_single_packet() {
 		return TestResult(false, "Expected 1 callback, got " + to_string(callbackCount));
 	if (receivedSubtype != subtype)
 		return TestResult(false, "Subtype mismatch in callback");
-	if (receivedName != "TEST")
-		return TestResult(false, "Name mismatch in callback: got " + receivedName);
+	if (receivedName != name)
+		return TestResult(false, "Name mismatch in callback: got " + std::string(receivedName.data(), receivedName.size()));
 	if (receivedData.size() != appData.size())
 		return TestResult(false, "Data size mismatch in callback");
 	if (std::memcmp(receivedData.data(), appData.data(), appData.size()) != 0)
@@ -87,12 +89,12 @@ TestResult test_rtcp_app_compound_packet() {
 	cout << "RTCP APP compound packet test" << endl;
 
 	uint8_t receivedSubtype = 0;
-	string receivedName;
+	RtcpAppName receivedName;
 	binary receivedData;
 	int callbackCount = 0;
 
 	auto handler = make_shared<AppHandler>(
-	    [&](string name, uint8_t subtype, binary data) {
+	    [&](RtcpAppName name, uint8_t subtype, binary data) {
 		    receivedSubtype = subtype;
 		    receivedName = std::move(name);
 		    receivedData = std::move(data);
@@ -101,7 +103,7 @@ TestResult test_rtcp_app_compound_packet() {
 
 	// Build a compound RTCP packet: Sender Report (PT=200) followed by APP (PT=204)
 	const uint8_t subtype = 3;
-	const char name[4] = {'A', 'B', 'C', 'D'};
+	RtcpAppName name = {'A', 'B', 'C', 'D'};
 	const binary appData = {byte{0xAA}, byte{0xBB}, byte{0xCC}, byte{0xDD}};
 	const SSRC ssrc = 99999;
 
@@ -122,7 +124,7 @@ TestResult test_rtcp_app_compound_packet() {
 
 	// Fill in the APP portion after the SR
 	auto *app = reinterpret_cast<RtcpApp *>(message->data() + srSize);
-	app->preparePacket(ssrc, subtype, name, appData.size());
+	app->preparePacket(ssrc, name, subtype, appData.size());
 	std::memcpy(app->_data, appData.data(), appData.size());
 
 	// Feed compound packet to handler
@@ -135,8 +137,8 @@ TestResult test_rtcp_app_compound_packet() {
 		                             to_string(callbackCount));
 	if (receivedSubtype != subtype)
 		return TestResult(false, "Subtype mismatch in compound packet");
-	if (receivedName != "ABCD")
-		return TestResult(false, "Name mismatch in compound packet: got " + receivedName);
+	if (receivedName != name)
+		return TestResult(false, "Name mismatch in compound packet: got " + std::string(receivedName.data(), receivedName.size()));
 	if (receivedData.size() != appData.size())
 		return TestResult(false, "Data size mismatch in compound packet");
 	if (std::memcmp(receivedData.data(), appData.data(), appData.size()) != 0)
@@ -152,12 +154,12 @@ TestResult test_rtcp_app_empty_data() {
 	cout << "RTCP APP empty data test" << endl;
 
 	uint8_t receivedSubtype = 0;
-	string receivedName;
+	RtcpAppName receivedName;
 	binary receivedData;
 	int callbackCount = 0;
 
 	auto handler = make_shared<AppHandler>(
-	    [&](string name, uint8_t subtype, binary data) {
+	    [&](RtcpAppName name, uint8_t subtype, binary data) {
 		    receivedSubtype = subtype;
 		    receivedName = std::move(name);
 		    receivedData = std::move(data);
@@ -165,13 +167,13 @@ TestResult test_rtcp_app_empty_data() {
 	    });
 
 	const uint8_t subtype = 0;
-	const char name[4] = {'P', 'I', 'N', 'G'};
+	RtcpAppName name = {'P', 'I', 'N', 'G'};
 	const SSRC ssrc = 42;
 
 	size_t packetSize = RtcpApp::SizeWithData(0);
 	auto message = make_message(packetSize, Message::Control);
 	auto *app = reinterpret_cast<RtcpApp *>(message->data());
-	app->preparePacket(ssrc, subtype, name, 0);
+	app->preparePacket(ssrc, name, subtype, 0);
 
 	if (app->dataSize() != 0)
 		return TestResult(false, "Expected dataSize=0 for empty APP packet");
@@ -184,8 +186,8 @@ TestResult test_rtcp_app_empty_data() {
 		return TestResult(false, "Expected 1 callback for empty APP, got " + to_string(callbackCount));
 	if (receivedSubtype != 0)
 		return TestResult(false, "Subtype mismatch for empty APP");
-	if (receivedName != "PING")
-		return TestResult(false, "Name mismatch for empty APP: got " + receivedName);
+	if (receivedName != name)
+		return TestResult(false, "Name mismatch for empty APP: got " + std::string(receivedName.data(), receivedName.size()));
 	if (!receivedData.empty())
 		return TestResult(false, "Expected empty data for empty APP");
 
@@ -198,11 +200,11 @@ TestResult test_rtcp_app_send() {
 	InitLogger(LogLevel::Debug);
 	cout << "RTCP APP send test" << endl;
 
-	auto handler = make_shared<AppHandler>([](string, uint8_t, binary) {});
+	auto handler = make_shared<AppHandler>([](RtcpAppName, uint8_t, binary) {});
 
 	const SSRC ssrc = 77777;
 	const uint8_t subtype = 15;
-	const char name[4] = {'S', 'E', 'N', 'D'};
+	RtcpAppName name = {'S', 'E', 'N', 'D'};
 	const binary appData = {byte{0x10}, byte{0x20}, byte{0x30}, byte{0x40},
 	                         byte{0x50}, byte{0x60}, byte{0x70}, byte{0x80},
 	                         byte{0x90}, byte{0xA0}, byte{0xB0}, byte{0xC0}};
@@ -225,8 +227,9 @@ TestResult test_rtcp_app_send() {
 		return TestResult(false, "Sent packet has wrong SSRC");
 	if (app->subtype() != subtype)
 		return TestResult(false, "Sent packet has wrong subtype");
-	if (app->name() != "SEND")
-		return TestResult(false, "Sent packet has wrong name: " + app->name());
+	RtcpAppName sentName = app->name();
+	if (sentName != name)
+		return TestResult(false, "Sent packet has wrong name: " + std::string(sentName.data(), sentName.size()));
 	if (app->dataSize() != appData.size())
 		return TestResult(false, "Sent packet has wrong data size");
 	if (std::memcmp(app->_data, appData.data(), appData.size()) != 0)
@@ -234,12 +237,12 @@ TestResult test_rtcp_app_send() {
 
 	// Verify that the sent packet can be re-parsed through incoming
 	uint8_t receivedSubtype = 0;
-	string receivedName;
+	RtcpAppName receivedName;
 	binary receivedData;
 	int callbackCount = 0;
 
 	auto handler2 = make_shared<AppHandler>(
-	    [&](string n, uint8_t st, binary d) {
+	    [&](RtcpAppName n, uint8_t st, binary d) {
 		    receivedSubtype = st;
 		    receivedName = std::move(n);
 		    receivedData = std::move(d);
@@ -254,7 +257,7 @@ TestResult test_rtcp_app_send() {
 		return TestResult(false, "Round-trip: expected 1 callback, got " + to_string(callbackCount));
 	if (receivedSubtype != subtype)
 		return TestResult(false, "Round-trip: subtype mismatch");
-	if (receivedName != "SEND")
+	if (receivedName != name)
 		return TestResult(false, "Round-trip: name mismatch");
 	if (receivedData.size() != appData.size())
 		return TestResult(false, "Round-trip: data size mismatch");
@@ -270,17 +273,17 @@ TestResult test_rtcp_app_multiple_in_compound() {
 	InitLogger(LogLevel::Debug);
 	cout << "RTCP APP multiple in compound test" << endl;
 
-	vector<tuple<string, uint8_t, binary>> received;
+	vector<tuple<RtcpAppName, uint8_t, binary>> received;
 
 	auto handler = make_shared<AppHandler>(
-	    [&](string name, uint8_t subtype, binary data) {
+	    [&](RtcpAppName name, uint8_t subtype, binary data) {
 		    received.emplace_back(std::move(name), subtype, std::move(data));
 	    });
 
 	// Build a compound message with two APP packets back-to-back
-	const char name1[4] = {'O', 'N', 'E', '!'};
+	RtcpAppName name1 = {'O', 'N', 'E', '!'};
 	const binary data1 = {byte{0x11}, byte{0x22}, byte{0x33}, byte{0x44}};
-	const char name2[4] = {'T', 'W', 'O', '!'};
+	RtcpAppName name2 = {'T', 'W', 'O', '!'};
 	const binary data2 = {byte{0xAA}, byte{0xBB}, byte{0xCC}, byte{0xDD},
 	                       byte{0xEE}, byte{0xFF}, byte{0x00}, byte{0x11}};
 
@@ -291,11 +294,11 @@ TestResult test_rtcp_app_multiple_in_compound() {
 	auto message = make_message(totalSize, Message::Control);
 
 	auto *app1 = reinterpret_cast<RtcpApp *>(message->data());
-	app1->preparePacket(1000, 1, name1, data1.size());
+	app1->preparePacket(1000, name1, 1, data1.size());
 	std::memcpy(app1->_data, data1.data(), data1.size());
 
 	auto *app2 = reinterpret_cast<RtcpApp *>(message->data() + size1);
-	app2->preparePacket(2000, 31, name2, data2.size());
+	app2->preparePacket(2000, name2, 31, data2.size());
 	std::memcpy(app2->_data, data2.data(), data2.size());
 
 	message_vector messages;
@@ -309,8 +312,8 @@ TestResult test_rtcp_app_multiple_in_compound() {
 	auto &[n1, st1, d1] = received[0];
 	if (st1 != 1)
 		return TestResult(false, "First APP subtype mismatch");
-	if (n1 != "ONE!")
-		return TestResult(false, "First APP name mismatch: got " + n1);
+	if (n1 != name1)
+		return TestResult(false, "First APP name mismatch: got " + std::string(n1.data(), n1.size()));
 	if (d1.size() != data1.size() || std::memcmp(d1.data(), data1.data(), data1.size()) != 0)
 		return TestResult(false, "First APP data mismatch");
 
@@ -318,8 +321,8 @@ TestResult test_rtcp_app_multiple_in_compound() {
 	auto &[n2, st2, d2] = received[1];
 	if (st2 != 31)
 		return TestResult(false, "Second APP subtype mismatch");
-	if (n2 != "TWO!")
-		return TestResult(false, "Second APP name mismatch: got " + n2);
+	if (n2 != name2)
+		return TestResult(false, "Second APP name mismatch: got " + std::string(n2.data(), n2.size()));
 	if (d2.size() != data2.size() || std::memcmp(d2.data(), data2.data(), data2.size()) != 0)
 		return TestResult(false, "Second APP data mismatch");
 
