@@ -56,7 +56,7 @@ bool MediaHandler::requestBitrate(unsigned int bitrate, const message_callback &
 		return false;
 }
 
-bool MediaHandler::sendRtcpApp(uint32_t ssrc, const char name[4], uint8_t subtype,
+bool MediaHandler::sendRtcpApp(uint32_t ssrc, const RtcpAppName &name, uint8_t subtype,
                                const binary &data, const message_callback &send) {
 	if (auto handler = next())
 		return handler->sendRtcpApp(ssrc, name, subtype, data, send);

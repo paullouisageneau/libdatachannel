@@ -22,7 +22,7 @@
 
 namespace rtc {
 
-AppHandler::AppHandler(std::function<void(string name, uint8_t subtype, binary data)> onApp)
+AppHandler::AppHandler(std::function<void(const RtcpAppName name, uint8_t subtype, binary data)> onApp)
     : mOnApp(onApp) {}
 
 void AppHandler::incoming(message_vector &messages, [[maybe_unused]] const message_callback &send) {
@@ -41,7 +41,7 @@ void AppHandler::incoming(message_vector &messages, [[maybe_unused]] const messa
 
 				auto app = reinterpret_cast<RtcpApp *>(message->data() + offset);
 				uint8_t subtype = app->subtype();
-				string name = app->name();
+				RtcpAppName name = app->name();
 				size_t dataLen = app->dataSize();
 				binary data(message->data() + offset + minSize,
 				            message->data() + offset + minSize + dataLen);
@@ -56,13 +56,13 @@ void AppHandler::incoming(message_vector &messages, [[maybe_unused]] const messa
 	}
 }
 
-bool AppHandler::sendRtcpApp(SSRC ssrc, const char name[4], uint8_t subtype, const binary &data,
+bool AppHandler::sendRtcpApp(SSRC ssrc, const RtcpAppName &name, uint8_t subtype, const binary &data,
                              const message_callback &send) {
 	size_t packetSize = RtcpApp::SizeWithData(data.size());
 	auto message = make_message(packetSize, Message::Control);
 
 	auto app = reinterpret_cast<RtcpApp *>(message->data());
-	app->preparePacket(ssrc, subtype, name, data.size());
+	app->preparePacket(ssrc, name, subtype, data.size());
 
 	if (!data.empty())
 		std::memcpy(app->_data, data.data(), data.size());

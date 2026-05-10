@@ -83,7 +83,7 @@ bool Track::requestBitrate(unsigned int bitrate) {
 	return false;
 }
 
-bool Track::sendRtcpApp(uint32_t ssrc, const char name[4], uint8_t subtype, const binary &data) {
+bool Track::sendRtcpApp(uint32_t ssrc, const RtcpAppName &name, uint8_t subtype, const binary &data) {
 	if (auto handler = impl()->getMediaHandler())
 		return handler->sendRtcpApp(ssrc, name, subtype, data,
 		                            [this](message_ptr m) { impl()->transportSend(m); });
