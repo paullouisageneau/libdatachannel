@@ -40,6 +40,7 @@
 #include "vp8rtppacketizer.hpp"
 #include "vp8rtpdepacketizer.hpp"
 #include "mediahandler.hpp"
+#include "apphandler.hpp"
 #include "plihandler.hpp"
 #include "rembhandler.hpp"
 #include "pacinghandler.hpp"

@@ -36,6 +36,11 @@ TestResult test_rtx_description_addrtx();
 TestResult test_rtx_description_addrtx_no_audio();
 TestResult test_rtx_dropped_packet();
 TestResult test_rtx_multi_codec();
+TestResult test_rtcp_app_single_packet();
+TestResult test_rtcp_app_compound_packet();
+TestResult test_rtcp_app_empty_data();
+TestResult test_rtcp_app_send();
+TestResult test_rtcp_app_multiple_in_compound();
 TestResult test_capi_connectivity();
 TestResult test_capi_track();
 TestResult test_websocket();
@@ -93,6 +98,11 @@ static const vector<Test> tests = {
     Test("RTX negotiation fallback", test_rtx_attribute),
     Test("RTX dropped packet recovery", test_rtx_dropped_packet),
     Test("RTX multi-codec PT mapping", test_rtx_multi_codec),
+    Test("RTCP APP single packet", test_rtcp_app_single_packet),
+    Test("RTCP APP compound packet", test_rtcp_app_compound_packet),
+    Test("RTCP APP empty data", test_rtcp_app_empty_data),
+    Test("RTCP APP send", test_rtcp_app_send),
+    Test("RTCP APP multiple in compound", test_rtcp_app_multiple_in_compound),
 #endif
 #if RTC_ENABLE_WEBSOCKET
     // TODO: Temporarily disabled as the echo service is unreliable
