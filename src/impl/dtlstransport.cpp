@@ -660,7 +660,7 @@ int DtlsTransport::ReadCallback(void *ctx, unsigned char *buf, size_t len) {
 
 			auto bufMin = std::min(len, size_t(message->size()));
 			std::memcpy(buf, message->data(), bufMin);
-			return int(len);
+			return int(bufMin);
 		}
 
 		// Closed
