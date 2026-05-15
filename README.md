@@ -177,6 +177,7 @@ Features:
 - WebAssembly wrapper compatible with libdatachannel: [datachannel-wasm](https://github.com/paullouisageneau/datachannel-wasm)
 - Lightweight STUN/TURN server: [Violet](https://github.com/paullouisageneau/violet)
 - Native platform (Android/iOS/macOS) wrapper for libdatachannel: [datachannel-native](https://github.com/swarm-cloud/datachannel-native)
+- C++ media runtime built on libdatachannel with FFmpeg integration and signalling: [icey](https://github.com/nilstate/icey)
 
 ## Thanks
 
