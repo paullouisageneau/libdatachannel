@@ -428,6 +428,12 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 		}
 
 		c.certificateType = static_cast<CertificateType>(config->certificateType);
+		if (config->certificatePemFile)
+			c.certificatePemFile = string(config->certificatePemFile);
+		if (config->keyPemFile)
+			c.keyPemFile = string(config->keyPemFile);
+		if (config->keyPemPass)
+			c.keyPemPass = string(config->keyPemPass);
 		c.iceTransportPolicy = static_cast<TransportPolicy>(config->iceTransportPolicy);
 		c.enableIceTcp = config->enableIceTcp;
 		c.enableIceUdpMux = config->enableIceUdpMux;
