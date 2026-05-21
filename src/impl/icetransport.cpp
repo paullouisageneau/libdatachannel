@@ -18,6 +18,11 @@
 #include <random>
 #include <sstream>
 
+#ifdef RTC_TEST_RECV_DELAY
+#include <chrono>
+#include <thread>
+#endif
+
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -912,6 +917,12 @@ void IceTransport::StateChangeCallback(NiceAgent * /*agent*/, guint /*streamId*/
 void IceTransport::RecvCallback(NiceAgent * /*agent*/, guint /*streamId*/, guint /*componentId*/,
                                 guint len, gchar *buf, gpointer userData) {
 	auto iceTransport = static_cast<rtc::impl::IceTransport *>(userData);
+#ifdef RTC_TEST_RECV_DELAY
+	// Test-only: widen the window between userData-load and dereference so
+	// teardown races against in-flight RecvCallback dispatches reliably
+	// surface under a sanitizer. Never compiled into production.
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+#endif
 	try {
 		PLOG_VERBOSE << "Incoming size=" << len;
 		auto b = reinterpret_cast<byte *>(buf);

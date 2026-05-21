@@ -26,6 +26,7 @@ option(WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
 option(SCTP_DEBUG "Enable SCTP debugging output to verbose log" OFF)
 option(RTC_UPDATE_VERSION_HEADER "Enable updating the version header" OFF)
+option(RTC_TEST_RECV_DELAY "Inject a test-only delay in IceTransport::RecvCallback to reliably expose teardown races under a sanitizer" OFF)
 
 if(NOT NO_MEDIA AND NOT PREFER_SYSTEM_LIB)
 	# libsrtp2 v2.7.0 requires cmake >= v3.21.0
@@ -220,6 +221,7 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/ice_recv_uaf.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp_generation.cpp
@@ -473,6 +475,10 @@ if (USE_NICE)
 	find_package(LibNice REQUIRED)
 	target_compile_definitions(datachannel PRIVATE USE_NICE=1)
 	target_compile_definitions(datachannel-static PRIVATE USE_NICE=1)
+	if(RTC_TEST_RECV_DELAY)
+		target_compile_definitions(datachannel PRIVATE RTC_TEST_RECV_DELAY)
+		target_compile_definitions(datachannel-static PRIVATE RTC_TEST_RECV_DELAY)
+	endif()
 	target_link_libraries(datachannel PRIVATE LibNice::LibNice)
 	target_link_libraries(datachannel-static PRIVATE LibNice::LibNice)
 else()
