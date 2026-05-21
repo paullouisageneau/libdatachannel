@@ -13,6 +13,7 @@
 #include "utils.hpp"
 
 #include <algorithm>
+#include <future>
 #include <iostream>
 #include <random>
 #include <sstream>
@@ -665,6 +666,27 @@ IceTransport::~IceTransport() {
 
 	nice_agent_attach_recv(mNiceAgent.get(), mStreamId, 1, g_main_loop_get_context(MainLoop->get()),
 	                       NULL, NULL);
+
+	// Synchronize with the libnice main loop thread BEFORE freeing the
+	// stream's rx buffer (nice_agent_remove_stream below) or `this`. The
+	// detach above prevents new dispatches, but a callback (e.g.
+	// RecvCallback) may already be running on the main loop thread with
+	// `this` as userData and `buf` pointing into libnice's stream rx buffer.
+	// Post a barrier task to the main context and wait for it to run; GLib
+	// dispatches sources serially on that thread, so once our task runs no
+	// callback can still be using `this` or the rx buffer.
+	{
+		std::promise<void> barrier;
+		auto future = barrier.get_future();
+		g_main_context_invoke_full(
+		    g_main_loop_get_context(MainLoop->get()), G_PRIORITY_HIGH,
+		    [](gpointer data) -> gboolean {
+			    static_cast<std::promise<void> *>(data)->set_value();
+			    return G_SOURCE_REMOVE;
+		    },
+		    &barrier, NULL);
+		future.wait();
+	}
 
 	nice_agent_remove_stream(mNiceAgent.get(), mStreamId);
 	mNiceAgent.reset();
