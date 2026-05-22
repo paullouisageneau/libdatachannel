@@ -570,6 +570,22 @@ int rtcSetLocalDescription(int pc, const char *type) {
 	});
 }
 
+int rtcSetLocalDescriptionEx(int pc, const char *type, const char *iceUfrag,
+                             const char *icePwd) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		LocalDescriptionInit init;
+		if (iceUfrag)
+			init.iceUfrag = std::string(iceUfrag);
+		if (icePwd)
+			init.icePwd = std::string(icePwd);
+		peerConnection->setLocalDescription(type ? Description::stringToType(type)
+		                                         : Description::Type::Unspec,
+		                                    std::move(init));
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcSetRemoteDescription(int pc, const char *sdp, const char *type) {
 	return wrap([&] {
 		auto peerConnection = getPeerConnection(pc);

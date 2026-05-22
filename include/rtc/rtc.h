@@ -213,6 +213,14 @@ RTC_C_EXPORT int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCal
 RTC_C_EXPORT int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb);
 
 RTC_C_EXPORT int rtcSetLocalDescription(int pc, const char *type); // type may be NULL
+// Same as rtcSetLocalDescription, but allows supplying fresh ICE
+// credentials. When both iceUfrag and icePwd are non-NULL on a
+// previously-connected PC, the call performs an ICE restart: the new
+// credentials replace the existing ones and a fresh gathering cycle
+// is kicked off. Passing NULL for either of iceUfrag/icePwd is
+// equivalent to rtcSetLocalDescription. type may be NULL.
+RTC_C_EXPORT int rtcSetLocalDescriptionEx(int pc, const char *type, const char *iceUfrag,
+                                          const char *icePwd);
 RTC_C_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 RTC_C_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
 

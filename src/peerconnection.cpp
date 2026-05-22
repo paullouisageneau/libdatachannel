@@ -162,8 +162,20 @@ void PeerConnection::setLocalDescription(Description::Type type, LocalDescriptio
 			setLocalDescription(Description::Type::Offer);
 	}
 
-	if (impl()->gatheringState == GatheringState::New && !impl()->config.disableAutoGathering) {
-		iceTransport->gatherLocalCandidates(impl()->localBundleMid());
+	if (!impl()->config.disableAutoGathering) {
+		const bool iceRestart = init.iceUfrag.has_value() && init.icePwd.has_value();
+		if (impl()->gatheringState == GatheringState::New) {
+			iceTransport->gatherLocalCandidates(impl()->localBundleMid());
+		} else if (iceRestart) {
+			// Caller supplied fresh ICE credentials — perform an ICE
+			// restart: roll the gathering state back to InProgress and
+			// re-gather candidates against the new ufrag/pwd. The
+			// resulting GatheringState::Complete callback fires once
+			// the new cycle finishes, so consumers waiting on a fresh
+			// gather-complete (W3C ICE restart semantics) wake up.
+			impl()->changeGatheringState(GatheringState::InProgress);
+			iceTransport->gatherLocalCandidates(impl()->localBundleMid());
+		}
 	}
 }
 
