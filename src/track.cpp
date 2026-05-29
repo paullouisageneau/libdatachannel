@@ -11,6 +11,8 @@
 #include "impl/internals.hpp"
 #include "impl/track.hpp"
 
+#include <cstring>
+
 namespace rtc {
 
 Track::Track(impl_ptr<impl::Track> impl)
@@ -83,12 +85,20 @@ bool Track::requestBitrate(unsigned int bitrate) {
 	return false;
 }
 
-bool Track::sendRtcpApp(uint32_t ssrc, const RtcpAppName &name, uint8_t subtype, const binary &data) {
-	if (auto handler = impl()->getMediaHandler())
-		return handler->sendRtcpApp(ssrc, name, subtype, data,
-		                            [this](message_ptr m) { impl()->transportSend(m); });
+bool Track::sendRtcpApp(uint32_t ssrc, const RtcpAppName &name, uint8_t subtype,
+                        const binary &data) {
+	// RTCP APP packets carry an explicit SSRC, so no handler context is needed: build and send
+	// the packet directly.
+	size_t packetSize = RtcpApp::SizeWithData(data.size());
+	auto message = make_message(packetSize, Message::Control);
 
-	return false;
+	auto app = reinterpret_cast<RtcpApp *>(message->data());
+	app->preparePacket(ssrc, name, subtype, data.size());
+
+	if (!data.empty())
+		std::memcpy(app->_data, data.data(), data.size());
+
+	return impl()->transportSend(std::move(message));
 }
 
 shared_ptr<MediaHandler> Track::getMediaHandler() { return impl()->getMediaHandler(); }

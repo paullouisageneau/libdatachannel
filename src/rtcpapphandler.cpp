@@ -6,7 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-#include "apphandler.hpp"
+#include "rtcpapphandler.hpp"
 
 #include "impl/internals.hpp"
 
@@ -22,10 +22,12 @@
 
 namespace rtc {
 
-AppHandler::AppHandler(std::function<void(const RtcpAppName name, uint8_t subtype, binary data)> onApp)
+RtcpAppHandler::RtcpAppHandler(
+    std::function<void(const RtcpAppName name, uint8_t subtype, binary data)> onApp)
     : mOnApp(onApp) {}
 
-void AppHandler::incoming(message_vector &messages, [[maybe_unused]] const message_callback &send) {
+void RtcpAppHandler::incoming(message_vector &messages,
+                              [[maybe_unused]] const message_callback &send) {
 	for (const auto &message : messages) {
 		size_t offset = 0;
 		while (offset + sizeof(RtcpHeader) <= message->size()) {
@@ -35,7 +37,7 @@ void AppHandler::incoming(message_vector &messages, [[maybe_unused]] const messa
 				break;
 
 			if (header->payloadType() == 204) {
-				size_t minSize = sizeof(RtcpHeader) + sizeof(SSRC) + 4; // header + SSRC + name
+				size_t minSize = RtcpApp::SizeWithData(0); // header + SSRC + name
 				if (length < minSize)
 					break;
 
@@ -54,21 +56,6 @@ void AppHandler::incoming(message_vector &messages, [[maybe_unused]] const messa
 			offset += length;
 		}
 	}
-}
-
-bool AppHandler::sendRtcpApp(SSRC ssrc, const RtcpAppName &name, uint8_t subtype, const binary &data,
-                             const message_callback &send) {
-	size_t packetSize = RtcpApp::SizeWithData(data.size());
-	auto message = make_message(packetSize, Message::Control);
-
-	auto app = reinterpret_cast<RtcpApp *>(message->data());
-	app->preparePacket(ssrc, name, subtype, data.size());
-
-	if (!data.empty())
-		std::memcpy(app->_data, data.data(), data.size());
-
-	send(std::move(message));
-	return true;
 }
 
 } // namespace rtc

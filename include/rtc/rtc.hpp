@@ -42,7 +42,7 @@
 #include "vp9rtppacketizer.hpp"
 #include "vp9rtpdepacketizer.hpp"
 #include "mediahandler.hpp"
-#include "apphandler.hpp"
+#include "rtcpapphandler.hpp"
 #include "plihandler.hpp"
 #include "rembhandler.hpp"
 #include "pacinghandler.hpp"

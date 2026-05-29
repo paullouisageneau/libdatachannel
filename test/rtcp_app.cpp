@@ -18,7 +18,7 @@
 using namespace rtc;
 using namespace std;
 
-// Unit test: parse a single RTCP APP packet through the AppHandler
+// Unit test: parse a single RTCP APP packet through the RtcpAppHandler
 TestResult test_rtcp_app_single_packet() {
 	InitLogger(LogLevel::Debug);
 	cout << "RTCP APP single packet test" << endl;
@@ -28,7 +28,7 @@ TestResult test_rtcp_app_single_packet() {
 	binary receivedData;
 	int callbackCount = 0;
 
-	auto handler = make_shared<AppHandler>(
+	auto handler = make_shared<RtcpAppHandler>(
 	    [&](RtcpAppName name, uint8_t subtype, binary data) {
 		    receivedSubtype = subtype;
 		    receivedName = std::move(name);
@@ -93,7 +93,7 @@ TestResult test_rtcp_app_compound_packet() {
 	binary receivedData;
 	int callbackCount = 0;
 
-	auto handler = make_shared<AppHandler>(
+	auto handler = make_shared<RtcpAppHandler>(
 	    [&](RtcpAppName name, uint8_t subtype, binary data) {
 		    receivedSubtype = subtype;
 		    receivedName = std::move(name);
@@ -158,7 +158,7 @@ TestResult test_rtcp_app_empty_data() {
 	binary receivedData;
 	int callbackCount = 0;
 
-	auto handler = make_shared<AppHandler>(
+	auto handler = make_shared<RtcpAppHandler>(
 	    [&](RtcpAppName name, uint8_t subtype, binary data) {
 		    receivedSubtype = subtype;
 		    receivedName = std::move(name);
@@ -195,12 +195,10 @@ TestResult test_rtcp_app_empty_data() {
 	return TestResult(true);
 }
 
-// Unit test: sendApp constructs a valid packet that can be parsed back
+// Unit test: a packet built the way Track::sendRtcpApp builds it round-trips through incoming
 TestResult test_rtcp_app_send() {
 	InitLogger(LogLevel::Debug);
 	cout << "RTCP APP send test" << endl;
-
-	auto handler = make_shared<AppHandler>([](RtcpAppName, uint8_t, binary) {});
 
 	const SSRC ssrc = 77777;
 	const uint8_t subtype = 15;
@@ -209,17 +207,14 @@ TestResult test_rtcp_app_send() {
 	                         byte{0x50}, byte{0x60}, byte{0x70}, byte{0x80},
 	                         byte{0x90}, byte{0xA0}, byte{0xB0}, byte{0xC0}};
 
-	message_ptr sentMessage;
-	message_callback captureSend = [&](message_ptr msg) { sentMessage = std::move(msg); };
-
-	bool result = handler->sendRtcpApp(ssrc, name, subtype, appData, captureSend);
-	if (!result)
-		return TestResult(false, "sendApp returned false");
-	if (!sentMessage)
-		return TestResult(false, "No message was sent");
-
-	// Parse the sent message and verify its contents
+	// Build the packet exactly as Track::sendRtcpApp does
+	size_t packetSize = RtcpApp::SizeWithData(appData.size());
+	auto sentMessage = make_message(packetSize, Message::Control);
 	auto *app = reinterpret_cast<RtcpApp *>(sentMessage->data());
+	app->preparePacket(ssrc, name, subtype, appData.size());
+	std::memcpy(app->_data, appData.data(), appData.size());
+
+	// Verify the built packet's contents
 	if (app->header.payloadType() != 204)
 		return TestResult(false, "Sent packet has wrong payload type: " +
 		                             to_string(app->header.payloadType()));
@@ -235,13 +230,13 @@ TestResult test_rtcp_app_send() {
 	if (std::memcmp(app->_data, appData.data(), appData.size()) != 0)
 		return TestResult(false, "Sent packet has wrong data content");
 
-	// Verify that the sent packet can be re-parsed through incoming
+	// Verify that the built packet can be re-parsed through incoming
 	uint8_t receivedSubtype = 0;
 	RtcpAppName receivedName;
 	binary receivedData;
 	int callbackCount = 0;
 
-	auto handler2 = make_shared<AppHandler>(
+	auto handler2 = make_shared<RtcpAppHandler>(
 	    [&](RtcpAppName n, uint8_t st, binary d) {
 		    receivedSubtype = st;
 		    receivedName = std::move(n);
@@ -275,7 +270,7 @@ TestResult test_rtcp_app_multiple_in_compound() {
 
 	vector<tuple<RtcpAppName, uint8_t, binary>> received;
 
-	auto handler = make_shared<AppHandler>(
+	auto handler = make_shared<RtcpAppHandler>(
 	    [&](RtcpAppName name, uint8_t subtype, binary data) {
 		    received.emplace_back(std::move(name), subtype, std::move(data));
 	    });

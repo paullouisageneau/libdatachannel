@@ -14,7 +14,6 @@
 #include "description.hpp"
 #include "message.hpp"
 
-#include <array>
 namespace rtc {
 
 class RTC_CPP_EXPORT MediaHandler : public std::enable_shared_from_this<MediaHandler> {
@@ -38,8 +37,6 @@ public:
 
 	virtual bool requestKeyframe(const message_callback &send);
 	virtual bool requestBitrate(unsigned int bitrate, const message_callback &send);
-	virtual bool sendRtcpApp(uint32_t ssrc, const RtcpAppName &name, uint8_t subtype, const binary &data,
-	                         const message_callback &send);
 
 	void addToChain(shared_ptr<MediaHandler> handler);
 	void setNext(shared_ptr<MediaHandler> handler);
