@@ -510,9 +510,6 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	auto *commonNameBytes =
 	    reinterpret_cast<unsigned char *>(const_cast<char *>(commonName.c_str()));
 
-	if (!X509_set_pubkey(x509.get(), pkey.get()))
-		throw std::runtime_error("Unable to set certificate public key");
-
 	if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 3600 * -1) ||
 	    !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 3600 * 24 * 365) ||
 #if OPENSSL_VERSION_NUMBER >= 0x30000000
@@ -527,6 +524,9 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	    !X509_set_subject_name(x509.get(), name.get()) ||
 	    !X509_set_issuer_name(x509.get(), name.get()))
 		throw std::runtime_error("Unable to set certificate properties");
+
+	if (!X509_set_pubkey(x509.get(), pkey.get()))
+		throw std::runtime_error("Unable to set certificate public key");
 
 	if (!X509_sign(x509.get(), pkey.get(), EVP_sha256()))
 		throw std::runtime_error("Unable to auto-sign certificate");

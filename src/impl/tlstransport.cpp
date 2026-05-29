@@ -258,8 +258,9 @@ ssize_t TlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_
 				message = *next;
 				if (message->size() > 0)
 					break;
-				else
-					t->recv(message); // Pass zero-sized messages through
+
+				t->recv(message); // Pass zero-sized messages through
+				message.reset();
 			}
 		}
 
@@ -529,8 +530,9 @@ int TlsTransport::ReadCallback(void *ctx, unsigned char *buf, size_t len) {
 				message = *next;
 				if (message->size() > 0)
 					break;
-				else
-					t->recv(message); // Pass zero-sized messages through
+
+				t->recv(message); // Pass zero-sized messages through
+				message.reset();
 			}
 		}
 

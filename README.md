@@ -37,6 +37,10 @@ libdatachannel is available on [AUR](https://aur.archlinux.org/packages/libdatac
 
 See [BUILDING.md](https://github.com/paullouisageneau/libdatachannel/blob/master/BUILDING.md) for building instructions.
 
+## Contributing
+
+See [CONTRIBUTING.md](https://github.com/paullouisageneau/libdatachannel/blob/master/CONTRIBUTING.md) for contribution guidelines.
+
 ## Examples
 
 See [examples](https://github.com/paullouisageneau/libdatachannel/blob/master/examples/) for complete usage examples with signaling server (under MPL 2.0).

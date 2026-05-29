@@ -428,6 +428,12 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 		}
 
 		c.certificateType = static_cast<CertificateType>(config->certificateType);
+		if (config->certificatePemFile)
+			c.certificatePemFile = string(config->certificatePemFile);
+		if (config->keyPemFile)
+			c.keyPemFile = string(config->keyPemFile);
+		if (config->keyPemPass)
+			c.keyPemPass = string(config->keyPemPass);
 		c.iceTransportPolicy = static_cast<TransportPolicy>(config->iceTransportPolicy);
 		c.enableIceTcp = config->enableIceTcp;
 		c.enableIceUdpMux = config->enableIceUdpMux;
@@ -1693,6 +1699,11 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 		for (int i = 0; i < config->protocolsCount; ++i)
 			c.protocols.emplace_back(string(config->protocols[i]));
 
+		if (config->tcpConnectionTimeoutMs > 0)
+			c.tcpConnectionTimeout = milliseconds(config->tcpConnectionTimeoutMs);
+		else if (config->tcpConnectionTimeoutMs < 0)
+			c.tcpConnectionTimeout = milliseconds::zero(); // setting to 0 disables,
+			                                            // not setting keeps default
 		if (config->connectionTimeoutMs > 0)
 			c.connectionTimeout = milliseconds(config->connectionTimeoutMs);
 		else if (config->connectionTimeoutMs < 0)
@@ -1859,11 +1870,12 @@ int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 	});
 }
 
-void rtcPreload() {
+bool rtcPreload() {
 	try {
-		rtc::Preload();
+		return rtc::Preload();
 	} catch (const std::exception &e) {
 		PLOG_ERROR << e.what();
+		return false;
 	}
 }
 

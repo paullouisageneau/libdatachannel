@@ -52,7 +52,7 @@ struct SctpSettings {
 RTC_CPP_EXPORT void SetSctpSettings(SctpSettings s);
 
 // Optional global preload and cleanup
-RTC_CPP_EXPORT void Preload();
+RTC_CPP_EXPORT bool Preload();
 RTC_CPP_EXPORT std::shared_future<void> Cleanup();
 
 RTC_CPP_EXPORT std::ostream &operator<<(std::ostream &out, LogLevel level);
