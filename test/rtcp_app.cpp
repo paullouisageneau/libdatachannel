@@ -10,9 +10,14 @@
 #include "rtc/rtp.hpp"
 #include "test.hpp"
 
+#include <atomic>
+#include <chrono>
 #include <cstring>
+#include <future>
 #include <iostream>
 #include <memory>
+#include <thread>
+#include <tuple>
 #include <vector>
 
 using namespace rtc;
@@ -322,5 +327,121 @@ TestResult test_rtcp_app_multiple_in_compound() {
 		return TestResult(false, "Second APP data mismatch");
 
 	cout << "RTCP APP multiple in compound test passed" << endl;
+	return TestResult(true);
+}
+
+// End-to-end test: send an RTCP APP packet over a real PeerConnection media track using
+// Track::sendRtcpApp, and verify it is delivered through the actual receive path
+// (PeerConnection::dispatchMedia case 204 -> Track::incoming -> chained RtcpAppHandler).
+TestResult test_rtcp_app_integration() {
+	InitLogger(LogLevel::Debug);
+	cout << "RTCP APP integration test" << endl;
+
+	static const SSRC APP_SSRC = 4242;
+	static const uint8_t PRIMARY_PT = 96;
+	static const uint16_t PORT_RANGE_BEGIN = 5000;
+	static const uint16_t PORT_RANGE_END = 6000;
+	static const char *CNAME = "rtcp-app-send";
+
+	const RtcpAppName sentName = {'P', 'I', 'N', 'G'};
+	const uint8_t sentSubtype = 7;
+	// 8 bytes (a whole number of 32-bit words, so no padding is involved)
+	const binary sentData = {byte{0xDE}, byte{0xAD}, byte{0xBE}, byte{0xEF},
+	                         byte{0x01}, byte{0x02}, byte{0x03}, byte{0x04}};
+
+	Configuration config1;
+	PeerConnection pc1(config1);
+
+	Configuration config2;
+	config2.portRangeBegin = PORT_RANGE_BEGIN;
+	config2.portRangeEnd = PORT_RANGE_END;
+	PeerConnection pc2(config2);
+
+	pc1.onLocalDescription([&pc2](Description sdp) { pc2.setRemoteDescription(string(sdp)); });
+	pc1.onLocalCandidate([&pc2](Candidate cand) { pc2.addRemoteCandidate(string(cand)); });
+	pc1.onStateChange([](PeerConnection::State state) { cout << "State 1: " << state << endl; });
+
+	pc2.onLocalDescription([&pc1](Description sdp) { pc1.setRemoteDescription(string(sdp)); });
+	pc2.onLocalCandidate([&pc1](Candidate cand) { pc1.addRemoteCandidate(string(cand)); });
+	pc2.onStateChange([](PeerConnection::State state) { cout << "State 2: " << state << endl; });
+
+	// The receiver side captures the first APP packet that arrives through the chain.
+	promise<tuple<RtcpAppName, uint8_t, binary>> appPromise;
+	atomic<bool> appReceived{false};
+
+	shared_ptr<Track> t2;
+	pc2.onTrack([&](shared_ptr<Track> t) {
+		cout << "Track 2: received track with mid \"" << t->mid() << "\"" << endl;
+
+		auto desc = t->description();
+		desc.addSSRC(APP_SSRC, CNAME);
+		t->setDescription(desc);
+
+		// Realistic wiring: a normal receiving session, with the APP handler chained on.
+		// incomingChain runs tail-first, so the APP handler sees control packets before
+		// RtcpReceivingSession consumes them.
+		auto receivingSession = make_shared<RtcpReceivingSession>();
+		t->setMediaHandler(receivingSession);
+		t->chainMediaHandler(make_shared<RtcpAppHandler>(
+		    [&appPromise, &appReceived](RtcpAppName name, uint8_t subtype, binary data) {
+			    cout << "Track 2: got RTCP APP subtype=" << (int)subtype
+			         << " dataLen=" << data.size() << endl;
+			    bool expected = false;
+			    if (appReceived.compare_exchange_strong(expected, true))
+				    appPromise.set_value({name, subtype, std::move(data)});
+		    }));
+
+		std::atomic_store(&t2, t);
+	});
+
+	// Sender adds a send-only track; APP packets carry an explicit SSRC and are sent directly.
+	Description::Video media("video", Description::Direction::SendOnly);
+	media.addH264Codec(PRIMARY_PT);
+	media.addSSRC(APP_SSRC, CNAME);
+	auto t1 = pc1.addTrack(media);
+
+	pc1.setLocalDescription();
+
+	// Wait for the connection and both tracks to open.
+	int attempts = 10;
+	shared_ptr<Track> at2;
+	while ((!(at2 = std::atomic_load(&t2)) || !at2->isOpen() || !t1->isOpen()) && attempts--)
+		this_thread::sleep_for(1s);
+
+	if (pc1.state() != PeerConnection::State::Connected ||
+	    pc2.state() != PeerConnection::State::Connected)
+		return TestResult(false, "PeerConnection is not connected");
+	if (!at2 || !at2->isOpen() || !t1->isOpen())
+		return TestResult(false, "Track is not open");
+
+	// RTCP travels over (lossy) UDP and is not retransmitted, so resend until it is received.
+	auto future = appPromise.get_future();
+	int sendAttempts = 50;
+	while (sendAttempts-- > 0) {
+		if (!t1->sendRtcpApp(APP_SSRC, sentName, sentSubtype, sentData))
+			return TestResult(false, "Track::sendRtcpApp returned false");
+		if (future.wait_for(200ms) == future_status::ready)
+			break;
+	}
+
+	if (future.wait_for(0s) != future_status::ready)
+		return TestResult(false, "Did not receive RTCP APP packet on pc2 after retries");
+
+	auto [recvName, recvSubtype, recvData] = future.get();
+	if (recvName != sentName)
+		return TestResult(false, "Integration: name mismatch, got " +
+		                             std::string(recvName.data(), recvName.size()));
+	if (recvSubtype != sentSubtype)
+		return TestResult(false, "Integration: subtype mismatch, got " + to_string(recvSubtype));
+	if (recvData.size() != sentData.size() ||
+	    std::memcmp(recvData.data(), sentData.data(), sentData.size()) != 0)
+		return TestResult(false, "Integration: data mismatch");
+
+	pc1.close();
+	this_thread::sleep_for(1s);
+	pc2.close();
+	this_thread::sleep_for(1s);
+
+	cout << "RTCP APP integration test passed" << endl;
 	return TestResult(true);
 }
