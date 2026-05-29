@@ -43,7 +43,7 @@ void PliHandler::incoming(message_vector &messages, [[maybe_unused]] const messa
 						uint8_t firSeqNo = fir->parts[i].getSeqNo();
 						// RFC 5104 Section 4.3.1.1 says seqNo checking is done against the combo of the two values,
 						// so pack the sender SSRC and target SSRC into a single value for lookup in the map.
-						uint64_t comboSSRCs = (((uint64_t) fir->header.packetSenderSSRC()) << 32) + fir->parts[i].getSSRC();
+						uint64_t comboSSRCs = (uint64_t(fir->header.packetSenderSSRC()) << 32) + fir->parts[i].getSSRC();
 						// Check if this is a duplicate of the last sent fir for this SSRC
 						if (mFirSSRCSeqNumberMap[comboSSRCs] != firSeqNo) {
 							mFirSSRCSeqNumberMap[comboSSRCs] = firSeqNo;

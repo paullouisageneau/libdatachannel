@@ -75,7 +75,7 @@ bool Track::requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmi
 	return false;
 }
 
-bool Track::requestKeyframe(const SSRC ssrc, bool retransmit) {
+bool Track::requestKeyframe(SSRC ssrc, bool retransmit) {
 	return requestKeyframe(std::vector<SSRC>(1, ssrc), retransmit);
 }
 

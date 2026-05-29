@@ -626,7 +626,7 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 							for (int i = 0; i < remb->getSSRCCount(); ++i)
 								ssrcs.insert(remb->getSSRC(i));
 					} else if (header->payloadType() == 206 && rtcpfb->header.reportCount() == 4 &&
-						length >= (sizeof(RtcpFbHeader) + sizeof(RtcpFirFci))) {
+						length >= sizeof(RtcpFir)) {
 						// RFC 5104 FIR (PT=206, FMT=4): have variable number FCIs which is determined by
 						// overall rtcpfb length
 						auto fir = reinterpret_cast<const RtcpFir *>(header);
