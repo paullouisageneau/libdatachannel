@@ -78,7 +78,7 @@ void RtcpReceivingSession::media(const Description::Media &desc) {
 	for (const auto payloadType : desc.payloadTypes()) {
 		const Description::Media::RtpMap* rtpMap = desc.rtpMap(payloadType);
 		if (rtpMap->hasFeedback("ccm fir")) {
-			mSupportsRfc5104FIR = true;
+			mSupportsRfc5104Fir = true;
 		}
 	}
 }
@@ -285,7 +285,7 @@ void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int las
 }
 
 bool RtcpReceivingSession::requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit, const message_callback &send) {
-	if (mSupportsRfc5104FIR) {
+	if (mSupportsRfc5104Fir) {
 		pushFIR(send, targetSSRCs, retransmit);
 	} else {
 		pushPLI(send);
@@ -300,26 +300,22 @@ void RtcpReceivingSession::pushFIR(const message_callback &send, const std::vect
 			SSRC targetSSRC = ssrc;
 			if (targetSSRC == 0)
 				targetSSRC = mSsrc;
-			if(!retransmit)
-				++mRfc5104FIRCmdNums[targetSSRC];
+			if (!retransmit)
+				++mRfc5104FirCmdNums[targetSSRC];
 
 			RtcpFirFci firFci;
-			firFci._seqNo = static_cast<uint8_t>(mRfc5104FIRCmdNums[targetSSRC] % 256);
-			firFci._ssrc = targetSSRC;
-			firFci._dummy1 = 0; firFci._dummy2 = 0;
-			firFcisToSend.emplace_back(firFci);
+			firFci.preparePacket(targetSSRC, static_cast<uint8_t>(mRfc5104FirCmdNums[targetSSRC] % 256));
+			firFcisToSend.push_back(firFci);
 		}
 	} else {
-		if(!retransmit)
-			++mRfc5104FIRCmdNums[mSsrc];
+		if (!retransmit)
+			++mRfc5104FirCmdNums[mSsrc];
 
 		RtcpFirFci firFci;
-		firFci._seqNo = static_cast<uint8_t>(mRfc5104FIRCmdNums[mSsrc] % 256);
-		firFci._ssrc = mSsrc;
-		firFci._dummy1 = 0; firFci._dummy2 = 0;
-		firFcisToSend.emplace_back(firFci);
+		firFci.preparePacket(mSsrc, static_cast<uint8_t>(mRfc5104FirCmdNums[mSsrc] % 256));
+		firFcisToSend.push_back(firFci);
 	}
-	auto message = make_message(RtcpFir::SizeWithFCIs(firFcisToSend.size()), Message::Control);
+	auto message = make_message(RtcpFir::SizeWithFcis(int(firFcisToSend.size())), Message::Control);
 	auto *fir = reinterpret_cast<RtcpFir *>(message->data());
 
 	fir->preparePacket(mSsrc, firFcisToSend);

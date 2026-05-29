@@ -306,17 +306,21 @@ struct RTC_CPP_EXPORT RtcpFirFci {
 	uint8_t _dummy1;
 	uint16_t _dummy2;
 
+	void preparePacket(SSRC ssrc, uint8_t seqNo);
+
 	[[nodiscard]] SSRC getSSRC() const;
 	[[nodiscard]] uint8_t getSeqNo() const;
 };
 
 struct RTC_CPP_EXPORT RtcpFir {
 	RtcpFbHeader header;
-	RtcpFirFci parts[1];
+	RtcpFirFci _fcis[1];
 
-	unsigned int getFciCount() const;
-	[[nodiscard]] static size_t SizeWithFCIs(size_t count);
-	void preparePacket(SSRC senderSSRC, std::vector<RtcpFirFci> fcis);
+	[[nodiscard]] static size_t SizeWithFcis(int count);
+
+	int getFciCount() const;
+	[[nodiscard]] const RtcpFirFci *getFci(int num) const; // nullptr if out-of-bounds
+	void preparePacket(SSRC senderSSRC, const std::vector<RtcpFirFci> &fcis);
 
 	void log() const;
 };

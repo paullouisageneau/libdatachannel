@@ -630,10 +630,11 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 						// RFC 5104 FIR (PT=206, FMT=4): have variable number FCIs which is determined by
 						// overall rtcpfb length
 						auto fir = reinterpret_cast<const RtcpFir *>(header);
-						for (unsigned int i = 0; i < fir->getFciCount(); i++) {
-							ssrcs.insert(fir->parts[i].getSSRC());
+						for (int i = 0; i < fir->getFciCount(); i++) {
+							if (const auto *fci = fir->getFci(i))
+								ssrcs.insert(fci->getSSRC());
 						}
-					}          
+					}
 				}
 				break;
 
