@@ -630,7 +630,7 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 				break;
 
 			case 204: // APP
-				if (length >= sizeof(RtcpHeader) + sizeof(SSRC) + 4) {
+				if (length >= RtcpApp::SizeWithData(0)) {
 					auto rtcpapp = reinterpret_cast<RtcpApp *>(header);
 					ssrcs.insert(rtcpapp->ssrc());
 				}
