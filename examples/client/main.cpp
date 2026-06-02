@@ -28,8 +28,6 @@
 #include <thread>
 #include <unordered_map>
 
-#include <boost/asio.hpp>
-
 using namespace std::chrono_literals;
 using std::shared_ptr;
 using std::weak_ptr;

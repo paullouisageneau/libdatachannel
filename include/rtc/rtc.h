@@ -70,10 +70,16 @@ extern "C" {
 
 // libdatachannel C API
 
-struct rtcAsioSettings {
+typedef struct {
 
-	void *userContext;
-};
+	void(RTC_API *startCallback)(void *asioContext);
+	void(RTC_API *stopCallback)(void *asioContext);
+	void *(RTC_API *scheduleTask)(int64_t deadline, void (*task)(void *),
+	                              void (*taskDeleter)(void *), void *taskContext,
+	                              void *asioContext);
+
+	void *asioContext;
+} rtcAsioSettings;
 
 typedef enum {
 	RTC_NEW = 0,
@@ -496,11 +502,12 @@ RTC_C_EXPORT int rtcGetSsrcsForTrack(int tr, uint32_t *buffer, int count);
 RTC_C_EXPORT int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char *cname, int cnameSize);
 
 // Get all SSRCs for given media type in given SDP
-RTC_C_EXPORT int rtcGetSsrcsForType(const char *mediaType, const char *sdp, uint32_t *buffer, int bufferSize);
+RTC_C_EXPORT int rtcGetSsrcsForType(const char *mediaType, const char *sdp, uint32_t *buffer,
+                                    int bufferSize);
 
 // Set SSRC for given media type in given SDP
-RTC_C_EXPORT int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, const int bufferSize,
-                                   rtcSsrcForTypeInit *init);
+RTC_C_EXPORT int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer,
+                                   const int bufferSize, rtcSsrcForTypeInit *init);
 
 // For backward compatibility, do not use
 RTC_C_EXPORT RTC_DEPRECATED int rtcSetNeedsToSendRtcpSr(int id);
@@ -557,6 +564,7 @@ RTC_C_EXPORT int rtcGetWebSocketServerPort(int wsserver);
 
 // Note: Applied when threads are spawned
 RTC_C_EXPORT int rtcSetThreadPoolSize(unsigned int count);
+RTC_C_EXPORT int rtcSetAsioSettings(rtcAsioSettings const *settings);
 
 typedef struct {
 	int recvBufferSize;          // in bytes, <= 0 means optimized default

@@ -13,7 +13,9 @@
 #include "test.hpp"
 #include <rtc/rtc.hpp>
 
+#ifdef LIBDATACHANNEL_TEST_USE_BOOST_ASIO
 #include <boost/asio.hpp>
+#endif
 
 using namespace std;
 using namespace chrono_literals;
@@ -136,6 +138,7 @@ int main(int argc, char **argv) {
 	int failed_tests = 0;
 	steady_clock::time_point startTime, endTime;
 
+#ifdef LIBDATACHANNEL_TEST_USE_BOOST_ASIO
 	rtc::AsioSettings asioSettings;
 
 	boost::asio::io_context ioContext;
@@ -174,6 +177,7 @@ int main(int argc, char **argv) {
 	};
 
 	rtc::SetAsioSettings(asioSettings);
+#endif
 
 	startTime = steady_clock::now();
 

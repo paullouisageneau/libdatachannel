@@ -1881,6 +1881,57 @@ int rtcSetThreadPoolSize(unsigned int count) {
 	});
 }
 
+RTC_C_EXPORT int rtcSetAsioSettings(rtcAsioSettings const *s) {
+	return wrap([&] {
+		rtc::AsioSettings cppSettings;
+
+		if (s == nullptr || s->scheduleTask == nullptr) {
+			return RTC_ERR_INVALID;
+		}
+
+		if (s->startCallback != nullptr) {
+			cppSettings.startCallback = [startCallback = s->startCallback,
+			                             asioContext = s->asioContext] {
+				startCallback(asioContext);
+			};
+		}
+
+		if (s->stopCallback != nullptr) {
+			cppSettings.stopCallback = [stopCallback = s->stopCallback,
+			                            asioContext = s->asioContext] {
+				stopCallback(asioContext);
+			};
+		}
+
+		cppSettings.scheduleTask = [scheduleTask = s->scheduleTask, asioContext = s->asioContext](
+		                               std::chrono::steady_clock::time_point tp,
+		                               std::function<void()> &&task) {
+			int64_t deadline =
+			    std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch())
+			        .count();
+
+			auto cTask = new std::function<void()>(std::move(task));
+
+			scheduleTask(
+			    deadline,
+			    [](void *taskContext) {
+				    auto task = static_cast<std::function<void()> *>(taskContext);
+				    (*task)();
+			    },
+			    [](void *taskContext) {
+				    auto task = static_cast<std::function<void()> *>(taskContext);
+				    delete task;
+			    },
+			    cTask, asioContext);
+
+			return cTask;
+		};
+
+		SetAsioSettings(cppSettings);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcSetSctpSettings(const rtcSctpSettings *settings) {
 	return wrap([&] {
 		SctpSettings s = {};
