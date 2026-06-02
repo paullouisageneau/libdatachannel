@@ -7,9 +7,9 @@
  */
 
 #include "wstransport.hpp"
+#include "asio.hpp"
 #include "httpproxytransport.hpp"
 #include "tcptransport.hpp"
-#include "threadpool.hpp"
 #include "tlstransport.hpp"
 #include "utils.hpp"
 
@@ -102,7 +102,7 @@ void WsTransport::close() {
 		return;
 	}
 
-	ThreadPool::Instance().schedule(std::chrono::seconds(10), [weak_this = weak_from_this()]() {
+	Asio::Instance().schedule(std::chrono::seconds(10), [weak_this = weak_from_this()]() {
 		if (auto locked = weak_this.lock()) {
 			PLOG_DEBUG << "WebSocket close timeout";
 			locked->changeState(State::Disconnected);

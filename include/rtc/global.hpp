@@ -53,6 +53,16 @@ struct SctpSettings {
 	optional<std::chrono::milliseconds> heartbeatInterval;
 };
 
+struct AsioSettings {
+	std::function<void(void *userContext)> startCallback;
+	std::function<void(void *userContext)> stopCallback;
+	std::function<void(std::chrono::steady_clock::time_point deadline, std::function<void()> task,
+	                   void *userContext)>
+	    scheduleTask;
+
+	void *userContext;
+};
+
 RTC_CPP_EXPORT void SetSctpSettings(SctpSettings s);
 
 // Optional global preload and cleanup

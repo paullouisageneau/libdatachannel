@@ -27,6 +27,7 @@ int ThreadPool::count() const {
 
 void ThreadPool::spawn(int count) {
 	std::unique_lock lock(mWorkersMutex);
+	mWorkers.reserve(count);
 	while (count-- > 0)
 		mWorkers.emplace_back(std::bind(&ThreadPool::run, this));
 }

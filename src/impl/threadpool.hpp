@@ -27,9 +27,6 @@
 
 namespace rtc::impl {
 
-template <class F, class... Args>
-using invoke_future_t = std::future<std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>>;
-
 class ThreadPool final {
 public:
 	using clock = std::chrono::steady_clock;
@@ -48,16 +45,19 @@ public:
 	void run();
 	bool runOne();
 
-	template <class F, class... Args>
-	auto enqueue(F &&f, Args &&...args) noexcept -> invoke_future_t<F, Args...>;
+	static void start(void *userContext) noexcept {
+		auto *self = static_cast<ThreadPool *>(userContext);
+		self->spawn();
+	}
 
-	template <class F, class... Args>
-	auto schedule(clock::duration delay, F &&f, Args &&...args) noexcept
-	    -> invoke_future_t<F, Args...>;
+	static void schedule(std::chrono::steady_clock::time_point deadline, std::function<void()> task,
+	                     void *userContext) noexcept {
+		auto *self = static_cast<ThreadPool *>(userContext);
+		std::unique_lock lock(self->mMutex);
 
-	template <class F, class... Args>
-	auto schedule(clock::time_point time, F &&f, Args &&...args) noexcept
-	    -> invoke_future_t<F, Args...>;
+		self->mTasks.push({deadline, [task = std::move(task)]() { task(); }});
+		self->mTasksCondition.notify_one();
+	}
 
 private:
 	ThreadPool();
@@ -80,38 +80,6 @@ private:
 	std::condition_variable mTasksCondition, mWaitingCondition;
 	mutable std::mutex mMutex, mWorkersMutex;
 };
-
-template <class F, class... Args>
-auto ThreadPool::enqueue(F &&f, Args &&...args) noexcept -> invoke_future_t<F, Args...> {
-	return schedule(clock::now(), std::forward<F>(f), std::forward<Args>(args)...);
-}
-
-template <class F, class... Args>
-auto ThreadPool::schedule(clock::duration delay, F &&f, Args &&...args) noexcept
-    -> invoke_future_t<F, Args...> {
-	return schedule(clock::now() + delay, std::forward<F>(f), std::forward<Args>(args)...);
-}
-
-template <class F, class... Args>
-auto ThreadPool::schedule(clock::time_point time, F &&f, Args &&...args) noexcept
-    -> invoke_future_t<F, Args...> {
-	std::unique_lock lock(mMutex);
-	using R = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
-	auto bound = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
-	auto task = std::make_shared<std::packaged_task<R()>>([bound = std::move(bound)]() mutable {
-		try {
-			return bound();
-		} catch (const std::exception &e) {
-			PLOG_WARNING << e.what();
-			throw;
-		}
-	});
-	std::future<R> result = task->get_future();
-
-	mTasks.push({time, [task = std::move(task)]() { return (*task)(); }});
-	mTasksCondition.notify_one();
-	return result;
-}
 
 } // namespace rtc::impl
 

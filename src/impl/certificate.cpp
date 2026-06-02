@@ -7,7 +7,7 @@
  */
 
 #include "certificate.hpp"
-#include "threadpool.hpp"
+#include "asio.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -16,6 +16,8 @@
 #include <mutex>
 #include <sstream>
 #include <unordered_map>
+
+#include <plog/Log.h>
 
 namespace rtc::impl {
 
@@ -513,11 +515,11 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 3600 * -1) ||
 	    !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 3600 * 24 * 365) ||
 #if OPENSSL_VERSION_NUMBER >= 0x30000000
-	    !X509_set_version(x509.get(), X509_VERSION_1) || 
+	    !X509_set_version(x509.get(), X509_VERSION_1) ||
 #else
-		!X509_set_version(x509.get(), 0) ||
-#endif 					
-		!BN_rand(serial_number.get(), serialSize, 0, 0) ||
+	    !X509_set_version(x509.get(), 0) ||
+#endif
+	    !BN_rand(serial_number.get(), serialSize, 0, 0) ||
 	    !BN_to_ASN1_INTEGER(serial_number.get(), X509_get_serialNumber(x509.get())) ||
 	    !X509_NAME_add_entry_by_NID(name.get(), NID_commonName, MBSTRING_UTF8, commonNameBytes, -1,
 	                                -1, 0) ||
@@ -595,7 +597,7 @@ string make_fingerprint(X509 *x509, CertificateFingerprint::Algorithm fingerprin
 // Common for GnuTLS, Mbed TLS, and OpenSSL
 
 future_certificate_ptr make_certificate(CertificateType type) {
-	return ThreadPool::Instance().enqueue([type, token = Init::Instance().token()]() {
+	return Asio::Instance().enqueue([type, token = Init::Instance().token()]() {
 		return std::make_shared<Certificate>(Certificate::Generate(type, "libdatachannel"));
 	});
 }

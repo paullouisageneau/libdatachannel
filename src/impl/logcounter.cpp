@@ -7,6 +7,7 @@
  */
 
 #include "logcounter.hpp"
+#include "asio.hpp"
 
 namespace rtc::impl {
 
@@ -20,7 +21,7 @@ LogCounter::LogCounter(plog::Severity severity, const std::string &text,
 
 LogCounter &LogCounter::operator++(int) {
 	if (mData->mCount++ == 0) {
-		ThreadPool::Instance().schedule(
+		Asio::Instance().schedule(
 		    mData->mDuration,
 		    [](weak_ptr<LogData> data) {
 			    if (auto ptr = data.lock()) {

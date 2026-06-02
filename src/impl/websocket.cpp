@@ -531,7 +531,7 @@ void WebSocket::scheduleConnectionTimeout() {
 	auto defaultTimeout = 30s;
 	auto timeout = config.connectionTimeout.value_or(milliseconds(defaultTimeout));
 	if (timeout > milliseconds::zero()) {
-		ThreadPool::Instance().schedule(timeout, [weak_this = weak_from_this()]() {
+		Asio::Instance().schedule(timeout, [weak_this = weak_from_this()]() {
 			if (auto locked = weak_this.lock()) {
 				if (locked->state == WebSocket::State::Connecting) {
 					PLOG_WARNING << "WebSocket connection timed out";

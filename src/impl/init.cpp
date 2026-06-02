@@ -101,7 +101,6 @@ std::shared_future<void> Init::cleanup() {
 void Init::setThreadPoolSize(unsigned int count) {
 	std::lock_guard lock(mMutex);
 	mThreadPoolSize = count;
-
 }
 
 void Init::setSctpSettings(SctpSettings s) {
@@ -110,6 +109,15 @@ void Init::setSctpSettings(SctpSettings s) {
 		SctpTransport::SetSettings(s);
 
 	mCurrentSctpSettings = std::move(s); // store for next init
+}
+
+bool Init::setAsioContext(std::optional<AsioSettings> s) {
+	std::lock_guard lock(mMutex);
+	if (mGlobal)
+		return false;
+
+	mAsioSettings = std::move(s); // store for next init
+	return true;
 }
 
 void Init::doInit() {
@@ -126,10 +134,25 @@ void Init::doInit() {
 		throw std::runtime_error("WSAStartup failed, error=" + std::to_string(WSAGetLastError()));
 #endif
 
-	unsigned int count = mThreadPoolSize > 0 ? mThreadPoolSize : std::thread::hardware_concurrency();
-	count = std::max(count, MIN_THREADPOOL_SIZE);
-	PLOG_DEBUG << "Spawning " << count << " threads";
-	ThreadPool::Instance().spawn(count);
+	// If asio interface is not setup, fallback to our threadpool
+	if (!mAsioSettings) {
+		auto &s = mAsioSettings.emplace();
+		s.startCallback = [poolSize = mThreadPoolSize](void *userContext) {
+			auto self = static_cast<ThreadPool *>(userContext);
+			self->spawn(poolSize);
+		};
+		s.stopCallback = [](void *userContext) {
+			auto self = static_cast<ThreadPool *>(userContext);
+			self->join();
+			self->clear();
+		};
+
+		s.scheduleTask = &ThreadPool::schedule;
+		s.userContext = &ThreadPool::Instance();
+	}
+
+	Asio::Instance().init(*mAsioSettings);
+	Asio::Instance().start();
 
 #if RTC_ENABLE_WEBSOCKET
 	PollService::Instance().start();
@@ -165,8 +188,7 @@ void Init::doCleanup() {
 
 	PLOG_DEBUG << "Global cleanup";
 
-	ThreadPool::Instance().join();
-	ThreadPool::Instance().clear();
+	Asio::Instance().stop();
 #if RTC_ENABLE_WEBSOCKET
 	PollService::Instance().join();
 #endif

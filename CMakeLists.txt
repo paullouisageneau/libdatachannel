@@ -156,6 +156,7 @@ set(LIBDATACHANNEL_HEADERS
 )
 
 set(LIBDATACHANNEL_IMPL_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/asio.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/certificate.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/channel.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/datachannel.cpp
@@ -189,6 +190,7 @@ set(LIBDATACHANNEL_IMPL_SOURCES
 )
 
 set(LIBDATACHANNEL_IMPL_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/asio.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/certificate.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/channel.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/datachannel.hpp
@@ -515,6 +517,11 @@ add_library(LibDataChannel::LibDataChannel ALIAS datachannel)
 set_target_properties(datachannel-static PROPERTIES EXPORT_NAME LibDataChannelStatic)
 add_library(LibDataChannel::LibDataChannelStatic ALIAS datachannel-static)
 
+if(MSVC)
+	target_compile_options(datachannel PRIVATE /MP)
+	target_compile_options(datachannel-static PRIVATE /MP)
+endif()
+
 if(NOT MSVC)
 	target_compile_options(datachannel PRIVATE -Wall -Wextra)
 	target_compile_options(datachannel-static PRIVATE -Wall -Wextra)
@@ -611,6 +618,11 @@ if(NOT NO_TESTS)
 	target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
 	target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_link_libraries(datachannel-benchmark datachannel Threads::Threads)
+	
+	if(MSVC)
+		target_compile_options(datachannel-tests PRIVATE /MP)
+		target_compile_options(datachannel-benchmark PRIVATE /MP)
+	endif()
 endif()
 
 # Examples
