@@ -17,6 +17,10 @@
 
 namespace rtc {
 
+#ifdef None
+#undef None
+#endif
+
 enum class LogLevel { // Don't change, it must match plog severity
 	None = 0,
 	Fatal = 1,
