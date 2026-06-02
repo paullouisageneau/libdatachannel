@@ -111,7 +111,7 @@ void Init::setSctpSettings(SctpSettings s) {
 	mCurrentSctpSettings = std::move(s); // store for next init
 }
 
-bool Init::setAsioContext(std::optional<AsioSettings> s) {
+bool Init::setAsioSettings(std::optional<AsioSettings> s) {
 	std::lock_guard lock(mMutex);
 	if (mGlobal)
 		return false;
@@ -137,18 +137,17 @@ void Init::doInit() {
 	// If asio interface is not setup, fallback to our threadpool
 	if (!mAsioSettings) {
 		auto &s = mAsioSettings.emplace();
-		s.startCallback = [poolSize = mThreadPoolSize](void *userContext) {
-			auto self = static_cast<ThreadPool *>(userContext);
-			self->spawn(poolSize);
+		s.startCallback = [poolSize = mThreadPoolSize]() {
+			ThreadPool::Instance().spawn(poolSize);
 		};
-		s.stopCallback = [](void *userContext) {
-			auto self = static_cast<ThreadPool *>(userContext);
-			self->join();
-			self->clear();
+		s.stopCallback = []() {
+			auto &threadPool = ThreadPool::Instance();
+			threadPool.join();
+			threadPool.clear();
 		};
 
-		s.scheduleTask = &ThreadPool::schedule;
-		s.userContext = &ThreadPool::Instance();
+		s.scheduleTask = std::bind(&ThreadPool::schedule, &ThreadPool::Instance(),
+		                           std::placeholders::_1, std::placeholders::_2);
 	}
 
 	Asio::Instance().init(*mAsioSettings);

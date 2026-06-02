@@ -68,11 +68,12 @@ extern "C" {
 #define DEPRECATED
 #endif
 
-// libdatachannel asio C API
-
-#include "asio.h"
-
 // libdatachannel C API
+
+struct rtcAsioSettings {
+
+	void *userContext;
+};
 
 typedef enum {
 	RTC_NEW = 0,

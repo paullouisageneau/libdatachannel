@@ -76,7 +76,7 @@ auto Asio::schedule(clock::time_point time, F &&f, Args &&...args) noexcept
 
 	std::future<R> result = task->get_future();
 
-	mSettings.scheduleTask(time, [task = std::move(task)]() { (*task)(); }, mSettings.userContext);
+	mSettings.scheduleTask(time, [task = std::move(task)]() { (*task)(); });
 
 	return result;
 }

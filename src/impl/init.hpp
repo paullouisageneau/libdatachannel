@@ -35,7 +35,7 @@ public:
 
 	void setThreadPoolSize(unsigned int count);
 	void setSctpSettings(SctpSettings s);
-	bool setAsioContext(std::optional<AsioSettings> s);
+	bool setAsioSettings(std::optional<AsioSettings> s);
 
 private:
 	Init();

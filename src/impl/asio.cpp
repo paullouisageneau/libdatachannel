@@ -9,8 +9,8 @@ Asio &Asio::Instance() {
 
 void Asio::init(AsioSettings const &s) { mSettings = s; }
 
-void Asio::start() { mSettings.startCallback(mSettings.userContext); }
+void Asio::start() { mSettings.startCallback(); }
 
-void Asio::stop() { mSettings.stopCallback(mSettings.userContext); }
+void Asio::stop() { mSettings.stopCallback(); }
 
 } // namespace rtc::impl

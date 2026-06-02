@@ -50,13 +50,12 @@ public:
 		self->spawn();
 	}
 
-	static void schedule(std::chrono::steady_clock::time_point deadline, std::function<void()> task,
-	                     void *userContext) noexcept {
-		auto *self = static_cast<ThreadPool *>(userContext);
-		std::unique_lock lock(self->mMutex);
+	void schedule(std::chrono::steady_clock::time_point deadline,
+	              std::function<void()> task) noexcept {
+		std::unique_lock lock(mMutex);
 
-		self->mTasks.push({deadline, [task = std::move(task)]() { task(); }});
-		self->mTasksCondition.notify_one();
+		mTasks.push({deadline, [task = std::move(task)]() { task(); }});
+		mTasksCondition.notify_one();
 	}
 
 private:

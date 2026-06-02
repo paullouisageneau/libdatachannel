@@ -85,6 +85,7 @@ void InitLogger(plog::Severity severity, plog::IAppender *appender) {
 
 void SetThreadPoolSize(unsigned int count) { impl::Init::Instance().setThreadPoolSize(count); }
 void SetSctpSettings(SctpSettings s) { impl::Init::Instance().setSctpSettings(std::move(s)); }
+void SetAsioSettings(AsioSettings s) { impl::Init::Instance().setAsioSettings(std::move(s)); }
 
 bool Preload() { return impl::Init::Instance().preload(); }
 std::shared_future<void> Cleanup() { return impl::Init::Instance().cleanup(); }
