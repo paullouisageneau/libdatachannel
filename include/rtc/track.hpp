@@ -43,8 +43,8 @@ public:
 	bool isClosed(void) const override;
 	size_t maxMessageSize() const override;
 
-	void sendFrame(binary data, FrameInfo info);
-	void sendFrame(const byte *data, size_t size, FrameInfo info);
+	bool sendFrame(binary data, FrameInfo info);
+	bool sendFrame(const byte *data, size_t size, FrameInfo info);
 	void onFrame(std::function<void(binary data, FrameInfo info)> callback);
 
 	bool requestKeyframe(SSRC ssrc=0, bool retransmit=false);

@@ -42,12 +42,12 @@ bool Track::isClosed(void) const { return impl()->isClosed(); }
 
 size_t Track::maxMessageSize() const { return impl()->maxMessageSize(); }
 
-void Track::sendFrame(binary data, FrameInfo info) {
-	impl()->outgoing(make_message(std::move(data), std::make_shared<FrameInfo>(std::move(info))));
+bool Track::sendFrame(binary data, FrameInfo info) {
+	return impl()->outgoing(make_message(std::move(data), std::make_shared<FrameInfo>(std::move(info))));
 }
 
-void Track::sendFrame(const byte *data, size_t size, FrameInfo info) {
-	sendFrame(binary(data, data + size), std::move(info));
+bool Track::sendFrame(const byte *data, size_t size, FrameInfo info) {
+	return sendFrame(binary(data, data + size), std::move(info));
 }
 
 void Track::onFrame(std::function<void(binary data, FrameInfo frame)> callback) {
