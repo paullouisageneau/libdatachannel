@@ -625,6 +625,15 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 						if (remb->hasValidId())
 							for (int i = 0; i < remb->getSSRCCount(); ++i)
 								ssrcs.insert(remb->getSSRC(i));
+					} else if (header->payloadType() == 206 && rtcpfb->header.reportCount() == 4 &&
+						length >= sizeof(RtcpFir)) {
+						// RFC 5104 FIR (PT=206, FMT=4): have variable number FCIs which is determined by
+						// overall rtcpfb length
+						auto fir = reinterpret_cast<const RtcpFir *>(header);
+						for (int i = 0; i < fir->getFciCount(); i++) {
+							if (const auto *fci = fir->getFci(i))
+								ssrcs.insert(fci->getSSRC());
+						}
 					}
 				}
 				break;

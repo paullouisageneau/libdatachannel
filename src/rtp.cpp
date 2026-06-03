@@ -657,14 +657,38 @@ void RtcpPli::preparePacket(SSRC messageSSRC) {
 
 void RtcpPli::log() const { header.log(); }
 
-unsigned int RtcpFir::Size() { return sizeof(RtcpFbHeader) + sizeof(RtcpFirPart); }
+SSRC RtcpFirFci::getSSRC() const { return ntohl(_ssrc); }
 
-void RtcpFir::preparePacket(SSRC messageSSRC, uint8_t seqNo) {
-	header.header.prepareHeader(206, 4, 2 + 2 * 1);
-	header.setPacketSenderSSRC(messageSSRC);
-	header.setMediaSourceSSRC(messageSSRC);
-	parts[0].ssrc = htonl(messageSSRC);
-	parts[0].seqNo = seqNo;
+uint8_t RtcpFirFci::getSeqNo() const { return _seqNo; }
+
+void RtcpFirFci::preparePacket(SSRC ssrc, uint8_t seqNo) {
+	_ssrc = htonl(ssrc);
+	_seqNo = seqNo;
+	_dummy1 = 0;
+	_dummy2 = 0;
+}
+
+size_t RtcpFir::SizeWithFcis(int count) {
+	return sizeof(RtcpFir) + (count - 1) * sizeof(RtcpFirFci);
+}
+
+int RtcpFir::getFciCount() const {
+	return int((header.header.lengthInBytes() - sizeof(RtcpFbHeader)) / sizeof(RtcpFirFci));
+}
+
+const RtcpFirFci *RtcpFir::getFci(int num) const {
+	if (num < 0 || num >= getFciCount())
+		return nullptr;
+	return &_fcis[num];
+}
+
+void RtcpFir::preparePacket(SSRC senderSSRC, const std::vector<RtcpFirFci> &fcis) {
+	header.header.prepareHeader(
+	    206, 4, uint16_t((offsetof(RtcpFir, _fcis) / sizeof(uint32_t)) + (2 * fcis.size()) - 1));
+	header.setPacketSenderSSRC(senderSSRC);
+	header.setMediaSourceSSRC(0);
+	for (size_t i = 0; i < fcis.size(); ++i)
+		_fcis[i] = fcis[i];
 }
 
 void RtcpFir::log() const { header.log(); }

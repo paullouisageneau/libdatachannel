@@ -301,20 +301,27 @@ struct RTC_CPP_EXPORT RtcpPli {
 	void log() const;
 };
 
-struct RTC_CPP_EXPORT RtcpFirPart {
-	uint32_t ssrc;
-	uint8_t seqNo;
-	uint8_t dummy1;
-	uint16_t dummy2;
+struct RTC_CPP_EXPORT RtcpFirFci {
+	uint32_t _ssrc;
+	uint8_t _seqNo;
+	uint8_t _dummy1;
+	uint16_t _dummy2;
+
+	void preparePacket(SSRC ssrc, uint8_t seqNo);
+
+	[[nodiscard]] SSRC getSSRC() const;
+	[[nodiscard]] uint8_t getSeqNo() const;
 };
 
 struct RTC_CPP_EXPORT RtcpFir {
 	RtcpFbHeader header;
-	RtcpFirPart parts[1];
+	RtcpFirFci _fcis[1];
 
-	static unsigned int Size();
+	[[nodiscard]] static size_t SizeWithFcis(int count);
 
-	void preparePacket(SSRC messageSSRC, uint8_t seqNo);
+	int getFciCount() const;
+	[[nodiscard]] const RtcpFirFci *getFci(int num) const; // nullptr if out-of-bounds
+	void preparePacket(SSRC senderSSRC, const std::vector<RtcpFirFci> &fcis);
 
 	void log() const;
 };

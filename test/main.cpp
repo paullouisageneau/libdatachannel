@@ -31,6 +31,8 @@ TestResult test_simulcast_sdp_parsing();
 TestResult test_turn_connectivity();
 TestResult test_track();
 TestResult test_video_layers_allocation();
+TestResult test_fir_sdp();
+TestResult test_fir_offer_yes_answer_yes();
 TestResult test_rtx_attribute();
 TestResult test_rtx_description_addrtx();
 TestResult test_rtx_description_addrtx_no_audio();
@@ -99,6 +101,8 @@ static const vector<Test> tests = {
     Test("RTX negotiation fallback", test_rtx_attribute),
     Test("RTX dropped packet recovery", test_rtx_dropped_packet),
     Test("RTX multi-codec PT mapping", test_rtx_multi_codec),
+    Test("FIR SDP parsing", test_fir_sdp),
+    Test("FIR offer answer handling", test_fir_offer_yes_answer_yes),
     Test("RTCP APP single packet", test_rtcp_app_single_packet),
     Test("RTCP APP compound packet", test_rtcp_app_compound_packet),
     Test("RTCP APP empty data", test_rtcp_app_empty_data),

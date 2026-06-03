@@ -14,6 +14,8 @@
 #include "description.hpp"
 #include "mediahandler.hpp"
 
+#include <vector>
+
 namespace rtc {
 
 namespace impl {
@@ -45,7 +47,8 @@ public:
 	void sendFrame(const byte *data, size_t size, FrameInfo info);
 	void onFrame(std::function<void(binary data, FrameInfo info)> callback);
 
-	bool requestKeyframe();
+	bool requestKeyframe(SSRC ssrc=0, bool retransmit=false);
+	bool requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit=false);
 	bool requestBitrate(unsigned int bitrate);
 	bool sendRtcpApp(uint32_t ssrc, const RtcpAppName &name, uint8_t subtype,
 	                 const binary &data = binary{});
