@@ -45,7 +45,8 @@ void RtcpAppHandler::incoming(message_vector &messages,
 				uint8_t subtype = app->subtype();
 				RtcpAppName name = app->name();
 				size_t dataLen = app->dataSize();
-				binary data(app->data(), app->data() + dataLen);
+				auto dataBytes = reinterpret_cast<const byte *>(app->data());
+				binary data(dataBytes, dataBytes + dataLen);
 
 				PLOG_DEBUG << "Got RTCP APP, name=" << name << " subtype=" << (int)subtype
 				           << " dataLen=" << dataLen;
