@@ -638,11 +638,17 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 				}
 				break;
 
+			case 204: // APP
+				if (length >= RtcpApp::SizeWithData(0)) {
+					auto rtcpapp = reinterpret_cast<RtcpApp *>(header);
+					ssrcs.insert(rtcpapp->ssrc());
+				}
+				break;
+
 			default:
 				// PT=203 == Goodbye
-				// PT=204 == Application Specific
 				// PT=207 == Extended Report
-				if (header->payloadType() != 203 && header->payloadType() != 204 &&
+				if (header->payloadType() != 203 &&
 				    header->payloadType() != 207) {
 					COUNTER_UNKNOWN_PACKET_TYPE++;
 				}
