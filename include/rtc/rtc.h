@@ -489,6 +489,9 @@ RTC_C_EXPORT int rtcGetSsrcsForTrack(int tr, uint32_t *buffer, int count);
 // Get CName for SSRC
 RTC_C_EXPORT int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char *cname, int cnameSize);
 
+// Get all payload types for given codec in given SDP
+RTC_C_EXPORT int rtcGetPayloadTypesForCodec(const char *sdp, const char *ccodec, int *buffer, int size);
+
 // Get all SSRCs for given media type in given SDP
 RTC_C_EXPORT int rtcGetSsrcsForType(const char *mediaType, const char *sdp, uint32_t *buffer, int bufferSize);
 
