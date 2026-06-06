@@ -154,6 +154,9 @@ message_ptr VP8RtpDepacketizer::reassemble(message_buffer &buffer) {
 					// Add current payload too
 					frame.insert(frame.end(), payloadData, payloadData + payloadSize);
 				}
+			} else if ((firstByte & S) && rtpHeader->marker()) {
+				// Single-packet frame
+				frame.insert(frame.end(), payloadData, payloadData + payloadSize);
 			}
 			payloads.clear();
 			continuousSequence = true;
