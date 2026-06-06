@@ -1363,6 +1363,21 @@ int rtcSetVP8Packetizer(int tr, const rtcPacketizerInit *init) {
 	});
 }
 
+int rtcSetVP9Packetizer(int tr, const rtcPacketizerInit *init) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		// create RTP configuration
+		auto rtpConfig = createRtpPacketizationConfig(init);
+		emplaceRtpConfig(rtpConfig, tr);
+		// create packetizer
+		auto maxFragmentSize =
+		    init && init->maxFragmentSize ? init->maxFragmentSize : RTC_DEFAULT_MAX_FRAGMENT_SIZE;
+		auto packetizer = std::make_shared<VP9RtpPacketizer>(rtpConfig, maxFragmentSize);
+		track->setMediaHandler(packetizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcSetOpusPacketizer(int tr, const rtcPacketizerInit *init) {
 	return wrap([&] {
 		auto track = getTrack(tr);
@@ -1448,6 +1463,24 @@ int rtcSetH265Depacketizer(int tr, rtcNalUnitSeparator nalSeparator) {
 	});
 }
 
+int rtcSetVP8Depacketizer(int tr) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<VP8RtpDepacketizer>();
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetVP9Depacketizer(int tr) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<VP9RtpDepacketizer>();
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcSetOpusDepacketizer(int tr) {
 	return wrap([&] {
 		auto track = getTrack(tr);
@@ -1461,6 +1494,33 @@ int rtcSetAACDepacketizer(int tr) {
 	return wrap([&] {
 		auto track = getTrack(tr);
 		auto depacketizer = std::make_shared<AACRtpDepacketizer>();
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetPCMUDepacketizer(int tr) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<PCMURtpDepacketizer>();
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetPCMADepacketizer(int tr) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<PCMARtpDepacketizer>();
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetG722Depacketizer(int tr) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<G722RtpDepacketizer>();
 		track->setMediaHandler(depacketizer);
 		return RTC_ERR_SUCCESS;
 	});
