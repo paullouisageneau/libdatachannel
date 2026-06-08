@@ -56,11 +56,11 @@ shared_ptr<TcpTransport> TcpServer::accept() {
 
 		mInterrupter.process(pfd[0]);
 
-		if (pfd[1].revents & POLLNVAL || pfd[1].revents & POLLERR) {
-			throw std::runtime_error("Error while waiting for socket connection");
+		if (pfd[1].revents & POLLNVAL) {
+			throw std::runtime_error("Invalid socket");
 		}
 
-		if (pfd[1].revents & POLLIN) {
+		if (pfd[1].revents & POLLIN || pfd[1].revents & POLLERR) {
 			struct sockaddr_storage addr;
 			socklen_t addrlen = sizeof(addr);
 			socket_t incomingSock = ::accept(mSock, (struct sockaddr *)&addr, &addrlen);
