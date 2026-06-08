@@ -63,6 +63,10 @@ std::vector<binary> AV1RtpPacketizer::extractTemporalUnitObus(const binary &data
 			return obus;
 		}
 
+		size_t startIndex = index;
+		bool hasExtension = (data.at(index) & obuHasExtensionMask) != byte(0);
+		size_t headerSize = obuHeaderSize + (hasExtension ? 1 : 0);
+
 		if ((data.at(index) & obuHasExtensionMask) != byte(0)) {
 			index++;
 		}
@@ -86,8 +90,16 @@ std::vector<binary> AV1RtpPacketizer::extractTemporalUnitObus(const binary &data
 			}
 		}
 
-		obus.emplace_back(data.begin() + index,
-		                  data.begin() + index + obuHeaderSize + leb128Size + obuLength);
+		size_t payloadStart = startIndex + headerSize + leb128Size;
+		binary obu;
+		obu.reserve(headerSize + obuLength);
+		obu.push_back(data.at(startIndex) & ~obuHasSizeMask);
+		if (hasExtension)
+			obu.push_back(data.at(startIndex + 1));
+		if (payloadStart + obuLength <= data.size())
+			obu.insert(obu.end(), data.begin() + payloadStart,
+			           data.begin() + payloadStart + obuLength);
+		obus.push_back(std::move(obu));
 
 		index += obuHeaderSize + leb128Size + obuLength;
 	}
