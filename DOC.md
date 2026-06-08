@@ -1055,6 +1055,7 @@ int rtcSetH264Packetizer(int tr, const rtcPacketizerInit *init)
 int rtcSetH265Packetizer(int tr, const rtcPacketizerInit *init)
 int rtcSetAV1Packetizer(int tr, const rtcPacketizerInit *init)
 int rtcSetVP8Packetizer(int tr, const rtcPacketizerInit *init)
+int rtcSetVP9Packetizer(int tr, const rtcPacketizerInit *init)
 int rtcSetOpusPacketizer(int tr, const rtcPacketizerInit *init)
 int rtcSetAACPacketizer(int tr, const rtcPacketizerInit *init)
 int rtcSetPCMUPacketizer(int tr, const rtcPacketizerInit *init)
@@ -1076,8 +1077,13 @@ Return value: `RTC_ERR_SUCCESS` or a negative error code
 ```
 int rtcSetH264Depacketizer(int tr, rtcNalUnitSeparator nalSeparator)
 int rtcSetH265Depacketizer(int tr, rtcNalUnitSeparator nalSeparator)
+int rtcSetVP8Depacketizer(int tr)
+int rtcSetVP9Depacketizer(int tr)
 int rtcSetOpusDepacketizer(int tr)
 int rtcSetAACDepacketizer(int tr)
+int rtcSetPCMUDepacketizer(int tr)
+int rtcSetPCMADepacketizer(int tr)
+int rtcSetG722Depacketizer(int tr)
 ```
 
 Sets a depacketizer on a Track, which will reassemble incoming RTP packets into media frames. The depacketizer is set as the media handler on the track.
