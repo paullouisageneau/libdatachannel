@@ -746,16 +746,19 @@ void TlsTransport::doRecv() {
 				return;
 
 			message_ptr message = std::move(*next);
-			if (message->size() > 0)
-				BIO_write(mInBio, message->data(), int(message->size())); // Input
-			else
+			if (message->size() == 0) {
 				recv(message); // Pass zero-sized messages through
+				continue;
+			}
 
+			bool incomingWritten = false;
 			if (state() == State::Connecting) {
 				// Continue the handshake
 				int ret, err;
 				{
 					std::lock_guard lock(mSslMutex);
+					BIO_write(mInBio, message->data(), int(message->size()));
+					incomingWritten = true;
 					ret = SSL_do_handshake(mSsl);
 					err = SSL_get_error(mSsl, ret);
 					flushOutput();
@@ -773,6 +776,8 @@ void TlsTransport::doRecv() {
 				while (true) {
 					{
 						std::lock_guard lock(mSslMutex);
+						if (!incomingWritten)
+							BIO_write(mInBio, message->data(), int(message->size()));
 						ret = SSL_read(mSsl, buffer, bufferSize);
 						err = SSL_get_error(mSsl, ret);
 						flushOutput(); // SSL_read() can also cause write operations
