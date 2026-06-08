@@ -67,7 +67,7 @@ std::vector<binary> AV1RtpPacketizer::extractTemporalUnitObus(const binary &data
 		bool hasExtension = (data.at(index) & obuHasExtensionMask) != byte(0);
 		size_t headerSize = obuHeaderSize + (hasExtension ? 1 : 0);
 
-		if ((data.at(index) & obuHasExtensionMask) != byte(0)) {
+		if (hasExtension) {
 			index++;
 		}
 
