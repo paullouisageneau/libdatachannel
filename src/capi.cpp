@@ -1725,6 +1725,24 @@ int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, cons
 	});
 }
 
+int rtcGetPayloadTypesForCodec(const char *sdp, const char *ccodec, int *buffer, int size) {
+	return wrap([&] {
+		auto codec = lowercased(string(ccodec));
+		auto description = Description(string(sdp), "unspec");
+		auto mediaCount = description.mediaCount();
+		std::vector<int> payloadTypes;
+		for (int i = 0; i < mediaCount; i++) {
+			if (std::holds_alternative<Description::Media *>(description.media(i))) {
+				auto media = std::get<Description::Media *>(description.media(i));
+				for (int pt : media->payloadTypes())
+					if (lowercased(media->rtpMap(pt)->format) == codec)
+						payloadTypes.push_back(pt);
+			}
+		}
+		return copyAndReturn(payloadTypes, buffer, size);
+	});
+}
+
 int rtcSetNeedsToSendRtcpSr(int) {
 	// Dummy
 	return RTC_ERR_SUCCESS;

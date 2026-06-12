@@ -752,7 +752,7 @@ void Description::removeAttribute(const string &attr) {
 	    mAttributes.end());
 }
 
-std::vector<int> Description::Entry::extIds() {
+std::vector<int> Description::Entry::extIds() const {
 	std::vector<int> result;
 	for (auto it = mExtMaps.begin(); it != mExtMaps.end(); ++it)
 		result.push_back(it->first);
@@ -1292,6 +1292,29 @@ void Description::Media::removeFormat(const string &format) {
 		removeRtpMap(pt);
 }
 
+void Description::Media::addFeedback(string fb) {
+	if (std::find(mRtcpFbs.begin(), mRtcpFbs.end(), fb) == mRtcpFbs.end())
+		mRtcpFbs.emplace_back(std::move(fb));
+}
+
+void Description::Media::removeFeedback(const string &str) {
+	auto it = mRtcpFbs.begin();
+	while (it != mRtcpFbs.end()) {
+		if (it->find(str) != string::npos)
+			it = mRtcpFbs.erase(it);
+		else
+			it++;
+	}
+}
+
+bool Description::Media::hasFeedback(const string &str) const {
+	for (const auto &fb : mRtcpFbs)
+		if (fb.find(str) != string::npos)
+			return true;
+
+	return false;
+}
+
 void Description::Media::addRtxCodec(int payloadType, int origPayloadType, unsigned int clockRate) {
 	RtpMap rtp(std::to_string(payloadType) + " rtx/" + std::to_string(clockRate));
 	rtp.fmtps.emplace_back("apt=" + std::to_string(origPayloadType));
@@ -1334,6 +1357,9 @@ string Description::Media::generateSdpLines(string_view eol) const {
 	sdp << Entry::generateSdpLines(eol);
 	sdp << "a=rtcp-mux" << eol;
 
+	for (const auto &fb : mRtcpFbs)
+		sdp << "a=rtcp-fb:* " << fb << eol;
+
 	for (auto it = mRtpMaps.begin(); it != mRtpMaps.end(); ++it) {
 		auto &map = it->second;
 
@@ -1374,12 +1400,19 @@ void Description::Media::parseSdpLine(string_view line) {
 
 		} else if (key == "rtcp-fb") {
 			size_t p = value.find(' ');
-			int pt = to_integer<int>(value.substr(0, p));
-			auto it = mRtpMaps.find(pt);
-			if (it == mRtpMaps.end())
-				it = mRtpMaps.insert(std::make_pair(pt, Description::Media::RtpMap(pt))).first;
+			auto ptStr = value.substr(0, p);
+			auto fbValue = string(value.substr(p + 1));
 
-			it->second.rtcpFbs.emplace_back(value.substr(p + 1));
+			if (ptStr == "*") {
+				addFeedback(std::move(fbValue));
+			} else {
+				int pt = to_integer<int>(ptStr);
+				auto it = mRtpMaps.find(pt);
+				if (it == mRtpMaps.end())
+					it = mRtpMaps.insert(std::make_pair(pt, Description::Media::RtpMap(pt))).first;
+
+				it->second.rtcpFbs.emplace_back(std::move(fbValue));
+			}
 
 		} else if (key == "fmtp") {
 			size_t p = value.find(' ');

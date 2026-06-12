@@ -173,7 +173,7 @@ public:
 			Direction direction = Direction::Unknown;
 		};
 
-		std::vector<int> extIds();
+		std::vector<int> extIds() const;
 		ExtMap *extMap(int id);
 		const ExtMap *extMap(int id) const;
 		void addExtMap(ExtMap map);
@@ -287,6 +287,11 @@ public:
 		void removeRtpMap(int payloadType);
 		void removeFormat(const string &format);
 
+		// Media-level RTCP feedback, serialized with the wildcard payload type ("*")
+		void addFeedback(string fb);
+		void removeFeedback(const string &str);
+		bool hasFeedback(const string &str) const;
+
 		void addRtxCodec(int payloadType, int origPayloadType, unsigned int clockRate);
 
 		optional<int> getRtxPayloadType(int primaryPayloadType) const;
@@ -303,6 +308,7 @@ public:
 
 		std::vector<int> mOrderedPayloadTypes;
 		std::map<int, RtpMap> mRtpMaps;
+		std::vector<string> mRtcpFbs; // media-level feedback (wildcard payload type)
 		std::vector<uint32_t> mSsrcs;
 		std::map<uint32_t, string> mCNameMap;
 		std::map<SSRC, SSRC> mSsrcToRtxSsrc;  // primary_ssrc -> rtx_ssrc
