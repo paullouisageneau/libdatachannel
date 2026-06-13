@@ -175,6 +175,7 @@ optional<message_variant> WebSocket::peek() {
 	return next ? std::make_optional(to_variant(std::move(**next))) : nullopt;
 }
 
+
 size_t WebSocket::availableAmount() const { return mRecvQueue.amount(); }
 
 bool WebSocket::changeState(State newState) { return state.exchange(newState) != newState; }
@@ -199,6 +200,15 @@ void WebSocket::incoming(message_ptr message) {
 		mRecvQueue.push(message);
 		triggerAvailable(mRecvQueue.size());
 	}
+}
+
+void WebSocket::setSocket(socket_t incomingSock) {
+	PLOG_VERBOSE << "Setting socket";
+
+	auto incoming = std::make_shared<TcpTransport>(incomingSock, nullptr);
+
+	changeState(WebSocket::State::Connecting);
+	setTcpTransport(incoming);
 }
 
 // Helper for WebSocket::initXTransport methods: start and emplace the transport
