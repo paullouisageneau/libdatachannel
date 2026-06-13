@@ -9,9 +9,9 @@
 #ifndef RTC_IMPL_PROCESSOR_H
 #define RTC_IMPL_PROCESSOR_H
 
+#include "asio.hpp"
 #include "common.hpp"
 #include "queue.hpp"
-#include "threadpool.hpp"
 
 #include <condition_variable>
 #include <future>
@@ -64,7 +64,7 @@ template <class F, class... Args> void Processor::enqueue(F &&f, Args &&...args)
 	};
 
 	if (!mPending) {
-		ThreadPool::Instance().enqueue(std::move(task));
+		Asio::Instance().enqueue(std::move(task));
 		mPending = true;
 	} else {
 		mTasks.push(std::move(task));

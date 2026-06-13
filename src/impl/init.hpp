@@ -35,6 +35,7 @@ public:
 
 	void setThreadPoolSize(unsigned int count);
 	void setSctpSettings(SctpSettings s);
+	bool setAsioSettings(std::optional<AsioSettings> s);
 
 private:
 	Init();
@@ -47,6 +48,7 @@ private:
 	weak_ptr<void> mWeak;
 	bool mInitialized = false;
 	SctpSettings mCurrentSctpSettings = {};
+	std::optional<AsioSettings> mAsioSettings = {};
 	unsigned int mThreadPoolSize = 0;
 	std::mutex mMutex;
 	std::shared_future<void> mCleanupFuture;

@@ -13,6 +13,10 @@
 #include "test.hpp"
 #include <rtc/rtc.hpp>
 
+#ifdef LIBDATACHANNEL_TEST_USE_BOOST_ASIO
+#include <boost/asio.hpp>
+#endif
+
 using namespace std;
 using namespace chrono_literals;
 
@@ -95,7 +99,7 @@ static const vector<Test> tests = {
     Test("WebRTC simulcast SDP parsing", test_simulcast_sdp_parsing),
 #if RTC_ENABLE_MEDIA
     Test("WebRTC track", test_track),
-	Test("WebRTC video layers allocation", test_video_layers_allocation),
+    Test("WebRTC video layers allocation", test_video_layers_allocation),
     Test("RTX Description::addRtx", test_rtx_description_addrtx),
     Test("RTX Description::addRtx audio=false", test_rtx_description_addrtx_no_audio),
     Test("RTX negotiation fallback", test_rtx_attribute),
@@ -133,6 +137,47 @@ int main(int argc, char **argv) {
 	int success_tests = 0;
 	int failed_tests = 0;
 	steady_clock::time_point startTime, endTime;
+
+#ifdef LIBDATACHANNEL_TEST_USE_BOOST_ASIO
+	rtc::AsioSettings asioSettings;
+
+	boost::asio::io_context ioContext;
+	std::thread ioThread1, ioThread2;
+	std::optional<boost::asio::executor_work_guard<boost::asio::io_context::executor_type>> guard;
+
+	asioSettings.startCallback = [&guard, &ioContext, &ioThread1, &ioThread2]() mutable {
+		ioContext.restart();
+		guard.emplace(boost::asio::make_work_guard(ioContext));
+		ioThread1 = std::thread([&ioContext]() { ioContext.run(); });
+		// Spawn more thread if you want
+		// ioThread2 = std::thread([&ioContext]() { ioContext.run(); });
+	};
+	asioSettings.stopCallback = [&ioContext, &ioThread1, &ioThread2, &guard]() {
+		guard->reset();
+		ioContext.stop();
+
+		if (ioThread1.joinable())
+			ioThread1.join();
+		if (ioThread2.joinable())
+			ioThread2.join();
+	};
+
+	asioSettings.scheduleTask = [&ioContext](std::chrono::steady_clock::time_point deadline,
+	                                         std::function<void()> &&task) {
+		auto timer = std::make_shared<boost::asio::steady_timer>(ioContext);
+
+		timer->expires_at(deadline);
+
+		timer->async_wait(
+		    [timer, task = std::move(task)](const boost::system::error_code &ec) mutable {
+			    if (!ec) {
+				    task();
+			    }
+		    });
+	};
+
+	rtc::SetAsioSettings(asioSettings);
+#endif
 
 	startTime = steady_clock::now();
 

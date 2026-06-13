@@ -12,32 +12,35 @@
 
 #include "pacinghandler.hpp"
 
+#include "impl/asio.hpp"
 #include "impl/internals.hpp"
-#include "impl/threadpool.hpp"
 
 namespace rtc {
 
-PacingHandler::PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval, size_t maxQueueAmount)
-    : mBytesPerSecond(bitsPerSecond / 8), mBudget(0.), mSendInterval(sendInterval), mMaxQueueAmount(maxQueueAmount) {}
+PacingHandler::PacingHandler(double bitsPerSecond, std::chrono::milliseconds sendInterval,
+                             size_t maxQueueAmount)
+    : mBytesPerSecond(bitsPerSecond / 8), mBudget(0.), mSendInterval(sendInterval),
+      mMaxQueueAmount(maxQueueAmount) {}
 
 void PacingHandler::setBitrate(double bitsPerSecond) {
 	std::lock_guard<std::mutex> lock(mParamsMutex);
-    mBytesPerSecond = bitsPerSecond / 8;
+	mBytesPerSecond = bitsPerSecond / 8;
 }
 
 void PacingHandler::setMaxQueueAmount(size_t maxQueueAmount) {
 	std::lock_guard<std::mutex> lock(mParamsMutex);
-    mMaxQueueAmount = maxQueueAmount;
+	mMaxQueueAmount = maxQueueAmount;
 }
 
 void PacingHandler::onOverflow(std::function<void()> callback) {
 	mOverflowCallback = std::move(callback);
 }
 
-void PacingHandler::schedule(const message_callback &send, std::chrono::milliseconds scheduleInterval) {
+void PacingHandler::schedule(const message_callback &send,
+                             std::chrono::milliseconds scheduleInterval) {
 	if (!mHaveScheduled.exchange(true))
-		impl::ThreadPool::Instance().schedule(scheduleInterval,
-		                                      weak_bind(&PacingHandler::run, this, send));
+		impl::Asio::Instance().schedule(scheduleInterval,
+		                                weak_bind(&PacingHandler::run, this, send));
 }
 
 void PacingHandler::run(const message_callback &send) {
@@ -65,7 +68,8 @@ void PacingHandler::run(const message_callback &send) {
 		mBudget -= size;
 	}
 
-	auto scheduleInterval = std::chrono::duration_cast<std::chrono::milliseconds>(mSendInterval - (std::chrono::high_resolution_clock::now() - mLastRun));
+	auto scheduleInterval = std::chrono::duration_cast<std::chrono::milliseconds>(
+	    mSendInterval - (std::chrono::high_resolution_clock::now() - mLastRun));
 
 	if (!mRtpBuffer.empty()) {
 		schedule(send, std::max(scheduleInterval, std::chrono::milliseconds(0)));
@@ -77,12 +81,12 @@ void PacingHandler::outgoing(message_vector &messages, const message_callback &s
 	std::lock_guard<std::mutex> lock(mMutex);
 
 	size_t maxQueueAmount;
-    {
-        std::lock_guard<std::mutex> lockParams(mParamsMutex);
-        maxQueueAmount = mMaxQueueAmount;
-    }
+	{
+		std::lock_guard<std::mutex> lockParams(mParamsMutex);
+		maxQueueAmount = mMaxQueueAmount;
+	}
 
-	for (auto& m : messages) {
+	for (auto &m : messages) {
 		if (maxQueueAmount != 0 && mRtpBuffer.size() >= maxQueueAmount) {
 			mOverflowCallback();
 			break;

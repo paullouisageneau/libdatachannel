@@ -7,8 +7,8 @@
  */
 
 #include "tcptransport.hpp"
+#include "asio.hpp"
 #include "internals.hpp"
-#include "threadpool.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -48,7 +48,7 @@ bool unmap_inet6_v4mapped(struct sockaddr *sa, socklen_t *len) {
 	return true;
 }
 
-}
+} // namespace
 
 TcpTransport::TcpTransport(string hostname, string service, state_callback callback)
     : Transport(nullptr, std::move(callback)), mIsActive(true), mHostname(std::move(hostname)),
@@ -154,7 +154,7 @@ void TcpTransport::connect() {
 	PLOG_DEBUG << "Connecting to " << mHostname << ":" << mService;
 	changeState(State::Connecting);
 
-	ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::resolve, this));
+	Asio::Instance().enqueue(weak_bind(&TcpTransport::resolve, this));
 }
 
 void TcpTransport::resolve() {
@@ -200,7 +200,7 @@ void TcpTransport::resolve() {
 		return;
 	}
 
-	ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
+	Asio::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
 }
 
 void TcpTransport::attempt() {
@@ -228,7 +228,7 @@ void TcpTransport::attempt() {
 
 	} catch (const std::runtime_error &e) {
 		PLOG_DEBUG << e.what();
-		ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
+		Asio::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
 		return;
 	}
 
@@ -452,8 +452,7 @@ void TcpTransport::processConnect(PollService::Event event) {
 
 		int err = 0;
 		socklen_t errlen = sizeof(err);
-		if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, reinterpret_cast<char *>(&err),
-						 &errlen) != 0)
+		if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, reinterpret_cast<char *>(&err), &errlen) != 0)
 			throw std::runtime_error("Failed to get socket error code");
 
 		if (err != 0) {
@@ -470,7 +469,7 @@ void TcpTransport::processConnect(PollService::Event event) {
 	} catch (const std::exception &e) {
 		PLOG_DEBUG << e.what();
 		PollService::Instance().remove(mSock);
-		ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
+		Asio::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
 	}
 }
 

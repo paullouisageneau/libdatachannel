@@ -7,9 +7,9 @@
  */
 
 #include "tlstransport.hpp"
+#include "asio.hpp"
 #include "httpproxytransport.hpp"
 #include "tcptransport.hpp"
-#include "threadpool.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -28,7 +28,7 @@ void TlsTransport::enqueueRecv() {
 
 	if (auto shared_this = weak_from_this().lock()) {
 		++mPendingRecvCount;
-		ThreadPool::Instance().enqueue(&TlsTransport::doRecv, std::move(shared_this));
+		Asio::Instance().enqueue(&TlsTransport::doRecv, std::move(shared_this));
 	}
 }
 
@@ -338,7 +338,8 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 		    &mConf, mIsClient ? MBEDTLS_SSL_IS_CLIENT : MBEDTLS_SSL_IS_SERVER,
 		    MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT));
 
-		mbedtls_ssl_conf_max_version(&mConf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3); // TLS 1.2
+		mbedtls_ssl_conf_max_version(&mConf, MBEDTLS_SSL_MAJOR_VERSION_3,
+		                             MBEDTLS_SSL_MINOR_VERSION_3); // TLS 1.2
 		mbedtls_ssl_conf_authmode(&mConf, MBEDTLS_SSL_VERIFY_OPTIONAL);
 		mbedtls_ssl_conf_rng(&mConf, mbedtls_ctr_drbg_random, &mDrbg);
 
@@ -595,7 +596,7 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 		SSL_CTX_set_tmp_ecdh(mCtx, ecdh.get());
 #endif
 
-		if(mIsClient) {
+		if (mIsClient) {
 			if (!SSL_CTX_set_default_verify_paths(mCtx)) {
 				PLOG_WARNING << "SSL root CA certificates unavailable";
 			}

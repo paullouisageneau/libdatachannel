@@ -70,6 +70,17 @@ extern "C" {
 
 // libdatachannel C API
 
+typedef struct {
+
+	void(RTC_API *startCallback)(void *asioContext);
+	void(RTC_API *stopCallback)(void *asioContext);
+	void *(RTC_API *scheduleTask)(int64_t deadline, void (*task)(void *),
+	                              void (*taskDeleter)(void *), void *taskContext,
+	                              void *asioContext);
+
+	void *asioContext;
+} rtcAsioSettings;
+
 typedef enum {
 	RTC_NEW = 0,
 	RTC_CONNECTING = 1,
@@ -477,7 +488,8 @@ RTC_C_EXPORT int rtcSetTrackRtpTimestamp(int id, uint32_t timestamp);
 RTC_C_EXPORT int rtcGetLastTrackSenderReportTimestamp(int id, uint32_t *timestamp);
 
 // Get sync timestamps from receiving RTCP session
-RTC_C_EXPORT int rtcGetTrackRtcpSyncTimestamps(int tr, uint64_t *rtpTimestamp, uint64_t *ntpTimestamp);
+RTC_C_EXPORT int rtcGetTrackRtcpSyncTimestamps(int tr, uint64_t *rtpTimestamp,
+                                               uint64_t *ntpTimestamp);
 
 // Get all available payload types for given codec and stores them in buffer, does nothing if
 // buffer is NULL
@@ -493,11 +505,12 @@ RTC_C_EXPORT int rtcGetCNameForSsrc(int tr, uint32_t ssrc, char *cname, int cnam
 RTC_C_EXPORT int rtcGetPayloadTypesForCodec(const char *sdp, const char *ccodec, int *buffer, int size);
 
 // Get all SSRCs for given media type in given SDP
-RTC_C_EXPORT int rtcGetSsrcsForType(const char *mediaType, const char *sdp, uint32_t *buffer, int bufferSize);
+RTC_C_EXPORT int rtcGetSsrcsForType(const char *mediaType, const char *sdp, uint32_t *buffer,
+                                    int bufferSize);
 
 // Set SSRC for given media type in given SDP
-RTC_C_EXPORT int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer, const int bufferSize,
-                                   rtcSsrcForTypeInit *init);
+RTC_C_EXPORT int rtcSetSsrcForType(const char *mediaType, const char *sdp, char *buffer,
+                                   const int bufferSize, rtcSsrcForTypeInit *init);
 
 // For backward compatibility, do not use
 RTC_C_EXPORT RTC_DEPRECATED int rtcSetNeedsToSendRtcpSr(int id);
@@ -554,6 +567,7 @@ RTC_C_EXPORT int rtcGetWebSocketServerPort(int wsserver);
 
 // Note: Applied when threads are spawned
 RTC_C_EXPORT int rtcSetThreadPoolSize(unsigned int count);
+RTC_C_EXPORT int rtcSetAsioSettings(rtcAsioSettings const *settings);
 
 typedef struct {
 	int recvBufferSize;          // in bytes, <= 0 means optimized default
