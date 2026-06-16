@@ -71,7 +71,7 @@ void Channel::flushPendingMessages() {
 			break;
 
 		try {
-			messageCallback(*next);
+			messageCallback(std::move(*next));
 		} catch (const std::exception &e) {
 			PLOG_WARNING << "Uncaught exception in callback: " << e.what();
 		}

@@ -85,7 +85,7 @@ private:
 	void enqueueRecv();
 	void enqueueFlush();
 	bool trySendQueue();
-	bool trySendMessage(message_ptr message);
+	bool trySendMessage(const message_ptr &message);
 	void updateBufferedAmount(uint16_t streamId, ptrdiff_t delta);
 	void triggerBufferedAmount(uint16_t streamId, size_t amount);
 	void sendReset(uint16_t streamId);

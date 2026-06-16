@@ -25,7 +25,7 @@ namespace rtc::impl {
 struct PeerConnection;
 
 struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
-	static bool IsOpenMessage(message_ptr message);
+	static bool IsOpenMessage(const message_ptr &message);
 
 	DataChannel(weak_ptr<PeerConnection> pc, string label, string protocol,
 	            Reliability reliability);

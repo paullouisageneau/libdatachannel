@@ -162,7 +162,7 @@ void DtlsTransport::incoming(message_ptr message) {
 	}
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
-	mIncomingQueue.push(message);
+	mIncomingQueue.push(std::move(message));
 	enqueueRecv();
 }
 
@@ -501,7 +501,7 @@ void DtlsTransport::incoming(message_ptr message) {
 	}
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
-	mIncomingQueue.push(message);
+	mIncomingQueue.push(std::move(message));
 	enqueueRecv();
 }
 

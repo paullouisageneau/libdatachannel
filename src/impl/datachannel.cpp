@@ -66,7 +66,7 @@ struct AckMessage {
 
 #pragma pack(pop)
 
-bool DataChannel::IsOpenMessage(message_ptr message) {
+bool DataChannel::IsOpenMessage(const message_ptr &message) {
 	if (message->type != Message::Control)
 		return false;
 
@@ -201,7 +201,7 @@ bool DataChannel::outgoing(message_ptr message) {
 		message->stream = mStream.value();
 	}
 
-	return transport->send(message);
+	return transport->send(std::move(message));
 }
 
 void DataChannel::incoming(message_ptr message) {
@@ -233,7 +233,7 @@ void DataChannel::incoming(message_ptr message) {
 		break;
 	case Message::String:
 	case Message::Binary:
-		mRecvQueue.push(message);
+		mRecvQueue.push(std::move(message));
 		triggerAvailable(mRecvQueue.size());
 		break;
 	default:
