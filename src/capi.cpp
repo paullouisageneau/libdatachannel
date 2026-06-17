@@ -439,6 +439,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 		c.enableIceUdpMux = config->enableIceUdpMux;
 		c.disableAutoNegotiation = config->disableAutoNegotiation;
 		c.forceMediaTransport = config->forceMediaTransport;
+		c.disableFingerprintVerification = config->disableFingerprintVerification;
 
 		if (config->mtu > 0)
 			c.mtu = size_t(config->mtu);
@@ -590,6 +591,20 @@ int rtcSetLocalDescription(int pc, const char *type) {
 		auto peerConnection = getPeerConnection(pc);
 		peerConnection->setLocalDescription(type ? Description::stringToType(type)
 		                                         : Description::Type::Unspec);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
+int rtcSetLocalDescriptionEx(int pc, const char *type, const rtcLocalDescriptionInit *init) {
+	return wrap([&] {
+		auto peerConnection = getPeerConnection(pc);
+		LocalDescriptionInit cinit;
+		if (init && init->iceUfrag)
+			cinit.iceUfrag = string(init->iceUfrag);
+		if (init && init->icePwd)
+			cinit.icePwd = string(init->icePwd);
+		peerConnection->setLocalDescription(
+		    type ? Description::stringToType(type) : Description::Type::Unspec, std::move(cinit));
 		return RTC_ERR_SUCCESS;
 	});
 }
