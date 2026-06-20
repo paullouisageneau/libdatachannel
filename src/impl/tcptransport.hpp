@@ -75,7 +75,7 @@ private:
 
 	std::list<std::tuple<struct sockaddr_storage, socklen_t>> mResolved;
 	std::unordered_set<socket_t> mSocks;
-	int mPendingAddresses = 0;
+	int mPendingSocks = 0;
 
 	socket_t mSock;
 	Queue<message_ptr> mSendQueue;

@@ -225,8 +225,6 @@ void TcpTransport::resolve() {
 
 		freeaddrinfo(result);
 
-		mPendingAddresses = static_cast<int>(mResolved.size());
-
 	} catch (const std::exception &e) {
 		PLOG_WARNING << e.what();
 		changeState(State::Failed);
@@ -269,6 +267,7 @@ void TcpTransport::attempt() {
 		// reuse closed file descriptors
 		assert(mSocks.find(sock) == mSocks.end());
 		mSocks.insert(sock);
+		mPendingSocks += 1;
 
 	} catch (const std::runtime_error &e) {
 		PLOG_DEBUG << e.what();
@@ -521,7 +520,7 @@ void TcpTransport::closeUnusedSockets() {
 	}
 
 	mSocks.clear();
-	mPendingAddresses = 0;
+	mPendingSocks = 0;
 }
 
 void TcpTransport::processConnect(PollService::Event event, socket_t sock, bool isDelayTimeout) {
@@ -550,15 +549,15 @@ void TcpTransport::processConnect(PollService::Event event, socket_t sock, bool 
 		return;
 	}
 
-	bool isLastSock = false;
+	bool isLastPendingSock = false;
 
 	try {
 		{
 			std::lock_guard lock(mSendMutex);
 
-			mPendingAddresses -= 1;
-			assert(mPendingAddresses >= 0);
-			isLastSock = mPendingAddresses == 0;
+			mPendingSocks -= 1;
+			assert(mPendingSocks >= 0);
+			isLastPendingSock = mPendingSocks == 0;
 
 			if (event == PollService::Event::Error)
 				throw std::runtime_error("TCP connection failed");
@@ -596,12 +595,15 @@ void TcpTransport::processConnect(PollService::Event event, socket_t sock, bool 
 		PLOG_DEBUG << e.what();
 		PollService::Instance().remove(sock);
 
-		// Queue the next connection attempt in one of two cases:
-		// - We connect synchronously (no connection attempt delay is configured)
-		// - We connect to multiple addresses in parallel and this was the last socket that errored.
-		//   This means that all sockets errored and we must proceed with triggering the connection
-		//   failure handling code in the attempt() method
-		if (!mConnectAttemptDelay.has_value() || isLastSock) {
+		// Queue the next connection attempt in one of these cases:
+		// 1. We connect synchronously (no connection attempt delay is configured)
+		// 2. We connect concurrently and this socket failed before the delay timeout was reached
+		// 3. We connect concurrently and this was the last pending socket that timed out. This
+		//    means that all sockets that were created so far failed and we must proceed either with
+		//    queueing a connection attempt for the next address or with handling connection
+		//    failure, for the case that there are no more addresses left
+		if (!mConnectAttemptDelay.has_value() || event != PollService::Event::Timeout ||
+		    isLastPendingSock) {
 			ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
 		}
 	}
