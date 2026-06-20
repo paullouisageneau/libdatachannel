@@ -14,6 +14,7 @@
 #include "queue.hpp"
 #include "socket.hpp"
 #include "transport.hpp"
+#include <unordered_set>
 
 #if RTC_ENABLE_WEBSOCKET
 
@@ -33,6 +34,7 @@ public:
 	~TcpTransport();
 
 	void onBufferedAmount(amount_callback callback);
+	void setConnectAttemptDelay(std::chrono::milliseconds connectAttemptDelay);
 	void setConnectTimeout(std::chrono::milliseconds connectTimeout);
 	void setReadTimeout(std::chrono::milliseconds readTimeout);
 
@@ -46,13 +48,15 @@ public:
 	string remoteAddress() const;
 
 private:
+	static socket_t createSocket(const struct sockaddr *addr, socklen_t addrlen);
+	static void configureSocket(socket_t sock);
+
 	void connect();
 	void resolve();
 	void attempt();
-	void createSocket(const struct sockaddr *addr, socklen_t addrlen);
-	void configureSocket();
 	void setPoll(PollService::Direction direction);
 	void close();
+	void closeUnusedSockets();
 
 	bool trySendQueue();
 	bool trySendMessage(message_ptr &message);
@@ -60,15 +64,18 @@ private:
 	void triggerBufferedAmount(size_t amount);
 
 	void process(PollService::Event event);
-	void processConnect(PollService::Event event);
+	void processConnect(PollService::Event event, socket_t sock, bool isDelayTimeout);
 
 	const bool mIsActive;
 	string mHostname, mService;
 	amount_callback mBufferedAmountCallback;
+	optional<std::chrono::milliseconds> mConnectAttemptDelay;
 	optional<std::chrono::milliseconds> mConnectTimeout;
 	optional<std::chrono::milliseconds> mReadTimeout;
 
 	std::list<std::tuple<struct sockaddr_storage, socklen_t>> mResolved;
+	std::unordered_set<socket_t> mSocks;
+	int mPendingAddresses = 0;
 
 	socket_t mSock;
 	Queue<message_ptr> mSendQueue;

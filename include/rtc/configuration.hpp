@@ -101,6 +101,9 @@ struct WebSocketConfiguration {
 	bool disableTlsVerification = false; // if true, don't verify the TLS certificate
 	optional<ProxyServer> proxyServer;   // only non-authenticated http supported for now
 	std::vector<string> protocols;
+	// The delay after which to attempt connecting to the next address in parallel to already
+	// ongoing connection attempts ("Happy Eyeballs"). Zero to disable
+	optional<std::chrono::milliseconds> connectionAttemptDelay;
 	optional<std::chrono::milliseconds> tcpConnectionTimeout; // zero to disable
 	optional<std::chrono::milliseconds> connectionTimeout;    // zero to disable
 	optional<std::chrono::milliseconds> pingInterval;         // zero to disable

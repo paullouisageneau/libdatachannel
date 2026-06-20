@@ -48,7 +48,7 @@ bool unmap_inet6_v4mapped(struct sockaddr *sa, socklen_t *len) {
 	return true;
 }
 
-}
+} // namespace
 
 TcpTransport::TcpTransport(string hostname, string service, state_callback callback)
     : Transport(nullptr, std::move(callback)), mIsActive(true), mHostname(std::move(hostname)),
@@ -63,7 +63,7 @@ TcpTransport::TcpTransport(socket_t sock, state_callback callback)
 	PLOG_DEBUG << "Initializing TCP transport with socket";
 
 	// Configure socket
-	configureSocket();
+	configureSocket(mSock);
 
 	// Retrieve hostname and service
 	struct sockaddr_storage addr;
@@ -88,6 +88,10 @@ TcpTransport::~TcpTransport() { close(); }
 
 void TcpTransport::onBufferedAmount(amount_callback callback) {
 	mBufferedAmountCallback = std::move(callback);
+}
+
+void TcpTransport::setConnectAttemptDelay(std::chrono::milliseconds connectAttemptDelay) {
+	mConnectAttemptDelay = connectAttemptDelay;
 }
 
 void TcpTransport::setConnectTimeout(std::chrono::milliseconds connectTimeout) {
@@ -157,6 +161,28 @@ void TcpTransport::connect() {
 	ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::resolve, this));
 }
 
+// Reorders the list of addresses to alternate IPv4 and IPv6 addresses towards the beginning of the
+// list whenever possible, while always keeping the first address in its original place.
+static void interleave_address_families(addrinfo *&head) {
+	for (addrinfo *current = head; current;) {
+		int target = current->ai_family == AF_INET ? AF_INET6 : AF_INET;
+
+		addrinfo **candidate_ptr = &current->ai_next;
+		while (*candidate_ptr && (*candidate_ptr)->ai_family != target)
+			candidate_ptr = &(*candidate_ptr)->ai_next;
+		if (!*candidate_ptr)
+			break;
+
+		addrinfo *node = *candidate_ptr;
+		*candidate_ptr = node->ai_next;
+
+		node->ai_next = current->ai_next;
+		current->ai_next = node;
+
+		current = node;
+	}
+}
+
 void TcpTransport::resolve() {
 	std::lock_guard lock(mSendMutex);
 	mResolved.clear();
@@ -178,6 +204,11 @@ void TcpTransport::resolve() {
 			throw std::runtime_error("Resolution failed for \"" + mHostname + ":" + mService +
 			                         "\"");
 
+		// Interleave address families, so that an address of the opposite family of the first
+		// listed address is attempted as early as possible. See section 4. Sorting Addresses of
+		// RFC8305: https://www.rfc-editor.org/info/rfc8305/#section-4
+		interleave_address_families(result);
+
 		try {
 			struct addrinfo *ai = result;
 			while (ai) {
@@ -194,6 +225,8 @@ void TcpTransport::resolve() {
 
 		freeaddrinfo(result);
 
+		mPendingAddresses = static_cast<int>(mResolved.size());
+
 	} catch (const std::exception &e) {
 		PLOG_WARNING << e.what();
 		changeState(State::Failed);
@@ -204,27 +237,38 @@ void TcpTransport::resolve() {
 }
 
 void TcpTransport::attempt() {
+
+	// FIXME Cache and reuse the address that we successfully connected to before
+
+	socket_t sock = INVALID_SOCKET;
+	bool isLastAttempt = false;
+
 	try {
 		std::lock_guard lock(mSendMutex);
 
 		if (state() != State::Connecting)
 			return; // Cancelled
 
-		if (mSock != INVALID_SOCKET) {
-			::closesocket(mSock);
-			mSock = INVALID_SOCKET;
-		}
-
 		if (mResolved.empty()) {
 			PLOG_WARNING << "Connection to " << mHostname << ":" << mService << " failed";
+			assert(mSock == INVALID_SOCKET);
+			closeUnusedSockets();
 			changeState(State::Failed);
 			return;
 		}
 
 		auto [addr, addrlen] = mResolved.front();
 		mResolved.pop_front();
+		isLastAttempt = mResolved.empty();
 
-		createSocket(reinterpret_cast<const struct sockaddr *>(&addr), addrlen);
+		sock = createSocket(reinterpret_cast<const struct sockaddr *>(&addr), addrlen);
+
+		// We need to make sure that we only close the remaining sockets once all addresses have
+		// been attempted or one of the addresses has successfully connected, as createSocket()
+		// might otherwise return a file descriptor that we already encountered before, since it can
+		// reuse closed file descriptors
+		assert(mSocks.find(sock) == mSocks.end());
+		mSocks.insert(sock);
 
 	} catch (const std::runtime_error &e) {
 		PLOG_DEBUG << e.what();
@@ -232,11 +276,31 @@ void TcpTransport::attempt() {
 		return;
 	}
 
-	PollService::Instance().add(mSock, {PollService::Direction::Out, mConnectTimeout,
-	                                    weak_bind(&TcpTransport::processConnect, this, _1)});
+	// Use the connect attempt delay as timeout, if there are more addresses to attempt and a
+	// connect attempt delay is configured, i.e. we are performing "Happy Eyeballs"
+	std::optional<std::chrono::milliseconds> timeout = mConnectTimeout;
+	if (!isLastAttempt && mConnectAttemptDelay.has_value()) {
+		timeout = mConnectAttemptDelay;
+		// Make sure not to exceed the connection timeout.
+		if (mConnectTimeout.has_value())
+			timeout = std::min(*timeout, *mConnectTimeout);
+	}
+
+	bool isDelayTimeout =
+	    timeout.has_value() && (!mConnectTimeout.has_value() || *timeout < *mConnectTimeout);
+
+	PLOG_VERBOSE << "Polling socket with descriptor " << sock;
+	PLOG_VERBOSE_IF(timeout.has_value()) << "Using timeout " << timeout->count() << "ms"
+	                                     << (isDelayTimeout ? " (connection attempt delay)" : "");
+
+	PollService::Instance().add(
+	    sock, {PollService::Direction::Out, timeout,
+	           weak_bind(&TcpTransport::processConnect, this, _1, sock, isDelayTimeout)});
 }
 
-void TcpTransport::createSocket(const struct sockaddr *addr, socklen_t addrlen) {
+socket_t TcpTransport::createSocket(const struct sockaddr *addr, socklen_t addrlen) {
+	socket_t sock = INVALID_SOCKET;
+
 	try {
 		char node[MAX_NUMERICNODE_LEN];
 		char serv[MAX_NUMERICSERV_LEN];
@@ -248,45 +312,50 @@ void TcpTransport::createSocket(const struct sockaddr *addr, socklen_t addrlen) 
 		PLOG_VERBOSE << "Creating TCP socket";
 
 		// Create socket
-		mSock = ::socket(addr->sa_family, SOCK_STREAM, IPPROTO_TCP);
-		if (mSock == INVALID_SOCKET)
+		sock = ::socket(addr->sa_family, SOCK_STREAM, IPPROTO_TCP);
+		if (sock == INVALID_SOCKET)
 			throw std::runtime_error("TCP socket creation failed");
 
 		// Configure socket
-		configureSocket();
+		configureSocket(sock);
 
 		// Initiate connection
-		int ret = ::connect(mSock, addr, addrlen);
+		int ret = ::connect(sock, addr, addrlen);
 		if (ret < 0 && sockerrno != SEINPROGRESS && sockerrno != SEWOULDBLOCK) {
 			std::ostringstream msg;
 			msg << "TCP connection to " << node << ":" << serv << " failed, errno=" << sockerrno;
 			throw std::runtime_error(msg.str());
 		}
 
+		PLOG_VERBOSE << "Successfully created TCP socket with descriptor " << sock;
+
 	} catch (...) {
-		if (mSock != INVALID_SOCKET) {
-			::closesocket(mSock);
-			mSock = INVALID_SOCKET;
+		if (sock != INVALID_SOCKET) {
+			::closesocket(sock);
+			sock = INVALID_SOCKET;
 		}
 		throw;
 	}
+
+	assert(sock != INVALID_SOCKET);
+	return sock;
 }
 
-void TcpTransport::configureSocket() {
+void TcpTransport::configureSocket(socket_t sock) {
 	// Set non-blocking
 	ctl_t nbio = 1;
-	if (::ioctlsocket(mSock, FIONBIO, &nbio) < 0)
+	if (::ioctlsocket(sock, FIONBIO, &nbio) < 0)
 		throw std::runtime_error("Failed to set socket non-blocking mode");
 
 	// Disable the Nagle algorithm
 	int nodelay = 1;
-	::setsockopt(mSock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char *>(&nodelay),
+	::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char *>(&nodelay),
 	             sizeof(nodelay));
 
 #ifdef __APPLE__
 	// MacOS lacks MSG_NOSIGNAL and requires SO_NOSIGPIPE instead
 	const sockopt_t enabled = 1;
-	if (::setsockopt(mSock, SOL_SOCKET, SO_NOSIGPIPE, &enabled, sizeof(enabled)) < 0)
+	if (::setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &enabled, sizeof(enabled)) < 0)
 		throw std::runtime_error("Failed to disable SIGPIPE for socket");
 #endif
 }
@@ -310,6 +379,7 @@ void TcpTransport::close() {
 
 bool TcpTransport::trySendQueue() {
 	// mSendMutex must be locked
+
 	while (auto next = mSendQueue.peek()) {
 		message_ptr message = std::move(*next);
 		size_t size = message->size();
@@ -439,38 +509,101 @@ void TcpTransport::process(PollService::Event event) {
 	recv(nullptr);
 }
 
-void TcpTransport::processConnect(PollService::Event event) {
+void TcpTransport::closeUnusedSockets() {
+	// mSendMutex must be locked
+
+	for (socket_t sock : mSocks) {
+		if (mSock == INVALID_SOCKET || sock != mSock) {
+			PLOG_VERBOSE << "Closing unused socket with descriptor " << sock;
+			PollService::Instance().remove(sock);
+			::closesocket(sock);
+		}
+	}
+
+	mSocks.clear();
+	mPendingAddresses = 0;
+}
+
+void TcpTransport::processConnect(PollService::Event event, socket_t sock, bool isDelayTimeout) {
+
+	if (event == PollService::Event::Timeout && isDelayTimeout) {
+
+		// There are more addresses to attempt concurrently. Add this socket back to the poll
+		// service and use the remaining time until the connection timeout as the timeout
+
+		assert(mConnectAttemptDelay.has_value());
+		assert(!mConnectTimeout.has_value() || mConnectAttemptDelay < mConnectTimeout);
+
+		std::optional<std::chrono::milliseconds> timeout;
+		if (mConnectTimeout.has_value() && mConnectAttemptDelay.has_value())
+			timeout = *mConnectTimeout - *mConnectAttemptDelay;
+
+		PLOG_VERBOSE << "Continuing to poll socket with descriptor " << sock;
+		PLOG_VERBOSE_IF(timeout.has_value()) << "Using timeout " << timeout->count() << "ms";
+
+		PollService::Instance().add(
+		    sock, {PollService::Direction::Out, timeout,
+		           weak_bind(&TcpTransport::processConnect, this, _1, sock, false)});
+
+		ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
+
+		return;
+	}
+
+	bool isLastSock = false;
+
 	try {
-		if (event == PollService::Event::Error)
-			throw std::runtime_error("TCP connection failed");
+		{
+			std::lock_guard lock(mSendMutex);
 
-		if (event == PollService::Event::Timeout)
-			throw std::runtime_error("TCP connection timed out");
+			mPendingAddresses -= 1;
+			assert(mPendingAddresses >= 0);
+			isLastSock = mPendingAddresses == 0;
 
-		if (event != PollService::Event::Out)
-			return;
+			if (event == PollService::Event::Error)
+				throw std::runtime_error("TCP connection failed");
 
-		int err = 0;
-		socklen_t errlen = sizeof(err);
-		if (::getsockopt(mSock, SOL_SOCKET, SO_ERROR, reinterpret_cast<char *>(&err),
-						 &errlen) != 0)
-			throw std::runtime_error("Failed to get socket error code");
+			if (event == PollService::Event::Timeout)
+				throw std::runtime_error("TCP connection timeout");
 
-		if (err != 0) {
-			std::ostringstream msg;
-			msg << "TCP connection failed, errno=" << err;
-			throw std::runtime_error(msg.str());
+			if (event != PollService::Event::Out)
+				return;
+
+			int err = 0;
+			socklen_t errlen = sizeof(err);
+			if (::getsockopt(sock, SOL_SOCKET, SO_ERROR, reinterpret_cast<char *>(&err), &errlen) !=
+			    0)
+				throw std::runtime_error("Failed to get socket error code");
+
+			if (err != 0) {
+				std::ostringstream msg;
+				msg << "TCP connection failed, errno=" << err;
+				throw std::runtime_error(msg.str());
+			}
+
+			// Use this socket and close all other opened sockets
+			mSock = sock;
+			closeUnusedSockets();
 		}
 
 		// Success
 		PLOG_INFO << "TCP connected";
+		PLOG_VERBOSE << "Using socket with descriptor " << mSock;
 		changeState(State::Connected);
 		setPoll(PollService::Direction::In);
 
 	} catch (const std::exception &e) {
 		PLOG_DEBUG << e.what();
-		PollService::Instance().remove(mSock);
-		ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
+		PollService::Instance().remove(sock);
+
+		// Queue the next connection attempt in one of two cases:
+		// - We connect synchronously (no connection attempt delay is configured)
+		// - We connect to multiple addresses in parallel and this was the last socket that errored.
+		//   This means that all sockets errored and we must proceed with triggering the connection
+		//   failure handling code in the attempt() method
+		if (!mConnectAttemptDelay.has_value() || isLastSock) {
+			ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
+		}
 	}
 }
 

@@ -513,6 +513,10 @@ typedef struct {
 	const char *proxyServer;     // only non-authenticated http supported for now
 	const char **protocols;
 	int protocolsCount;
+	// The delay after which to attempt connecting to the next address in parallel to already
+	// ongoing connection attempts ("Happy Eyeballs"). Value is in milliseconds, 0 means default,
+	// < 0 means disabled
+	int connectionAttemptDelayMs;
 	int tcpConnectionTimeoutMs; // in milliseconds, 0 means default, < 0 means disabled
 	int connectionTimeoutMs;    // in milliseconds, 0 means default, < 0 means disabled
 	int pingIntervalMs;         // in milliseconds, 0 means default, < 0 means disabled
