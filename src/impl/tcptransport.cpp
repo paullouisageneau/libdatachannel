@@ -186,6 +186,7 @@ static void interleave_address_families(addrinfo *&head) {
 void TcpTransport::resolve() {
 	std::lock_guard lock(mSendMutex);
 	mResolved.clear();
+	mPendingSocks = 0;
 
 	if (state() != State::Connecting)
 		return; // Cancelled
@@ -264,8 +265,9 @@ void TcpTransport::attempt() {
 		// We need to make sure that we only close the remaining sockets once all addresses have
 		// been attempted or one of the addresses has successfully connected, as createSocket()
 		// might otherwise return a file descriptor that we already encountered before, since it can
-		// reuse closed file descriptors
+		// reuse closed file descriptors, and thereby cause issues with our use of a set here
 		assert(mSocks.find(sock) == mSocks.end());
+
 		mSocks.insert(sock);
 		mPendingSocks += 1;
 
@@ -555,9 +557,13 @@ void TcpTransport::processConnect(PollService::Event event, socket_t sock, bool 
 		{
 			std::lock_guard lock(mSendMutex);
 
-			mPendingSocks -= 1;
-			assert(mPendingSocks >= 0);
-			isLastPendingSock = mPendingSocks == 0;
+			assert(state() == State::Connecting && mPendingSocks > 0 ||
+			       state() != State::Connecting && mPendingSocks == 0);
+
+			if (state() == State::Connecting) {
+				mPendingSocks -= 1;
+				isLastPendingSock = mPendingSocks == 0;
+			}
 
 			if (event == PollService::Event::Error)
 				throw std::runtime_error("TCP connection failed");
