@@ -248,9 +248,21 @@ void TcpTransport::attempt() {
 		if (state() != State::Connecting)
 			return; // Cancelled
 
+		// Handle the rare case where the poll service emits two events in quick succession, while
+		// concurrent connection attempts are enabled: A delayed connection attempt timeout event
+		// that triggers another connection attempt asynchronously on the thread pool, followed by
+		// an out event for a successful connection. The latter acquires the lock and closes all
+		// sockets, then releases the lock before it changes the state to connected (see the
+		// processConnect() method for reasoning). If this happens before the socket for the queued
+		// attempt is created here, which is likely because the thread pool takes some time to
+		// execute the next attempt, we would create a new socket while we have already established
+		// a connection with a socket (race condition). This check prevents the creation of another
+		// connection in this case, since access to mSock is synchronized via mSendMutex.
+		if (mSock != INVALID_SOCKET)
+			return;
+
 		if (mResolved.empty()) {
 			PLOG_WARNING << "Connection to " << mHostname << ":" << mService << " failed";
-			assert(mSock == INVALID_SOCKET);
 			closeUnusedSockets();
 			changeState(State::Failed);
 			return;
@@ -586,6 +598,11 @@ void TcpTransport::processConnect(PollService::Event event, socket_t sock, bool 
 				throw std::runtime_error(msg.str());
 			}
 
+			if (mSock != INVALID_SOCKET) {
+				assert(false);
+				throw std::logic_error("Already have a valid socket");
+			}
+
 			// Use this socket and close all other opened sockets
 			mSock = sock;
 			closeUnusedSockets();
@@ -594,6 +611,10 @@ void TcpTransport::processConnect(PollService::Event event, socket_t sock, bool 
 		// Success
 		PLOG_INFO << "TCP connected";
 		PLOG_VERBOSE << "Using socket with descriptor " << mSock;
+
+		// We must change the connected state after releasing the mSendMutex lock, since the
+		// connected state change handler might e.g. initialize TLS, which would cause a resource
+		// deadlock, if we were still holding the lock to mSendMutex.
 		changeState(State::Connected);
 		setPoll(PollService::Direction::In);
 
