@@ -557,8 +557,8 @@ void TcpTransport::processConnect(PollService::Event event, socket_t sock, bool 
 		{
 			std::lock_guard lock(mSendMutex);
 
-			assert(state() == State::Connecting && mPendingSocks > 0 ||
-			       state() != State::Connecting && mPendingSocks == 0);
+			assert((state() == State::Connecting && mPendingSocks > 0) ||
+			       (state() != State::Connecting && mPendingSocks == 0));
 
 			if (state() == State::Connecting) {
 				mPendingSocks -= 1;
