@@ -387,6 +387,7 @@ void TcpTransport::close() {
 		::closesocket(mSock);
 		mSock = INVALID_SOCKET;
 	}
+	closeUnusedSockets();
 	changeState(State::Disconnected);
 }
 
