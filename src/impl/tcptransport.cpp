@@ -117,7 +117,7 @@ bool TcpTransport::send(message_ptr message) {
 		return trySendQueue();
 
 	PLOG_VERBOSE << "Send size=" << message->size();
-	return outgoing(message);
+	return outgoing(std::move(message));
 }
 
 void TcpTransport::incoming(message_ptr message) {
@@ -125,7 +125,7 @@ void TcpTransport::incoming(message_ptr message) {
 		return;
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
-	recv(message);
+	recv(std::move(message));
 }
 
 bool TcpTransport::outgoing(message_ptr message) {
@@ -134,8 +134,9 @@ bool TcpTransport::outgoing(message_ptr message) {
 	if (trySendQueue() && trySendMessage(message))
 		return true;
 
-	mSendQueue.push(message);
-	updateBufferedAmount(ptrdiff_t(message->size()));
+	const size_t size = message->size();
+	mSendQueue.push(std::move(message));
+	updateBufferedAmount(ptrdiff_t(size));
 	setPoll(PollService::Direction::Both);
 	return false;
 }

@@ -131,7 +131,7 @@ bool DtlsSrtpTransport::sendMedia(message_ptr message) {
 		message->dscp = 36; // AF42: Assured Forwarding class 4, medium drop probability
 	}
 
-	return Transport::outgoing(message); // bypass DTLS DSCP marking
+	return Transport::outgoing(std::move(message)); // bypass DTLS DSCP marking
 }
 
 void DtlsSrtpTransport::recvMedia(message_ptr message) {
