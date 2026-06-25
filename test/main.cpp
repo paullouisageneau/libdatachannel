@@ -44,6 +44,10 @@ TestResult test_rtcp_app_empty_data();
 TestResult test_rtcp_app_send();
 TestResult test_rtcp_app_multiple_in_compound();
 TestResult test_rtcp_app_integration();
+TestResult test_rtcp_bye_packet();
+TestResult test_rtcp_bye_compound_packet();
+TestResult test_track_close_sends_rtcp_bye();
+TestResult test_track_close_no_bye_when_disabled();
 TestResult test_capi_connectivity();
 TestResult test_capi_track();
 TestResult test_websocket();
@@ -109,6 +113,10 @@ static const vector<Test> tests = {
     Test("RTCP APP send", test_rtcp_app_send),
     Test("RTCP APP multiple in compound", test_rtcp_app_multiple_in_compound),
     Test("RTCP APP integration", test_rtcp_app_integration),
+    Test("RTCP BYE packet", test_rtcp_bye_packet),
+    Test("RTCP BYE compound packet", test_rtcp_bye_compound_packet),
+    Test("Track close sends RTCP BYE", test_track_close_sends_rtcp_bye),
+    Test("Track close no BYE when disabled", test_track_close_no_bye_when_disabled),
 #endif
 #if RTC_ENABLE_WEBSOCKET
     // TODO: Temporarily disabled as the echo service is unreliable

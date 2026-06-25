@@ -64,6 +64,10 @@ public:
 	synchronized_callback<binary, FrameInfo> frameCallback;
 
 private:
+#if RTC_ENABLE_MEDIA
+	void sendRtcpByeIfApplicable();
+#endif
+
 	const weak_ptr<PeerConnection> mPeerConnection;
 #if RTC_ENABLE_MEDIA
 	weak_ptr<DtlsSrtpTransport> mDtlsSrtpTransport;

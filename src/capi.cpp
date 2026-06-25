@@ -440,6 +440,7 @@ int rtcCreatePeerConnection(const rtcConfiguration *config) {
 		c.disableAutoNegotiation = config->disableAutoNegotiation;
 		c.forceMediaTransport = config->forceMediaTransport;
 		c.disableFingerprintVerification = config->disableFingerprintVerification;
+		c.sendRtcpByeOnTrackClose = config->sendRtcpByeOnTrackClose;
 
 		if (config->mtu > 0)
 			c.mtu = size_t(config->mtu);
