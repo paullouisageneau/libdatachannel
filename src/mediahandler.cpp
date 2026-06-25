@@ -77,4 +77,12 @@ void MediaHandler::outgoingChain(message_vector &messages, const message_callbac
 		return handler->outgoingChain(messages, send);
 }
 
+void MediaHandler::closeChain(const message_callback &send, Description::Direction direction,
+                              bool sentPacket) {
+	close(send, direction, sentPacket);
+
+	if (auto handler = next())
+		handler->closeChain(send, direction, sentPacket);
+}
+
 } // namespace rtc

@@ -64,6 +64,8 @@ public:
 	synchronized_callback<binary, FrameInfo> frameCallback;
 
 private:
+	void closeMediaHandler();
+
 	const weak_ptr<PeerConnection> mPeerConnection;
 #if RTC_ENABLE_MEDIA
 	weak_ptr<DtlsSrtpTransport> mDtlsSrtpTransport;
@@ -75,6 +77,7 @@ private:
 	mutable std::shared_mutex mMutex;
 
 	std::atomic<bool> mIsClosed = false;
+	std::atomic<bool> mSentPacket = false; // set once an RTP or RTCP packet has been sent out
 
 	Queue<message_ptr> mRecvQueue;
 
