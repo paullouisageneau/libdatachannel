@@ -211,7 +211,13 @@ typedef struct {
 	uint16_t portRangeEnd;   // 0 means automatic
 	int mtu;                 // <= 0 means automatic
 	int maxMessageSize;      // <= 0 means default
+	bool disableFingerprintVerification;
 } rtcConfiguration;
+
+typedef struct {
+	const char *iceUfrag;
+	const char *icePwd;
+} rtcLocalDescriptionInit;
 
 RTC_C_EXPORT int rtcCreatePeerConnection(const rtcConfiguration *config); // returns pc id
 RTC_C_EXPORT int rtcClosePeerConnection(int pc);
@@ -225,6 +231,8 @@ RTC_C_EXPORT int rtcSetGatheringStateChangeCallback(int pc, rtcGatheringStateCal
 RTC_C_EXPORT int rtcSetSignalingStateChangeCallback(int pc, rtcSignalingStateCallbackFunc cb);
 
 RTC_C_EXPORT int rtcSetLocalDescription(int pc, const char *type); // type may be NULL
+RTC_C_EXPORT int rtcSetLocalDescriptionEx(int pc, const char *type,
+                                          const rtcLocalDescriptionInit *init);
 RTC_C_EXPORT int rtcSetRemoteDescription(int pc, const char *sdp, const char *type);
 RTC_C_EXPORT int rtcAddRemoteCandidate(int pc, const char *cand, const char *mid);
 
