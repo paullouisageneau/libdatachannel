@@ -20,7 +20,7 @@ bool parse_url(const std::string &url, std::vector<std::optional<std::string>> &
 	// Modified regex from RFC 3986, see https://www.rfc-editor.org/rfc/rfc3986.html#appendix-B
 	static const char *rs =
 	    R"(^(([^:.@/?#]+):)?(/{0,2}((([^:@]*)(:([^@]*))?)@)?(([^:/?#]*)(:([^/?#]*))?))?([^?#]*)(\?([^#]*))?(#(.*))?)";
-	static const std::regex r(rs, std::regex::extended);
+	static const std::regex r(rs);
 
 	std::smatch m;
 	if (!std::regex_match(url, m, r) || m[10].length() == 0)
