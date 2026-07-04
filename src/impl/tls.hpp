@@ -40,17 +40,16 @@ gnutls_datum_t make_datum(char *data, size_t size);
 
 #elif USE_MBEDTLS
 
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/ecdsa.h"
-#include "mbedtls/entropy.h"
+#include "mbedtls/ssl.h"
 #include "mbedtls/error.h"
 #include "mbedtls/pk.h"
-#include "mbedtls/rsa.h"
-#include "mbedtls/sha256.h"
-#include "mbedtls/ssl.h"
 #include "mbedtls/x509_crt.h"
 
 namespace rtc::mbedtls {
+
+void init();
+
+int random_func(void *rng, unsigned char *out, size_t len);
 
 bool check(int ret, const string &message = "MbedTLS error");
 

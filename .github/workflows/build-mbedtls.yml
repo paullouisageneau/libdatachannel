@@ -30,6 +30,30 @@ jobs:
     - name: test
       run: ./build/tests
 
+  build-linux-v4:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        submodules: recursive
+        fetch-depth: 1
+
+    - name: Set up Homebrew
+      uses: Homebrew/actions/setup-homebrew@master
+
+    - name: Install Mbed TLS
+      run: brew update && brew install mbedtls@4
+
+    - name: cmake
+      run: cmake -B build -DUSE_MBEDTLS=1 -DNO_MEDIA=1 -DWARNINGS_AS_ERRORS=1  -DCMAKE_PREFIX_PATH=$(brew --prefix mbedtls@4)
+
+    - name: make
+      run: (cd build; make -j2)
+
+    - name: test
+      run: ./build/tests
+
   build-macos:
     runs-on: macos-latest
     steps:
