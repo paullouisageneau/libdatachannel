@@ -137,7 +137,7 @@ std::seed_seq random_seed() {
 	seed.push_back(
 	    static_cast<unsigned int>(std::hash<std::thread::id>{}(std::this_thread::get_id())));
 
-	return std::seed_seq(seed.begin(), seed.end());
+	return {seed.begin(), seed.end()};
 }
 
 namespace {

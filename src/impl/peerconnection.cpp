@@ -474,7 +474,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 	if (!iceTransport || !sctpTransport)
 		return;
 
-	const uint16_t stream = uint16_t(message->stream);
+	auto const stream = uint16_t(message->stream);
 	auto [channel, found] = findDataChannel(stream);
 
 	if (DataChannel::IsOpenMessage(message)) {
@@ -711,7 +711,7 @@ shared_ptr<DataChannel> PeerConnection::emplaceDataChannel(string label, DataCha
 			throw std::invalid_argument("DataChannel stream id is too high");
 
 		channel->assignStream(stream);
-		mDataChannels.emplace(std::make_pair(stream, channel));
+		mDataChannels.emplace(stream, channel);
 
 	} else {
 		mUnassignedDataChannels.push_back(channel);
@@ -779,7 +779,7 @@ void PeerConnection::assignDataChannels() {
 		PLOG_DEBUG << "Assigning stream " << stream << " to DataChannel";
 
 		channel->assignStream(stream);
-		mDataChannels.emplace(std::make_pair(stream, channel));
+		mDataChannels.emplace(stream, channel);
 	}
 
 	mUnassignedDataChannels.clear();
@@ -841,7 +841,7 @@ shared_ptr<Track> PeerConnection::emplaceTrack(Description::Media description) {
 		track->setDescription(std::move(description));
 	} else {
 		track = std::make_shared<Track>(weak_from_this(), std::move(description));
-		mTracks.emplace(std::make_pair(track->mid(), track));
+		mTracks.emplace(track->mid(), track);
 		mTrackLines.emplace_back(track);
 	}
 
@@ -1157,7 +1157,7 @@ void PeerConnection::processRemoteDescription(Description description) {
 
 			// Create incoming track
 			auto track = std::make_shared<Track>(weak_from_this(), std::move(reciprocated));
-			mTracks.emplace(std::make_pair(track->mid(), track));
+			mTracks.emplace(track->mid(), track);
 			mTrackLines.emplace_back(track);
 			triggerTrack(track); // The user may modify the track description
 

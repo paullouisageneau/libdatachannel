@@ -79,24 +79,24 @@ shared_ptr<Track> getTrack(int id) {
 int emplacePeerConnection(shared_ptr<PeerConnection> ptr) {
 	std::lock_guard lock(mutex);
 	int pc = ++lastId;
-	peerConnectionMap.emplace(std::make_pair(pc, ptr));
-	userPointerMap.emplace(std::make_pair(pc, nullptr));
+	peerConnectionMap.emplace(pc, ptr);
+	userPointerMap.emplace(pc, nullptr);
 	return pc;
 }
 
 int emplaceDataChannel(shared_ptr<DataChannel> ptr) {
 	std::lock_guard lock(mutex);
 	int dc = ++lastId;
-	dataChannelMap.emplace(std::make_pair(dc, ptr));
-	userPointerMap.emplace(std::make_pair(dc, nullptr));
+	dataChannelMap.emplace(dc, ptr);
+	userPointerMap.emplace(dc, nullptr);
 	return dc;
 }
 
 int emplaceTrack(shared_ptr<Track> ptr) {
 	std::lock_guard lock(mutex);
 	int tr = ++lastId;
-	trackMap.emplace(std::make_pair(tr, ptr));
-	userPointerMap.emplace(std::make_pair(tr, nullptr));
+	trackMap.emplace(tr, ptr);
+	userPointerMap.emplace(tr, nullptr);
 	return tr;
 }
 
@@ -930,6 +930,7 @@ int rtcReceiveMessage(int id, char *buffer, int *size) {
 		return std::visit( //
 		    overloaded{
 		        [&](binary b) {
+			        auto const originalSize = b.size();
 			        int ret = copyAndReturn(std::move(b), buffer, *size);
 			        if (ret >= 0) {
 				        *size = ret;
@@ -939,11 +940,12 @@ int rtcReceiveMessage(int id, char *buffer, int *size) {
 
 				        return RTC_ERR_SUCCESS;
 			        } else {
-				        *size = int(b.size());
+				        *size = int(originalSize);
 				        return ret;
 			        }
 		        },
 		        [&](string s) {
+			        auto const originalSize = s.size();
 			        int ret = copyAndReturn(std::move(s), buffer, *size);
 			        if (ret >= 0) {
 				        *size = -ret;
@@ -953,7 +955,7 @@ int rtcReceiveMessage(int id, char *buffer, int *size) {
 
 				        return RTC_ERR_SUCCESS;
 			        } else {
-				        *size = -int(s.size() + 1);
+				        *size = -int(originalSize + 1);
 				        return ret;
 			        }
 		        },

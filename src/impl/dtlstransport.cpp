@@ -53,7 +53,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
                              optional<size_t> mtu,
                              CertificateFingerprint::Algorithm fingerprintAlgorithm,
                              verifier_callback verifierCallback, state_callback stateChangeCallback)
-    : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
+    : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(std::move(certificate)),
       mFingerprintAlgorithm(fingerprintAlgorithm), mVerifierCallback(std::move(verifierCallback)),
       mIsClient(lower->role() == Description::Role::Active),
       mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func) {
@@ -381,7 +381,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
                              optional<size_t> mtu,
                              CertificateFingerprint::Algorithm fingerprintAlgorithm,
                              verifier_callback verifierCallback, state_callback stateChangeCallback)
-    : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
+    : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(std::move(certificate)),
       mFingerprintAlgorithm(fingerprintAlgorithm), mVerifierCallback(std::move(verifierCallback)),
       mIsClient(lower->role() == Description::Role::Active),
       mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func) {
@@ -700,7 +700,7 @@ int DtlsTransport::GetTimerCallback(void *ctx) {
 
 #else // OPENSSL
 
-BIO_METHOD *DtlsTransport::BioMethods = NULL;
+BIO_METHOD *DtlsTransport::BioMethods = nullptr;
 int DtlsTransport::TransportExIndex = -1;
 std::mutex DtlsTransport::GlobalMutex;
 
@@ -719,7 +719,7 @@ void DtlsTransport::Init() {
 		BIO_meth_set_ctrl(BioMethods, BioMethodCtrl);
 	}
 	if (TransportExIndex < 0) {
-		TransportExIndex = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
+		TransportExIndex = SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
 	}
 }
 
@@ -731,7 +731,7 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
                              optional<size_t> mtu,
                              CertificateFingerprint::Algorithm fingerprintAlgorithm,
                              verifier_callback verifierCallback, state_callback stateChangeCallback)
-    : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(certificate),
+    : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu), mCertificate(std::move(certificate)),
       mFingerprintAlgorithm(fingerprintAlgorithm), mVerifierCallback(std::move(verifierCallback)),
       mIsClient(lower->role() == Description::Role::Active),
       mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func) {
@@ -1041,7 +1041,7 @@ void DtlsTransport::handleTimeout() {
 int DtlsTransport::CertificateCallback(int /*preverify_ok*/, X509_STORE_CTX *ctx) {
 	SSL *ssl =
 	    static_cast<SSL *>(X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx()));
-	DtlsTransport *t =
+	auto *t =
 	    static_cast<DtlsTransport *>(SSL_get_ex_data(ssl, DtlsTransport::TransportExIndex));
 
 	X509 *crt = X509_STORE_CTX_get_current_cert(ctx);
@@ -1051,7 +1051,7 @@ int DtlsTransport::CertificateCallback(int /*preverify_ok*/, X509_STORE_CTX *ctx
 }
 
 void DtlsTransport::InfoCallback(const SSL *ssl, int where, int ret) {
-	DtlsTransport *t =
+	auto *t =
 	    static_cast<DtlsTransport *>(SSL_get_ex_data(ssl, DtlsTransport::TransportExIndex));
 
 	if (where & SSL_CB_ALERT) {
@@ -1064,7 +1064,7 @@ void DtlsTransport::InfoCallback(const SSL *ssl, int where, int ret) {
 
 int DtlsTransport::BioMethodNew(BIO *bio) {
 	BIO_set_init(bio, 1);
-	BIO_set_data(bio, NULL);
+	BIO_set_data(bio, nullptr);
 	BIO_set_shutdown(bio, 0);
 	return 1;
 }
@@ -1072,7 +1072,7 @@ int DtlsTransport::BioMethodNew(BIO *bio) {
 int DtlsTransport::BioMethodFree(BIO *bio) {
 	if (!bio)
 		return 0;
-	BIO_set_data(bio, NULL);
+	BIO_set_data(bio, nullptr);
 	return 1;
 }
 

@@ -119,7 +119,7 @@ string format_time(const std::chrono::system_clock::time_point &tp) {
 	if (my_strftme(buffer, bufferSize, "%Y%m%d%H%M%S", &t) == 0)
 		throw std::runtime_error("Time conversion failed");
 
-	return string(buffer);
+	return {buffer};
 };
 
 std::shared_ptr<mbedtls_pk_context> new_pk_context() {
@@ -171,7 +171,7 @@ string error_string(unsigned long error) {
 	const size_t bufferSize = 256;
 	char buffer[bufferSize];
 	ERR_error_string_n(error, buffer, bufferSize);
-	return string(buffer);
+	return {buffer};
 }
 
 bool check(int success, const string &message) {

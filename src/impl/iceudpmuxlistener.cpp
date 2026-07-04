@@ -33,7 +33,7 @@ IceUdpMuxListener::IceUdpMuxListener(uint16_t port, [[maybe_unused]] optional<st
 
 #if !USE_NICE
 	PLOG_DEBUG << "Registering ICE UDP mux listener for port " << port;
-	if (juice_mux_listen(bindAddress ? bindAddress->c_str() : NULL, port,
+	if (juice_mux_listen(bindAddress ? bindAddress->c_str() : nullptr, port,
 	                     IceUdpMuxListener::UnhandledStunRequestCallback, this) < 0) {
 		throw std::runtime_error("Failed to register ICE UDP mux listener");
 	}
@@ -53,7 +53,7 @@ void IceUdpMuxListener::stop() {
 
 #if !USE_NICE
 	PLOG_DEBUG << "Unregistering ICE UDP mux listener for port " << port;
-	if (juice_mux_listen(NULL, port, NULL, NULL) < 0) {
+	if (juice_mux_listen(nullptr, port, nullptr, nullptr) < 0) {
 		PLOG_ERROR << "Failed to unregister ICE UDP mux listener";
 	}
 #endif

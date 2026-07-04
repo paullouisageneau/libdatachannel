@@ -40,9 +40,9 @@ string DataChannel::protocol() const { return impl()->protocol(); }
 
 Reliability DataChannel::reliability() const { return impl()->reliability(); }
 
-bool DataChannel::isOpen(void) const { return impl()->isOpen(); }
+bool DataChannel::isOpen() const { return impl()->isOpen(); }
 
-bool DataChannel::isClosed(void) const { return impl()->isClosed(); }
+bool DataChannel::isClosed() const { return impl()->isClosed(); }
 
 size_t DataChannel::maxMessageSize() const { return impl()->maxMessageSize(); }
 

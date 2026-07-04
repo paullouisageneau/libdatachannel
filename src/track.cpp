@@ -36,9 +36,9 @@ bool Track::send(message_variant data) { return impl()->outgoing(make_message(st
 
 bool Track::send(const byte *data, size_t size) { return send(binary(data, data + size)); }
 
-bool Track::isOpen(void) const { return impl()->isOpen(); }
+bool Track::isOpen() const { return impl()->isOpen(); }
 
-bool Track::isClosed(void) const { return impl()->isClosed(); }
+bool Track::isClosed() const { return impl()->isClosed(); }
 
 size_t Track::maxMessageSize() const { return impl()->maxMessageSize(); }
 

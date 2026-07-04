@@ -76,7 +76,7 @@ bool DataChannel::IsOpenMessage(message_ptr message) {
 
 DataChannel::DataChannel(weak_ptr<PeerConnection> pc, string label, string protocol,
                          Reliability reliability)
-    : mPeerConnection(pc), mLabel(std::move(label)), mProtocol(std::move(protocol)),
+    : mPeerConnection(std::move(pc)), mLabel(std::move(label)), mProtocol(std::move(protocol)),
       mRecvQueue(RECV_QUEUE_LIMIT, message_size_func) {
 
 	if(reliability.maxPacketLifeTime && reliability.maxRetransmits)
@@ -146,9 +146,9 @@ Reliability DataChannel::reliability() const {
 	return *mReliability;
 }
 
-bool DataChannel::isOpen(void) const { return !mIsClosed && mIsOpen; }
+bool DataChannel::isOpen() const { return !mIsClosed && mIsOpen; }
 
-bool DataChannel::isClosed(void) const { return mIsClosed; }
+bool DataChannel::isClosed() const { return mIsClosed; }
 
 size_t DataChannel::maxMessageSize() const {
 	auto pc = mPeerConnection.lock();
