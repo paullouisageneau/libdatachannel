@@ -40,17 +40,26 @@ gnutls_datum_t make_datum(char *data, size_t size);
 
 #elif USE_MBEDTLS
 
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/ecdsa.h"
-#include "mbedtls/entropy.h"
+#include "mbedtls/ssl.h"
 #include "mbedtls/error.h"
 #include "mbedtls/pk.h"
-#include "mbedtls/rsa.h"
-#include "mbedtls/sha256.h"
-#include "mbedtls/ssl.h"
 #include "mbedtls/x509_crt.h"
 
+// Mbed TLS version 3, relies on internal states when build with MBEDTLS_USE_PSA_CRYPTO.
+// Mbed TLS version 4 always realies on internal states.
+// In those scenarios, MBEDTLS_THREADING_C is required when using any Mbed TLS function
+// unless all calls comes from the same thread.
+#if !defined(MBEDTLS_THREADING_C) && (MBEDTLS_VERSION_MAJOR >= 4 || defined(MBEDTLS_USE_PSA_CRYPTO))
+#error "Mbed TLS was not build with threading support (MBEDTLS_THREADING_C)."
+#endif
+
 namespace rtc::mbedtls {
+
+void init();
+
+int random_func(void *rng, unsigned char *out, size_t len);
+
+int safe_psa(std::function<int()> func);
 
 bool check(int ret, const string &message = "MbedTLS error");
 
