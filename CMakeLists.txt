@@ -25,6 +25,7 @@ option(NO_TESTS "Disable tests build" OFF)
 option(WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(CAPI_STDCALL "Set calling convention of C API callbacks stdcall" OFF)
 option(SCTP_DEBUG "Enable SCTP debugging output to verbose log" OFF)
+option(DISABLE_SCTP_INTERLEAVING "Disable SCTP I-DATA interleaving support" OFF)
 option(RTC_UPDATE_VERSION_HEADER "Enable updating the version header" OFF)
 
 if(NOT NO_MEDIA AND NOT PREFER_SYSTEM_LIB)
@@ -228,6 +229,7 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/sctp_interleaving.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp_generation.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp_parsing.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/turn_connectivity.cpp
@@ -423,6 +425,11 @@ else()
 		target_link_libraries(datachannel PRIVATE srtp2)
 		target_link_libraries(datachannel-static PRIVATE srtp2)
 	endif()
+endif()
+
+if(DISABLE_SCTP_INTERLEAVING)
+	target_compile_definitions(datachannel PRIVATE DISABLE_SCTP_INTERLEAVING=1)
+	target_compile_definitions(datachannel-static PRIVATE DISABLE_SCTP_INTERLEAVING=1)
 endif()
 
 if (USE_GNUTLS)
