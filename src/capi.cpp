@@ -1792,11 +1792,16 @@ int rtcCreateWebSocketEx(const char *url, const rtcWsConfiguration *config) {
 		for (int i = 0; i < config->protocolsCount; ++i)
 			c.protocols.emplace_back(string(config->protocols[i]));
 
+		if (config->connectionAttemptDelayMs > 0)
+			c.connectionAttemptDelay = milliseconds(config->connectionAttemptDelayMs);
+		else if (config->connectionAttemptDelayMs < 0)
+			c.connectionAttemptDelay = milliseconds::zero(); // setting to 0 disables,
+			                                                 // not setting keeps default
 		if (config->tcpConnectionTimeoutMs > 0)
 			c.tcpConnectionTimeout = milliseconds(config->tcpConnectionTimeoutMs);
 		else if (config->tcpConnectionTimeoutMs < 0)
 			c.tcpConnectionTimeout = milliseconds::zero(); // setting to 0 disables,
-			                                            // not setting keeps default
+			                                               // not setting keeps default
 		if (config->connectionTimeoutMs > 0)
 			c.connectionTimeout = milliseconds(config->connectionTimeoutMs);
 		else if (config->connectionTimeoutMs < 0)
@@ -1987,4 +1992,3 @@ void rtcCleanup() {
 		PLOG_ERROR << e.what();
 	}
 }
-
