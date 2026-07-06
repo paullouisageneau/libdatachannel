@@ -50,7 +50,7 @@ void Transport::onRecv(message_callback callback) {
 	}
 	for (auto &msg : pending) {
 		try {
-			mRecvCallback(msg);
+			mRecvCallback(std::move(msg));
 		} catch (const std::exception &e) {
 			PLOG_WARNING << e.what();
 		}
@@ -65,7 +65,7 @@ void Transport::start() { registerIncoming(); }
 
 void Transport::stop() { unregisterIncoming(); }
 
-bool Transport::send(message_ptr message) { return outgoing(message); }
+bool Transport::send(message_ptr message) { return outgoing(std::move(message)); }
 
 void Transport::recv(message_ptr message) {
 	try {
@@ -80,7 +80,7 @@ void Transport::recv(message_ptr message) {
 			return;
 		}
 		lock.unlock();
-		mRecvCallback(message);
+		mRecvCallback(std::move(message));
 	} catch (const std::exception &e) {
 		PLOG_WARNING << e.what();
 	}
@@ -95,11 +95,11 @@ void Transport::changeState(State state) {
 	}
 }
 
-void Transport::incoming(message_ptr message) { recv(message); }
+void Transport::incoming(message_ptr message) { recv(std::move(message)); }
 
 bool Transport::outgoing(message_ptr message) {
 	if (mLower)
-		return mLower->send(message);
+		return mLower->send(std::move(message));
 	else
 		return false;
 }

@@ -186,7 +186,7 @@ bool WebSocket::outgoing(message_ptr message) {
 	if (message->size() > maxMessageSize())
 		throw std::runtime_error("Message size exceeds limit");
 
-	return mWsTransport->send(message);
+	return mWsTransport->send(std::move(message));
 }
 
 void WebSocket::incoming(message_ptr message) {
@@ -196,7 +196,7 @@ void WebSocket::incoming(message_ptr message) {
 	}
 
 	if (message->type == Message::String || message->type == Message::Binary) {
-		mRecvQueue.push(message);
+		mRecvQueue.push(std::move(message));
 		triggerAvailable(mRecvQueue.size());
 	}
 }

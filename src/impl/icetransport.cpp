@@ -290,7 +290,7 @@ bool IceTransport::send(message_ptr message) {
 		return false;
 
 	PLOG_VERBOSE << "Send size=" << message->size();
-	return outgoing(message);
+	return outgoing(std::move(message));
 }
 
 bool IceTransport::outgoing(message_ptr message) {
@@ -804,7 +804,7 @@ bool IceTransport::send(message_ptr message) {
 		return false;
 
 	PLOG_VERBOSE << "Send size=" << message->size();
-	return outgoing(message);
+	return outgoing(std::move(message));
 }
 
 bool IceTransport::outgoing(message_ptr message) {

@@ -521,7 +521,7 @@ void PeerConnection::forwardMessage(message_ptr message) {
 
 	if (channel) {
 		// Forward the message
-		channel->incoming(message);
+		channel->incoming(std::move(message));
 	} else {
 		// DataChannel was destroyed, ignore
 		PLOG_DEBUG << "Ignored message on stream " << stream << ", DataChannel is destroyed";

@@ -43,7 +43,7 @@ bool HttpProxyTransport::send(message_ptr message) {
 		throw std::runtime_error("HTTP proxy connection is not open");
 
 	PLOG_VERBOSE << "Send size=" << message->size();
-	return outgoing(message);
+	return outgoing(std::move(message));
 }
 
 bool HttpProxyTransport::isActive() const { return true; }

@@ -125,7 +125,7 @@ bool TlsTransport::send(message_ptr message) {
 		throw std::runtime_error("TLS is not open");
 
 	if (!message || message->size() == 0)
-		return outgoing(message); // pass through
+		return outgoing(std::move(message)); // pass through
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
@@ -148,7 +148,7 @@ void TlsTransport::incoming(message_ptr message) {
 	}
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
-	mIncomingQueue.push(message);
+	mIncomingQueue.push(std::move(message));
 	enqueueRecv();
 }
 
@@ -259,7 +259,7 @@ ssize_t TlsTransport::ReadCallback(gnutls_transport_ptr_t ptr, void *data, size_
 				if (message->size() > 0)
 					break;
 
-				t->recv(message); // Pass zero-sized messages through
+				t->recv(std::move(message)); // Pass zero-sized messages through
 				message.reset();
 			}
 		}
@@ -393,7 +393,7 @@ bool TlsTransport::send(message_ptr message) {
 		throw std::runtime_error("TLS is not open");
 
 	if (!message || message->size() == 0)
-		return outgoing(message); // pass through
+		return outgoing(std::move(message)); // pass through
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
@@ -418,7 +418,7 @@ void TlsTransport::incoming(message_ptr message) {
 	}
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
-	mIncomingQueue.push(message);
+	mIncomingQueue.push(std::move(message));
 	enqueueRecv();
 }
 
@@ -531,7 +531,7 @@ int TlsTransport::ReadCallback(void *ctx, unsigned char *buf, size_t len) {
 				if (message->size() > 0)
 					break;
 
-				t->recv(message); // Pass zero-sized messages through
+				t->recv(std::move(message)); // Pass zero-sized messages through
 				message.reset();
 			}
 		}
@@ -691,7 +691,7 @@ bool TlsTransport::send(message_ptr message) {
 		throw std::runtime_error("TLS is not open");
 
 	if (!message || message->size() == 0)
-		return outgoing(message); // pass through
+		return outgoing(std::move(message)); // pass through
 
 	PLOG_VERBOSE << "Send size=" << message->size();
 
@@ -718,7 +718,7 @@ void TlsTransport::incoming(message_ptr message) {
 	}
 
 	PLOG_VERBOSE << "Incoming size=" << message->size();
-	mIncomingQueue.push(message);
+	mIncomingQueue.push(std::move(message));
 	enqueueRecv();
 }
 
@@ -747,7 +747,7 @@ void TlsTransport::doRecv() {
 
 			message_ptr message = std::move(*next);
 			if (message->size() == 0) {
-				recv(message); // Pass zero-sized messages through
+				recv(std::move(message)); // Pass zero-sized messages through
 				continue;
 			}
 
