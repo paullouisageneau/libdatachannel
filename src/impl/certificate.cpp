@@ -203,9 +203,11 @@ string make_fingerprint(mbedtls_x509_crt *crt,
 	}
 
 	size_t hash_size = 0;
-	mbedtls::check(psa_hash_compute(alg, crt->raw.p, crt->raw.len,
-	        buffer.data(), buffer.size(), &hash_size),
-	        "Failed to generate certificate fingerprint");
+	int ret = mbedtls::safe_psa([&] {
+		return psa_hash_compute(alg, crt->raw.p, crt->raw.len,
+		        buffer.data(), buffer.size(), &hash_size);
+	});
+	mbedtls::check(ret, "Failed to generate certificate fingerprint");
 	if (hash_size != buffer.size()) {
 		throw std::runtime_error("Unexpected hash size");
 	}
@@ -287,29 +289,42 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 		// See https://www.rfc-editor.org/rfc/rfc8827.html#section-6.5
 		case CertificateType::Default:
 		case CertificateType::Ecdsa: {
-			psa_key_id_t slot = PSA_KEY_ID_NULL;
-			psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
-			psa_set_key_type(&attr, PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1));
-			psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_EXPORT | PSA_KEY_USAGE_COPY);
-			psa_set_key_bits(&attr, 256);
-			mbedtls::check(psa_generate_key(&attr, &slot), "Unable to generate ECDSA P-256 key pair");
-			int ret = mbedtls_pk_copy_from_psa(slot, pk.get());
-			psa_destroy_key(slot);
-			mbedtls::check(ret);
+			int ret = mbedtls::safe_psa([&] {
+				psa_key_id_t slot = PSA_KEY_ID_NULL;
+				psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
+				psa_set_key_type(&attr, PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1));
+				psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_EXPORT | PSA_KEY_USAGE_COPY);
+				psa_set_key_bits(&attr, 256);
+				int ret = psa_generate_key(&attr, &slot);
+				if (ret) {
+					psa_destroy_key(slot);
+					return ret;
+				}
+				ret = mbedtls_pk_copy_from_psa(slot, pk.get());
+				psa_destroy_key(slot);
+				return ret;
+			});
+			mbedtls::check(ret, "Unable to generate ECDSA P-256 key pair");
 			break;
 		}
 		case CertificateType::Rsa: {
 			const unsigned int nbits = 2048;
-
-			psa_key_id_t slot = PSA_KEY_ID_NULL;
-			psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
-			psa_set_key_type(&attr, PSA_KEY_TYPE_RSA_KEY_PAIR);
-			psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_EXPORT | PSA_KEY_USAGE_COPY);
-			psa_set_key_bits(&attr, nbits);
-			mbedtls::check(psa_generate_key(&attr, &slot), "Unable to generate RSA key pair");
-			int ret = mbedtls_pk_copy_from_psa(slot, pk.get());
-			psa_destroy_key(slot);
-			mbedtls::check(ret);
+			int ret = mbedtls::safe_psa([&] {
+				psa_key_id_t slot = PSA_KEY_ID_NULL;
+				psa_key_attributes_t attr = PSA_KEY_ATTRIBUTES_INIT;
+				psa_set_key_type(&attr, PSA_KEY_TYPE_RSA_KEY_PAIR);
+				psa_set_key_usage_flags(&attr, PSA_KEY_USAGE_EXPORT | PSA_KEY_USAGE_COPY);
+				psa_set_key_bits(&attr, nbits);
+				int ret = psa_generate_key(&attr, &slot);
+				if (ret) {
+					psa_destroy_key(slot);
+					return ret;
+				}
+				ret = mbedtls_pk_copy_from_psa(slot, pk.get());
+				psa_destroy_key(slot);
+				return ret;
+			});
+			mbedtls::check(ret, "Unable to generate RSA key pair");
 			break;
 		}
 		default:
@@ -322,8 +337,10 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 
 		const size_t serialBufferSize = 16;
 		unsigned char serialBuffer[serialBufferSize];
-		mbedtls::check(psa_generate_random(serialBuffer, serialBufferSize),
-		               "Failed to generate certificate");
+		int ret = mbedtls::safe_psa([&] {
+			return psa_generate_random(serialBuffer, serialBufferSize);
+		});
+		mbedtls::check(ret, "Failed to generate certificate");
 
 		std::string name = std::string("O=" + commonName + ",CN=" + commonName);
 		mbedtls::check(mbedtls_x509write_crt_set_serial_raw(&wcrt, serialBuffer, serialBufferSize),
