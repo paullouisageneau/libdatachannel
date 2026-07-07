@@ -45,6 +45,10 @@ gnutls_datum_t make_datum(char *data, size_t size);
 #include "mbedtls/pk.h"
 #include "mbedtls/x509_crt.h"
 
+#if !defined(MBEDTLS_THREADING_C)
+#error "Mbed TLS was not build with threading support (MBEDTLS_THREADING_C)."
+#endif
+
 namespace rtc::mbedtls {
 
 void init();
