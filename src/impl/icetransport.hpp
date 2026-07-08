@@ -57,11 +57,13 @@ public:
 	optional<string> getRemoteAddress() const;
 
 	bool send(message_ptr message) override; // false if dropped
+	bool send(const byte *data, size_t size, unsigned int dscp) override; // false if dropped
 
 	bool getSelectedCandidatePair(Candidate *local, Candidate *remote);
 
 private:
 	bool outgoing(message_ptr message) override;
+	bool outgoing(const byte *data, size_t size, unsigned int dscp) override;
 
 	void changeGatheringState(GatheringState state);
 

@@ -39,12 +39,14 @@ public:
 	virtual void start() override;
 	virtual void stop() override;
 	virtual bool send(message_ptr message) override; // false if dropped
+	virtual bool send(const byte *data, size_t size, unsigned int dscp) override; // false if dropped
 
 	bool isClient() const { return mIsClient; }
 
 protected:
 	virtual void incoming(message_ptr message) override;
 	virtual bool outgoing(message_ptr message) override;
+	virtual bool outgoing(const byte *data, size_t size, unsigned int dscp) override;
 	virtual bool demuxMessage(message_ptr message);
 	virtual void postHandshake();
 

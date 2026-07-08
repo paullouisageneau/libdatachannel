@@ -40,12 +40,14 @@ public:
 	virtual void start();
 	virtual void stop();
 	virtual bool send(message_ptr message);
+	virtual bool send(const byte *data, size_t size, unsigned int dscp);
 
 protected:
 	void recv(message_ptr message);
 	void changeState(State state);
 	virtual void incoming(message_ptr message);
 	virtual bool outgoing(message_ptr message);
+	virtual bool outgoing(const byte *data, size_t size, unsigned int dscp);
 
 private:
 	const init_token mInitToken = Init::Instance().token();

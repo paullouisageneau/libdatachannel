@@ -476,6 +476,12 @@ bool SctpTransport::outgoing(message_ptr message) {
 	return Transport::outgoing(std::move(message));
 }
 
+bool SctpTransport::outgoing(const byte *data, size_t size, unsigned int /*dscp*/) {
+	// Set recommended medium-priority DSCP value
+	// See https://www.rfc-editor.org/rfc/rfc8837.html#section-5
+	return Transport::outgoing(data, size, 10); // AF11: Assured Forwarding class 1, low drop probability
+}
+
 void SctpTransport::doRecv() {
 	std::lock_guard lock(mRecvMutex);
 	--mPendingRecvCount;
@@ -768,7 +774,7 @@ int SctpTransport::handleWrite(byte *data, size_t len, uint8_t /*tos*/,
 		std::unique_lock lock(mWriteMutex);
 		PLOG_VERBOSE << "Handle write, len=" << len;
 
-		if (!outgoing(make_message(data, data + len)))
+		if (!outgoing(data, len, 0))
 			return -1;
 
 		mWritten = true;
