@@ -48,6 +48,10 @@ public:
 	void start() override;
 	void stop() override;
 	bool send(message_ptr message) override; // false if buffered
+	bool send(const byte *data, size_t size, Message::Type type, unsigned int stream,
+	          shared_ptr<Reliability> reliability); // false if buffered
+	bool send(binary &&data, Message::Type type, unsigned int stream,
+	          shared_ptr<Reliability> reliability); // false if buffered
 	bool flush();
 	void closeStream(unsigned int stream);
 	void close();
@@ -86,6 +90,9 @@ private:
 	void enqueueFlush();
 	bool trySendQueue();
 	bool trySendMessage(const message_ptr &message);
+	bool trySendMessage(const byte *data, size_t size, Message::Type type, unsigned int stream,
+	                    const shared_ptr<Reliability> &reliability);
+	void queueMessage(message_ptr message);
 	void updateBufferedAmount(uint16_t streamId, ptrdiff_t delta);
 	void triggerBufferedAmount(uint16_t streamId, size_t amount);
 	void sendReset(uint16_t streamId);
@@ -108,6 +115,7 @@ private:
 	std::recursive_mutex mSendMutex; // buffered amount callback is synchronous
 	Queue<message_ptr> mSendQueue;
 	bool mSendShutdown = false;
+	bool mDirectSendBlocked = false;
 	std::map<uint16_t, size_t> mBufferedAmount;
 	amount_callback mBufferedAmountCallback;
 
