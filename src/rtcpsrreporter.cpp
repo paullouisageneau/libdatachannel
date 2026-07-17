@@ -9,24 +9,13 @@
 #if RTC_ENABLE_MEDIA
 
 #include "rtcpsrreporter.hpp"
+#include "impl/utils.hpp"
 
 #include <cassert>
 #include <chrono>
 #include <cmath>
 
 using namespace std::chrono_literals;
-
-namespace {
-
-// TODO: move to utils
-uint64_t ntp_time() {
-	const auto now = std::chrono::system_clock::now();
-	const double secs = std::chrono::duration<double>(now.time_since_epoch()).count();
-	// Assume the epoch is 01/01/1970 and adds the number of seconds between 1900 and 1970
-	return uint64_t(std::floor((secs + 2208988800.) * double(uint64_t(1) << 32)));
-}
-
-} // namespace
 
 namespace rtc {
 
@@ -80,7 +69,7 @@ message_ptr RtcpSrReporter::getSenderReport(uint32_t timestamp) {
 	auto msg = make_message(srSize + RtcpSdes::Size({{uint8_t(rtpConfig->cname.size())}}),
 	                        Message::Control);
 	auto sr = reinterpret_cast<RtcpSr *>(msg->data());
-	sr->setNtpTimestamp(ntp_time());
+	sr->setNtpTimestamp(impl::utils::ntp_time());
 	sr->setRtpTimestamp(timestamp);
 	sr->setPacketCount(mPacketCount);
 	sr->setOctetCount(mPayloadOctets);
