@@ -34,6 +34,9 @@ string base64_encode(const binary &data);
 // Return a random seed sequence
 std::seed_seq random_seed();
 
+// Return ntp timestamp
+uint64_t ntp_time();
+
 template <typename Generator, typename Result = typename Generator::result_type>
 struct random_engine_wrapper {
 	Generator &engine;
