@@ -17,7 +17,8 @@
 
 #elif USE_MBEDTLS
 
-#include <mbedtls/sha1.h>
+#include "tls.hpp"
+#include <psa/crypto.h>
 
 #else
 
@@ -50,8 +51,12 @@ binary Sha1(const byte *data, size_t size) {
 #elif USE_MBEDTLS
 
 	binary output(20);
-	mbedtls_sha1(reinterpret_cast<const unsigned char *>(data), size,
-	             reinterpret_cast<unsigned char *>(output.data()));
+	size_t hash_size = 0;
+	mbedtls::safe_psa([&] {
+		return psa_hash_compute(PSA_ALG_SHA_1, reinterpret_cast<const unsigned char *>(data),
+		             size, reinterpret_cast<unsigned char *>(output.data()), 20,
+		             &hash_size);
+	});
 	return output;
 
 #else

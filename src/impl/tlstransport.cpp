@@ -324,23 +324,19 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 
 	PLOG_DEBUG << "Initializing TLS transport (MbedTLS)";
 
-	psa_crypto_init();
-	mbedtls_entropy_init(&mEntropy);
-	mbedtls_ctr_drbg_init(&mDrbg);
 	mbedtls_ssl_init(&mSsl);
 	mbedtls_ssl_config_init(&mConf);
-	mbedtls_ctr_drbg_set_prediction_resistance(&mDrbg, MBEDTLS_CTR_DRBG_PR_ON);
 
 	try {
-		mbedtls::check(mbedtls_ctr_drbg_seed(&mDrbg, mbedtls_entropy_func, &mEntropy, NULL, 0));
-
 		mbedtls::check(mbedtls_ssl_config_defaults(
 		    &mConf, mIsClient ? MBEDTLS_SSL_IS_CLIENT : MBEDTLS_SSL_IS_SERVER,
 		    MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT));
 
-		mbedtls_ssl_conf_max_version(&mConf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3); // TLS 1.2
+		mbedtls_ssl_conf_max_tls_version(&mConf, MBEDTLS_SSL_VERSION_TLS1_2);
 		mbedtls_ssl_conf_authmode(&mConf, MBEDTLS_SSL_VERIFY_OPTIONAL);
-		mbedtls_ssl_conf_rng(&mConf, mbedtls_ctr_drbg_random, &mDrbg);
+#if MBEDTLS_VERSION_MAJOR < 4
+		mbedtls_ssl_conf_rng(&mConf, &mbedtls::random_func, nullptr);
+#endif
 
 		if (certificate) {
 			auto [crt, pk] = certificate->credentials();
@@ -356,8 +352,6 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 		mbedtls_ssl_set_bio(&mSsl, static_cast<void *>(this), WriteCallback, ReadCallback, NULL);
 
 	} catch (...) {
-		mbedtls_entropy_free(&mEntropy);
-		mbedtls_ctr_drbg_free(&mDrbg);
 		mbedtls_ssl_free(&mSsl);
 		mbedtls_ssl_config_free(&mConf);
 		throw;
@@ -368,8 +362,6 @@ TlsTransport::~TlsTransport() {
 	stop();
 
 	PLOG_DEBUG << "Destroying TLS transport";
-	mbedtls_entropy_free(&mEntropy);
-	mbedtls_ctr_drbg_free(&mDrbg);
 	mbedtls_ssl_free(&mSsl);
 	mbedtls_ssl_config_free(&mConf);
 }
