@@ -67,6 +67,15 @@ void Transport::stop() { unregisterIncoming(); }
 
 bool Transport::send(message_ptr message) { return outgoing(std::move(message)); }
 
+bool Transport::send(const byte *data, size_t size, unsigned int dscp) {
+	if (!data && size > 0)
+		return false;
+
+	auto message = size > 0 ? make_message(data, data + size) : make_message(0);
+	message->dscp = dscp;
+	return send(std::move(message));
+}
+
 void Transport::recv(message_ptr message) {
 	try {
 		std::unique_lock lock(mPendingMutex);
@@ -100,6 +109,13 @@ void Transport::incoming(message_ptr message) { recv(std::move(message)); }
 bool Transport::outgoing(message_ptr message) {
 	if (mLower)
 		return mLower->send(std::move(message));
+	else
+		return false;
+}
+
+bool Transport::outgoing(const byte *data, size_t size, unsigned int dscp) {
+	if (mLower)
+		return mLower->send(data, size, dscp);
 	else
 		return false;
 }
