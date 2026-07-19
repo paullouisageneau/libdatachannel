@@ -59,6 +59,18 @@ using utils::to_uint32;
 static LogCounter COUNTER_UNKNOWN_PPID(plog::warning,
                                        "Number of SCTP packets received with an unknown PPID");
 
+#ifdef SCTP_INTERLEAVING_SUPPORTED
+constexpr int SCTP_INTERLEAVING_SUPPORTED_OPTION = SCTP_INTERLEAVING_SUPPORTED;
+#else
+constexpr int SCTP_INTERLEAVING_SUPPORTED_OPTION = 0x00001206;
+#endif
+
+#ifdef SCTP_FRAG_LEVEL_2
+constexpr int SCTP_FRAGMENT_INTERLEAVE_LEVEL_2 = SCTP_FRAG_LEVEL_2;
+#else
+constexpr int SCTP_FRAGMENT_INTERLEAVE_LEVEL_2 = 2;
+#endif
+
 class SctpTransport::InstancesSet {
 public:
 	void insert(SctpTransport *instance) {
@@ -267,13 +279,45 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 		throw std::runtime_error("Could not set socket option SCTP_INITMSG, errno=" +
 		                         std::to_string(errno));
 
-	// Prevent fragmented interleave of messages (i.e. level 0), see RFC 6458 section 8.1.20.
-	// Unless the user has set the fragmentation interleave level to 0, notifications
-	// may also be interleaved with partially delivered messages.
-	int level = 0;
-	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, &level, sizeof(level)))
-		throw std::runtime_error("Could not disable SCTP fragmented interleave, errno=" +
-		                         std::to_string(errno));
+	const auto disableFragmentedInterleave = [&]() {
+		// Prevent fragmented interleave of messages (i.e. level 0), see RFC 6458 section 8.1.20.
+		// Unless the user has set the fragmentation interleave level to 0, notifications
+		// may also be interleaved with partially delivered messages.
+		int level = 0;
+		if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, &level,
+		                       sizeof(level)))
+			throw std::runtime_error("Could not disable SCTP fragmented interleave, errno=" +
+			                         std::to_string(errno));
+	};
+
+#if !defined(DISABLE_SCTP_INTERLEAVING)
+	// Enable RFC 8260 I-DATA support when usrsctp exposes it. The association negotiates the
+	// extension and falls back to DATA chunks when the remote peer does not support interleaving.
+	int level = SCTP_FRAGMENT_INTERLEAVE_LEVEL_2;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, &level, sizeof(level))) {
+		const int error = errno;
+		PLOG_WARNING << "Could not enable SCTP fragmented interleave, falling back to level 0, "
+		                "errno="
+		             << error;
+		disableFragmentedInterleave();
+	} else {
+		struct sctp_assoc_value interleaving = {};
+		interleaving.assoc_id = SCTP_FUTURE_ASSOC;
+		interleaving.assoc_value = 1;
+		if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_INTERLEAVING_SUPPORTED_OPTION,
+		                       &interleaving, sizeof(interleaving))) {
+			const int error = errno;
+			PLOG_WARNING << "Could not enable SCTP I-DATA interleaving, falling back to level 0, "
+			                "errno="
+			             << error;
+			disableFragmentedInterleave();
+		} else {
+			PLOG_DEBUG << "SCTP I-DATA interleaving enabled for negotiation";
+		}
+	}
+#else
+	disableFragmentedInterleave();
+#endif
 
 #ifdef SCTP_ACCEPT_ZERO_CHECKSUM // not available in usrsctp v0.9.5.0
 	// When using SCTP over DTLS, the data integrity is ensured by DTLS. Therefore, there's no
@@ -517,19 +561,23 @@ void SctpTransport::doRecv() {
 
 			} else {
 				// SCTP message
-				mPartialMessage.insert(mPartialMessage.end(), buffer, buffer + len);
-				if (mPartialMessage.size() > mMaxMessageSize) {
+				if (infotype != SCTP_RECVV_RCVINFO)
+					throw std::runtime_error("Missing SCTP recv info");
+
+				const PartialMessageKey key(info.rcv_sid, info.rcv_ssn,
+				                            (info.rcv_flags & SCTP_UNORDERED) != 0);
+				auto &partialMessage = mPartialMessages[key];
+				partialMessage.insert(partialMessage.end(), buffer, buffer + len);
+				if (partialMessage.size() > mMaxMessageSize) {
 					PLOG_WARNING << "SCTP message is too large, truncating it";
-					mPartialMessage.resize(mMaxMessageSize);
+					partialMessage.resize(mMaxMessageSize);
 				}
 
 				if (flags & MSG_EOR) {
 					// Message is complete, process it
 					binary message;
-					mPartialMessage.swap(message);
-					if (infotype != SCTP_RECVV_RCVINFO)
-						throw std::runtime_error("Missing SCTP recv info");
-
+					partialMessage.swap(message);
+					mPartialMessages.erase(key);
 					processData(std::move(message), info.rcv_sid, PayloadId(ntohl(info.rcv_ppid)));
 				}
 			}
@@ -624,8 +672,7 @@ bool SctpTransport::trySendMessage(const message_ptr &message) {
 
 	PLOG_VERBOSE << "SCTP try send size=" << message->size();
 
-	// TODO: Implement SCTP ndata specification draft when supported everywhere
-	// See https://datatracker.ietf.org/doc/html/draft-ietf-tsvwg-sctp-ndata-08
+	// usrsctp emits DATA or I-DATA chunks according to association negotiation.
 
 	const Reliability reliability = message->reliability ? *message->reliability : Reliability();
 
