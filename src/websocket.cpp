@@ -12,6 +12,7 @@
 #include "common.hpp"
 
 #include "impl/internals.hpp"
+#include "impl/socket.hpp"
 #include "impl/websocket.hpp"
 
 namespace rtc {
@@ -58,6 +59,8 @@ bool WebSocket::send(message_variant data) {
 bool WebSocket::send(const byte *data, size_t size) {
 	return impl()->outgoing(make_message(data, data + size, Message::Binary));
 }
+
+void WebSocket::setSocket(int incomingSock) { return impl()->setSocket(static_cast<socket_t>(incomingSock)); }
 
 optional<string> WebSocket::remoteAddress() const {
 	auto tcpTransport = impl()->getTcpTransport();
