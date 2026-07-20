@@ -229,7 +229,7 @@ void RtcpReportBlock::setJitter(uint32_t jitter) { _jitter = htonl(jitter); }
 
 void RtcpReportBlock::setNTPOfSR(uint64_t ntp) { _lastReport = htonl((uint32_t)(ntp >> 16)); }
 
-uint32_t RtcpReportBlock::getNTPOfSR() const { return ntohl(_lastReport) << 16u; }
+uint64_t RtcpReportBlock::getNTPOfSR() const { return (uint64_t)ntohl(_lastReport) << 16u; }
 
 void RtcpReportBlock::setDelaySinceSR(uint32_t sr) {
 	// The delay, expressed in units of 1/65536 seconds
