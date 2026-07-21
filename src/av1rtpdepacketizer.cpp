@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2024 Paul-Louis Ageneau
+ * Copyright (c) 2026 Henry Ruhs
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,30 +13,42 @@
 
 namespace rtc {
 
+const auto obuHeaderSize = 1;
+const auto obuHasExtensionMask = byte(0b00000100);
+const auto obuHasSizeMask = byte(0b00000010);
+
+const auto zMask = byte(0b10000000);
+const auto yMask = byte(0b01000000);
+const auto wMask = byte(0b00110000);
+const auto wBitshift = 4;
+
+const auto sevenLsbBitmask = byte(0b01111111);
+const auto msbBitmask = byte(0b10000000);
+
 namespace {
 
-void appendObuWithSize(binary &frame, const std::byte *data, size_t size) {
+void appendObuWithSize(binary &frame, const byte *data, size_t size) {
 	if (size < 1)
 		return;
 
-	uint8_t header = std::to_integer<uint8_t>(data[0]);
-	bool hasExtension = (header >> 2) & 1;
-	bool hasSizeField = (header >> 1) & 1;
-	size_t headerSize = 1 + (hasExtension ? 1 : 0);
+	byte header = data[0];
+	bool hasExtension = (header & obuHasExtensionMask) != byte(0);
+	bool hasSizeField = (header & obuHasSizeMask) != byte(0);
+	size_t headerSize = obuHeaderSize + (hasExtension ? 1 : 0);
 
 	if (size < headerSize)
 		return;
 
-	const std::byte *payloadData;
+	const byte *payloadData;
 	size_t payloadSize;
 
 	if (hasSizeField) {
 		size_t offset = headerSize;
 		uint32_t existingSize = 0;
 		for (int i = 0; i < 4 && offset < size; i++) {
-			uint8_t b = std::to_integer<uint8_t>(data[offset++]);
-			existingSize |= uint32_t(b & 0x7F) << (i * 7);
-			if (!(b & 0x80))
+			byte b = data[offset++];
+			existingSize |= std::to_integer<uint32_t>(b & sevenLsbBitmask) << (i * 7);
+			if ((b & msbBitmask) == byte(0))
 				break;
 		}
 		payloadData = data + offset;
@@ -48,18 +60,18 @@ void appendObuWithSize(binary &frame, const std::byte *data, size_t size) {
 		payloadSize = size - headerSize;
 	}
 
-	frame.push_back(std::byte(header | 0x02));
+	frame.push_back(header | obuHasSizeMask);
 
 	if (hasExtension)
 		frame.push_back(data[1]);
 
 	uint32_t remaining = static_cast<uint32_t>(payloadSize);
 	do {
-		uint8_t b = remaining & 0x7F;
+		byte b = byte(remaining) & sevenLsbBitmask;
 		remaining >>= 7;
 		if (remaining > 0)
-			b |= 0x80;
-		frame.push_back(std::byte(b));
+			b |= msbBitmask;
+		frame.push_back(b);
 	} while (remaining > 0);
 
 	frame.insert(frame.end(), payloadData, payloadData + payloadSize);
@@ -88,14 +100,6 @@ message_ptr AV1RtpDepacketizer::reassemble(message_buffer &buffer) {
 	 * N: first packet of a coded video sequence
 	 */
 
-	const uint8_t zMask = 0b10000000;
-	const uint8_t yMask = 0b01000000;
-	const uint8_t wMask = 0b00110000;
-	const uint8_t wBitshift = 4;
-
-	const uint8_t sevenLsbBitmask = 0b01111111;
-	const uint8_t msbBitmask = 0b10000000;
-
 	if (buffer.empty())
 		return nullptr;
 
@@ -117,28 +121,28 @@ message_ptr AV1RtpDepacketizer::reassemble(message_buffer &buffer) {
 		if (packet->size() <= rtpHeaderSize + paddingSize + 1)
 			continue;
 
-		const std::byte *payload = packet->data() + rtpHeaderSize;
+		const byte *payload = packet->data() + rtpHeaderSize;
 		size_t payloadSize = packet->size() - rtpHeaderSize - paddingSize;
 
 		if (payloadSize < 1)
 			continue;
 
-		uint8_t aggHeader = std::to_integer<uint8_t>(payload[0]);
-		bool zBit = (aggHeader & zMask) != 0;
-		bool yBit = (aggHeader & yMask) != 0;
-		uint8_t w = (aggHeader & wMask) >> wBitshift;
+		byte aggHeader = payload[0];
+		bool zBit = (aggHeader & zMask) != byte(0);
+		bool yBit = (aggHeader & yMask) != byte(0);
+		uint8_t w = std::to_integer<uint8_t>((aggHeader & wMask) >> wBitshift);
 
 		size_t offset = 1;
 
 		// Extract OBU elements
-		std::vector<std::pair<const std::byte *, size_t>> elements;
+		std::vector<std::pair<const byte *, size_t>> elements;
 
 		auto parseLeb128 = [&](uint32_t &out) -> bool {
 			out = 0;
 			for (int i = 0; i < 4 && offset < payloadSize; i++) {
-				uint8_t b = std::to_integer<uint8_t>(payload[offset++]);
-				out |= uint32_t(b & sevenLsbBitmask) << (i * 7);
-				if (!(b & msbBitmask))
+				byte b = payload[offset++];
+				out |= std::to_integer<uint32_t>(b & sevenLsbBitmask) << (i * 7);
+				if ((b & msbBitmask) == byte(0))
 					return true;
 			}
 			return false;
