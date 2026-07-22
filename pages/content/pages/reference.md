@@ -813,7 +813,7 @@ After this function has been called, `tr` must not be used in a function call an
 int rtcGetTrackDescription(int tr, char *buffer, int size)
 ```
 
-Retrieves the SDP media description of a Track.
+Retrieves the local SDP media description of a Track used for offer and answer generation.
 
 Arguments:
 
@@ -824,6 +824,36 @@ Arguments:
 Return value: the length of the string copied in buffer (including the terminating null character) or a negative error code
 
 If `buffer` is `NULL`, the description is not copied but the size is still returned.
+
+#### rtcGetTrackRemoteDescription
+
+```
+int rtcGetTrackRemoteDescription(int tr, char *buffer, int size)
+```
+
+Retrieves the latest SDP media description applied from the remote peer for a Track.
+
+Arguments:
+
+- `tr`: the Track identifier
+- `buffer`: a user-supplied buffer to store the description
+- `size`: the size of `buffer`
+
+Return value: the length of the string copied in buffer (including the terminating null character), `RTC_ERR_NOT_AVAIL` if no remote description has been applied, or another negative error code
+
+If `buffer` is `NULL`, the description is not copied but the size is still returned.
+
+#### rtcSetTrackRemoteDescriptionCallback
+
+```
+int rtcSetTrackRemoteDescriptionCallback(int tr, rtcTrackDescriptionCallbackFunc cb)
+```
+
+Sets, changes, or unsets (if `cb` is `NULL`) the remote description callback of a Track.
+
+`cb` must have the following signature: `void myTrackDescriptionCallback(int tr, const char *sdp, void *user_ptr)`
+
+The callback is called asynchronously after an existing Track's remote media description changes. The initial remote description of an incoming Track is available through `rtcGetTrackRemoteDescription` when the Track callback runs and does not trigger this callback. The `sdp` string is valid only for the duration of the callback.
 
 #### rtcGetTrackMid
 

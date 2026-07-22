@@ -22,6 +22,122 @@ using namespace std;
 
 template <class T> weak_ptr<T> make_weak_ptr(shared_ptr<T> ptr) { return ptr; }
 
+namespace {
+
+bool hasAttribute(const Description::Media &media, const string &attribute) {
+	for (const auto &candidate : media.attributes())
+		if (candidate == attribute)
+			return true;
+
+	return false;
+}
+
+} // namespace
+
+TestResult test_track_remote_description() {
+	Configuration config;
+	config.disableAutoNegotiation = true;
+	config.disableAutoGathering = true;
+
+	PeerConnection caller(config);
+	PeerConnection callee(config);
+
+	Description::Audio media("audio", Description::Direction::SendOnly);
+	media.addOpusCodec(111);
+	media.addSSRC(1001, "audio", "stream1", "track1");
+	auto callerTrack = caller.addTrack(media);
+
+	shared_ptr<Track> calleeTrack;
+	callee.onTrack([&](shared_ptr<Track> track) { calleeTrack = std::move(track); });
+
+	caller.setLocalDescription(Description::Type::Offer);
+	callee.setRemoteDescription(*caller.localDescription());
+
+	if (!calleeTrack)
+		return TestResult(false, "Initial remote track was not created");
+
+	auto initialRemote = calleeTrack->remoteDescription();
+	if (!initialRemote)
+		return TestResult(false, "Initial remote media description is unavailable");
+
+	if (initialRemote->direction() != Description::Direction::SendOnly ||
+	    initialRemote->getSSRCs() != vector<uint32_t>{1001} ||
+	    !hasAttribute(*initialRemote, "msid:stream1 track1"))
+		return TestResult(false, "Initial remote media description is not authoritative");
+
+	if (calleeTrack->description().direction() != Description::Direction::RecvOnly ||
+	    !calleeTrack->description().getSSRCs().empty())
+		return TestResult(false, "Local and remote media descriptions are not distinct");
+
+	callee.setLocalDescription(Description::Type::Answer);
+	caller.setRemoteDescription(*callee.localDescription());
+
+	atomic<int> callbackCount = 0;
+	atomic<bool> callbackAfterCommit = false;
+	promise<Description::Media> updatePromise;
+	auto updateFuture = updatePromise.get_future();
+	promise<void> finalUpdatePromise;
+	auto finalUpdateFuture = finalUpdatePromise.get_future();
+	calleeTrack->onRemoteDescription([&](Description::Media description) {
+		callbackAfterCommit =
+		    callee.signalingState() == PeerConnection::SignalingState::HaveRemoteOffer &&
+		    callee.remoteDescription().has_value();
+		if (callbackCount.fetch_add(1) == 0)
+			updatePromise.set_value(description);
+		if (hasAttribute(description, "msid:stream4 track1")) {
+			calleeTrack->close();
+			finalUpdatePromise.set_value();
+		}
+	});
+
+	auto updated = callerTrack->description();
+	updated.setDirection(Description::Direction::SendRecv);
+	updated.removeAttribute("msid");
+	updated.removeSSRC(1001);
+	updated.addSSRC(1001, "audio", "stream2", "track1");
+	updated.addAttribute("msid:stream3 track1");
+	callerTrack->setDescription(std::move(updated));
+
+	caller.setLocalDescription(Description::Type::Offer);
+	callee.setRemoteDescription(*caller.localDescription());
+
+	if (updateFuture.wait_for(2s) == future_status::timeout)
+		return TestResult(false, "Remote media description change was not reported");
+
+	auto remoteUpdate = updateFuture.get();
+	if (remoteUpdate.direction() != Description::Direction::SendRecv ||
+	    !hasAttribute(remoteUpdate, "msid:stream2 track1") ||
+	    !hasAttribute(remoteUpdate, "msid:stream3 track1"))
+		return TestResult(false, "Remote media description callback has stale state");
+
+	if (!callbackAfterCommit)
+		return TestResult(false, "Remote media description callback ran before peer commit");
+
+	callee.setLocalDescription(Description::Type::Answer);
+	caller.setRemoteDescription(*callee.localDescription());
+
+	caller.setLocalDescription(Description::Type::Offer);
+	callee.setRemoteDescription(*caller.localDescription());
+	callee.setLocalDescription(Description::Type::Answer);
+	caller.setRemoteDescription(*callee.localDescription());
+
+	auto finalUpdate = callerTrack->description();
+	finalUpdate.addAttribute("msid:stream4 track1");
+	callerTrack->setDescription(std::move(finalUpdate));
+	caller.setLocalDescription(Description::Type::Offer);
+	callee.setRemoteDescription(*caller.localDescription());
+	if (finalUpdateFuture.wait_for(2s) == future_status::timeout)
+		return TestResult(false, "Final remote media description change was not reported");
+	if (callbackCount != 2)
+		return TestResult(false, "Identical remote media description triggered a duplicate callback");
+	if (!calleeTrack->isClosed())
+		return TestResult(false, "Track did not close from its remote description callback");
+
+	callee.close();
+	caller.close();
+	return TestResult(true);
+}
+
 TestResult test_track() {
 	InitLogger(LogLevel::Debug);
 
