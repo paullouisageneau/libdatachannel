@@ -225,6 +225,7 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 
 set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/description.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp

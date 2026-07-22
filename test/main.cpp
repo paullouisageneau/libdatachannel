@@ -23,6 +23,7 @@ using chrono::steady_clock;
 
 TestResult test_connectivity();
 TestResult test_connectivity_fail_on_wrong_fingerprint();
+TestResult test_description_codec_order();
 TestResult test_pem();
 TestResult test_negotiated();
 TestResult test_reliability();
@@ -84,6 +85,7 @@ TestResult test_capi_cleanup() {
 
 static const vector<Test> tests = {
     // C++ API tests
+    Test("Description codec order", test_description_codec_order),
     Test("WebRTC connectivity", test_connectivity),
     Test("WebRTC broken fingerprint", test_connectivity_fail_on_wrong_fingerprint),
     Test("pem", test_pem),
