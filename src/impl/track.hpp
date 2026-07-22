@@ -50,7 +50,10 @@ public:
 	string mid() const;
 	Description::Direction direction() const;
 	Description::Media description() const;
+	optional<Description::Media> remoteDescription() const;
 	void setDescription(Description::Media desc);
+	bool setRemoteDescription(Description::Media desc);
+	void triggerRemoteDescription(Description::Media desc);
 
 	shared_ptr<MediaHandler> getMediaHandler();
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
@@ -62,6 +65,7 @@ public:
 	bool transportSend(message_ptr message);
 
 	synchronized_callback<binary, FrameInfo> frameCallback;
+	synchronized_callback<Description::Media> remoteDescriptionCallback;
 
 private:
 	const weak_ptr<PeerConnection> mPeerConnection;
@@ -70,6 +74,7 @@ private:
 #endif
 
 	Description::Media mMediaDescription;
+	optional<Description::Media> mRemoteDescription;
 	shared_ptr<MediaHandler> mMediaHandler;
 
 	mutable std::shared_mutex mMutex;

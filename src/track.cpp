@@ -26,8 +26,16 @@ Description::Direction Track::direction() const { return impl()->direction(); }
 
 Description::Media Track::description() const { return impl()->description(); }
 
+optional<Description::Media> Track::remoteDescription() const {
+	return impl()->remoteDescription();
+}
+
 void Track::setDescription(Description::Media description) {
 	impl()->setDescription(std::move(description));
+}
+
+void Track::onRemoteDescription(std::function<void(Description::Media)> callback) {
+	impl()->remoteDescriptionCallback = std::move(callback);
 }
 
 void Track::close() { impl()->close(); }

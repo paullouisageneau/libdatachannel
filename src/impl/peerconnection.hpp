@@ -78,8 +78,11 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void populateLocalDescription(Description &description) const;
 	void processLocalDescription(Description description);
 	void processLocalCandidate(Candidate candidate);
-	void processRemoteDescription(Description description);
+	using TrackRemoteDescriptionUpdate =
+	    std::pair<weak_ptr<Track>, Description::Media>;
+	std::vector<TrackRemoteDescriptionUpdate> processRemoteDescription(Description description);
 	void processRemoteCandidate(Candidate candidate);
+	void dispatchTrackRemoteDescriptions(std::vector<TrackRemoteDescriptionUpdate> updates);
 	string localBundleMid() const;
 
 	bool negotiationNeeded() const;
@@ -89,6 +92,8 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 
 	void triggerDataChannel(weak_ptr<DataChannel> weakDataChannel);
 	void triggerTrack(weak_ptr<Track> weakTrack);
+	void triggerTrackRemoteDescription(weak_ptr<Track> weakTrack,
+	                                   Description::Media description);
 
 	void triggerPendingDataChannels();
 	void triggerPendingTracks();
