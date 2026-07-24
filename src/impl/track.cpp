@@ -52,6 +52,11 @@ Description::Media Track::description() const {
 	return mMediaDescription;
 }
 
+optional<Description::Media> Track::remoteDescription() const {
+	std::shared_lock lock(mMutex);
+	return mRemoteDescription;
+}
+
 void Track::setDescription(Description::Media desc) {
 	{
 		std::unique_lock lock(mMutex);
@@ -65,6 +70,33 @@ void Track::setDescription(Description::Media desc) {
 		handler->mediaChain(description());
 }
 
+bool Track::setRemoteDescription(Description::Media desc) {
+	std::unique_lock lock(mMutex);
+	if (desc.mid() != mMediaDescription.mid())
+		throw std::logic_error("Remote media description mid does not match track mid");
+
+	if (mRemoteDescription && string(*mRemoteDescription) == string(desc))
+		return false;
+
+	mRemoteDescription = std::move(desc);
+	return true;
+}
+
+void Track::triggerRemoteDescription(Description::Media desc) {
+	if (mIsClosed)
+		return;
+
+	auto callback = remoteDescriptionCallback;
+	if (mIsClosed)
+		return;
+
+	try {
+		callback(std::move(desc));
+	} catch (const std::exception &e) {
+		PLOG_WARNING << "Uncaught exception in callback: " << e.what();
+	}
+}
+
 void Track::close() {
 	PLOG_VERBOSE << "Closing Track";
 
@@ -72,6 +104,7 @@ void Track::close() {
 	{
 		triggerClosed();
 		setMediaHandler(nullptr);
+		remoteDescriptionCallback = nullptr;
 		resetCallbacks();
 	}
 }

@@ -256,9 +256,10 @@ void PeerConnection::setRemoteDescription(Description description) {
 
 	iceTransport->setRemoteDescription(description); // ICE transport might reject the description
 
-	impl()->processRemoteDescription(std::move(description));
+	auto trackUpdates = impl()->processRemoteDescription(std::move(description));
 	impl()->changeSignalingState(newSignalingState);
 	signalingLock.unlock();
+	impl()->dispatchTrackRemoteDescriptions(std::move(trackUpdates));
 
 	for (const auto &candidate : remoteCandidates)
 		addRemoteCandidate(candidate);

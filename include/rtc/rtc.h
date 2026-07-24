@@ -162,6 +162,7 @@ typedef void(RTC_API *rtcGatheringStateCallbackFunc)(int pc, rtcGatheringState s
 typedef void(RTC_API *rtcSignalingStateCallbackFunc)(int pc, rtcSignalingState state, void *ptr);
 typedef void(RTC_API *rtcDataChannelCallbackFunc)(int pc, int dc, void *ptr);
 typedef void(RTC_API *rtcTrackCallbackFunc)(int pc, int tr, void *ptr);
+typedef void(RTC_API *rtcTrackDescriptionCallbackFunc)(int tr, const char *sdp, void *ptr);
 typedef void(RTC_API *rtcOpenCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcClosedCallbackFunc)(int id, void *ptr);
 typedef void(RTC_API *rtcErrorCallbackFunc)(int id, const char *error, void *ptr);
@@ -327,7 +328,12 @@ RTC_C_EXPORT int rtcAddTrack(int pc, const char *mediaDescriptionSdp); // return
 RTC_C_EXPORT int rtcAddTrackEx(int pc, const rtcTrackInit *init);      // returns tr id
 RTC_C_EXPORT int rtcDeleteTrack(int tr);
 
+// Local media description used for offer and answer generation
 RTC_C_EXPORT int rtcGetTrackDescription(int tr, char *buffer, int size);
+// Latest media description applied from the remote peer
+RTC_C_EXPORT int rtcGetTrackRemoteDescription(int tr, char *buffer, int size);
+// Called asynchronously when an existing track's remote description changes
+RTC_C_EXPORT int rtcSetTrackRemoteDescriptionCallback(int tr, rtcTrackDescriptionCallbackFunc cb);
 RTC_C_EXPORT int rtcGetTrackMid(int tr, char *buffer, int size);
 RTC_C_EXPORT int rtcGetTrackDirection(int tr, rtcDirection *direction);
 

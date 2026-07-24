@@ -1125,7 +1125,10 @@ void PeerConnection::processLocalCandidate(Candidate candidate) {
 	                   &localCandidateCallback, std::move(candidate));
 }
 
-void PeerConnection::processRemoteDescription(Description description) {
+std::vector<PeerConnection::TrackRemoteDescriptionUpdate>
+PeerConnection::processRemoteDescription(Description description) {
+	std::vector<TrackRemoteDescriptionUpdate> trackUpdates;
+
 	// Create tracks from remote description
 	for (int i = 0; i < description.mediaCount(); ++i) {
 		auto media = description.media(i);
@@ -1140,6 +1143,10 @@ void PeerConnection::processRemoteDescription(Description description) {
 						desc.disableRtx();
 						track->setDescription(std::move(desc));
 					}
+
+					auto remoteDescription = *remoteMedia;
+					if (track->setRemoteDescription(remoteDescription))
+						trackUpdates.emplace_back(track, std::move(remoteDescription));
 				}
 				continue;
 			}
@@ -1157,6 +1164,7 @@ void PeerConnection::processRemoteDescription(Description description) {
 
 			// Create incoming track
 			auto track = std::make_shared<Track>(weak_from_this(), std::move(reciprocated));
+			track->setRemoteDescription(*remoteMedia);
 			mTracks.emplace(std::make_pair(track->mid(), track));
 			mTrackLines.emplace_back(track);
 			triggerTrack(track); // The user may modify the track description
@@ -1198,6 +1206,8 @@ void PeerConnection::processRemoteDescription(Description description) {
 	// Reciprocated tracks might need to be open
 	if (dtlsTransport && dtlsTransport->state() == Transport::State::Connected)
 		mProcessor.enqueue(&PeerConnection::openTracks, shared_from_this());
+
+	return trackUpdates;
 }
 
 void PeerConnection::processRemoteCandidate(Candidate candidate) {
@@ -1308,6 +1318,19 @@ void PeerConnection::triggerTrack(weak_ptr<Track> weakTrack) {
 		mPendingTracks.push(std::move(track));
 	}
 	triggerPendingTracks();
+}
+
+void PeerConnection::dispatchTrackRemoteDescriptions(
+    std::vector<TrackRemoteDescriptionUpdate> updates) {
+	for (auto &[track, description] : updates)
+		mProcessor.enqueue(&PeerConnection::triggerTrackRemoteDescription, shared_from_this(),
+		                   std::move(track), std::move(description));
+}
+
+void PeerConnection::triggerTrackRemoteDescription(weak_ptr<Track> weakTrack,
+                                                   Description::Media description) {
+	if (auto track = weakTrack.lock())
+		track->triggerRemoteDescription(std::move(description));
 }
 
 void PeerConnection::triggerPendingDataChannels() {

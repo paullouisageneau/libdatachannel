@@ -30,6 +30,7 @@ TestResult test_simulcast_sdp_generation();
 TestResult test_simulcast_sdp_parsing();
 TestResult test_turn_connectivity();
 TestResult test_track();
+TestResult test_track_remote_description();
 TestResult test_video_layers_allocation();
 TestResult test_fir_sdp();
 TestResult test_fir_offer_yes_answer_yes();
@@ -95,6 +96,7 @@ static const vector<Test> tests = {
     Test("WebRTC simulcast SDP parsing", test_simulcast_sdp_parsing),
 #if RTC_ENABLE_MEDIA
     Test("WebRTC track", test_track),
+	Test("WebRTC track remote description", test_track_remote_description),
 	Test("WebRTC video layers allocation", test_video_layers_allocation),
     Test("RTX Description::addRtx", test_rtx_description_addrtx),
     Test("RTX Description::addRtx audio=false", test_rtx_description_addrtx_no_audio),

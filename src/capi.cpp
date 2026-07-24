@@ -1199,6 +1199,33 @@ int rtcGetTrackDescription(int tr, char *buffer, int size) {
 	});
 }
 
+int rtcGetTrackRemoteDescription(int tr, char *buffer, int size) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		if (auto description = track->remoteDescription())
+			return copyAndReturn(std::move(*description), buffer, size);
+
+		return RTC_ERR_NOT_AVAIL;
+	});
+}
+
+int rtcSetTrackRemoteDescriptionCallback(int tr, rtcTrackDescriptionCallbackFunc cb) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		if (cb) {
+			track->onRemoteDescription([tr, cb](Description::Media description) {
+				if (auto ptr = getUserPointer(tr)) {
+					auto sdp = string(description);
+					cb(tr, sdp.c_str(), *ptr);
+				}
+			});
+		} else {
+			track->onRemoteDescription(nullptr);
+		}
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcGetTrackMid(int tr, char *buffer, int size) {
 	return wrap([&] {
 		auto track = getTrack(tr);
