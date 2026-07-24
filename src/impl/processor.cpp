@@ -31,7 +31,7 @@ void Processor::schedule() {
 }
 
 TearDownProcessor &TearDownProcessor::Instance() {
-	static TearDownProcessor *instance = new TearDownProcessor;
+	static auto *instance = new TearDownProcessor;
 	return *instance;
 }
 

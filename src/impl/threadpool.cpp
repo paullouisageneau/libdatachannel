@@ -12,7 +12,7 @@
 namespace rtc::impl {
 
 ThreadPool &ThreadPool::Instance() {
-	static ThreadPool *instance = new ThreadPool;
+	static auto *instance = new ThreadPool;
 	return *instance;
 }
 

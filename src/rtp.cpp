@@ -350,7 +350,7 @@ void RtcpSr::log() const {
 
 unsigned int RtcpSdesItem::Size(uint8_t textLength) { return textLength + 2; }
 
-std::string RtcpSdesItem::text() const { return std::string(_text, _length); }
+std::string RtcpSdesItem::text() const { return {_text, _length}; }
 
 void RtcpSdesItem::setText(std::string text) {
 	if (text.size() > 0xFF)
@@ -512,7 +512,7 @@ void RtcpSdes::preparePacket(uint8_t chunkCount) {
 		auto chunk = getChunk(i);
 		chunkSize += chunk->getSize();
 	}
-	uint16_t length = uint16_t((sizeof(header) + chunkSize) / 4 - 1);
+	auto length = uint16_t((sizeof(header) + chunkSize) / 4 - 1);
 	header.prepareHeader(202, chunkCount, length);
 }
 
@@ -743,7 +743,7 @@ bool RtcpNack::addMissingPacket(unsigned int *fciCount, uint16_t *fciPID, uint16
 	} else {
 		// TODO SPEED!
 		uint16_t blp = parts[(*fciCount) - 1].blp();
-		uint16_t newBit = uint16_t(1u << (missingPacket - (1 + *fciPID)));
+		auto newBit = uint16_t(1u << (missingPacket - (1 + *fciPID)));
 		parts[(*fciCount) - 1].setBlp(blp | newBit);
 		return false;
 	}
@@ -768,7 +768,7 @@ size_t RtcpApp::dataSize() const {
 }
 
 void RtcpApp::preparePacket(SSRC ssrc, const RtcpAppName &name, uint8_t subtype, size_t dataLength) {
-	uint16_t lengthField =
+	auto lengthField =
 	    uint16_t((sizeof(SSRC) + 4 + dataLength) / 4); // in 32-bit words, minus 1 for header
 	header.prepareHeader(204, subtype, lengthField);
 	setSSRC(ssrc);

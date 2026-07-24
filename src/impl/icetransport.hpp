@@ -14,7 +14,6 @@
 #include "configuration.hpp"
 #include "description.hpp"
 #include "global.hpp"
-#include "peerconnection.hpp"
 #include "transport.hpp"
 
 #if !USE_NICE

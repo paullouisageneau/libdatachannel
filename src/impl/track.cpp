@@ -20,7 +20,7 @@ static LogCounter COUNTER_QUEUE_FULL(plog::warning,
                                      "Number of media packets dropped due to a full queue");
 
 Track::Track(weak_ptr<PeerConnection> pc, Description::Media desc)
-    : mPeerConnection(pc), mMediaDescription(std::move(desc)),
+    : mPeerConnection(std::move(pc)), mMediaDescription(std::move(desc)),
       mRecvQueue(RECV_QUEUE_LIMIT, [](const message_ptr &m) { return m->size(); }) {
 
 	// Discard messages by default if track is send only
@@ -99,7 +99,7 @@ optional<message_variant> Track::peek() {
 
 size_t Track::availableAmount() const { return mRecvQueue.amount(); }
 
-bool Track::isOpen(void) const {
+bool Track::isOpen() const {
 #if RTC_ENABLE_MEDIA
 	std::shared_lock lock(mMutex);
 	return !mIsClosed && mDtlsSrtpTransport.lock();
@@ -108,7 +108,7 @@ bool Track::isOpen(void) const {
 #endif
 }
 
-bool Track::isClosed(void) const { return mIsClosed; }
+bool Track::isClosed() const { return mIsClosed; }
 
 size_t Track::maxMessageSize() const {
 	optional<size_t> mtu;

@@ -256,7 +256,7 @@ public:
 		void setBitrate(int bitrate);
 
 		struct RTC_CPP_EXPORT RtpMap {
-			static int parsePayloadType(string_view description);
+			static int parsePayloadType(string_view mline);
 
 			explicit RtpMap(int payloadType);
 			RtpMap(string_view description);

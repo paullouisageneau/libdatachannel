@@ -404,7 +404,7 @@ Certificate Certificate::FromString(string crt_pem, string key_pem) {
 	if (!pkey)
 		throw std::invalid_argument("Unable to import PEM key");
 
-	return Certificate(x509, pkey, std::move(chain));
+	return {x509, pkey, std::move(chain)};
 }
 
 Certificate Certificate::FromFile(const string &crt_pem_file, const string &key_pem_file,
@@ -438,7 +438,7 @@ Certificate Certificate::FromFile(const string &crt_pem_file, const string &key_
 	if (!pkey)
 		throw std::invalid_argument("Unable to import PEM key from file");
 
-	return Certificate(x509, pkey, std::move(chain));
+	return {x509, pkey, std::move(chain)};
 }
 
 Certificate Certificate::Generate(CertificateType type, const string &commonName) {
@@ -531,7 +531,7 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	if (!X509_sign(x509.get(), pkey.get(), EVP_sha256()))
 		throw std::runtime_error("Unable to auto-sign certificate");
 
-	return Certificate(x509, pkey);
+	return {x509, pkey};
 }
 
 Certificate::Certificate(shared_ptr<X509> x509, shared_ptr<EVP_PKEY> pkey,
