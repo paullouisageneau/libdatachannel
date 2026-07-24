@@ -95,6 +95,7 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h265rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/h265nalunit.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/av1rtppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/av1rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/vp8rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/vp8rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/vp9rtppacketizer.cpp
@@ -142,6 +143,7 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/h265nalunit.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/av1rtppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/av1rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp8rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp8rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp9rtppacketizer.hpp

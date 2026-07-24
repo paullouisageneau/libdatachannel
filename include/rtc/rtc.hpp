@@ -30,6 +30,7 @@
 
 // Media
 #include "av1rtppacketizer.hpp"
+#include "av1rtpdepacketizer.hpp"
 #include "dependencydescriptor.hpp"
 #include "rtppacketizer.hpp"
 #include "rtpdepacketizer.hpp"

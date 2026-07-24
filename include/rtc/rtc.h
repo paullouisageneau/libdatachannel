@@ -423,6 +423,7 @@ RTC_C_EXPORT int rtcSetH264Depacketizer(int tr, rtcNalUnitSeparator nalSeparator
 RTC_C_EXPORT int rtcSetH265Depacketizer(int tr, rtcNalUnitSeparator nalSeparator);
 RTC_C_EXPORT int rtcSetVP8Depacketizer(int tr);
 RTC_C_EXPORT int rtcSetVP9Depacketizer(int tr);
+RTC_C_EXPORT int rtcSetAV1Depacketizer(int tr, rtcObuPacketization obuPacketization);
 RTC_C_EXPORT int rtcSetOpusDepacketizer(int tr);
 RTC_C_EXPORT int rtcSetAACDepacketizer(int tr);
 RTC_C_EXPORT int rtcSetPCMUDepacketizer(int tr);

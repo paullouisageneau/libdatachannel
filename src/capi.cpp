@@ -1458,6 +1458,16 @@ int rtcSetG722Packetizer(int tr, const rtcPacketizerInit *init) {
 	});
 }
 
+int rtcSetAV1Depacketizer(int tr, rtcObuPacketization obuPacketization) {
+	return wrap([&] {
+		auto track = getTrack(tr);
+		auto depacketizer = std::make_shared<AV1RtpDepacketizer>(
+		    static_cast<AV1RtpDepacketizer::Packetization>(obuPacketization));
+		track->setMediaHandler(depacketizer);
+		return RTC_ERR_SUCCESS;
+	});
+}
+
 int rtcSetH264Depacketizer(int tr, rtcNalUnitSeparator nalSeparator) {
 	return wrap([&] {
 		auto track = getTrack(tr);
