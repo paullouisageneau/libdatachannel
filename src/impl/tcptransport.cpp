@@ -262,9 +262,11 @@ void TcpTransport::attempt() {
 			return;
 
 		if (mResolved.empty()) {
-			PLOG_WARNING << "Connection to " << mHostname << ":" << mService << " failed";
-			closeUnusedSockets();
-			changeState(State::Failed);
+			if (mPendingSocks == 0) {
+				PLOG_WARNING << "Connection to " << mHostname << ":" << mService << " failed";
+				closeUnusedSockets();
+				changeState(State::Failed);
+			}
 			return;
 		}
 
@@ -564,8 +566,6 @@ void TcpTransport::processConnect(PollService::Event event, socket_t sock, bool 
 		return;
 	}
 
-	bool isLastPendingSock = false;
-
 	try {
 		{
 			std::lock_guard lock(mSendMutex);
@@ -575,7 +575,6 @@ void TcpTransport::processConnect(PollService::Event event, socket_t sock, bool 
 
 			if (state() == State::Connecting) {
 				mPendingSocks -= 1;
-				isLastPendingSock = mPendingSocks == 0;
 			}
 
 			if (event == PollService::Event::Error)
@@ -622,22 +621,7 @@ void TcpTransport::processConnect(PollService::Event event, socket_t sock, bool 
 	} catch (const std::exception &e) {
 		PLOG_DEBUG << e.what();
 		PollService::Instance().remove(sock);
-
-		// Queue the next connection attempt in one of these cases:
-		// 1. We connect synchronously (no connection attempt delay is configured)
-		// 2. A connection attempt delay is configured, but it is identical to the
-
-		// Queue the next connection attempt in one of these cases:
-		// 1. We connect synchronously (no connection attempt delay is configured)
-		// 2. We connect concurrently and this socket failed before the delay timeout was reached
-		// 3. We connect concurrently and this was the last pending socket that timed out. This
-		//    means that all sockets that were created so far failed and we must proceed either with
-		//    queueing a connection attempt for the next address or with handling connection
-		//    failure, for the case that there are no more addresses left
-		if (!mConnectAttemptDelay.has_value() || event != PollService::Event::Timeout ||
-		    isLastPendingSock) {
-			ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
-		}
+		ThreadPool::Instance().enqueue(weak_bind(&TcpTransport::attempt, this));
 	}
 }
 
