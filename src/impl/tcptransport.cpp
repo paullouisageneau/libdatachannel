@@ -289,18 +289,18 @@ void TcpTransport::attempt() {
 		return;
 	}
 
-	// Use the connect attempt delay as timeout, if there are more addresses to attempt and a
-	// connect attempt delay is configured, i.e. we are performing "Happy Eyeballs"
 	std::optional<std::chrono::milliseconds> timeout = mConnectTimeout;
-	if (!isLastAttempt && mConnectAttemptDelay.has_value()) {
-		timeout = mConnectAttemptDelay;
-		// Make sure not to exceed the connection timeout.
-		if (mConnectTimeout.has_value())
-			timeout = std::min(*timeout, *mConnectTimeout);
-	}
+	bool isDelayTimeout = false;
 
-	bool isDelayTimeout =
-	    timeout.has_value() && (!mConnectTimeout.has_value() || *timeout < *mConnectTimeout);
+	// Use the connect attempt delay as timeout, if there are more addresses to attempt and a
+	// connect attempt delay is configured, i.e. we are performing "Happy Eyeballs". This connection
+	// attempt continues after the timeout then. The delay timeout is not required, when the connect
+	// timeout is less than or equal to it, as we just time out normally then
+	if (!isLastAttempt && mConnectAttemptDelay.has_value() &&
+	    (!mConnectTimeout.has_value() || *mConnectAttemptDelay < *mConnectTimeout)) {
+		timeout = *mConnectAttemptDelay;
+		isDelayTimeout = true;
+	}
 
 	PLOG_VERBOSE << "Polling socket with descriptor " << sock;
 	PLOG_VERBOSE_IF(timeout.has_value()) << "Using timeout " << timeout->count() << "ms"
@@ -622,6 +622,10 @@ void TcpTransport::processConnect(PollService::Event event, socket_t sock, bool 
 	} catch (const std::exception &e) {
 		PLOG_DEBUG << e.what();
 		PollService::Instance().remove(sock);
+
+		// Queue the next connection attempt in one of these cases:
+		// 1. We connect synchronously (no connection attempt delay is configured)
+		// 2. A connection attempt delay is configured, but it is identical to the
 
 		// Queue the next connection attempt in one of these cases:
 		// 1. We connect synchronously (no connection attempt delay is configured)
