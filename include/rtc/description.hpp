@@ -237,6 +237,19 @@ public:
 		string description() const override;
 		Media reciprocate() const;
 
+		struct RTC_CPP_EXPORT MediaStreamAssociation {
+			string streamId;
+			optional<string> trackId;
+
+			bool operator==(const MediaStreamAssociation &other) const;
+			bool operator!=(const MediaStreamAssociation &other) const;
+		};
+
+		// Returns valid media-level RFC 8830 associations in SDP order.
+		std::vector<MediaStreamAssociation> mediaStreamAssociations() const;
+		// Replaces media-level RFC 8830 associations, preserving all other attributes.
+		void setMediaStreamAssociations(std::vector<MediaStreamAssociation> associations);
+
 		void addSSRC(uint32_t ssrc, optional<string> name, optional<string> msid = nullopt,
 		             optional<string> trackId = nullopt);
 		void removeSSRC(uint32_t ssrc);

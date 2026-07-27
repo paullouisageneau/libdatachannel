@@ -984,6 +984,98 @@ void Description::Entry::ExtMap::setDescription(string_view description) {
 	}
 }
 
+namespace {
+
+bool isValidMsidToken(string_view value) {
+	if (value.empty() || value.size() > 64)
+		return false;
+
+	return std::all_of(value.begin(), value.end(), [](char value) {
+		const auto c = static_cast<unsigned char>(value);
+		return c == 0x21 || (c >= 0x23 && c <= 0x27) || (c >= 0x2A && c <= 0x2B) ||
+		       (c >= 0x2D && c <= 0x2E) || (c >= 0x30 && c <= 0x39) ||
+		       (c >= 0x41 && c <= 0x5A) || (c >= 0x5E && c <= 0x7E);
+	});
+}
+
+optional<Description::Media::MediaStreamAssociation>
+parseMediaStreamAssociation(string_view value) {
+	const size_t separator = value.find(' ');
+	const string_view streamId = value.substr(0, separator);
+	if (!isValidMsidToken(streamId))
+		return nullopt;
+
+	optional<string> trackId;
+	if (separator != string_view::npos) {
+		const string_view appData = value.substr(separator + 1);
+		if (!isValidMsidToken(appData))
+			return nullopt;
+
+		trackId = string(appData);
+	}
+
+	return Description::Media::MediaStreamAssociation{string(streamId), std::move(trackId)};
+}
+
+} // namespace
+
+bool Description::Media::MediaStreamAssociation::operator==(
+    const MediaStreamAssociation &other) const {
+	return streamId == other.streamId && trackId == other.trackId;
+}
+
+bool Description::Media::MediaStreamAssociation::operator!=(
+    const MediaStreamAssociation &other) const {
+	return !(*this == other);
+}
+
+std::vector<Description::Media::MediaStreamAssociation>
+Description::Media::mediaStreamAssociations() const {
+	std::vector<MediaStreamAssociation> result;
+	for (const auto &attribute : mAttributes) {
+		const auto [key, value] = parse_pair(attribute);
+		if (key != "msid")
+			continue;
+
+		auto association = parseMediaStreamAssociation(value);
+		if (association && std::find(result.begin(), result.end(), *association) == result.end())
+			result.emplace_back(std::move(*association));
+	}
+
+	return result;
+}
+
+void Description::Media::setMediaStreamAssociations(
+    std::vector<MediaStreamAssociation> associations) {
+	std::vector<MediaStreamAssociation> normalized;
+	for (auto &association : associations) {
+		if (!isValidMsidToken(association.streamId) ||
+		    (association.trackId && !isValidMsidToken(*association.trackId)))
+			throw std::invalid_argument("Invalid media stream association");
+
+		if (!normalized.empty() && association.trackId != normalized.front().trackId)
+			throw std::invalid_argument("Media stream associations have different track IDs");
+
+		if (std::find(normalized.begin(), normalized.end(), association) == normalized.end())
+			normalized.emplace_back(std::move(association));
+	}
+
+	auto attributes = mAttributes;
+	attributes.erase(std::remove_if(attributes.begin(), attributes.end(), [](const auto &attribute) {
+		                 return parse_pair(attribute).first == "msid";
+	                 }),
+	                 attributes.end());
+
+	for (const auto &association : normalized) {
+		string attribute = "msid:" + association.streamId;
+		if (association.trackId)
+			attribute += " " + *association.trackId;
+		attributes.emplace_back(std::move(attribute));
+	}
+
+	mAttributes = std::move(attributes);
+}
+
 void Description::Media::addSSRC(uint32_t ssrc, optional<string> name, optional<string> msid,
                                  optional<string> trackId) {
 	if (name) {
@@ -996,7 +1088,7 @@ void Description::Media::addSSRC(uint32_t ssrc, optional<string> name, optional<
 	if (msid) {
 		mAttributes.emplace_back("ssrc:" + std::to_string(ssrc) + " msid:" + *msid + " " +
 		                         trackId.value_or(*msid));
-		mAttributes.emplace_back("msid:" + *msid + " " + trackId.value_or(*msid));
+		addAttribute("msid:" + *msid + " " + trackId.value_or(*msid));
 	}
 
 	mSsrcs.emplace_back(ssrc);
@@ -1217,6 +1309,7 @@ Description::Media Description::Media::reciprocate() const {
 
 	// Clear sent SSRCs
 	reciprocated.clearSSRCs();
+	reciprocated.setMediaStreamAssociations({});
 
 	// Remove rtcp-rsize attribute as Reduced-Size RTCP is not supported (see RFC 5506)
 	reciprocated.removeAttribute("rtcp-rsize");
