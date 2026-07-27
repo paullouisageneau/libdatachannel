@@ -12,7 +12,6 @@
 #include "channel.hpp"
 #include "common.hpp"
 #include "message.hpp"
-#include "peerconnection.hpp"
 #include "queue.hpp"
 #include "reliability.hpp"
 #include "sctptransport.hpp"

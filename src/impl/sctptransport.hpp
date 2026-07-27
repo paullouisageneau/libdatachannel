@@ -93,7 +93,7 @@ private:
 	void handleUpcall() noexcept;
 	int handleWrite(byte *data, size_t len, uint8_t tos, uint8_t set_df) noexcept;
 
-	void processData(binary &&data, uint16_t streamId, PayloadId ppid);
+	void processData(binary &&data, uint16_t sid, PayloadId ppid);
 	void processNotification(const union sctp_notification *notify, size_t len);
 
 	const size_t mMaxMessageSize;

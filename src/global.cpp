@@ -32,7 +32,7 @@ void plogInit(plog::Severity severity, plog::IAppender *appender) {
 			logger->addAppender(appender);
 		} else {
 			using ConsoleAppender = plog::ColorConsoleAppender<plog::TxtFormatter>;
-			static ConsoleAppender *consoleAppender = new ConsoleAppender();
+			static auto *consoleAppender = new ConsoleAppender();
 			logger->addAppender(consoleAppender);
 		}
 	} else {

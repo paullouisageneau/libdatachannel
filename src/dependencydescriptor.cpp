@@ -117,7 +117,7 @@ size_t BitWriter::writePartialByte(uint8_t *p, size_t offset, uint64_t v, size_t
 	// ~0b00011110 == 0b11100001
 	uint8_t mask = ~(((1 << need_write_bits) - 1) << shift);
 
-	uint8_t vv = static_cast<uint8_t>(v >> (bits - need_write_bits));
+	auto vv = static_cast<uint8_t>(v >> (bits - need_write_bits));
 
 	if (p != nullptr) {
 		*p = (*p & mask) | (vv << shift);

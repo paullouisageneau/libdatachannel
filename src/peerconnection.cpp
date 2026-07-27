@@ -214,7 +214,6 @@ void PeerConnection::setRemoteDescription(Description description) {
 			// created an offer receives an offer from the remote peer
 			impl()->rollbackLocalDescription();
 			impl()->changeSignalingState(SignalingState::Stable);
-			signalingState = SignalingState::Stable;
 			newSignalingState = SignalingState::HaveRemoteOffer;
 			break;
 		}
