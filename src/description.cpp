@@ -1360,8 +1360,12 @@ string Description::Media::generateSdpLines(string_view eol) const {
 	for (const auto &fb : mRtcpFbs)
 		sdp << "a=rtcp-fb:* " << fb << eol;
 
-	for (auto it = mRtpMaps.begin(); it != mRtpMaps.end(); ++it) {
-		auto &map = it->second;
+	for (const auto payloadType : mOrderedPayloadTypes) {
+		auto it = mRtpMaps.find(payloadType);
+		if (it == mRtpMaps.end())
+			continue;
+
+		const auto &map = it->second;
 
 		// Create the a=rtpmap
 		sdp << "a=rtpmap:" << map.payloadType << ' ' << map.format << '/' << map.clockRate;
