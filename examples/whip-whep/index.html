@@ -1,0 +1,106 @@
+<html>
+
+<head>
+    <title>libdatachannel whip-whep</title>
+</head>
+
+<body>
+    <button onclick="window.doWHIP()">Publish</button>
+    <button onclick="window.doWHEP()">Subscribe</button>
+    <h3> Video </h3>
+    <video id="videoPlayer" autoplay muted controls style="width: 500"> </video>
+
+
+    <h3> ICE Connection States </h3>
+    <div id="iceConnectionStates"></div> <br />
+</body>
+
+<script>
+
+
+    let peerConnection = new RTCPeerConnection()
+
+    peerConnection.oniceconnectionstatechange = () => {
+        let el = document.createElement('p')
+        el.appendChild(document.createTextNode(peerConnection.iceConnectionState))
+
+        document.getElementById('iceConnectionStates').appendChild(el);
+    }
+
+    window.doWHEP = () => {
+        const transceiver = peerConnection.addTransceiver('video', { direction: 'recvonly' });
+
+        const codecs = RTCRtpSender.getCapabilities('video').codecs;
+        const vp8Codec = codecs.find(c => c.mimeType === 'video/VP8');
+
+        if (!vp8Codec) {
+            throw Error("vp8 is not a supported codec");
+        }
+
+        // force vp8
+        transceiver.setCodecPreferences([vp8Codec]);
+
+        peerConnection.ontrack = function (event) {
+            document.getElementById('videoPlayer').srcObject = event.streams[0]
+        }
+
+        peerConnection.createOffer().then(offer => {
+            peerConnection.setLocalDescription(offer)
+
+            fetch(`http://127.0.0.1:8080/whep`, {
+                method: 'POST',
+                body: offer.sdp,
+                headers: {
+                    Authorization: `Bearer none`,
+                    'Content-Type': 'application/sdp'
+                }
+            }).then(r => r.text())
+                .then(answer => {
+                    peerConnection.setRemoteDescription({
+                        sdp: answer,
+                        type: 'answer'
+                    })
+                })
+        })
+    }
+
+    window.doWHIP = () => {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            .then(stream => {
+                document.getElementById('videoPlayer').srcObject = stream
+                // Add transceiver so we can set codec preferences
+                const transceiver = peerConnection.addTransceiver(stream.getVideoTracks()[0]);
+
+                const codecs = RTCRtpSender.getCapabilities('video').codecs;
+                const vp8Codec = codecs.find(c => c.mimeType === 'video/VP8');
+
+                if (!vp8Codec) {
+                    throw Error("vp8 is not a supported codec");
+                }
+
+                // force vp8
+                transceiver.setCodecPreferences([vp8Codec]);
+
+                peerConnection.createOffer().then(offer => {
+                    peerConnection.setLocalDescription(offer)
+
+                    fetch(`http://127.0.0.1:8080/whip`, {
+                        method: 'POST',
+                        body: offer.sdp,
+                        headers: {
+                            Authorization: `Bearer none`,
+                            'Content-Type': 'application/sdp'
+                        }
+                    }).then(r => r.text())
+                        .then(answer => {
+                            peerConnection.setRemoteDescription({
+                                sdp: answer,
+                                type: 'answer'
+                            })
+                        })
+                })
+            })
+    }
+</script>
+
+</html>
