@@ -735,7 +735,10 @@ size_t RtpRtx::getBodySize(size_t totalSize) const {
 	return totalSize - (getBody() - reinterpret_cast<const char *>(this));
 }
 
-size_t RtpRtx::getSize() const { return header.getSize() + sizeof(uint16_t); }
+size_t RtpRtx::getSize() const {
+	return static_cast<size_t>(header.getBody() - reinterpret_cast<const char *>(this)) +
+	       sizeof(uint16_t);
+}
 
 size_t RtpRtx::normalizePacket(size_t totalSize, SSRC originalSSRC, uint8_t originalPayloadType) {
 	if (totalSize < getSize())
@@ -749,7 +752,8 @@ size_t RtpRtx::normalizePacket(size_t totalSize, SSRC originalSSRC, uint8_t orig
 }
 
 size_t RtpRtx::copyTo(RtpHeader *dest, size_t totalSize, uint8_t originalPayloadType) {
-	memmove((char *)dest, (char *)this, header.getSize());
+	auto headerSize = static_cast<size_t>(header.getBody() - reinterpret_cast<const char *>(this));
+	memmove((char *)dest, (char *)this, headerSize);
 	dest->setSeqNumber(getOriginalSeqNo());
 	dest->setPayloadType(originalPayloadType);
 	memmove(dest->getBody(), getBody(), getBodySize(totalSize));
