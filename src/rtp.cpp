@@ -747,13 +747,13 @@ size_t RtpRtx::normalizePacket(size_t totalSize, SSRC originalSSRC, uint8_t orig
 	header.setSeqNumber(getOriginalSeqNo());
 	header.setSsrc(originalSSRC);
 	header.setPayloadType(originalPayloadType);
-	memmove(header.getBody(), getBody(), totalSize - getSize());
+	memmove(header.getBody(), getBody(), getBodySize(totalSize));
 	return totalSize - 2;
 }
 
 size_t RtpRtx::copyTo(RtpHeader *dest, size_t totalSize, uint8_t originalPayloadType) {
 	auto headerSize = static_cast<size_t>(header.getBody() - reinterpret_cast<const char *>(this));
-	memmove((char *)dest, (char *)this, headerSize);
+	memmove(dest, this, headerSize);
 	dest->setSeqNumber(getOriginalSeqNo());
 	dest->setPayloadType(originalPayloadType);
 	memmove(dest->getBody(), getBody(), getBodySize(totalSize));
