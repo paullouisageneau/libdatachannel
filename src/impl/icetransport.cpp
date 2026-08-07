@@ -285,19 +285,29 @@ bool IceTransport::getSelectedCandidatePair(Candidate *local, Candidate *remote)
 }
 
 bool IceTransport::send(message_ptr message) {
-	auto s = state();
-	if (!message || (s != State::Connected && s != State::Completed))
+	if (!message)
 		return false;
 
-	PLOG_VERBOSE << "Send size=" << message->size();
-	return outgoing(std::move(message));
+	return send(message->data(), message->size(), message->dscp);
+}
+
+bool IceTransport::send(const byte *data, size_t size, unsigned int dscp) {
+	auto s = state();
+	if ((!data && size > 0) || (s != State::Connected && s != State::Completed))
+		return false;
+
+	PLOG_VERBOSE << "Send size=" << size;
+	return outgoing(data, size, dscp);
 }
 
 bool IceTransport::outgoing(message_ptr message) {
+	return outgoing(message->data(), message->size(), message->dscp);
+}
+
+bool IceTransport::outgoing(const byte *data, size_t size, unsigned int dscp) {
 	// Explicit Congestion Notification takes the least-significant 2 bits of the DS field
-	int ds = int(message->dscp << 2);
-	return juice_send_diffserv(mAgent.get(), reinterpret_cast<const char *>(message->data()),
-	                           message->size(), ds) >= 0;
+	int ds = int(dscp << 2);
+	return juice_send_diffserv(mAgent.get(), reinterpret_cast<const char *>(data), size, ds) >= 0;
 }
 
 void IceTransport::changeGatheringState(GatheringState state) {
@@ -799,24 +809,35 @@ optional<string> IceTransport::getRemoteAddress() const {
 }
 
 bool IceTransport::send(message_ptr message) {
-	auto s = state();
-	if (!message || (s != State::Connected && s != State::Completed))
+	if (!message)
 		return false;
 
-	PLOG_VERBOSE << "Send size=" << message->size();
-	return outgoing(std::move(message));
+	return send(message->data(), message->size(), message->dscp);
+}
+
+bool IceTransport::send(const byte *data, size_t size, unsigned int dscp) {
+	auto s = state();
+	if ((!data && size > 0) || (s != State::Connected && s != State::Completed))
+		return false;
+
+	PLOG_VERBOSE << "Send size=" << size;
+	return outgoing(data, size, dscp);
 }
 
 bool IceTransport::outgoing(message_ptr message) {
+	return outgoing(message->data(), message->size(), message->dscp);
+}
+
+bool IceTransport::outgoing(const byte *data, size_t size, unsigned int dscp) {
 	std::lock_guard lock(mOutgoingMutex);
-	if (mOutgoingDscp != message->dscp) {
-		mOutgoingDscp = message->dscp;
+	if (mOutgoingDscp != dscp) {
+		mOutgoingDscp = dscp;
 		// Explicit Congestion Notification takes the least-significant 2 bits of the DS field
-		int ds = int(message->dscp << 2);
+		int ds = int(dscp << 2);
 		nice_agent_set_stream_tos(mNiceAgent.get(), mStreamId, ds); // ToS is the legacy name for DS
 	}
-	return nice_agent_send(mNiceAgent.get(), mStreamId, 1, message->size(),
-	                       reinterpret_cast<const char *>(message->data())) >= 0;
+	return nice_agent_send(mNiceAgent.get(), mStreamId, 1, size,
+	                       reinterpret_cast<const char *>(data)) >= 0;
 }
 
 void IceTransport::changeGatheringState(GatheringState state) {

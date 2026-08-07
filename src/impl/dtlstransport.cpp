@@ -134,16 +134,23 @@ void DtlsTransport::stop() {
 }
 
 bool DtlsTransport::send(message_ptr message) {
-	if (!message || state() != State::Connected)
+	if (!message)
 		return false;
 
-	PLOG_VERBOSE << "Send size=" << message->size();
+	return send(message->data(), message->size(), message->dscp);
+}
+
+bool DtlsTransport::send(const byte *data, size_t size, unsigned int dscp) {
+	if ((!data && size > 0) || state() != State::Connected)
+		return false;
+
+	PLOG_VERBOSE << "Send size=" << size;
 
 	ssize_t ret;
 	do {
 		std::lock_guard lock(mSendMutex);
-		mCurrentDscp = message->dscp;
-		ret = gnutls_record_send(mSession, message->data(), message->size());
+		mCurrentDscp = dscp;
+		ret = gnutls_record_send(mSession, data, size);
 	} while (ret == GNUTLS_E_INTERRUPTED || ret == GNUTLS_E_AGAIN);
 
 	if (ret == GNUTLS_E_LARGE_PACKET)
@@ -170,6 +177,12 @@ bool DtlsTransport::outgoing(message_ptr message) {
 	message->dscp = mCurrentDscp;
 
 	bool result = Transport::outgoing(std::move(message));
+	mOutgoingResult = result;
+	return result;
+}
+
+bool DtlsTransport::outgoing(const byte *data, size_t size, unsigned int dscp) {
+	bool result = Transport::outgoing(data, size, dscp);
 	mOutgoingResult = result;
 	return result;
 }
@@ -315,8 +328,7 @@ ssize_t DtlsTransport::WriteCallback(gnutls_transport_ptr_t ptr, const void *dat
 	DtlsTransport *t = static_cast<DtlsTransport *>(ptr);
 	try {
 		if (len > 0) {
-			auto b = reinterpret_cast<const byte *>(data);
-			t->outgoing(make_message(b, b + len));
+			t->outgoing(reinterpret_cast<const byte *>(data), len, t->mCurrentDscp.load());
 		}
 		gnutls_transport_set_errno(t->mSession, 0);
 		return ssize_t(len);
@@ -475,20 +487,26 @@ void DtlsTransport::stop() {
 }
 
 bool DtlsTransport::send(message_ptr message) {
-	if (!message || state() != State::Connected)
+	if (!message)
 		return false;
 
-	PLOG_VERBOSE << "Send size=" << message->size();
+	return send(message->data(), message->size(), message->dscp);
+}
+
+bool DtlsTransport::send(const byte *data, size_t size, unsigned int dscp) {
+	if ((!data && size > 0) || state() != State::Connected)
+		return false;
+
+	PLOG_VERBOSE << "Send size=" << size;
 
 	int ret;
 	do {
 		std::lock_guard lock(mSslMutex);
-		if (message->size() > size_t(mbedtls_ssl_get_max_out_record_payload(&mSsl)))
+		if (size > size_t(mbedtls_ssl_get_max_out_record_payload(&mSsl)))
 			return false;
 
-		mCurrentDscp = message->dscp;
-		ret = mbedtls_ssl_write(&mSsl, reinterpret_cast<const unsigned char *>(message->data()),
-		                        message->size());
+		mCurrentDscp = dscp;
+		ret = mbedtls_ssl_write(&mSsl, reinterpret_cast<const unsigned char *>(data), size);
 	} while (!mbedtls::check(ret));
 
 	return mOutgoingResult;
@@ -509,6 +527,12 @@ bool DtlsTransport::outgoing(message_ptr message) {
 	message->dscp = mCurrentDscp;
 
 	bool result = Transport::outgoing(std::move(message));
+	mOutgoingResult = result;
+	return result;
+}
+
+bool DtlsTransport::outgoing(const byte *data, size_t size, unsigned int dscp) {
+	bool result = Transport::outgoing(data, size, dscp);
 	mOutgoingResult = result;
 	return result;
 }
@@ -634,8 +658,7 @@ int DtlsTransport::WriteCallback(void *ctx, const unsigned char *buf, size_t len
 	auto *t = static_cast<DtlsTransport *>(ctx);
 	try {
 		if (len > 0) {
-			auto b = reinterpret_cast<const byte *>(buf);
-			t->outgoing(make_message(b, b + len));
+			t->outgoing(reinterpret_cast<const byte *>(buf), len, t->mCurrentDscp.load());
 		}
 		return int(len);
 
@@ -869,16 +892,23 @@ void DtlsTransport::stop() {
 }
 
 bool DtlsTransport::send(message_ptr message) {
-	if (!message || state() != State::Connected)
+	if (!message)
 		return false;
 
-	PLOG_VERBOSE << "Send size=" << message->size();
+	return send(message->data(), message->size(), message->dscp);
+}
+
+bool DtlsTransport::send(const byte *data, size_t size, unsigned int dscp) {
+	if ((!data && size > 0) || state() != State::Connected)
+		return false;
+
+	PLOG_VERBOSE << "Send size=" << size;
 
 	int ret, err;
 	{
 		std::lock_guard lock(mSslMutex);
-		mCurrentDscp = message->dscp;
-		ret = SSL_write(mSsl, message->data(), int(message->size()));
+		mCurrentDscp = dscp;
+		ret = SSL_write(mSsl, data, int(size));
 		err = SSL_get_error(mSsl, ret);
 	}
 
@@ -907,6 +937,12 @@ bool DtlsTransport::outgoing(message_ptr message) {
 	message->dscp = mCurrentDscp;
 
 	bool result = Transport::outgoing(std::move(message));
+	mOutgoingResult = result;
+	return result;
+}
+
+bool DtlsTransport::outgoing(const byte *data, size_t size, unsigned int dscp) {
+	bool result = Transport::outgoing(data, size, dscp);
 	mOutgoingResult = result;
 	return result;
 }
@@ -1082,8 +1118,8 @@ int DtlsTransport::BioMethodWrite(BIO *bio, const char *in, int inl) {
 	auto transport = reinterpret_cast<DtlsTransport *>(BIO_get_data(bio));
 	if (!transport)
 		return -1;
-	auto b = reinterpret_cast<const byte *>(in);
-	transport->outgoing(make_message(b, b + inl));
+	transport->outgoing(reinterpret_cast<const byte *>(in), size_t(inl),
+	                    transport->mCurrentDscp.load());
 	return inl; // can't fail
 }
 

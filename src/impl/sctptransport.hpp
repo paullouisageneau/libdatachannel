@@ -79,6 +79,7 @@ private:
 	void shutdown();
 	void incoming(message_ptr message) override;
 	bool outgoing(message_ptr message) override;
+	bool outgoing(const byte *data, size_t size, unsigned int dscp) override;
 
 	void doRecv();
 	void doFlush();
