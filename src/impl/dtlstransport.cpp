@@ -391,23 +391,20 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 	if (!mCertificate)
 		throw std::invalid_argument("DTLS certificate is null");
 
-	mbedtls_entropy_init(&mEntropy);
-	mbedtls_ctr_drbg_init(&mDrbg);
 	mbedtls_ssl_init(&mSsl);
 	mbedtls_ssl_config_init(&mConf);
-	mbedtls_ctr_drbg_set_prediction_resistance(&mDrbg, MBEDTLS_CTR_DRBG_PR_ON);
 
 	try {
-		mbedtls::check(mbedtls_ctr_drbg_seed(&mDrbg, mbedtls_entropy_func, &mEntropy, NULL, 0));
-
 		mbedtls::check(mbedtls_ssl_config_defaults(
 		                   &mConf, mIsClient ? MBEDTLS_SSL_IS_CLIENT : MBEDTLS_SSL_IS_SERVER,
 		                   MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT));
 
-		mbedtls_ssl_conf_max_version(&mConf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3); // TLS 1.2
+		mbedtls_ssl_conf_max_tls_version(&mConf, MBEDTLS_SSL_VERSION_TLS1_2);
 		mbedtls_ssl_conf_authmode(&mConf, MBEDTLS_SSL_VERIFY_OPTIONAL);
 		mbedtls_ssl_conf_verify(&mConf, DtlsTransport::CertificateCallback, this);
-		mbedtls_ssl_conf_rng(&mConf, mbedtls_ctr_drbg_random, &mDrbg);
+#if MBEDTLS_VERSION_MAJOR < 4
+		mbedtls_ssl_conf_rng(&mConf, mbedtls::random_func, nullptr);
+#endif
 
 		auto [crt, pk] = mCertificate->credentials();
 		mbedtls::check(mbedtls_ssl_conf_own_cert(&mConf, crt.get(), pk.get()));
@@ -422,8 +419,6 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		mbedtls_ssl_set_timer_cb(&mSsl, this, SetTimerCallback, GetTimerCallback);
 
 	} catch (...) {
-		mbedtls_entropy_free(&mEntropy);
-		mbedtls_ctr_drbg_free(&mDrbg);
 		mbedtls_ssl_free(&mSsl);
 		mbedtls_ssl_config_free(&mConf);
 		throw;
@@ -438,8 +433,6 @@ DtlsTransport::~DtlsTransport() {
 	stop();
 
 	PLOG_DEBUG << "Destroying DTLS transport";
-	mbedtls_entropy_free(&mEntropy);
-	mbedtls_ctr_drbg_free(&mDrbg);
 	mbedtls_ssl_free(&mSsl);
 	mbedtls_ssl_config_free(&mConf);
 }

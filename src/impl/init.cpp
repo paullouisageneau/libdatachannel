@@ -138,7 +138,7 @@ void Init::doInit() {
 #if USE_GNUTLS
 	// Nothing to do
 #elif USE_MBEDTLS
-	// Nothing to do
+	mbedtls::init();
 #else
 	openssl::init();
 #endif

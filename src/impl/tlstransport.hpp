@@ -67,8 +67,6 @@ protected:
 	static int TimeoutCallback(gnutls_transport_ptr_t ptr, unsigned int ms);
 
 #elif USE_MBEDTLS
-	mbedtls_entropy_context mEntropy;
-	mbedtls_ctr_drbg_context mDrbg;
 	mbedtls_ssl_config mConf;
 	mbedtls_ssl_context mSsl;
 

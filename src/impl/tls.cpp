@@ -96,6 +96,33 @@ size_t my_strftme(char *buf, size_t size, const char *format, const time_t *t) {
 
 namespace rtc::mbedtls {
 
+void init() {
+	check(psa_crypto_init(), "psa_crypto_init failed.");
+}
+
+#if !defined(MBEDTLS_THREADING_C)
+std::mutex psa_mutex;
+
+int safe_psa(std::function<int()> func) {
+	std::unique_lock<std::mutex> lock(psa_mutex);
+	return func();
+}
+
+int random_func(void *rng, unsigned char *out, size_t len) {
+	std::unique_lock<std::mutex> lock(psa_mutex);
+	(void)rng;
+	return psa_generate_random(out, len);
+}
+#else
+int safe_psa(std::function<int()> func) {
+	return func();
+}
+int random_func(void *rng, unsigned char *out, size_t len) {
+	(void)rng;
+	return psa_generate_random(out, len);
+}
+#endif
+
 // Return false on non-fatal error
 bool check(int ret, const string &message) {
 	if (ret < 0) {
