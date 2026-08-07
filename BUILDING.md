@@ -25,6 +25,8 @@ The option `PREFER_SYSTEM_LIB` allows to link against the system library rather 
 
 If you only need Data Channels, the option `NO_MEDIA` allows to make the library lighter by removing media support. Similarly, `NO_WEBSOCKET` removes WebSocket support.
 
+The option `DISABLE_SCTP_INTERLEAVING` disables SCTP I-DATA interleaving support if needed for compatibility with a specific SCTP stack.
+
 For the sake of performance, the library should be compiled in `Release` mode if you don't plan to debug it.
 
 The CMake build exports the targets with namespace `LibDataChannel::LibDataChannel` and `LibDataChannel::LibDataChannelStatic` to link the library from another CMake project.
