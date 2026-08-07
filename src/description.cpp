@@ -185,7 +185,7 @@ Description::Description(const string &sdp, Type type, Role role)
 				// RFC 8839: The "ice-options" attribute is a session-level and media-level
 				// attribute.
 				if (mIceOptions.empty())
-					mIceOptions = utils::explode(string(value), ',');
+					mIceOptions = utils::explode(string(value), ' ');
 			} else if (key == "candidate") {
 				addCandidate(Candidate(attr, bundleMid()));
 			} else if (key == "end-of-candidates") {
@@ -346,7 +346,7 @@ string Description::generateSdp(string_view eol) const {
 	// Session-level attributes
 	sdp << "a=msid-semantic:WMS *" << eol;
 	if (!mIceOptions.empty())
-		sdp << "a=ice-options:" << utils::implode(mIceOptions, ',') << eol;
+		sdp << "a=ice-options:" << utils::implode(mIceOptions, ' ') << eol;
 	if (mFingerprint)
 		sdp << "a=fingerprint:"
 		    << CertificateFingerprint::AlgorithmIdentifier(mFingerprint->algorithm) << " "
@@ -409,7 +409,7 @@ string Description::generateApplicationSdp(string_view eol) const {
 	// Session-level attributes
 	sdp << "a=msid-semantic:WMS *" << eol;
 	if (!mIceOptions.empty())
-		sdp << "a=ice-options:" << utils::implode(mIceOptions, ',') << eol;
+		sdp << "a=ice-options:" << utils::implode(mIceOptions, ' ') << eol;
 
 	for (const auto &attr : mAttributes)
 		sdp << "a=" << attr << eol;
