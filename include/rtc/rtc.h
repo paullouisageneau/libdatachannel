@@ -207,6 +207,7 @@ typedef struct {
 	bool enableIceUdpMux; // libjuice only
 	bool disableAutoNegotiation;
 	bool forceMediaTransport;
+	bool sendRtcpByeOnTrackClose;
 	uint16_t portRangeBegin; // 0 means automatic
 	uint16_t portRangeEnd;   // 0 means automatic
 	int mtu;                 // <= 0 means automatic

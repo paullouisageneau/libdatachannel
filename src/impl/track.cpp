@@ -68,6 +68,11 @@ void Track::setDescription(Description::Media desc) {
 void Track::close() {
 	PLOG_VERBOSE << "Closing Track";
 
+#if RTC_ENABLE_MEDIA
+	if (!mIsClosed.load())
+		sendRtcpByeIfApplicable();
+#endif
+
 	if (!mIsClosed.exchange(true))
 	{
 		triggerClosed();
@@ -127,6 +132,72 @@ void Track::open(shared_ptr<DtlsSrtpTransport> transport) {
 
 	if (!mIsClosed)
 		triggerOpen();
+}
+
+void Track::sendRtcpByeIfApplicable() {
+	auto pc = mPeerConnection.lock();
+	if (!pc || !pc->config.sendRtcpByeOnTrackClose)
+		return;
+
+	shared_ptr<DtlsSrtpTransport> transport;
+	Description::Direction dir;
+	std::vector<SSRC> ssrcs;
+	std::vector<string> cnames;
+	{
+		std::shared_lock lock(mMutex);
+
+		// Only audio and video tracks carry RTP/RTCP traffic — application (data channel) and
+		// other non-media m= sections never have an SSRC stream and must not emit BYE.
+		auto mediaType = mMediaDescription.type();
+		if (mediaType != "audio" && mediaType != "video")
+			return;
+
+		transport = mDtlsSrtpTransport.lock();
+		if (!transport)
+			return;
+		dir = mMediaDescription.direction();
+		ssrcs = mMediaDescription.getSSRCs();
+		cnames.reserve(ssrcs.size());
+		for (auto ssrc : ssrcs)
+			cnames.push_back(mMediaDescription.getCNameForSsrc(ssrc).value());
+	}
+
+	// RFC 3550 section 6.3.7: a participant which never sent RTP/RTCP MUST NOT send BYE.
+	// Only send for tracks we were transmitting on.
+	if (dir != Description::Direction::SendOnly && dir != Description::Direction::SendRecv)
+		return;
+
+	// One compound RR + SDES + BYE per SSRC
+	for (size_t i = 0; i < ssrcs.size(); ++i) {
+		SSRC ssrc = ssrcs[i];
+
+		size_t rrSize = RtcpRr::SizeWithReportBlocks(0);
+		size_t sdesSize = RtcpSdes::Size({{uint8_t(cnames[i].size())}});
+		size_t byeSize = RtcpBye::SizeWithSsrcs(1);
+
+		auto msg = make_message(rrSize + sdesSize + byeSize, Message::Control);
+
+		auto rr = reinterpret_cast<RtcpRr *>(msg->data());
+		rr->preparePacket(ssrc, 0);
+
+		auto sdes = reinterpret_cast<RtcpSdes *>(msg->data() + rrSize);
+		auto chunk = sdes->getChunk(0);
+		chunk->setSSRC(ssrc);
+		auto item = chunk->getItem(0);
+		item->type = 1; // CNAME
+		item->setText(cnames[i]);
+		sdes->preparePacket(1);
+
+		auto bye = reinterpret_cast<RtcpBye *>(msg->data() + rrSize + sdesSize);
+		bye->preparePacket(1);
+		bye->setSsrc(0, ssrc);
+
+		try {
+			transport->sendMedia(msg);
+		} catch (const std::exception &e) {
+			PLOG_WARNING << "Failed to send RTCP BYE for SSRC " << ssrc << ": " << e.what();
+		}
+	}
 }
 #endif
 

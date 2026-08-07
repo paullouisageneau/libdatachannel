@@ -78,6 +78,7 @@ struct RTC_CPP_EXPORT Configuration {
 	bool disableAutoGathering = false;
 	bool forceMediaTransport = false;
 	bool disableFingerprintVerification = false;
+	bool sendRtcpByeOnTrackClose = false;
 
 	// Port range
 	uint16_t portRangeBegin = 1024;

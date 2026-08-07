@@ -749,6 +749,46 @@ bool RtcpNack::addMissingPacket(unsigned int *fciCount, uint16_t *fciPID, uint16
 	}
 }
 
+size_t RtcpBye::SizeWithSsrcs(uint8_t ssrcCount) {
+	return sizeof(RtcpHeader) + size_t(ssrcCount) * sizeof(SSRC);
+}
+
+uint8_t RtcpBye::ssrcCount() const {
+	// Defense against malformed inbound packets: clamp the SC field to the maximum number of
+	// SSRCs that actually fit in the length-validated region of the packet.
+	return uint8_t(std::min<uint16_t>(header.reportCount(), header.length()));
+}
+
+SSRC RtcpBye::getSsrc(uint8_t i) const {
+	if (i >= ssrcCount())
+		return 0;
+	return ntohl(_ssrcs[i]);
+}
+
+size_t RtcpBye::getSize() const { return header.lengthInBytes(); }
+
+void RtcpBye::preparePacket(uint8_t ssrcCount) {
+	uint16_t length = uint16_t(SizeWithSsrcs(ssrcCount) / 4 - 1);
+	header.prepareHeader(203, ssrcCount, length);
+}
+
+void RtcpBye::setSsrc(uint8_t i, SSRC ssrc) {
+	if (i >= header.reportCount())
+		throw std::out_of_range("SSRC index out of range");
+	_ssrcs[i] = htonl(ssrc);
+}
+
+void RtcpBye::log() const {
+	header.log();
+	std::string ssrcs;
+	for (uint8_t i = 0; i < ssrcCount(); ++i) {
+		if (i > 0)
+			ssrcs += ",";
+		ssrcs += std::to_string(getSsrc(i));
+	}
+	PLOG_VERBOSE << "RTCP BYE: ssrcs=[" << ssrcs << "]";
+}
+
 size_t RtcpApp::SizeWithData(size_t dataLength) {
 	return sizeof(RtcpHeader) + sizeof(SSRC) + 4 + dataLength;
 }
