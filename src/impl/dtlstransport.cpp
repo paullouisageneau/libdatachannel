@@ -85,6 +85,8 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		              "Failed to set SRTP profile");
 
 		gnutls::check(gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, creds));
+		if (!mIsClient)
+			gnutls_certificate_server_set_request(mSession, GNUTLS_CERT_REQUIRE);
 
 		gnutls_dtls_set_timeouts(mSession,
 		                         1000,   // 1s retransmission timeout recommended by RFC 6347

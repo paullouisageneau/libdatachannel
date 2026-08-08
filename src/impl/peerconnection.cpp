@@ -171,7 +171,14 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport() {
 						    break;
 					    case IceTransport::State::Connected:
 						    changeIceState(IceState::Connected);
-						    initDtlsTransport();
+						    // Serialize with setRemoteDescription so DTLS sees the committed fingerprint.
+						    mProcessor.enqueue([weak_this] {
+							    if (auto locked = weak_this.lock()) {
+								    std::lock_guard signalingLock(locked->signalingMutex);
+								    if (locked->remoteDescription())
+									    locked->initDtlsTransport();
+							    }
+						    });
 						    break;
 					    case IceTransport::State::Completed:
 						    changeIceState(IceState::Completed);
@@ -1186,6 +1193,14 @@ void PeerConnection::processRemoteDescription(Description description) {
 	}
 
 	auto dtlsTransport = std::atomic_load(&mDtlsTransport);
+	if (!dtlsTransport) {
+		// ICE might have connected before the remote fingerprint was committed.
+		auto iceTransport = std::atomic_load(&mIceTransport);
+		if (iceTransport && (iceTransport->state() == Transport::State::Connected ||
+		                     iceTransport->state() == Transport::State::Completed))
+			dtlsTransport = initDtlsTransport();
+	}
+
 	if (description.hasApplication()) {
 		auto sctpTransport = std::atomic_load(&mSctpTransport);
 		if (!sctpTransport && dtlsTransport &&
