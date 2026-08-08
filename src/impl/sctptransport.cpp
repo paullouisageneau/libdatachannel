@@ -385,14 +385,88 @@ bool SctpTransport::send(message_ptr message) {
 		throw std::invalid_argument("Message is too large");
 
 	// Flush the queue, and if nothing is pending, try to send directly
-	if (trySendQueue() && trySendMessage(message))
-		return true;
+	if (trySendQueue()) {
+		if (trySendMessage(message))
+			return true;
+
+		mDirectSendBlocked = true;
+	}
 
 	const uint16_t streamId = to_uint16(message->stream);
 	const ptrdiff_t size = ptrdiff_t(message_size_func(message));
 	mSendQueue.push(std::move(message));
 	updateBufferedAmount(streamId, size);
 	return false;
+}
+
+bool SctpTransport::send(const byte *data, size_t size, Message::Type type, unsigned int stream,
+                         shared_ptr<Reliability> reliability) {
+	if (!data && size > 0)
+		throw std::invalid_argument("Unexpected null pointer for data");
+
+	PLOG_VERBOSE << "Send size=" << size;
+
+	if (size > mMaxMessageSize)
+		throw std::invalid_argument("Message is too large");
+
+	{
+		std::lock_guard lock(mSendMutex);
+		if (state() != State::Connected)
+			return false;
+
+		// Only bypass Message allocation when no application-level send is already queued.
+		if (!mDirectSendBlocked && mSendQueue.empty()) {
+			if (trySendMessage(data, size, type, stream, reliability))
+				return true;
+
+			mDirectSendBlocked = true;
+
+			message_ptr message;
+			if (size > 0)
+				message = make_message(data, data + size, type, stream, std::move(reliability));
+			else
+				message = make_message(0, type, stream, std::move(reliability));
+
+			queueMessage(std::move(message));
+			return false;
+		}
+	}
+
+	message_ptr message;
+	if (size > 0)
+		message = make_message(data, data + size, type, stream, std::move(reliability));
+	else
+		message = make_message(0, type, stream, std::move(reliability));
+
+	return send(std::move(message));
+}
+
+bool SctpTransport::send(binary &&data, Message::Type type, unsigned int stream,
+                         shared_ptr<Reliability> reliability) {
+	PLOG_VERBOSE << "Send size=" << data.size();
+
+	if (data.size() > mMaxMessageSize)
+		throw std::invalid_argument("Message is too large");
+
+	{
+		std::lock_guard lock(mSendMutex);
+		if (state() != State::Connected)
+			return false;
+
+		// Only bypass Message allocation when no application-level send is already queued.
+		if (!mDirectSendBlocked && mSendQueue.empty()) {
+			if (trySendMessage(data.data(), data.size(), type, stream, reliability))
+				return true;
+
+			mDirectSendBlocked = true;
+
+			auto message = make_message(std::move(data), type, stream, std::move(reliability));
+			queueMessage(std::move(message));
+			return false;
+		}
+	}
+
+	return send(make_message(std::move(data), type, stream, std::move(reliability)));
 }
 
 bool SctpTransport::flush() {
@@ -582,6 +656,8 @@ bool SctpTransport::trySendQueue() {
 		updateBufferedAmount(to_uint16(message->stream), -ptrdiff_t(message_size_func(message)));
 	}
 
+	mDirectSendBlocked = false;
+
 	if (!mSendQueue.running() && !std::exchange(mSendShutdown, true)) {
 		PLOG_DEBUG << "SCTP shutdown";
 		if (usrsctp_shutdown(mSock, SHUT_WR)) {
@@ -694,6 +770,113 @@ bool SctpTransport::trySendMessage(const message_ptr &message) {
 	if (message->type == Message::Binary || message->type == Message::String)
 		mBytesSent += message->size();
 	return true;
+}
+
+bool SctpTransport::trySendMessage(const byte *data, size_t size, Message::Type type,
+                                   unsigned int stream,
+                                   const shared_ptr<Reliability> &reliability) {
+	// Requires mSendMutex to be locked
+	if (state() != State::Connected)
+		return false;
+
+	uint32_t ppid;
+	switch (type) {
+	case Message::String:
+		ppid = size > 0 ? PPID_STRING : PPID_STRING_EMPTY;
+		break;
+	case Message::Binary:
+		ppid = size > 0 ? PPID_BINARY : PPID_BINARY_EMPTY;
+		break;
+	case Message::Control:
+		ppid = PPID_CONTROL;
+		break;
+	case Message::Reset:
+		sendReset(uint16_t(stream));
+		return true;
+	default:
+		// Ignore
+		return true;
+	}
+
+	PLOG_VERBOSE << "SCTP try send size=" << size;
+
+	// TODO: Implement SCTP ndata specification draft when supported everywhere
+	// See https://datatracker.ietf.org/doc/html/draft-ietf-tsvwg-sctp-ndata-08
+
+	const Reliability rel = reliability ? *reliability : Reliability();
+
+	struct sctp_sendv_spa spa = {};
+
+	// set sndinfo
+	spa.sendv_flags |= SCTP_SEND_SNDINFO_VALID;
+	spa.sendv_sndinfo.snd_sid = uint16_t(stream);
+	spa.sendv_sndinfo.snd_ppid = htonl(ppid);
+	spa.sendv_sndinfo.snd_flags |= SCTP_EOR; // implicit here
+
+	// set prinfo
+	spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
+	if (rel.unordered)
+		spa.sendv_sndinfo.snd_flags |= SCTP_UNORDERED;
+
+	if (rel.maxPacketLifeTime) {
+		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
+		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_TTL;
+		spa.sendv_prinfo.pr_value = to_uint32(rel.maxPacketLifeTime->count());
+	} else if (rel.maxRetransmits) {
+		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
+		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
+		spa.sendv_prinfo.pr_value = to_uint32(*rel.maxRetransmits);
+	}
+	// else {
+	// 	spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_NONE;
+	// }
+	// Deprecated
+	else switch (rel.typeDeprecated) {
+	case Reliability::Type::Rexmit:
+		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
+		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_RTX;
+		spa.sendv_prinfo.pr_value = to_uint32(std::get<int>(rel.rexmit));
+		break;
+	case Reliability::Type::Timed:
+		spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
+		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_TTL;
+		spa.sendv_prinfo.pr_value = to_uint32(std::get<milliseconds>(rel.rexmit).count());
+		break;
+	default:
+		spa.sendv_prinfo.pr_policy = SCTP_PR_SCTP_NONE;
+		break;
+	}
+
+	ssize_t ret;
+	if (size > 0) {
+		ret = usrsctp_sendv(mSock, data, size, nullptr, 0, &spa, sizeof(spa), SCTP_SENDV_SPA, 0);
+	} else {
+		const char zero = 0;
+		ret = usrsctp_sendv(mSock, &zero, 1, nullptr, 0, &spa, sizeof(spa), SCTP_SENDV_SPA, 0);
+	}
+
+	if (ret < 0) {
+		if (errno == EWOULDBLOCK || errno == EAGAIN) {
+			PLOG_VERBOSE << "SCTP sending not possible";
+			return false;
+		}
+
+		PLOG_ERROR << "SCTP sending failed, errno=" << errno;
+		throw std::runtime_error("Sending failed, errno=" + std::to_string(errno));
+	}
+
+	PLOG_VERBOSE << "SCTP sent size=" << size;
+	if (type == Message::Binary || type == Message::String)
+		mBytesSent += size;
+	return true;
+}
+
+void SctpTransport::queueMessage(message_ptr message) {
+	// Requires mSendMutex to be locked
+	const uint16_t streamId = to_uint16(message->stream);
+	const ptrdiff_t size = ptrdiff_t(message_size_func(message));
+	mSendQueue.push(std::move(message));
+	updateBufferedAmount(streamId, size);
 }
 
 void SctpTransport::updateBufferedAmount(uint16_t streamId, ptrdiff_t delta) {

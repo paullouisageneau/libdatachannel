@@ -204,6 +204,65 @@ bool DataChannel::outgoing(message_ptr message) {
 	return transport->send(std::move(message));
 }
 
+bool DataChannel::outgoing(const byte *data, size_t size, Message::Type type) {
+	shared_ptr<SctpTransport> transport;
+	unsigned int stream;
+	shared_ptr<Reliability> reliability;
+	{
+		std::shared_lock lock(mMutex);
+		transport = mSctpTransport.lock();
+
+		if (mIsClosed)
+			throw std::runtime_error("DataChannel is closed");
+
+		if (!transport)
+			throw std::runtime_error("DataChannel not open");
+
+		if (!mStream.has_value())
+			throw std::logic_error("DataChannel has no stream assigned");
+
+		if (!data && size > 0)
+			throw std::invalid_argument("Unexpected null pointer for data");
+
+		if (size > maxMessageSize())
+			throw std::invalid_argument("Message size exceeds limit");
+
+		// Before the ACK has been received on a DataChannel, all messages must be sent ordered
+		reliability = mIsOpen ? mReliability : nullptr;
+		stream = mStream.value();
+	}
+
+	return transport->send(data, size, type, stream, std::move(reliability));
+}
+
+bool DataChannel::outgoing(binary &&data, Message::Type type) {
+	shared_ptr<SctpTransport> transport;
+	unsigned int stream;
+	shared_ptr<Reliability> reliability;
+	{
+		std::shared_lock lock(mMutex);
+		transport = mSctpTransport.lock();
+
+		if (mIsClosed)
+			throw std::runtime_error("DataChannel is closed");
+
+		if (!transport)
+			throw std::runtime_error("DataChannel not open");
+
+		if (!mStream.has_value())
+			throw std::logic_error("DataChannel has no stream assigned");
+
+		if (data.size() > maxMessageSize())
+			throw std::invalid_argument("Message size exceeds limit");
+
+		// Before the ACK has been received on a DataChannel, all messages must be sent ordered
+		reliability = mIsOpen ? mReliability : nullptr;
+		stream = mStream.value();
+	}
+
+	return transport->send(std::move(data), type, stream, std::move(reliability));
+}
+
 void DataChannel::incoming(message_ptr message) {
 	if (!message || mIsClosed)
 		return;
