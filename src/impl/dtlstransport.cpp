@@ -849,7 +849,7 @@ void DtlsTransport::start() {
 		err = SSL_get_error(mSsl, ret);
 	}
 
-	openssl::check_error(err, "Handshake failed");
+	openssl::check_error(err, "Handshake failed", mSsl);
 
 	handleTimeout();
 }
@@ -951,7 +951,7 @@ void DtlsTransport::doRecv() {
 					err = SSL_get_error(mSsl, ret);
 				}
 
-				if (openssl::check_error(err, "Handshake failed")) {
+				if (openssl::check_error(err, "Handshake failed", mSsl)) {
 					// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
 					// See https://www.rfc-editor.org/rfc/rfc8261.html#section-5
 					{

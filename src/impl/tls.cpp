@@ -8,8 +8,10 @@
 
 #include "tls.hpp"
 
+#include <cerrno>
 #include <fstream>
 #include <stdexcept>
+#include <string>
 
 #if USE_GNUTLS
 
@@ -211,8 +213,32 @@ bool check(int success, const string &message) {
 	throw std::runtime_error(message + (last_error != 0 ? ": " + error_string(last_error) : ""));
 }
 
+namespace {
+
+string want_string(int want) {
+	switch (want) {
+	case SSL_NOTHING:
+		return "nothing";
+	case SSL_WRITING:
+		return "writing";
+	case SSL_READING:
+		return "reading";
+	case SSL_X509_LOOKUP:
+		return "x509_lookup";
+#ifdef SSL_RETRY_VERIFY
+	case SSL_RETRY_VERIFY:
+		return "retry_verify";
+#endif
+	default:
+		return std::to_string(want);
+	}
+}
+
+} // namespace
+
 // Return false on recoverable error
-bool check_error(int err, const string &message) {
+bool check_error(int err, const string &message, const SSL *ssl) {
+	const int syserrno = errno;
 	unsigned long last_error = ERR_peek_last_error();
 	ERR_clear_error();
 
@@ -222,8 +248,19 @@ bool check_error(int err, const string &message) {
 	if (err == SSL_ERROR_ZERO_RETURN)
 		throw std::runtime_error(message + ": peer closed connection");
 
-	if (err == SSL_ERROR_SYSCALL)
-		throw std::runtime_error(message + ": fatal I/O error");
+	if (err == SSL_ERROR_SYSCALL) {
+		// SSL_get_error() returns SSL_ERROR_SYSCALL both for a real I/O failure and as its
+		// fall-through: when the SSL object wants I/O but the corresponding BIO's retry flags
+		// do not say so, it drops past every branch and lands here with errno unset and an
+		// empty error queue. The transports below feed OpenSSL from memory BIOs, which never
+		// perform a syscall, so that fall-through is the likelier of the two and a bare
+		// "fatal I/O error" actively misdirects. Report enough to tell them apart.
+		string detail = ": fatal I/O error (errno=" + std::to_string(syserrno);
+		if (ssl)
+			detail += ", want=" + want_string(SSL_want(ssl));
+		detail += ")";
+		throw std::runtime_error(message + detail);
+	}
 
 	if (err == SSL_ERROR_SSL)
 		throw std::runtime_error(message +

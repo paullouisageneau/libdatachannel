@@ -668,7 +668,7 @@ void TlsTransport::start() {
 		flushOutput();
 	}
 
-	openssl::check_error(err, "Handshake failed");
+	openssl::check_error(err, "Handshake failed", mSsl);
 }
 
 void TlsTransport::stop() {
@@ -756,7 +756,7 @@ void TlsTransport::doRecv() {
 					flushOutput();
 				}
 
-				if (openssl::check_error(err, "Handshake failed")) {
+				if (openssl::check_error(err, "Handshake failed", mSsl)) {
 					PLOG_INFO << "TLS handshake finished";
 					changeState(State::Connected);
 					postHandshake();
