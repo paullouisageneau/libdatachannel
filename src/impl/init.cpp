@@ -112,7 +112,7 @@ void Init::setSctpSettings(SctpSettings s) {
 	mCurrentSctpSettings = std::move(s); // store for next init
 }
 
-void Init::doInit() {
+void Init::doInit() try {
 	// mMutex needs to be locked
 
 	if (std::exchange(mInitialized, true))
@@ -153,6 +153,12 @@ void Init::doInit() {
 	DtlsSrtpTransport::Init();
 #endif
 	IceTransport::Init();
+} catch (...) {
+	PLOG_ERROR << "Global initialization failed, resetting";
+	ThreadPool::Instance().join();
+	ThreadPool::Instance().clear();
+	mInitialized = false;
+	throw;
 }
 
 void Init::doCleanup() {
