@@ -18,14 +18,23 @@
 #include "sctptransport.hpp"
 #include "track.hpp"
 
+#if RTC_ENABLE_MEDIA
+#include "dtlssrtptransport.hpp"
+#endif
+
 #include "rtc/peerconnection.hpp"
 
+#include <memory>
 #include <mutex>
 #include <shared_mutex>
 #include <unordered_map>
 #include <vector>
 
 namespace rtc::impl {
+
+#if RTC_ENABLE_MEDIA
+class XrManager;
+#endif
 
 struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	using State = rtc::PeerConnection::State;
@@ -57,6 +66,13 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	void forwardMessage(message_ptr message);
 	void forwardMedia(message_ptr message);
 	void forwardBufferedAmount(uint16_t stream, size_t amount);
+
+#if RTC_ENABLE_MEDIA
+	// Called by Track::transportSend() on every outgoing packet, on any track, so that
+	// connection-level periodic sends (currently just XrManager's DLRR replies) can piggyback on
+	// the same cadence per-track RTCP reporters (e.g. RtcpSrReporter) already use.
+	void onTrackTransportSend(const shared_ptr<DtlsSrtpTransport> &transport);
+#endif
 
 	shared_ptr<DataChannel> emplaceDataChannel(string label, DataChannelInit init);
 	std::pair<shared_ptr<DataChannel>, bool> findDataChannel(uint16_t stream);
@@ -163,6 +179,10 @@ private:
 	std::unordered_map<uint32_t, weak_ptr<Track>> mTracksBySsrc; // by SSRC
 	std::vector<weak_ptr<Track>> mTrackLines;                    // by SDP order
 	mutable std::shared_mutex mTracksMutex;
+
+#if RTC_ENABLE_MEDIA
+	std::unique_ptr<XrManager> mXrManager;
+#endif
 
 	Queue<shared_ptr<DataChannel>> mPendingDataChannels;
 	Queue<shared_ptr<Track>> mPendingTracks;

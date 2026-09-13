@@ -785,6 +785,83 @@ void RtcpApp::log() const {
 	             << ", name=" << name();
 }
 
+unsigned int RtcpXr::HeaderSize() { return sizeof(RtcpXr); }
+
+SSRC RtcpXr::senderSSRC() const { return ntohl(_senderSSRC); }
+
+void RtcpXr::setSenderSSRC(SSRC ssrc) { _senderSSRC = htonl(ssrc); }
+
+void RtcpXr::preparePacket(SSRC senderSSRC, uint16_t length) {
+	header.prepareHeader(207, 0, length);
+	setSenderSSRC(senderSSRC);
+}
+
+void RtcpXr::log() const {
+	header.log();
+	PLOG_VERBOSE << "RTCP XR: senderSSRC=" << senderSSRC();
+}
+
+uint8_t RtcpXrBlockHeader::blockType() const { return _blockType; }
+
+uint16_t RtcpXrBlockHeader::blockLength() const { return ntohs(_blockLength); }
+
+size_t RtcpXrBlockHeader::lengthInBytes() const { return (1 + blockLength()) * 4; }
+
+void RtcpXrBlockHeader::setBlockType(uint8_t blockType) { _blockType = blockType; }
+
+void RtcpXrBlockHeader::setBlockLength(uint16_t length) { _blockLength = htons(length); }
+
+unsigned int RtcpXrRrtrBlock::Size() { return sizeof(RtcpXrRrtrBlock); }
+
+uint64_t RtcpXrRrtrBlock::ntpTimestamp() const { return ntohll(_ntpTimestamp); }
+
+void RtcpXrRrtrBlock::setNtpTimestamp(uint64_t ntp) { _ntpTimestamp = htonll(ntp); }
+
+void RtcpXrRrtrBlock::preparePacket() {
+	header.setBlockType(4);
+	header._reserved = 0;
+	header.setBlockLength(2); // header word + 2 NTP words, minus one
+}
+
+SSRC RtcpXrDlrrSubBlock::ssrc() const { return ntohl(_ssrc); }
+
+uint32_t RtcpXrDlrrSubBlock::lrr() const { return ntohl(_lrr); }
+
+uint32_t RtcpXrDlrrSubBlock::dlrr() const { return ntohl(_dlrr); }
+
+void RtcpXrDlrrSubBlock::preparePacket(SSRC ssrc, uint32_t lrr, uint32_t dlrr) {
+	_ssrc = htonl(ssrc);
+	_lrr = htonl(lrr);
+	_dlrr = htonl(dlrr);
+}
+
+size_t RtcpXrDlrrBlock::SizeWithSubBlocks(int count) {
+	return sizeof(RtcpXrDlrrBlock) + (count - 1) * sizeof(RtcpXrDlrrSubBlock);
+}
+
+int RtcpXrDlrrBlock::getSubBlockCount() const {
+	return int((header.lengthInBytes() - sizeof(RtcpXrBlockHeader)) / sizeof(RtcpXrDlrrSubBlock));
+}
+
+RtcpXrDlrrSubBlock *RtcpXrDlrrBlock::getSubBlock(int num) {
+	if (num < 0 || num >= getSubBlockCount())
+		return nullptr;
+	return &_subBlocks[num];
+}
+
+const RtcpXrDlrrSubBlock *RtcpXrDlrrBlock::getSubBlock(int num) const {
+	if (num < 0 || num >= getSubBlockCount())
+		return nullptr;
+	return &_subBlocks[num];
+}
+
+void RtcpXrDlrrBlock::preparePacket(int subBlockCount) {
+	header.setBlockType(5);
+	header._reserved = 0;
+	// header word + 3 words per sub-block, minus one
+	header.setBlockLength(uint16_t(3 * subBlockCount));
+}
+
 uint16_t RtpRtx::getOriginalSeqNo() const { return ntohs(*(uint16_t *)(header.getBody())); }
 
 const char *RtpRtx::getBody() const { return header.getBody() + sizeof(uint16_t); }
