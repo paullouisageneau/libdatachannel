@@ -30,6 +30,9 @@ using namespace std::chrono;
 
 namespace {
 
+// RtcpXrDlrrSubBlock::dlrr() is expressed in units of 1/65536 seconds (RFC 3611 Section 4.5).
+constexpr uint32_t kDlrrUnitsPerSecond = 65536;
+
 // Builds a single (non-compound) RTCP XR packet containing one RRTR block.
 message_ptr makeRrtrMessage(SSRC reporterSsrc, uint64_t ntpTimestamp) {
 	size_t size = RtcpXr::HeaderSize() + RtcpXrRrtrBlock::Size();
@@ -123,6 +126,10 @@ TestResult test_xrmanager_rrtr_dlrr_roundtrip() {
 	uint32_t expectedNtpMiddle32Bit = uint32_t(ntp >> 16);
 	if (parsed[0].ntpMiddle32Bit != expectedNtpMiddle32Bit)
 		return TestResult(false, "DLRR NTP middle 32 bits mismatch");
+
+	if (parsed[0].reportDelay == 0 || parsed[0].reportDelay >= 2 * kDlrrUnitsPerSecond)
+		return TestResult(false, "DLRR report delay out of the expected (0, 2s) range: " +
+		                             to_string(parsed[0].reportDelay));
 
 	cout << "XrManager RRTR/DLRR round-trip test passed" << endl;
 	return TestResult(true);
@@ -242,12 +249,13 @@ TestResult test_xrmanager_chunking() {
 // Control message (that auto-detection only kicks in when there's no handler at all), and it
 // isn't needed anyway - with no handler, Track::incoming() just delivers every message,
 // RTP and RTCP alike, through the ordinary onMessage() channel.
-TestResult test_rtcpxr_integration() {
+TestResult test_xrmanager_integration() {
 	InitLogger(LogLevel::Debug);
 	cout << "RTCP XR integration test" << endl;
 
 	static const SSRC MEDIA_SSRC = 5150;
 	static const SSRC REPORTER_SSRC = 918273; // arbitrary, unrelated to any track's SSRC
+	static const uint64_t RRTR_NTP = 0xAB00CD34'12005678ULL; // non-trivial, exercises the >>16 truncation
 	static const uint8_t PRIMARY_PT = 96;
 	static const uint16_t PORT_RANGE_BEGIN = 5100;
 	static const uint16_t PORT_RANGE_END = 6100;
@@ -314,7 +322,7 @@ TestResult test_rtcpxr_integration() {
 	vector<byte> rrtrPacket(rrtrSize);
 	auto rrtr = reinterpret_cast<RtcpXrRrtrBlock *>(rrtrPacket.data() + RtcpXr::HeaderSize());
 	rrtr->preparePacket();
-	rrtr->setNtpTimestamp(0x0000000600000000ULL);
+	rrtr->setNtpTimestamp(RRTR_NTP);
 	auto xr = reinterpret_cast<RtcpXr *>(rrtrPacket.data());
 	xr->preparePacket(REPORTER_SSRC, uint16_t(rrtrSize / 4 - 1));
 
@@ -323,7 +331,7 @@ TestResult test_rtcpxr_integration() {
 
 	// Build a minimal fake RTP packet (version 2, dynamic payload type) for t1 to send: the
 	// content doesn't matter, only that Track::transportSend() runs so the XR flush hook fires.
-	vector<byte> fakeRtp(12, byte{0});
+	vector fakeRtp(12, byte{0});
 	fakeRtp[0] = byte{0x80}; // version 2
 	fakeRtp[1] = byte{PRIMARY_PT};
 
@@ -350,15 +358,23 @@ TestResult test_rtcpxr_integration() {
 		return TestResult(false, "Did not receive RTCP XR/DLRR reply on pc2 after retries");
 
 	auto parsed = future.get();
-	bool found = false;
+	const ParsedDlrr *match = nullptr;
 	for (const auto &p : parsed) {
 		if (p.reporterSsrc == REPORTER_SSRC) {
-			found = true;
+			match = &p;
 			break;
 		}
 	}
-	if (!found)
+	if (!match)
 		return TestResult(false, "DLRR reply did not reference the RRTR's reporter SSRC");
+
+	uint32_t expectedNtpMiddle32Bit = uint32_t(RRTR_NTP >> 16);
+	if (match->ntpMiddle32Bit != expectedNtpMiddle32Bit)
+		return TestResult(false, "DLRR reply had the wrong NTP middle 32 bits");
+
+	if (match->reportDelay == 0 || match->reportDelay >= 2 * kDlrrUnitsPerSecond)
+		return TestResult(false, "DLRR reply report delay out of the expected (0, 2s) range: " +
+		                             to_string(match->reportDelay));
 
 	pc1.close();
 	this_thread::sleep_for(1s);

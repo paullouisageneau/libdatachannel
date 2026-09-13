@@ -48,7 +48,7 @@ TestResult test_xrmanager_rrtr_dlrr_roundtrip();
 TestResult test_xrmanager_gating();
 TestResult test_xrmanager_multiple_reporters_batched();
 TestResult test_xrmanager_chunking();
-TestResult test_rtcpxr_integration();
+TestResult test_xrmanager_integration();
 TestResult test_capi_connectivity();
 TestResult test_capi_track();
 TestResult test_websocket();
@@ -118,7 +118,7 @@ static const vector<Test> tests = {
     Test("RTCP XR gating", test_xrmanager_gating),
     Test("RTCP XR multiple reporters batched", test_xrmanager_multiple_reporters_batched),
     Test("RTCP XR chunking", test_xrmanager_chunking),
-    Test("RTCP XR integration", test_rtcpxr_integration),
+    Test("RTCP XR integration", test_xrmanager_integration),
 #endif
 #if RTC_ENABLE_WEBSOCKET
     // TODO: Temporarily disabled as the echo service is unreliable
