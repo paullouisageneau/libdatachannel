@@ -8,7 +8,6 @@
 
 #include "tls.hpp"
 
-#include <cerrno>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -238,7 +237,6 @@ string want_string(int want) {
 
 // Return false on recoverable error
 bool check_error(int err, const string &message, const SSL *ssl) {
-	const int syserrno = errno;
 	unsigned long last_error = ERR_peek_last_error();
 	ERR_clear_error();
 
@@ -251,14 +249,13 @@ bool check_error(int err, const string &message, const SSL *ssl) {
 	if (err == SSL_ERROR_SYSCALL) {
 		// SSL_get_error() returns SSL_ERROR_SYSCALL both for a real I/O failure and as its
 		// fall-through: when the SSL object wants I/O but the corresponding BIO's retry flags
-		// do not say so, it drops past every branch and lands here with errno unset and an
-		// empty error queue. The transports below feed OpenSSL from memory BIOs, which never
-		// perform a syscall, so that fall-through is the likelier of the two and a bare
-		// "fatal I/O error" actively misdirects. Report enough to tell them apart.
-		string detail = ": fatal I/O error (errno=" + std::to_string(syserrno);
+		// do not say so, it drops past every branch and lands here with an empty error queue.
+		// The transports below feed OpenSSL from memory BIOs, so that fall-through is a likely
+		// cause, and a bare "fatal I/O error" does not distinguish it. SSL_want() is the SSL
+		// object's own state, so it is meaningful regardless of where any syscall happened.
+		string detail = ": fatal I/O error";
 		if (ssl)
-			detail += ", want=" + want_string(SSL_want(ssl));
-		detail += ")";
+			detail += " (want=" + want_string(SSL_want(ssl)) + ")";
 		throw std::runtime_error(message + detail);
 	}
 
