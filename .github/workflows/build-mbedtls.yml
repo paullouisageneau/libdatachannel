@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - name: Set up Homebrew
-      uses: Homebrew/actions/setup-homebrew@master
+      uses: Homebrew/actions/setup-homebrew@main
     - name: Install Mbed TLS
       run: brew update && brew install mbedtls@3
     - name: submodules
