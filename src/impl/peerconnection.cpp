@@ -21,6 +21,7 @@
 
 #if RTC_ENABLE_MEDIA
 #include "dtlssrtptransport.hpp"
+#include "xrmanager.hpp"
 #endif
 
 #include <algorithm>
@@ -48,6 +49,10 @@ const string PemBeginCertificateTag = "-----BEGIN CERTIFICATE-----";
 
 PeerConnection::PeerConnection(Configuration config_) : config(std::move(config_)) {
 	PLOG_VERBOSE << "Creating PeerConnection";
+
+#if RTC_ENABLE_MEDIA
+	mXrManager = std::make_unique<XrManager>();
+#endif
 
 	if (config.certificatePemFile && config.keyPemFile) {
 		std::promise<certificate_ptr> cert;
@@ -559,6 +564,11 @@ void PeerConnection::forwardMedia([[maybe_unused]] message_ptr message) {
 
 void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 #if RTC_ENABLE_MEDIA
+	// Capture any RTCP XR RRTR blocks unconditionally, before any per-track SSRC routing below:
+	// an RRTR's own SSRC is arbitrary and not guaranteed to match any track, and this must not be
+	// skipped by the single-track shortcut just below either.
+	mXrManager->incoming(message);
+
 	std::shared_lock lock(mTracksMutex); // read-only
 	if (mTrackLines.size() == 1) {
 		if (auto track = mTrackLines.front().lock())
@@ -685,6 +695,26 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 	}
 #endif
 }
+
+#if RTC_ENABLE_MEDIA
+void PeerConnection::onTrackTransportSend(const shared_ptr<DtlsSrtpTransport> &transport) {
+	shared_ptr<Track> firstTrack;
+	{
+		std::shared_lock lock(mTracksMutex);
+		if (mTrackLines.empty())
+			return;
+		firstTrack = mTrackLines.front().lock();
+	}
+	if (!firstTrack)
+		return;
+
+	auto ssrcs = firstTrack->description().getSSRCs();
+	if (ssrcs.empty())
+		return;
+
+	mXrManager->send(ssrcs.front(), [&](message_ptr m) { transport->sendMedia(std::move(m)); });
+}
+#endif
 
 void PeerConnection::forwardBufferedAmount(uint16_t stream, size_t amount) {
 	[[maybe_unused]] auto [channel, found] = findDataChannel(stream);

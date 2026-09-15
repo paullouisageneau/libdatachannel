@@ -188,6 +188,7 @@ set(LIBDATACHANNEL_IMPL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocketserver.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wshandshake.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/xrmanager.cpp
 )
 
 set(LIBDATACHANNEL_IMPL_HEADERS
@@ -223,6 +224,7 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocketserver.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wstransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wshandshake.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/xrmanager.hpp
 )
 
 set(TESTS_SOURCES
@@ -247,6 +249,7 @@ if(NOT NO_MEDIA)
     list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/fir.cpp)
     list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/rtx.cpp)
     list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/rtcp_app.cpp)
+    list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/rtcpxr.cpp)
 endif()
 
 set(TESTS_HEADERS 
@@ -591,7 +594,12 @@ if(NOT NO_TESTS)
 	set_target_properties(datachannel-tests PROPERTIES
 		XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.tests)
 
-	target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+	# include/rtc is needed too since src/impl headers (e.g. xrmanager.hpp, included directly by
+	# test/rtcpxr.cpp) use bare #include "common.hpp" etc., matching the datachannel target's own
+	# private include directories.
+	target_include_directories(datachannel-tests PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/src
+		${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
 	target_link_libraries(datachannel-tests datachannel Threads::Threads)
 
 	# Benchmark
