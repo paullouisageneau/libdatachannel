@@ -209,6 +209,11 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_EVENT, &se, sizeof(se)))
 		throw std::runtime_error("Could not subscribe to event SCTP_STREAM_RESET_EVENT, errno=" +
 		                         std::to_string(errno));
+	se.se_type = SCTP_PARTIAL_DELIVERY_EVENT;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_EVENT, &se, sizeof(se)))
+		throw std::runtime_error(
+		    "Could not subscribe to event SCTP_PARTIAL_DELIVERY_EVENT, errno=" +
+		    std::to_string(errno));
 
 	// RFC 8831 6.6. Transferring User Data on a Data Channel
 	// The sender SHOULD disable the Nagle algorithm (see [RFC1122) to minimize the latency
@@ -267,13 +272,7 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 		throw std::runtime_error("Could not set socket option SCTP_INITMSG, errno=" +
 		                         std::to_string(errno));
 
-	// Prevent fragmented interleave of messages (i.e. level 0), see RFC 6458 section 8.1.20.
-	// Unless the user has set the fragmentation interleave level to 0, notifications
-	// may also be interleaved with partially delivered messages.
-	int level = 0;
-	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, &level, sizeof(level)))
-		throw std::runtime_error("Could not disable SCTP fragmented interleave, errno=" +
-		                         std::to_string(errno));
+	configureInterleaving();
 
 #ifdef SCTP_ACCEPT_ZERO_CHECKSUM // not available in usrsctp v0.9.5.0
 	// When using SCTP over DTLS, the data integrity is ensured by DTLS. Therefore, there's no
@@ -501,8 +500,7 @@ void SctpTransport::doRecv() {
 
 			PLOG_VERBOSE << "SCTP recv, len=" << len;
 
-			// SCTP_FRAGMENT_INTERLEAVE does not seem to work as expected for messages > 64KB,
-			// therefore partial notifications and messages need to be handled separately.
+			// Notifications and messages may be delivered in partial reads and interleaved.
 			if (flags & MSG_NOTIFICATION) {
 				// SCTP event notification
 				mPartialNotification.insert(mPartialNotification.end(), buffer, buffer + len);
@@ -517,19 +515,21 @@ void SctpTransport::doRecv() {
 
 			} else {
 				// SCTP message
-				mPartialMessage.insert(mPartialMessage.end(), buffer, buffer + len);
-				if (mPartialMessage.size() > mMaxMessageSize) {
+				if (infotype != SCTP_RECVV_RCVINFO)
+					throw std::runtime_error("Missing SCTP recv info");
+
+				auto &partialMessage = mPartialMessages[info.rcv_sid];
+				partialMessage.insert(partialMessage.end(), buffer, buffer + len);
+				if (partialMessage.size() > mMaxMessageSize) {
 					PLOG_WARNING << "SCTP message is too large, truncating it";
-					mPartialMessage.resize(mMaxMessageSize);
+					partialMessage.resize(mMaxMessageSize);
 				}
 
 				if (flags & MSG_EOR) {
 					// Message is complete, process it
 					binary message;
-					mPartialMessage.swap(message);
-					if (infotype != SCTP_RECVV_RCVINFO)
-						throw std::runtime_error("Missing SCTP recv info");
-
+					partialMessage.swap(message);
+					mPartialMessages.erase(info.rcv_sid);
 					processData(std::move(message), info.rcv_sid, PayloadId(ntohl(info.rcv_ppid)));
 				}
 			}
@@ -547,6 +547,39 @@ void SctpTransport::doFlush() {
 	} catch (const std::exception &e) {
 		PLOG_WARNING << e.what();
 	}
+}
+
+void SctpTransport::configureInterleaving() {
+	int level = 0;
+
+#if defined(SCTP_INTERLEAVING_SUPPORTED) && !defined(DISABLE_SCTP_INTERLEAVING)
+	// The association negotiates RFC 8260 and falls back to DATA chunks when unsupported by the
+	// remote endpoint.
+	level = 2;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, &level, sizeof(level))) {
+		PLOG_WARNING << "Could not enable SCTP fragmented interleave, falling back to level 0, "
+		                "errno="
+		             << errno;
+	} else {
+		struct sctp_assoc_value interleaving = {};
+		interleaving.assoc_id = SCTP_FUTURE_ASSOC;
+		interleaving.assoc_value = 1;
+		if (!usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_INTERLEAVING_SUPPORTED,
+		                        &interleaving, sizeof(interleaving))) {
+			PLOG_DEBUG << "SCTP I-DATA interleaving enabled for negotiation";
+			return;
+		}
+
+		PLOG_WARNING << "Could not enable SCTP I-DATA interleaving, falling back to level 0, "
+		                "errno="
+		             << errno;
+	}
+#endif
+
+	level = 0;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_FRAGMENT_INTERLEAVE, &level, sizeof(level)))
+		throw std::runtime_error("Could not disable SCTP fragmented interleave, errno=" +
+		                         std::to_string(errno));
 }
 
 void SctpTransport::enqueueRecv() {
@@ -624,8 +657,7 @@ bool SctpTransport::trySendMessage(const message_ptr &message) {
 
 	PLOG_VERBOSE << "SCTP try send size=" << message->size();
 
-	// TODO: Implement SCTP ndata specification draft when supported everywhere
-	// See https://datatracker.ietf.org/doc/html/draft-ietf-tsvwg-sctp-ndata-08
+	// usrsctp emits DATA or I-DATA chunks according to association negotiation.
 
 	const Reliability reliability = message->reliability ? *message->reliability : Reliability();
 
@@ -932,6 +964,15 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 				uint16_t streamId = reset_event.strreset_stream_list[i];
 				recv(make_message(0, Message::Reset, streamId));
 			}
+		}
+		break;
+	}
+
+	case SCTP_PARTIAL_DELIVERY_EVENT: {
+		const struct sctp_pdapi_event &event = notify->sn_pdapi_event;
+		if (event.pdapi_indication == SCTP_PARTIAL_DELIVERY_ABORTED) {
+			PLOG_VERBOSE << "SCTP partial delivery aborted, stream=" << event.pdapi_stream;
+			mPartialMessages.erase(static_cast<uint16_t>(event.pdapi_stream));
 		}
 		break;
 	}
