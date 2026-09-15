@@ -819,7 +819,15 @@ string Description::Entry::generateSdpLines(string_view eol) const {
 	if (mDirection != Direction::Unknown)
 		sdp << "a=" << mDirection << eol;
 
+	// Do not reciprocate unknown transport attributes
+	const std::array ignoredPrefixes{"ice-", "dtls-", "sctp-"};
+
 	for (const auto &attr : mAttributes) {
+		if (std::any_of(ignoredPrefixes.begin(), ignoredPrefixes.end(),
+		                [&](string_view prefix) { return match_prefix(attr, prefix); })) {
+			continue;
+		}
+
 		if (mRids.size() != 0 && match_prefix(attr, "ssrc:")) {
 			continue;
 		}
