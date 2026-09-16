@@ -45,6 +45,47 @@ TestResult test_rtcp_app_send();
 TestResult test_rtcp_app_multiple_in_compound();
 TestResult test_rtcp_app_integration();
 TestResult test_capi_connectivity();
+#if RTC_ENABLE_MEDIA
+TestResult test_sframe_crypto();
+TestResult test_sframe_packetizer();
+TestResult test_sframe_key_provider();
+TestResult test_sframe_video_answer_yes();
+TestResult test_sframe_video_answer_no();
+TestResult test_sframe_attribute_with_parameters();
+TestResult test_sframe_description_has_sframe();
+TestResult test_sframe_session_key_provider();
+TestResult test_sframe_session_key_provider_without_offer();
+TestResult test_sframe_session_provider_unconfigurable_m_line();
+TestResult test_sframe_session_provider_on_offerer();
+TestResult test_sframe_video_declined_keeps_depacketizer();
+TestResult test_sframe_audio_answer_yes();
+TestResult test_sframe_audio_answer_no();
+TestResult test_sframe_audio_static_payload_type();
+TestResult test_sframe_replaced_chain_declines();
+TestResult test_sframe_preserves_existing_chain();
+TestResult test_sframe_replaces_codec_depacketizer();
+TestResult test_sframe_keeps_packetizer_on_sendrecv();
+TestResult test_sframe_send_only_applies_sframe();
+TestResult test_sframe_multi_track_answer_yes();
+TestResult test_sframe_multi_track_directions();
+TestResult test_sframe_mixed_offer_protected_plain_and_stopped();
+TestResult test_sframe_multi_track_partial_answer();
+TestResult test_sframe_multi_track_ratcheting();
+TestResult test_sframe_deferred_chain_multi_codec();
+TestResult test_sframe_shared_key_multi_track();
+TestResult test_sframe_rtcp_passthrough();
+TestResult test_sframe_rtcp_passthrough_unprotected();
+TestResult test_sframe_send_without_packetizer_refused();
+TestResult test_sframe_send_with_packetizer_allowed();
+TestResult test_sframe_send_guard_exempts_rtcp();
+TestResult test_sframe_track_explicit_clock_rate();
+TestResult test_sframe_track_clock_rate_from_rtpmap();
+TestResult test_sframe_null_key_provider_refused();
+TestResult test_sframe_session_provider_before_track_callback();
+TestResult test_sframe_session_wide_receive_chain_keeps_attribute();
+TestResult test_sframe_no_receive_chain_anywhere_stops_mline();
+TestResult test_sframe_session_provider_with_packetizer_installed();
+#endif
 TestResult test_capi_track();
 TestResult test_websocket();
 TestResult test_websocketserver();
@@ -101,6 +142,54 @@ static const vector<Test> tests = {
     Test("RTX negotiation fallback", test_rtx_attribute),
     Test("RTX dropped packet recovery", test_rtx_dropped_packet),
     Test("RTX multi-codec PT mapping", test_rtx_multi_codec),
+    Test("SFrame crypto", test_sframe_crypto),
+    Test("SFrame packetizer round-trip", test_sframe_packetizer),
+    Test("SFrame key provider and ratcheting", test_sframe_key_provider),
+    Test("SFrame video offer yes / answer yes", test_sframe_video_answer_yes),
+    Test("SFrame video offer yes / answer no", test_sframe_video_answer_no),
+    Test("SFrame a=sframe with parameters", test_sframe_attribute_with_parameters),
+    Test("SFrame session-level hasSFrame", test_sframe_description_has_sframe),
+    Test("SFrame session key provider", test_sframe_session_key_provider),
+    Test("SFrame session provider, m-line without a=sframe",
+         test_sframe_session_key_provider_without_offer),
+    Test("SFrame session provider, unconfigurable m-line",
+         test_sframe_session_provider_unconfigurable_m_line),
+    Test("SFrame session provider on offerer", test_sframe_session_provider_on_offerer),
+    Test("SFrame video answer no, SFrame depacketizer kept",
+         test_sframe_video_declined_keeps_depacketizer),
+    Test("SFrame audio offer yes / answer yes", test_sframe_audio_answer_yes),
+    Test("SFrame audio offer yes / answer no", test_sframe_audio_answer_no),
+    Test("SFrame audio static payload type", test_sframe_audio_static_payload_type),
+    Test("SFrame replaced chain declines", test_sframe_replaced_chain_declines),
+    Test("SFrame preserves existing chain", test_sframe_preserves_existing_chain),
+    Test("SFrame replaces codec depacketizer", test_sframe_replaces_codec_depacketizer),
+    Test("SFrame keeps packetizer on sendrecv", test_sframe_keeps_packetizer_on_sendrecv),
+    Test("SFrame send-only applies SFrame", test_sframe_send_only_applies_sframe),
+    Test("SFrame multi-track answer yes", test_sframe_multi_track_answer_yes),
+    Test("SFrame multi-track directions", test_sframe_multi_track_directions),
+    Test("SFrame mixed offer: protected, plain and stopped m-lines",
+         test_sframe_mixed_offer_protected_plain_and_stopped),
+    Test("SFrame multi-track partial answer", test_sframe_multi_track_partial_answer),
+    Test("SFrame multi-track ratcheting", test_sframe_multi_track_ratcheting),
+    Test("SFrame deferred chain multi-codec", test_sframe_deferred_chain_multi_codec),
+    Test("SFrame shared key multi-track", test_sframe_shared_key_multi_track),
+    Test("SFrame RTCP passthrough", test_sframe_rtcp_passthrough),
+    Test("SFrame RTCP passthrough on unprotected m-lines",
+         test_sframe_rtcp_passthrough_unprotected),
+    Test("SFrame send refused without packetizer", test_sframe_send_without_packetizer_refused),
+    Test("SFrame send allowed with packetizer", test_sframe_send_with_packetizer_allowed),
+    Test("SFrame send guard exempts RTCP", test_sframe_send_guard_exempts_rtcp),
+    Test("SFrame track explicit clock rate", test_sframe_track_explicit_clock_rate),
+    Test("SFrame track clock rate from rtpmap", test_sframe_track_clock_rate_from_rtpmap),
+    Test("SFrame null key provider refused", test_sframe_null_key_provider_refused),
+    Test("SFrame session provider applied before track callback",
+         test_sframe_session_provider_before_track_callback),
+    Test("SFrame session-wide receive chain keeps a=sframe",
+         test_sframe_session_wide_receive_chain_keeps_attribute),
+    Test("SFrame no receive chain anywhere stops the m-line",
+         test_sframe_no_receive_chain_anywhere_stops_mline),
+    Test("SFrame session provider with packetizer installed",
+         test_sframe_session_provider_with_packetizer_installed),
     Test("FIR SDP parsing", test_fir_sdp),
     Test("FIR offer answer handling", test_fir_offer_yes_answer_yes),
     Test("RTCP APP single packet", test_rtcp_app_single_packet),

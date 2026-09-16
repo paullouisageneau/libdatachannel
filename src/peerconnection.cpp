@@ -313,6 +313,15 @@ void PeerConnection::setMediaHandler(shared_ptr<MediaHandler> handler) {
 
 shared_ptr<MediaHandler> PeerConnection::getMediaHandler() { return impl()->getMediaHandler(); };
 
+#if RTC_ENABLE_MEDIA
+void PeerConnection::useSFrame(shared_ptr<SFrameReceiveKeyProvider> keyProvider) {
+	if (!keyProvider)
+		throw std::invalid_argument("SFrame key provider is null");
+
+	impl()->setSFrameKeyProvider(std::move(keyProvider));
+}
+#endif
+
 optional<string> PeerConnection::localAddress() const {
 	auto iceTransport = impl()->getIceTransport();
 	return iceTransport ? iceTransport->getLocalAddress() : nullopt;

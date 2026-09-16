@@ -1133,13 +1133,59 @@ void PeerConnection::processRemoteDescription(Description description) {
 			auto remoteMedia = std::get<Description::Media *>(media);
 			std::unique_lock lock(mTracksMutex); // we may emplace a track
 			if (auto it = mTracks.find(remoteMedia->mid()); it != mTracks.end()) {
-				// Existing track — negotiate RTX with remote description
+				// Existing track — negotiate RTX and SFrame with remote description
 				if (auto track = it->second.lock()) {
 					auto desc = track->description();
+					bool changed = false;
 					if (desc.isRtxEnabled() && !remoteMedia->isRtxEnabled()) {
 						desc.disableRtx();
-						track->setDescription(std::move(desc));
+						changed = true;
 					}
+					// A peer declines SFrame by omitting a=sframe. There is no downgrade: this
+					// side asked for end-to-end protection and the peer cannot provide it, so the
+					// transceiver is stopped rather than continued in the clear
+					// (draft-ietf-avtcore-rtp-sframe Section 6). The track closes below and a
+					// later offer carries port 0 for this m-line.
+					if (desc.hasSFrame() && !remoteMedia->hasSFrame()) {
+						PLOG_WARNING << "SFrame was offered but the answer declined it, stopping "
+						                "mid=\""
+						             << desc.mid() << "\" rather than sending unprotected media";
+						desc.removeSFrame(); // meaningless on a stopped section
+						desc.markRemoved();
+						changed = true;
+					}
+					if (changed) {
+						const bool stopped = desc.isRemoved();
+						track->setDescription(std::move(desc));
+						if (stopped)
+							track->close();
+					}
+
+#if RTC_ENABLE_MEDIA
+					// A session-wide provider has to reach a track this side created too. The
+					// branch below only runs for m-lines the peer introduced, so an offerer that
+					// registered one would otherwise negotiate a=sframe and then have nothing to
+					// decrypt with -- silently. Skipped when the track already decrypts, so
+					// whatever Track::useSFrame() installed is left alone.
+					//
+					// Asked of the receive direction specifically. appliesSFrame() answers for the
+					// whole chain and is true of a send-side packetizer, so using it here let an
+					// application that installed its packetizer first -- which both the deferred
+					// and upfront forms in the example do -- suppress the install and negotiate
+					// a=sframe with nothing to decrypt.
+					if (track->description().hasSFrame() && remoteMedia->hasSFrame()) {
+						if (!track->hasSFrameDepacketizer()) {
+							if (auto keyProvider = getSFrameKeyProvider()) {
+								try {
+									track->enableSFrame(std::move(keyProvider), nullopt);
+								} catch (const std::exception &e) {
+									PLOG_WARNING << "SFrame not enabled for mid=\"" << track->mid()
+									             << "\": " << e.what();
+								}
+							}
+						}
+					}
+#endif
 				}
 				continue;
 			}
@@ -1159,7 +1205,59 @@ void PeerConnection::processRemoteDescription(Description description) {
 			auto track = std::make_shared<Track>(weak_from_this(), std::move(reciprocated));
 			mTracks.emplace(track->mid(), track);
 			mTrackLines.emplace_back(track);
+
+#if RTC_ENABLE_MEDIA
+			// A session-wide provider covers every m-line that negotiated a=sframe, so the
+			// common case needs nothing from the track callback. Applied before it runs, so the
+			// callback can still override the provider or decline SFrame on this m-line.
+			//
+			// One m-line can still be unconfigurable while the rest are fine -- an audio m-line
+			// offering only a static payload type declares no RTP clock rate. Declining SFrame for
+			// it is right; letting the throw out is not, since it would abandon the whole
+			// negotiation and a retry would skip the strip below and answer with a=sframe that
+			// nothing implements.
+			if (track->description().hasSFrame()) {
+				if (auto keyProvider = getSFrameKeyProvider()) {
+					try {
+						track->enableSFrame(std::move(keyProvider), nullopt);
+					} catch (const std::exception &e) {
+						PLOG_WARNING << "SFrame not enabled for mid=\"" << track->mid()
+						             << "\", declining it for this m-line: " << e.what();
+					}
+				}
+			}
+#endif
+
 			triggerTrack(track); // The user may modify the track description
+
+			// The reciprocated description carried a=sframe through so the callback above could
+			// see what was offered. Keeping it in the answer asserts "send me SFrame"
+			// (draft-ietf-avtcore-rtp-sframe Section 6), so it only survives while a handler in
+			// the chain applies SFrame: a callback that installs its own handler declines it.
+			// Both chains run on incoming media -- forwardMedia() runs the PeerConnection-level
+			// one and hands what comes out to dispatchMedia(), which runs the track's -- so either
+			// is a legitimate place for the depacketizer and the question has to be asked of both.
+			// Asking only the track's would stop an m-line that a session-wide handler decrypts
+			// perfectly well. A session-wide handler answers for every m-line, which is right:
+			// it really does process them all.
+			auto sframeHandler = track->getMediaHandler();
+			auto sessionHandler = getMediaHandler();
+			const bool decrypts = (sframeHandler && sframeHandler->appliesSFrame()) ||
+			                      (sessionHandler && sessionHandler->appliesSFrame());
+			if (track->description().hasSFrame() && !decrypts) {
+				// Nothing here decrypts, so this side cannot honour what was offered. Answering
+				// without the attribute would leave the peer free to send in the clear, so the
+				// section is stopped instead: the answer carries port 0 and the offerer closes its
+				// own track rather than downgrading. An application that does not implement SFrame
+				// reaches this legitimately -- it is not an error, and a remote offer must not be
+				// able to throw here.
+				PLOG_WARNING << "Stopping mid=\"" << track->mid()
+				             << "\": SFrame was offered but no handler in the chain applies it";
+				auto desc = track->description();
+				desc.removeSFrame();
+				desc.markRemoved();
+				track->setDescription(std::move(desc));
+			}
 
 			auto handler = getMediaHandler();
 			if (handler)
@@ -1290,6 +1388,16 @@ void PeerConnection::setMediaHandler(shared_ptr<MediaHandler> handler) {
 shared_ptr<MediaHandler> PeerConnection::getMediaHandler() const {
 	std::shared_lock lock(mMediaHandlerMutex);
 	return mMediaHandler;
+}
+
+void PeerConnection::setSFrameKeyProvider(shared_ptr<SFrameReceiveKeyProvider> keyProvider) {
+	std::unique_lock lock(mSFrameKeyProviderMutex);
+	mSFrameKeyProvider = std::move(keyProvider);
+}
+
+shared_ptr<SFrameReceiveKeyProvider> PeerConnection::getSFrameKeyProvider() const {
+	std::shared_lock lock(mSFrameKeyProviderMutex);
+	return mSFrameKeyProvider;
 }
 
 void PeerConnection::triggerDataChannel(weak_ptr<DataChannel> weakDataChannel) {

@@ -55,6 +55,13 @@ void Track::onFrame(std::function<void(binary data, FrameInfo frame)> callback) 
 	impl()->flushPendingMessages();
 }
 
+#if RTC_ENABLE_MEDIA
+void Track::useSFrame(shared_ptr<SFrameReceiveKeyProvider> keyProvider,
+                      optional<uint32_t> clockRate) {
+	impl()->enableSFrame(std::move(keyProvider), clockRate);
+}
+#endif
+
 void Track::setMediaHandler(shared_ptr<MediaHandler> handler) {
 	impl()->setMediaHandler(std::move(handler));
 }
