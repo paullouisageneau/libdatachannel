@@ -851,7 +851,13 @@ void DtlsTransport::start() {
 
 	openssl::check_error(err, "Handshake failed");
 
-	handleTimeout();
+	// start() can run on the libjuice poll thread via the ICE state-change
+	// callback, while juice still holds its registry mutex. Calling
+	// handleTimeout() inline then waits on mSslMutex, which a thread pool
+	// recv thread may hold while blocked in juice_send (conn_lock) on the
+	// TURN relay path, forming an ABBA deadlock. Defer the initial timeout
+	// handling to the thread pool, as the other TLS backends do.
+	enqueueRecv(); // to initiate the handshake
 }
 
 void DtlsTransport::stop() {
