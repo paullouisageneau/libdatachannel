@@ -104,6 +104,8 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtp.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/plihandler.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcppauseresumehandler.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcppauseresumerequester.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/pacinghandler.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rembhandler.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpapphandler.cpp
@@ -151,6 +153,8 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/utils.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/plihandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcppauseresumehandler.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcppauseresumerequester.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/pacinghandler.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rembhandler.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpapphandler.hpp
@@ -241,6 +245,7 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/websocketserver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/capi_websocketserver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/pause_resume.cpp
 )
 
 if(NOT NO_MEDIA)

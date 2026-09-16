@@ -11,6 +11,10 @@
 #include "impl/internals.hpp"
 #include "impl/track.hpp"
 
+#if RTC_ENABLE_MEDIA
+#include "rtcppauseresumehandler.hpp"
+#endif
+
 #include <cstring>
 
 namespace rtc {
@@ -87,6 +91,58 @@ bool Track::requestBitrate(unsigned int bitrate) {
 		                               [this](message_ptr m) { impl()->transportSend(m); });
 
 	return false;
+}
+
+bool Track::pauseStream(uint32_t ssrc) {
+	if (auto handler = impl()->getMediaHandler())
+		return handler->pauseStream(ssrc, [this](message_ptr m) { impl()->transportSend(m); });
+	return false;
+}
+
+bool Track::resumeStream(uint32_t ssrc) {
+	if (auto handler = impl()->getMediaHandler())
+		return handler->resumeStream(ssrc, [this](message_ptr m) { impl()->transportSend(m); });
+	return false;
+}
+
+#if RTC_ENABLE_MEDIA
+
+bool Track::localPauseStream() {
+	// Walk the handler chain to find the RtcpPauseResumeHandler (sender-side)
+	auto handler = impl()->getMediaHandler();
+	while (handler) {
+		if (auto pauseHandler = std::dynamic_pointer_cast<RtcpPauseResumeHandler>(handler)) {
+			pauseHandler->localPause([this](message_ptr m) { impl()->transportSend(m); });
+			return true;
+		}
+		handler = handler->next();
+	}
+	return false;
+}
+
+bool Track::localResumeStream() {
+	// Walk the handler chain to find the RtcpPauseResumeHandler (sender-side)
+	auto handler = impl()->getMediaHandler();
+	while (handler) {
+		if (auto pauseHandler = std::dynamic_pointer_cast<RtcpPauseResumeHandler>(handler)) {
+			pauseHandler->localResume();
+			return true;
+		}
+		handler = handler->next();
+	}
+	return false;
+}
+
+#endif // RTC_ENABLE_MEDIA
+
+void Track::onStreamPaused(std::function<void(uint32_t, uint16_t, uint32_t)> callback) {
+	if (auto handler = impl()->getMediaHandler())
+		handler->onStreamPaused(std::move(callback));
+}
+
+void Track::onStreamRefused(std::function<void(uint32_t, uint16_t)> callback) {
+	if (auto handler = impl()->getMediaHandler())
+		handler->onStreamRefused(std::move(callback));
 }
 
 bool Track::sendRtcpApp(uint32_t ssrc, const RtcpAppName &name, uint8_t subtype,
