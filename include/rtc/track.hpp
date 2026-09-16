@@ -50,7 +50,17 @@ public:
 	bool requestKeyframe(SSRC ssrc=0, bool retransmit=false);
 	bool requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit=false);
 	bool requestBitrate(unsigned int bitrate);
-	bool sendRtcpApp(uint32_t ssrc, const RtcpAppName &name, uint8_t subtype,
+
+	bool pauseStream(uint32_t ssrc);
+	bool resumeStream(uint32_t ssrc);
+#if RTC_ENABLE_MEDIA
+	bool localPauseStream();
+	bool localResumeStream();
+#endif // RTC_ENABLE_MEDIA
+	void onStreamPaused(std::function<void(uint32_t ssrc, uint16_t pauseId, uint32_t extHighSeq)> callback);
+	void onStreamRefused(std::function<void(uint32_t ssrc, uint16_t correctPauseId)> callback);
+
+  bool sendRtcpApp(uint32_t ssrc, const RtcpAppName &name, uint8_t subtype,
 	                 const binary &data = binary{});
 
 	void setMediaHandler(shared_ptr<MediaHandler> handler);

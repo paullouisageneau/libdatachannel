@@ -299,6 +299,12 @@ public:
 		bool isRtxEnabled() const;
 		void disableRtx();
 
+ 		// RFC 7728 RTP Stream Pause and Resume
+		void addPauseResume(bool nowait=true, uint8_t config=0);
+		bool isPauseResumeEnabled() const;
+		optional<std::string> getPauseResume() const;
+		void removePauseResume();
+
 		virtual void parseSdpLine(string_view line) override;
 
 	private:
