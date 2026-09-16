@@ -387,6 +387,12 @@ void PeerConnection::closeTransports() {
 	setMediaHandler(nullptr);
 	resetCallbacks();
 
+	// Detach the transports after the tasks queued by remoteClose(), so a track being closed on
+	// the processor can still send its final packets, e.g. RTCP BYE, while they are up
+	mProcessor.enqueue(&PeerConnection::detachTransports, shared_from_this());
+}
+
+void PeerConnection::detachTransports() {
 	// Pass the pointers to a thread, allowing to terminate a transport from its own thread
 	auto sctp = std::atomic_exchange(&mSctpTransport, decltype(mSctpTransport)(nullptr));
 	auto dtls = std::atomic_exchange(&mDtlsTransport, decltype(mDtlsTransport)(nullptr));
@@ -638,6 +644,14 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 				}
 				break;
 
+			case 203: // BYE (Goodbye)
+				if (length >= RtcpBye::SizeWithSSRCs(1)) {
+					auto bye = reinterpret_cast<RtcpBye *>(header);
+					for (uint8_t i = 0; i < bye->getSSRCCount(); ++i)
+						ssrcs.insert(bye->getSSRC(i));
+				}
+				break;
+
 			case 204: // APP
 				if (length >= RtcpApp::SizeWithData(0)) {
 					auto rtcpapp = reinterpret_cast<RtcpApp *>(header);
@@ -646,10 +660,8 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 				break;
 
 			default:
-				// PT=203 == Goodbye
 				// PT=207 == Extended Report
-				if (header->payloadType() != 203 &&
-				    header->payloadType() != 207) {
+				if (header->payloadType() != 207) {
 					COUNTER_UNKNOWN_PACKET_TYPE++;
 				}
 				break;
@@ -658,10 +670,15 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 		}
 
 		if (!ssrcs.empty()) {
+			// A compound packet may name several SSRCs belonging to the same media: report blocks,
+			// SDES chunks, REMB and FIR source lists, or a BYE listing a primary and its RTX SSRC.
+			// Deliver it once per track, otherwise a handler sees the same packet several times.
+			std::set<Track *> delivered;
 			for (uint32_t ssrc : ssrcs) {
 				if (auto it = mTracksBySsrc.find(ssrc); it != mTracksBySsrc.end()) {
 					if (auto track = it->second.lock())
-						track->incoming(message);
+						if (delivered.insert(track.get()).second)
+							track->incoming(message);
 				}
 			}
 			return;
