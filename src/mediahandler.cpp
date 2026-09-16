@@ -56,6 +56,14 @@ bool MediaHandler::requestBitrate(unsigned int bitrate, const message_callback &
 		return false;
 }
 
+bool MediaHandler::chainHandlesSFrame() const {
+	for (auto handler = shared_from_this(); handler; handler = handler->next())
+		if (handler->handlesSFrame())
+			return true;
+
+	return false;
+}
+
 void MediaHandler::mediaChain(const Description::Media &desc) {
 	media(desc);
 

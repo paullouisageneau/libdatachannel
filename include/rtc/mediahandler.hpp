@@ -40,6 +40,14 @@ public:
 	virtual bool requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit, const message_callback &send);
 	virtual bool requestBitrate(unsigned int bitrate, const message_callback &send);
 
+	/// Whether this handler applies SFrame (draft-ietf-avtcore-rtp-sframe) to the media it
+	/// carries. An answer only keeps "a=sframe" when something in the chain says yes, so it
+	/// cannot claim protection the application has not installed anything to provide.
+	virtual bool handlesSFrame() const { return false; }
+
+	/// True if any handler in the chain, including this one, applies SFrame.
+	bool chainHandlesSFrame() const;
+
 	void addToChain(shared_ptr<MediaHandler> handler);
 	void setNext(shared_ptr<MediaHandler> handler);
 	shared_ptr<MediaHandler> next();

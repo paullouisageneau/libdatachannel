@@ -223,7 +223,7 @@ void RtpPacketizer::outgoing(message_vector &messages,
 				rtpConfig->timestamp = frameInfo->timestamp;
 		}
 
-		auto payloads = fragment(std::move(*message));
+		std::vector<binary> payloads = fragment(std::move(*message));
 		for (size_t i = 0; i < payloads.size(); i++) {
 			if (rtpConfig->dependencyDescriptorContext.has_value()) {
 				auto &ctx = *rtpConfig->dependencyDescriptorContext;
