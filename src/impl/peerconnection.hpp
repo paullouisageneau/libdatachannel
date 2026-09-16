@@ -15,6 +15,7 @@
 #include "icetransport.hpp"
 #include "init.hpp"
 #include "processor.hpp"
+#include "rtc/sframe.hpp"
 #include "sctptransport.hpp"
 #include "track.hpp"
 
@@ -85,6 +86,8 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	bool negotiationNeeded() const;
 
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
+	void setSFrameKeyProvider(shared_ptr<SFrameReceiveKeyProvider> keyProvider);
+	shared_ptr<SFrameReceiveKeyProvider> getSFrameKeyProvider() const;
 	shared_ptr<MediaHandler> getMediaHandler() const;
 
 	void triggerDataChannel(weak_ptr<DataChannel> weakDataChannel);
@@ -150,6 +153,12 @@ private:
 
 	shared_ptr<MediaHandler> mMediaHandler;
 	mutable std::shared_mutex mMediaHandlerMutex;
+
+	// Session-wide SFrame key provider, applied to every incoming track that negotiated
+	// a=sframe. Whether keys are per-track was fixed when the provider was constructed, so
+	// there is nothing per-track to decide here.
+	shared_ptr<SFrameReceiveKeyProvider> mSFrameKeyProvider;
+	mutable std::shared_mutex mSFrameKeyProviderMutex;
 
 	shared_ptr<IceTransport> mIceTransport;
 	shared_ptr<DtlsTransport> mDtlsTransport;

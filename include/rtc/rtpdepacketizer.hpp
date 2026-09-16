@@ -50,9 +50,11 @@ protected:
 
 	virtual message_ptr reassemble(message_buffer &messages) = 0;
 
-private:
+	// Protected rather than private so a subclass with its own reassembly could delegate here; no
+	// subclass does, since the SFrame ones override incoming() outright.
 	void incoming(message_vector &messages, const message_callback &send) override;
 
+private:
 	message_buffer mBuffer;
 };
 
