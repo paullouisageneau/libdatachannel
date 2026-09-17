@@ -39,6 +39,10 @@ public:
 
 	virtual bool requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit, const message_callback &send);
 	virtual bool requestBitrate(unsigned int bitrate, const message_callback &send);
+	virtual bool pauseStream(uint32_t ssrc, const message_callback &send);
+	virtual bool resumeStream(uint32_t ssrc, const message_callback &send);
+	virtual void onStreamPaused(std::function<void(uint32_t, uint16_t, uint32_t)> callback);
+	virtual void onStreamRefused(std::function<void(uint32_t, uint16_t)> callback);
 
 	void addToChain(shared_ptr<MediaHandler> handler);
 	void setNext(shared_ptr<MediaHandler> handler);

@@ -577,6 +577,7 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 				COUNTER_MEDIA_TRUNCATED++;
 				break;
 			}
+
 			switch(header->payloadType()) {
 			case 200: // SR
 				if (length >= sizeof(RtcpSr)) {
@@ -619,7 +620,25 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 					auto rtcpfb = reinterpret_cast<RtcpFbHeader *>(header);
 					ssrcs.insert(rtcpfb->packetSenderSSRC());
 					ssrcs.insert(rtcpfb->mediaSourceSSRC());
-					if (header->payloadType() == 206 && header->reportCount() == 15 &&
+
+					// RFC 7728 PAUSE-RESUME (PT=205, FMT=9): the target SSRC is inside
+					// the FCI, not in the outer header (mediaSourceSSRC is 0).
+					// Extract Target SSRCs from FCI entries for correct track routing.
+					if (header->payloadType() == 205 && rtcpfb->header.reportCount() == 9) {
+						auto parsed = reinterpret_cast<const RtcpPauseResume *>(header);
+						// Calculate number of FCI entries from packet size.
+						// Each basic FCI is 8 bytes; header is 12 bytes.
+						size_t pktLen = header->lengthInBytes();
+						if (pktLen > sizeof(RtcpFbHeader)) {
+							size_t fciBytes = pktLen - sizeof(RtcpFbHeader);
+							size_t fciCount = fciBytes / sizeof(RtcpPauseResumeFci);
+							for (size_t i = 0; i < fciCount; ++i) {
+								auto *fci = parsed->getFci(static_cast<int>(i));
+								if (fci)
+									ssrcs.insert(fci->targetSsrc());
+							}
+						}
+					} else if (header->payloadType() == 206 && header->reportCount() == 15 &&
 						length >= sizeof(RtcpRemb)) {
 						auto remb = reinterpret_cast<RtcpRemb *>(header);
 						if (remb->hasValidId())
