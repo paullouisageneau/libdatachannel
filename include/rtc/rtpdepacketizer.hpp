@@ -14,6 +14,8 @@
 #include "mediahandler.hpp"
 #include "message.hpp"
 
+#include <atomic>
+#include <map>
 #include <set>
 
 namespace rtc {
@@ -50,10 +52,51 @@ protected:
 
 	virtual message_ptr reassemble(message_buffer &messages) = 0;
 
-private:
+	// When true, incoming() reassembles SFrame RFC packets first. Written by media() on the
+	// negotiating thread while incoming() runs on the media thread.
+	std::atomic<bool> enableSFrame = false;
+
+	// enableSFrame as incoming() read it for the batch in progress. Media thread only.
+	// Reading the flag again part way through would let a renegotiation split one batch
+	// between the two paths and deliver reassembled ciphertext as media.
+	bool sframeBatch = false;
+
+	// Protected so SFrame depacketizers can assemble, then decrypt.
 	void incoming(message_vector &messages, const message_callback &send) override;
 
+private:
+	bool isStaleSFrameTimestamp(uint32_t timestamp) const;
+	void bufferSFramePacket(message_ptr packet, uint32_t timestamp);
+	void releaseSFrameGroup(size_t index, message_vector &result);
+	void flushSFramesThrough(uint32_t timestamp, message_vector &result);
+	void flushSFramesExceptNewest(message_vector &result);
+	void emitCompleteSFrames(message_vector &result);
+	void evictOverflowingSFrames();
+	bool sframeGroupResolves(const message_buffer &packets);
+	bool assembleSFrameObjects(const message_buffer &packets, message_vector &result,
+	                           bool dryRun = false);
+	std::optional<size_t> validateSFrameRun(const message_vector &run);
+	bool assembleSFrameObject(const message_vector &run, message_vector &result);
+
 	message_buffer mBuffer;
+
+	// One RTP timestamp's packets. Held in the order the groups were first seen, not in
+	// timestamp order: the timestamp is the peer's to choose, and ordering structural
+	// decisions by it lets one packet with a far-future timestamp sit at the head forever.
+	struct SFrameGroup {
+		uint32_t timestamp;
+		message_buffer packets;
+	};
+	std::vector<SFrameGroup> mSFrames;
+	size_t mSFrameBufferedBytes = 0;
+
+	// Newest timestamp already delivered, so a straggler for it can be dropped.
+	uint32_t mSFrameLastEmitted = 0;
+	bool mSFrameEmitted = false;
+
+	// The peer decides how much is held here, so cap it in both directions.
+	static constexpr size_t MaxSFrames = 8;
+	static constexpr size_t MaxSFrameBufferedBytes = 4 * 1024 * 1024;
 };
 
 // Generic audio RTP depacketizer

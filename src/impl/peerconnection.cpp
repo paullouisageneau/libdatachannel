@@ -1133,13 +1133,22 @@ void PeerConnection::processRemoteDescription(Description description) {
 			auto remoteMedia = std::get<Description::Media *>(media);
 			std::unique_lock lock(mTracksMutex); // we may emplace a track
 			if (auto it = mTracks.find(remoteMedia->mid()); it != mTracks.end()) {
-				// Existing track — negotiate RTX with remote description
+				// Existing track — negotiate RTX and SFrame with remote description
 				if (auto track = it->second.lock()) {
 					auto desc = track->description();
+					bool changed = false;
 					if (desc.isRtxEnabled() && !remoteMedia->isRtxEnabled()) {
 						desc.disableRtx();
-						track->setDescription(std::move(desc));
+						changed = true;
 					}
+					// A peer may decline SFrame by omitting a=sframe.
+					if (desc.hasSFrame() && !remoteMedia->hasSFrame()) {
+						PLOG_DEBUG << "SFrame declined by remote, mid=\"" << desc.mid() << "\"";
+						desc.removeSFrame();
+						changed = true;
+					}
+					if (changed)
+						track->setDescription(std::move(desc));
 				}
 				continue;
 			}
@@ -1160,6 +1169,22 @@ void PeerConnection::processRemoteDescription(Description description) {
 			mTracks.emplace(track->mid(), track);
 			mTrackLines.emplace_back(track);
 			triggerTrack(track); // The user may modify the track description
+
+			// The reciprocated description carried a=sframe through so the callback above
+			// could see what was offered. Keeping it in the answer asserts "send me SFrame"
+			// (draft-ietf-avtcore-rtp-sframe Section 6), so it only survives if the callback
+			// installed something that applies SFrame -- otherwise the peer would encrypt
+			// media this end would hand up as ciphertext.
+			if (track->description().hasSFrame()) {
+				auto trackHandler = track->getMediaHandler();
+				if (!trackHandler || !trackHandler->chainHandlesSFrame()) {
+					PLOG_DEBUG << "Declining SFrame, no handler applies it, mid=\""
+					           << track->mid() << "\"";
+					auto desc = track->description();
+					desc.removeSFrame();
+					track->setDescription(std::move(desc));
+				}
+			}
 
 			auto handler = getMediaHandler();
 			if (handler)

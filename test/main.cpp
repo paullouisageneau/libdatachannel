@@ -45,6 +45,23 @@ TestResult test_rtcp_app_send();
 TestResult test_rtcp_app_multiple_in_compound();
 TestResult test_rtcp_app_integration();
 TestResult test_capi_connectivity();
+#if RTC_ENABLE_MEDIA
+TestResult test_sframe_crypto();
+TestResult test_sframe_packetizer();
+TestResult test_sframe_key_provider();
+TestResult test_sframe_video_answer_yes();
+TestResult test_sframe_video_answer_no();
+TestResult test_sframe_attribute_with_parameters();
+TestResult test_sframe_video_declined_keeps_depacketizer();
+TestResult test_sframe_audio_answer_yes();
+TestResult test_sframe_audio_answer_no();
+TestResult test_sframe_multi_track_answer_yes();
+TestResult test_sframe_multi_track_partial_answer();
+TestResult test_sframe_multi_track_ratcheting();
+TestResult test_sframe_shared_key_multi_track();
+TestResult test_sframe_rtcp_passthrough();
+TestResult test_sframe_rtcp_passthrough_declined();
+#endif
 TestResult test_capi_track();
 TestResult test_websocket();
 TestResult test_websocketserver();
@@ -101,6 +118,22 @@ static const vector<Test> tests = {
     Test("RTX negotiation fallback", test_rtx_attribute),
     Test("RTX dropped packet recovery", test_rtx_dropped_packet),
     Test("RTX multi-codec PT mapping", test_rtx_multi_codec),
+    Test("SFrame crypto", test_sframe_crypto),
+    Test("SFrame packetizer round-trip", test_sframe_packetizer),
+    Test("SFrame key provider and ratcheting", test_sframe_key_provider),
+    Test("SFrame video offer yes / answer yes", test_sframe_video_answer_yes),
+    Test("SFrame video offer yes / answer no", test_sframe_video_answer_no),
+    Test("SFrame a=sframe with parameters", test_sframe_attribute_with_parameters),
+    Test("SFrame video answer no, SFrame depacketizer kept",
+         test_sframe_video_declined_keeps_depacketizer),
+    Test("SFrame audio offer yes / answer yes", test_sframe_audio_answer_yes),
+    Test("SFrame audio offer yes / answer no", test_sframe_audio_answer_no),
+    Test("SFrame multi-track answer yes", test_sframe_multi_track_answer_yes),
+    Test("SFrame multi-track partial answer", test_sframe_multi_track_partial_answer),
+    Test("SFrame multi-track ratcheting", test_sframe_multi_track_ratcheting),
+    Test("SFrame shared key multi-track", test_sframe_shared_key_multi_track),
+    Test("SFrame RTCP passthrough", test_sframe_rtcp_passthrough),
+    Test("SFrame RTCP passthrough when declined", test_sframe_rtcp_passthrough_declined),
     Test("FIR SDP parsing", test_fir_sdp),
     Test("FIR offer answer handling", test_fir_offer_yes_answer_yes),
     Test("RTCP APP single packet", test_rtcp_app_single_packet),

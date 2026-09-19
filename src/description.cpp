@@ -1229,6 +1229,11 @@ Description::Media Description::Media::reciprocate() const {
 	// Remove rtcp-rsize attribute as Reduced-Size RTCP is not supported (see RFC 5506)
 	reciprocated.removeAttribute("rtcp-rsize");
 
+	// a=sframe is carried through so the application can see, from its track callback, that
+	// the peer asked for SFrame. It does not commit the answer to it: PeerConnection strips
+	// the attribute again after that callback unless a handler that applies SFrame was
+	// installed, so an answer never claims protection nothing is there to provide.
+
 	return reciprocated;
 }
 
@@ -1355,6 +1360,25 @@ void Description::Media::disableRtx() {
 	for (const auto &[primarySsrc, _] : mSsrcToRtxSsrcCopy)
 		removeRtxSSRC(primarySsrc);
 	mSsrcToRtxSsrc.clear();
+}
+
+void Description::Media::addSFrame() {
+	// addAttribute() skips a duplicate; a bare emplace_back would accumulate one
+	// "a=sframe" line per renegotiation.
+	addAttribute("sframe");
+}
+
+bool Description::Media::hasSFrame() const {
+	// Matched on the attribute key, as removeSFrame() does. The draft gives "a=sframe" no
+	// values today, but a peer sending "a=sframe:something" is asserting support, and reading
+	// it as a decline would silently drop the track to unprotected media.
+	return std::find_if(mAttributes.begin(), mAttributes.end(), [](const auto &a) {
+		       return a == "sframe" || parse_pair(a).first == "sframe";
+	       }) != mAttributes.end();
+}
+
+void Description::Media::removeSFrame() {
+	removeAttribute("sframe");
 }
 
 string Description::Media::generateSdpLines(string_view eol) const {

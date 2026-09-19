@@ -299,6 +299,10 @@ public:
 		bool isRtxEnabled() const;
 		void disableRtx();
 
+		void addSFrame();
+		bool hasSFrame() const;
+		void removeSFrame();
+
 		virtual void parseSdpLine(string_view line) override;
 
 	private:
