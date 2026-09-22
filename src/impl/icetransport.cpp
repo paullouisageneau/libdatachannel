@@ -667,28 +667,32 @@ IceTransport::~IceTransport() {
 	nice_agent_attach_recv(mNiceAgent.get(), mStreamId, 1, g_main_loop_get_context(MainLoop->get()),
 	                       NULL, NULL);
 
-	// Synchronize with the libnice main loop thread BEFORE freeing the
-	// stream's rx buffer (nice_agent_remove_stream below) or `this`. The
-	// detach above prevents new dispatches, but a callback (e.g.
-	// RecvCallback) may already be running on the main loop thread with
-	// `this` as userData and `buf` pointing into libnice's stream rx buffer.
-	// Post a barrier task to the main context and wait for it to run; GLib
-	// dispatches sources serially on that thread, so once our task runs no
-	// callback can still be using `this` or the rx buffer.
+	// Remove the stream on the main loop thread. The attach_recv above only
+	// clears the io callback: the socket sources stay attached, and libnice's
+	// component_io_cb dereferences its component before taking the agent lock,
+	// so removing the stream from here would free it under a live dispatch.
+	// GLib dispatches serially on that thread, so the removal cannot overlap
+	// one; waiting for it also ensures no callback still uses `this` or the
+	// stream's rx buffer.
 	{
-		std::promise<void> barrier;
-		auto future = barrier.get_future();
+		struct RemoveStreamData {
+			NiceAgent *agent;
+			guint streamId;
+			std::promise<void> done;
+		} data{mNiceAgent.get(), mStreamId, {}};
+		auto future = data.done.get_future();
 		g_main_context_invoke_full(
 		    g_main_loop_get_context(MainLoop->get()), G_PRIORITY_HIGH,
-		    [](gpointer data) -> gboolean {
-			    static_cast<std::promise<void> *>(data)->set_value();
+		    [](gpointer ptr) -> gboolean {
+			    auto *data = static_cast<RemoveStreamData *>(ptr);
+			    nice_agent_remove_stream(data->agent, data->streamId);
+			    data->done.set_value();
 			    return G_SOURCE_REMOVE;
 		    },
-		    &barrier, NULL);
+		    &data, NULL);
 		future.wait();
 	}
 
-	nice_agent_remove_stream(mNiceAgent.get(), mStreamId);
 	mNiceAgent.reset();
 
 	if (mTimeoutId)
