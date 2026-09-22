@@ -536,7 +536,9 @@ void DtlsTransport::doRecv() {
 				}
 
 				if (ret == MBEDTLS_ERR_SSL_WANT_READ) {
-					ThreadPool::Instance().schedule(mTimerSetAt + milliseconds(mFinMs),
+					auto timeout = mFinMs != 0 ? mTimerSetAt + milliseconds(mFinMs)
+					                           : std::chrono::steady_clock::now() + milliseconds(MBEDTLS_SSL_DTLS_TIMEOUT_DFL_MIN);
+					ThreadPool::Instance().schedule(timeout,
 					                                [weak_this = weak_from_this()]() {
 						                                if (auto locked = weak_this.lock())
 							                                locked->doRecv();
