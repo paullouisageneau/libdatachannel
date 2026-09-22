@@ -15,6 +15,7 @@
 #include <iomanip>
 #include <mutex>
 #include <sstream>
+#include <thread>
 #include <unordered_map>
 
 namespace rtc::impl {
@@ -541,10 +542,10 @@ Certificate Certificate::Generate(CertificateType type, const string &commonName
 	if (!X509_gmtime_adj(X509_getm_notBefore(x509.get()), 3600 * -1) ||
 	    !X509_gmtime_adj(X509_getm_notAfter(x509.get()), 3600 * 24 * 365) ||
 #if OPENSSL_VERSION_NUMBER >= 0x30000000
-	    !X509_set_version(x509.get(), X509_VERSION_1) || 
+	    !X509_set_version(x509.get(), X509_VERSION_1) ||
 #else
 		!X509_set_version(x509.get(), 0) ||
-#endif 					
+#endif
 		!BN_rand(serial_number.get(), serialSize, 0, 0) ||
 	    !BN_to_ASN1_INTEGER(serial_number.get(), X509_get_serialNumber(x509.get())) ||
 	    !X509_NAME_add_entry_by_NID(name.get(), NID_commonName, MBSTRING_UTF8, commonNameBytes, -1,
@@ -623,9 +624,17 @@ string make_fingerprint(X509 *x509, CertificateFingerprint::Algorithm fingerprin
 // Common for GnuTLS, Mbed TLS, and OpenSSL
 
 future_certificate_ptr make_certificate(CertificateType type) {
-	return ThreadPool::Instance().enqueue([type, token = Init::Instance().token()]() {
-		return std::make_shared<Certificate>(Certificate::Generate(type, "libdatachannel"));
-	});
+	auto promise = std::make_shared<std::promise<certificate_ptr>>();
+	auto future = promise->get_future();
+	std::thread([type, promise = std::move(promise), token = Init::Instance().token()]() {
+		try {
+			auto cert = std::make_shared<Certificate>(Certificate::Generate(type, "libdatachannel"));
+			promise->set_value(cert);
+		} catch (...) {
+			promise->set_exception(std::current_exception());
+		}
+	}).detach();
+	return future;
 }
 
 CertificateFingerprint Certificate::fingerprint() const {
