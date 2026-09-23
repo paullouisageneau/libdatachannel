@@ -222,7 +222,7 @@ shared_ptr<IceTransport> PeerConnection::initIceTransport() {
 
 shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 	try {
-		std::lock_guard lock(mDtlsTransportMutex);
+		std::lock_guard lock(mDtlsTransportInitMutex);
 		if (auto transport = std::atomic_load(&mDtlsTransport))
 			return transport;
 

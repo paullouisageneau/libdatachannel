@@ -153,7 +153,7 @@ private:
 
 	shared_ptr<IceTransport> mIceTransport;
 	shared_ptr<DtlsTransport> mDtlsTransport;
-	std::mutex mDtlsTransportMutex;
+	std::mutex mDtlsTransportInitMutex;
 	shared_ptr<SctpTransport> mSctpTransport;
 
 	std::unordered_map<uint16_t, weak_ptr<DataChannel>> mDataChannels; // by stream ID
