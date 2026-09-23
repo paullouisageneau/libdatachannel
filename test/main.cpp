@@ -23,6 +23,7 @@ using chrono::steady_clock;
 
 TestResult test_connectivity();
 TestResult test_connectivity_fail_on_wrong_fingerprint();
+TestResult test_media_stream_associations();
 TestResult test_pem();
 TestResult test_negotiated();
 TestResult test_reliability();
@@ -84,6 +85,7 @@ TestResult test_capi_cleanup() {
 
 static const vector<Test> tests = {
     // C++ API tests
+    Test("MSID media stream associations", test_media_stream_associations),
     Test("WebRTC connectivity", test_connectivity),
     Test("WebRTC broken fingerprint", test_connectivity_fail_on_wrong_fingerprint),
     Test("pem", test_pem),
