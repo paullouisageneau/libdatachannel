@@ -100,6 +100,10 @@ set(LIBDATACHANNEL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/vp8rtpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/vp9rtppacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/vp9rtpdepacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/sframe.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/sframeperframertppacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/sframeperframevideortpdepacketizer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/sframeperframeaudiortpdepacketizer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtcpnackresponder.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/rtp.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/capi.cpp
@@ -148,6 +152,10 @@ set(LIBDATACHANNEL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp8rtpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp9rtppacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/vp9rtpdepacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/sframe.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/sframeperframertppacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/sframeperframevideortpdepacketizer.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/sframeperframeaudiortpdepacketizer.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/rtcpnackresponder.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/utils.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/include/rtc/plihandler.hpp
@@ -188,6 +196,9 @@ set(LIBDATACHANNEL_IMPL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocketserver.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wstransport.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wshandshake.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sframecodec.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sframecrypto.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sframeutility.cpp
 )
 
 set(LIBDATACHANNEL_IMPL_HEADERS
@@ -223,6 +234,9 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/websocketserver.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wstransport.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/wshandshake.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sframecodec.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sframecrypto.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sframeutility.hpp
 )
 
 set(TESTS_SOURCES
@@ -248,6 +262,10 @@ if(NOT NO_MEDIA)
     list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/fir.cpp)
     list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/rtx.cpp)
     list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/rtcp_app.cpp)
+    list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/sframe_crypto.cpp)
+    list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/sframe_packetizer.cpp)
+    list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/sframe_offer_answer.cpp)
+    list(APPEND TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test/sframe_key_provider.cpp)
 endif()
 
 set(TESTS_HEADERS 
@@ -633,6 +651,7 @@ if(NOT NO_EXAMPLES)
 		add_subdirectory(examples/media-receiver)
 		add_subdirectory(examples/media-sender)
 		add_subdirectory(examples/media-sfu)
+		add_subdirectory(examples/sframe)
 	endif()
 	if(NOT NO_MEDIA AND NOT NO_WEBSOCKET)
     	add_subdirectory(examples/streamer)

@@ -14,6 +14,7 @@
 #include "description.hpp"
 #include "mediahandler.hpp"
 #include "queue.hpp"
+#include "rtc/sframe.hpp"
 
 #if RTC_ENABLE_MEDIA
 #include "dtlssrtptransport.hpp"
@@ -52,6 +53,31 @@ public:
 	Description::Media description() const;
 	void setDescription(Description::Media desc);
 
+#if RTC_ENABLE_MEDIA
+	// Installs the per-frame depacketizer for this track's media kind at the head of the chain.
+	// Sets no flag and does not touch the description: what keeps a=sframe in an answer is the
+	// installed handler reporting appliesSFrame(). Shared by Track::useSFrame() and the
+	// session-wide provider PeerConnection applies to each incoming track that negotiated a=sframe.
+	void enableSFrame(shared_ptr<SFrameReceiveKeyProvider> keyProvider,
+	                  optional<uint32_t> clockRate);
+
+	// Whether the chain already decrypts incoming media, i.e. holds one of the depacketizers
+	// enableSFrame() installs. Public because PeerConnection asks it while negotiating.
+	//
+	// This is the receive-direction question. Its send-direction counterpart is the private
+	// sframeSendsUnprotected(), and MediaHandler::appliesSFrame() is a third, chain-wide question --
+	// "may an answer assert a=sframe" -- which is true of a send-side packetizer as well and so
+	// cannot answer either of the directional ones. Keeping the three apart is the point: asking
+	// appliesSFrame() here let a packetizer suppress the receive-side install, and the answer
+	// negotiated a=sframe with nothing to decrypt it.
+	//
+	// Asked by type, as the chain walk in enableSFrame() is, because which stage a handler occupies
+	// is not part of the MediaHandler interface. A future per-packet SFrame handler, or an
+	// application's own, would not be recognised -- at which point splitting appliesSFrame() into
+	// directional virtuals becomes the right answer.
+	bool hasSFrameDepacketizer();
+#endif
+
 	shared_ptr<MediaHandler> getMediaHandler();
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
 
@@ -75,6 +101,15 @@ private:
 	mutable std::shared_mutex mMutex;
 
 	std::atomic<bool> mIsClosed = false;
+
+#if RTC_ENABLE_MEDIA
+	// True when the track advertises a=sframe but nothing in the chain encrypts what it sends.
+	bool sframeSendsUnprotected();
+
+	// Latched once the send chain has been seen to be correct, so the check runs on the first frame
+	// and every frame after it costs one relaxed load.
+	std::atomic<bool> mSFrameSendChecked = false;
+#endif
 
 	Queue<message_ptr> mRecvQueue;
 
