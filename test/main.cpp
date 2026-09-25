@@ -167,5 +167,13 @@ int main(int argc, char **argv) {
 	        return -1;
 	    }
 	*/
-	return 0;
+
+	// The exit status is the number of failed tests. Only the low 8 bits of the status are
+	// available to the caller on POSIX, so cap it to keep a failure from being reported as 0.
+	const int maxStatus = 125;
+	if (failed_tests > maxStatus) {
+		cout << "Capping exit status to " << maxStatus << "." << endl;
+		return maxStatus;
+	}
+	return failed_tests;
 }
