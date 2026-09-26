@@ -612,12 +612,18 @@ void DtlsTransport::doRecv() {
 }
 
 int DtlsTransport::CertificateCallback(void *ctx, mbedtls_x509_crt *crt, int /*depth*/,
-                                       uint32_t * /*flags*/) {
+                                       uint32_t *flags) {
 	auto this_ = static_cast<DtlsTransport *>(ctx);
 	string fingerprint = make_fingerprint(crt, this_->mFingerprintAlgorithm);
 	std::transform(fingerprint.begin(), fingerprint.end(), fingerprint.begin(),
 	               [](char c) { return char(std::toupper(c)); });
-	return this_->mVerifierCallback(fingerprint) ? 0 : 1;
+
+	if (!this_->mVerifierCallback(fingerprint)) {
+		if (flags) *flags |= MBEDTLS_X509_BADCERT_NOT_TRUSTED;
+		return MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
+	}
+
+	return 0;
 }
 
 void DtlsTransport::ExportKeysCallback(void *ctx, mbedtls_ssl_key_export_type /*type*/,
