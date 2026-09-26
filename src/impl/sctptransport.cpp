@@ -902,6 +902,7 @@ void SctpTransport::processNotification(const union sctp_notification *notify, s
 
 		IF_PLOG(plog::verbose) {
 			std::ostringstream desc;
+			desc.imbue(std::locale::classic());
 			desc << "flags=";
 			if (flags & SCTP_STREAM_RESET_OUTGOING_SSN && flags & SCTP_STREAM_RESET_INCOMING_SSN)
 				desc << "outgoing|incoming";
