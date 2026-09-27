@@ -82,6 +82,7 @@ private:
 
 	void doRecv();
 	void doFlush();
+	void configureInterleaving();
 	void enqueueRecv();
 	void enqueueFlush();
 	bool trySendQueue();
@@ -116,7 +117,8 @@ private:
 	std::atomic<bool> mWritten = false;     // written outside lock
 	std::atomic<bool> mWrittenOnce = false; // same
 
-	binary mPartialMessage, mPartialNotification;
+	std::map<uint16_t, binary> mPartialMessages;
+	binary mPartialNotification;
 	binary mPartialStringData, mPartialBinaryData;
 
 	// Stats
