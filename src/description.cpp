@@ -1357,6 +1357,37 @@ void Description::Media::disableRtx() {
 	mSsrcToRtxSsrc.clear();
 }
 
+static const string kCcmPause = "ccm pause";
+
+void Description::Media::addPauseResume(bool nowait, uint8_t config) {
+	string computedValue(kCcmPause);
+	if (nowait)
+		computedValue += " nowait";
+	if (config) {
+		computedValue += " config=";
+		computedValue += std::to_string(config);
+	}
+	for (auto &[pt, map] : mRtpMaps)
+		map.addFeedback(computedValue);
+}
+
+bool Description::Media::isPauseResumeEnabled() const {
+	return getPauseResume() != std::nullopt;
+}
+
+optional<std::string> Description::Media::getPauseResume() const {
+	for (const auto &[pt, map] : mRtpMaps)
+		for (const auto &fb : map.rtcpFbs)
+			if (fb.compare(0, kCcmPause.length(), kCcmPause) == 0)
+				return fb;
+	return std::nullopt;
+}
+
+void Description::Media::removePauseResume() {
+	for (auto &[pt, map] : mRtpMaps)
+		map.removeFeedback(kCcmPause);
+}
+
 string Description::Media::generateSdpLines(string_view eol) const {
 	std::ostringstream sdp;
 	if (mBas >= 0)
