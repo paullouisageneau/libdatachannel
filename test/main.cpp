@@ -45,6 +45,19 @@ TestResult test_rtcp_app_empty_data();
 TestResult test_rtcp_app_send();
 TestResult test_rtcp_app_multiple_in_compound();
 TestResult test_rtcp_app_integration();
+TestResult test_rtcp_bye_packet();
+TestResult test_rtcp_bye_sr_reporter();
+TestResult test_rtcp_bye_receiving_session();
+TestResult test_track_close_sends_rtcp_bye();
+TestResult test_peerconnection_close_sends_rtcp_bye();
+TestResult test_peerconnection_close_is_synchronous();
+TestResult test_multiple_tracks_close_one_by_one();
+TestResult test_multiple_tracks_peerconnection_close();
+TestResult test_track_close_bye_carries_rtx_ssrc();
+TestResult test_recvonly_track_close_sends_rtcp_bye();
+TestResult test_close_from_ontrack_does_not_deadlock();
+TestResult test_track_close_no_bye_when_idle();
+TestResult test_track_close_no_bye_without_rtcp_handler();
 TestResult test_capi_connectivity();
 TestResult test_capi_track();
 TestResult test_websocket();
@@ -111,6 +124,19 @@ static const vector<Test> tests = {
     Test("RTCP APP send", test_rtcp_app_send),
     Test("RTCP APP multiple in compound", test_rtcp_app_multiple_in_compound),
     Test("RTCP APP integration", test_rtcp_app_integration),
+    Test("RTCP BYE packet", test_rtcp_bye_packet),
+    Test("RTCP BYE sender report reporter", test_rtcp_bye_sr_reporter),
+    Test("RTCP BYE receiving session", test_rtcp_bye_receiving_session),
+    Test("Track close sends RTCP BYE", test_track_close_sends_rtcp_bye),
+    Test("PeerConnection close sends RTCP BYE", test_peerconnection_close_sends_rtcp_bye),
+    Test("PeerConnection close is synchronous", test_peerconnection_close_is_synchronous),
+    Test("Multiple tracks closed one by one", test_multiple_tracks_close_one_by_one),
+    Test("Multiple tracks PeerConnection close", test_multiple_tracks_peerconnection_close),
+    Test("Track close BYE carries RTX SSRC", test_track_close_bye_carries_rtx_ssrc),
+    Test("RecvOnly track close sends RTCP BYE", test_recvonly_track_close_sends_rtcp_bye),
+    Test("Close from onTrack does not deadlock", test_close_from_ontrack_does_not_deadlock),
+    Test("Track close no BYE when idle", test_track_close_no_bye_when_idle),
+    Test("Track close no BYE without RTCP handler", test_track_close_no_bye_without_rtcp_handler),
 #endif
 #if RTC_ENABLE_WEBSOCKET
     // TODO: Temporarily disabled as the echo service is unreliable
