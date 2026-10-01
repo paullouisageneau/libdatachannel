@@ -1376,6 +1376,7 @@ bool PeerConnection::changeState(State newState) {
 	} while (!state.compare_exchange_weak(current, newState));
 
 	std::ostringstream s;
+	s.imbue(std::locale::classic());
 	s << newState;
 	PLOG_INFO << "Changed state to " << s.str();
 
@@ -1394,6 +1395,7 @@ bool PeerConnection::changeIceState(IceState newState) {
 		return false;
 
 	std::ostringstream s;
+	s.imbue(std::locale::classic());
 	s << newState;
 	PLOG_INFO << "Changed ICE state to " << s.str();
 
@@ -1412,6 +1414,7 @@ bool PeerConnection::changeGatheringState(GatheringState newState) {
 		return false;
 
 	std::ostringstream s;
+	s.imbue(std::locale::classic());
 	s << newState;
 	PLOG_INFO << "Changed gathering state to " << s.str();
 	mProcessor.enqueue(&PeerConnection::trigger<GatheringState>, shared_from_this(),
@@ -1425,6 +1428,7 @@ bool PeerConnection::changeSignalingState(SignalingState newState) {
 		return false;
 
 	std::ostringstream s;
+	s.imbue(std::locale::classic());
 	s << newState;
 	PLOG_INFO << "Changed signaling state to " << s.str();
 	mProcessor.enqueue(&PeerConnection::trigger<SignalingState>, shared_from_this(),
