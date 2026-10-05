@@ -10,6 +10,8 @@
 #include "rtc/rtp.hpp"
 #include "test.hpp"
 
+#if RTC_ENABLE_MEDIA
+
 // impl::XrManager is internal-only (not part of the public API): it is self-contained (no
 // Track/PeerConnection/MediaHandler involved), so its own logic is tested directly here rather
 // than through a full PeerConnection loopback.
@@ -384,3 +386,5 @@ TestResult test_xrmanager_integration() {
 	cout << "RTCP XR integration test passed" << endl;
 	return TestResult(true);
 }
+
+#endif // RTC_ENABLE_MEDIA
