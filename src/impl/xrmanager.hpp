@@ -33,7 +33,7 @@ namespace rtc::impl {
 // PeerConnection: incoming() is called unconditionally from PeerConnection::dispatchMedia(),
 // before any track/SSRC routing; send() is called from PeerConnection::onTrackTransportSend(), which
 // Track::transportSend() invokes on every outgoing packet, mirroring RtcpSrReporter's cadence.
-class XrManager {
+class RTC_CPP_EXPORT XrManager {
 public:
 	// Scans a possibly-compound RTCP message for RRTR blocks and records the latest one per
 	// reporter SSRC. No-op for anything that isn't a Control message or doesn't contain an XR
