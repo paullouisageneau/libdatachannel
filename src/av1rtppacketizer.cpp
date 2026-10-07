@@ -32,6 +32,7 @@ const auto obuHasExtensionMask = byte(0b00000100);
 const auto obuHasSizeMask = byte(0b00000010);
 
 const auto obuFrameTypeSequenceHeader = byte(1);
+const auto obuFrameTypePadding = byte(15);
 
 const auto obuTemporalUnitDelimiter = std::vector<byte>{byte(0x12), byte(0x00)};
 
@@ -160,8 +161,11 @@ std::vector<binary> AV1RtpPacketizer::fragmentObu(const binary &data) {
 	if (data.size() < 1)
 		return {};
 
-	// Cache sequence header and packetize with next OBU
 	auto frameType = (data.at(0) & obuFrameTypeMask) >> obuFrameTypeBitshift;
+	if (frameType == obuFrameTypePadding)
+		return {};
+
+	// Cache sequence header and packetize with next OBU
 	if (frameType == obuFrameTypeSequenceHeader) {
 		mSequenceHeader = std::make_unique<binary>(data.begin(), data.end());
 		return {};
