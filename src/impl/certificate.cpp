@@ -164,6 +164,7 @@ string make_fingerprint(gnutls_x509_crt_t crt,
 	              "X509 fingerprint error");
 
 	std::ostringstream oss;
+	oss.imbue(std::locale::classic());
 	oss << std::hex << std::uppercase << std::setfill('0');
 	for (size_t i = 0; i < len; ++i) {
 		if (i)
@@ -581,6 +582,7 @@ string make_fingerprint(X509 *x509, CertificateFingerprint::Algorithm fingerprin
 		throw std::runtime_error("X509 fingerprint error");
 
 	std::ostringstream oss;
+	oss.imbue(std::locale::classic());
 	oss << std::hex << std::uppercase << std::setfill('0');
 	for (size_t i = 0; i < len; ++i) {
 		if (i)

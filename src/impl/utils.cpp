@@ -47,6 +47,7 @@ std::vector<string> explode(const string &str, char delim) {
 string implode(const std::vector<string> &tokens, char delim) {
 	string sdelim(1, delim);
 	std::ostringstream ss;
+	ss.imbue(std::locale::classic());
 	std::copy(tokens.begin(), tokens.end(), std::ostream_iterator<string>(ss, sdelim.c_str()));
 	string result = ss.str();
 	if (result.size() > 0)

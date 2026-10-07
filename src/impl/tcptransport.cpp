@@ -256,6 +256,7 @@ void TcpTransport::createSocket(const struct sockaddr *addr, socklen_t addrlen) 
 		int ret = ::connect(mSock, addr, addrlen);
 		if (ret < 0 && sockerrno != SEINPROGRESS && sockerrno != SEWOULDBLOCK) {
 			std::ostringstream msg;
+			msg.imbue(std::locale::classic());
 			msg << "TCP connection to " << node << ":" << serv << " failed, errno=" << sockerrno;
 			throw std::runtime_error(msg.str());
 		}
@@ -455,6 +456,7 @@ void TcpTransport::processConnect(PollService::Event event) {
 
 		if (err != 0) {
 			std::ostringstream msg;
+			msg.imbue(std::locale::classic());
 			msg << "TCP connection failed, errno=" << err;
 			throw std::runtime_error(msg.str());
 		}

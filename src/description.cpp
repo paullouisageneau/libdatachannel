@@ -289,6 +289,7 @@ Description::operator string() const { return generateSdp("\r\n"); }
 
 string Description::generateSdp(string_view eol) const {
 	std::ostringstream sdp;
+	sdp.imbue(std::locale::classic());
 
 	// Header
 	sdp << "v=0" << eol;
@@ -299,6 +300,7 @@ string Description::generateSdp(string_view eol) const {
 	// BUNDLE (RFC 8843 Negotiating Media Multiplexing Using the Session Description Protocol)
 	// https://www.rfc-editor.org/rfc/rfc8843.html
 	std::ostringstream bundleGroup;
+	bundleGroup.imbue(std::locale::classic());
 	for (const auto &entry : mEntries)
 		if (!entry->isRemoved())
 			bundleGroup << ' ' << entry->mid();
@@ -308,6 +310,7 @@ string Description::generateSdp(string_view eol) const {
 
 	// Lip-sync
 	std::ostringstream lsGroup;
+	lsGroup.imbue(std::locale::classic());
 	for (const auto &entry : mEntries)
 		if (!entry->isRemoved() && entry != mApplication)
 			lsGroup << ' ' << entry->mid();
@@ -363,6 +366,7 @@ string Description::generateSdp(string_view eol) const {
 
 string Description::generateApplicationSdp(string_view eol) const {
 	std::ostringstream sdp;
+	sdp.imbue(std::locale::classic());
 
 	// Header
 	sdp << "v=0" << eol;
@@ -635,6 +639,7 @@ Description::Entry::operator string() const { return generateSdp("\r\n", "IP4 0.
 
 string Description::Entry::generateSdp(string_view eol, string_view addr, uint16_t port) const {
 	std::ostringstream sdp;
+	sdp.imbue(std::locale::classic());
 	// RFC 3264: Existing media streams are removed by creating a new SDP with the port number for
 	// that stream set to zero. [...] A stream that is offered with a port of zero MUST be marked
 	// with port zero in the answer.
@@ -648,6 +653,7 @@ string Description::Entry::generateSdp(string_view eol, string_view addr, uint16
 
 string Description::Entry::generateSdpLines(string_view eol) const {
 	std::ostringstream sdp;
+	sdp.imbue(std::locale::classic());
 	sdp << "a=mid:" << mMid << eol;
 
 	for (auto it = mExtMaps.begin(); it != mExtMaps.end(); ++it) {
@@ -877,6 +883,7 @@ optional<size_t> Description::Application::maxMessageSize() const { return mMaxM
 
 string Description::Application::generateSdpLines(string_view eol) const {
 	std::ostringstream sdp;
+	sdp.imbue(std::locale::classic());
 	sdp << Entry::generateSdpLines(eol);
 
 	if (mSctpPort)
@@ -932,6 +939,7 @@ Description::Media::Media(const string &sdp) : Media(get_first_line(sdp), "", Di
 
 string Description::Media::description() const {
 	std::ostringstream ss;
+	ss.imbue(std::locale::classic());
 	for (auto it = mOrderedPayloadTypes.begin(); it != mOrderedPayloadTypes.end(); ++it) {
 		if (it != mOrderedPayloadTypes.begin())
 			ss << ' ';
@@ -1060,6 +1068,7 @@ void Description::Media::addRtxCodec(int payloadType, int origPayloadType, unsig
 
 string Description::Media::generateSdpLines(string_view eol) const {
 	std::ostringstream sdp;
+	sdp.imbue(std::locale::classic());
 	if (mBas >= 0)
 		sdp << "b=AS:" << mBas << eol;
 
