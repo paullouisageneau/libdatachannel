@@ -877,6 +877,7 @@ string IceTransport::AddressToString(const NiceAddress &addr) {
 	nice_address_to_string(&addr, buffer);
 	unsigned int port = nice_address_get_port(&addr);
 	std::ostringstream ss;
+	ss.imbue(std::locale::classic());
 	ss << buffer << ":" << port;
 	return ss.str();
 }
