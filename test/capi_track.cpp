@@ -1,5 +1,6 @@
 /**
  * Copyright (c) 2020 Paul-Louis Ageneau
+ * Copyright (c) 2026 mertushka
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -28,6 +29,8 @@ typedef struct {
 	int pc;
 	int tr;
 	bool connected;
+	int remoteDescriptionChanges;
+	bool remoteDescriptionValid;
 } Peer;
 
 static Peer *peer1 = NULL;
@@ -75,6 +78,12 @@ static void RTC_API closedCallback(int id, void *ptr) {
 	printf("Track %d: Closed\n", peer == peer1 ? 1 : 2);
 }
 
+static void RTC_API trackDescriptionCallback(int tr, const char *sdp, void *ptr) {
+	Peer *peer = (Peer *)ptr;
+	++peer->remoteDescriptionChanges;
+	peer->remoteDescriptionValid = strstr(sdp, "a=mid:video") && strstr(sdp, "a=recvonly");
+}
+
 static void RTC_API trackCallback(int pc, int tr, void *ptr) {
 	Peer *peer = (Peer *)ptr;
 
@@ -85,6 +94,11 @@ static void RTC_API trackCallback(int pc, int tr, void *ptr) {
 	}
 
 	printf("Track %d: Received with media description: \n%s\n", peer == peer1 ? 1 : 2, buffer);
+	if (rtcGetTrackRemoteDescription(tr, buffer, 1024) < 0 ||
+	    !strstr(buffer, "a=sendonly")) {
+		fprintf(stderr, "rtcGetTrackRemoteDescription failed\n");
+		return;
+	}
 
 	char mid[256];
 	if (rtcGetTrackMid(tr, mid, 256) < 0 || strcmp(mid, "video") != 0) {
@@ -177,6 +191,11 @@ int test_capi_track_main() {
 	peer1->tr = rtcAddTrack(peer1->pc, mediaDescription);
 	rtcSetOpenCallback(peer1->tr, openCallback);
 	rtcSetClosedCallback(peer1->tr, closedCallback);
+	rtcSetTrackRemoteDescriptionCallback(peer1->tr, trackDescriptionCallback);
+	if (rtcGetTrackRemoteDescription(peer1->tr, NULL, 0) != RTC_ERR_NOT_AVAIL) {
+		fprintf(stderr, "rtcGetTrackRemoteDescription is available before remote negotiation\n");
+		goto error;
+	}
 
 	char mid[256];
 	if (rtcGetTrackMid(peer1->tr, mid, 256) < 0 || strcmp(mid, "video") != 0) {
@@ -220,6 +239,11 @@ int test_capi_track_main() {
 
 	if (!peer1->connected || !peer2->connected) {
 		fprintf(stderr, "Track is not connected\n");
+		goto error;
+	}
+
+	if (peer1->remoteDescriptionChanges != 1 || !peer1->remoteDescriptionValid) {
+		fprintf(stderr, "Track remote description callback failed\n");
 		goto error;
 	}
 
