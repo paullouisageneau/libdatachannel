@@ -35,6 +35,8 @@ public:
 
 	void media(const Description::Media &desc) override;
 	void incoming(message_vector &messages, const message_callback &send) override;
+	void close(const message_callback &send, Description::Direction direction,
+	           bool sentPacket) override;
 	bool requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit, const message_callback &send) override;
 	bool requestBitrate(unsigned int bitrate, const message_callback &send) override;
 
@@ -52,6 +54,7 @@ public:
 protected:
 	void pushREMB(const message_callback &send, unsigned int bitrate);
 	void pushRR(const message_callback &send,unsigned int lastSrDelay);
+	message_ptr getReceiverReport(unsigned int lastSrDelay, size_t extraSize = 0);
 	void pushPLI(const message_callback &send);
 	void pushFIR(const message_callback &send, const std::vector<SSRC>& targetSSRCs, bool retransmit);
 

@@ -68,11 +68,29 @@ void Track::setDescription(Description::Media desc) {
 void Track::close() {
 	PLOG_VERBOSE << "Closing Track";
 
-	if (!mIsClosed.exchange(true))
-	{
+	if (!mIsClosed.exchange(true)) {
+		closeMediaHandler();
+
 		triggerClosed();
 		setMediaHandler(nullptr);
 		resetCallbacks();
+	}
+}
+
+void Track::closeMediaHandler() {
+	auto handler = getMediaHandler();
+	if (!handler)
+		return;
+
+	// Pass on what happened on the media and let each handler decide what to do with it: the
+	// direction, which tells a handler whether it owns a sending SSRC for this media, and whether
+	// any packet was transmitted, which RFC 3550 section 6.3.7 requires before a BYE may be sent.
+	try {
+		// The transport may already be gone, in which case nothing can be sent
+		handler->closeChain([this](message_ptr message) { transportSend(std::move(message)); },
+		                    direction(), mSentPacket.load());
+	} catch (const std::exception &e) {
+		PLOG_DEBUG << "Unable to send on closing track: " << e.what();
 	}
 }
 
@@ -220,7 +238,11 @@ bool Track::transportSend([[maybe_unused]] message_ptr message) {
 			message->dscp = 36; // AF42: Assured Forwarding class 4, medium drop probability
 	}
 
-	return transport->sendMedia(message);
+	bool sent = transport->sendMedia(message);
+	if (sent)
+		mSentPacket = true;
+
+	return sent;
 #else
 	throw std::runtime_error("Track is disabled (not compiled with media support)");
 #endif
