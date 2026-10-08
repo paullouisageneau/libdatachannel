@@ -220,6 +220,9 @@ bool Track::transportSend([[maybe_unused]] message_ptr message) {
 			message->dscp = 36; // AF42: Assured Forwarding class 4, medium drop probability
 	}
 
+	if (auto pc = mPeerConnection.lock())
+		pc->onTrackTransportSend(transport);
+
 	return transport->sendMedia(message);
 #else
 	throw std::runtime_error("Track is disabled (not compiled with media support)");
