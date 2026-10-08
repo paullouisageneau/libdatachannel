@@ -95,8 +95,8 @@ static void RTC_API serverClientCallback(int wsserver, int ws, void *ptr) {
 }
 
 int test_capi_websocketserver_main() {
-	const char *url = "wss://localhost:48081/mypath";
-	const uint16_t port = 48081;
+	char url[64];
+	int port;
 	int wsserver = -1;
 	int ws = -1;
 	int attempts;
@@ -105,7 +105,7 @@ int test_capi_websocketserver_main() {
 
 	rtcWsServerConfiguration serverConfig;
 	memset(&serverConfig, 0, sizeof(serverConfig));
-	serverConfig.port = port;
+	serverConfig.port = 0; // ephemeral, so concurrent test runs cannot collide on a fixed port
 	serverConfig.enableTls = true;
 	// serverConfig.certificatePemFile = ...
 	// serverConfig.keyPemFile = ...
@@ -114,10 +114,13 @@ int test_capi_websocketserver_main() {
 	if (wsserver < 0)
 		goto error;
 
-	if (rtcGetWebSocketServerPort(wsserver) != int(port)) {
+	// The client connects to whatever was bound, so a broken accessor fails the test below.
+	port = rtcGetWebSocketServerPort(wsserver);
+	if (port <= 0) {
 		fprintf(stderr, "rtcGetWebSocketServerPort failed\n");
 		goto error;
 	}
+	snprintf(url, sizeof(url), "wss://localhost:%d/mypath", port);
 
 	rtcWsConfiguration config;
 	memset(&config, 0, sizeof(config));
