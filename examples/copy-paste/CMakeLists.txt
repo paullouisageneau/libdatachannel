@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.13...4.4.4)
 
 set(OFFERER_UWP_RESOURCES
 	uwp/offerer/Logo.png
