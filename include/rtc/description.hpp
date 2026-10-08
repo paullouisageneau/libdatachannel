@@ -299,6 +299,30 @@ public:
 		bool isRtxEnabled() const;
 		void disableRtx();
 
+		/// Adds "a=sframe" (draft-ietf-avtcore-rtp-sframe Section 6), declaring that RTP on this
+		/// m-line carries SFrame. Set it on the Description::Media before addTrack(). It only
+		/// declares intent: what actually protects the media is the handler chain, and sending on
+		/// a track whose description carries the attribute throws if no SFrame packetizer is
+		/// installed, rather than emitting media in the clear under a description that says
+		/// otherwise.
+		///
+		/// That check runs once, on the track's first outgoing frame, so adding the attribute to a
+		/// track that has already sent does not arm it: the track would advertise SFrame and keep
+		/// sending in the clear. Set it before the track sends anything.
+		void addSFrame();
+
+		/// Whether this m-line carries "a=sframe". After negotiation this is how an application
+		/// tells whether media is protected: a peer declining SFrame has the m-line stopped, so
+		/// the track closes rather than continuing in the clear.
+		///
+		/// True for "a=sframe" with any parameters attached, since the attribute's presence is
+		/// what declares support; no parameters are defined today.
+		bool hasSFrame() const;
+
+		/// Removes the attribute, which declines SFrame for this m-line. Removes every instance if
+		/// the peer sent more than one.
+		void removeSFrame();
+
 		virtual void parseSdpLine(string_view line) override;
 
 	private:
@@ -363,6 +387,11 @@ public:
 	variant<Media *, Application *> media(int index);
 	variant<const Media *, const Application *> media(int index) const;
 	int mediaCount() const;
+
+	/// True if any m-line carries "a=sframe", so an application can tell from an offer whether
+	/// to register a key provider before handing the description to setRemoteDescription().
+	/// Per-m-line, use Media::hasSFrame().
+	bool hasSFrame() const;
 
 	const Application *application() const;
 	Application *application();
