@@ -40,6 +40,7 @@ struct WebSocket final : public Channel, public std::enable_shared_from_this<Web
 	void remoteClose();
 	bool outgoing(message_ptr message);
 	void incoming(message_ptr message);
+	void setSocket(socket_t incomingSock);
 
 	optional<message_variant> receive() override;
 	optional<message_variant> peek() override;
