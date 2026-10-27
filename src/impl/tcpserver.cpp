@@ -94,7 +94,10 @@ void TcpServer::close() {
 }
 
 void TcpServer::listen(uint16_t port, const char *bindAddress) {
-	PLOG_DEBUG << "Listening on port " << port;
+	// Port 0 asks the OS to pick one, so the bound port is logged after binding instead.
+	if (port != 0) {
+		PLOG_DEBUG << "Listening on port " << port;
+	}
 
 	struct addrinfo hints = {};
 	hints.ai_family = AF_UNSPEC;
@@ -176,6 +179,8 @@ void TcpServer::listen(uint16_t port, const char *bindAddress) {
 			default:
 				throw std::logic_error("Unknown address family");
 			}
+
+			PLOG_DEBUG << "Listening on port " << mPort << " (assigned)";
 		}
 	} catch (...) {
 		freeaddrinfo(result);

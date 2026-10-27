@@ -27,7 +27,7 @@ TestResult test_websocketserver() {
 	InitLogger(LogLevel::Debug);
 
 	WebSocketServer::Configuration serverConfig;
-	serverConfig.port = 48080;
+	serverConfig.port = 0; // ephemeral, so concurrent test runs cannot collide on a fixed port
 	serverConfig.enableTls = true;
 	// serverConfig.certificatePemFile = ...
 	// serverConfig.keyPemFile = ...
@@ -145,7 +145,7 @@ TestResult test_websocketserver() {
 		}
 	});
 
-	ws.open("wss://localhost:48080/", requestHeaders);
+	ws.open("wss://localhost:" + std::to_string(server.port()) + "/", requestHeaders);
 
 	int attempts = 15;
 	while ((!ws.isOpen() || !received) && attempts--)
