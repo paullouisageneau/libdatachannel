@@ -40,6 +40,19 @@ public:
 	virtual bool requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit, const message_callback &send);
 	virtual bool requestBitrate(unsigned int bitrate, const message_callback &send);
 
+	/// Called when the media is closing, before the handler chain is released. It does not depend
+	/// on anything having been sent or received, so a handler may also use it for teardown
+	/// unrelated to sending. As with the other chained calls, an exception from one handler
+	/// prevents the rest of the chain from being called.
+	/// @param send Send callback to send final messages to the peer. It is only valid for the
+	/// duration of the call: the media may be destroyed as soon as it returns, so an
+	/// implementation must not store the callback or defer its invocation.
+	/// @param direction Direction of the media
+	/// @param sentPacket Whether any RTP or RTCP packet was transmitted on the media
+	virtual void close([[maybe_unused]] const message_callback &send,
+	                   [[maybe_unused]] Description::Direction direction,
+	                   [[maybe_unused]] bool sentPacket) {}
+
 	void addToChain(shared_ptr<MediaHandler> handler);
 	void setNext(shared_ptr<MediaHandler> handler);
 	shared_ptr<MediaHandler> next();
@@ -50,6 +63,8 @@ public:
 	void mediaChain(const Description::Media &desc);
 	void incomingChain(message_vector &messages, const message_callback &send);
 	void outgoingChain(message_vector &messages, const message_callback &send);
+	void closeChain(const message_callback &send, Description::Direction direction,
+	                bool sentPacket);
 
 private:
 	shared_ptr<MediaHandler> mNext;

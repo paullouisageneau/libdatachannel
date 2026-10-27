@@ -50,6 +50,7 @@ struct PeerConnection : std::enable_shared_from_this<PeerConnection> {
 	shared_ptr<DtlsTransport> getDtlsTransport() const;
 	shared_ptr<SctpTransport> getSctpTransport() const;
 	void closeTransports();
+	void detachTransports();
 
 	void endLocalCandidates();
 	void rollbackLocalDescription();
