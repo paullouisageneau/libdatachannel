@@ -385,6 +385,77 @@ struct RTC_CPP_EXPORT RtcpApp {
 	void log() const;
 };
 
+// RFC 3611 Extended Report (XR) packet header (PT=207)
+struct RTC_CPP_EXPORT RtcpXr {
+	RtcpHeader header;
+
+	SSRC _senderSSRC;
+
+	[[nodiscard]] static unsigned int HeaderSize();
+
+	[[nodiscard]] SSRC senderSSRC() const;
+	void setSenderSSRC(SSRC ssrc);
+
+	void preparePacket(SSRC senderSSRC, uint16_t length);
+
+	void log() const;
+};
+
+// Generic XR report block header shared by every XR block type (RFC 3611 Section 3)
+struct RTC_CPP_EXPORT RtcpXrBlockHeader {
+	uint8_t _blockType;
+	uint8_t _reserved;
+	uint16_t _blockLength; // in 32-bit words, minus one (excludes this header word)
+
+	[[nodiscard]] uint8_t blockType() const;
+	[[nodiscard]] uint16_t blockLength() const;
+	[[nodiscard]] size_t lengthInBytes() const;
+
+	void setBlockType(uint8_t blockType);
+	void setBlockLength(uint16_t length);
+};
+
+// Receiver Reference Time Report Block (RFC 3611 Section 4.4, BT=4)
+struct RTC_CPP_EXPORT RtcpXrRrtrBlock {
+	RtcpXrBlockHeader header;
+
+	uint64_t _ntpTimestamp;
+
+	[[nodiscard]] static unsigned int Size();
+
+	[[nodiscard]] uint64_t ntpTimestamp() const;
+	void setNtpTimestamp(uint64_t ntp);
+
+	void preparePacket();
+};
+
+// One {SSRC, LRR, DLRR} sub-block of a DLRR Report Block (RFC 3611 Section 4.5)
+struct RTC_CPP_EXPORT RtcpXrDlrrSubBlock {
+	SSRC _ssrc;
+	uint32_t _lrr;
+	uint32_t _dlrr;
+
+	[[nodiscard]] SSRC ssrc() const;
+	[[nodiscard]] uint32_t lrr() const;
+	[[nodiscard]] uint32_t dlrr() const;
+
+	void preparePacket(SSRC ssrc, uint32_t lrr, uint32_t dlrr);
+};
+
+// DLRR Report Block with 1..N sub-blocks (RFC 3611 Section 4.5, BT=5)
+struct RTC_CPP_EXPORT RtcpXrDlrrBlock {
+	RtcpXrBlockHeader header;
+	RtcpXrDlrrSubBlock _subBlocks[1];
+
+	[[nodiscard]] static size_t SizeWithSubBlocks(int count);
+
+	[[nodiscard]] int getSubBlockCount() const;
+	[[nodiscard]] RtcpXrDlrrSubBlock *getSubBlock(int num); // nullptr if out-of-bounds
+	[[nodiscard]] const RtcpXrDlrrSubBlock *getSubBlock(int num) const; // nullptr if out-of-bounds
+
+	void preparePacket(int subBlockCount);
+};
+
 struct RTC_CPP_EXPORT RtpRtx {
 	RtpHeader header;
 
