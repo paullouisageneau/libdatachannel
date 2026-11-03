@@ -60,7 +60,7 @@ void PacingHandler::run(const message_callback &send) {
 	// Send packets while there is budget, allow a single partial packet over budget
 	while (!mRtpBuffer.empty() && mBudget > 0) {
 		auto size = int(mRtpBuffer.front()->size());
-		send(std::move(mRtpBuffer.front()));
+		send(mRtpBuffer.front());
 		mRtpBuffer.pop();
 		mBudget -= size;
 	}
