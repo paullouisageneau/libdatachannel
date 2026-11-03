@@ -68,6 +68,10 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 
 	unsigned int flags =
 	    GNUTLS_DATAGRAM | GNUTLS_NONBLOCK | (mIsClient ? GNUTLS_CLIENT : GNUTLS_SERVER);
+#ifdef GNUTLS_NO_TICKETS
+	// In WebRTC, DTLS sessions are never resumed, so don't use session tickets
+	flags |= GNUTLS_NO_TICKETS;
+#endif
 	gnutls::check(gnutls_init(&mSession, flags));
 
 	try {
@@ -225,7 +229,8 @@ void DtlsTransport::doRecv() {
 			// See https://www.rfc-editor.org/rfc/rfc8261.html#section-5
 			gnutls_dtls_set_mtu(mSession, bufferSize + 1);
 
-			PLOG_INFO << "DTLS handshake finished";
+			PLOG_INFO << "DTLS handshake finished ("
+			          << gnutls_protocol_get_name(gnutls_protocol_get_version(mSession)) << ")";
 			changeState(State::Connected);
 			postHandshake();
 		}
@@ -416,6 +421,11 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 
 		mbedtls_ssl_conf_dtls_cookies(&mConf, NULL, NULL, NULL);
 		mbedtls_ssl_conf_dtls_srtp_protection_profiles(&mConf, srtpSupportedProtectionProfiles);
+#if defined(MBEDTLS_SSL_SESSION_TICKETS) && defined(MBEDTLS_SSL_CLI_C)
+		// In WebRTC, DTLS sessions are never resumed, so don't use session tickets (the server
+		// never issues any)
+		mbedtls_ssl_conf_session_tickets(&mConf, MBEDTLS_SSL_SESSION_TICKETS_DISABLED);
+#endif
 
 		mbedtls::check(mbedtls_ssl_setup(&mSsl, &mConf));
 
@@ -562,7 +572,8 @@ void DtlsTransport::doRecv() {
 						mbedtls_ssl_set_mtu(&mSsl, static_cast<unsigned int>(bufferSize + 1));
 					}
 
-					PLOG_INFO << "DTLS handshake finished";
+					PLOG_INFO << "DTLS handshake finished (" << mbedtls_ssl_get_version(&mSsl)
+					          << ")";
 					changeState(State::Connected);
 					postHandshake();
 					break;
@@ -760,8 +771,11 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		// See https://www.rfc-editor.org/rfc/rfc8261.html#section-5
 		// RFC 8827: Implementations MUST NOT implement DTLS renegotiation
 		// See https://www.rfc-editor.org/rfc/rfc8827.html#section-6.5
+		// In WebRTC, DTLS sessions are never resumed, so don't use session tickets or the session
+		// cache, which would only enlarge the handshake
 		SSL_CTX_set_options(mCtx, SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION | SSL_OP_NO_QUERY_MTU |
-		                              SSL_OP_NO_RENEGOTIATION);
+		                              SSL_OP_NO_RENEGOTIATION | SSL_OP_NO_TICKET);
+		SSL_CTX_set_session_cache_mode(mCtx, SSL_SESS_CACHE_OFF);
 
 		SSL_CTX_set_min_proto_version(mCtx, DTLS1_VERSION);
 		SSL_CTX_set_read_ahead(mCtx, 1);
@@ -776,7 +790,11 @@ DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr cer
 		               "Failed to set SSL priorities");
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000
-		openssl::check(SSL_CTX_set1_groups_list(mCtx, "P-256"), "Failed to set SSL groups");
+		if (!SSL_CTX_set1_groups_list(mCtx, openssl::KEY_EXCHANGE_GROUPS)) {
+			// A provider may lack some groups, X25519 in FIPS mode for instance
+			ERR_clear_error();
+			openssl::check(SSL_CTX_set1_groups_list(mCtx, "P-256"), "Failed to set SSL groups");
+		}
 #else
 		auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
 		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
@@ -981,7 +999,7 @@ void DtlsTransport::doRecv() {
 						SSL_set_mtu(mSsl, bufferSize + 1);
 					}
 
-					PLOG_INFO << "DTLS handshake finished";
+					PLOG_INFO << "DTLS handshake finished (" << SSL_get_version(mSsl) << ")";
 					postHandshake();
 					changeState(State::Connected);
 				}
