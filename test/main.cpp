@@ -32,6 +32,13 @@ TestResult test_simulcast_sdp_parsing();
 TestResult test_turn_connectivity();
 TestResult test_track();
 TestResult test_video_layers_allocation();
+TestResult test_pause_resume_packets();
+TestResult test_pause_resume_handler();
+TestResult test_pause_resume_requester();
+TestResult test_pause_resume_chain();
+TestResult test_pause_resume_sdp();
+TestResult test_pause_resume_offer_yes_answer_yes();
+TestResult test_pause_resume_offer_yes_answer_no();
 TestResult test_fir_sdp();
 TestResult test_fir_offer_yes_answer_yes();
 TestResult test_rtx_attribute();
@@ -97,7 +104,14 @@ static const vector<Test> tests = {
     Test("WebRTC simulcast SDP parsing", test_simulcast_sdp_parsing),
 #if RTC_ENABLE_MEDIA
     Test("WebRTC track", test_track),
-	Test("WebRTC video layers allocation", test_video_layers_allocation),
+    Test("WebRTC video layers allocation", test_video_layers_allocation),
+    Test("RFC 7728 pause/resume packets", test_pause_resume_packets),
+    Test("RFC 7728 pause/resume handler", test_pause_resume_handler),
+    Test("RFC 7728 pause/resume requester", test_pause_resume_requester),
+    Test("RFC 7728 pause/resume chain", test_pause_resume_chain),
+    Test("RFC 7728 pause/resume basic parse", test_pause_resume_sdp),
+    Test("RFC 7728 pause/resume offer yes / answer yes", test_pause_resume_offer_yes_answer_yes),
+    Test("RFC 7728 pause/resume offer yes / answer no", test_pause_resume_offer_yes_answer_no),
     Test("RTX Description::addRtx", test_rtx_description_addrtx),
     Test("RTX Description::addRtx audio=false", test_rtx_description_addrtx_no_audio),
     Test("RTX negotiation fallback", test_rtx_attribute),

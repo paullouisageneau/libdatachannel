@@ -56,6 +56,30 @@ bool MediaHandler::requestBitrate(unsigned int bitrate, const message_callback &
 		return false;
 }
 
+bool MediaHandler::pauseStream(uint32_t ssrc, const message_callback &send) {
+	if (auto handler = next())
+		return handler->pauseStream(ssrc, send);
+	else
+		return false;
+}
+
+bool MediaHandler::resumeStream(uint32_t ssrc, const message_callback &send) {
+	if (auto handler = next())
+		return handler->resumeStream(ssrc, send);
+	else
+		return false;
+}
+
+void MediaHandler::onStreamPaused(std::function<void(uint32_t, uint16_t, uint32_t)> callback) {
+	if (auto handler = next())
+		handler->onStreamPaused(std::move(callback));
+}
+
+void MediaHandler::onStreamRefused(std::function<void(uint32_t, uint16_t)> callback) {
+	if (auto handler = next())
+		handler->onStreamRefused(std::move(callback));
+}
+
 void MediaHandler::mediaChain(const Description::Media &desc) {
 	media(desc);
 

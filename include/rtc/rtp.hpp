@@ -361,6 +361,107 @@ struct RTC_CPP_EXPORT RtcpNack {
 	bool addMissingPacket(unsigned int *fciCount, uint16_t *fciPID, uint16_t missingPacket);
 };
 
+// RFC 7728 PAUSE-RESUME message types (4 bits)
+enum class RTC_CPP_EXPORT RtcpPauseResumeType : uint8_t {
+	Pause = 0,
+	Resume = 1,
+	Paused = 2,
+	Refused = 3,
+};
+
+// RFC 7728 FCI entry for PAUSE-RESUME feedback (Section 4)
+// Each entry is 8 bytes minimum, optionally followed by Type Specific data.
+//
+//  0                   1                   2                   3
+//  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// |                         Target SSRC                           |
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// | Type  |  Res  | Parameter Len |           PauseID             |
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+// :                       Type Specific                           :
+// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+struct RTC_CPP_EXPORT RtcpPauseResumeFci {
+	SSRC _targetSsrc;
+	uint8_t _typeAndRes;     // Type (4 bits) | Reserved (4 bits)
+	uint8_t _parameterLen;   // Length of Type Specific in 32-bit words
+	uint16_t _pauseId;
+	// Type Specific data follows (variable length, _parameterLen * 4 bytes)
+
+	static constexpr size_t BaseSize = 8; // Fixed part without Type Specific
+
+	[[nodiscard]] SSRC targetSsrc() const;
+	[[nodiscard]] RtcpPauseResumeType type() const;
+	[[nodiscard]] uint8_t parameterLen() const;
+	[[nodiscard]] uint16_t pauseId() const;
+
+	// Size of this FCI entry in bytes (including Type Specific)
+	[[nodiscard]] size_t getSize() const;
+
+	// Access Type Specific data (only valid when parameterLen() > 0)
+	[[nodiscard]] const uint8_t *typeSpecific() const;
+	[[nodiscard]] uint8_t *typeSpecific();
+
+	// For PAUSED messages: get the extended highest RTP sequence number
+	// Only valid when type() == Paused and parameterLen() >= 1
+	[[nodiscard]] uint32_t extendedHighestSeqNo() const;
+
+	void setTargetSsrc(SSRC ssrc);
+	void setType(RtcpPauseResumeType type);
+	void setParameterLen(uint8_t len);
+	void setPauseId(uint16_t pauseId);
+
+	// For PAUSED messages: set the extended highest RTP sequence number
+	// Caller must ensure parameterLen is set to 1 first
+	void setExtendedHighestSeqNo(uint32_t seqNo);
+};
+
+// RFC 7728 PAUSE-RESUME RTCP feedback packet (PT=205 RTPFB, FMT=9)
+// Contains one or more RtcpPauseResumeFci entries.
+struct RTC_CPP_EXPORT RtcpPauseResume {
+	RtcpFbHeader header;
+	RtcpPauseResumeFci _fci[1]; // First FCI entry; additional entries follow in memory
+
+	static constexpr uint8_t PayloadType = 205; // RTPFB
+	static constexpr uint8_t FormatType = 9;    // PAUSE-RESUME
+
+	// Size of a packet with the given number of FCI entries (all PAUSE/RESUME/REFUSED = 8 bytes each)
+	[[nodiscard]] static size_t SizeWithFciCount(unsigned int count);
+
+	// Size of a packet with a single PAUSED FCI (which includes Type Specific data)
+	[[nodiscard]] static size_t SizeWithPausedFci();
+
+	[[nodiscard]] unsigned int getSize() const;
+
+	// Access FCI entries by index
+	// Caller must ensure index < number of entries (derived from packet length)
+	[[nodiscard]] const RtcpPauseResumeFci *getFci(int index) const;
+	[[nodiscard]] RtcpPauseResumeFci *getFci(int index);
+
+	// Prepare a PAUSE-RESUME packet with the given number of basic FCI entries
+	// (PAUSE, RESUME, or REFUSED — each 8 bytes, no Type Specific data)
+	void preparePacket(SSRC senderSSRC, unsigned int fciCount);
+
+	// Prepare a PAUSE-RESUME packet for a single PAUSED FCI entry
+	// (8-byte base + 4-byte extended highest sequence number)
+	void preparePausedPacket(SSRC senderSSRC);
+
+	// Construction helpers: build a complete RTCP PAUSE-RESUME packet and return as binary.
+	// Each returns a self-contained packet ready to send on the wire.
+	[[nodiscard]] static binary BuildPause(SSRC senderSSRC, SSRC targetSSRC, uint16_t pauseId);
+	[[nodiscard]] static binary BuildResume(SSRC senderSSRC, SSRC targetSSRC, uint16_t pauseId);
+	[[nodiscard]] static binary BuildPaused(SSRC senderSSRC, SSRC targetSSRC, uint16_t pauseId,
+	                                        uint32_t extendedHighestSeqNo);
+	[[nodiscard]] static binary BuildRefused(SSRC senderSSRC, SSRC targetSSRC, uint16_t pauseId);
+
+	// Parsing helper: validate raw RTCP bytes and return a pointer to the packet struct.
+	// Returns nullptr if the data is too small, or has wrong payload type (!=205) or FMT (!=9).
+	// The returned pointer aliases the input buffer — caller must keep data alive.
+	[[nodiscard]] static const RtcpPauseResume *Parse(const byte *data, size_t size);
+  
+	void log() const;
+};
+
 typedef std::array<char, 4> RtcpAppName;
 
 struct RTC_CPP_EXPORT RtcpApp {
