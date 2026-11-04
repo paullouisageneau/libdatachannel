@@ -40,6 +40,9 @@ public:
 	virtual bool requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit, const message_callback &send);
 	virtual bool requestBitrate(unsigned int bitrate, const message_callback &send);
 
+	/// Whether this handler, or anything after it in the chain, applies SFrame.
+	virtual bool appliesSFrame() const;
+
 	void addToChain(shared_ptr<MediaHandler> handler);
 	void setNext(shared_ptr<MediaHandler> handler);
 	shared_ptr<MediaHandler> next();

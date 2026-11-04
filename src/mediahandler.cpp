@@ -48,6 +48,14 @@ bool MediaHandler::requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool re
 		return false;
 }
 
+bool MediaHandler::appliesSFrame() const {
+	// Default implementation is to call next handler
+	if (auto handler = next())
+		return handler->appliesSFrame();
+	else
+		return false;
+}
+
 bool MediaHandler::requestBitrate(unsigned int bitrate, const message_callback &send) {
 	// Default implementation is to call next handler
 	if (auto handler = next())
