@@ -76,7 +76,7 @@ void WebSocket::open(const string &url, const rtc::WebSocket::Headers &headers) 
 
 	// Modified regex from RFC 3986, see https://www.rfc-editor.org/rfc/rfc3986.html#appendix-B
 	static const char *rs =
-	    R"(^(([^:.@/?#]+):)?(/{0,2}((([^:@]*)(:([^@]*))?)@)?(([^:/?#]*)(:([^/?#]*))?))?([^?#]*)(\?([^#]*))?(#(.*))?)";
+	    R"(^(([^:.@/?#]+):)?(/{0,2}((([^:@]*)(:([^@]*))?)@)?((\[[^\]]*\]|[^:/?#]*)(:([^/?#]*))?))?([^?#]*)(\?([^#]*))?(#(.*))?)";
 
 	static const std::regex r(rs);
 
@@ -110,12 +110,11 @@ void WebSocket::open(const string &url, const rtc::WebSocket::Headers &headers) 
 	}
 
 	if (hostname.front() == '[' && hostname.back() == ']') {
-		// IPv6 literal
+		// IPv6 literal, possibly with a zone (RFC 6874: %25 followed by the zone)
 		hostname.erase(hostname.begin());
 		hostname.pop_back();
-	} else {
-		hostname = utils::url_decode(hostname);
 	}
+	hostname = utils::url_decode(hostname);
 
 	string path = m[13];
 	if (path.empty())
@@ -375,7 +374,14 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 				});
 		};
 
-		bool verify = mHostname.has_value() && !config.disableTlsVerification;
+		// The zone of an IPv6 literal only matters to getaddrinfo(), not to TLS. Only an IPv6
+		// literal can contain ':', as the URL regex excludes it from names.
+		optional<string> tlsHost = mHostname;
+		if (tlsHost && tlsHost->find(':') != string::npos)
+			if (auto pos = tlsHost->find('%'); pos != string::npos)
+				tlsHost->resize(pos);
+
+		bool verify = tlsHost.has_value() && !config.disableTlsVerification;
 
 #ifdef _WIN32
 		if (std::exchange(verify, false)) {
@@ -385,12 +391,12 @@ shared_ptr<TlsTransport> WebSocket::initTlsTransport() {
 
 		shared_ptr<TlsTransport> transport;
 		if (verify)
-			transport = std::make_shared<VerifiedTlsTransport>(lower, mHostname.value(),
-			                                                   mCertificate, stateChangeCallback,
+			transport = std::make_shared<VerifiedTlsTransport>(lower, tlsHost.value(), mCertificate,
+			                                                   stateChangeCallback,
 			                                                   config.caCertificatePemFile);
 		else
 			transport =
-			    std::make_shared<TlsTransport>(lower, mHostname, mCertificate, stateChangeCallback);
+			    std::make_shared<TlsTransport>(lower, tlsHost, mCertificate, stateChangeCallback);
 
 		return emplaceTransport(this, &mTlsTransport, std::move(transport));
 
