@@ -536,6 +536,14 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 		if (server.port == 0)
 			server.port = 3478; // STUN UDP port
 
+#if RTC_NICE_RESOLVES_HOSTNAMES
+		// Pass the hostname as is: libnice resolves it when gathering starts, without blocking.
+		// libnice holds a single STUN server, so the first entry is used without a fallback.
+		PLOG_INFO << "Using STUN server \"" << server.hostname << ":" << server.port << "\"";
+		g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server", server.hostname.c_str(), nullptr);
+		g_object_set(G_OBJECT(mNiceAgent.get()), "stun-server-port", guint(server.port), nullptr);
+		success = true;
+#else
 		struct addrinfo hints = {};
 		hints.ai_family = AF_INET; // IPv4
 		hints.ai_socktype = SOCK_DGRAM;
@@ -568,9 +576,20 @@ IceTransport::IceTransport(const Configuration &config, candidate_callback candi
 		}
 
 		freeaddrinfo(result);
+#endif
 		if (success)
 			break;
 	}
+
+#if RTC_NICE_RESOLVES_HOSTNAMES
+	const auto stunCount = std::count_if(servers.begin(), servers.end(), [](const IceServer &s) {
+		return !s.hostname.empty() && s.type == IceServer::Type::Stun;
+	});
+	if (stunCount > 1) {
+		PLOG_WARNING << "Ignoring " << (stunCount - 1)
+		             << " additional STUN server(s): libnice uses a single STUN server";
+	}
+#endif
 
 	// Add TURN servers
 	for (const auto &server : servers)
@@ -609,6 +628,29 @@ void IceTransport::addIceServer(IceServer server) {
 	if (server.port == 0)
 		server.port = server.relayType == IceServer::RelayType::TurnTls ? 5349 : 3478;
 
+	NiceRelayType niceRelayType;
+	switch (server.relayType) {
+	case IceServer::RelayType::TurnTcp:
+		niceRelayType = NICE_RELAY_TYPE_TURN_TCP;
+		break;
+	case IceServer::RelayType::TurnTls:
+		niceRelayType = NICE_RELAY_TYPE_TURN_TLS;
+		break;
+	default:
+		niceRelayType = NICE_RELAY_TYPE_TURN_UDP;
+		break;
+	}
+
+#if RTC_NICE_RESOLVES_HOSTNAMES
+	// Pass the hostname as is: libnice resolves it without blocking and adds one relay per
+	// resolved address. Gathering completes only when the resolution has finished or failed.
+	PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port << "\"";
+	if (!nice_agent_set_relay_info(mNiceAgent.get(), mStreamId, 1, server.hostname.c_str(),
+	                               guint(server.port), server.username.c_str(),
+	                               server.password.c_str(), niceRelayType)) {
+		PLOG_WARNING << "Unable to add TURN server: " << server.hostname << ':' << server.port;
+	}
+#else
 	struct addrinfo hints = {};
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype =
@@ -632,18 +674,6 @@ void IceTransport::addIceServer(IceServer server) {
 			                MAX_NUMERICSERV_LEN, NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 				PLOG_INFO << "Using TURN server \"" << server.hostname << ":" << server.port
 				          << "\"";
-				NiceRelayType niceRelayType;
-				switch (server.relayType) {
-				case IceServer::RelayType::TurnTcp:
-					niceRelayType = NICE_RELAY_TYPE_TURN_TCP;
-					break;
-				case IceServer::RelayType::TurnTls:
-					niceRelayType = NICE_RELAY_TYPE_TURN_TLS;
-					break;
-				default:
-					niceRelayType = NICE_RELAY_TYPE_TURN_UDP;
-					break;
-				}
 				nice_agent_set_relay_info(mNiceAgent.get(), mStreamId, 1, nodebuffer,
 				                          std::stoul(servbuffer), server.username.c_str(),
 				                          server.password.c_str(), niceRelayType);
@@ -652,6 +682,7 @@ void IceTransport::addIceServer(IceServer server) {
 	}
 
 	freeaddrinfo(result);
+#endif
 }
 
 IceTransport::~IceTransport() {

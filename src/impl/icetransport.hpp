@@ -20,6 +20,20 @@
 #include <juice/juice.h>
 #else
 #include <nice/agent.h>
+#if __has_include(<nice/nice-version.h>)
+#include <nice/nice-version.h>
+#endif
+// libnice resolves STUN and TURN hostnames itself since 0.1.20, asynchronously on GIO
+// resolver threads. Older versions only accept IP literals.
+#if defined(NICE_VERSION_MAJOR) && defined(NICE_VERSION_MINOR) && defined(NICE_VERSION_MICRO)
+#if NICE_VERSION_MAJOR > 0 || NICE_VERSION_MINOR > 1 ||                                            \
+    (NICE_VERSION_MINOR == 1 && NICE_VERSION_MICRO >= 20)
+#define RTC_NICE_RESOLVES_HOSTNAMES 1
+#endif
+#endif
+#ifndef RTC_NICE_RESOLVES_HOSTNAMES
+#define RTC_NICE_RESOLVES_HOSTNAMES 0
+#endif
 #endif
 
 #include <atomic>
