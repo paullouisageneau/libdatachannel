@@ -203,7 +203,7 @@ void RtcpReportBlock::setPacketsLost(uint8_t fractionLost,
 uint8_t RtcpReportBlock::getFractionLost() const {
 	// Fraction lost is expressed as 8-bit fixed point number
 	// In order to get actual lost percentage divide the result by 256
-	return (uint8_t) ((ntohl(_fractionLostAndPacketsLost) & 0xFF00000) >> 24);
+	return (uint8_t) ((ntohl(_fractionLostAndPacketsLost) & 0xFF000000) >> 24);
 }
 
 uint32_t RtcpReportBlock::getPacketsLostCount() const {
