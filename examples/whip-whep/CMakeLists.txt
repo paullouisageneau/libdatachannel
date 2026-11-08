@@ -1,24 +1,14 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.13)
 
-set(WHIP_UWP_RESOURCES
-	uwp/offerer/Logo.png
-	uwp/offerer/package.appxManifest
-	uwp/offerer/SmallLogo.png
-	uwp/offerer/SmallLogo44x44.png
-	uwp/offerer/SplashScreen.png
-	uwp/offerer/StoreLogo.png
-	uwp/offerer/Windows_TemporaryKey.pfx
+set(WHIP_WHEP_UWP_RESOURCES
+	uwp/Logo.png
+	uwp/package.appxManifest
+	uwp/SmallLogo.png
+	uwp/SmallLogo44x44.png
+	uwp/SplashScreen.png
+	uwp/StoreLogo.png
+	uwp/Windows_TemporaryKey.pfx
 )
-
-set(WHEP_UWP_RESOURCES
-	uwp/answerer/Logo.png
-	uwp/answerer/package.appxManifest
-	uwp/answerer/SmallLogo.png
-	uwp/answerer/SmallLogo44x44.png
-	uwp/answerer/SplashScreen.png
-	uwp/answerer/StoreLogo.png
-	uwp/answerer/Windows_TemporaryKey.pfx
-  )
 
 # fetch repo for http server in c++
 include(FetchContent)
@@ -30,55 +20,35 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(cpp_http_server_lib)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
-	add_executable(atachannel-whip whip.cpp ${OFFERER_UWP_RESOURCES})
+	add_executable(datachannel-whip-whep main.cpp ${WHIP_WHEP_UWP_RESOURCES})
 else()
-	add_executable(datachannel-whip whip.cpp)
+	add_executable(datachannel-whip-whep main.cpp)
 endif()
 
-set_target_properties(datachannel-whip PROPERTIES
+set_target_properties(datachannel-whip-whep PROPERTIES
     CXX_STANDARD 17
-    OUTPUT_NAME whip)
+    OUTPUT_NAME whip-whep)
 
-set_target_properties(datachannel-whip PROPERTIES
-	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.whip)
-
-
-
-if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
-	add_executable(datachannel-whep whep.cpp ${OFFERER_UWP_RESOURCES})
-else()
-	add_executable(datachannel-whep whep.cpp)
-endif()
-
-set_target_properties(datachannel-whep PROPERTIES
-    CXX_STANDARD 17
-    OUTPUT_NAME whep)
-
-set_target_properties(datachannel-whep PROPERTIES
-	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.whep)
-
-
+set_target_properties(datachannel-whip-whep PROPERTIES
+	XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.github.paullouisageneau.libdatachannel.examples.whip-whep)
 
 find_package(Threads REQUIRED)
 
-# set include dirs
-target_include_directories(datachannel-whip PRIVATE ${cpp_http_server_lib_SOURCE_DIR})
-target_include_directories(datachannel-whep PRIVATE ${cpp_http_server_lib_SOURCE_DIR})
+target_include_directories(datachannel-whip-whep PRIVATE ${cpp_http_server_lib_SOURCE_DIR})
+target_link_libraries(datachannel-whip-whep LibDataChannel::LibDataChannel Threads::Threads)
 
-# link libs
-target_link_libraries(datachannel-whip LibDataChannel::LibDataChannel Threads::Threads nlohmann_json::nlohmann_json)
-target_link_libraries(datachannel-whep LibDataChannel::LibDataChannel Threads::Threads nlohmann_json::nlohmann_json)
-
+# The server serves the page from the directory holding the executable, so put a
+# copy of index.html there.
+add_custom_command(TARGET datachannel-whip-whep POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different
+	"${CMAKE_CURRENT_SOURCE_DIR}/index.html"
+	$<TARGET_FILE_DIR:datachannel-whip-whep>
+)
 
 if(MSVC)
-	add_custom_command(TARGET datachannel-whip POST_BUILD
+	add_custom_command(TARGET datachannel-whip-whep POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different
 		"$<TARGET_FILE_DIR:datachannel>/datachannel.dll"
-		$<TARGET_FILE_DIR:datachannel-whip>
-	)
-	add_custom_command(TARGET datachannel-whep POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different
-		"$<TARGET_FILE_DIR:datachannel>/datachannel.dll"
-		$<TARGET_FILE_DIR:datachannel-whep>
+		$<TARGET_FILE_DIR:datachannel-whip-whep>
 	)
 endif()
