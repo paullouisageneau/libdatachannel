@@ -20,6 +20,7 @@
 #endif
 
 #include <atomic>
+#include <mutex>
 #include <shared_mutex>
 
 namespace rtc::impl {
@@ -50,7 +51,11 @@ public:
 	string mid() const;
 	Description::Direction direction() const;
 	Description::Media description() const;
+	optional<Description::Media> remoteDescription() const;
 	void setDescription(Description::Media desc);
+	bool setRemoteDescription(Description::Media desc);
+	void setRemoteDescriptionCallback(std::function<void(Description::Media)> callback);
+	void triggerRemoteDescription(Description::Media desc);
 
 	shared_ptr<MediaHandler> getMediaHandler();
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
@@ -70,9 +75,12 @@ private:
 #endif
 
 	Description::Media mMediaDescription;
+	optional<Description::Media> mRemoteDescription;
 	shared_ptr<MediaHandler> mMediaHandler;
 
 	mutable std::shared_mutex mMutex;
+	std::recursive_mutex mRemoteDescriptionCallbackMutex;
+	synchronized_callback<Description::Media> remoteDescriptionCallback;
 
 	std::atomic<bool> mIsClosed = false;
 
