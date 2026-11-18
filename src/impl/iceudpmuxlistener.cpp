@@ -28,7 +28,8 @@ void IceUdpMuxListener::UnhandledStunRequestCallback(const juice_mux_binding_req
 }
 #endif
 
-IceUdpMuxListener::IceUdpMuxListener(uint16_t port, [[maybe_unused]] optional<string> bindAddress) : port(port) {
+IceUdpMuxListener::IceUdpMuxListener(uint16_t port, [[maybe_unused]] optional<string> bindAddress)
+    : port(port), mStopped(false) {
 	PLOG_VERBOSE << "Creating IceUdpMuxListener";
 
 #if !USE_NICE
