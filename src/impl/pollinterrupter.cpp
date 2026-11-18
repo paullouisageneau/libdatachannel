@@ -22,7 +22,10 @@ PollInterrupter::PollInterrupter() {
 #ifdef _WIN32
 	struct addrinfo *ai = NULL;
 	struct addrinfo hints = {};
-	hints.ai_family = AF_UNSPEC;
+	// Specifically use IPv4, as some systems might not support IPv6 loopback
+	// sockets or they might not work due to use of specific software, like
+	// system-wide tunneling software that is only configured to work with IPv4.
+	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
 	hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
