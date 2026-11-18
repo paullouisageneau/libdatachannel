@@ -118,12 +118,14 @@ DtlsTransport::~DtlsTransport() {
 
 void DtlsTransport::start() {
 	PLOG_DEBUG << "Starting DTLS transport";
-	registerIncoming();
-	changeState(State::Connecting);
 
+	// Set the MTU
 	size_t mtu = mMtu.value_or(DEFAULT_MTU) - 8 - 40; // UDP/IPv6
 	gnutls_dtls_set_mtu(mSession, static_cast<unsigned int>(mtu));
 	PLOG_VERBOSE << "DTLS MTU set to " << mtu;
+
+	registerIncoming();
+	changeState(State::Connecting);
 
 	enqueueRecv(); // to initiate the handshake
 }
@@ -459,15 +461,17 @@ void DtlsTransport::Cleanup() {
 
 void DtlsTransport::start() {
 	PLOG_DEBUG << "Starting DTLS transport";
-	registerIncoming();
-	changeState(State::Connecting);
 
+	// Set the MTU
 	{
 		std::lock_guard lock(mSslMutex);
 		size_t mtu = mMtu.value_or(DEFAULT_MTU) - 8 - 40; // UDP/IPv6
 		mbedtls_ssl_set_mtu(&mSsl, static_cast<unsigned int>(mtu));
 		PLOG_VERBOSE << "DTLS MTU set to " << mtu;
 	}
+
+	registerIncoming();
+	changeState(State::Connecting);
 
 	enqueueRecv(); // to initiate the handshake
 }
@@ -856,22 +860,25 @@ DtlsTransport::~DtlsTransport() {
 
 void DtlsTransport::start() {
 	PLOG_DEBUG << "Starting DTLS transport";
-	registerIncoming();
-	changeState(State::Connecting);
 
-	int ret, err;
+	// Set the MTU
 	{
 		std::lock_guard lock(mSslMutex);
-
 		size_t mtu = mMtu.value_or(DEFAULT_MTU) - 8 - 40; // UDP/IPv6
 		SSL_set_mtu(mSsl, static_cast<unsigned int>(mtu));
 		PLOG_VERBOSE << "DTLS MTU set to " << mtu;
+	}
 
-		// Initiate the handshake
+	registerIncoming();
+	changeState(State::Connecting);
+
+	// Initiate the handshake
+	int ret, err;
+	{
+		std::lock_guard lock(mSslMutex);
 		ret = SSL_do_handshake(mSsl);
 		err = SSL_get_error(mSsl, ret);
 	}
-
 	openssl::check_error(err, "Handshake failed");
 
 	// start() can run on the libjuice poll thread via the ICE state-change
