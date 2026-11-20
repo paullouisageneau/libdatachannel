@@ -233,6 +233,36 @@ void RtcpReceivingSession::incoming(message_vector &messages, const message_call
 	messages.swap(result);
 }
 
+void RtcpReceivingSession::close(const message_callback &send,
+                                 Description::Direction direction, bool sentPacket) {
+	// RFC 3550 section 6.3.7: a participant which never sent an RTP or RTCP packet must not send
+	// a BYE when it leaves
+	if (!sentPacket)
+		return;
+
+	// The SSRC here is the one this handler stamps on its RTCP, learned from the remote. Only that
+	// one is sent: unlike the sending side, this handler has no RTX SSRC of its own
+	// to report. On a media with a send direction the handler owning the local sending SSRC
+	// sends the BYE instead, and RFC 8866 section 6.7 makes an absent direction sendrecv.
+	if (direction != Description::Direction::RecvOnly)
+		return;
+
+	if (mSsrc == 0)
+		return;
+
+	// RFC 3550 section 6.1: a compound RTCP packet must begin with a report packet, "even if the
+	// only other RTCP packet in the compound packet is a BYE". The BYE is therefore appended to a
+	// real receiver report rather than sent on its own.
+	auto byeSize = RtcpBye::SizeWithSSRCs(1);
+	auto message = getReceiverReport(0, byeSize);
+
+	auto *bye = reinterpret_cast<RtcpBye *>(message->data() + message->size() - byeSize);
+	bye->preparePacket(1);
+	bye->setSSRC(0, mSsrc);
+	bye->log();
+	send(std::move(message));
+}
+
 bool RtcpReceivingSession::requestBitrate(unsigned int bitrate, const message_callback &send) {
 	PLOG_DEBUG << "Requesting bitrate: " << bitrate << std::endl;
 	mRequestedBitrate.store(bitrate);
@@ -245,11 +275,15 @@ void RtcpReceivingSession::pushREMB(const message_callback &send, unsigned int b
 	auto remb = reinterpret_cast<RtcpRemb *>(message->data());
 	remb->preparePacket(mSsrc, 1, bitrate);
 	remb->setSSRC(0, mSsrc);
-	send(message);
+	send(std::move(message));
 }
 
 void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int lastSrDelay) {
-	auto message = make_message(RtcpRr::SizeWithReportBlocks(1), Message::Control);
+	send(getReceiverReport(lastSrDelay));
+}
+
+message_ptr RtcpReceivingSession::getReceiverReport(unsigned int lastSrDelay, size_t extraSize) {
+	auto message = make_message(RtcpRr::SizeWithReportBlocks(1) + extraSize, Message::Control);
 	auto rr = reinterpret_cast<RtcpRr *>(message->data());
 	rr->preparePacket(mSsrc, 1);
 
@@ -281,7 +315,7 @@ void RtcpReceivingSession::pushRR(const message_callback &send, unsigned int las
 	reportBlock->preparePacket(mSsrc, fraction, lost, uint16_t(mGreatestSeqNo), mMaxSeq, 0, syncTimestamps.ntpTimestamp,
 	                           lastSrDelay);
 	rr->log();
-	send(message);
+	return message;
 }
 
 bool RtcpReceivingSession::requestKeyframe(const std::vector<SSRC>& targetSSRCs, bool retransmit, const message_callback &send) {
@@ -319,14 +353,14 @@ void RtcpReceivingSession::pushFIR(const message_callback &send, const std::vect
 	auto *fir = reinterpret_cast<RtcpFir *>(message->data());
 
 	fir->preparePacket(mSsrc, firFcisToSend);
-	send(message);
+	send(std::move(message));
 }
 
 void RtcpReceivingSession::pushPLI(const message_callback &send) {
 	auto message = make_message(RtcpPli::Size(), Message::Control);
 	auto *pli = reinterpret_cast<RtcpPli *>(message->data());
 	pli->preparePacket(mSsrc);
-	send(message);
+	send(std::move(message));
 }
 
 void RtcpReceivingSession::initSeq(uint16_t seq) {

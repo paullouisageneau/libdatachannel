@@ -749,6 +749,52 @@ bool RtcpNack::addMissingPacket(unsigned int *fciCount, uint16_t *fciPID, uint16
 	}
 }
 
+size_t RtcpBye::SizeWithSSRCs(uint8_t ssrcCount) {
+	return sizeof(RtcpHeader) + size_t(ssrcCount) * sizeof(SSRC);
+}
+
+uint8_t RtcpBye::getSSRCCount() const {
+	// Defense against malformed inbound packets: clamp the SC field to the maximum number of
+	// SSRCs that actually fit in the length-validated region of the packet.
+	return uint8_t(std::min<uint16_t>(header.reportCount(), header.length()));
+}
+
+SSRC RtcpBye::getSSRC(uint8_t i) const {
+	if (i >= getSSRCCount())
+		return 0;
+	return ntohl(_ssrcs[i]);
+}
+
+size_t RtcpBye::getSize() const { return header.lengthInBytes(); }
+
+void RtcpBye::preparePacket(uint8_t ssrcCount) {
+	// RFC 3550 section 6.6: the source count is a 5-bit field, and a BYE with no source is
+	// "valid, but useless". Reject both rather than emitting a useless BYE or silently truncating
+	// the count into a malformed one.
+	if (ssrcCount == 0 || ssrcCount > 31)
+		throw std::invalid_argument("RTCP BYE source count must be between 1 and 31");
+
+	uint16_t length = uint16_t(SizeWithSSRCs(ssrcCount) / 4 - 1);
+	header.prepareHeader(203, ssrcCount, length);
+}
+
+void RtcpBye::setSSRC(uint8_t i, SSRC ssrc) {
+	if (i >= getSSRCCount())
+		throw std::out_of_range("SSRC index out of range");
+	_ssrcs[i] = htonl(ssrc);
+}
+
+void RtcpBye::log() const {
+	header.log();
+	std::string ssrcs;
+	for (uint8_t i = 0; i < getSSRCCount(); ++i) {
+		if (i > 0)
+			ssrcs += ",";
+		ssrcs += std::to_string(getSSRC(i));
+	}
+	PLOG_VERBOSE << "RTCP BYE: ssrcs=[" << ssrcs << "]";
+}
+
 size_t RtcpApp::SizeWithData(size_t dataLength) {
 	return sizeof(RtcpHeader) + sizeof(SSRC) + 4 + dataLength;
 }
