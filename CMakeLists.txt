@@ -229,6 +229,7 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/dtls.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/keyexchangegroups.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp_generation.cpp
@@ -594,6 +595,12 @@ if(NOT NO_TESTS)
 
 	target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_link_libraries(datachannel-tests datachannel Threads::Threads)
+	if(NOT USE_GNUTLS AND NOT USE_MBEDTLS)
+		# The key exchange groups test drives OpenSSL directly, with the groups from impl/tls.hpp
+		target_compile_definitions(datachannel-tests PRIVATE TEST_OPENSSL=1)
+		target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/rtc)
+		target_link_libraries(datachannel-tests OpenSSL::SSL)
+	endif()
 
 	# Benchmark
 	if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
