@@ -60,6 +60,17 @@ VerifiedTlsTransport::VerifiedTlsTransport(
 			}
 		}
 	}
+#ifdef _WIN32
+	if (!cacert) {
+		// SSL_CTX_set_default_verify_paths() finds no root CA certificates on Windows
+#if OPENSSL_VERSION_NUMBER >= 0x30200000 && !defined(OPENSSL_NO_WINSTORE)
+		openssl::check(SSL_CTX_load_verify_store(mCtx, "org.openssl.winstore:"),
+		               "Failed to load the Windows system certificate store");
+#else
+		PLOG_WARNING << "No root CA certificates available on Windows, set caCertificatePemFile";
+#endif
+	}
+#endif
 	SSL_set_verify(mSsl, SSL_VERIFY_PEER, NULL);
 	SSL_set_verify_depth(mSsl, 4);
 #endif
