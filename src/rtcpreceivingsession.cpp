@@ -80,6 +80,11 @@ void RtcpReceivingSession::incoming(message_vector &messages, const message_call
 				continue;
 			}
 			auto header = reinterpret_cast<const RtcpHeader *>(message->data());
+			if (header->lengthInBytes() > message->size()) {
+				COUNTER_BAD_RTCP_HEADER++;
+				PLOG_VERBOSE << "RTCP length exceeds packet size, size=" << message->size();
+				continue;
+			}
 			if (header->payloadType() == 201) { // RR
 				if (message->size() < RtcpRr::SizeWithReportBlocks(0)) {
 					COUNTER_BAD_RTCP_HEADER++;
