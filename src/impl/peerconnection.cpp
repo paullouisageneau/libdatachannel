@@ -605,7 +605,7 @@ void PeerConnection::dispatchMedia([[maybe_unused]] message_ptr message) {
 					auto sdes = reinterpret_cast<RtcpSdes *>(header);
 					if (!sdes->isValid()) {
 						PLOG_WARNING << "RTCP SDES packet is invalid";
-						continue;
+						break;
 					}
 					for (unsigned int i = 0; i < sdes->chunksCount(); i++) {
 						auto chunk = sdes->getChunk(i);

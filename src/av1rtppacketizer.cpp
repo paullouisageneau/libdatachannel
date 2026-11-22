@@ -13,6 +13,7 @@
 #include "impl/internals.hpp"
 
 #include <algorithm>
+#include <cassert>
 
 namespace rtc {
 
@@ -163,8 +164,11 @@ std::vector<binary> AV1RtpPacketizer::fragmentObu(const binary &data) {
 	// Cache sequence header and packetize with next OBU
 	auto frameType = (data.at(0) & obuFrameTypeMask) >> obuFrameTypeBitshift;
 	if (frameType == obuFrameTypeSequenceHeader) {
-		mSequenceHeader = std::make_unique<binary>(data.begin(), data.end());
-		return {};
+		if (data.size() + payloadHeaderSize + oneByteLeb128Size < mMaxFragmentSize) {
+			mSequenceHeader = std::make_unique<binary>(data.begin(), data.end());
+			return {};
+		}
+		mSequenceHeader = nullptr; // too large, fall through
 	}
 
 	size_t index = 0;
@@ -189,6 +193,7 @@ std::vector<binary> AV1RtpPacketizer::fragmentObu(const binary &data) {
 			payload.at(1) = byte(mSequenceHeader->size() & sevenLsbBitmask);
 			payloadOffset += oneByteLeb128Size;
 
+			assert(payloadOffset + mSequenceHeader->size() <= payload.size());
 			std::memcpy(payload.data() + payloadOffset, mSequenceHeader->data(),
 			            mSequenceHeader->size());
 			payloadOffset += int(mSequenceHeader->size());
