@@ -27,6 +27,7 @@ TestResult test_dtls_startup_after_remote_description();
 TestResult test_pem();
 TestResult test_negotiated();
 TestResult test_reliability();
+TestResult test_sctp_interleaving();
 TestResult test_simulcast_sdp_generation();
 TestResult test_simulcast_sdp_parsing();
 TestResult test_turn_connectivity();
@@ -93,6 +94,7 @@ static const vector<Test> tests = {
     // Test("WebRTC TURN connectivity", test_turn_connectivity),
     Test("WebRTC negotiated DataChannel", test_negotiated),
     Test("WebRTC reliability mode", test_reliability),
+    Test("WebRTC SCTP interleaving", test_sctp_interleaving),
     Test("WebRTC simulcast SDP generation", test_simulcast_sdp_generation),
     Test("WebRTC simulcast SDP parsing", test_simulcast_sdp_parsing),
 #if RTC_ENABLE_MEDIA
