@@ -204,6 +204,37 @@ bool DataChannel::outgoing(message_ptr message) {
 	return transport->send(std::move(message));
 }
 
+bool DataChannel::outgoingBatch(std::vector<message_ptr> messages) {
+	shared_ptr<SctpTransport> transport;
+	{
+		std::shared_lock lock(mMutex);
+		transport = mSctpTransport.lock();
+
+		if (mIsClosed)
+			throw std::runtime_error("DataChannel is closed");
+
+		if (!transport)
+			throw std::runtime_error("DataChannel not open");
+
+		if (!mStream.has_value())
+			throw std::logic_error("DataChannel has no stream assigned");
+
+		// Validate the whole batch before any message is sent
+		const size_t maxSize = maxMessageSize();
+		for (const auto &message : messages)
+			if (message->size() > maxSize)
+				throw std::invalid_argument("Message size exceeds limit");
+
+		// Before the ACK has been received on a DataChannel, all messages must be sent ordered
+		for (auto &message : messages) {
+			message->reliability = mIsOpen ? mReliability : nullptr;
+			message->stream = mStream.value();
+		}
+	}
+
+	return transport->sendBatch(std::move(messages));
+}
+
 void DataChannel::incoming(message_ptr message) {
 	if (!message || mIsClosed)
 		return;

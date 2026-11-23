@@ -230,6 +230,7 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/dtls.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/batch.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp_generation.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp_parsing.cpp

@@ -33,6 +33,7 @@ struct DataChannel : Channel, std::enable_shared_from_this<DataChannel> {
 	void close();
 	void remoteClose();
 	bool outgoing(message_ptr message);
+	bool outgoingBatch(std::vector<message_ptr> messages);
 	void incoming(message_ptr message);
 
 	optional<message_variant> receive() override;

@@ -50,6 +50,14 @@ bool DataChannel::send(message_variant data) {
 	return impl()->outgoing(make_message(std::move(data)));
 }
 
+bool DataChannel::sendBatch(std::vector<message_variant> messages) {
+	std::vector<message_ptr> batch;
+	batch.reserve(messages.size());
+	for (auto &data : messages)
+		batch.push_back(make_message(std::move(data)));
+	return impl()->outgoingBatch(std::move(batch));
+}
+
 bool DataChannel::send(const byte *data, size_t size) {
 	return impl()->outgoing(std::make_shared<Message>(data, data + size, Message::Binary));
 }
