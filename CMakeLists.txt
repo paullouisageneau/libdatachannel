@@ -615,6 +615,14 @@ if(NOT NO_TESTS)
 	target_compile_definitions(datachannel-benchmark PRIVATE BENCHMARK_MAIN=1)
 	target_include_directories(datachannel-benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_link_libraries(datachannel-benchmark datachannel Threads::Threads)
+
+	# Batch send benchmark
+	add_executable(datachannel-batch-benchmark test/batch_benchmark.cpp)
+	set_target_properties(datachannel-batch-benchmark PROPERTIES
+		VERSION ${PROJECT_VERSION}
+		CXX_STANDARD 17
+		OUTPUT_NAME batch-benchmark)
+	target_link_libraries(datachannel-batch-benchmark datachannel Threads::Threads)
 endif()
 
 # Examples
