@@ -163,6 +163,19 @@ TestResult test_websocketserver() {
 	ws.close();
 	this_thread::sleep_for(1s);
 
+	// The server certificate is self-signed, a client that verifies must refuse it
+	WebSocket verifying;
+	std::atomic<bool> refused = false;
+	verifying.onClosed([&refused]() { refused = true; });
+	verifying.open("wss://localhost:48080/");
+
+	attempts = 15;
+	while (!verifying.isOpen() && !refused && attempts--)
+		this_thread::sleep_for(1s);
+
+	if (verifying.isOpen() || !refused)
+		return TestResult(false, "WebSocket did not refuse an untrusted certificate");
+
 	server.stop();
 	this_thread::sleep_for(1s);
 
