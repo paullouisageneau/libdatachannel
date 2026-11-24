@@ -46,6 +46,33 @@ if (USE_SCHANNEL)
 	if (USE_GNUTLS OR USE_MBEDTLS)
 		message(FATAL_ERROR "USE_SCHANNEL cannot be enabled at the same time as USE_GNUTLS or USE_MBEDTLS")
 	endif()
+	# Check the SChannel declarations for TLS 1.3, DTLS, and SRTP of the Windows 10 SDK 1809
+	include(CheckCXXSourceCompiles)
+	check_cxx_source_compiles("
+		#define SECURITY_WIN32
+		#define SCHANNEL_USE_BLACKLISTS
+		#include <winsock2.h>
+		#include <windows.h>
+		#include <subauth.h>
+		#include <wincrypt.h>
+		#include <schannel.h>
+		#include <security.h>
+		#include <sspi.h>
+		int main() {
+			SCH_CREDENTIALS cred = {};
+			cred.dwVersion = SCH_CREDENTIALS_VERSION;
+			SEC_DTLS_MTU mtu = {};
+			SecPkgContext_KeyingMaterialInfo keyingMaterialInfo = {};
+			SecPkgContext_SrtpParameters srtpParameters = {};
+			unsigned long values[] = {SECBUFFER_DTLS_MTU, SECBUFFER_SRTP_PROTECTION_PROFILES,
+				SECPKG_ATTR_KEYING_MATERIAL, SECPKG_ATTR_SRTP_PARAMETERS, SP_PROT_DTLS1_2_CLIENT,
+				SP_PROT_TLS1_3_CLIENT};
+			(void)cred; (void)mtu; (void)keyingMaterialInfo; (void)srtpParameters; (void)values;
+			return 0;
+		}" HAVE_SCHANNEL_DECLARATIONS)
+	if (NOT HAVE_SCHANNEL_DECLARATIONS)
+		message(FATAL_ERROR "USE_SCHANNEL requires the Windows 10 SDK version 1809 (10.0.17763) or later, the SChannel declarations for TLS 1.3, DTLS, and SRTP are missing")
+	endif()
 endif()
 
 if(USE_GNUTLS)

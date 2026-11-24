@@ -69,7 +69,7 @@ $ make -j2
 
 ### Microsoft Windows with SChannel
 
-The option `USE_SCHANNEL` builds the library with the native Windows security APIs instead of a third-party TLS library: SChannel through SSPI for TLS and DTLS, CryptoAPI and CNG for certificates, keys, and hashes. It is only available on Windows and can't be combined with `USE_GNUTLS` or `USE_MBEDTLS`. It requires Microsoft Visual C++ with a Windows 10 SDK version 1809 (10.0.17763) or later.
+The option `USE_SCHANNEL` builds the library with the native Windows security APIs instead of a third-party TLS library: SChannel through SSPI for TLS and DTLS, CryptoAPI and CNG for certificates, keys, and hashes. It is only available on Windows and can't be combined with `USE_GNUTLS` or `USE_MBEDTLS`. It requires the Windows 10 SDK version 1809 (10.0.17763) or later with Microsoft Visual C++, or a MinGW-w64 toolchain with equivalent headers, which CMake checks.
 
 ```bash
 $ cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DUSE_SCHANNEL=1
