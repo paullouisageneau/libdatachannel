@@ -973,6 +973,17 @@ void DtlsTransport::doRecv() {
 				continue;
 
 			if (state() == State::Connecting) {
+				// RFC 5764: DTLS packets have a first byte between 20 and 63. Ignore other packets,
+				// like media from a peer which already finished the handshake, as well as
+				// application data which can't be decrypted yet, since SChannel would fail.
+				const uint8_t first =
+				    message->empty() ? 0 : std::to_integer<uint8_t>(message->front());
+				if (first < 20 || first > 63 || first == 23) {
+					PLOG_VERBOSE << "Ignoring packet received during DTLS handshake, first byte="
+					             << unsigned(first);
+					continue;
+				}
+
 				// Continue the handshake
 				binary remaining;
 				bool finished;
