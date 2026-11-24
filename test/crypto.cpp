@@ -446,7 +446,7 @@ TestResult test_fingerprint_algorithms() {
 TestResult test_websocketserver_tls_verification() {
 	InitLogger(LogLevel::Warning);
 
-	const uint16_t port = 48082;
+	const uint16_t port = 48083;
 
 	WebSocketServer::Configuration serverConfig;
 	serverConfig.port = port;
