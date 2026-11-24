@@ -67,14 +67,6 @@ $ cd build
 $ make -j2
 ```
 
-### Microsoft Windows with Microsoft Visual C++
-
-```bash
-$ cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
-$ cd build
-$ nmake
-```
-
 ### Microsoft Windows with SChannel
 
 The option `USE_SCHANNEL` builds the library with the native Windows security APIs instead of a third-party TLS library: SChannel through SSPI for TLS and DTLS, CryptoAPI and CNG for certificates, keys, and hashes. It is only available on Windows and can't be combined with `USE_GNUTLS` or `USE_MBEDTLS`. It requires Microsoft Visual C++ with a Windows 10 SDK version 1809 (10.0.17763) or later.
@@ -94,6 +86,14 @@ Differences with the other backends:
 - WebSocket server certificates are verified against the system root certificates, and the certificate set in `caCertificatePemFile` if any, unless `disableTlsVerification` is set. Note that verification is disabled on Windows with the other backends.
 - SChannel can't send the DTLS close_notify alert, so DTLS connections are closed without alert.
 - When retransmitting the DTLS client Finished message, SChannel reuses its record sequence number, so other implementations discard it as a replay. As a consequence, when SChannel is the DTLS client (which is the default for the answerer), if the final flight of a server which is not SChannel is lost, the handshake fails after a 30-second timeout with an explicit error. Losses of other handshake flights are handled normally.
+
+### Microsoft Windows with Microsoft Visual C++
+
+```bash
+$ cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
+$ cd build
+$ nmake
+```
 
 ## Build directly with Make (Linux only)
 
