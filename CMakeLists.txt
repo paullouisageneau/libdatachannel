@@ -239,6 +239,7 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/certificate.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/dtls.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
@@ -611,6 +612,15 @@ if(NOT NO_TESTS)
 
 	target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_link_libraries(datachannel-tests datachannel Threads::Threads)
+
+	# Some tests depend on the TLS backend
+	if(USE_GNUTLS)
+		target_compile_definitions(datachannel-tests PRIVATE USE_GNUTLS=1)
+	elseif(USE_MBEDTLS)
+		target_compile_definitions(datachannel-tests PRIVATE USE_MBEDTLS=1)
+	elseif(USE_SCHANNEL)
+		target_compile_definitions(datachannel-tests PRIVATE USE_SCHANNEL=1)
+	endif()
 
 	# Benchmark
 	if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
