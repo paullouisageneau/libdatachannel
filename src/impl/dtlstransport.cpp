@@ -1186,8 +1186,10 @@ bool DtlsTransport::handshakeStep(binary input, binary &remaining, bool &sent) {
 			                               ServerRequirements, 0, mContext.get(), out.desc(),
 			                               &attributes, nullptr);
 
-		if (FAILED(status) && !hadContext)
+		if (FAILED(status) && !hadContext) {
+			// Braces are required as the macro expands to multiple statements with MinGW
 			SecInvalidateHandle(mContext.get());
+		}
 
 		if (FAILED(status) && !input.empty() && is_invalid_input_status(status)) {
 			// RFC 6347: Invalid records SHOULD be silently discarded, so the datagram is dropped

@@ -814,8 +814,10 @@ bool TlsTransport::handshakeStep() {
 			                               ServerRequirements, 0, mContext.get(), out.desc(),
 			                               &attributes, nullptr);
 
-		if (FAILED(status) && !hadContext)
+		if (FAILED(status) && !hadContext) {
+			// Braces are required as the macro expands to multiple statements with MinGW
 			SecInvalidateHandle(mContext.get());
+		}
 
 		// With ISC_REQ_EXTENDED_ERROR, the token contains an alert on failure
 		if (const SecBuffer *token = out.find(SECBUFFER_TOKEN)) {
