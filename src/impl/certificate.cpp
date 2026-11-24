@@ -392,6 +392,245 @@ Certificate::credentials() const {
 	return {mCrt, mPk};
 }
 
+#elif USE_SCHANNEL
+
+namespace {
+
+using schannel::cert_context_ptr;
+using schannel::PrivateKey;
+
+const DWORD EncodingType = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
+
+SYSTEMTIME to_system_time(std::chrono::system_clock::time_point tp) {
+	using namespace std::chrono;
+	// FILETIME counts 100-nanosecond intervals since January 1, 1601 (UTC)
+	const int64_t unixEpochOffset = 116444736000000000LL;
+	const int64_t ticks =
+	    duration_cast<microseconds>(tp.time_since_epoch()).count() * 10 + unixEpochOffset;
+
+	FILETIME ft;
+	ft.dwLowDateTime = DWORD(ticks & 0xFFFFFFFF);
+	ft.dwHighDateTime = DWORD(ticks >> 32);
+	SYSTEMTIME st;
+	if (!FileTimeToSystemTime(&ft, &st))
+		throw std::runtime_error("Time conversion failed");
+
+	return st;
+}
+
+binary encode_object(LPCSTR structType, const void *structInfo) {
+	BYTE *encoded = nullptr;
+	DWORD encodedSize = 0;
+	if (!CryptEncodeObjectEx(EncodingType, structType, structInfo, CRYPT_ENCODE_ALLOC_FLAG, nullptr,
+	                         &encoded, &encodedSize))
+		throw std::runtime_error("ASN.1 encoding failed: " +
+		                         schannel::error_string(long(GetLastError())));
+
+	binary result(reinterpret_cast<byte *>(encoded),
+	              reinterpret_cast<byte *>(encoded) + encodedSize);
+	LocalFree(encoded);
+	return result;
+}
+
+// Wrap a traditional private key (PKCS#1 RSA or SEC1 EC) in a PKCS#8 PrivateKeyInfo
+binary wrap_pkcs8(LPCSTR algorithmOid, binary algorithmParams, const binary &privateKey) {
+	CRYPT_PRIVATE_KEY_INFO info = {};
+	info.Version = 0;
+	info.Algorithm.pszObjId = const_cast<LPSTR>(algorithmOid);
+	info.Algorithm.Parameters.cbData = DWORD(algorithmParams.size());
+	info.Algorithm.Parameters.pbData = reinterpret_cast<BYTE *>(algorithmParams.data());
+	info.PrivateKey.cbData = DWORD(privateKey.size());
+	info.PrivateKey.pbData = reinterpret_cast<BYTE *>(const_cast<byte *>(privateKey.data()));
+	return encode_object(PKCS_PRIVATE_KEY_INFO, &info);
+}
+
+binary sec1_to_pkcs8(const binary &der) {
+	CRYPT_ECC_PRIVATE_KEY_INFO *info = nullptr;
+	DWORD infoSize = 0;
+	if (!CryptDecodeObjectEx(EncodingType, X509_ECC_PRIVATE_KEY,
+	                         reinterpret_cast<const BYTE *>(der.data()), DWORD(der.size()),
+	                         CRYPT_DECODE_ALLOC_FLAG, nullptr, &info, &infoSize))
+		throw std::invalid_argument("Unable to decode PEM EC private key: " +
+		                            schannel::error_string(long(GetLastError())));
+
+	try {
+		if (!info->szCurveOid)
+			throw std::invalid_argument("PEM EC private key does not specify the curve");
+
+		LPSTR curveOid = info->szCurveOid;
+		binary params = encode_object(X509_OBJECT_IDENTIFIER, &curveOid);
+		binary result = wrap_pkcs8(szOID_ECC_PUBLIC_KEY, std::move(params), der);
+		LocalFree(info);
+		return result;
+
+	} catch (...) {
+		LocalFree(info);
+		throw;
+	}
+}
+
+shared_ptr<PrivateKey> import_pem_key(const string &key_pem, const string &pass) {
+	for (const auto &block : schannel::parse_pem(key_pem)) {
+		if (block.label == "EC PARAMETERS")
+			continue;
+
+		if (block.encrypted)
+			throw std::invalid_argument(
+			    "Legacy encrypted PEM keys are not supported, use encrypted PKCS#8 instead");
+
+		if (block.label == "PRIVATE KEY")
+			return PrivateKey::ImportPkcs8(block.der);
+
+		if (block.label == "ENCRYPTED PRIVATE KEY")
+			return PrivateKey::ImportPkcs8(block.der, pass);
+
+		if (block.label == "RSA PRIVATE KEY") {
+			const binary nullParams = {byte(0x05), byte(0x00)}; // ASN.1 NULL
+			return PrivateKey::ImportPkcs8(wrap_pkcs8(szOID_RSA_RSA, nullParams, block.der));
+		}
+
+		if (block.label == "EC PRIVATE KEY")
+			return PrivateKey::ImportPkcs8(sec1_to_pkcs8(block.der));
+
+		throw std::invalid_argument("Unsupported PEM key type: " + block.label);
+	}
+
+	throw std::invalid_argument("No private key found in PEM data");
+}
+
+void attach_key(PCCERT_CONTEXT cert, const PrivateKey &key) {
+	// SChannel finds the key with the key provider information
+	CRYPT_KEY_PROV_INFO info = {};
+	info.pwszContainerName = const_cast<LPWSTR>(key.name().c_str());
+	info.pwszProvName = const_cast<LPWSTR>(MS_KEY_STORAGE_PROVIDER);
+	info.dwProvType = 0; // CNG
+	info.dwKeySpec = 0;
+	if (!CertSetCertificateContextProperty(cert, CERT_KEY_PROV_INFO_PROP_ID, 0, &info))
+		throw std::runtime_error("Unable to attach the private key to the certificate: " +
+		                         schannel::error_string(long(GetLastError())));
+}
+
+Certificate import_pem(const string &crt_pem, const string &key_pem, const string &pass) {
+	cert_context_ptr leaf;
+	// The leaf context references the store containing the rest of the chain, which SChannel
+	// uses to build the chain sent to the peer.
+	schannel::load_pem_certificates(crt_pem, &leaf);
+	auto key = import_pem_key(key_pem, pass);
+	attach_key(leaf.get(), *key);
+	return Certificate(std::move(leaf), std::move(key));
+}
+
+} // namespace
+
+Certificate Certificate::FromString(string crt_pem, string key_pem) {
+	PLOG_DEBUG << "Importing certificate from PEM string (SChannel)";
+	return import_pem(crt_pem, key_pem, "");
+}
+
+Certificate Certificate::FromFile(const string &crt_pem_file, const string &key_pem_file,
+                                  const string &pass) {
+	PLOG_DEBUG << "Importing certificate from PEM file (SChannel): " << crt_pem_file;
+	return import_pem(schannel::read_file(crt_pem_file), schannel::read_file(key_pem_file), pass);
+}
+
+Certificate Certificate::Generate(CertificateType type, const string &commonName) {
+	PLOG_DEBUG << "Generating certificate (SChannel)";
+
+	bool rsa;
+	switch (type) {
+	// RFC 8827 WebRTC Security Architecture 6.5. Communications Security
+	// All implementations MUST support DTLS 1.2 with the TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+	// cipher suite and the P-256 curve
+	// See https://www.rfc-editor.org/rfc/rfc8827.html#section-6.5
+	case CertificateType::Default:
+	case CertificateType::Ecdsa:
+		PLOG_VERBOSE << "Generating ECDSA P-256 key pair";
+		rsa = false;
+		break;
+	case CertificateType::Rsa:
+		PLOG_VERBOSE << "Generating RSA key pair";
+		rsa = true;
+		break;
+	default:
+		throw std::invalid_argument("Unknown certificate type");
+	}
+
+	auto key = PrivateKey::Generate(rsa);
+
+	CERT_RDN_ATTR attr = {};
+	attr.pszObjId = const_cast<LPSTR>(szOID_COMMON_NAME);
+	attr.dwValueType = CERT_RDN_UTF8_STRING;
+	attr.Value.cbData = DWORD(commonName.size());
+	attr.Value.pbData = reinterpret_cast<BYTE *>(const_cast<char *>(commonName.data()));
+	CERT_RDN rdn = {1, &attr};
+	CERT_NAME_INFO nameInfo = {1, &rdn};
+	binary name = encode_object(X509_NAME, &nameInfo);
+	CERT_NAME_BLOB nameBlob = {DWORD(name.size()), reinterpret_cast<BYTE *>(name.data())};
+
+	CRYPT_ALGORITHM_IDENTIFIER signatureAlgorithm = {};
+	signatureAlgorithm.pszObjId = const_cast<LPSTR>(rsa ? szOID_RSA_SHA256RSA : szOID_ECDSA_SHA256);
+
+	CRYPT_KEY_PROV_INFO keyProvInfo = {};
+	keyProvInfo.pwszContainerName = const_cast<LPWSTR>(key->name().c_str());
+	keyProvInfo.pwszProvName = const_cast<LPWSTR>(MS_KEY_STORAGE_PROVIDER);
+
+	using namespace std::chrono;
+	auto now = system_clock::now();
+	SYSTEMTIME startTime = to_system_time(now - hours(1));
+	SYSTEMTIME endTime = to_system_time(now + hours(24 * 365));
+
+	PCCERT_CONTEXT cert =
+	    CertCreateSelfSignCertificate(key->handle(), &nameBlob, 0, &keyProvInfo,
+	                                  &signatureAlgorithm, &startTime, &endTime, nullptr);
+	if (!cert)
+		throw std::runtime_error("Unable to generate self-signed certificate: " +
+		                         schannel::error_string(long(GetLastError())));
+
+	return Certificate(schannel::make_cert_context_ptr(cert), std::move(key));
+}
+
+Certificate::Certificate(schannel::cert_context_ptr cert, shared_ptr<schannel::PrivateKey> key)
+    : mKey(std::move(key)), mCert(std::move(cert)),
+      mFingerprint(make_fingerprint(mCert.get(), CertificateFingerprint::Algorithm::Sha256)) {}
+
+PCCERT_CONTEXT Certificate::credentials() const { return mCert.get(); }
+
+string make_fingerprint(PCCERT_CONTEXT cert,
+                        CertificateFingerprint::Algorithm fingerprintAlgorithm) {
+	schannel::HashAlgorithm hashAlgorithm;
+	switch (fingerprintAlgorithm) {
+	case CertificateFingerprint::Algorithm::Sha1:
+		hashAlgorithm = schannel::HashAlgorithm::Sha1;
+		break;
+	case CertificateFingerprint::Algorithm::Sha224:
+		hashAlgorithm = schannel::HashAlgorithm::Sha224;
+		break;
+	case CertificateFingerprint::Algorithm::Sha256:
+		hashAlgorithm = schannel::HashAlgorithm::Sha256;
+		break;
+	case CertificateFingerprint::Algorithm::Sha384:
+		hashAlgorithm = schannel::HashAlgorithm::Sha384;
+		break;
+	case CertificateFingerprint::Algorithm::Sha512:
+		hashAlgorithm = schannel::HashAlgorithm::Sha512;
+		break;
+	default:
+		throw std::invalid_argument("Unknown fingerprint algorithm");
+	}
+
+	binary digest = schannel::hash(hashAlgorithm, cert->pbCertEncoded, cert->cbCertEncoded);
+
+	std::ostringstream oss;
+	oss.imbue(std::locale::classic());
+	oss << std::hex << std::uppercase << std::setfill('0');
+	for (size_t i = 0; i < digest.size(); ++i) {
+		if (i)
+			oss << std::setw(1) << ':';
+		oss << std::setw(2) << std::to_integer<unsigned>(digest[i]);
+	}
+	return oss.str();
+}
+
 #else // OPENSSL
 
 #include <openssl/bn.h>
@@ -622,7 +861,7 @@ string make_fingerprint(X509 *x509, CertificateFingerprint::Algorithm fingerprin
 
 #endif
 
-// Common for GnuTLS, Mbed TLS, and OpenSSL
+// Common for GnuTLS, Mbed TLS, SChannel, and OpenSSL
 
 future_certificate_ptr make_certificate(CertificateType type) {
 	return ThreadPool::Instance().enqueue([type, token = Init::Instance().token()]() {

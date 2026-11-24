@@ -44,6 +44,23 @@ VerifiedTlsTransport::VerifiedTlsTransport(
 		mbedtls_x509_crt_free(&mCaCert);
 		throw;
 	}
+#elif USE_SCHANNEL
+	// The certificate is verified after the handshake, with the system root certificates and the
+	// specified CA certificate if any
+	mVerifyServerCertificate = true;
+	if (cacert) {
+		try {
+			if (cacert->find(PemBeginCertificateTag) == string::npos) {
+				// *cacert is a file path
+				mCaCertificates = schannel::load_pem_certificates(schannel::read_file(*cacert));
+			} else {
+				// *cacert is a PEM content
+				mCaCertificates = schannel::load_pem_certificates(*cacert);
+			}
+		} catch (const std::exception &e) {
+			throw std::runtime_error("Failed to load CA certificate: " + string(e.what()));
+		}
+	}
 #else
 	if (cacert) {
 		if (cacert->find(PemBeginCertificateTag) == string::npos) {

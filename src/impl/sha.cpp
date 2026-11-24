@@ -20,6 +20,10 @@
 #include "tls.hpp"
 #include <psa/crypto.h>
 
+#elif USE_SCHANNEL
+
+#include "tls.hpp"
+
 #else
 
 #ifndef OPENSSL_API_COMPAT
@@ -58,6 +62,10 @@ binary Sha1(const byte *data, size_t size) {
 		             &hash_size);
 	});
 	return output;
+
+#elif USE_SCHANNEL
+
+	return schannel::hash(schannel::HashAlgorithm::Sha1, data, size);
 
 #else
 

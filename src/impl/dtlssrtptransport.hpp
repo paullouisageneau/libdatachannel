@@ -50,7 +50,11 @@ private:
 		size_t saltSize;
 	};
 
+#if USE_SCHANNEL
+	ProfileParams getProfileParamsFromId(unsigned short id);
+#else
 	ProfileParams getProfileParamsFromName(string_view name);
+#endif
 #endif
 
 	message_callback mSrtpRecvCallback;
