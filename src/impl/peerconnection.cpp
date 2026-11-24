@@ -304,6 +304,10 @@ shared_ptr<DtlsTransport> PeerConnection::initDtlsTransport() {
 
 shared_ptr<SctpTransport> PeerConnection::initSctpTransport() {
 	try {
+		// The DTLS transport's Connected callback and processRemoteDescription() may both start
+		// the SCTP transport: the second must find the first's rather than replace it, which
+		// would destroy the first and stop the DTLS transport under it.
+		std::lock_guard lock(mSctpTransportInitMutex);
 		if (auto transport = std::atomic_load(&mSctpTransport))
 			return transport;
 
