@@ -402,11 +402,12 @@ using schannel::PrivateKey;
 const DWORD EncodingType = X509_ASN_ENCODING | PKCS_7_ASN_ENCODING;
 
 SYSTEMTIME to_system_time(std::chrono::system_clock::time_point tp) {
-	using namespace std::chrono;
 	// FILETIME counts 100-nanosecond intervals since January 1, 1601 (UTC)
-	const int64_t unixEpochOffset = 116444736000000000LL;
+	using filetime_duration = std::chrono::duration<int64_t, std::ratio<1, 10000000>>;
+	const filetime_duration unixEpochOffset(116444736000000000LL);
 	const int64_t ticks =
-	    duration_cast<microseconds>(tp.time_since_epoch()).count() * 10 + unixEpochOffset;
+	    (std::chrono::duration_cast<filetime_duration>(tp.time_since_epoch()) + unixEpochOffset)
+	        .count();
 
 	FILETIME ft;
 	ft.dwLowDateTime = DWORD(ticks & 0xFFFFFFFF);
