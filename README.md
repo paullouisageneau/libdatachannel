@@ -24,6 +24,8 @@ libdatachannel is licensed under MPL 2.0 since version 0.18, see [LICENSE](https
 
 libdatachannel is available on [AUR](https://aur.archlinux.org/packages/libdatachannel/), [vcpkg](https://vcpkg.io/en/getting-started), [conan](https://conan.io/center/recipes/libdatachannel), and [FreeBSD ports](https://www.freshports.org/www/libdatachannel). Bindings are available for [Rust](https://crates.io/crates/datachannel) and [Node.js](https://www.npmjs.com/package/node-datachannel).
 
+Prebuilt Windows libraries (MSVC, x64, x86, and arm64) are attached to [releases](https://github.com/paullouisageneau/libdatachannel/releases), see [BUILDING.md](https://github.com/paullouisageneau/libdatachannel/blob/master/BUILDING.md#prebuilt-windows-libraries).
+
 ## Dependencies
 
 - [GnuTLS](https://www.gnutls.org/), [Mbed TLS](https://www.trustedfirmware.org/projects/mbed-tls/), or [OpenSSL](https://www.openssl.org/)
