@@ -8,13 +8,14 @@
 
 #include "systemtrust.hpp"
 #include "internals.hpp"
+#include "utils.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <iterator>
 #include <memory>
 #include <type_traits>
 
@@ -320,30 +321,8 @@ Result verify_server_chain(const std::vector<binary> &chain, const string &host)
 
 #else
 
-namespace {
-
-// Append the paths listed in an environment variable
-void append_env_paths(std::vector<string> &paths, const char *name, char separator) {
-	const char *value = std::getenv(name);
-	if (!value)
-		return;
-
-	string str(value);
-	size_t start = 0;
-	while (start <= str.size()) {
-		size_t end = str.find(separator, start);
-		if (end == string::npos)
-			end = str.size();
-		if (end > start)
-			paths.emplace_back(str.substr(start, end - start));
-		start = end + 1;
-	}
-}
-
-} // namespace
-
 std::vector<string> ca_bundle_files() {
-	static const char *const BundleFiles[] = {
+	std::vector<string> files = {
 	    "/etc/ssl/certs/ca-certificates.crt",                // Debian, Ubuntu, Arch, Gentoo
 	    "/etc/pki/tls/certs/ca-bundle.crt",                  // Fedora, RHEL 6
 	    "/etc/ssl/ca-bundle.pem",                            // OpenSUSE
@@ -352,24 +331,27 @@ std::vector<string> ca_bundle_files() {
 	    "/usr/local/share/certs/ca-root-nss.crt",            // FreeBSD
 	};
 
-	std::vector<string> files;
+	// The file set in the environment takes precedence
 	if (const char *file = std::getenv("SSL_CERT_FILE"); file && *file)
-		files.emplace_back(file);
+		files.insert(files.begin(), file);
 
-	files.insert(files.end(), std::begin(BundleFiles), std::end(BundleFiles));
 	return files;
 }
 
 std::vector<string> ca_bundle_directories() {
-	static const char *const BundleDirectories[] = {
+	std::vector<string> directories = {
 	    "/system/etc/security/cacerts", // Android
 	    "/etc/ssl/certs",
 	};
 
-	std::vector<string> directories;
-	append_env_paths(directories, "SSL_CERT_DIR", ':');
-	directories.insert(directories.end(), std::begin(BundleDirectories),
-	                   std::end(BundleDirectories));
+	// Directories set in the environment take precedence
+	if (const char *env = std::getenv("SSL_CERT_DIR"); env && *env) {
+		auto envDirectories = utils::explode(env, ':');
+		envDirectories.erase(std::remove(envDirectories.begin(), envDirectories.end(), ""),
+		                     envDirectories.end());
+		directories.insert(directories.begin(), envDirectories.begin(), envDirectories.end());
+	}
+
 	return directories;
 }
 
