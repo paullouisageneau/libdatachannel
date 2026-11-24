@@ -40,6 +40,8 @@ struct RTC_CPP_EXPORT LocalDescriptionInit {
     optional<string> icePwd;
 };
 
+class SFrameReceiveKeyProvider;
+
 class RTC_CPP_EXPORT PeerConnection final : CheshireCat<impl::PeerConnection> {
 public:
 	enum class State : int {
@@ -107,6 +109,28 @@ public:
 
 	void setMediaHandler(shared_ptr<MediaHandler> handler);
 	shared_ptr<MediaHandler> getMediaHandler();
+
+#if RTC_ENABLE_MEDIA
+	/// Receives SFrame (RFC 9605) on every track that negotiates "a=sframe", using one provider for
+	/// the whole session, whether the m-line came from the peer or from addTrack(). Call it before
+	/// setRemoteDescription(): for an m-line the peer introduced it is applied before the track
+	/// callback runs, so the callback can still swap in different key material with
+	/// Track::useSFrame(), or opt one m-line out by removing the attribute from its description. For
+	/// an m-line this side created it is applied when the remote description confirms the attribute,
+	/// and only if that track does not already decrypt.
+	///
+	/// That last question is asked of the receive direction specifically, not of the chain as a
+	/// whole: a send-side packetizer also applies SFrame, so an application that installed its
+	/// packetizer first would otherwise suppress the install and negotiate "a=sframe" with nothing
+	/// to decrypt.
+	///
+	/// An m-line that never offered "a=sframe" is left untouched, so a provider can be
+	/// registered unconditionally. Registering none declines SFrame for the session.
+	/// @param keyProvider Supplies the key for each generation, and fixes the session's cipher
+	///                    suite, KID layout and per-SSRC derivation setting
+	/// @throws std::invalid_argument if keyProvider is null
+	void useSFrame(shared_ptr<SFrameReceiveKeyProvider> keyProvider);
+#endif
 
 	[[nodiscard]] shared_ptr<DataChannel> createDataChannel(string label,
 	                                                        DataChannelInit init = {});
