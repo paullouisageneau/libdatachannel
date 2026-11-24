@@ -272,7 +272,7 @@ Result verify_server_chain(const std::vector<binary> &chain, const string &host)
 
 	cf_ptr<CFStringRef> hostname(
 	    CFStringCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(host.data()),
-		                        CFIndex(host.size()), kCFStringEncodingUTF8, false));
+	                            CFIndex(host.size()), kCFStringEncodingUTF8, false));
 	if (!hostname)
 		return {Status::Other, "Invalid host name"};
 
