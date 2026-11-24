@@ -9,6 +9,7 @@
 #ifndef RTC_IMPL_VERIFIED_TLS_TRANSPORT_H
 #define RTC_IMPL_VERIFIED_TLS_TRANSPORT_H
 
+#include "systemtrust.hpp"
 #include "tlstransport.hpp"
 
 #if RTC_ENABLE_WEBSOCKET
@@ -25,6 +26,15 @@ public:
 private:
 #if USE_MBEDTLS
 	mbedtls_x509_crt mCaCert;
+	bool mHasCaCert = false;
+#if !RTC_SYSTEM_TRUST_STORE
+	shared_ptr<mbedtls_x509_crt> mSystemCaCert;
+#endif
+	uint32_t mChainFlags = 0;
+
+	static int VerifyCallback(void *ctx, mbedtls_x509_crt *crt, int depth, uint32_t *flags);
+#elif !USE_GNUTLS && RTC_SYSTEM_TRUST_STORE // OpenSSL
+	static int CertVerifyCallback(X509_STORE_CTX *ctx, void *arg);
 #endif
 };
 

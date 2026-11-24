@@ -66,6 +66,9 @@ endif
 NO_WEBSOCKET ?= 0
 ifeq ($(NO_WEBSOCKET), 0)
         CPPFLAGS+=-DRTC_ENABLE_WEBSOCKET=1
+ifeq ($(shell uname -s), Darwin)
+        LDLIBS+=-framework Security -framework CoreFoundation
+endif
 else
         CPPFLAGS+=-DRTC_ENABLE_WEBSOCKET=0
 endif

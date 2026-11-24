@@ -175,6 +175,7 @@ set(LIBDATACHANNEL_IMPL_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/utils.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sha.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/systemtrust.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/pollinterrupter.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/pollservice.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/http.cpp
@@ -210,6 +211,7 @@ set(LIBDATACHANNEL_IMPL_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/utils.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/processor.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/sha.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/systemtrust.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/pollinterrupter.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/pollservice.hpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/impl/http.hpp
@@ -393,6 +395,14 @@ if (NO_WEBSOCKET)
 else()
 	target_compile_definitions(datachannel PUBLIC RTC_ENABLE_WEBSOCKET=1)
 	target_compile_definitions(datachannel-static PUBLIC RTC_ENABLE_WEBSOCKET=1)
+	# System trust store for TLS certificate verification
+	if(WIN32)
+		target_link_libraries(datachannel PRIVATE crypt32)
+		target_link_libraries(datachannel-static PRIVATE crypt32)
+	elseif(APPLE)
+		target_link_libraries(datachannel PRIVATE "-framework Security" "-framework CoreFoundation")
+		target_link_libraries(datachannel-static PRIVATE "-framework Security" "-framework CoreFoundation")
+	endif()
 endif()
 
 if(NO_MEDIA)
