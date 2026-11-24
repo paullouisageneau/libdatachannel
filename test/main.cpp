@@ -21,6 +21,7 @@ using chrono::milliseconds;
 using chrono::seconds;
 using chrono::steady_clock;
 
+TestResult test_certificate_small_thread_pool();
 TestResult test_connectivity();
 TestResult test_connectivity_fail_on_wrong_fingerprint();
 TestResult test_dtls_startup_after_remote_description();
@@ -85,6 +86,7 @@ TestResult test_capi_cleanup() {
 
 static const vector<Test> tests = {
     // C++ API tests
+    Test("Certificate generation with small thread pool", test_certificate_small_thread_pool),
     Test("DTLS startup after remote description", test_dtls_startup_after_remote_description),
     Test("WebRTC connectivity", test_connectivity),
     Test("WebRTC broken fingerprint", test_connectivity_fail_on_wrong_fingerprint),
