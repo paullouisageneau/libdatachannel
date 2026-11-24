@@ -1146,6 +1146,7 @@ bool DtlsTransport::handshakeStep(binary input, binary &remaining, bool &sent) {
 	SEC_DTLS_MTU mtu = {};
 	mtu.PathMTU = static_cast<unsigned short>(mMtu.value_or(DEFAULT_MTU) - 8 - 40); // UDP/IPv6
 
+	binary pending; // records left to process once the output flight is complete
 	while (true) {
 		SecBuffer in[5] = {};
 		ULONG count = 0;
@@ -1220,18 +1221,25 @@ bool DtlsTransport::handshakeStep(binary input, binary &remaining, bool &sent) {
 			outgoing(make_message(data, data + token->cbBuffer));
 		}
 
+		// Unprocessed records of the input datagram, if any
+		binary extra;
+		if (in[1].BufferType == SECBUFFER_EXTRA && in[1].cbBuffer > 0 &&
+		    in[1].cbBuffer <= input.size())
+			extra.assign(input.end() - in[1].cbBuffer, input.end());
+
 		switch (status) {
 		case SEC_I_MESSAGE_FRAGMENT:
-			// More datagrams of the same flight are pending
+			// More datagrams of the same flight are pending, keep unprocessed records for later
+			if (!extra.empty())
+				pending = std::move(extra);
+
 			input.clear();
 			continue;
 
 		case SEC_I_CONTINUE_NEEDED:
 		case SEC_E_OK: {
-			binary extra;
-			if (in[1].BufferType == SECBUFFER_EXTRA && in[1].cbBuffer > 0 &&
-			    in[1].cbBuffer <= input.size())
-				extra.assign(input.end() - in[1].cbBuffer, input.end());
+			if (extra.empty())
+				extra = std::move(pending);
 
 			if (status == SEC_E_OK) {
 				// Keep the final flight in case the peer did not receive it
