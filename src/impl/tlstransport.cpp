@@ -920,8 +920,17 @@ bool TlsTransport::decryptInput(std::vector<message_ptr> &received) {
 		}
 
 		if (status == SEC_I_RENEGOTIATE) {
-			// TLS 1.3 post-handshake message (like NewSessionTicket or KeyUpdate) or
-			// renegotiation request, it must be processed by the handshake function
+			// With TLS 1.3, this is a post-handshake message (like NewSessionTicket or KeyUpdate),
+			// which must be processed by the handshake function. Otherwise, this is a
+			// renegotiation request, which is refused like with OpenSSL, as the server certificate
+			// would not be verified again.
+			SecPkgContext_ConnectionInfo info = {};
+			schannel::check(
+			    QueryContextAttributesW(mContext.get(), SECPKG_ATTR_CONNECTION_INFO, &info),
+			    "Failed to query TLS connection info");
+			if (!(info.dwProtocol & (SP_PROT_TLS1_3_CLIENT | SP_PROT_TLS1_3_SERVER)))
+				throw std::runtime_error("TLS renegotiation is not supported");
+
 			PLOG_DEBUG << "TLS post-handshake message received";
 			mRenegotiating = true;
 			if (!handshakeStep())
