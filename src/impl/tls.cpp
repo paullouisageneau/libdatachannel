@@ -343,15 +343,24 @@ shared_ptr<void> open_key_storage_provider() {
 
 string error_string(long code) {
 	char *buffer = nullptr;
-	DWORD len = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-	                               FORMAT_MESSAGE_IGNORE_INSERTS,
-	                           nullptr, DWORD(code), MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
-	                           reinterpret_cast<char *>(&buffer), 0, nullptr);
+	auto format = [&buffer, code](DWORD source, HMODULE module, DWORD language) {
+		return FormatMessageA(
+		    FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS | source, module,
+		    DWORD(code), language, reinterpret_cast<char *>(&buffer), 0, nullptr);
+	};
+
+	const DWORD english = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
+	DWORD len = format(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, english);
 	if (len == 0) // English might not be available
-		len =
-		    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-		                       FORMAT_MESSAGE_IGNORE_INSERTS,
-		                   nullptr, DWORD(code), 0, reinterpret_cast<char *>(&buffer), 0, nullptr);
+		len = format(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, 0);
+
+	if (len == 0) { // BCrypt and NCrypt might return NTSTATUS codes
+		if (HMODULE ntdll = GetModuleHandleW(L"ntdll.dll")) {
+			len = format(FORMAT_MESSAGE_FROM_HMODULE, ntdll, english);
+			if (len == 0)
+				len = format(FORMAT_MESSAGE_FROM_HMODULE, ntdll, 0);
+		}
+	}
 
 	string message;
 	if (len > 0 && buffer) {
@@ -630,7 +639,8 @@ shared_ptr<PrivateKey> PrivateKey::ImportPkcs8(const binary &der, const string &
 	                      NCRYPT_PKCS8_PRIVATE_KEY_BLOB, &paramsDesc, &key,
 	                      reinterpret_cast<PBYTE>(const_cast<byte *>(der.data())),
 	                      DWORD(der.size()), NCRYPT_OVERWRITE_KEY_FLAG | NCRYPT_SILENT_FLAG),
-	      "Unable to import private key");
+	      pass.empty() ? "Unable to import private key"
+	                   : "Unable to import private key (wrong password?)");
 
 	SecureZeroMemory(wpass.data(), wpass.size() * sizeof(wchar_t));
 	return std::make_shared<PrivateKey>(key, std::move(name));
