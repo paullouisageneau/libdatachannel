@@ -838,8 +838,21 @@ bool TlsTransport::handshakeStep() {
 
 			if (status == SEC_E_OK) {
 				if (!mRenegotiating) {
-					if (mIsClient && mVerifyServerCertificate)
-						verifyServerCertificate();
+					if (mIsClient && mVerifyServerCertificate) {
+						try {
+							verifyServerCertificate();
+						} catch (const std::exception &) {
+							// Notify the server before failing
+							SCHANNEL_ALERT_TOKEN alert = {SCHANNEL_ALERT, TLS1_ALERT_FATAL,
+							                              TLS1_ALERT_BAD_CERTIFICATE};
+							try {
+								sendControlToken(&alert, sizeof(alert));
+							} catch (const std::exception &e) {
+								PLOG_DEBUG << "Failed to send TLS alert: " << e.what();
+							}
+							throw;
+						}
+					}
 
 					schannel::check(QueryContextAttributesW(
 					                    mContext.get(), SECPKG_ATTR_STREAM_SIZES, &mStreamSizes),
@@ -1010,6 +1023,37 @@ void TlsTransport::verifyServerCertificate() {
 	PLOG_DEBUG << "Server certificate verified";
 }
 
+void TlsTransport::sendControlToken(void *token, unsigned long size) {
+	// Requires mSslMutex to be locked
+	SecBuffer control = {size, SECBUFFER_TOKEN, token};
+	SecBufferDesc controlDesc = {SECBUFFER_VERSION, 1, &control};
+	schannel::check(ApplyControlToken(mContext.get(), &controlDesc), "ApplyControlToken failed");
+
+	// The handshake function generates the corresponding message
+	SecBuffer in[2] = {};
+	in[0].BufferType = SECBUFFER_TOKEN;
+	in[1].BufferType = SECBUFFER_EMPTY;
+	SecBufferDesc inDesc = {SECBUFFER_VERSION, 2, in};
+
+	schannel::ContextBuffers out({SECBUFFER_TOKEN, SECBUFFER_ALERT, SECBUFFER_EMPTY});
+	ULONG attributes = 0;
+	SECURITY_STATUS status;
+	if (mIsClient)
+		status = InitializeSecurityContextW(mCredentials.get(), mContext.get(), nullptr,
+		                                    ClientRequirements, 0, 0, nullptr, 0, mContext.get(),
+		                                    out.desc(), &attributes, nullptr);
+	else
+		status =
+		    AcceptSecurityContext(mCredentials.get(), mContext.get(), &inDesc, ServerRequirements,
+		                          0, mContext.get(), out.desc(), &attributes, nullptr);
+
+	schannel::check(status, "Failed to generate the TLS message");
+	if (const SecBuffer *token = out.find(SECBUFFER_TOKEN)) {
+		auto data = static_cast<const byte *>(token->pvBuffer);
+		outgoing(make_message(data, data + token->cbBuffer));
+	}
+}
+
 void TlsTransport::shutdown() {
 	std::lock_guard lock(mSslMutex);
 	if (!mContext.valid())
@@ -1018,33 +1062,7 @@ void TlsTransport::shutdown() {
 	try {
 		// Send the close_notify alert
 		DWORD type = SCHANNEL_SHUTDOWN;
-		SecBuffer control = {sizeof(type), SECBUFFER_TOKEN, &type};
-		SecBufferDesc controlDesc = {SECBUFFER_VERSION, 1, &control};
-		if (ApplyControlToken(mContext.get(), &controlDesc) != SEC_E_OK)
-			return;
-
-		SecBuffer in[2] = {};
-		in[0].BufferType = SECBUFFER_TOKEN;
-		in[1].BufferType = SECBUFFER_EMPTY;
-		SecBufferDesc inDesc = {SECBUFFER_VERSION, 2, in};
-
-		schannel::ContextBuffers out({SECBUFFER_TOKEN, SECBUFFER_ALERT, SECBUFFER_EMPTY});
-		ULONG attributes = 0;
-		SECURITY_STATUS status;
-		if (mIsClient)
-			status = InitializeSecurityContextW(mCredentials.get(), mContext.get(), nullptr,
-			                                    ClientRequirements, 0, 0, nullptr, 0,
-			                                    mContext.get(), out.desc(), &attributes, nullptr);
-		else
-			status = AcceptSecurityContext(mCredentials.get(), mContext.get(), &inDesc,
-			                               ServerRequirements, 0, mContext.get(), out.desc(),
-			                               &attributes, nullptr);
-
-		if (!FAILED(status))
-			if (const SecBuffer *token = out.find(SECBUFFER_TOKEN)) {
-				auto data = static_cast<const byte *>(token->pvBuffer);
-				outgoing(make_message(data, data + token->cbBuffer));
-			}
+		sendControlToken(&type, sizeof(type));
 
 	} catch (const std::exception &e) {
 		PLOG_DEBUG << "TLS shutdown failed: " << e.what();

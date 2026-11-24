@@ -95,6 +95,7 @@ protected:
 	bool handshakeStep();
 	bool decryptInput(std::vector<message_ptr> &received);
 	void verifyServerCertificate();
+	void sendControlToken(void *token, unsigned long size);
 	void shutdown();
 
 #else
