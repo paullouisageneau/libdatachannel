@@ -361,6 +361,24 @@ struct RTC_CPP_EXPORT RtcpNack {
 	bool addMissingPacket(unsigned int *fciCount, uint16_t *fciPID, uint16_t missingPacket);
 };
 
+struct RTC_CPP_EXPORT RtcpBye {
+	RtcpHeader header;
+	SSRC _ssrcs[1];
+
+	[[nodiscard]] static size_t SizeWithSSRCs(uint8_t ssrcCount);
+
+	// Note: the source count is clamped against the length field, so reads stay inside the
+	// length-validated region. The caller must still have validated length against the buffer.
+	[[nodiscard]] uint8_t getSSRCCount() const;
+	[[nodiscard]] SSRC getSSRC(uint8_t i) const;
+	[[nodiscard]] size_t getSize() const;
+
+	void preparePacket(uint8_t ssrcCount);
+	void setSSRC(uint8_t i, SSRC ssrc);
+
+	void log() const;
+};
+
 typedef std::array<char, 4> RtcpAppName;
 
 struct RTC_CPP_EXPORT RtcpApp {
