@@ -70,7 +70,7 @@ jobs:
           prerelease: false
 
       - name: Upload source zip to release
-        run: gh release upload ${{ github.ref }} libdatachannel-${{ env.TAG }}.zip
+        run: gh release upload "${{ env.TAG }}" "libdatachannel-${{ env.TAG }}.zip"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
