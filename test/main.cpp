@@ -28,6 +28,7 @@ TestResult test_pem();
 TestResult test_certificate_types();
 TestResult test_pem_formats();
 TestResult test_fingerprint_algorithms();
+TestResult test_websocketserver_tls_verification();
 TestResult test_negotiated();
 TestResult test_reliability();
 TestResult test_simulcast_sdp_generation();
@@ -53,7 +54,6 @@ TestResult test_capi_track();
 TestResult test_websocket();
 TestResult test_websocketserver();
 TestResult test_capi_websocketserver();
-TestResult test_websocketserver_tls_verification();
 size_t benchmark(chrono::milliseconds duration);
 
 void test_benchmark() {
@@ -96,6 +96,9 @@ static const vector<Test> tests = {
     Test("Certificate types", test_certificate_types),
     Test("PEM formats", test_pem_formats),
     Test("Fingerprint algorithms", test_fingerprint_algorithms),
+#if RTC_ENABLE_WEBSOCKET
+    Test("WebSocketServer TLS verification", test_websocketserver_tls_verification),
+#endif
     // TODO: Temporarily disabled as the Open Relay TURN server is unreliable
     // Test("WebRTC TURN connectivity", test_turn_connectivity),
     Test("WebRTC negotiated DataChannel", test_negotiated),
@@ -123,7 +126,6 @@ static const vector<Test> tests = {
     // TODO: Temporarily disabled as the echo service is unreliable
     // Test("WebSocket", test_websocket),
     Test("WebSocketServer", test_websocketserver),
-    Test("WebSocketServer TLS verification", test_websocketserver_tls_verification),
 #endif
     Test("Cleanup", test_cleanup),
     // C API tests
