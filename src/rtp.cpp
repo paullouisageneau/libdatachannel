@@ -749,6 +749,171 @@ bool RtcpNack::addMissingPacket(unsigned int *fciCount, uint16_t *fciPID, uint16
 	}
 }
 
+// RFC 7728 PAUSE-RESUME FCI entry
+
+SSRC RtcpPauseResumeFci::targetSsrc() const { return ntohl(_targetSsrc); }
+
+RtcpPauseResumeType RtcpPauseResumeFci::type() const {
+	return static_cast<RtcpPauseResumeType>((_typeAndRes >> 4) & 0x0F);
+}
+
+uint8_t RtcpPauseResumeFci::parameterLen() const { return _parameterLen; }
+
+uint16_t RtcpPauseResumeFci::pauseId() const { return ntohs(_pauseId); }
+
+size_t RtcpPauseResumeFci::getSize() const { return BaseSize + _parameterLen * 4; }
+
+const uint8_t *RtcpPauseResumeFci::typeSpecific() const {
+	return reinterpret_cast<const uint8_t *>(this) + BaseSize;
+}
+
+uint8_t *RtcpPauseResumeFci::typeSpecific() {
+	return reinterpret_cast<uint8_t *>(this) + BaseSize;
+}
+
+uint32_t RtcpPauseResumeFci::extendedHighestSeqNo() const {
+	if (_parameterLen < 1)
+		return 0;
+	uint32_t val;
+	std::memcpy(&val, typeSpecific(), sizeof(val));
+	return ntohl(val);
+}
+
+void RtcpPauseResumeFci::setTargetSsrc(SSRC ssrc) { _targetSsrc = htonl(ssrc); }
+
+void RtcpPauseResumeFci::setType(RtcpPauseResumeType type) {
+	_typeAndRes = (static_cast<uint8_t>(type) << 4) & 0xF0;
+}
+
+void RtcpPauseResumeFci::setParameterLen(uint8_t len) { _parameterLen = len; }
+
+void RtcpPauseResumeFci::setPauseId(uint16_t pauseId) { _pauseId = htons(pauseId); }
+
+void RtcpPauseResumeFci::setExtendedHighestSeqNo(uint32_t seqNo) {
+	uint32_t val = htonl(seqNo);
+	std::memcpy(typeSpecific(), &val, sizeof(val));
+}
+
+// RFC 7728 PAUSE-RESUME RTCP packet
+
+size_t RtcpPauseResume::SizeWithFciCount(unsigned int count) {
+	return sizeof(RtcpFbHeader) + count * RtcpPauseResumeFci::BaseSize;
+}
+
+size_t RtcpPauseResume::SizeWithPausedFci() {
+	// PAUSED FCI has 8 bytes base + 4 bytes extended highest seq no
+	return sizeof(RtcpFbHeader) + RtcpPauseResumeFci::BaseSize + 4;
+}
+
+unsigned int RtcpPauseResume::getSize() const {
+	return sizeof(uint32_t) * (1 + header.header.length());
+}
+
+const RtcpPauseResumeFci *RtcpPauseResume::getFci(int index) const {
+	auto ptr = reinterpret_cast<const uint8_t *>(&_fci[0]);
+	for (int i = 0; i < index; i++) {
+		auto fci = reinterpret_cast<const RtcpPauseResumeFci *>(ptr);
+		ptr += fci->getSize();
+	}
+	return reinterpret_cast<const RtcpPauseResumeFci *>(ptr);
+}
+
+RtcpPauseResumeFci *RtcpPauseResume::getFci(int index) {
+	auto ptr = reinterpret_cast<uint8_t *>(&_fci[0]);
+	for (int i = 0; i < index; i++) {
+		auto fci = reinterpret_cast<RtcpPauseResumeFci *>(ptr);
+		ptr += fci->getSize();
+	}
+	return reinterpret_cast<RtcpPauseResumeFci *>(ptr);
+}
+
+void RtcpPauseResume::preparePacket(SSRC senderSSRC, unsigned int fciCount) {
+	// length = number of 32-bit words minus 1
+	uint16_t length = uint16_t((SizeWithFciCount(fciCount) / 4) - 1);
+	header.header.prepareHeader(PayloadType, FormatType, length);
+	header.setPacketSenderSSRC(senderSSRC);
+	header.setMediaSourceSSRC(0); // media source SSRC is 0 per RFC 7728
+}
+
+void RtcpPauseResume::preparePausedPacket(SSRC senderSSRC) {
+	uint16_t length = uint16_t((SizeWithPausedFci() / 4) - 1);
+	header.header.prepareHeader(PayloadType, FormatType, length);
+	header.setPacketSenderSSRC(senderSSRC);
+	header.setMediaSourceSSRC(0);
+}
+
+// Helper to build a basic (non-PAUSED) single-FCI packet
+static binary buildBasicPauseResume(SSRC senderSSRC, SSRC targetSSRC, uint16_t pauseId,
+                                    RtcpPauseResumeType type) {
+	auto size = RtcpPauseResume::SizeWithFciCount(1);
+	binary pkt(size, byte{0});
+
+	auto *pr = reinterpret_cast<RtcpPauseResume *>(pkt.data());
+	pr->preparePacket(senderSSRC, 1);
+
+	auto *fci = pr->getFci(0);
+	fci->setTargetSsrc(targetSSRC);
+	fci->setType(type);
+	fci->setParameterLen(0);
+	fci->setPauseId(pauseId);
+
+	return pkt;
+}
+
+binary RtcpPauseResume::BuildPause(SSRC senderSSRC, SSRC targetSSRC, uint16_t pauseId) {
+	return buildBasicPauseResume(senderSSRC, targetSSRC, pauseId, RtcpPauseResumeType::Pause);
+}
+
+binary RtcpPauseResume::BuildResume(SSRC senderSSRC, SSRC targetSSRC, uint16_t pauseId) {
+	return buildBasicPauseResume(senderSSRC, targetSSRC, pauseId, RtcpPauseResumeType::Resume);
+}
+
+binary RtcpPauseResume::BuildPaused(SSRC senderSSRC, SSRC targetSSRC, uint16_t pauseId,
+                                     uint32_t extendedHighestSeqNo) {
+	auto size = SizeWithPausedFci();
+	binary pkt(size, byte{0});
+
+	auto *pr = reinterpret_cast<RtcpPauseResume *>(pkt.data());
+	pr->preparePausedPacket(senderSSRC);
+
+	auto *fci = pr->getFci(0);
+	fci->setTargetSsrc(targetSSRC);
+	fci->setType(RtcpPauseResumeType::Paused);
+	fci->setParameterLen(1); // 1 word = 4 bytes for extended highest seq no
+	fci->setPauseId(pauseId);
+	fci->setExtendedHighestSeqNo(extendedHighestSeqNo);
+
+	return pkt;
+}
+
+binary RtcpPauseResume::BuildRefused(SSRC senderSSRC, SSRC targetSSRC, uint16_t pauseId) {
+	return buildBasicPauseResume(senderSSRC, targetSSRC, pauseId, RtcpPauseResumeType::Refused);
+}
+
+const RtcpPauseResume *RtcpPauseResume::Parse(const byte *data, size_t size) {
+	// Minimum size: RtcpFbHeader (12 bytes) + one basic FCI (8 bytes) = 20 bytes
+	if (size < SizeWithFciCount(1))
+		return nullptr;
+
+	auto *pr = reinterpret_cast<const RtcpPauseResume *>(data);
+
+	// Validate payload type (PT=205 for RTPFB)
+	if (pr->header.header.payloadType() != PayloadType)
+		return nullptr;
+
+	// Validate FMT (report count field) = 9 for PAUSE-RESUME
+	if (pr->header.header.reportCount() != FormatType)
+		return nullptr;
+
+	return pr;
+}
+
+void RtcpPauseResume::log() const {
+	header.log();
+	PLOG_VERBOSE << "RTCP PAUSE-RESUME: fciSize="
+	             << (getSize() - sizeof(RtcpFbHeader)) << " bytes";
+}
+
 size_t RtcpApp::SizeWithData(size_t dataLength) {
 	return sizeof(RtcpHeader) + sizeof(SSRC) + 4 + dataLength;
 }
