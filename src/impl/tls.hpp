@@ -90,6 +90,17 @@ std::shared_ptr<mbedtls_x509_crt> new_x509_crt();
 
 namespace rtc::openssl {
 
+// Key exchange groups for (D)TLS (supported_groups), most preferred first:
+// - P-256 is a MUST for WebRTC over DTLS 1.2 (RFC 8827 Section 6.5) and for (D)TLS 1.3 (RFC 8446
+//   Section 9.1). A (D)TLS 1.3 client sends a key share for its first group only, so leading with
+//   P-256 means no compliant peer needs a HelloRetryRequest.
+// - X25519 is a SHOULD for (D)TLS 1.3 (RFC 8446 Section 9.1) and in BCP 195 (RFC 9325 Section
+//   4.2.1). Browsers offer it first, so supporting it spares them a HelloRetryRequest.
+// - P-384 is needed in (D)TLS 1.2 with any server whose ECDSA certificate uses it, as the server's
+//   certificate MUST respect the client's groups (RFC 8422 Section 5.3), and is a MUST for CNSA
+//   (D)TLS connections (RFC 9151 Section 5.1).
+const char *const KEY_EXCHANGE_GROUPS = "P-256:X25519:P-384";
+
 void init();
 string error_string(unsigned long error);
 

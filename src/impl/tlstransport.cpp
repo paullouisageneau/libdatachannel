@@ -580,7 +580,11 @@ TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProx
 		               "Failed to set SSL priorities");
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000
-		openssl::check(SSL_CTX_set1_groups_list(mCtx, "P-256"), "Failed to set SSL groups");
+		if (!SSL_CTX_set1_groups_list(mCtx, openssl::KEY_EXCHANGE_GROUPS)) {
+			// A provider may lack some groups, X25519 in FIPS mode for instance
+			ERR_clear_error();
+			openssl::check(SSL_CTX_set1_groups_list(mCtx, "P-256"), "Failed to set SSL groups");
+		}
 #else
 		auto ecdh = unique_ptr<EC_KEY, decltype(&EC_KEY_free)>(
 		    EC_KEY_new_by_curve_name(NID_X9_62_prime256v1), EC_KEY_free);
