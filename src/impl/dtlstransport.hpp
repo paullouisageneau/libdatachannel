@@ -111,9 +111,11 @@ protected:
 	std::chrono::steady_clock::time_point mRetransmitTime;
 	std::chrono::milliseconds mRetransmitTimeout;
 	bool mRetransmitArmed = false;
+	uint64_t mNextPlaintextSequence = 0; // next record sequence number in epoch 0
 
 	bool handshakeStep(binary input, binary &remaining, bool &sent);
 	void verifyPeerCertificate(bool required);
+	void sendFatalAlert(uint8_t description);
 	void completeHandshake();
 	void handleTimeout();
 	void armRetransmitTimer(bool reset);

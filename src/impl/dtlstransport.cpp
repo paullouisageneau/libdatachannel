@@ -736,6 +736,12 @@ int DtlsTransport::GetTimerCallback(void *ctx) {
 //   sequence number is authenticated.
 // - Sending close_notify is not supported: ApplyControlToken(SCHANNEL_SHUTDOWN) followed by
 //   InitializeSecurityContext/AcceptSecurityContext only retransmits the last flight.
+// - Sending alerts is not supported either: ApplyControlToken(SCHANNEL_ALERT) fails with
+//   SEC_E_UNSUPPORTED_FUNCTION at every stage of the handshake. Conversely, plaintext alerts
+//   received during the handshake are ignored, except before the cookie exchange.
+// - The peer certificate is available with SECPKG_ATTR_REMOTE_CERT_CHAIN as soon as it is
+//   received, whereas SECPKG_ATTR_REMOTE_CERT_CONTEXT only returns it once the handshake is
+//   finished.
 // - An invalid datagram during the handshake makes the function fail, but the context remains
 //   usable: the handshake completes if the next valid datagrams are passed to the function.
 
@@ -791,6 +797,53 @@ const unsigned long ServerRequirements =
 // Opaque client address used by the server to bind the HelloVerifyRequest cookie. The transport
 // path is already validated by ICE, so a constant value is used.
 unsigned char ClientAddress[16] = {0x02, 0x00, 0x00, 0x00, 0x7F, 0x00, 0x00, 0x01};
+
+#ifndef SECPKG_ATTR_REMOTE_CERT_CHAIN
+#define SECPKG_ATTR_REMOTE_CERT_CHAIN 0x67
+#endif
+
+const size_t RecordHeaderSize = 13; // type, version, epoch, sequence number, length
+
+const uint8_t ContentTypeChangeCipherSpec = 20;
+const uint8_t ContentTypeAlert = 21;
+const uint8_t ContentTypeHandshake = 22;
+const uint8_t ContentTypeApplicationData = 23;
+
+const uint8_t AlertLevelFatal = 2;
+const uint8_t AlertBadCertificate = 42;
+
+struct RecordHeader {
+	uint8_t type;
+	uint16_t epoch;
+	uint64_t sequence;
+	const byte *fragment;
+	size_t length;
+};
+
+// Parse the records of a datagram, stopping at the first truncated one
+std::vector<RecordHeader> parse_records(const byte *data, size_t size) {
+	std::vector<RecordHeader> records;
+	size_t offset = 0;
+	while (size - offset >= RecordHeaderSize) {
+		auto p = data + offset;
+		RecordHeader record;
+		record.type = std::to_integer<uint8_t>(p[0]);
+		record.epoch =
+		    uint16_t(std::to_integer<uint8_t>(p[3]) << 8 | std::to_integer<uint8_t>(p[4]));
+		record.sequence = 0;
+		for (int i = 5; i < 11; ++i)
+			record.sequence = record.sequence << 8 | std::to_integer<uint8_t>(p[i]);
+		record.length =
+		    size_t(std::to_integer<uint8_t>(p[11])) << 8 | std::to_integer<uint8_t>(p[12]);
+		if (record.length > size - offset - RecordHeaderSize)
+			break;
+
+		record.fragment = p + RecordHeaderSize;
+		records.push_back(record);
+		offset += RecordHeaderSize + record.length;
+	}
+	return records;
+}
 
 // Invalid datagrams received during the handshake make InitializeSecurityContext or
 // AcceptSecurityContext fail with one of these statuses without breaking the context
@@ -995,10 +1048,22 @@ void DtlsTransport::doRecv() {
 				// application data which can't be decrypted yet, since SChannel would fail.
 				const uint8_t first =
 				    message->empty() ? 0 : std::to_integer<uint8_t>(message->front());
-				if (first < 20 || first > 63 || first == 23) {
+				if (first < 20 || first > 63 || first == ContentTypeApplicationData) {
 					PLOG_VERBOSE << "Ignoring packet received during DTLS handshake, first byte="
 					             << unsigned(first);
 					continue;
+				}
+
+				// SChannel ignores plaintext alerts during the handshake, so handle fatal ones
+				// like other implementations do, otherwise the handshake would only fail on
+				// timeout when the peer rejects it.
+				for (const auto &record : parse_records(message->data(), message->size())) {
+					if (record.type == ContentTypeAlert && record.epoch == 0 &&
+					    record.length == 2 &&
+					    std::to_integer<uint8_t>(record.fragment[0]) == AlertLevelFatal)
+						throw std::runtime_error(
+						    "DTLS fatal alert received during handshake, description=" +
+						    std::to_string(std::to_integer<uint8_t>(record.fragment[1])));
 				}
 
 				// Continue the handshake
@@ -1128,8 +1193,12 @@ bool DtlsTransport::handshakeStep(binary input, binary &remaining, bool &sent) {
 				sent = true;
 			}
 			mLastFlight.emplace_back(data, data + token->cbBuffer);
-			if (std::to_integer<uint8_t>(data[0]) == 20) // change_cipher_spec
+			if (std::to_integer<uint8_t>(data[0]) == ContentTypeChangeCipherSpec)
 				mClientFinishedSent = mIsClient;
+
+			for (const auto &record : parse_records(data, token->cbBuffer))
+				if (record.epoch == 0)
+					mNextPlaintextSequence = std::max(mNextPlaintextSequence, record.sequence + 1);
 
 			outgoing(make_message(data, data + token->cbBuffer));
 		}
@@ -1186,22 +1255,54 @@ bool DtlsTransport::handshakeStep(binary input, binary &remaining, bool &sent) {
 
 void DtlsTransport::verifyPeerCertificate(bool required) {
 	// Requires mSslMutex to be locked
+	// SECPKG_ATTR_REMOTE_CERT_CHAIN returns the peer certificate as soon as it is received,
+	// SECPKG_ATTR_REMOTE_CERT_CONTEXT only once the handshake is finished
 	PCCERT_CONTEXT remote = nullptr;
 	SECURITY_STATUS status =
-	    QueryContextAttributesW(mContext.get(), SECPKG_ATTR_REMOTE_CERT_CONTEXT, &remote);
+	    QueryContextAttributesW(mContext.get(), SECPKG_ATTR_REMOTE_CERT_CHAIN, &remote);
 	if (status != SEC_E_OK || !remote) {
-		if (required)
+		remote = nullptr;
+		status = QueryContextAttributesW(mContext.get(), SECPKG_ATTR_REMOTE_CERT_CONTEXT, &remote);
+	}
+	if (status != SEC_E_OK || !remote) {
+		if (required) {
+			sendFatalAlert(AlertBadCertificate);
 			throw std::runtime_error("DTLS peer certificate is missing");
+		}
 
 		return; // not available yet
 	}
 
 	auto cert = schannel::make_cert_context_ptr(remote);
 	string fingerprint = make_fingerprint(cert.get(), mFingerprintAlgorithm);
-	if (!mVerifierCallback(fingerprint))
+	if (!mVerifierCallback(fingerprint)) {
+		sendFatalAlert(AlertBadCertificate);
 		throw std::runtime_error("DTLS peer certificate verification failed");
+	}
 
 	mPeerVerified = true;
+}
+
+void DtlsTransport::sendFatalAlert(uint8_t description) {
+	// Requires mSslMutex to be locked
+	// SChannel can't generate alerts for DTLS, see notes above, so the record is built manually.
+	// The peer certificate is verified before our ChangeCipherSpec is sent, so the alert is sent
+	// in plaintext, which the peer accepts as it has not received our ChangeCipherSpec either.
+	binary record(RecordHeaderSize + 2);
+	record[0] = byte(ContentTypeAlert);
+	record[1] = byte(0xFE); // DTLS 1.2
+	record[2] = byte(0xFD);
+	record[3] = record[4] = byte(0); // epoch 0
+	for (int i = 0; i < 6; ++i)
+		record[5 + i] = byte((mNextPlaintextSequence >> (8 * (5 - i))) & 0xFF);
+	record[11] = byte(0);
+	record[12] = byte(2); // length
+	record[13] = byte(AlertLevelFatal);
+	record[14] = byte(description);
+	++mNextPlaintextSequence;
+
+	PLOG_DEBUG << "Sending DTLS fatal alert, description=" << unsigned(description);
+	outgoing(make_message(record.begin(), record.end()));
 }
 
 void DtlsTransport::completeHandshake() {
