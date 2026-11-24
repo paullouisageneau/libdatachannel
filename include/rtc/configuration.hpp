@@ -105,7 +105,7 @@ struct WebSocketConfiguration {
 	optional<std::chrono::milliseconds> connectionTimeout;    // zero to disable
 	optional<std::chrono::milliseconds> pingInterval;         // zero to disable
 	optional<int> maxOutstandingPings;
-	optional<string> caCertificatePemFile;
+	optional<string> caCertificatePemFile; // trusted in addition to the system CAs
 	optional<string> certificatePemFile;
 	optional<string> keyPemFile;
 	optional<string> keyPemPass;

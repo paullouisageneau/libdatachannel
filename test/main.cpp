@@ -47,6 +47,7 @@ TestResult test_rtcp_app_multiple_in_compound();
 TestResult test_rtcp_app_integration();
 TestResult test_capi_connectivity();
 TestResult test_capi_track();
+TestResult test_websocket_tls_verification();
 TestResult test_websocket();
 TestResult test_websocketserver();
 TestResult test_capi_websocketserver();
@@ -113,6 +114,7 @@ static const vector<Test> tests = {
     Test("RTCP APP integration", test_rtcp_app_integration),
 #endif
 #if RTC_ENABLE_WEBSOCKET
+    Test("WebSocket TLS verification", test_websocket_tls_verification),
     // TODO: Temporarily disabled as the echo service is unreliable
     // Test("WebSocket", test_websocket),
     Test("WebSocketServer", test_websocketserver),

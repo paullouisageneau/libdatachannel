@@ -173,6 +173,9 @@ Protocol stack:
 Features:
 - IPv6 and IPv4/IPv6 dual-stack support
 - Keepalive with ping/pong
+- TLS server certificate verification against the system trust store
+
+When connecting to a `wss://` URL, the server certificate chain and host name are verified against the system trust store: with the platform API on Windows and Apple platforms, and with the system CA bundle (for instance `/etc/ssl/certs/ca-certificates.crt`) elsewhere. A self-signed or privately-issued server certificate requires either setting `caCertificatePemFile` to the CA certificate or disabling verification with `disableTlsVerification` in the WebSocket configuration.
 
 ## External resources
 - Rust bindings for libdatachannel: [datachannel-rs](https://github.com/lerouxrgd/datachannel-rs)

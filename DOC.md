@@ -1449,7 +1449,7 @@ Arguments:
 
 - `url`: a null-terminated string representing the fully-qualified URL to open.
 - `config`: a structure with the following parameters:
-  - `disableTlsVerification`: if true, don't verify the TLS certificate, else try to verify it if possible
+  - `disableTlsVerification`: if true, don't verify the TLS certificate, else verify the server certificate chain and host name against the system trust store (see below)
   - `proxyServer` (optional): if non-NULL, specifies the proxy server URI to use (only non-authenticated HTTP proxies are supported for now)
   - `protocols` (optional): an array of pointers on null-terminated protocol names (NULL if unused)
   - `protocolsCount` (optional): number of URLs in the array pointed by `protocols` (0 if unused)
@@ -1461,6 +1461,14 @@ Arguments:
 Return value: the identifier of the new WebSocket or a negative error code
 
 The new WebSocket must be deleted with `rtcDeleteWebSocket` (or `rtcDelete`). The scheme of the URL must be either `ws` or `wss`.
+
+With `wss`, unless `disableTlsVerification` is true, the server certificate chain and host name (DNS name or IP address) are verified against the system trust store:
+- With OpenSSL or Mbed TLS on Windows, macOS, and iOS, with the operating system API (CryptoAPI or Security framework), which may block the handshake to fetch missing intermediate certificates over the network. On Apple platforms, it requires macOS 10.14 or iOS 12.
+- With OpenSSL on other platforms, with the OpenSSL default CA locations.
+- With Mbed TLS on other platforms, with the system CA bundle loaded from the file set in the `SSL_CERT_FILE` environment variable or from the usual locations (`/etc/ssl/certs/ca-certificates.crt`, `/etc/pki/tls/certs/ca-bundle.crt`, `/etc/ssl/ca-bundle.pem`, `/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`, `/etc/ssl/cert.pem`, etc.).
+- With GnuTLS, with the GnuTLS system trust.
+
+A server with a self-signed or privately-issued certificate is therefore rejected unless verification is disabled or, with the C++ API, the CA certificate is set with `caCertificatePemFile` in `rtc::WebSocketConfiguration` (PEM content or path of a PEM file), in which case chains issued by this CA are accepted in addition to the ones trusted by the system.
 
 #### rtcDeleteWebSocket
 
