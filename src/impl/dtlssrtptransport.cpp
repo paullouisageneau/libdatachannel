@@ -307,13 +307,14 @@ void DtlsSrtpTransport::postHandshake() {
 	if (srtpParams.MasterKeyIdentifier)
 		FreeContextBuffer(srtpParams.MasterKeyIdentifier);
 
-	if (srtpParams.ProtectionProfile == 0)
+	// The profile identifier is in network byte order, like when it is passed to SChannel
+	const unsigned short profileId = ntohs(srtpParams.ProtectionProfile);
+	if (profileId == 0)
 		throw std::runtime_error("Failed to get SRTP profile: use_srtp was not negotiated");
 
-	PLOG_DEBUG << "SRTP profile is: 0x" << std::hex << srtpParams.ProtectionProfile << std::dec;
+	PLOG_DEBUG << "SRTP profile is: 0x" << std::hex << profileId << std::dec;
 
-	const auto [srtpProfile, keySize, saltSize] =
-	    getProfileParamsFromId(srtpParams.ProtectionProfile);
+	const auto [srtpProfile, keySize, saltSize] = getProfileParamsFromId(profileId);
 	const size_t keySizeWithSalt = keySize + saltSize;
 
 	// The extractor provides the client write master key, the server write master key, the client

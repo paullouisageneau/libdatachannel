@@ -105,6 +105,8 @@ protected:
 	bool mPeerVerified = false;
 	std::vector<binary> mLastFlight;  // last handshake flight sent
 	std::vector<binary> mFinalFlight; // last flight if it completed the handshake
+	std::chrono::steady_clock::time_point mFinalFlightRetransmitTime;
+	bool mClientFinishedSent = false;
 	std::chrono::steady_clock::time_point mHandshakeStartTime;
 	std::chrono::steady_clock::time_point mRetransmitTime;
 	std::chrono::milliseconds mRetransmitTimeout;

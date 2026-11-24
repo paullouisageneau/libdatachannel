@@ -721,12 +721,19 @@ int DtlsTransport::GetTimerCallback(void *ctx) {
 //   same flight are pending: the function must be called again with an empty input token.
 // - The path MTU must be passed as a SECBUFFER_DTLS_MTU input buffer on each call.
 // - The use_srtp extension is negotiated with a SECBUFFER_SRTP_PROTECTION_PROFILES input buffer,
-//   which must be passed on each call as well.
+//   which must be passed on each call as well. The size is in host byte order but the profiles
+//   identifiers are copied as-is to the extension, so they must be in network byte order.
 // - The server sends a HelloVerifyRequest and requires the client transport address as a
 //   SECBUFFER_EXTRA input buffer to bind the cookie.
 // - SChannel has no retransmission timer: calling the function with an empty input token
 //   retransmits the last flight. However, once the handshake is finished, retransmissions from
-//   the peer are not handled anymore, so the final flight is retransmitted manually.
+//   the peer are not handled anymore (passing them to DecryptMessage even causes the context to
+//   expire), so the final flight is retransmitted manually.
+// - When retransmitting, SChannel reuses the record sequence number of the encrypted Finished
+//   message, which violates RFC 6347 section 4.1. Other implementations discard it as a replay,
+//   so if SChannel is the DTLS client and the final flight of a non-SChannel server is lost, the
+//   server never retransmits it and the handshake times out. This can't be worked around since the
+//   sequence number is authenticated.
 // - Sending close_notify is not supported: ApplyControlToken(SCHANNEL_SHUTDOWN) followed by
 //   InitializeSecurityContext/AcceptSecurityContext only retransmits the last flight.
 
@@ -739,8 +746,8 @@ const unsigned short SrtpAeadAes256Gcm = 0x0008;
 
 // SEC_SRTP_PROTECTION_PROFILES with room for the profiles list
 struct SrtpProtectionProfiles {
-	unsigned short ProfilesSize; // in bytes
-	unsigned short ProfilesList[3];
+	unsigned short ProfilesSize;    // in bytes, host byte order
+	unsigned short ProfilesList[3]; // network byte order
 };
 
 SrtpProtectionProfiles make_srtp_protection_profiles() {
@@ -750,13 +757,13 @@ SrtpProtectionProfiles make_srtp_protection_profiles() {
 	// AES-GCM is only available if libSRTP supports it, which is not the case of the bundled
 	// libSRTP as it is built without third-party crypto library.
 	if (DtlsSrtpTransport::IsGcmSupported()) {
-		profiles.ProfilesList[count++] = SrtpAeadAes256Gcm;
-		profiles.ProfilesList[count++] = SrtpAeadAes128Gcm;
+		profiles.ProfilesList[count++] = htons(SrtpAeadAes256Gcm);
+		profiles.ProfilesList[count++] = htons(SrtpAeadAes128Gcm);
 	}
 #endif
 	// RFC 8827: The DTLS-SRTP protection profile SRTP_AES128_CM_HMAC_SHA1_80 MUST be supported
 	// See https://www.rfc-editor.org/rfc/rfc8827.html#section-6.5
-	profiles.ProfilesList[count++] = SrtpAes128CmHmacSha1_80;
+	profiles.ProfilesList[count++] = htons(SrtpAes128CmHmacSha1_80);
 	profiles.ProfilesSize = static_cast<unsigned short>(count * sizeof(unsigned short));
 	return profiles;
 }
@@ -1083,6 +1090,9 @@ bool DtlsTransport::handshakeStep(binary input, binary &remaining, bool &sent) {
 				sent = true;
 			}
 			mLastFlight.emplace_back(data, data + token->cbBuffer);
+			if (std::to_integer<uint8_t>(data[0]) == 20) // change_cipher_spec
+				mClientFinishedSent = mIsClient;
+
 			outgoing(make_message(data, data + token->cbBuffer));
 		}
 
@@ -1187,8 +1197,16 @@ void DtlsTransport::handleTimeout() {
 	if (now < mRetransmitTime)
 		return; // a timer is already scheduled
 
-	if (now - mHandshakeStartTime > HandshakeTimeout)
+	if (now - mHandshakeStartTime > HandshakeTimeout) {
+		if (mIsClient && mClientFinishedSent)
+			// See notes above about the reuse of record sequence numbers by SChannel
+			throw std::runtime_error(
+			    "Handshake timeout: the final flight from the server was not received, "
+			    "possibly because SChannel retransmissions of the client Finished message are "
+			    "discarded as replays by the server");
+
 		throw std::runtime_error("Handshake timeout");
+	}
 
 	// SChannel retransmits the last flight when called with an empty input token
 	binary remaining;
@@ -1217,54 +1235,71 @@ void DtlsTransport::armRetransmitTimer(bool reset) {
 bool DtlsTransport::decryptDatagram(message_ptr message, std::vector<message_ptr> &received) {
 	std::lock_guard lock(mSslMutex);
 
-	binary data(message->begin(), message->end());
-	const bool isHandshake = !data.empty() && std::to_integer<uint8_t>(data[0]) == 22;
+	// A datagram may contain multiple records, which are processed one by one
+	const size_t recordHeaderSize = 13; // type, version, epoch, sequence number, length
+	size_t offset = 0;
+	while (message->size() - offset >= recordHeaderSize) {
+		auto p = message->data() + offset;
+		const uint8_t type = std::to_integer<uint8_t>(p[0]);
+		const size_t length =
+		    size_t(std::to_integer<uint8_t>(p[11])) << 8 | std::to_integer<uint8_t>(p[12]);
+		const size_t recordSize = recordHeaderSize + length;
+		if (recordSize > message->size() - offset) {
+			PLOG_VERBOSE << "Discarding truncated DTLS record";
+			break;
+		}
+		offset += recordSize;
 
-	while (!data.empty()) {
+		if (type == 20 || type == 22) { // change_cipher_spec or handshake
+			// Renegotiation is not supported (RFC 8827), so this is a retransmission of the last
+			// flight of the peer, meaning it did not receive our final flight. SChannel does not
+			// handle retransmissions once the handshake is finished, and passing such records to
+			// DecryptMessage causes the context to expire, so the final flight is retransmitted
+			// manually.
+			auto now = std::chrono::steady_clock::now();
+			if (!mFinalFlight.empty() && now - mFinalFlightRetransmitTime > 500ms) {
+				PLOG_VERBOSE << "Retransmitting final DTLS handshake flight";
+				mFinalFlightRetransmitTime = now;
+				for (const auto &d : mFinalFlight)
+					outgoing(make_message(d.begin(), d.end()));
+			}
+			continue;
+		}
+
+		if (type != 21 && type != 23) { // neither alert nor application_data
+			PLOG_VERBOSE << "Discarding DTLS record with unexpected type " << unsigned(type);
+			continue;
+		}
+
+		binary record(p, p + recordSize);
 		SecBuffer buffers[4] = {};
 		buffers[0].BufferType = SECBUFFER_DATA;
-		buffers[0].pvBuffer = data.data();
-		buffers[0].cbBuffer = ULONG(data.size());
+		buffers[0].pvBuffer = record.data();
+		buffers[0].cbBuffer = ULONG(record.size());
 		buffers[1].BufferType = SECBUFFER_EMPTY;
 		buffers[2].BufferType = SECBUFFER_EMPTY;
 		buffers[3].BufferType = SECBUFFER_EMPTY;
 		SecBufferDesc desc = {SECBUFFER_VERSION, 4, buffers};
 
 		SECURITY_STATUS status = DecryptMessage(mContext.get(), &desc, 0, nullptr);
-
 		if (status == SEC_I_CONTEXT_EXPIRED)
 			return true; // close_notify received
 
 		if (status != SEC_E_OK) {
-			if (isHandshake && !mFinalFlight.empty()) {
-				// The peer retransmitted its last flight, so it did not receive our final flight.
-				// SChannel does not handle it once the handshake is finished.
-				PLOG_VERBOSE << "Retransmitting final DTLS handshake flight";
-				for (const auto &d : mFinalFlight)
-					outgoing(make_message(d.begin(), d.end()));
-			} else {
-				// RFC 6347: Invalid records SHOULD be silently discarded
-				PLOG_VERBOSE << "Discarding DTLS record: " << schannel::error_string(status);
-			}
-			return false;
+			// RFC 6347: Invalid records SHOULD be silently discarded
+			PLOG_VERBOSE << "Discarding DTLS record: " << schannel::error_string(status);
+			continue;
 		}
 
 		// The peer finished the handshake
 		mFinalFlight.clear();
 
-		binary extra;
 		for (const auto &buffer : buffers) {
-			if (!buffer.pvBuffer || buffer.cbBuffer == 0)
-				continue;
-
-			auto p = static_cast<const byte *>(buffer.pvBuffer);
-			if (buffer.BufferType == SECBUFFER_DATA)
-				received.push_back(make_message(p, p + buffer.cbBuffer));
-			else if (buffer.BufferType == SECBUFFER_EXTRA)
-				extra.assign(p, p + buffer.cbBuffer);
+			if (buffer.BufferType == SECBUFFER_DATA && buffer.pvBuffer && buffer.cbBuffer > 0) {
+				auto data = static_cast<const byte *>(buffer.pvBuffer);
+				received.push_back(make_message(data, data + buffer.cbBuffer));
+			}
 		}
-
-		data = std::move(extra);
 	}
 
 	return false;
