@@ -17,6 +17,7 @@
 #include <map>
 #include <memory>
 #include <thread>
+#include <vector>
 
 using namespace rtc;
 using namespace std;
@@ -164,6 +165,116 @@ TestResult test_websocketserver() {
 	this_thread::sleep_for(1s);
 
 	server.stop();
+	this_thread::sleep_for(1s);
+
+	return TestResult(true);
+}
+
+// Regression test for https://github.com/paullouisageneau/libdatachannel/issues/1618
+// A very short ping interval makes the TCP read timeout fire continuously, so the TLS transport
+// keeps receiving zero-sized messages, which make the WebSocket send pings while other threads
+// are sending messages and echoes are being received. With the Mbed TLS backend, this used to
+// deadlock as pings were sent while the TLS transport mutex was held by the receive path.
+TestResult test_websocketserver_tls_concurrent_send_recv() {
+	InitLogger(LogLevel::Warning);
+
+	const int threadsCount = 4;
+	const int messagesPerThread = 500;
+	const int expectedCount = threadsCount * messagesPerThread;
+
+	WebSocketServer::Configuration serverConfig;
+	serverConfig.port = 48082;
+	serverConfig.enableTls = true;
+	serverConfig.bindAddress = "127.0.0.1";
+	// Objects are intentionally leaked if a deadlock is detected, as they can't be destroyed
+	auto server = make_shared<WebSocketServer>(std::move(serverConfig));
+
+	auto clients = make_shared<vector<shared_ptr<WebSocket>>>();
+	server->onClient([clients](shared_ptr<WebSocket> incoming) {
+		clients->push_back(incoming);
+		incoming->onMessage([wclient = make_weak_ptr(incoming)](variant<binary, string> message) {
+			if (auto client = wclient.lock()) {
+				try {
+					client->send(std::move(message));
+				} catch (const exception &e) {
+					cout << "WebSocketServer: Echo failed: " << e.what() << endl;
+				}
+			}
+		});
+	});
+
+	WebSocket::Configuration config;
+	config.disableTlsVerification = true;
+	config.pingInterval = 1ms; // ping on every short idle period
+	auto ws = make_shared<WebSocket>(std::move(config));
+
+	auto receivedCount = make_shared<std::atomic<int>>(0);
+	ws->onMessage([receivedCount](variant<binary, string>) { ++*receivedCount; });
+
+	ws->open("wss://localhost:48082/");
+
+	int attempts = 10;
+	while (!ws->isOpen() && attempts--)
+		this_thread::sleep_for(1s);
+
+	if (!ws->isOpen())
+		return TestResult(false, "WebSocket is not open");
+
+	cout << "WebSocket: Open, sending messages from " << threadsCount << " threads" << endl;
+
+	auto finishedThreads = make_shared<std::atomic<int>>(0);
+	auto sendFailed = make_shared<std::atomic<bool>>(false);
+	vector<thread> threads;
+	for (int t = 0; t < threadsCount; ++t) {
+		threads.emplace_back([ws, finishedThreads, sendFailed, t, messagesPerThread]() {
+			try {
+				for (int i = 0; i < messagesPerThread; ++i) {
+					ws->send("Thread " + to_string(t) + " message " + to_string(i));
+					// Leave idle periods so read timeouts happen while sending and receiving
+					if (i % 10 == 0)
+						this_thread::sleep_for(2ms);
+				}
+			} catch (const exception &e) {
+				cout << "WebSocket: Send failed: " << e.what() << endl;
+				*sendFailed = true;
+			}
+			++*finishedThreads;
+		});
+	}
+
+	// Watchdog: fail instead of hanging forever if a deadlock occurs
+	auto deadline = chrono::steady_clock::now() + 30s;
+	while ((*finishedThreads < threadsCount || *receivedCount < expectedCount) &&
+	       chrono::steady_clock::now() < deadline)
+		this_thread::sleep_for(100ms);
+
+	if (*finishedThreads < threadsCount) {
+		// Threads are stuck, leak everything so the test can report the failure
+		for (auto &th : threads)
+			th.detach();
+		new shared_ptr<WebSocket>(ws);
+		new shared_ptr<WebSocketServer>(server);
+		new shared_ptr<vector<shared_ptr<WebSocket>>>(clients);
+		return TestResult(false, "Deadlock detected: send threads are blocked");
+	}
+
+	for (auto &th : threads)
+		th.join();
+
+	if (*sendFailed)
+		return TestResult(false, "Send failed");
+
+	if (*receivedCount < expectedCount)
+		return TestResult(false, "Missing echoed messages: received " +
+		                             to_string(receivedCount->load()) + " out of " +
+		                             to_string(expectedCount));
+
+	cout << "WebSocket: Received all " << expectedCount << " echoed messages" << endl;
+
+	ws->close();
+	this_thread::sleep_for(1s);
+
+	server->stop();
 	this_thread::sleep_for(1s);
 
 	return TestResult(true);
