@@ -123,12 +123,44 @@ binary to_der(X509 *cert) {
 
 VerifiedTlsTransport::VerifiedTlsTransport(
     variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>> lower, string host,
-    certificate_ptr certificate, state_callback callback, [[maybe_unused]] optional<string> cacert)
-    : TlsTransport(std::move(lower), std::move(host), std::move(certificate), std::move(callback)) {
+    certificate_ptr certificate, state_callback callback, optional<string> cacert)
+    : TlsTransport(std::move(lower), std::move(host), certificate, std::move(callback)) {
 
 	PLOG_DEBUG << "Setting up TLS certificate verification";
 
 #if USE_GNUTLS
+	if (cacert) {
+		// The CA certificate is added to the trusted certificates. As the default credentials
+		// holding the system CA certificates are shared, dedicated ones are created. With a client
+		// certificate, its credentials are specific to the WebSocket and are used instead.
+		gnutls_certificate_credentials_t creds;
+		if (certificate) {
+			creds = certificate->credentials();
+		} else {
+			mCredentials = shared_ptr<gnutls_certificate_credentials_t>(gnutls::new_credentials(),
+			                                                            gnutls::free_credentials);
+			if (gnutls_certificate_set_x509_system_trust(*mCredentials) < 0) {
+				PLOG_WARNING << "System CA certificates unavailable";
+			}
+
+			creds = *mCredentials;
+		}
+
+		if (cacert->find(PemBeginCertificateTag) == string::npos) {
+			// *cacert is a file path
+			gnutls::check(
+			    gnutls_certificate_set_x509_trust_file(creds, cacert->c_str(), GNUTLS_X509_FMT_PEM),
+			    "Failed to load CA certificate");
+		} else {
+			// *cacert is a PEM content
+			gnutls_datum_t datum = gnutls::make_datum(cacert->data(), cacert->size());
+			gnutls::check(gnutls_certificate_set_x509_trust_mem(creds, &datum, GNUTLS_X509_FMT_PEM),
+			              "Failed to add CA certificate");
+		}
+
+		gnutls::check(gnutls_credentials_set(mSession, GNUTLS_CRD_CERTIFICATE, creds));
+	}
+
 	gnutls_session_set_verify_cert(mSession, mHost->c_str(), 0);
 
 #elif USE_MBEDTLS

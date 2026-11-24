@@ -24,7 +24,9 @@ public:
 	~VerifiedTlsTransport();
 
 private:
-#if USE_MBEDTLS
+#if USE_GNUTLS
+	shared_ptr<gnutls_certificate_credentials_t> mCredentials;
+#elif USE_MBEDTLS
 	mbedtls_x509_crt mCaCert;
 	bool mHasCaCert = false;
 #if !RTC_SYSTEM_TRUST_STORE
@@ -33,7 +35,7 @@ private:
 	uint32_t mChainFlags = 0;
 
 	static int VerifyCallback(void *ctx, mbedtls_x509_crt *crt, int depth, uint32_t *flags);
-#elif !USE_GNUTLS && RTC_SYSTEM_TRUST_STORE // OpenSSL
+#elif RTC_SYSTEM_TRUST_STORE // OpenSSL
 	static int CertVerifyCallback(X509_STORE_CTX *ctx, void *arg);
 #endif
 };
