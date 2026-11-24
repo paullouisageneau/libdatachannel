@@ -75,6 +75,15 @@ $ cd build
 $ nmake
 ```
 
+#### Prebuilt Windows libraries
+
+Prebuilt packages for Microsoft Visual C++ are attached to [releases](https://github.com/paullouisageneau/libdatachannel/releases) as `libdatachannel-<version>-windows-<arch>.zip`, for x64, x86, and arm64. They contain the shared library `bin/datachannel.dll` and its import library `lib/datachannel.lib`, built in Release mode against the dynamic C runtime (`/MD`) with media and WebSocket support, the headers, and the CMake package files. OpenSSL is linked statically, so no other DLL is needed. Extract the package and add its directory to `CMAKE_PREFIX_PATH` to use it from CMake:
+
+```cmake
+find_package(LibDataChannel REQUIRED)
+target_link_libraries(myapp PRIVATE LibDataChannel::LibDataChannel)
+```
+
 ## Build directly with Make (Linux only)
 
 Options `USE_GNUTLS` and `USE_MBEDTLS` allow to switch the cryptographic backend to GnuTLS and Mbed TLS respectively, otherwise OpenSSL is selected by default. The option `USE_NICE` allows to switch between libjuice as submodule (default) and libnice as system library.

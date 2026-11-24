@@ -4,10 +4,13 @@ on:
   push:
     tags:
       - 'v*'
+  # Manual runs only build and test the prebuilt packages, nothing is published
+  workflow_dispatch:
 
 jobs:
   release:
     name: Release
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -71,3 +74,127 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+
+  windows-prebuild:
+    name: Windows prebuild (${{ matrix.arch }})
+    needs: release
+    # Also run on workflow_dispatch, where the release job is skipped
+    if: ${{ !cancelled() && (needs.release.result == 'success' || github.event_name == 'workflow_dispatch') }}
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            cmake-arch: x64
+            triplet: x64-windows-static-md
+            run-test: true
+          - arch: x86
+            cmake-arch: Win32
+            triplet: x86-windows-static-md
+            run-test: true
+          - arch: arm64
+            cmake-arch: ARM64
+            triplet: arm64-windows-static-md
+            run-test: false # cross-compiled, cannot run on the x64 runner
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Get package name
+        run: |
+          if ("${{ github.event_name }}" -eq "push") { $tag = "${{ github.ref_name }}" }
+          else { $tag = "dev-$("${{ github.sha }}".Substring(0, 7))" }
+          "PACKAGE_NAME=libdatachannel-$tag-windows-${{ matrix.arch }}" >> $env:GITHUB_ENV
+
+      # OpenSSL is linked statically (built with the /MD runtime by vcpkg) so that
+      # the package only ships datachannel.dll, without OpenSSL DLLs to deploy.
+      - name: Install OpenSSL
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install openssl:${{ matrix.triplet }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "OPENSSL_ROOT_DIR=$env:VCPKG_INSTALLATION_ROOT/installed/${{ matrix.triplet }}".Replace('\', '/') >> $env:GITHUB_ENV
+
+      - name: cmake
+        run: >
+          cmake -S . -B build -A ${{ matrix.cmake-arch }}
+          -DUSE_GNUTLS=0 -DUSE_MBEDTLS=0 -DUSE_NICE=0
+          -DNO_EXAMPLES=ON -DNO_TESTS=ON
+          -DOPENSSL_USE_STATIC_LIBS=ON
+          "-DOPENSSL_ROOT_DIR=$env:OPENSSL_ROOT_DIR"
+
+      - name: build
+        run: cmake --build build --config Release --parallel
+
+      - name: Install to staging directory
+        run: |
+          $stage = "package\$env:PACKAGE_NAME"
+          cmake --install build --config Release --prefix $stage
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item LICENSE, README.md $stage
+          $licenses = New-Item -ItemType Directory "$stage\share\licenses"
+          Copy-Item "$env:OPENSSL_ROOT_DIR\share\openssl\copyright" "$licenses\OpenSSL.txt"
+          Copy-Item deps\libjuice\LICENSE "$licenses\libjuice.txt"
+          Copy-Item deps\libsrtp\LICENSE "$licenses\libsrtp.txt"
+          Copy-Item deps\usrsctp\LICENSE.md "$licenses\usrsctp.txt"
+          Get-ChildItem -Recurse -File $stage | ForEach-Object { $_.FullName.Substring((Resolve-Path $stage).Path.Length + 1) }
+
+      - name: Check package content
+        run: |
+          $stage = "package\$env:PACKAGE_NAME"
+          $expected = @(
+            "bin\datachannel.dll",
+            "lib\datachannel.lib",
+            "include\rtc\rtc.h",
+            "include\rtc\rtc.hpp",
+            "lib\cmake\LibDataChannel\LibDataChannelConfig.cmake",
+            "lib\cmake\LibDataChannel\LibDataChannelConfigVersion.cmake",
+            "lib\cmake\LibDataChannel\LibDataChannelTargets.cmake",
+            "LICENSE"
+          )
+          $missing = $expected | Where-Object { -not (Test-Path "$stage\$_") }
+          if ($missing) { Write-Error "Missing files in package: $missing"; exit 1 }
+          # OpenSSL must be linked statically
+          $dumpbin = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -find "VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe" | Select-Object -First 1
+          $imports = & $dumpbin /nologo /dependents "$stage\bin\datachannel.dll"
+          $imports
+          if ($imports -match "libssl|libcrypto") { Write-Error "datachannel.dll depends on OpenSSL DLLs"; exit 1 }
+
+      - name: Create zip
+        working-directory: package
+        run: cmake -E tar cf "..\$env:PACKAGE_NAME.zip" --format=zip "$env:PACKAGE_NAME"
+
+      - name: Test package
+        run: |
+          $test = "$env:RUNNER_TEMP\prebuild-test"
+          cmake -E make_directory "$test\package"
+          cmake -E chdir "$test\package" cmake -E tar xf "$env:GITHUB_WORKSPACE\$env:PACKAGE_NAME.zip"
+          cmake -S .github\prebuild-test -B "$test\build" -A ${{ matrix.cmake-arch }} "-DCMAKE_PREFIX_PATH=$test\package\$env:PACKAGE_NAME"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build "$test\build" --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ("${{ matrix.run-test }}" -eq "true") {
+            & "$test\build\Release\prebuild-test.exe"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Upload package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}.zip
+          path: ${{ env.PACKAGE_NAME }}.zip
+
+      - name: Upload package to release
+        if: github.event_name == 'push'
+        run: gh release upload "${{ github.ref_name }}" "$env:PACKAGE_NAME.zip"
+        env:
+          GH_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
