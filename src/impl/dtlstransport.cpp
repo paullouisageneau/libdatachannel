@@ -744,6 +744,9 @@ int DtlsTransport::GetTimerCallback(void *ctx) {
 //   finished.
 // - An invalid datagram during the handshake makes the function fail, but the context remains
 //   usable: the handshake completes if the next valid datagrams are passed to the function.
+// - After the handshake, DecryptMessage reports a received alert with a status corresponding to
+//   its description (for instance SEC_E_INTERNAL_ERROR for internal_error), whereas a forged
+//   record fails with SEC_E_DECRYPT_FAILURE. The context remains usable in both cases.
 
 namespace {
 
@@ -854,6 +857,20 @@ bool is_invalid_input_status(SECURITY_STATUS status) {
 	case SEC_E_DECRYPT_FAILURE:
 	case SEC_E_MESSAGE_ALTERED:
 	case SEC_E_ALGORITHM_MISMATCH: // before the cookie exchange
+		return true;
+	default:
+		return false;
+	}
+}
+
+// Records failing with one of these statuses after the handshake are forged, replayed, or
+// malformed, as opposed to genuine alerts
+bool is_invalid_record_status(SECURITY_STATUS status) {
+	switch (status) {
+	case SEC_E_DECRYPT_FAILURE:
+	case SEC_E_OUT_OF_SEQUENCE:
+	case SEC_E_INCOMPLETE_MESSAGE:
+	case SEC_E_INVALID_TOKEN:
 		return true;
 	default:
 		return false;
@@ -1375,21 +1392,20 @@ bool DtlsTransport::decryptDatagram(message_ptr message, std::vector<message_ptr
 	std::lock_guard lock(mSslMutex);
 
 	// A datagram may contain multiple records, which are processed one by one
-	const size_t recordHeaderSize = 13; // type, version, epoch, sequence number, length
 	size_t offset = 0;
-	while (message->size() - offset >= recordHeaderSize) {
+	while (message->size() - offset >= RecordHeaderSize) {
 		auto p = message->data() + offset;
 		const uint8_t type = std::to_integer<uint8_t>(p[0]);
 		const size_t length =
 		    size_t(std::to_integer<uint8_t>(p[11])) << 8 | std::to_integer<uint8_t>(p[12]);
-		const size_t recordSize = recordHeaderSize + length;
+		const size_t recordSize = RecordHeaderSize + length;
 		if (recordSize > message->size() - offset) {
 			PLOG_VERBOSE << "Discarding truncated DTLS record";
 			break;
 		}
 		offset += recordSize;
 
-		if (type == 20 || type == 22) { // change_cipher_spec or handshake
+		if (type == ContentTypeChangeCipherSpec || type == ContentTypeHandshake) {
 			// Renegotiation is not supported (RFC 8827), so this is a retransmission of the last
 			// flight of the peer, meaning it did not receive our final flight. SChannel does not
 			// handle retransmissions once the handshake is finished, and passing such records to
@@ -1405,7 +1421,7 @@ bool DtlsTransport::decryptDatagram(message_ptr message, std::vector<message_ptr
 			continue;
 		}
 
-		if (type != 21 && type != 23) { // neither alert nor application_data
+		if (type != ContentTypeAlert && type != ContentTypeApplicationData) {
 			PLOG_VERBOSE << "Discarding DTLS record with unexpected type " << unsigned(type);
 			continue;
 		}
@@ -1425,6 +1441,13 @@ bool DtlsTransport::decryptDatagram(message_ptr message, std::vector<message_ptr
 			return true; // close_notify received
 
 		if (status != SEC_E_OK) {
+			// A genuine alert is decrypted then reported with a status depending on its
+			// description, whereas a forged record fails to decrypt, see notes above.
+			if (type == ContentTypeAlert && !is_invalid_record_status(status)) {
+				PLOG_WARNING << "DTLS fatal alert received: " << schannel::error_string(status);
+				return true;
+			}
+
 			// RFC 6347: Invalid records SHOULD be silently discarded
 			PLOG_VERBOSE << "Discarding DTLS record: " << schannel::error_string(status);
 			continue;
