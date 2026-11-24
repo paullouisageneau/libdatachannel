@@ -621,6 +621,12 @@ shared_ptr<PrivateKey> PrivateKey::ImportPkcs8(const binary &der, const string &
 	std::wstring name = NewName();
 	std::wstring wpass = to_wstring(pass);
 
+	// Wipe the password copy on every path, including when the import fails
+	struct Wiper {
+		std::wstring &str;
+		~Wiper() { SecureZeroMemory(str.data(), str.size() * sizeof(wchar_t)); }
+	} wiper{wpass};
+
 	NCryptBuffer params[2];
 	params[0].BufferType = NCRYPTBUFFER_PKCS_KEY_NAME;
 	params[0].cbBuffer = ULONG((name.size() + 1) * sizeof(wchar_t));
@@ -642,7 +648,6 @@ shared_ptr<PrivateKey> PrivateKey::ImportPkcs8(const binary &der, const string &
 	      pass.empty() ? "Unable to import private key"
 	                   : "Unable to import private key (wrong password?)");
 
-	SecureZeroMemory(wpass.data(), wpass.size() * sizeof(wchar_t));
 	return std::make_shared<PrivateKey>(key, std::move(name));
 }
 
