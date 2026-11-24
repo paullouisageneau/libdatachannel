@@ -241,6 +241,7 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/dtls.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/crypto.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/dtlsinjection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp_generation.cpp
@@ -620,6 +621,11 @@ if(NOT NO_TESTS)
 		target_compile_definitions(datachannel-tests PRIVATE USE_MBEDTLS=1)
 	elseif(USE_SCHANNEL)
 		target_compile_definitions(datachannel-tests PRIVATE USE_SCHANNEL=1)
+	endif()
+
+	# Some tests use sockets directly
+	if(WIN32)
+		target_link_libraries(datachannel-tests ws2_32)
 	endif()
 
 	# Benchmark

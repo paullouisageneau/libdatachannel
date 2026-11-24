@@ -736,6 +736,8 @@ int DtlsTransport::GetTimerCallback(void *ctx) {
 //   sequence number is authenticated.
 // - Sending close_notify is not supported: ApplyControlToken(SCHANNEL_SHUTDOWN) followed by
 //   InitializeSecurityContext/AcceptSecurityContext only retransmits the last flight.
+// - An invalid datagram during the handshake makes the function fail, but the context remains
+//   usable: the handshake completes if the next valid datagrams are passed to the function.
 
 namespace {
 
@@ -789,6 +791,21 @@ const unsigned long ServerRequirements =
 // Opaque client address used by the server to bind the HelloVerifyRequest cookie. The transport
 // path is already validated by ICE, so a constant value is used.
 unsigned char ClientAddress[16] = {0x02, 0x00, 0x00, 0x00, 0x7F, 0x00, 0x00, 0x01};
+
+// Invalid datagrams received during the handshake make InitializeSecurityContext or
+// AcceptSecurityContext fail with one of these statuses without breaking the context
+bool is_invalid_input_status(SECURITY_STATUS status) {
+	switch (status) {
+	case SEC_E_ILLEGAL_MESSAGE:
+	case SEC_E_INVALID_TOKEN:
+	case SEC_E_DECRYPT_FAILURE:
+	case SEC_E_MESSAGE_ALTERED:
+	case SEC_E_ALGORITHM_MISMATCH: // before the cookie exchange
+		return true;
+	default:
+		return false;
+	}
+}
 
 } // namespace
 
@@ -1088,6 +1105,16 @@ bool DtlsTransport::handshakeStep(binary input, binary &remaining, bool &sent) {
 
 		if (FAILED(status) && !hadContext)
 			SecInvalidateHandle(mContext.get());
+
+		if (FAILED(status) && !input.empty() && is_invalid_input_status(status)) {
+			// RFC 6347: Invalid records SHOULD be silently discarded, so the datagram is dropped
+			// without sending the generated alert, if any. The context is still usable, the
+			// retransmission timer and the handshake timeout decide whether the handshake fails.
+			// See https://www.rfc-editor.org/rfc/rfc6347.html#section-4.1.2.7
+			PLOG_DEBUG << "Discarding invalid DTLS handshake datagram: "
+			           << schannel::error_string(status);
+			return false;
+		}
 
 		// Verify the peer certificate as soon as possible, before sending the next flight
 		if (!mPeerVerified && (status == SEC_E_OK || status == SEC_I_CONTINUE_NEEDED ||
