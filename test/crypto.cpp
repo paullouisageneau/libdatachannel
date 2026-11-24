@@ -468,7 +468,8 @@ TestResult test_websocketserver_tls_verification() {
 	});
 
 	// Return true if the connection opens and the message is echoed
-	[[maybe_unused]] auto tryConnect = [port](const string &caCertificate) {
+	[[maybe_unused]] auto tryConnect = [port](const string &caCertificate,
+	                                          const string &host = "localhost") {
 		WebSocket::Configuration config;
 		config.caCertificatePemFile = caCertificate;
 		WebSocket ws(config);
@@ -483,7 +484,7 @@ TestResult test_websocketserver_tls_verification() {
 			failed = true;
 		});
 		ws.onClosed([&failed]() { failed = true; });
-		ws.open("wss://localhost:" + to_string(port) + "/");
+		ws.open("wss://" + host + ":" + to_string(port) + "/");
 
 		int attempts = 100;
 		while (!echoed && !failed && attempts--)
@@ -509,6 +510,12 @@ TestResult test_websocketserver_tls_verification() {
 		return TestResult(false, "Connection succeeded with the wrong CA certificate");
 
 	cout << "Connection with the wrong CA certificate failed as expected" << endl;
+
+	// The certificate is valid for localhost, 127.0.0.1, and ::1
+	if (tryConnect(ca_cert_pem, "127.0.0.2"))
+		return TestResult(false, "Connection succeeded with a host not matching the certificate");
+
+	cout << "Connection with a host not matching the certificate failed as expected" << endl;
 #endif
 #endif
 

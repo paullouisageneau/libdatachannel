@@ -968,6 +968,7 @@ void TlsTransport::verifyServerCertificate() {
 		return error;
 	};
 
+	string caError;
 	if (mCaCertificates) {
 		// Trust the specified CA certificates
 		CERT_CHAIN_ENGINE_CONFIG config = {};
@@ -981,9 +982,18 @@ void TlsTransport::verifyServerCertificate() {
 				PLOG_DEBUG << "Server certificate verified with the specified CA certificate";
 				return;
 			}
+
+			// Only fall back to the system root certificates if the chain does not lead to the
+			// specified CA certificates, otherwise the actual error, like a name mismatch, would
+			// be hidden by an untrusted root error.
+			if (long(error) != CERT_E_UNTRUSTEDROOT && long(error) != CERT_E_CHAINING)
+				throw std::runtime_error("TLS certificate verification failed: " +
+				                         schannel::error_string(long(error)));
+
+			caError = schannel::error_string(long(error));
 			PLOG_DEBUG
 			    << "Server certificate verification with the specified CA certificate failed: "
-			    << schannel::error_string(long(error));
+			    << caError;
 		} else {
 			PLOG_WARNING << "Failed to create certificate chain engine: "
 			             << schannel::error_string(long(GetLastError()));
@@ -993,8 +1003,9 @@ void TlsTransport::verifyServerCertificate() {
 	// Trust the system root certificates
 	DWORD error = verify(nullptr);
 	if (error != 0)
-		throw std::runtime_error("TLS certificate verification failed: " +
-		                         schannel::error_string(long(error)));
+		throw std::runtime_error(
+		    "TLS certificate verification failed: " + schannel::error_string(long(error)) +
+		    (caError.empty() ? "" : " (with the specified CA certificate: " + caError + ")"));
 
 	PLOG_DEBUG << "Server certificate verified";
 }
