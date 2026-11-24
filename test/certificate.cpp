@@ -35,7 +35,7 @@ TestResult test_certificate_small_thread_pool() {
 	SetThreadPoolSize(1);
 
 	struct State {
-		mutex mutex;
+		std::mutex mtx;
 		condition_variable cv;
 		int arrived = 0;
 		int done = 0;
@@ -49,7 +49,7 @@ TestResult test_certificate_small_thread_pool() {
 	// Each callback is called on a thread of the thread pool
 	auto callback = [state, config](Description) {
 		{
-			unique_lock lock(state->mutex);
+			unique_lock lock(state->mtx);
 			++state->arrived;
 			state->cv.notify_all();
 			// Wait for the other callback so all the threads in the pool are busy
@@ -62,7 +62,7 @@ TestResult test_certificate_small_thread_pool() {
 		auto dc = pc->createDataChannel("test");
 		pc->setLocalDescription();
 
-		unique_lock lock(state->mutex);
+		unique_lock lock(state->mtx);
 		state->peerConnections.push_back(std::move(pc));
 		++state->done;
 		state->cv.notify_all();
@@ -79,7 +79,7 @@ TestResult test_certificate_small_thread_pool() {
 	pc2->setLocalDescription();
 
 	{
-		unique_lock lock(state->mutex);
+		unique_lock lock(state->mtx);
 		if (!state->cv.wait_for(lock, 10s, [&]() { return state->done >= 2; })) {
 			// Threads in the pool are deadlocked, intentionally leak the objects as destroying
 			// them would block
@@ -92,7 +92,7 @@ TestResult test_certificate_small_thread_pool() {
 	pc1->close();
 	pc2->close();
 	{
-		unique_lock lock(state->mutex);
+		unique_lock lock(state->mtx);
 		for (auto &pc : state->peerConnections)
 			pc->close();
 
