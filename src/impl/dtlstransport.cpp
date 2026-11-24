@@ -711,6 +711,772 @@ int DtlsTransport::GetTimerCallback(void *ctx) {
 	}
 }
 
+#elif USE_SCHANNEL
+
+// Notes on the SChannel DTLS implementation (determined experimentally, as SChannel DTLS is mostly
+// undocumented):
+// - DTLS 1.2 requires Windows 10 or later. SCH_CREDENTIALS is rejected for DTLS, so the legacy
+//   SCHANNEL_CRED structure is used.
+// - Each output token is a single datagram. SEC_I_MESSAGE_FRAGMENT means more datagrams of the
+//   same flight are pending: the function must be called again with an empty input token.
+// - The path MTU must be passed as a SECBUFFER_DTLS_MTU input buffer on each call.
+// - The use_srtp extension is negotiated with a SECBUFFER_SRTP_PROTECTION_PROFILES input buffer,
+//   which must be passed on each call as well. The size is in host byte order but the profiles
+//   identifiers are copied as-is to the extension, so they must be in network byte order.
+// - The server sends a HelloVerifyRequest and requires the client transport address as a
+//   SECBUFFER_EXTRA input buffer to bind the cookie.
+// - SChannel has no retransmission timer: calling the function with an empty input token
+//   retransmits the last flight. However, once the handshake is finished, retransmissions from
+//   the peer are not handled anymore (passing them to DecryptMessage even causes the context to
+//   expire), so the final flight is retransmitted manually.
+// - When retransmitting, SChannel reuses the record sequence number of the encrypted Finished
+//   message, which violates RFC 6347 section 4.1. Other implementations discard it as a replay,
+//   so if SChannel is the DTLS client and the final flight of a non-SChannel server is lost, the
+//   server never retransmits it and the handshake times out. This can't be worked around since the
+//   sequence number is authenticated.
+// - Sending close_notify is not supported: ApplyControlToken(SCHANNEL_SHUTDOWN) followed by
+//   InitializeSecurityContext/AcceptSecurityContext only retransmits the last flight.
+// - Sending alerts is not supported either: ApplyControlToken(SCHANNEL_ALERT) fails with
+//   SEC_E_UNSUPPORTED_FUNCTION at every stage of the handshake. Conversely, plaintext alerts
+//   received during the handshake are ignored, except before the cookie exchange.
+// - The peer certificate is available with SECPKG_ATTR_REMOTE_CERT_CHAIN as soon as it is
+//   received, whereas SECPKG_ATTR_REMOTE_CERT_CONTEXT only returns it once the handshake is
+//   finished.
+// - An invalid datagram during the handshake makes the function fail, but the context remains
+//   usable: the handshake completes if the next valid datagrams are passed to the function.
+// - After the handshake, DecryptMessage reports a received alert with a status corresponding to
+//   its description (for instance SEC_E_INTERNAL_ERROR for internal_error), whereas a forged
+//   record fails with SEC_E_DECRYPT_FAILURE. The context remains usable in both cases.
+
+namespace {
+
+// SRTP protection profiles identifiers (RFC 5764 and RFC 7714)
+const unsigned short SrtpAes128CmHmacSha1_80 = 0x0001;
+const unsigned short SrtpAeadAes128Gcm = 0x0007;
+const unsigned short SrtpAeadAes256Gcm = 0x0008;
+
+// SEC_SRTP_PROTECTION_PROFILES with room for the profiles list
+struct SrtpProtectionProfiles {
+	unsigned short ProfilesSize;    // in bytes, host byte order
+	unsigned short ProfilesList[3]; // network byte order
+};
+
+SrtpProtectionProfiles make_srtp_protection_profiles() {
+	SrtpProtectionProfiles profiles = {};
+	size_t count = 0;
+#if RTC_ENABLE_MEDIA
+	// AES-GCM is only available if libSRTP supports it, which is not the case of the bundled
+	// libSRTP as it is built without third-party crypto library.
+	if (DtlsSrtpTransport::IsGcmSupported()) {
+		profiles.ProfilesList[count++] = htons(SrtpAeadAes256Gcm);
+		profiles.ProfilesList[count++] = htons(SrtpAeadAes128Gcm);
+	}
+#endif
+	// RFC 8827: The DTLS-SRTP protection profile SRTP_AES128_CM_HMAC_SHA1_80 MUST be supported
+	// See https://www.rfc-editor.org/rfc/rfc8827.html#section-6.5
+	profiles.ProfilesList[count++] = htons(SrtpAes128CmHmacSha1_80);
+	profiles.ProfilesSize = static_cast<unsigned short>(count * sizeof(unsigned short));
+	return profiles;
+}
+
+// RFC 6347 recommends an initial timer value of 1s, doubled at each retransmission
+const milliseconds InitialRetransmitTimeout = 1000ms;
+const milliseconds MaxRetransmitTimeout = 60000ms;
+// This allows for 5 retransmissions and fails after roughly 30s like the other backends
+const milliseconds HandshakeTimeout = 30000ms;
+
+// After the handshake, allow sending messages larger than the path MTU (RFC 8261)
+const unsigned long ApplicationMtu = 16384; // Maximum DTLS record plaintext size
+
+const unsigned long ClientRequirements =
+    ISC_REQ_DATAGRAM | ISC_REQ_CONFIDENTIALITY | ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT |
+    ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_EXTENDED_ERROR | ISC_REQ_MANUAL_CRED_VALIDATION |
+    ISC_REQ_USE_SUPPLIED_CREDS;
+
+const unsigned long ServerRequirements =
+    ASC_REQ_DATAGRAM | ASC_REQ_CONFIDENTIALITY | ASC_REQ_SEQUENCE_DETECT | ASC_REQ_REPLAY_DETECT |
+    ASC_REQ_ALLOCATE_MEMORY | ASC_REQ_EXTENDED_ERROR | ASC_REQ_MUTUAL_AUTH;
+
+// Opaque client address used by the server to bind the HelloVerifyRequest cookie. The transport
+// path is already validated by ICE, so a constant value is used.
+unsigned char ClientAddress[16] = {0x02, 0x00, 0x00, 0x00, 0x7F, 0x00, 0x00, 0x01};
+
+#ifndef SECPKG_ATTR_REMOTE_CERT_CHAIN
+#define SECPKG_ATTR_REMOTE_CERT_CHAIN 0x67
+#endif
+
+const size_t RecordHeaderSize = 13; // type, version, epoch, sequence number, length
+
+const uint8_t ContentTypeChangeCipherSpec = 20;
+const uint8_t ContentTypeAlert = 21;
+const uint8_t ContentTypeHandshake = 22;
+const uint8_t ContentTypeApplicationData = 23;
+
+const uint8_t AlertLevelFatal = 2;
+const uint8_t AlertBadCertificate = 42;
+
+struct RecordHeader {
+	uint8_t type;
+	uint16_t epoch;
+	uint64_t sequence;
+	const byte *fragment;
+	size_t length;
+};
+
+// Parse the records of a datagram, stopping at the first truncated one
+std::vector<RecordHeader> parse_records(const byte *data, size_t size) {
+	std::vector<RecordHeader> records;
+	size_t offset = 0;
+	while (size - offset >= RecordHeaderSize) {
+		auto p = data + offset;
+		RecordHeader record;
+		record.type = std::to_integer<uint8_t>(p[0]);
+		record.epoch =
+		    uint16_t(std::to_integer<uint8_t>(p[3]) << 8 | std::to_integer<uint8_t>(p[4]));
+		record.sequence = 0;
+		for (int i = 5; i < 11; ++i)
+			record.sequence = record.sequence << 8 | std::to_integer<uint8_t>(p[i]);
+		record.length =
+		    size_t(std::to_integer<uint8_t>(p[11])) << 8 | std::to_integer<uint8_t>(p[12]);
+		if (record.length > size - offset - RecordHeaderSize)
+			break;
+
+		record.fragment = p + RecordHeaderSize;
+		records.push_back(record);
+		offset += RecordHeaderSize + record.length;
+	}
+	return records;
+}
+
+// Invalid datagrams received during the handshake make InitializeSecurityContext or
+// AcceptSecurityContext fail with one of these statuses without breaking the context
+bool is_invalid_input_status(SECURITY_STATUS status) {
+	switch (status) {
+	case SEC_E_ILLEGAL_MESSAGE:
+	case SEC_E_INVALID_TOKEN:
+	case SEC_E_DECRYPT_FAILURE:
+	case SEC_E_MESSAGE_ALTERED:
+	case SEC_E_ALGORITHM_MISMATCH: // before the cookie exchange
+		return true;
+	default:
+		return false;
+	}
+}
+
+// Records failing with one of these statuses after the handshake are forged, replayed, or
+// malformed, as opposed to genuine alerts
+bool is_invalid_record_status(SECURITY_STATUS status) {
+	switch (status) {
+	case SEC_E_DECRYPT_FAILURE:
+	case SEC_E_OUT_OF_SEQUENCE:
+	case SEC_E_INCOMPLETE_MESSAGE:
+	case SEC_E_INVALID_TOKEN:
+		return true;
+	default:
+		return false;
+	}
+}
+
+} // namespace
+
+void DtlsTransport::Init() {
+	// Nothing to do
+}
+
+void DtlsTransport::Cleanup() {
+	// Nothing to do
+}
+
+DtlsTransport::DtlsTransport(shared_ptr<IceTransport> lower, certificate_ptr certificate,
+                             optional<size_t> mtu,
+                             CertificateFingerprint::Algorithm fingerprintAlgorithm,
+                             verifier_callback verifierCallback, state_callback stateChangeCallback)
+    : Transport(lower, std::move(stateChangeCallback)), mMtu(mtu),
+      mCertificate(std::move(certificate)), mFingerprintAlgorithm(fingerprintAlgorithm),
+      mVerifierCallback(std::move(verifierCallback)),
+      mIsClient(lower->role() == Description::Role::Active),
+      mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func) {
+
+	PLOG_DEBUG << "Initializing DTLS transport (SChannel)";
+
+	if (!mCertificate)
+		throw std::invalid_argument("DTLS certificate is null");
+
+	PCCERT_CONTEXT cert = mCertificate->credentials();
+
+	SCHANNEL_CRED cred = {};
+	cred.dwVersion = SCHANNEL_CRED_VERSION;
+	cred.cCreds = 1;
+	cred.paCred = &cert;
+	cred.grbitEnabledProtocols = mIsClient ? SP_PROT_DTLS1_2_CLIENT : SP_PROT_DTLS1_2_SERVER;
+	// Certificates are self-signed in WebRTC, so chain validation is disabled and the peer
+	// certificate fingerprint is verified instead
+	cred.dwFlags =
+	    SCH_CRED_MANUAL_CRED_VALIDATION | SCH_CRED_NO_DEFAULT_CREDS | SCH_USE_STRONG_CRYPTO;
+
+	TimeStamp expiry;
+	schannel::check(
+	    AcquireCredentialsHandleW(nullptr, const_cast<LPWSTR>(UNISP_NAME_W),
+	                              mIsClient ? SECPKG_CRED_OUTBOUND : SECPKG_CRED_INBOUND, nullptr,
+	                              &cred, nullptr, nullptr, mCredentials.get(), &expiry),
+	    "Failed to acquire DTLS credentials (DTLS 1.2 requires Windows 10 or later)");
+
+	// Set recommended medium-priority DSCP value for handshake
+	// See https://www.rfc-editor.org/rfc/rfc8837.html#section-5
+	mCurrentDscp = 10; // AF11: Assured Forwarding class 1, low drop probability
+}
+
+DtlsTransport::~DtlsTransport() {
+	stop();
+
+	PLOG_DEBUG << "Destroying DTLS transport";
+}
+
+void DtlsTransport::start() {
+	PLOG_DEBUG << "Starting DTLS transport";
+
+	PLOG_VERBOSE << "DTLS MTU set to " << (mMtu.value_or(DEFAULT_MTU) - 8 - 40); // UDP/IPv6
+	mHandshakeStartTime = std::chrono::steady_clock::now();
+
+	registerIncoming();
+	changeState(State::Connecting);
+
+	enqueueRecv(); // to initiate the handshake
+}
+
+void DtlsTransport::stop() {
+	PLOG_DEBUG << "Stopping DTLS transport";
+	unregisterIncoming();
+	mIncomingQueue.stop();
+	enqueueRecv();
+}
+
+bool DtlsTransport::send(message_ptr message) {
+	if (!message || state() != State::Connected)
+		return false;
+
+	PLOG_VERBOSE << "Send size=" << message->size();
+
+	{
+		std::lock_guard lock(mSslMutex);
+		if (message->size() > size_t(mStreamSizes.cbMaximumMessage))
+			return false;
+
+		const size_t headerSize = mStreamSizes.cbHeader;
+		const size_t trailerSize = mStreamSizes.cbTrailer;
+		binary buffer(headerSize + message->size() + trailerSize);
+		std::memcpy(buffer.data() + headerSize, message->data(), message->size());
+
+		SecBuffer buffers[4] = {};
+		buffers[0].BufferType = SECBUFFER_STREAM_HEADER;
+		buffers[0].pvBuffer = buffer.data();
+		buffers[0].cbBuffer = ULONG(headerSize);
+		buffers[1].BufferType = SECBUFFER_DATA;
+		buffers[1].pvBuffer = buffer.data() + headerSize;
+		buffers[1].cbBuffer = ULONG(message->size());
+		buffers[2].BufferType = SECBUFFER_STREAM_TRAILER;
+		buffers[2].pvBuffer = buffer.data() + headerSize + message->size();
+		buffers[2].cbBuffer = ULONG(trailerSize);
+		buffers[3].BufferType = SECBUFFER_EMPTY;
+		SecBufferDesc desc = {SECBUFFER_VERSION, 4, buffers};
+
+		schannel::check(EncryptMessage(mContext.get(), 0, &desc, 0), "DTLS encryption failed");
+
+		// Header and data stay contiguous, but the trailer size may change
+		buffer.resize(buffers[0].cbBuffer + buffers[1].cbBuffer + buffers[2].cbBuffer);
+
+		mCurrentDscp = message->dscp;
+		outgoing(make_message(buffer.begin(), buffer.end()));
+	}
+
+	return mOutgoingResult;
+}
+
+void DtlsTransport::incoming(message_ptr message) {
+	if (!message) {
+		mIncomingQueue.stop();
+		enqueueRecv();
+		return;
+	}
+
+	PLOG_VERBOSE << "Incoming size=" << message->size();
+	if (mIncomingQueue.tryPush(std::move(message))) {
+		enqueueRecv();
+	} else {
+		PLOG_VERBOSE << "DTLS incoming queue is full, dropping";
+	}
+}
+
+bool DtlsTransport::outgoing(message_ptr message) {
+	message->dscp = mCurrentDscp;
+
+	bool result = Transport::outgoing(std::move(message));
+	mOutgoingResult = result;
+	return result;
+}
+
+bool DtlsTransport::demuxMessage(message_ptr) {
+	// Dummy
+	return false;
+}
+
+void DtlsTransport::postHandshake() {
+	// Dummy
+}
+
+void DtlsTransport::doRecv() {
+	std::lock_guard lock(mRecvMutex);
+	--mPendingRecvCount;
+
+	if (state() != State::Connecting && state() != State::Connected)
+		return;
+
+	try {
+		if (state() == State::Connecting && mIsClient) {
+			std::lock_guard lock(mSslMutex);
+			if (!mContext.valid()) {
+				// Initiate the handshake
+				binary remaining;
+				bool sent = false;
+				handshakeStep({}, remaining, sent);
+				if (sent)
+					armRetransmitTimer(true);
+			}
+		}
+
+		// Process pending messages
+		while (mIncomingQueue.running()) {
+			auto next = mIncomingQueue.pop();
+			if (!next) {
+				// No more messages pending, handle timeout if connecting
+				if (state() == State::Connecting)
+					handleTimeout();
+
+				return;
+			}
+
+			message_ptr message = std::move(*next);
+			if (demuxMessage(message))
+				continue;
+
+			if (state() == State::Connecting) {
+				// RFC 5764: DTLS packets have a first byte between 20 and 63. Ignore other packets,
+				// like media from a peer which already finished the handshake, as well as
+				// application data which can't be decrypted yet, since SChannel would fail.
+				const uint8_t first =
+				    message->empty() ? 0 : std::to_integer<uint8_t>(message->front());
+				if (first < 20 || first > 63 || first == ContentTypeApplicationData) {
+					PLOG_VERBOSE << "Ignoring packet received during DTLS handshake, first byte="
+					             << unsigned(first);
+					continue;
+				}
+
+				// SChannel ignores plaintext alerts during the handshake, so handle fatal ones
+				// like other implementations do, otherwise the handshake would only fail on
+				// timeout when the peer rejects it.
+				for (const auto &record : parse_records(message->data(), message->size())) {
+					if (record.type == ContentTypeAlert && record.epoch == 0 &&
+					    record.length == 2 &&
+					    std::to_integer<uint8_t>(record.fragment[0]) == AlertLevelFatal)
+						throw std::runtime_error(
+						    "DTLS fatal alert received during handshake, description=" +
+						    std::to_string(std::to_integer<uint8_t>(record.fragment[1])));
+				}
+
+				// Continue the handshake
+				binary remaining;
+				bool finished;
+				{
+					std::lock_guard lock(mSslMutex);
+					bool sent = false;
+					finished =
+					    handshakeStep(binary(message->begin(), message->end()), remaining, sent);
+					if (!finished && sent)
+						armRetransmitTimer(true);
+				}
+
+				if (!finished)
+					continue;
+
+				completeHandshake();
+
+				PLOG_INFO << "DTLS handshake finished";
+				postHandshake();
+				changeState(State::Connected);
+
+				if (remaining.empty())
+					continue;
+
+				// Process application data received in the same datagram
+				message = make_message(remaining.begin(), remaining.end());
+			}
+
+			if (state() == State::Connected) {
+				std::vector<message_ptr> received;
+				bool closed = decryptDatagram(std::move(message), received);
+				for (auto &m : received)
+					recv(std::move(m));
+
+				if (closed) {
+					PLOG_DEBUG << "DTLS connection cleanly closed";
+					break;
+				}
+			}
+		}
+
+		// SChannel can't send close_notify for DTLS, see notes above
+
+	} catch (const std::exception &e) {
+		PLOG_ERROR << "DTLS recv: " << e.what();
+	}
+
+	if (state() == State::Connected) {
+		PLOG_INFO << "DTLS closed";
+		changeState(State::Disconnected);
+		recv(nullptr);
+	} else {
+		PLOG_ERROR << "DTLS handshake failed";
+		changeState(State::Failed);
+	}
+}
+
+bool DtlsTransport::handshakeStep(binary input, binary &remaining, bool &sent) {
+	// Requires mSslMutex to be locked
+	SrtpProtectionProfiles profiles = make_srtp_protection_profiles();
+	SEC_DTLS_MTU mtu = {};
+	mtu.PathMTU = static_cast<unsigned short>(mMtu.value_or(DEFAULT_MTU) - 8 - 40); // UDP/IPv6
+
+	binary pending; // records left to process once the output flight is complete
+	while (true) {
+		SecBuffer in[5] = {};
+		ULONG count = 0;
+		in[count].BufferType = SECBUFFER_TOKEN;
+		in[count].pvBuffer = input.empty() ? nullptr : input.data();
+		in[count].cbBuffer = ULONG(input.size());
+		++count;
+		in[count].BufferType = SECBUFFER_EMPTY; // receives SECBUFFER_EXTRA if any
+		++count;
+		in[count].BufferType = SECBUFFER_SRTP_PROTECTION_PROFILES;
+		in[count].pvBuffer = &profiles;
+		in[count].cbBuffer = ULONG(sizeof(profiles.ProfilesSize) + profiles.ProfilesSize);
+		++count;
+		in[count].BufferType = SECBUFFER_DTLS_MTU;
+		in[count].pvBuffer = &mtu;
+		in[count].cbBuffer = ULONG(sizeof(mtu));
+		++count;
+		if (!mIsClient) {
+			in[count].BufferType = SECBUFFER_EXTRA;
+			in[count].pvBuffer = ClientAddress;
+			in[count].cbBuffer = ULONG(sizeof(ClientAddress));
+			++count;
+		}
+		SecBufferDesc inDesc = {SECBUFFER_VERSION, count, in};
+
+		schannel::ContextBuffers out({SECBUFFER_TOKEN, SECBUFFER_ALERT, SECBUFFER_EMPTY});
+
+		const bool hadContext = mContext.valid();
+		ULONG attributes = 0;
+		SECURITY_STATUS status;
+		if (mIsClient)
+			status = InitializeSecurityContextW(mCredentials.get(), mContext.getOrNull(), nullptr,
+			                                    ClientRequirements, 0, 0, &inDesc, 0,
+			                                    mContext.get(), out.desc(), &attributes, nullptr);
+		else
+			status = AcceptSecurityContext(mCredentials.get(), mContext.getOrNull(), &inDesc,
+			                               ServerRequirements, 0, mContext.get(), out.desc(),
+			                               &attributes, nullptr);
+
+		if (FAILED(status) && !hadContext) {
+			// Braces are required as the macro expands to multiple statements with MinGW
+			SecInvalidateHandle(mContext.get());
+		}
+
+		if (FAILED(status) && !input.empty() && is_invalid_input_status(status)) {
+			// RFC 6347: Invalid records SHOULD be silently discarded, so the datagram is dropped
+			// without sending the generated alert, if any. The context is still usable, the
+			// retransmission timer and the handshake timeout decide whether the handshake fails.
+			// See https://www.rfc-editor.org/rfc/rfc6347.html#section-4.1.2.7
+			PLOG_DEBUG << "Discarding invalid DTLS handshake datagram: "
+			           << schannel::error_string(status);
+			return false;
+		}
+
+		// Verify the peer certificate as soon as possible, before sending the next flight
+		if (!mPeerVerified && (status == SEC_E_OK || status == SEC_I_CONTINUE_NEEDED ||
+		                       status == SEC_I_MESSAGE_FRAGMENT))
+			verifyPeerCertificate(status == SEC_E_OK);
+
+		if (const SecBuffer *token = out.find(SECBUFFER_TOKEN)) {
+			auto data = static_cast<const byte *>(token->pvBuffer);
+			if (!sent) {
+				mLastFlight.clear();
+				sent = true;
+			}
+			mLastFlight.emplace_back(data, data + token->cbBuffer);
+			if (std::to_integer<uint8_t>(data[0]) == ContentTypeChangeCipherSpec)
+				mClientFinishedSent = mIsClient;
+
+			for (const auto &record : parse_records(data, token->cbBuffer))
+				if (record.epoch == 0)
+					mNextPlaintextSequence = std::max(mNextPlaintextSequence, record.sequence + 1);
+
+			outgoing(make_message(data, data + token->cbBuffer));
+		}
+
+		// Unprocessed records of the input datagram, if any
+		binary extra;
+		if (in[1].BufferType == SECBUFFER_EXTRA && in[1].cbBuffer > 0 &&
+		    in[1].cbBuffer <= input.size())
+			extra.assign(input.end() - in[1].cbBuffer, input.end());
+
+		switch (status) {
+		case SEC_I_MESSAGE_FRAGMENT:
+			// More datagrams of the same flight are pending, keep unprocessed records for later
+			if (!extra.empty())
+				pending = std::move(extra);
+
+			input.clear();
+			continue;
+
+		case SEC_I_CONTINUE_NEEDED:
+		case SEC_E_OK: {
+			if (extra.empty())
+				extra = std::move(pending);
+
+			if (status == SEC_E_OK) {
+				// Keep the final flight in case the peer did not receive it
+				if (sent)
+					mFinalFlight = mLastFlight;
+				else
+					mFinalFlight.clear();
+
+				mLastFlight.clear();
+				mRetransmitArmed = false;
+				remaining = std::move(extra);
+				return true;
+			}
+
+			if (extra.empty())
+				return false;
+
+			input = std::move(extra);
+			continue;
+		}
+
+		case SEC_E_INCOMPLETE_MESSAGE:
+			// Happens for instance on retransmission timeout on the server side before the cookie
+			// exchange, as the server is stateless at this point
+			return false;
+
+		default:
+			if (const SecBuffer *alert = out.find(SECBUFFER_ALERT)) {
+				auto data = static_cast<const uint8_t *>(alert->pvBuffer);
+				if (alert->cbBuffer >= 2)
+					PLOG_WARNING << "DTLS alert generated: level=" << unsigned(data[0])
+					             << ", description=" << unsigned(data[1]);
+			}
+			throw std::runtime_error("Handshake failed: " + schannel::error_string(status));
+		}
+	}
+}
+
+void DtlsTransport::verifyPeerCertificate(bool required) {
+	// Requires mSslMutex to be locked
+	// SECPKG_ATTR_REMOTE_CERT_CHAIN returns the peer certificate as soon as it is received,
+	// SECPKG_ATTR_REMOTE_CERT_CONTEXT only once the handshake is finished
+	PCCERT_CONTEXT remote = nullptr;
+	SECURITY_STATUS status =
+	    QueryContextAttributesW(mContext.get(), SECPKG_ATTR_REMOTE_CERT_CHAIN, &remote);
+	if (status != SEC_E_OK || !remote) {
+		remote = nullptr;
+		status = QueryContextAttributesW(mContext.get(), SECPKG_ATTR_REMOTE_CERT_CONTEXT, &remote);
+	}
+	if (status != SEC_E_OK || !remote) {
+		if (required) {
+			sendFatalAlert(AlertBadCertificate);
+			throw std::runtime_error("DTLS peer certificate is missing");
+		}
+
+		return; // not available yet
+	}
+
+	auto cert = schannel::make_cert_context_ptr(remote);
+	string fingerprint = make_fingerprint(cert.get(), mFingerprintAlgorithm);
+	if (!mVerifierCallback(fingerprint)) {
+		sendFatalAlert(AlertBadCertificate);
+		throw std::runtime_error("DTLS peer certificate verification failed");
+	}
+
+	mPeerVerified = true;
+}
+
+void DtlsTransport::sendFatalAlert(uint8_t description) {
+	// Requires mSslMutex to be locked
+	// SChannel can't generate alerts for DTLS, see notes above, so the record is built manually.
+	// The peer certificate is verified before our ChangeCipherSpec is sent, so the alert is sent
+	// in plaintext, which the peer accepts as it has not received our ChangeCipherSpec either.
+	binary record(RecordHeaderSize + 2);
+	record[0] = byte(ContentTypeAlert);
+	record[1] = byte(0xFE); // DTLS 1.2
+	record[2] = byte(0xFD);
+	record[3] = record[4] = byte(0); // epoch 0
+	for (int i = 0; i < 6; ++i)
+		record[5 + i] = byte((mNextPlaintextSequence >> (8 * (5 - i))) & 0xFF);
+	record[11] = byte(0);
+	record[12] = byte(2); // length
+	record[13] = byte(AlertLevelFatal);
+	record[14] = byte(description);
+	++mNextPlaintextSequence;
+
+	PLOG_DEBUG << "Sending DTLS fatal alert, description=" << unsigned(description);
+	outgoing(make_message(record.begin(), record.end()));
+}
+
+void DtlsTransport::completeHandshake() {
+	std::lock_guard lock(mSslMutex);
+
+	// RFC 8261: DTLS MUST support sending messages larger than the current path MTU
+	// See https://www.rfc-editor.org/rfc/rfc8261.html#section-5
+	unsigned long mtu = ApplicationMtu;
+	SECURITY_STATUS status =
+	    SetContextAttributesW(mContext.get(), SECPKG_ATTR_DTLS_MTU, &mtu, sizeof(mtu));
+	if (status != SEC_E_OK)
+		PLOG_WARNING << "Failed to set DTLS MTU: " << schannel::error_string(status);
+
+	schannel::check(
+	    QueryContextAttributesW(mContext.get(), SECPKG_ATTR_STREAM_SIZES, &mStreamSizes),
+	    "Failed to query DTLS sizes");
+
+	SecPkgContext_ConnectionInfo info = {};
+	if (QueryContextAttributesW(mContext.get(), SECPKG_ATTR_CONNECTION_INFO, &info) == SEC_E_OK)
+		PLOG_DEBUG << "DTLS protocol=0x" << std::hex << info.dwProtocol << ", cipher=0x"
+		           << info.aiCipher << ", exchange=0x" << info.aiExch << std::dec
+		           << ", max message size=" << mStreamSizes.cbMaximumMessage;
+}
+
+void DtlsTransport::handleTimeout() {
+	std::lock_guard lock(mSslMutex);
+	if (!mRetransmitArmed)
+		return;
+
+	auto now = std::chrono::steady_clock::now();
+	if (now < mRetransmitTime)
+		return; // a timer is already scheduled
+
+	if (now - mHandshakeStartTime > HandshakeTimeout) {
+		if (mIsClient && mClientFinishedSent)
+			// See notes above about the reuse of record sequence numbers by SChannel
+			throw std::runtime_error(
+			    "Handshake timeout: the final flight from the server was not received, "
+			    "possibly because SChannel retransmissions of the client Finished message are "
+			    "discarded as replays by the server");
+
+		throw std::runtime_error("Handshake timeout");
+	}
+
+	// SChannel retransmits the last flight when called with an empty input token
+	binary remaining;
+	bool sent = false;
+	handshakeStep({}, remaining, sent);
+	if (sent)
+		PLOG_VERBOSE << "DTLS retransmit done";
+
+	armRetransmitTimer(false);
+}
+
+void DtlsTransport::armRetransmitTimer(bool reset) {
+	// Requires mSslMutex to be locked
+	mRetransmitTimeout =
+	    reset ? InitialRetransmitTimeout : std::min(mRetransmitTimeout * 2, MaxRetransmitTimeout);
+	mRetransmitTime = std::chrono::steady_clock::now() + mRetransmitTimeout;
+	mRetransmitArmed = true;
+
+	PLOG_VERBOSE << "DTLS retransmit timeout is " << mRetransmitTimeout.count() << "ms";
+	ThreadPool::Instance().schedule(mRetransmitTimeout, [weak_this = weak_from_this()]() {
+		if (auto locked = weak_this.lock())
+			locked->doRecv();
+	});
+}
+
+bool DtlsTransport::decryptDatagram(message_ptr message, std::vector<message_ptr> &received) {
+	std::lock_guard lock(mSslMutex);
+
+	// A datagram may contain multiple records, which are processed one by one
+	size_t offset = 0;
+	while (message->size() - offset >= RecordHeaderSize) {
+		auto p = message->data() + offset;
+		const uint8_t type = std::to_integer<uint8_t>(p[0]);
+		const size_t length =
+		    size_t(std::to_integer<uint8_t>(p[11])) << 8 | std::to_integer<uint8_t>(p[12]);
+		const size_t recordSize = RecordHeaderSize + length;
+		if (recordSize > message->size() - offset) {
+			PLOG_VERBOSE << "Discarding truncated DTLS record";
+			break;
+		}
+		offset += recordSize;
+
+		if (type == ContentTypeChangeCipherSpec || type == ContentTypeHandshake) {
+			// Renegotiation is not supported (RFC 8827), so this is a retransmission of the last
+			// flight of the peer, meaning it did not receive our final flight. SChannel does not
+			// handle retransmissions once the handshake is finished, and passing such records to
+			// DecryptMessage causes the context to expire, so the final flight is retransmitted
+			// manually.
+			auto now = std::chrono::steady_clock::now();
+			if (!mFinalFlight.empty() && now - mFinalFlightRetransmitTime > 500ms) {
+				PLOG_VERBOSE << "Retransmitting final DTLS handshake flight";
+				mFinalFlightRetransmitTime = now;
+				for (const auto &d : mFinalFlight)
+					outgoing(make_message(d.begin(), d.end()));
+			}
+			continue;
+		}
+
+		if (type != ContentTypeAlert && type != ContentTypeApplicationData) {
+			PLOG_VERBOSE << "Discarding DTLS record with unexpected type " << unsigned(type);
+			continue;
+		}
+
+		binary record(p, p + recordSize);
+		SecBuffer buffers[4] = {};
+		buffers[0].BufferType = SECBUFFER_DATA;
+		buffers[0].pvBuffer = record.data();
+		buffers[0].cbBuffer = ULONG(record.size());
+		buffers[1].BufferType = SECBUFFER_EMPTY;
+		buffers[2].BufferType = SECBUFFER_EMPTY;
+		buffers[3].BufferType = SECBUFFER_EMPTY;
+		SecBufferDesc desc = {SECBUFFER_VERSION, 4, buffers};
+
+		SECURITY_STATUS status = DecryptMessage(mContext.get(), &desc, 0, nullptr);
+		if (status == SEC_I_CONTEXT_EXPIRED)
+			return true; // close_notify received
+
+		if (status != SEC_E_OK) {
+			// A genuine alert is decrypted then reported with a status depending on its
+			// description, whereas a forged record fails to decrypt, see notes above.
+			if (type == ContentTypeAlert && !is_invalid_record_status(status)) {
+				PLOG_WARNING << "DTLS fatal alert received: " << schannel::error_string(status);
+				return true;
+			}
+
+			// RFC 6347: Invalid records SHOULD be silently discarded
+			PLOG_VERBOSE << "Discarding DTLS record: " << schannel::error_string(status);
+			continue;
+		}
+
+		// The peer finished the handshake
+		mFinalFlight.clear();
+
+		for (const auto &buffer : buffers) {
+			if (buffer.BufferType == SECBUFFER_DATA && buffer.pvBuffer && buffer.cbBuffer > 0) {
+				auto data = static_cast<const byte *>(buffer.pvBuffer);
+				received.push_back(make_message(data, data + buffer.cbBuffer));
+			}
+		}
+	}
+
+	return false;
+}
+
 #else // OPENSSL
 
 BIO_METHOD *DtlsTransport::BioMethods = nullptr;

@@ -11,6 +11,7 @@ option(BUILD_SHARED_LIBS "Build shared library" ON)
 option(BUILD_SHARED_DEPS_LIBS "Build submodules as shared libraries" OFF)
 option(USE_GNUTLS "Use GnuTLS instead of OpenSSL" OFF)
 option(USE_MBEDTLS "Use Mbed TLS instead of OpenSSL" OFF)
+option(USE_SCHANNEL "Use Windows SChannel and CNG instead of OpenSSL (Windows only)" OFF)
 option(USE_NICE "Use libnice instead of libjuice" OFF)
 option(PREFER_SYSTEM_LIB "Prefer system libraries over submodules" OFF)
 option(USE_SYSTEM_SRTP "Use system libSRTP" ${PREFER_SYSTEM_LIB})
@@ -38,6 +39,42 @@ if (USE_GNUTLS AND USE_MBEDTLS)
 	message(FATAL_ERROR "Both USE_MBEDTLS and USE_GNUTLS cannot be enabled at the same time")
 endif()
 
+if (USE_SCHANNEL)
+	if (NOT WIN32)
+		message(FATAL_ERROR "USE_SCHANNEL is only available on Windows")
+	endif()
+	if (USE_GNUTLS OR USE_MBEDTLS)
+		message(FATAL_ERROR "USE_SCHANNEL cannot be enabled at the same time as USE_GNUTLS or USE_MBEDTLS")
+	endif()
+	# Check the SChannel declarations for TLS 1.3, DTLS, and SRTP of the Windows 10 SDK 1809
+	include(CheckCXXSourceCompiles)
+	check_cxx_source_compiles("
+		#define SECURITY_WIN32
+		#define SCHANNEL_USE_BLACKLISTS
+		#include <winsock2.h>
+		#include <windows.h>
+		#include <subauth.h>
+		#include <wincrypt.h>
+		#include <schannel.h>
+		#include <security.h>
+		#include <sspi.h>
+		int main() {
+			SCH_CREDENTIALS cred = {};
+			cred.dwVersion = SCH_CREDENTIALS_VERSION;
+			SEC_DTLS_MTU mtu = {};
+			SecPkgContext_KeyingMaterialInfo keyingMaterialInfo = {};
+			SecPkgContext_SrtpParameters srtpParameters = {};
+			unsigned long values[] = {SECBUFFER_DTLS_MTU, SECBUFFER_SRTP_PROTECTION_PROFILES,
+				SECPKG_ATTR_KEYING_MATERIAL, SECPKG_ATTR_SRTP_PARAMETERS, SP_PROT_DTLS1_2_CLIENT,
+				SP_PROT_TLS1_3_CLIENT};
+			(void)cred; (void)mtu; (void)keyingMaterialInfo; (void)srtpParameters; (void)values;
+			return 0;
+		}" HAVE_SCHANNEL_DECLARATIONS)
+	if (NOT HAVE_SCHANNEL_DECLARATIONS)
+		message(FATAL_ERROR "USE_SCHANNEL requires the Windows 10 SDK version 1809 (10.0.17763) or later, the SChannel declarations for TLS 1.3, DTLS, and SRTP are missing")
+	endif()
+endif()
+
 if(USE_GNUTLS)
 	option(USE_NETTLE "Use Nettle in libjuice" ON)
 else()
@@ -46,9 +83,10 @@ else()
 	if(NOT USE_SYSTEM_SRTP)
 		if (USE_MBEDTLS)
 			option(ENABLE_MBEDTLS "Enable Mbed TLS crypto engine for libSRTP" ON)
-		else()
+		elseif (NOT USE_SCHANNEL)
 			option(ENABLE_OPENSSL "Enable OpenSSL crypto engine for libSRTP" ON)
 		endif()
+		# With USE_SCHANNEL, libSRTP uses its internal crypto engine, which lacks AES-GCM
 	endif()
 endif()
 
@@ -229,6 +267,8 @@ set(TESTS_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/connectivity.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/dtls.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/crypto.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/dtlsinjection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/negotiated.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test/reliability.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/test/simulcast_sdp_generation.cpp
@@ -456,6 +496,12 @@ elseif(USE_MBEDTLS)
 	target_compile_definitions(datachannel-static PRIVATE USE_MBEDTLS=1)
 	target_link_libraries(datachannel PRIVATE MbedTLS::MbedTLS)
 	target_link_libraries(datachannel-static PRIVATE MbedTLS::MbedTLS)
+elseif(USE_SCHANNEL)
+	# Native Windows TLS/DTLS (SChannel via SSPI) and cryptography (CryptoAPI/CNG)
+	target_compile_definitions(datachannel PRIVATE USE_SCHANNEL=1)
+	target_compile_definitions(datachannel-static PRIVATE USE_SCHANNEL=1)
+	target_link_libraries(datachannel PRIVATE secur32 crypt32 ncrypt bcrypt)
+	target_link_libraries(datachannel-static PRIVATE secur32 crypt32 ncrypt bcrypt)
 else()
 	if(APPLE)
 		# This is a bug in CMake that causes it to prefer the system version over
@@ -594,6 +640,20 @@ if(NOT NO_TESTS)
 
 	target_include_directories(datachannel-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_link_libraries(datachannel-tests datachannel Threads::Threads)
+
+	# Some tests depend on the TLS backend
+	if(USE_GNUTLS)
+		target_compile_definitions(datachannel-tests PRIVATE USE_GNUTLS=1)
+	elseif(USE_MBEDTLS)
+		target_compile_definitions(datachannel-tests PRIVATE USE_MBEDTLS=1)
+	elseif(USE_SCHANNEL)
+		target_compile_definitions(datachannel-tests PRIVATE USE_SCHANNEL=1)
+	endif()
+
+	# Some tests use sockets directly
+	if(WIN32)
+		target_link_libraries(datachannel-tests ws2_32)
+	endif()
 
 	# Benchmark
 	if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")

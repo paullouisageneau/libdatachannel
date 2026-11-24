@@ -4,6 +4,7 @@
 [![Build with GnuTLS](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-gnutls.yml/badge.svg)](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-gnutls.yml)
 [![Build with Mbed TLS](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-mbedtls.yml/badge.svg)](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-mbedtls.yml)
 [![Build with OpenSSL](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-openssl.yml/badge.svg)](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-openssl.yml)
+[![Build with SChannel](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-schannel.yml/badge.svg)](https://github.com/paullouisageneau/libdatachannel/actions/workflows/build-schannel.yml)
 
 [![Packaging status](https://repology.org/badge/tiny-repos/libdatachannel.svg)](https://repology.org/project/libdatachannel/versions)
 [![Latest packaged version](https://repology.org/badge/latest-versions/libdatachannel.svg)](https://repology.org/project/libdatachannel/versions)
@@ -15,7 +16,7 @@ libdatachannel is a standalone implementation of WebRTC Data Channels, WebRTC Me
 The library aims at being both straightforward and lightweight with minimal external dependencies, to enable direct connectivity between native applications and web browsers without the pain of importing Google's bloated [reference library](https://webrtc.googlesource.com/src/). The interface consists of somewhat simplified versions of the JavaScript WebRTC and WebSocket APIs present in browsers, in order to ease the design of cross-environment applications.
 
 It can be compiled with multiple backends:
-- The security layer can be provided through [GnuTLS](https://www.gnutls.org/), [Mbed TLS](https://www.trustedfirmware.org/projects/mbed-tls/), or [OpenSSL](https://www.openssl.org/).
+- The security layer can be provided through [GnuTLS](https://www.gnutls.org/), [Mbed TLS](https://www.trustedfirmware.org/projects/mbed-tls/), [OpenSSL](https://www.openssl.org/), or natively on Microsoft Windows through [SChannel](https://learn.microsoft.com/en-us/windows/win32/secauthn/secure-channel) (see [BUILDING.md](https://github.com/paullouisageneau/libdatachannel/blob/master/BUILDING.md#microsoft-windows-with-schannel) for limitations).
 - The connectivity for WebRTC can be provided through my ad-hoc ICE library [libjuice](https://github.com/paullouisageneau/libjuice) as submodule or through [libnice](https://github.com/libnice/libnice).
 
 The WebRTC stack is fully compatible with browsers like Firefox and Chromium, see [Compatibility](#Compatibility) below. Additionally, code using Data Channels and WebSockets from the library may be compiled as is to WebAssembly for browsers with [datachannel-wasm](https://github.com/paullouisageneau/datachannel-wasm).
@@ -26,7 +27,7 @@ libdatachannel is available on [AUR](https://aur.archlinux.org/packages/libdatac
 
 ## Dependencies
 
-- [GnuTLS](https://www.gnutls.org/), [Mbed TLS](https://www.trustedfirmware.org/projects/mbed-tls/), or [OpenSSL](https://www.openssl.org/)
+- [GnuTLS](https://www.gnutls.org/), [Mbed TLS](https://www.trustedfirmware.org/projects/mbed-tls/), or [OpenSSL](https://www.openssl.org/), except on Microsoft Windows when using SChannel
 - [usrsctp](https://github.com/sctplab/usrsctp) (as submodule by default)
 - [plog](https://github.com/SergiusTheBest/plog) (as submodule by default)
 - [libjuice](https://github.com/paullouisageneau/libjuice) (as submodule by default) or [libnice](https://nice.freedesktop.org/) as an ICE backend.

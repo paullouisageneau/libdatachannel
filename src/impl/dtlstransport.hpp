@@ -96,6 +96,31 @@ protected:
 	static void SetTimerCallback(void *ctx, uint32_t int_ms, uint32_t fin_ms);
 	static int GetTimerCallback(void *ctx);
 
+#elif USE_SCHANNEL
+	schannel::Credentials mCredentials;
+	schannel::Context mContext;
+	SecPkgContext_StreamSizes mStreamSizes = {};
+	std::mutex mSslMutex;
+
+	bool mPeerVerified = false;
+	std::vector<binary> mLastFlight;  // last handshake flight sent
+	std::vector<binary> mFinalFlight; // last flight if it completed the handshake
+	std::chrono::steady_clock::time_point mFinalFlightRetransmitTime;
+	bool mClientFinishedSent = false;
+	std::chrono::steady_clock::time_point mHandshakeStartTime;
+	std::chrono::steady_clock::time_point mRetransmitTime;
+	std::chrono::milliseconds mRetransmitTimeout;
+	bool mRetransmitArmed = false;
+	uint64_t mNextPlaintextSequence = 0; // next record sequence number in epoch 0
+
+	bool handshakeStep(binary input, binary &remaining, bool &sent);
+	void verifyPeerCertificate(bool required);
+	void sendFatalAlert(uint8_t description);
+	void completeHandshake();
+	void handleTimeout();
+	void armRetransmitTimer(bool reset);
+	bool decryptDatagram(message_ptr message, std::vector<message_ptr> &received);
+
 #else // OPENSSL
 	SSL_CTX *mCtx = NULL;
 	SSL *mSsl = NULL;

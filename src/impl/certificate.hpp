@@ -33,6 +33,11 @@ public:
 #elif USE_MBEDTLS
 	Certificate(shared_ptr<mbedtls_x509_crt> crt, shared_ptr<mbedtls_pk_context> pk);
 	std::tuple<shared_ptr<mbedtls_x509_crt>, shared_ptr<mbedtls_pk_context>> credentials() const;
+#elif USE_SCHANNEL
+	// The certificate context must have the private key attached, and belong to a store
+	// containing the rest of the chain if any
+	Certificate(schannel::cert_context_ptr cert, shared_ptr<schannel::PrivateKey> key);
+	PCCERT_CONTEXT credentials() const;
 #else // OPENSSL
 	Certificate(shared_ptr<X509> x509, shared_ptr<EVP_PKEY> pkey, std::vector<shared_ptr<X509>> chain = {});
 	std::tuple<X509 *, EVP_PKEY *> credentials() const;
@@ -50,6 +55,9 @@ private:
 #elif USE_MBEDTLS
 	const shared_ptr<mbedtls_x509_crt> mCrt;
 	const shared_ptr<mbedtls_pk_context> mPk;
+#elif USE_SCHANNEL
+	const shared_ptr<schannel::PrivateKey> mKey; // must outlive the certificate context
+	const schannel::cert_context_ptr mCert;
 #else
 	const shared_ptr<X509> mX509;
 	const shared_ptr<EVP_PKEY> mPKey;
@@ -64,6 +72,9 @@ string make_fingerprint(gnutls_certificate_credentials_t credentials, Certificat
 string make_fingerprint(gnutls_x509_crt_t crt, CertificateFingerprint::Algorithm fingerprintAlgorithm);
 #elif USE_MBEDTLS
 string make_fingerprint(mbedtls_x509_crt *crt, CertificateFingerprint::Algorithm fingerprintAlgorithm);
+#elif USE_SCHANNEL
+string make_fingerprint(PCCERT_CONTEXT cert,
+                        CertificateFingerprint::Algorithm fingerprintAlgorithm);
 #else
 string make_fingerprint(X509 *x509, CertificateFingerprint::Algorithm fingerprintAlgorithm);
 #endif

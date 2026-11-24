@@ -46,8 +46,9 @@ void DtlsSrtpTransport::Init() { srtp_init(); }
 void DtlsSrtpTransport::Cleanup() { srtp_shutdown(); }
 
 bool DtlsSrtpTransport::IsGcmSupported() {
-#if RTC_SYSTEM_SRTP
-	// system libSRTP may not have GCM support
+#if RTC_SYSTEM_SRTP || USE_SCHANNEL
+	// system libSRTP may not have GCM support, and the bundled libSRTP has no GCM support when
+	// built without third-party crypto library like with SChannel
 	srtp_policy_t policy = {};
 	return srtp_crypto_policy_set_from_profile_for_rtp(
 	           &policy.rtp, srtp_profile_aead_aes_256_gcm) == srtp_err_status_ok;
@@ -294,6 +295,68 @@ void DtlsSrtpTransport::postHandshake() {
 	const unsigned char *clientSalt = serverKey + keySize;
 	const unsigned char *serverSalt = clientSalt + saltSize;
 
+#elif USE_SCHANNEL
+	PLOG_INFO << "Deriving SRTP keying material (SChannel)";
+
+	std::lock_guard lock(mSslMutex);
+
+	SecPkgContext_SrtpParameters srtpParams = {};
+	schannel::check(
+	    QueryContextAttributesW(mContext.get(), SECPKG_ATTR_SRTP_PARAMETERS, &srtpParams),
+	    "Failed to get SRTP profile");
+	if (srtpParams.MasterKeyIdentifier)
+		FreeContextBuffer(srtpParams.MasterKeyIdentifier);
+
+	// The profile identifier is in network byte order, like when it is passed to SChannel
+	const unsigned short profileId = ntohs(srtpParams.ProtectionProfile);
+	if (profileId == 0)
+		throw std::runtime_error("Failed to get SRTP profile: use_srtp was not negotiated");
+
+	PLOG_DEBUG << "SRTP profile is: 0x" << std::hex << profileId << std::dec;
+
+	const auto [srtpProfile, keySize, saltSize] = getProfileParamsFromId(profileId);
+	const size_t keySizeWithSalt = keySize + saltSize;
+
+	// The extractor provides the client write master key, the server write master key, the client
+	// write master salt and the server write master salt in that order.
+	// SChannel removes the NUL terminator from the label, but it must be counted in the length.
+	char label[] = "EXTRACTOR-dtls_srtp";
+	const size_t materialLen = keySizeWithSalt * 2;
+
+	SecPkgContext_KeyingMaterialInfo materialInfo = {};
+	materialInfo.cbLabel = WORD(sizeof(label));
+	materialInfo.pszLabel = label;
+	materialInfo.cbContextValue = 0;
+	materialInfo.pbContextValue = nullptr;
+	materialInfo.cbKeyingMaterial = DWORD(materialLen);
+	schannel::check(
+	    SetContextAttributesW(mContext.get(), SECPKG_ATTR_KEYING_MATERIAL_INFO, &materialInfo,
+	                          sizeof(materialInfo)),
+	    "Failed to set keying material info (requires Windows 10 version 1607 or later)");
+
+	SecPkgContext_KeyingMaterial keyingMaterial = {};
+	schannel::check(
+	    QueryContextAttributesW(mContext.get(), SECPKG_ATTR_KEYING_MATERIAL, &keyingMaterial),
+	    "Failed to derive SRTP keys");
+
+	std::vector<unsigned char> material;
+	if (keyingMaterial.pbKeyingMaterial) {
+		material.assign(keyingMaterial.pbKeyingMaterial,
+		                keyingMaterial.pbKeyingMaterial + keyingMaterial.cbKeyingMaterial);
+		SecureZeroMemory(keyingMaterial.pbKeyingMaterial, keyingMaterial.cbKeyingMaterial);
+		FreeContextBuffer(keyingMaterial.pbKeyingMaterial);
+	}
+
+	if (material.size() != materialLen)
+		throw std::runtime_error("Unexpected SRTP keying material length: " +
+		                         to_string(material.size()));
+
+	// Order is client key, server key, client salt, and server salt
+	const unsigned char *clientKey = material.data();
+	const unsigned char *serverKey = clientKey + keySize;
+	const unsigned char *clientSalt = serverKey + keySize;
+	const unsigned char *serverSalt = clientSalt + saltSize;
+
 #else // OpenSSL
 	PLOG_INFO << "Deriving SRTP keying material (OpenSSL)";
 	auto profile = SSL_get_selected_srtp_profile(mSsl);
@@ -368,7 +431,23 @@ void DtlsSrtpTransport::postHandshake() {
 	mInitDone = true;
 }
 
-#if !USE_GNUTLS && !USE_MBEDTLS
+#if USE_SCHANNEL
+DtlsSrtpTransport::ProfileParams DtlsSrtpTransport::getProfileParamsFromId(unsigned short id) {
+	// SRTP protection profiles identifiers (RFC 5764 and RFC 7714)
+	switch (id) {
+	case 0x0001: // SRTP_AES128_CM_HMAC_SHA1_80
+		return {srtp_profile_aes128_cm_sha1_80, SRTP_AES_128_KEY_LEN, SRTP_SALT_LEN};
+	case 0x0002: // SRTP_AES128_CM_HMAC_SHA1_32
+		return {srtp_profile_aes128_cm_sha1_32, SRTP_AES_128_KEY_LEN, SRTP_SALT_LEN};
+	case 0x0007: // SRTP_AEAD_AES_128_GCM
+		return {srtp_profile_aead_aes_128_gcm, SRTP_AES_128_KEY_LEN, SRTP_AEAD_SALT_LEN};
+	case 0x0008: // SRTP_AEAD_AES_256_GCM
+		return {srtp_profile_aead_aes_256_gcm, SRTP_AES_256_KEY_LEN, SRTP_AEAD_SALT_LEN};
+	default:
+		throw std::logic_error("Unknown SRTP profile identifier: " + to_string(id));
+	}
+}
+#elif !USE_GNUTLS && !USE_MBEDTLS
 DtlsSrtpTransport::ProfileParams DtlsSrtpTransport::getProfileParamsFromName(string_view name) {
 	if (name == "SRTP_AES128_CM_SHA1_80")
 		return {srtp_profile_aes128_cm_sha1_80, SRTP_AES_128_KEY_LEN, SRTP_SALT_LEN};

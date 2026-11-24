@@ -79,6 +79,25 @@ protected:
 	static int WriteCallback(void *ctx, const unsigned char *buf, size_t len);
 	static int ReadCallback(void *ctx, unsigned char *buf, size_t len);
 
+#elif USE_SCHANNEL
+	const certificate_ptr mCertificate;
+	schannel::Credentials mCredentials;
+	schannel::Context mContext;
+	SecPkgContext_StreamSizes mStreamSizes = {};
+	binary mInputBuffer; // encrypted data received but not processed yet
+	bool mRenegotiating = false;
+	std::mutex mSslMutex;
+
+	// Set by VerifiedTlsTransport
+	bool mVerifyServerCertificate = false;
+	schannel::cert_store_ptr mCaCertificates;
+
+	bool handshakeStep();
+	bool decryptInput(std::vector<message_ptr> &received);
+	void verifyServerCertificate();
+	void sendControlToken(void *token, unsigned long size);
+	void shutdown();
+
 #else
 	SSL_CTX *mCtx;
 	SSL *mSsl;

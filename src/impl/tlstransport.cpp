@@ -546,6 +546,540 @@ int TlsTransport::ReadCallback(void *ctx, unsigned char *buf, size_t len) {
 	}
 }
 
+#elif USE_SCHANNEL
+
+namespace {
+
+const unsigned long ClientRequirements =
+    ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY |
+    ISC_REQ_EXTENDED_ERROR | ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM | ISC_REQ_USE_SUPPLIED_CREDS |
+    ISC_REQ_MANUAL_CRED_VALIDATION;
+
+const unsigned long ServerRequirements = ASC_REQ_SEQUENCE_DETECT | ASC_REQ_REPLAY_DETECT |
+                                         ASC_REQ_CONFIDENTIALITY | ASC_REQ_EXTENDED_ERROR |
+                                         ASC_REQ_ALLOCATE_MEMORY | ASC_REQ_STREAM;
+
+void acquire_credentials(CredHandle *handle, bool isClient, PCCERT_CONTEXT cert) {
+	// The server certificate is verified manually by VerifiedTlsTransport
+	const DWORD flags =
+	    (isClient ? SCH_CRED_MANUAL_CRED_VALIDATION | SCH_CRED_NO_DEFAULT_CREDS : 0) |
+	    SCH_USE_STRONG_CRYPTO;
+	const unsigned long usage = isClient ? SECPKG_CRED_OUTBOUND : SECPKG_CRED_INBOUND;
+	TimeStamp expiry;
+
+	// SCH_CREDENTIALS is required for TLS 1.3 and available on Windows 10 version 1809 or later.
+	// Enabled protocol versions are the system defaults.
+	SCH_CREDENTIALS cred = {};
+	cred.dwVersion = SCH_CREDENTIALS_VERSION;
+	cred.dwFlags = flags;
+	if (cert) {
+		cred.cCreds = 1;
+		cred.paCred = &cert;
+	}
+
+	SECURITY_STATUS status =
+	    AcquireCredentialsHandleW(nullptr, const_cast<LPWSTR>(UNISP_NAME_W), usage, nullptr, &cred,
+	                              nullptr, nullptr, handle, &expiry);
+	if (status == SEC_E_OK)
+		return;
+
+	PLOG_DEBUG << "SCH_CREDENTIALS is unsupported (" << schannel::error_string(status)
+	           << "), falling back to SCHANNEL_CRED";
+
+	SCHANNEL_CRED legacyCred = {};
+	legacyCred.dwVersion = SCHANNEL_CRED_VERSION;
+	legacyCred.dwFlags = flags;
+	legacyCred.grbitEnabledProtocols = 0; // system defaults
+	if (cert) {
+		legacyCred.cCreds = 1;
+		legacyCred.paCred = &cert;
+	}
+
+	schannel::check(AcquireCredentialsHandleW(nullptr, const_cast<LPWSTR>(UNISP_NAME_W), usage,
+	                                          nullptr, &legacyCred, nullptr, nullptr, handle,
+	                                          &expiry),
+	                "Failed to acquire TLS credentials");
+}
+
+} // namespace
+
+void TlsTransport::Init() {
+	// Nothing to do
+}
+
+void TlsTransport::Cleanup() {
+	// Nothing to do
+}
+
+TlsTransport::TlsTransport(variant<shared_ptr<TcpTransport>, shared_ptr<HttpProxyTransport>> lower,
+                           optional<string> host, certificate_ptr certificate,
+                           state_callback callback)
+    : Transport(std::visit([](auto l) { return std::static_pointer_cast<Transport>(l); }, lower),
+                std::move(callback)),
+      mHost(std::move(host)), mIsClient(std::visit([](auto l) { return l->isActive(); }, lower)),
+      mIncomingQueue(RECV_QUEUE_LIMIT, message_size_func), mCertificate(std::move(certificate)) {
+
+	PLOG_DEBUG << "Initializing TLS transport (SChannel)";
+
+	if (mIsClient && mHost)
+		PLOG_VERBOSE << "Server Name Indication: " << *mHost;
+
+	acquire_credentials(mCredentials.get(), mIsClient,
+	                    mCertificate ? mCertificate->credentials() : nullptr);
+}
+
+TlsTransport::~TlsTransport() {
+	stop();
+
+	PLOG_DEBUG << "Destroying TLS transport";
+}
+
+void TlsTransport::start() {
+	PLOG_DEBUG << "Starting TLS transport";
+	registerIncoming();
+	changeState(State::Connecting);
+	enqueueRecv(); // to initiate the handshake
+}
+
+void TlsTransport::stop() {
+	PLOG_DEBUG << "Stopping TLS transport";
+	unregisterIncoming();
+	mIncomingQueue.stop();
+	enqueueRecv();
+}
+
+bool TlsTransport::send(message_ptr message) {
+	if (state() != State::Connected)
+		throw std::runtime_error("TLS is not open");
+
+	if (!message || message->size() == 0)
+		return outgoing(std::move(message)); // pass through
+
+	PLOG_VERBOSE << "Send size=" << message->size();
+
+	std::lock_guard lock(mSslMutex);
+	const size_t headerSize = mStreamSizes.cbHeader;
+	const size_t trailerSize = mStreamSizes.cbTrailer;
+	const size_t maxSize = std::max(size_t(mStreamSizes.cbMaximumMessage), size_t(1));
+
+	binary output;
+	size_t offset = 0;
+	while (offset < message->size()) {
+		const size_t len = std::min(maxSize, message->size() - offset);
+		const size_t pos = output.size();
+		output.resize(pos + headerSize + len + trailerSize);
+		std::memcpy(output.data() + pos + headerSize, message->data() + offset, len);
+
+		SecBuffer buffers[4] = {};
+		buffers[0].BufferType = SECBUFFER_STREAM_HEADER;
+		buffers[0].pvBuffer = output.data() + pos;
+		buffers[0].cbBuffer = ULONG(headerSize);
+		buffers[1].BufferType = SECBUFFER_DATA;
+		buffers[1].pvBuffer = output.data() + pos + headerSize;
+		buffers[1].cbBuffer = ULONG(len);
+		buffers[2].BufferType = SECBUFFER_STREAM_TRAILER;
+		buffers[2].pvBuffer = output.data() + pos + headerSize + len;
+		buffers[2].cbBuffer = ULONG(trailerSize);
+		buffers[3].BufferType = SECBUFFER_EMPTY;
+		SecBufferDesc desc = {SECBUFFER_VERSION, 4, buffers};
+
+		schannel::check(EncryptMessage(mContext.get(), 0, &desc, 0), "TLS send failed");
+
+		// Header and data stay contiguous, but the trailer size may change
+		output.resize(pos + buffers[0].cbBuffer + buffers[1].cbBuffer + buffers[2].cbBuffer);
+		offset += len;
+	}
+
+	return outgoing(make_message(output.begin(), output.end()));
+}
+
+void TlsTransport::incoming(message_ptr message) {
+	if (!message) {
+		mIncomingQueue.stop();
+		enqueueRecv();
+		return;
+	}
+
+	PLOG_VERBOSE << "Incoming size=" << message->size();
+	mIncomingQueue.push(std::move(message));
+	enqueueRecv();
+}
+
+bool TlsTransport::outgoing(message_ptr message) { return Transport::outgoing(std::move(message)); }
+
+void TlsTransport::postHandshake() {
+	// Dummy
+}
+
+void TlsTransport::doRecv() {
+	std::lock_guard lock(mRecvMutex);
+	--mPendingRecvCount;
+
+	if (state() != State::Connecting && state() != State::Connected)
+		return;
+
+	try {
+		if (state() == State::Connecting && mIsClient) {
+			std::lock_guard lock(mSslMutex);
+			if (!mContext.valid())
+				handshakeStep(); // Initiate the handshake
+		}
+
+		// Read incoming messages
+		while (mIncomingQueue.running()) {
+			auto next = mIncomingQueue.pop();
+			if (!next)
+				return;
+
+			message_ptr message = std::move(*next);
+			if (message->size() == 0) {
+				recv(std::move(message)); // Pass zero-sized messages through
+				continue;
+			}
+
+			bool finished = false;
+			{
+				std::lock_guard lock(mSslMutex);
+				mInputBuffer.insert(mInputBuffer.end(), message->begin(), message->end());
+				if (state() == State::Connecting)
+					finished = handshakeStep();
+			}
+
+			if (finished) {
+				PLOG_INFO << "TLS handshake finished";
+				changeState(State::Connected);
+				postHandshake();
+			}
+
+			if (state() == State::Connected) {
+				std::vector<message_ptr> received;
+				bool closed;
+				{
+					std::lock_guard lock(mSslMutex);
+					closed = decryptInput(received);
+				}
+
+				for (auto &m : received)
+					recv(std::move(m));
+
+				if (closed) {
+					PLOG_DEBUG << "TLS connection cleanly closed";
+					break; // No more data can be read
+				}
+			}
+		}
+
+		if (state() == State::Connected)
+			shutdown();
+
+	} catch (const std::exception &e) {
+		PLOG_ERROR << "TLS recv: " << e.what();
+	}
+
+	if (state() == State::Connected) {
+		PLOG_INFO << "TLS closed";
+		changeState(State::Disconnected);
+		recv(nullptr);
+	} else {
+		PLOG_ERROR << "TLS handshake failed";
+		changeState(State::Failed);
+	}
+}
+
+bool TlsTransport::handshakeStep() {
+	// Requires mSslMutex to be locked
+	std::wstring targetName = mIsClient && mHost ? schannel::to_wstring(*mHost) : std::wstring();
+
+	while (true) {
+		SecBuffer in[2] = {};
+		in[0].BufferType = SECBUFFER_TOKEN;
+		in[0].pvBuffer = mInputBuffer.empty() ? nullptr : mInputBuffer.data();
+		in[0].cbBuffer = ULONG(mInputBuffer.size());
+		in[1].BufferType = SECBUFFER_EMPTY; // receives SECBUFFER_EXTRA if any
+		SecBufferDesc inDesc = {SECBUFFER_VERSION, 2, in};
+
+		schannel::ContextBuffers out({SECBUFFER_TOKEN, SECBUFFER_ALERT, SECBUFFER_EMPTY});
+
+		const bool hadContext = mContext.valid();
+		ULONG attributes = 0;
+		SECURITY_STATUS status;
+		if (mIsClient)
+			status =
+			    InitializeSecurityContextW(mCredentials.get(), mContext.getOrNull(),
+			                               targetName.empty() ? nullptr : targetName.data(),
+			                               ClientRequirements, 0, 0, hadContext ? &inDesc : nullptr,
+			                               0, mContext.get(), out.desc(), &attributes, nullptr);
+		else
+			status = AcceptSecurityContext(mCredentials.get(), mContext.getOrNull(), &inDesc,
+			                               ServerRequirements, 0, mContext.get(), out.desc(),
+			                               &attributes, nullptr);
+
+		if (FAILED(status) && !hadContext) {
+			// Braces are required as the macro expands to multiple statements with MinGW
+			SecInvalidateHandle(mContext.get());
+		}
+
+		// With ISC_REQ_EXTENDED_ERROR, the token contains an alert on failure
+		if (const SecBuffer *token = out.find(SECBUFFER_TOKEN)) {
+			auto data = static_cast<const byte *>(token->pvBuffer);
+			outgoing(make_message(data, data + token->cbBuffer));
+		}
+
+		switch (status) {
+		case SEC_E_INCOMPLETE_MESSAGE:
+			return false; // Wait for more data
+
+		case SEC_I_CONTINUE_NEEDED:
+		case SEC_E_OK: {
+			// Keep unprocessed data
+			if (in[1].BufferType == SECBUFFER_EXTRA && in[1].cbBuffer > 0 &&
+			    in[1].cbBuffer <= mInputBuffer.size())
+				mInputBuffer.erase(mInputBuffer.begin(), mInputBuffer.end() - in[1].cbBuffer);
+			else
+				mInputBuffer.clear();
+
+			if (status == SEC_E_OK) {
+				if (!mRenegotiating) {
+					if (mIsClient && mVerifyServerCertificate) {
+						try {
+							verifyServerCertificate();
+						} catch (const std::exception &) {
+							// Notify the server before failing
+							SCHANNEL_ALERT_TOKEN alert = {SCHANNEL_ALERT, TLS1_ALERT_FATAL,
+							                              TLS1_ALERT_BAD_CERTIFICATE};
+							try {
+								sendControlToken(&alert, sizeof(alert));
+							} catch (const std::exception &e) {
+								PLOG_DEBUG << "Failed to send TLS alert: " << e.what();
+							}
+							throw;
+						}
+					}
+
+					schannel::check(QueryContextAttributesW(
+					                    mContext.get(), SECPKG_ATTR_STREAM_SIZES, &mStreamSizes),
+					                "Failed to query TLS sizes");
+				}
+				return true;
+			}
+
+			if (mInputBuffer.empty())
+				return false;
+
+			continue;
+		}
+
+		default:
+			throw std::runtime_error("Handshake failed: " + schannel::error_string(status));
+		}
+	}
+}
+
+bool TlsTransport::decryptInput(std::vector<message_ptr> &received) {
+	// Requires mSslMutex to be locked
+	while (!mInputBuffer.empty()) {
+		if (mRenegotiating) {
+			if (!handshakeStep())
+				return false; // Wait for more data
+
+			mRenegotiating = false;
+			continue;
+		}
+
+		SecBuffer buffers[4] = {};
+		buffers[0].BufferType = SECBUFFER_DATA;
+		buffers[0].pvBuffer = mInputBuffer.data();
+		buffers[0].cbBuffer = ULONG(mInputBuffer.size());
+		buffers[1].BufferType = SECBUFFER_EMPTY;
+		buffers[2].BufferType = SECBUFFER_EMPTY;
+		buffers[3].BufferType = SECBUFFER_EMPTY;
+		SecBufferDesc desc = {SECBUFFER_VERSION, 4, buffers};
+
+		SECURITY_STATUS status = DecryptMessage(mContext.get(), &desc, 0, nullptr);
+		if (status == SEC_E_INCOMPLETE_MESSAGE)
+			return false; // Wait for more data
+
+		if (status != SEC_E_OK && status != SEC_I_RENEGOTIATE && status != SEC_I_CONTEXT_EXPIRED)
+			throw std::runtime_error("TLS decryption failed: " + schannel::error_string(status));
+
+		binary extra;
+		for (const auto &buffer : buffers) {
+			if (!buffer.pvBuffer || buffer.cbBuffer == 0)
+				continue;
+
+			auto p = static_cast<const byte *>(buffer.pvBuffer);
+			if (buffer.BufferType == SECBUFFER_DATA)
+				received.push_back(make_message(p, p + buffer.cbBuffer));
+			else if (buffer.BufferType == SECBUFFER_EXTRA)
+				extra.assign(p, p + buffer.cbBuffer);
+		}
+
+		mInputBuffer = std::move(extra);
+
+		if (status == SEC_I_CONTEXT_EXPIRED) {
+			mInputBuffer.clear();
+			return true; // close_notify received
+		}
+
+		if (status == SEC_I_RENEGOTIATE) {
+			// With TLS 1.3, this is a post-handshake message (like NewSessionTicket or KeyUpdate),
+			// which must be processed by the handshake function. Otherwise, this is a
+			// renegotiation request, which is refused like with OpenSSL, as the server certificate
+			// would not be verified again.
+			SecPkgContext_ConnectionInfo info = {};
+			schannel::check(
+			    QueryContextAttributesW(mContext.get(), SECPKG_ATTR_CONNECTION_INFO, &info),
+			    "Failed to query TLS connection info");
+			if (!(info.dwProtocol & (SP_PROT_TLS1_3_CLIENT | SP_PROT_TLS1_3_SERVER)))
+				throw std::runtime_error("TLS renegotiation is not supported");
+
+			PLOG_DEBUG << "TLS post-handshake message received";
+			mRenegotiating = true;
+			if (!handshakeStep())
+				return false; // Wait for more data
+
+			mRenegotiating = false;
+		}
+	}
+
+	return false;
+}
+
+void TlsTransport::verifyServerCertificate() {
+	// Requires mSslMutex to be locked
+	PCCERT_CONTEXT remote = nullptr;
+	schannel::check(
+	    QueryContextAttributesW(mContext.get(), SECPKG_ATTR_REMOTE_CERT_CONTEXT, &remote),
+	    "Failed to get server certificate");
+	auto cert = schannel::make_cert_context_ptr(remote);
+	if (!cert)
+		throw std::runtime_error("Server certificate is missing");
+
+	std::wstring serverName = schannel::to_wstring(mHost.value_or(""));
+
+	auto verify = [&](HCERTCHAINENGINE engine) -> DWORD {
+		LPSTR usages[] = {const_cast<LPSTR>(szOID_PKIX_KP_SERVER_AUTH),
+		                  const_cast<LPSTR>(szOID_SERVER_GATED_CRYPTO),
+		                  const_cast<LPSTR>(szOID_SGC_NETSCAPE)};
+		CERT_CHAIN_PARA chainPara = {};
+		chainPara.cbSize = sizeof(chainPara);
+		chainPara.RequestedUsage.dwType = USAGE_MATCH_TYPE_OR;
+		chainPara.RequestedUsage.Usage.cUsageIdentifier = DWORD(std::size(usages));
+		chainPara.RequestedUsage.Usage.rgpszUsageIdentifier = usages;
+
+		// The remote certificate store contains the intermediate certificates sent by the server
+		PCCERT_CHAIN_CONTEXT chain = nullptr;
+		if (!CertGetCertificateChain(engine, cert.get(), nullptr, cert->hCertStore, &chainPara, 0,
+		                             nullptr, &chain))
+			return GetLastError();
+
+		HTTPSPolicyCallbackData sslPolicy = {};
+		sslPolicy.cbStruct = sizeof(sslPolicy);
+		sslPolicy.dwAuthType = AUTHTYPE_SERVER;
+		sslPolicy.pwszServerName = serverName.data();
+
+		CERT_CHAIN_POLICY_PARA policyPara = {};
+		policyPara.cbSize = sizeof(policyPara);
+		policyPara.pvExtraPolicyPara = &sslPolicy;
+
+		CERT_CHAIN_POLICY_STATUS policyStatus = {};
+		policyStatus.cbSize = sizeof(policyStatus);
+
+		BOOL success = CertVerifyCertificateChainPolicy(CERT_CHAIN_POLICY_SSL, chain, &policyPara,
+		                                                &policyStatus);
+		DWORD error = success ? policyStatus.dwError : GetLastError();
+		CertFreeCertificateChain(chain);
+		return error;
+	};
+
+	string caError;
+	if (mCaCertificates) {
+		// Trust the specified CA certificates
+		CERT_CHAIN_ENGINE_CONFIG config = {};
+		config.cbSize = sizeof(config);
+		config.hExclusiveRoot = mCaCertificates.get();
+		HCERTCHAINENGINE engine = nullptr;
+		if (CertCreateCertificateChainEngine(&config, &engine)) {
+			DWORD error = verify(engine);
+			CertFreeCertificateChainEngine(engine);
+			if (error == 0) {
+				PLOG_DEBUG << "Server certificate verified with the specified CA certificate";
+				return;
+			}
+
+			// Only fall back to the system root certificates if the chain does not lead to the
+			// specified CA certificates, otherwise the actual error, like a name mismatch, would
+			// be hidden by an untrusted root error.
+			if (long(error) != CERT_E_UNTRUSTEDROOT && long(error) != CERT_E_CHAINING)
+				throw std::runtime_error("TLS certificate verification failed: " +
+				                         schannel::error_string(long(error)));
+
+			caError = schannel::error_string(long(error));
+			PLOG_DEBUG
+			    << "Server certificate verification with the specified CA certificate failed: "
+			    << caError;
+		} else {
+			PLOG_WARNING << "Failed to create certificate chain engine: "
+			             << schannel::error_string(long(GetLastError()));
+		}
+	}
+
+	// Trust the system root certificates
+	DWORD error = verify(nullptr);
+	if (error != 0)
+		throw std::runtime_error(
+		    "TLS certificate verification failed: " + schannel::error_string(long(error)) +
+		    (caError.empty() ? "" : " (with the specified CA certificate: " + caError + ")"));
+
+	PLOG_DEBUG << "Server certificate verified";
+}
+
+void TlsTransport::sendControlToken(void *token, unsigned long size) {
+	// Requires mSslMutex to be locked
+	SecBuffer control = {size, SECBUFFER_TOKEN, token};
+	SecBufferDesc controlDesc = {SECBUFFER_VERSION, 1, &control};
+	schannel::check(ApplyControlToken(mContext.get(), &controlDesc), "ApplyControlToken failed");
+
+	// The handshake function generates the corresponding message
+	SecBuffer in[2] = {};
+	in[0].BufferType = SECBUFFER_TOKEN;
+	in[1].BufferType = SECBUFFER_EMPTY;
+	SecBufferDesc inDesc = {SECBUFFER_VERSION, 2, in};
+
+	schannel::ContextBuffers out({SECBUFFER_TOKEN, SECBUFFER_ALERT, SECBUFFER_EMPTY});
+	ULONG attributes = 0;
+	SECURITY_STATUS status;
+	if (mIsClient)
+		status = InitializeSecurityContextW(mCredentials.get(), mContext.get(), nullptr,
+		                                    ClientRequirements, 0, 0, nullptr, 0, mContext.get(),
+		                                    out.desc(), &attributes, nullptr);
+	else
+		status =
+		    AcceptSecurityContext(mCredentials.get(), mContext.get(), &inDesc, ServerRequirements,
+		                          0, mContext.get(), out.desc(), &attributes, nullptr);
+
+	schannel::check(status, "Failed to generate the TLS message");
+	if (const SecBuffer *token = out.find(SECBUFFER_TOKEN)) {
+		auto data = static_cast<const byte *>(token->pvBuffer);
+		outgoing(make_message(data, data + token->cbBuffer));
+	}
+}
+
+void TlsTransport::shutdown() {
+	std::lock_guard lock(mSslMutex);
+	if (!mContext.valid())
+		return;
+
+	try {
+		// Send the close_notify alert
+		DWORD type = SCHANNEL_SHUTDOWN;
+		sendControlToken(&type, sizeof(type));
+
+	} catch (const std::exception &e) {
+		PLOG_DEBUG << "TLS shutdown failed: " << e.what();
+	}
+}
+
 #else
 
 int TlsTransport::TransportExIndex = -1;

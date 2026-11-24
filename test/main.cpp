@@ -25,6 +25,11 @@ TestResult test_connectivity();
 TestResult test_connectivity_fail_on_wrong_fingerprint();
 TestResult test_dtls_startup_after_remote_description();
 TestResult test_pem();
+TestResult test_certificate_types();
+TestResult test_pem_formats();
+TestResult test_fingerprint_algorithms();
+TestResult test_websocketserver_tls_verification();
+TestResult test_dtls_handshake_with_forged_records();
 TestResult test_negotiated();
 TestResult test_reliability();
 TestResult test_simulcast_sdp_generation();
@@ -89,6 +94,13 @@ static const vector<Test> tests = {
     Test("WebRTC connectivity", test_connectivity),
     Test("WebRTC broken fingerprint", test_connectivity_fail_on_wrong_fingerprint),
     Test("pem", test_pem),
+    Test("Certificate types", test_certificate_types),
+    Test("PEM formats", test_pem_formats),
+    Test("Fingerprint algorithms", test_fingerprint_algorithms),
+#if RTC_ENABLE_WEBSOCKET
+    Test("WebSocketServer TLS verification", test_websocketserver_tls_verification),
+#endif
+    Test("DTLS handshake with forged records", test_dtls_handshake_with_forged_records),
     // TODO: Temporarily disabled as the Open Relay TURN server is unreliable
     // Test("WebRTC TURN connectivity", test_turn_connectivity),
     Test("WebRTC negotiated DataChannel", test_negotiated),
