@@ -15,6 +15,8 @@
 #include "init.hpp"
 #include "tls.hpp"
 
+#include <atomic>
+#include <functional>
 #include <future>
 #include <tuple>
 
@@ -69,7 +71,28 @@ string make_fingerprint(X509 *x509, CertificateFingerprint::Algorithm fingerprin
 #endif
 
 using certificate_ptr = shared_ptr<Certificate>;
-using future_certificate_ptr = std::shared_future<certificate_ptr>;
+
+// Shared future on a certificate
+// If the certificate generation has not started yet when get() is called, it is performed
+// synchronously by the calling thread instead of waiting for the thread pool. This prevents a
+// deadlock when all threads in the pool are waiting for a certificate (see issue #1616).
+class FutureCertificate final {
+public:
+	FutureCertificate() = default;
+	explicit FutureCertificate(certificate_ptr certificate); // ready
+
+	certificate_ptr get() const;
+
+private:
+	struct State;
+	explicit FutureCertificate(shared_ptr<State> state);
+
+	shared_ptr<State> mState;
+
+	friend FutureCertificate make_certificate(CertificateType type);
+};
+
+using future_certificate_ptr = FutureCertificate;
 
 future_certificate_ptr make_certificate(CertificateType type = CertificateType::Default);
 

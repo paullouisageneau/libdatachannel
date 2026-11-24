@@ -624,10 +624,61 @@ string make_fingerprint(X509 *x509, CertificateFingerprint::Algorithm fingerprin
 
 // Common for GnuTLS, Mbed TLS, and OpenSSL
 
+struct FutureCertificate::State {
+	explicit State(std::function<certificate_ptr()> func)
+	    : task(std::move(func)), future(task.get_future().share()) {}
+
+	explicit State(certificate_ptr certificate) : started(true) {
+		std::promise<certificate_ptr> promise;
+		promise.set_value(std::move(certificate));
+		future = promise.get_future().share();
+	}
+
+	// Run the task if it has not started yet, the first caller claims it
+	void run() {
+		if (!started.exchange(true))
+			task();
+	}
+
+	std::atomic<bool> started = false;
+	std::packaged_task<certificate_ptr()> task;
+	std::shared_future<certificate_ptr> future;
+};
+
+FutureCertificate::FutureCertificate(certificate_ptr certificate)
+    : mState(std::make_shared<State>(std::move(certificate))) {}
+
+FutureCertificate::FutureCertificate(shared_ptr<State> state) : mState(std::move(state)) {}
+
+certificate_ptr FutureCertificate::get() const {
+	if (!mState)
+		throw std::logic_error("No certificate");
+
+	// If generation has not started yet, perform it on the calling thread instead of waiting for
+	// the thread pool, which might be busy with tasks waiting for the certificate
+	mState->run();
+	return mState->future.get();
+}
+
 future_certificate_ptr make_certificate(CertificateType type) {
-	return ThreadPool::Instance().enqueue([type, token = Init::Instance().token()]() {
-		return std::make_shared<Certificate>(Certificate::Generate(type, "libdatachannel"));
+	auto state = std::make_shared<FutureCertificate::State>(
+	    [type, token = Init::Instance().token()]() -> certificate_ptr {
+		    try {
+			    return std::make_shared<Certificate>(Certificate::Generate(type, "libdatachannel"));
+		    } catch (const std::exception &e) {
+			    PLOG_WARNING << "Certificate generation failed: " << e.what();
+			    throw;
+		    }
+	    });
+
+	// Start generation in the background, unless it is already performed by a waiting thread
+	// or the certificate is not needed anymore
+	ThreadPool::Instance().enqueue([weakState = std::weak_ptr<FutureCertificate::State>(state)]() {
+		if (auto state = weakState.lock())
+			state->run();
 	});
+
+	return FutureCertificate(std::move(state));
 }
 
 CertificateFingerprint Certificate::fingerprint() const {
