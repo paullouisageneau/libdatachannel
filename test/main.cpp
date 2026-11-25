@@ -23,6 +23,7 @@ using chrono::steady_clock;
 
 TestResult test_connectivity();
 TestResult test_connectivity_fail_on_wrong_fingerprint();
+TestResult test_remote_candidate_after_close();
 TestResult test_dtls_startup_after_remote_description();
 TestResult test_pem();
 TestResult test_negotiated();
@@ -88,6 +89,7 @@ static const vector<Test> tests = {
     Test("DTLS startup after remote description", test_dtls_startup_after_remote_description),
     Test("WebRTC connectivity", test_connectivity),
     Test("WebRTC broken fingerprint", test_connectivity_fail_on_wrong_fingerprint),
+    Test("WebRTC remote candidate after close", test_remote_candidate_after_close),
     Test("pem", test_pem),
     // TODO: Temporarily disabled as the Open Relay TURN server is unreliable
     // Test("WebRTC TURN connectivity", test_turn_connectivity),

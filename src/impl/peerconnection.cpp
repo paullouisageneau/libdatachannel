@@ -1218,8 +1218,12 @@ void PeerConnection::processRemoteCandidate(Candidate candidate) {
 		if (!mRemoteDescription)
 			throw std::logic_error("Got a remote candidate without remote description");
 
-		if (!iceTransport)
+		if (!iceTransport) {
+			if (state.load() == State::Closed)
+				return;
+
 			throw std::logic_error("Got a remote candidate without ICE transport");
+		}
 
 		candidate.hintMid(mRemoteDescription->bundleMid());
 
