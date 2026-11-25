@@ -13,6 +13,7 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 
 #define CUSTOM_MAX_MESSAGE_SIZE 1048576
@@ -272,6 +273,86 @@ TestResult test_connectivity(bool signal_wrong_fingerprint) {
 	this_thread::sleep_for(1s);
 	pc2.close();
 	this_thread::sleep_for(1s);
+
+	return TestResult(true);
+}
+
+// An offer with one track and the given candidate, generated without gathering so nothing is sent
+static Description makeOffer(const Candidate &candidate) {
+	Configuration config;
+	config.disableAutoGathering = true;
+	PeerConnection offerer(config);
+	auto track = offerer.addTrack(Description::Audio("audio", Description::Direction::SendOnly));
+	offerer.setLocalDescription(Description::Type::Offer);
+
+	auto offer = offerer.localDescription();
+	if (!offer)
+		throw runtime_error("No local description");
+
+	offer->addCandidate(candidate);
+	return *offer;
+}
+
+TestResult test_remote_candidate_after_close() {
+	InitLogger(LogLevel::Warning);
+
+	try {
+		const Candidate offerCandidate("candidate:1 1 UDP 2122317823 127.0.0.1 9 typ host",
+		                               "audio");
+		const Candidate lateCandidate("candidate:2 1 UDP 2122317823 127.0.0.1 10 typ host",
+		                              "audio");
+		auto offer = makeOffer(offerCandidate);
+
+		Configuration config;
+		config.disableAutoNegotiation = true;
+		auto pc = make_shared<PeerConnection>(config);
+
+		// A candidate before the remote description is still an error
+		try {
+			pc->addRemoteCandidate(lateCandidate);
+			return TestResult(false,
+			                  "addRemoteCandidate() without remote description did not throw");
+		} catch (const logic_error &) {
+		}
+
+		// The peer connection closes while setRemoteDescription() processes the description, before
+		// it adds the candidates the description carries
+		auto weakPc = make_weak_ptr(pc);
+		pc->onTrack([weakPc](shared_ptr<Track>) {
+			// close() resets the callbacks, destroying this one, so captures are unusable after it
+			if (auto pc = weakPc.lock())
+				pc->close();
+		});
+
+		try {
+			pc->setRemoteDescription(offer);
+		} catch (const exception &e) {
+			return TestResult(
+			    false,
+			    string("setRemoteDescription() on a closing peer connection threw: ") + e.what());
+		}
+
+		if (pc->state() != PeerConnection::State::Closed)
+			return TestResult(false, "Peer connection is not closed");
+
+		try {
+			pc->addRemoteCandidate(lateCandidate);
+		} catch (const exception &e) {
+			return TestResult(false,
+			                  string("addRemoteCandidate() on a closed peer connection threw: ") +
+			                      e.what());
+		}
+
+		auto remote = pc->remoteDescription();
+		if (!remote)
+			return TestResult(false, "No remote description");
+
+		if (remote->hasCandidate(offerCandidate) || remote->hasCandidate(lateCandidate))
+			return TestResult(false, "A candidate was added after the peer connection closed");
+
+	} catch (const exception &e) {
+		return TestResult(false, e.what());
+	}
 
 	return TestResult(true);
 }
