@@ -439,10 +439,14 @@ void TlsTransport::doRecv() {
 		if (state() == State::Connecting) {
 			while (true) {
 				int ret;
+				message_vector passthrough;
 				{
 					std::lock_guard lock(mSslMutex);
 					ret = mbedtls_ssl_handshake(&mSsl);
+					passthrough.swap(mPassthroughMessages);
 				}
+
+				recvPassthroughMessages(std::move(passthrough));
 
 				if (ret == MBEDTLS_ERR_SSL_WANT_READ) {
 					return;
@@ -460,11 +464,15 @@ void TlsTransport::doRecv() {
 		if (state() == State::Connected) {
 			while (true) {
 				int ret;
+				message_vector passthrough;
 				{
 					std::lock_guard lock(mSslMutex);
 					ret = mbedtls_ssl_read(&mSsl, reinterpret_cast<unsigned char *>(buffer),
 					                       bufferSize);
+					passthrough.swap(mPassthroughMessages);
 				}
+
+				recvPassthroughMessages(std::move(passthrough));
 
 				if (ret == MBEDTLS_ERR_SSL_WANT_READ) {
 					return;
@@ -499,6 +507,12 @@ void TlsTransport::doRecv() {
 	}
 }
 
+void TlsTransport::recvPassthroughMessages(message_vector messages) {
+	// Must be called with mSslMutex unlocked as recv() calls upper layers
+	for (auto &message : messages)
+		recv(std::move(message));
+}
+
 int TlsTransport::WriteCallback(void *ctx, const unsigned char *buf, size_t len) {
 	auto *t = static_cast<TlsTransport *>(ctx);
 	auto *b = reinterpret_cast<const byte *>(buf);
@@ -523,7 +537,9 @@ int TlsTransport::ReadCallback(void *ctx, unsigned char *buf, size_t len) {
 				if (message->size() > 0)
 					break;
 
-				t->recv(std::move(message)); // Pass zero-sized messages through
+				// Pass zero-sized messages through once mSslMutex is unlocked, as calling recv()
+				// with the lock held may deadlock with the upper layer (see #1618)
+				t->mPassthroughMessages.push_back(std::move(message));
 				message.reset();
 			}
 		}

@@ -49,6 +49,7 @@ TestResult test_capi_connectivity();
 TestResult test_capi_track();
 TestResult test_websocket();
 TestResult test_websocketserver();
+TestResult test_websocketserver_tls_concurrent_send_recv();
 TestResult test_capi_websocketserver();
 size_t benchmark(chrono::milliseconds duration);
 
@@ -116,6 +117,8 @@ static const vector<Test> tests = {
     // TODO: Temporarily disabled as the echo service is unreliable
     // Test("WebSocket", test_websocket),
     Test("WebSocketServer", test_websocketserver),
+    Test("WebSocketServer TLS concurrent send and receive",
+         test_websocketserver_tls_concurrent_send_recv),
 #endif
     Test("Cleanup", test_cleanup),
     // C API tests

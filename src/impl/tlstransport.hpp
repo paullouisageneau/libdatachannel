@@ -76,6 +76,11 @@ protected:
 	message_ptr mIncomingMessage;
 	size_t mIncomingMessagePosition = 0;
 
+	// Zero-sized messages popped by ReadCallback while mSslMutex is locked, to be passed through
+	// once it is unlocked, as calling recv() with the lock held may deadlock (see #1618)
+	message_vector mPassthroughMessages;
+	void recvPassthroughMessages(message_vector messages);
+
 	static int WriteCallback(void *ctx, const unsigned char *buf, size_t len);
 	static int ReadCallback(void *ctx, unsigned char *buf, size_t len);
 
