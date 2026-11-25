@@ -20,7 +20,6 @@
 #include <functional>
 #include <map>
 #include <mutex>
-#include <vector>
 
 #include "usrsctp.h"
 
@@ -48,8 +47,8 @@ public:
 
 	void start() override;
 	void stop() override;
-	bool send(message_ptr message) override; // false if buffered
-	bool sendBatch(std::vector<message_ptr> messages); // false if any message was buffered
+	bool send(message_ptr message) override;     // false if buffered
+	bool send(message_vector messages) override; // false if any message was buffered
 	bool flush();
 	void closeStream(unsigned int stream);
 	void close();
@@ -75,11 +74,12 @@ private:
 		PPID_BINARY_EMPTY = 57
 	};
 
-	// Enables Nagle's algorithm on the socket for its lifetime; requires mSendMutex
+	// Enables Nagle's algorithm on the socket until restored or destroyed; requires mSendMutex
 	class NagleScope {
 	public:
 		NagleScope(struct socket *sock, bool enable);
 		~NagleScope();
+		void restore();
 		NagleScope(const NagleScope &) = delete;
 		NagleScope &operator=(const NagleScope &) = delete;
 

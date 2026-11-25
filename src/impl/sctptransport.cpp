@@ -371,28 +371,45 @@ void SctpTransport::connect() {
 		throw std::runtime_error("Connection attempt failed, errno=" + std::to_string(errno));
 }
 
-bool SctpTransport::send(message_ptr message) {
+bool SctpTransport::send(message_ptr message) { return send(message_vector{std::move(message)}); }
+
+bool SctpTransport::send(message_vector messages) {
 	std::lock_guard lock(mSendMutex);
 	if (state() != State::Connected)
 		return false;
 
-	if (!message)
-		return trySendQueue();
+	for (const auto &message : messages)
+		if (message && message->size() > mMaxMessageSize)
+			throw std::invalid_argument("Message is too large");
 
-	PLOG_VERBOSE << "Send size=" << message->size();
+	// Flush the queue, and if nothing is pending, try to send directly. Once a message is
+	// queued, the following ones must be queued behind it.
+	bool sent = trySendQueue();
 
-	if (message->size() > mMaxMessageSize)
-		throw std::invalid_argument("Message is too large");
+	// Let SCTP bundle several messages into full packets. Nagle's algorithm only holds data
+	// while earlier data is in flight, and it is disabled again before the last message is
+	// sent, so the batch is flushed instead of waiting for a SACK.
+	NagleScope nagle(mSock, messages.size() > 1);
+	for (auto it = messages.begin(); it != messages.end(); ++it) {
+		if (std::next(it) == messages.end())
+			nagle.restore();
 
-	// Flush the queue, and if nothing is pending, try to send directly
-	if (trySendQueue() && trySendMessage(message))
-		return true;
+		auto &message = *it;
+		if (!message)
+			continue;
 
-	const uint16_t streamId = to_uint16(message->stream);
-	const ptrdiff_t size = ptrdiff_t(message_size_func(message));
-	mSendQueue.push(std::move(message));
-	updateBufferedAmount(streamId, size);
-	return false;
+		PLOG_VERBOSE << "Send size=" << message->size();
+
+		if (sent && trySendMessage(message))
+			continue;
+
+		sent = false;
+		const uint16_t streamId = to_uint16(message->stream);
+		const ptrdiff_t size = ptrdiff_t(message_size_func(message));
+		mSendQueue.push(std::move(message));
+		updateBufferedAmount(streamId, size);
+	}
+	return sent;
 }
 
 bool SctpTransport::flush() {
@@ -410,46 +427,6 @@ bool SctpTransport::flush() {
 	}
 }
 
-bool SctpTransport::sendBatch(std::vector<message_ptr> messages) {
-	std::lock_guard lock(mSendMutex);
-	if (state() != State::Connected)
-		return false;
-
-	for (const auto &message : messages)
-		if (message && message->size() > mMaxMessageSize)
-			throw std::invalid_argument("Message is too large");
-
-	// Flush the queue; once anything is queued, later messages must queue behind it
-	bool direct = trySendQueue();
-	bool sent = direct;
-	auto sendOrQueue = [&](message_ptr message) {
-		if (!message)
-			return;
-		if (direct && trySendMessage(message))
-			return;
-		direct = false;
-		sent = false;
-		const uint16_t streamId = to_uint16(message->stream);
-		const ptrdiff_t size = ptrdiff_t(message_size_func(message));
-		mSendQueue.push(std::move(message));
-		updateBufferedAmount(streamId, size);
-	};
-
-	if (messages.empty())
-		return sent;
-
-	{
-		// Let SCTP bundle the batch into full packets. Nagle's algorithm only holds
-		// data while earlier data is in flight, and the last message is sent with
-		// it disabled again, so the batch is flushed instead of waiting for a SACK.
-		NagleScope nagle(mSock, messages.size() > 1);
-		for (size_t i = 0; i + 1 < messages.size(); ++i)
-			sendOrQueue(std::move(messages[i]));
-	}
-	sendOrQueue(std::move(messages.back()));
-	return sent;
-}
-
 SctpTransport::NagleScope::NagleScope(struct socket *sock, bool enable)
     : mSock(enable ? sock : nullptr) {
 	// RFC 8831 6.6 asks senders to disable Nagle to minimize latency; it is only
@@ -458,9 +435,13 @@ SctpTransport::NagleScope::NagleScope(struct socket *sock, bool enable)
 		mSock = nullptr;
 }
 
-SctpTransport::NagleScope::~NagleScope() {
-	if (mSock)
+SctpTransport::NagleScope::~NagleScope() { restore(); }
+
+void SctpTransport::NagleScope::restore() {
+	if (mSock) {
 		setNoDelay(true);
+		mSock = nullptr;
+	}
 }
 
 bool SctpTransport::NagleScope::setNoDelay(bool noDelay) {

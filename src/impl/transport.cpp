@@ -67,6 +67,13 @@ void Transport::stop() { unregisterIncoming(); }
 
 bool Transport::send(message_ptr message) { return outgoing(std::move(message)); }
 
+bool Transport::send(message_vector messages) {
+	bool sent = true;
+	for (auto &message : messages)
+		sent = send(std::move(message)) && sent;
+	return sent;
+}
+
 void Transport::recv(message_ptr message) {
 	try {
 		std::unique_lock lock(mPendingMutex);

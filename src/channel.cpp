@@ -17,6 +17,13 @@ Channel::~Channel() { impl()->resetCallbacks(); }
 
 Channel::Channel(impl_ptr<impl::Channel> impl) : CheshireCat<impl::Channel>(std::move(impl)) {}
 
+bool Channel::send(std::vector<message_variant> messages) {
+	bool sent = true;
+	for (auto &data : messages)
+		sent = send(std::move(data)) && sent;
+	return sent;
+}
+
 size_t Channel::maxMessageSize() const { return 0; }
 
 size_t Channel::bufferedAmount() const { return impl()->bufferedAmount; }

@@ -6,7 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// Compares a send() loop with sendBatch() for bursts of small messages.
+// Compares a send() loop with a single send() of a vector for bursts of small messages.
 // Both peers run in this process over loopback, so CPU time covers both ends.
 // Rounds alternate between modes so that background load affects both equally.
 //
@@ -152,7 +152,7 @@ Result run(bool batched, size_t messageSize, size_t count, size_t batchSize) {
 		const size_t n = min(batchSize, count - sent);
 		if (batched) {
 			vector<message_variant> messages(n, payload);
-			dc1->sendBatch(std::move(messages));
+			dc1->send(std::move(messages));
 		} else {
 			for (size_t i = 0; i < n; ++i)
 				dc1->send(payload);
@@ -242,8 +242,8 @@ int main(int argc, char **argv) {
 
 		cout << count << " messages per run, batches of " << batchSize << ", " << rounds
 		     << " alternating rounds, medians" << endl;
-		cout << "size      send() msg/s   sendBatch() msg/s   speedup   send() CPU us/msg   "
-		        "sendBatch() CPU us/msg"
+		cout << "size      send() msg/s         batch msg/s   speedup   send() CPU us/msg   "
+		        "      batch CPU us/msg"
 		     << endl;
 
 		for (size_t size : sizes) {

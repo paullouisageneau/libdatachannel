@@ -77,16 +77,16 @@ TestResult test_send_batch() {
 		else
 			expected.emplace_back("message " + to_string(i));
 	}
-	dc1->sendBatch(expected);
+	dc1->send(expected);
 
 	// A single-message batch behaves like send()
 	expected.emplace_back(string("last"));
-	dc1->sendBatch({string("last")});
+	dc1->send(vector<message_variant>{string("last")});
 
 	// An oversized message rejects the whole batch before anything is sent
 	bool rejected = false;
 	try {
-		dc1->sendBatch({string("never sent"), binary(dc1->maxMessageSize() + 1)});
+		dc1->send(vector<message_variant>{string("never sent"), binary(dc1->maxMessageSize() + 1)});
 	} catch (const std::invalid_argument &) {
 		rejected = true;
 	}

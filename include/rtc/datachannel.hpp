@@ -45,7 +45,7 @@ public:
 
 	// Sends messages in order and lets SCTP bundle them into fewer packets.
 	// Every message is validated before any is sent; returns false if any was buffered.
-	bool sendBatch(std::vector<message_variant> messages);
+	bool send(std::vector<message_variant> messages) override;
 	template <typename Buffer> bool sendBuffer(const Buffer &buf);
 	template <typename Iterator> bool sendBuffer(Iterator first, Iterator last);
 
