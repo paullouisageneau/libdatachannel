@@ -1,0 +1,173 @@
+<html>
+
+<head>
+    <title>libdatachannel whip-whep</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        section { display: inline-block; vertical-align: top; margin-right: 3em; }
+        video { width: 400px; background: #111; }
+        #status { font-family: monospace; font-size: 0.9em; }
+        #status p { margin: 0.2em 0; }
+    </style>
+</head>
+
+<body>
+    <h2>libdatachannel WHIP/WHEP</h2>
+    <p>
+        Publish your camera with WHIP and subscribe to it with WHEP. Running both
+        sends the stream through the server and straight back to this page.
+    </p>
+
+    <section>
+        <h3>Publish (WHIP)</h3>
+        <button id="publish">Publish</button>
+        <button id="publishStop" disabled>Stop</button>
+        <p><video id="localVideo" autoplay muted playsinline></video></p>
+    </section>
+
+    <section>
+        <h3>Subscribe (WHEP)</h3>
+        <button id="subscribe">Subscribe</button>
+        <button id="subscribeStop" disabled>Stop</button>
+        <p><video id="remoteVideo" autoplay muted playsinline controls></video></p>
+    </section>
+
+    <h3>Status</h3>
+    <div id="status"></div>
+</body>
+
+<script>
+    const log = (message) => {
+        const el = document.createElement('p')
+        el.appendChild(document.createTextNode(message))
+        document.getElementById('status').appendChild(el)
+    }
+
+    // The examples only handle VP8, and the server strips everything else from
+    // its answer, so ask the browser for VP8 up front.
+    const forceVp8 = (transceiver) => {
+        const codecs = RTCRtpSender.getCapabilities('video').codecs
+        const vp8 = codecs.filter(c => c.mimeType === 'video/VP8')
+
+        if (vp8.length === 0) {
+            throw new Error('vp8 is not a supported codec')
+        }
+
+        transceiver.setCodecPreferences(vp8)
+    }
+
+    // One signaling session. WHIP and WHEP differ only in the endpoint and in
+    // how the offer is built, so both roles share this.
+    class Session {
+        constructor(name, path, buildOffer, buttons) {
+            this.name = name
+            this.path = path
+            this.buildOffer = buildOffer
+            this.buttons = buttons
+            this.pc = null
+            this.resourceUrl = null
+
+            document.getElementById(buttons.start).onclick = () => this.start()
+            document.getElementById(buttons.stop).onclick = () => this.stop()
+        }
+
+        setRunning(running) {
+            document.getElementById(this.buttons.start).disabled = running
+            document.getElementById(this.buttons.stop).disabled = !running
+        }
+
+        async start() {
+            try {
+                this.pc = new RTCPeerConnection()
+                this.pc.oniceconnectionstatechange =
+                    () => log(`${this.name}: ICE ${this.pc.iceConnectionState}`)
+
+                const offer = await this.buildOffer(this.pc)
+                await this.pc.setLocalDescription(offer)
+
+                const response = await fetch(this.path, {
+                    method: 'POST',
+                    body: offer.sdp,
+                    headers: { 'Content-Type': 'application/sdp' }
+                })
+
+                if (response.status !== 201) {
+                    throw new Error(`server returned ${response.status}: ` +
+                        `${(await response.text()).trim()}`)
+                }
+
+                // The session is a resource the POST created. Remember where it
+                // lives so it can be deleted on stop.
+                const location = response.headers.get('Location')
+                if (location) {
+                    this.resourceUrl = new URL(location, window.location.href).href
+                    log(`${this.name}: resource ${location}`)
+                } else {
+                    log(`${this.name}: no Location header, session cannot be deleted`)
+                }
+
+                await this.pc.setRemoteDescription({
+                    sdp: await response.text(),
+                    type: 'answer'
+                })
+
+                this.setRunning(true)
+            } catch (err) {
+                log(`${this.name}: failed, ${err.message}`)
+                await this.stop()
+            }
+        }
+
+        async stop() {
+            if (this.resourceUrl) {
+                try {
+                    const response = await fetch(this.resourceUrl, { method: 'DELETE' })
+                    log(`${this.name}: delete returned ${response.status}`)
+                } catch (err) {
+                    log(`${this.name}: delete failed, ${err.message}`)
+                }
+                this.resourceUrl = null
+            }
+
+            if (this.pc) {
+                this.pc.close()
+                this.pc = null
+            }
+
+            this.setRunning(false)
+        }
+    }
+
+    const publisher = new Session('whip', '/whip', async (pc) => {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        document.getElementById('localVideo').srcObject = stream
+
+        // Add the transceiver so we can set codec preferences
+        const transceiver = pc.addTransceiver(stream.getVideoTracks()[0])
+        forceVp8(transceiver)
+
+        return await pc.createOffer()
+    }, { start: 'publish', stop: 'publishStop' })
+
+    const subscriber = new Session('whep', '/whep', async (pc) => {
+        const transceiver = pc.addTransceiver('video', { direction: 'recvonly' })
+        forceVp8(transceiver)
+
+        pc.ontrack = (event) => {
+            document.getElementById('remoteVideo').srcObject = event.streams[0]
+        }
+
+        return await pc.createOffer()
+    }, { start: 'subscribe', stop: 'subscribeStop' })
+
+    // Release the camera and delete both sessions if the page goes away.
+    window.addEventListener('beforeunload', () => {
+        for (const s of [publisher, subscriber]) {
+            if (s.resourceUrl) navigator.sendBeacon && fetch(s.resourceUrl, {
+                method: 'DELETE', keepalive: true
+            })
+        }
+    })
+</script>
+
+</html>
