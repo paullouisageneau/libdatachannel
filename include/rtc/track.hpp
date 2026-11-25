@@ -31,9 +31,14 @@ public:
 
 	string mid() const;
 	Description::Direction direction() const;
+	// Local media description used for offer and answer generation.
 	Description::Media description() const;
+	// Latest media description applied from the remote peer, if any.
+	optional<Description::Media> remoteDescription() const;
 
 	void setDescription(Description::Media description);
+	// Called asynchronously when an existing track's remote description changes.
+	void onRemoteDescription(std::function<void(Description::Media description)> callback);
 
 	void close(void) override;
 	bool send(message_variant data) override;
