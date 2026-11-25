@@ -93,6 +93,40 @@ TestResult test_send_batch() {
 	if (!rejected)
 		return TestResult(false, "Oversized batch was not rejected");
 
+	// Sizes around packet boundaries, including empty and fragmented messages, must not affect
+	// the order
+	const vector<size_t> sizes = {0,   1,   3,    4,    5,    64,   255,  256,  564,  565,
+	                              568, 569, 1000, 1155, 1156, 1157, 1172, 2400, 16384};
+	vector<message_variant> boundaries;
+	for (size_t i = 0; i < 300; ++i) {
+		const size_t size = sizes[(i * 7) % sizes.size()];
+		if (i % 2)
+			boundaries.emplace_back(binary(size, byte(i & 0xFF)));
+		else
+			boundaries.emplace_back(string(size, char('a' + i % 26)));
+	}
+	expected.insert(expected.end(), boundaries.begin(), boundaries.end());
+	dc1->send(std::move(boundaries));
+
+	// A batch larger than the send buffer is partly buffered, and what follows is buffered behind
+	std::atomic<int> lowCount = 0;
+	dc1->onBufferedAmountLow([&lowCount]() { ++lowCount; });
+
+	vector<message_variant> large;
+	for (int i = 0; i < 256; ++i) {
+		if (i % 4 == 0)
+			large.emplace_back(binary(65536, byte(i & 0xFF)));
+		else
+			large.emplace_back("small " + to_string(i));
+	}
+	expected.insert(expected.end(), large.begin(), large.end());
+	if (dc1->send(std::move(large)))
+		return TestResult(false, "Batch larger than the send buffer was not buffered");
+
+	expected.emplace_back(string("behind"));
+	if (dc1->send(string("behind")))
+		return TestResult(false, "Message was sent before the buffered batch");
+
 	attempts = 10;
 	while (attempts--) {
 		{
@@ -111,6 +145,14 @@ TestResult test_send_batch() {
 		if (received != expected)
 			return TestResult(false, "Batched messages arrived out of order or modified");
 	}
+
+	// The buffered amount is updated by the sending thread, possibly after the last message arrived
+	attempts = 10;
+	while ((dc1->bufferedAmount() > 0 || lowCount == 0) && attempts--)
+		this_thread::sleep_for(100ms);
+
+	if (dc1->bufferedAmount() > 0 || lowCount == 0)
+		return TestResult(false, "Buffered amount did not go back to zero");
 
 	pc1.close();
 	this_thread::sleep_for(1s);

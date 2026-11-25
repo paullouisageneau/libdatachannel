@@ -74,18 +74,19 @@ private:
 		PPID_BINARY_EMPTY = 57
 	};
 
-	// Enables Nagle's algorithm on the socket until restored or destroyed; requires mSendMutex
+	// Toggles Nagle's algorithm on the socket and disables it again on destruction; requires
+	// mSendMutex
 	class NagleScope {
 	public:
-		NagleScope(struct socket *sock, bool enable);
+		explicit NagleScope(struct socket *sock);
 		~NagleScope();
-		void restore();
+		void enable(bool enabled);
 		NagleScope(const NagleScope &) = delete;
 		NagleScope &operator=(const NagleScope &) = delete;
 
 	private:
-		bool setNoDelay(bool noDelay);
 		struct socket *mSock;
+		bool mEnabled = false;
 	};
 
 	struct sockaddr_conn getSockAddrConn(uint16_t port);
@@ -112,6 +113,7 @@ private:
 	void processNotification(const union sctp_notification *notify, size_t len);
 
 	const size_t mMaxMessageSize;
+	const size_t mMtu; // SCTP MTU, the space available for chunks in a packet
 	const Ports mPorts;
 	struct socket *mSock;
 	std::optional<uint16_t> mNegotiatedStreamsCount;

@@ -160,6 +160,7 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)),
       mMaxMessageSize(config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE)),
+      mMtu(config.mtu.value_or(DEFAULT_MTU) - 12 - 48 - 8 - 40), // SCTP/DTLS/UDP/IPv6
       mPorts(std::move(ports)), mSendQueue(0, message_size_func),
       mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
 	onRecv(std::move(recvCallback));
@@ -244,9 +245,8 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 		spp.spp_flags |= SPP_PMTUD_DISABLE;
 		// The MTU value provided specifies the space available for chunks in the
 		// packet, so we also subtract the SCTP header size.
-		size_t pmtu = config.mtu.value_or(DEFAULT_MTU) - 12 - 48 - 8 - 40; // SCTP/DTLS/UDP/IPv6
-		spp.spp_pathmtu = to_uint32(pmtu);
-		PLOG_VERBOSE << "Path MTU discovery disabled, SCTP MTU set to " << pmtu;
+		spp.spp_pathmtu = to_uint32(mMtu);
+		PLOG_VERBOSE << "Path MTU discovery disabled, SCTP MTU set to " << mMtu;
 	}
 
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &spp, sizeof(spp)))
@@ -386,24 +386,39 @@ bool SctpTransport::send(message_vector messages) {
 	// queued, the following ones must be queued behind it.
 	bool sent = trySendQueue();
 
-	// Let SCTP bundle several messages into full packets. Nagle's algorithm only holds data
-	// while earlier data is in flight, and it is disabled again before the last message is
-	// sent, so the batch is flushed instead of waiting for a SACK.
-	NagleScope nagle(mSock, messages.size() > 1);
-	for (auto it = messages.begin(); it != messages.end(); ++it) {
-		if (std::next(it) == messages.end())
-			nagle.restore();
+	// A DATA chunk has a 16-byte header followed by the payload padded to 4 bytes, and an empty
+	// message is sent as a single byte
+	auto chunkSize = [](const message_ptr &message) {
+		return 16 + ((std::max(message->size(), size_t(1)) + 3) & ~size_t(3));
+	};
 
+	// Let SCTP bundle consecutive messages into packets, which have room for mMtu bytes of chunks.
+	// Nagle's algorithm is only enabled while the next message fits in the same packet, so the
+	// message completing a packet is sent with it disabled and the packet is flushed instead of
+	// waiting for a SACK.
+	NagleScope nagle(mSock);
+	size_t packetSize = 0;
+	for (auto it = messages.begin(); it != messages.end(); ++it) {
 		auto &message = *it;
 		if (!message)
 			continue;
 
 		PLOG_VERBOSE << "Send size=" << message->size();
 
-		if (sent && trySendMessage(message))
-			continue;
+		if (sent) {
+			auto next = std::next(it);
+			packetSize += chunkSize(message);
+			bool bundle = next != messages.end() && *next && packetSize + chunkSize(*next) <= mMtu;
+			if (!bundle)
+				packetSize = 0;
 
-		sent = false;
+			nagle.enable(bundle);
+			if (trySendMessage(message))
+				continue;
+
+			sent = false;
+		}
+
 		const uint16_t streamId = to_uint16(message->stream);
 		const ptrdiff_t size = ptrdiff_t(message_size_func(message));
 		mSendQueue.push(std::move(message));
@@ -427,30 +442,22 @@ bool SctpTransport::flush() {
 	}
 }
 
-SctpTransport::NagleScope::NagleScope(struct socket *sock, bool enable)
-    : mSock(enable ? sock : nullptr) {
-	// RFC 8831 6.6 asks senders to disable Nagle to minimize latency; it is only
-	// enabled for the duration of a batch whose last message flushes it.
-	if (mSock && !setNoDelay(false))
-		mSock = nullptr;
-}
+SctpTransport::NagleScope::NagleScope(struct socket *sock) : mSock(sock) {}
 
-SctpTransport::NagleScope::~NagleScope() { restore(); }
+SctpTransport::NagleScope::~NagleScope() { enable(false); }
 
-void SctpTransport::NagleScope::restore() {
-	if (mSock) {
-		setNoDelay(true);
-		mSock = nullptr;
-	}
-}
+void SctpTransport::NagleScope::enable(bool enabled) {
+	// RFC 8831 6.6 asks senders to disable Nagle to minimize latency; it is only enabled while
+	// the next message of a batch fits in the same packet.
+	if (enabled == mEnabled)
+		return;
 
-bool SctpTransport::NagleScope::setNoDelay(bool noDelay) {
-	int value = noDelay ? 1 : 0;
-	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_NODELAY, &value, sizeof(value))) {
+	int noDelay = enabled ? 0 : 1;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_NODELAY, &noDelay, sizeof(noDelay))) {
 		PLOG_WARNING << "Could not set socket option SCTP_NODELAY, errno=" << errno;
-		return false;
+		return;
 	}
-	return true;
+	mEnabled = enabled;
 }
 
 void SctpTransport::closeStream(unsigned int stream) {
