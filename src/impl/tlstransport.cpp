@@ -439,7 +439,7 @@ void TlsTransport::doRecv() {
 		if (state() == State::Connecting) {
 			while (true) {
 				int ret;
-				std::vector<message_ptr> passthrough;
+				message_vector passthrough;
 				{
 					std::lock_guard lock(mSslMutex);
 					ret = mbedtls_ssl_handshake(&mSsl);
@@ -464,7 +464,7 @@ void TlsTransport::doRecv() {
 		if (state() == State::Connected) {
 			while (true) {
 				int ret;
-				std::vector<message_ptr> passthrough;
+				message_vector passthrough;
 				{
 					std::lock_guard lock(mSslMutex);
 					ret = mbedtls_ssl_read(&mSsl, reinterpret_cast<unsigned char *>(buffer),
@@ -507,7 +507,7 @@ void TlsTransport::doRecv() {
 	}
 }
 
-void TlsTransport::recvPassthroughMessages(std::vector<message_ptr> messages) {
+void TlsTransport::recvPassthroughMessages(message_vector messages) {
 	// Must be called with mSslMutex unlocked as recv() calls upper layers
 	for (auto &message : messages)
 		recv(std::move(message));

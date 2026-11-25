@@ -19,7 +19,6 @@
 
 #include <atomic>
 #include <thread>
-#include <vector>
 
 namespace rtc::impl {
 
@@ -79,8 +78,8 @@ protected:
 
 	// Zero-sized messages popped by ReadCallback while mSslMutex is locked, to be passed through
 	// once it is unlocked, as calling recv() with the lock held may deadlock (see #1618)
-	std::vector<message_ptr> mPassthroughMessages;
-	void recvPassthroughMessages(std::vector<message_ptr> messages);
+	message_vector mPassthroughMessages;
+	void recvPassthroughMessages(message_vector messages);
 
 	static int WriteCallback(void *ctx, const unsigned char *buf, size_t len);
 	static int ReadCallback(void *ctx, unsigned char *buf, size_t len);
