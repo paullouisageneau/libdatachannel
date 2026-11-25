@@ -179,13 +179,15 @@ size_t WebSocket::availableAmount() const { return mRecvQueue.amount(); }
 bool WebSocket::changeState(State newState) { return state.exchange(newState) != newState; }
 
 bool WebSocket::outgoing(message_ptr message) {
-	if (state != State::Open || !mWsTransport)
+	// Hold the transport: closeTransports() may release it on another thread meanwhile
+	auto transport = std::atomic_load(&mWsTransport);
+	if (state != State::Open || !transport)
 		throw std::runtime_error("WebSocket is not open");
 
 	if (message->size() > maxMessageSize())
 		throw std::runtime_error("Message size exceeds limit");
 
-	return mWsTransport->send(std::move(message));
+	return transport->send(std::move(message));
 }
 
 void WebSocket::incoming(message_ptr message) {
