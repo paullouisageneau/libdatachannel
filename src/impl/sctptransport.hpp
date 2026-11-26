@@ -47,7 +47,8 @@ public:
 
 	void start() override;
 	void stop() override;
-	bool send(message_ptr message) override; // false if buffered
+	bool send(message_ptr message) override;     // false if buffered
+	bool send(message_vector messages) override; // false if any message was buffered
 	bool flush();
 	void closeStream(unsigned int stream);
 	void close();
@@ -71,6 +72,21 @@ private:
 		PPID_STRING_PARTIAL = 54,
 		PPID_STRING_EMPTY = 56,
 		PPID_BINARY_EMPTY = 57
+	};
+
+	// Toggles Nagle's algorithm on the socket and disables it again on destruction; requires
+	// mSendMutex
+	class NagleScope {
+	public:
+		explicit NagleScope(struct socket *sock);
+		~NagleScope();
+		void enable(bool enabled);
+		NagleScope(const NagleScope &) = delete;
+		NagleScope &operator=(const NagleScope &) = delete;
+
+	private:
+		struct socket *mSock;
+		bool mEnabled = false;
 	};
 
 	struct sockaddr_conn getSockAddrConn(uint16_t port);
@@ -97,6 +113,7 @@ private:
 	void processNotification(const union sctp_notification *notify, size_t len);
 
 	const size_t mMaxMessageSize;
+	const size_t mMtu; // SCTP MTU, the space available for chunks in a packet
 	const Ports mPorts;
 	struct socket *mSock;
 	std::optional<uint16_t> mNegotiatedStreamsCount;

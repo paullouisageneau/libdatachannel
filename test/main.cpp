@@ -26,6 +26,7 @@ TestResult test_connectivity_fail_on_wrong_fingerprint();
 TestResult test_dtls_startup_after_remote_description();
 TestResult test_pem();
 TestResult test_negotiated();
+TestResult test_send_batch();
 TestResult test_reliability();
 TestResult test_simulcast_sdp_generation();
 TestResult test_simulcast_sdp_parsing();
@@ -92,6 +93,7 @@ static const vector<Test> tests = {
     // TODO: Temporarily disabled as the Open Relay TURN server is unreliable
     // Test("WebRTC TURN connectivity", test_turn_connectivity),
     Test("WebRTC negotiated DataChannel", test_negotiated),
+    Test("WebRTC DataChannel batch send", test_send_batch),
     Test("WebRTC reliability mode", test_reliability),
     Test("WebRTC simulcast SDP generation", test_simulcast_sdp_generation),
     Test("WebRTC simulcast SDP parsing", test_simulcast_sdp_parsing),

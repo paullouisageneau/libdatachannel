@@ -178,7 +178,7 @@ void DataChannel::processOpenMessage(message_ptr) {
 	PLOG_WARNING << "Received an open message for a user-negotiated DataChannel, ignoring";
 }
 
-bool DataChannel::outgoing(message_ptr message) {
+bool DataChannel::outgoing(message_vector messages) {
 	shared_ptr<SctpTransport> transport;
 	{
 		std::shared_lock lock(mMutex);
@@ -193,15 +193,20 @@ bool DataChannel::outgoing(message_ptr message) {
 		if (!mStream.has_value())
 			throw std::logic_error("DataChannel has no stream assigned");
 
-		if (message->size() > maxMessageSize())
-			throw std::invalid_argument("Message size exceeds limit");
+		// Validate every message before any is sent
+		const size_t maxSize = maxMessageSize();
+		for (const auto &message : messages)
+			if (message->size() > maxSize)
+				throw std::invalid_argument("Message size exceeds limit");
 
 		// Before the ACK has been received on a DataChannel, all messages must be sent ordered
-		message->reliability = mIsOpen ? mReliability : nullptr;
-		message->stream = mStream.value();
+		for (auto &message : messages) {
+			message->reliability = mIsOpen ? mReliability : nullptr;
+			message->stream = mStream.value();
+		}
 	}
 
-	return transport->send(std::move(message));
+	return transport->send(std::move(messages));
 }
 
 void DataChannel::incoming(message_ptr message) {

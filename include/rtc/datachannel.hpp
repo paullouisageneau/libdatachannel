@@ -42,6 +42,10 @@ public:
 	void close(void) override;
 	bool send(message_variant data) override;
 	bool send(const byte *data, size_t size) override;
+
+	// Sends messages in order and lets SCTP bundle them into fewer packets.
+	// Every message is validated before any is sent; returns false if any was buffered.
+	bool send(std::vector<message_variant> messages) override;
 	template <typename Buffer> bool sendBuffer(const Buffer &buf);
 	template <typename Iterator> bool sendBuffer(Iterator first, Iterator last);
 

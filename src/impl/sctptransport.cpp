@@ -160,6 +160,7 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
                              state_callback stateChangeCallback)
     : Transport(lower, std::move(stateChangeCallback)),
       mMaxMessageSize(config.maxMessageSize.value_or(DEFAULT_LOCAL_MAX_MESSAGE_SIZE)),
+      mMtu(config.mtu.value_or(DEFAULT_MTU) - 12 - 48 - 8 - 40), // SCTP/DTLS/UDP/IPv6
       mPorts(std::move(ports)), mSendQueue(0, message_size_func),
       mBufferedAmountCallback(std::move(bufferedAmountCallback)) {
 	onRecv(std::move(recvCallback));
@@ -244,9 +245,8 @@ SctpTransport::SctpTransport(shared_ptr<Transport> lower, const Configuration &c
 		spp.spp_flags |= SPP_PMTUD_DISABLE;
 		// The MTU value provided specifies the space available for chunks in the
 		// packet, so we also subtract the SCTP header size.
-		size_t pmtu = config.mtu.value_or(DEFAULT_MTU) - 12 - 48 - 8 - 40; // SCTP/DTLS/UDP/IPv6
-		spp.spp_pathmtu = to_uint32(pmtu);
-		PLOG_VERBOSE << "Path MTU discovery disabled, SCTP MTU set to " << pmtu;
+		spp.spp_pathmtu = to_uint32(mMtu);
+		PLOG_VERBOSE << "Path MTU discovery disabled, SCTP MTU set to " << mMtu;
 	}
 
 	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_PEER_ADDR_PARAMS, &spp, sizeof(spp)))
@@ -371,28 +371,64 @@ void SctpTransport::connect() {
 		throw std::runtime_error("Connection attempt failed, errno=" + std::to_string(errno));
 }
 
-bool SctpTransport::send(message_ptr message) {
+bool SctpTransport::send(message_ptr message) { return send(message_vector{std::move(message)}); }
+
+bool SctpTransport::send(message_vector messages) {
+	// Nothing in an empty batch can be buffered, while a null message flushes the queue
+	if (messages.empty())
+		return true;
+
 	std::lock_guard lock(mSendMutex);
 	if (state() != State::Connected)
 		return false;
 
-	if (!message)
-		return trySendQueue();
+	for (const auto &message : messages)
+		if (message && message->size() > mMaxMessageSize)
+			throw std::invalid_argument("Message is too large");
 
-	PLOG_VERBOSE << "Send size=" << message->size();
+	// Flush the queue, and if nothing is pending, try to send directly. Once a message is
+	// queued, the following ones must be queued behind it.
+	bool sent = trySendQueue();
 
-	if (message->size() > mMaxMessageSize)
-		throw std::invalid_argument("Message is too large");
+	// A DATA chunk has a 16-byte header followed by the payload padded to 4 bytes, and an empty
+	// message is sent as a single byte
+	auto chunkSize = [](const message_ptr &message) {
+		return 16 + ((std::max(message->size(), size_t(1)) + 3) & ~size_t(3));
+	};
 
-	// Flush the queue, and if nothing is pending, try to send directly
-	if (trySendQueue() && trySendMessage(message))
-		return true;
+	// Let SCTP bundle consecutive messages into packets, which have room for mMtu bytes of chunks.
+	// Nagle's algorithm is only enabled while the next message fits in the same packet, so the
+	// message completing a packet is sent with it disabled and the packet is flushed instead of
+	// waiting for a SACK.
+	NagleScope nagle(mSock);
+	size_t packetSize = 0;
+	for (auto it = messages.begin(); it != messages.end(); ++it) {
+		auto &message = *it;
+		if (!message)
+			continue;
 
-	const uint16_t streamId = to_uint16(message->stream);
-	const ptrdiff_t size = ptrdiff_t(message_size_func(message));
-	mSendQueue.push(std::move(message));
-	updateBufferedAmount(streamId, size);
-	return false;
+		PLOG_VERBOSE << "Send size=" << message->size();
+
+		if (sent) {
+			auto next = std::next(it);
+			packetSize += chunkSize(message);
+			bool bundle = next != messages.end() && *next && packetSize + chunkSize(*next) <= mMtu;
+			if (!bundle)
+				packetSize = 0;
+
+			nagle.enable(bundle);
+			if (trySendMessage(message))
+				continue;
+
+			sent = false;
+		}
+
+		const uint16_t streamId = to_uint16(message->stream);
+		const ptrdiff_t size = ptrdiff_t(message_size_func(message));
+		mSendQueue.push(std::move(message));
+		updateBufferedAmount(streamId, size);
+	}
+	return sent;
 }
 
 bool SctpTransport::flush() {
@@ -408,6 +444,24 @@ bool SctpTransport::flush() {
 		PLOG_WARNING << "SCTP flush: " << e.what();
 		return false;
 	}
+}
+
+SctpTransport::NagleScope::NagleScope(struct socket *sock) : mSock(sock) {}
+
+SctpTransport::NagleScope::~NagleScope() { enable(false); }
+
+void SctpTransport::NagleScope::enable(bool enabled) {
+	// RFC 8831 6.6 asks senders to disable Nagle to minimize latency; it is only enabled while
+	// the next message of a batch fits in the same packet.
+	if (enabled == mEnabled)
+		return;
+
+	int noDelay = enabled ? 0 : 1;
+	if (usrsctp_setsockopt(mSock, IPPROTO_SCTP, SCTP_NODELAY, &noDelay, sizeof(noDelay))) {
+		PLOG_WARNING << "Could not set socket option SCTP_NODELAY, errno=" << errno;
+		return;
+	}
+	mEnabled = enabled;
 }
 
 void SctpTransport::closeStream(unsigned int stream) {

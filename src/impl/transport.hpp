@@ -40,6 +40,7 @@ public:
 	virtual void start();
 	virtual void stop();
 	virtual bool send(message_ptr message);
+	virtual bool send(message_vector messages); // false if any message was not sent
 
 protected:
 	void recv(message_ptr message);
