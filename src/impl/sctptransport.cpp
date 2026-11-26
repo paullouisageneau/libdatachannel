@@ -374,6 +374,10 @@ void SctpTransport::connect() {
 bool SctpTransport::send(message_ptr message) { return send(message_vector{std::move(message)}); }
 
 bool SctpTransport::send(message_vector messages) {
+	// Nothing in an empty batch can be buffered, while a null message flushes the queue
+	if (messages.empty())
+		return true;
+
 	std::lock_guard lock(mSendMutex);
 	if (state() != State::Connected)
 		return false;

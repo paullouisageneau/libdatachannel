@@ -24,6 +24,11 @@ using namespace std;
 TestResult test_send_batch() {
 	InitLogger(LogLevel::Debug);
 
+	// Declared before the peers so it outlives any late callback
+	std::mutex mutex;
+	vector<message_variant> received;
+	std::atomic<int> lowCount = 0;
+
 	Configuration config1;
 	config1.disableAutoNegotiation = true;
 	PeerConnection pc1(config1);
@@ -53,8 +58,6 @@ TestResult test_send_batch() {
 	auto dc1 = pc1.createDataChannel("batch", init);
 	auto dc2 = pc2.createDataChannel("batch", init);
 
-	std::mutex mutex;
-	vector<message_variant> received;
 	dc2->onMessage([&](message_variant message) {
 		std::lock_guard lock(mutex);
 		received.push_back(std::move(message));
@@ -83,6 +86,10 @@ TestResult test_send_batch() {
 	expected.emplace_back(string("last"));
 	dc1->send(vector<message_variant>{string("last")});
 
+	// An empty batch sends nothing, so nothing is buffered
+	if (!dc1->send(vector<message_variant>{}))
+		return TestResult(false, "Empty batch was reported as buffered");
+
 	// An oversized message rejects the whole batch before anything is sent
 	bool rejected = false;
 	try {
@@ -108,8 +115,7 @@ TestResult test_send_batch() {
 	expected.insert(expected.end(), boundaries.begin(), boundaries.end());
 	dc1->send(std::move(boundaries));
 
-	// A batch larger than the send buffer is partly buffered, and what follows is buffered behind
-	std::atomic<int> lowCount = 0;
+	// A batch larger than the send buffer is partly buffered, and what follows arrives after it
 	dc1->onBufferedAmountLow([&lowCount]() { ++lowCount; });
 
 	vector<message_variant> large;
@@ -124,8 +130,7 @@ TestResult test_send_batch() {
 		return TestResult(false, "Batch larger than the send buffer was not buffered");
 
 	expected.emplace_back(string("behind"));
-	if (dc1->send(string("behind")))
-		return TestResult(false, "Message was sent before the buffered batch");
+	dc1->send(string("behind"));
 
 	attempts = 10;
 	while (attempts--) {

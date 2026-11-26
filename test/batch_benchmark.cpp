@@ -180,11 +180,14 @@ Result run(bool batched, size_t messageSize, size_t count, size_t batchSize) {
 	dc1->resetCallbacks();
 	pc1.resetCallbacks();
 	pc2.resetCallbacks();
+	// Reset outside the lock, as a late callback may hold its own lock while waiting for mtx
+	shared_ptr<DataChannel> remote;
 	{
 		lock_guard lock(mtx);
-		if (dc2)
-			dc2->resetCallbacks();
+		remote = dc2;
 	}
+	if (remote)
+		remote->resetCallbacks();
 	pc1.close();
 	pc2.close();
 
